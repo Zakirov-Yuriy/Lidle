@@ -275,12 +275,13 @@ class _HomePageState extends State<HomePage> {
             double tileHeight = 263; // базовая высота
             if (itemWidth < 170) tileHeight = 275; // +12 px запаса под текст
             if (itemWidth < 140)
-              tileHeight = 300; // ещё больше для очень узких экранов
+              tileHeight = 300; // ещё бол                тьше для очень узких экранов
 
             return GridView.custom(
               padding: const EdgeInsets.only(
                 left: 31,
                 right: 31,
+                bottom: 60,
               ), // нижний отступ здесь
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -465,6 +466,7 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
+  
 
   // Цвета (удобно держать в одном месте)
   static const _barColor = Color(0xFF0F1A23);
