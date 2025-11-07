@@ -43,8 +43,10 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: const Color(0xFF232E3C),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // Header с логотипом
@@ -270,12 +272,16 @@ class _HomePageState extends State<HomePage> {
             final itemWidth = (constraints.maxWidth - 31 - 31 - 16) / 2;
 
             // FIX: гарантируем достаточную высоту тайла
-            double tileHeight = 263;         // базовая высота
+            double tileHeight = 263; // базовая высота
             if (itemWidth < 170) tileHeight = 275; // +12 px запаса под текст
-            if (itemWidth < 140) tileHeight = 300; // ещё больше для очень узких экранов
+            if (itemWidth < 140)
+              tileHeight = 300; // ещё больше для очень узких экранов
 
             return GridView.custom(
-              padding: const EdgeInsets.only(left: 31, right: 31), // нижний отступ здесь
+              padding: const EdgeInsets.only(
+                left: 31,
+                right: 31,
+              ), // нижний отступ здесь
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 16,
@@ -419,7 +425,6 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   SizedBox(height: 3 * scale), // FIX: было 4
-
                   // Цена
                   Text(
                     price,
@@ -431,7 +436,6 @@ class _HomePageState extends State<HomePage> {
                   ),
 
                   SizedBox(height: 3 * scale), // FIX: было 4
-
                   // Адрес
                   Text(
                     location,
@@ -463,93 +467,89 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Цвета (удобно держать в одном месте)
-static const _barColor = Color(0xFF0F1A23);
-static const _iconActive = Color(0xFF00A6FF);
-static const _iconInactive = Color(0xFFE5EDF5); // мягкий светлый
-static const _shadowColor = Colors.black26;
+  static const _barColor = Color(0xFF0F1A23);
+  static const _iconActive = Color(0xFF00A6FF);
+  static const _iconInactive = Color(0xFFE5EDF5); // мягкий светлый
+  static const _shadowColor = Colors.black26;
 
-Widget _buildBottomNavigation() {
-  return SafeArea(
-    top: false,
-    child: Padding(
-      padding: const EdgeInsets.fromLTRB(31, 0, 31, 17), // отступы от краёв
-      child: Container(
-        height: 64,
-        decoration: BoxDecoration(
-          color: _barColor,
-          borderRadius: BorderRadius.circular(37.5), // пилюля
-          boxShadow: const [
-            BoxShadow(
-              color: _shadowColor,
-              blurRadius: 18,
-              spreadRadius: 2,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly, // как на скрине
-          children: [
-            _buildNavItem(Icons.home_outlined, 0),
-            _buildNavItem(Icons.favorite_border, 1),
-            _buildCenterAdd(2), // “+” в кружке
-            _buildNavItem(Icons.chat_bubble_outline, 3),
-            _buildNavItem(Icons.person_outline, 4),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-// Обычные пункты
-Widget _buildNavItem(IconData icon, int index) {
-  final isSelected = _selectedIndex == index;
-
-  return Material(
-    color: Colors.transparent,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () => setState(() => _selectedIndex = index),
+  Widget _buildBottomNavigation() {
+    return SafeArea(
+      top: false,
       child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Icon(
-          icon,
-          size: 28,
-          color: isSelected ? _iconActive : _iconInactive,
-        ),
-      ),
-    ),
-  );
-}
-
-// Центральная кнопка “+” в обводке
-Widget _buildCenterAdd(int index) {
-  final isSelected = _selectedIndex == index;
-
-  return Material(
-    color: Colors.transparent,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Container(
-        width: 28,
-        height: 28,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isSelected ? _iconActive : _iconInactive,
-            width: 1.6,
+        padding: const EdgeInsets.fromLTRB(31, 0, 31, 17), // отступы от краёв
+        child: Container(
+          height: 57,
+          decoration: BoxDecoration(
+            color: _barColor,
+            borderRadius: BorderRadius.circular(37.5), // пилюля
+            boxShadow: const [
+              BoxShadow(
+                color: _shadowColor,
+                blurRadius: 18,
+                spreadRadius: 2,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly, // как на скрине
+            children: [
+              _buildNavItem('assets/BottomNavigation/home-02.png', 0),
+              _buildNavItem('assets/BottomNavigation/heart-rounded.png', 1),
+              _buildCenterAdd(2), // “+” в кружке
+              _buildNavItem('assets/BottomNavigation/message-circle-01.png', 3),
+              _buildNavItem('assets/BottomNavigation/user-01.png', 4),
+            ],
           ),
         ),
-        child: Icon(
-          Icons.add,
-          size: 22,
-          color: isSelected ? _iconActive : _iconInactive,
+      ),
+    );
+  }
+
+  // Обычные пункты
+  Widget _buildNavItem(String iconPath, int index) {
+    final isSelected = _selectedIndex == index;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () => setState(() => _selectedIndex = index),
+        child: Padding(
+          padding: const EdgeInsets.all(0),
+          child: Image.asset(
+            iconPath,
+            width: 28,
+            height: 28,
+            color: isSelected ? _iconActive : _iconInactive,
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  // Центральная кнопка “+” в обводке
+  Widget _buildCenterAdd(int index) {
+    final isSelected = _selectedIndex == index;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => setState(() => _selectedIndex = index),
+        child: Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+
+          child: Image.asset(
+            'assets/BottomNavigation/plus-circle.png',
+            width: 28,
+            height: 28,
+            color: isSelected ? _iconActive : _iconInactive,
+          ),
+        ),
+      ),
+    );
+  }
 }
