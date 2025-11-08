@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lidle/pages/account_recovery.dart';
 import 'constants.dart';
 import 'pages/home_page.dart';
+import 'pages/signIn_screen.dart';
 
 void main() {
   // Устанавливаем стиль системной панели
@@ -27,6 +29,11 @@ class LidleApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       home: const HomePage(),
+    
+      routes: {
+        SignInScreen.routeName: (context) => const SignInScreen(),
+        AccountRecovery.routeName: (context) => const AccountRecovery(),
+      },
     );
   }
 }

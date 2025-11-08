@@ -6,6 +6,7 @@ import '../widgets/search_bar.dart' as custom_widgets;
 import '../widgets/category_card.dart';
 import '../widgets/listing_card.dart';
 import '../widgets/bottom_navigation.dart';
+import 'signIn_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -16,6 +17,14 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+
+  void _onItemSelected(int index) {
+    if (index == 4) {
+      Navigator.of(context).pushNamed(SignInScreen.routeName);
+    } else {
+      setState(() => _selectedIndex = index);
+    }
+  }
 
   // Sample data - in a real app, this would come from a repository or API
   final List<Category> _categories = [
@@ -120,7 +129,7 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: BottomNavigation(
         selectedIndex: _selectedIndex,
-        onItemSelected: (index) => setState(() => _selectedIndex = index),
+        onItemSelected: _onItemSelected,
       ),
     );
   }
