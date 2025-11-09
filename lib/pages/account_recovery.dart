@@ -1,10 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 
-class AccountRecovery extends StatelessWidget {
+class AccountRecovery extends StatefulWidget {
   static const routeName = '/account-recovery';
 
   const AccountRecovery({super.key});
+
+  @override
+  State<AccountRecovery> createState() => _AccountRecoveryState();
+}
+
+class _AccountRecoveryState extends State<AccountRecovery> {
+  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+  bool _isValid = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String? _validateInput(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Поле не может быть пустым';
+    }
+
+    // Проверка на email
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (emailRegex.hasMatch(value)) {
+      return null; // Валидный email
+    }
+
+    // Проверка на телефон (простая: только цифры, длина 10-15)
+    final phoneRegex = RegExp(r'^\d{10,15}$');
+    if (phoneRegex.hasMatch(value.replaceAll(RegExp(r'\D'), ''))) {
+      return null; // Валидный телефон
+    }
+
+    return 'Введите корректный email или номер телефона';
+  }
+
+  void _onInputChanged() {
+    setState(() {
+      _isValid = _formKey.currentState?.validate() ?? false;
+    });
+  }
 
   // Цвета, подобранные под макет
   static const Color _bg = Color(0xFF1F2A33);
@@ -86,8 +127,46 @@ class AccountRecovery extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              // Поле ввода
-              _RecoveryField(),
+              // Форма с полем ввода
+              Form(
+                key: _formKey,
+                child: TextFormField(
+                  controller: _controller,
+                  keyboardType: TextInputType.emailAddress,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  cursorColor: Colors.white70,
+                  decoration: InputDecoration(
+                    hintText: 'Номер телефона или почта',
+                    hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                    isDense: true,
+                    filled: true,
+                    fillColor: _fieldFill,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF334155), width: 1),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.red, width: 1),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Colors.red, width: 1),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                  validator: _validateInput,
+                  onChanged: (_) => _onInputChanged(),
+                ),
+              ),
 
               const SizedBox(height: 16),
 
@@ -96,11 +175,17 @@ class AccountRecovery extends StatelessWidget {
                 width: double.infinity,
                 height: 53,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: обработка нажатия (отправка коду/переход)
-                  },
+                  onPressed: _isValid ? () {
+                    // Логика обработки: валидация формы и переход
+                    if (_formKey.currentState?.validate() ?? false) {
+                      // TODO: отправка запроса на восстановление пароля
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Запрос на восстановление отправлен')),
+                      );
+                    }
+                  } : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
+                    backgroundColor: _isValid ? _primary : Colors.grey,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -116,50 +201,6 @@ class AccountRecovery extends StatelessWidget {
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecoveryField extends StatefulWidget {
-  @override
-  State<_RecoveryField> createState() => _RecoveryFieldState();
-}
-
-class _RecoveryFieldState extends State<_RecoveryField> {
-  final controller = TextEditingController();
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.emailAddress,
-      style: const TextStyle(color: Colors.white, fontSize: 14),
-      cursorColor: Colors.white70,
-      decoration: InputDecoration(
-        hintText: 'Номер телефона или почта',
-        hintStyle: const TextStyle(color: Color(0xFF6B7280)),
-        isDense: true,
-        filled: true,
-        fillColor: AccountRecovery._fieldFill,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide.none,
-          borderRadius: BorderRadius.circular(5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Color(0xFF334155), width: 1),
-          borderRadius: BorderRadius.circular(5),
         ),
       ),
     );

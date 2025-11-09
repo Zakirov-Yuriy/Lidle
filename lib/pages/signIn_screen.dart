@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/header.dart';
 import 'account_recovery.dart';
+import 'register_screen.dart';
 // import 'header.dart'; // если Header в отдельном файле
 
 class SignInScreen extends StatefulWidget {
@@ -200,8 +201,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   void _onSignUp() {
-    // TODO: навигация на регистрацию
-    // Navigator.of(context).pushNamed(SignUpScreen.routeName);
+    Navigator.of(context).pushNamed(RegisterScreen.routeName);
   }
 
   void _onSubmit() {
