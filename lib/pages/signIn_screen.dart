@@ -36,7 +36,7 @@ class _SignInScreenState extends State<SignInScreen> {
           children: [
             // Верхний бар, как ты просил
             Padding(
-              padding: const EdgeInsets.only(left: 41.0, bottom: 41.0),
+              padding: const EdgeInsets.only(left: 41.0, bottom: 39.0),
               child: const Header(),
             ),
 
@@ -92,7 +92,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(
                           color: textPrimary,
-                          fontSize: 16,
+                          fontSize: 14, // Изменен размер текста
                         ),
                         decoration: _inputDecoration('Введите'),
                         validator: (v) {
@@ -112,7 +112,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       TextFormField(
                         controller: _passCtrl,
                         obscureText: _obscure,
-                        style: const TextStyle(color: textPrimary),
+                        style: const TextStyle(color: textPrimary, fontSize: 14), // Изменен размер текста
                         decoration: _inputDecoration('Введите').copyWith(
                           suffixIcon: IconButton(
                             onPressed: () =>

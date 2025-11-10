@@ -269,14 +269,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 6),
           TextFormField(
             keyboardType: keyboard,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white, fontSize: 14), // Изменен размер текста
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: validator,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: activeIconColor),
+              hintStyle: const TextStyle(color: textMuted),
               filled: true,
-              fillColor: formBackground, // Use the new form background color
+              fillColor: secondaryBackground,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,
@@ -306,7 +306,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           TextFormField(
             controller: isFirst ? _passwordController : null,
             obscureText: isFirst ? !showPassword : !showRepeatPassword,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white, fontSize: 14), // Изменен размер текста
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -325,9 +325,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: activeIconColor),
+              hintStyle: const TextStyle(color: textMuted),
               filled: true,
-              fillColor: formBackground, // Use the new form background color
+              fillColor: secondaryBackground,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,
@@ -338,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               suffixIcon: IconButton(
                 icon: Icon(
-                  (isFirst ? showPassword : showPassword)
+                  (isFirst ? showPassword : showRepeatPassword)
                       ? Icons.visibility_off
                       : Icons.visibility,
                   color: Colors.white70,

@@ -317,7 +317,7 @@ class _SendCodeField extends StatelessWidget {
       child: TextField(
         controller: controller,
         keyboardType: keyboard,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: Colors.white, fontSize: 14), // Изменен размер текста
         decoration: InputDecoration(
           hintText: hint, // 👈 используем нужный hint
           hintStyle:
