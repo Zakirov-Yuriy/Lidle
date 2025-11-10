@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 const Color primaryBackground = Color(0xFF232E3C);
-const Color secondaryBackground = Color(0xFF1E2831);
+const Color secondaryBackground = Color(0xFF17212B);
 const Color bottomNavBackground = Color(0xFF0F1A23);
 const Color activeIconColor = Color(0xFF00A6FF);
 const Color inactiveIconColor = Color(0xFFE5EDF5);

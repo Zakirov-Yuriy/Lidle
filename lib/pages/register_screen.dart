@@ -36,12 +36,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const background = Color(0xFF1F2A33);
     const primaryBlue = Color(0xFF0EA5E9);
-    const textGray = Color(0xFF9CA3AF);
 
     return Scaffold(
-      backgroundColor: background,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -52,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 // Логотип
                 Padding(
-                  padding: const EdgeInsets.only(left: 70.0, top: 44.0),
+                  padding: const EdgeInsets.only(left: 60.0, top: 44.0),
                   child: Row(
                     children: [
                       Image.asset(logoAsset, height: logoHeight),
@@ -109,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 11),
                 const Text(
                   'Выберите способ входа',
-                  style: TextStyle(color: textGray, fontSize: 16),
+                  style: TextStyle(color: textSecondary, fontSize: 16),
                 ),
                 const SizedBox(height: 16),
                 _buildTextField(
@@ -257,9 +254,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     TextInputType keyboard = TextInputType.text,
     String? Function(String?)? validator,
   }) {
-    const fieldFill = Color(0xFF12171D);
-    const hintColor = Color(0xFF6B7280);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -277,9 +271,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             validator: validator,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: hintColor),
+              hintStyle: const TextStyle(color: textMuted),
               filled: true,
-              fillColor: fieldFill,
+              fillColor: secondaryBackground,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,
@@ -296,9 +290,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildPasswordField(String label, String hint, bool isFirst) {
-    const fieldFill = Color(0xFF12171D);
-    const hintColor = Color(0xFF6B7280);
-
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -331,9 +322,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: hintColor),
+              hintStyle: const TextStyle(color: textMuted),
               filled: true,
-              fillColor: fieldFill,
+              fillColor: secondaryBackground,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
@@ -19,13 +20,6 @@ class _SignInScreenState extends State<SignInScreen> {
   final _passCtrl = TextEditingController();
   bool _obscure = true;
 
-  // Палитра
-  static const _bg = Color(0xFF232E3C);
-  static const _card = Color(0xFF1E2831);
-  static const _textPrimary = Colors.white;
-  static const _hint = Color(0xFF6B7684);
-  static const _accent = Color(0xFF00A6FF);
-
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -36,7 +30,6 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Column(
@@ -60,7 +53,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       RichText(
                         text: TextSpan(
                           style: const TextStyle(
-                            color: _textPrimary,
+                            color: textPrimary,
                             fontSize: 24,
                             height: 1.25,
                             fontWeight: FontWeight.w700,
@@ -84,7 +77,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       const Text(
                         'Выберите способ входа',
                         style: TextStyle(
-                          color: _hint,
+                          color: textMuted,
                           fontSize: 16,
                           fontWeight: FontWeight.w400,
                         ),
@@ -98,7 +91,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         controller: _emailCtrl,
                         keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(
-                          color: _textPrimary,
+                          color: textPrimary,
                           fontSize: 16,
                         ),
                         decoration: _inputDecoration('Введите'),
@@ -119,7 +112,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       TextFormField(
                         controller: _passCtrl,
                         obscureText: _obscure,
-                        style: const TextStyle(color: _textPrimary),
+                        style: const TextStyle(color: textPrimary),
                         decoration: _inputDecoration('Введите').copyWith(
                           suffixIcon: IconButton(
                             onPressed: () =>
@@ -128,7 +121,7 @@ class _SignInScreenState extends State<SignInScreen> {
                               _obscure
                                   ? Icons.visibility
                                   : Icons.visibility_off,
-                              color: _hint,
+                              color: textMuted,
                             ),
                           ),
                         ),
@@ -168,8 +161,8 @@ class _SignInScreenState extends State<SignInScreen> {
                         child: ElevatedButton(
                           onPressed: _onSubmit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _accent,
-                            foregroundColor: _textPrimary,
+                            backgroundColor: activeIconColor,
+                            foregroundColor: textPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
                             ),
@@ -220,9 +213,9 @@ class _SignInScreenState extends State<SignInScreen> {
   static InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: _hint),
+      hintStyle: const TextStyle(color: textMuted),
       filled: true,
-      fillColor: _card,
+      fillColor: secondaryBackground,
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(5),
@@ -230,7 +223,7 @@ class _SignInScreenState extends State<SignInScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(5),
-        borderSide: const BorderSide(color: _accent, width: 1),
+        borderSide: const BorderSide(color: activeIconColor, width: 1),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(5),
@@ -244,7 +237,7 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   static final _linkStyle = TextButton.styleFrom(
-    foregroundColor: _accent,
+    foregroundColor: activeIconColor,
     padding: EdgeInsets.zero,
     textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
   );

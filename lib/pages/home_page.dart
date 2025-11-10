@@ -109,7 +109,10 @@ class _HomePageState extends State<HomePage> {
         bottom: false,
         child: Column(
           children: [
-            const Header(),
+            Padding(
+              padding: const EdgeInsets.only(left: 41.0),
+              child: const Header(),
+            ),
             const custom_widgets.SearchBarWidget(),
             Expanded(
               child: SingleChildScrollView(

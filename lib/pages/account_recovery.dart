@@ -47,18 +47,10 @@ class _AccountRecoveryState extends State<AccountRecovery> {
     });
   }
 
-  // Цвета, подобранные под макет
-  static const Color _bg = Color(0xFF1F2A33);
-  static const Color _textPrimary = Colors.white;
-  static const Color _textSecondary = Color(0xFF9CA3AF);
-  static const Color _fieldFill = Color(0xFF12171D);
-  static const Color _primary = Color(0xFF0EA5E9); // синий для кнопки
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: _bg,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 31, vertical: 44),
@@ -86,7 +78,7 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                     onTap: () => Navigator.maybePop(context),
                     child: Icon(
                       Icons.chevron_left,
-                      color: _textPrimary,
+                      color: textPrimary,
                       size: 28,
                     ),
                   ),
@@ -95,7 +87,7 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                     child: Text(
                       'Восстановление пароля',
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: _textPrimary,
+                        color: textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 24
                       ),
@@ -119,7 +111,7 @@ class _AccountRecoveryState extends State<AccountRecovery> {
               Text(
                 'Для восстановления пароля введите номер\nтелефона или почту',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: _textSecondary,
+                  color: textSecondary,
                   fontSize: 16,
                   height: 1.35,
                 ),
@@ -137,10 +129,10 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                   cursorColor: Colors.white70,
                   decoration: InputDecoration(
                     hintText: 'Номер телефона или почта',
-                    hintStyle: const TextStyle(color: Color(0xFF6B7280)),
+                    hintStyle: const TextStyle(color: textMuted),
                     isDense: true,
                     filled: true,
-                    fillColor: _fieldFill,
+                    fillColor: secondaryBackground,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 12,
@@ -185,7 +177,7 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                     }
                   } : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isValid ? _primary : Colors.grey,
+                    backgroundColor: _isValid ? activeIconColor : Colors.grey,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(

@@ -12,14 +12,6 @@ class RegisterVerifyScreen extends StatefulWidget {
 }
 
 class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
-  // Цвета и стили
-  static const background = Color(0xFF1F2A33);
-  static const fieldFill = Color(0xFF12171D);
-  static const primaryBlue = Color(0xFF0EA5E9);
-  static const linkBlue = Color(0xFF38BDF8);
-  static const hintColor = Color(0xFF6B7280);
-  static const textGray = Color(0xFF9CA3AF);
-
   final _formKey = GlobalKey<FormState>();
   final _passwordCtrl = TextEditingController();
   final _emailCtrl = TextEditingController(); // без предзаполнения
@@ -80,7 +72,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: background,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -100,7 +91,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 38),
 
                 // Навигация
                 Row(
@@ -132,7 +123,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 52),
 
                 // Заголовок
                 const Text(
@@ -143,12 +134,12 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                     fontSize: 24,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 9),
                 const Text(
                   'Введите номер телефона или электронную почту\nдля отправки кода',
-                  style: TextStyle(color: textGray, fontSize: 16, height: 1.3),
+                  style: TextStyle(color: textSecondary, fontSize: 16, height: 1.3),
                 ),
-                const SizedBox(height: 22),
+                const SizedBox(height: 17),
 
                 // Пароль
                 _PasswordField(
@@ -218,7 +209,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                     // TODO: обработка отправки
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryBlue,
+                    backgroundColor: activeIconColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -263,9 +254,9 @@ class _PasswordField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: 'Введите пароль',
           hintStyle:
-              const TextStyle(color: _RegisterVerifyScreenState.hintColor),
+              const TextStyle(color: textMuted),
           filled: true,
-          fillColor: _RegisterVerifyScreenState.fieldFill,
+          fillColor: secondaryBackground,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
           border: OutlineInputBorder(
@@ -315,7 +306,7 @@ class _SendCodeField extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           foregroundColor:
-              canSend ? _RegisterVerifyScreenState.linkBlue : Colors.white38,
+              canSend ? activeIconColor : Colors.white38,
         ),
         child: const Text('Отправить код', style: TextStyle(fontSize: 14)),
       ),
@@ -330,9 +321,9 @@ class _SendCodeField extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hint, // 👈 используем нужный hint
           hintStyle:
-              const TextStyle(color: _RegisterVerifyScreenState.hintColor),
+              const TextStyle(color: textMuted),
           filled: true,
-          fillColor: _RegisterVerifyScreenState.fieldFill,
+          fillColor: secondaryBackground,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
           border: OutlineInputBorder(
@@ -361,7 +352,7 @@ class _CooldownText extends StatelessWidget {
     return RichText(
       text: TextSpan(
         style: const TextStyle(
-            fontSize: 14, color: _RegisterVerifyScreenState.textGray),
+            fontSize: 14, color: textSecondary),
         children: [
           const TextSpan(text: 'Осталось: '),
           TextSpan(
