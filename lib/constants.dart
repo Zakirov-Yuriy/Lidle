@@ -1,8 +1,9 @@
 // Colors
 import 'package:flutter/material.dart';
 
-const Color primaryBackground = Color(0xFF232E3C);
-const Color secondaryBackground = Color(0xFF17212B);
+const Color primaryBackground = Color(0xFF232E3C); // Background for all screens
+const Color formBackground = Color(0xFF17212B); // Background for elements within forms
+const Color secondaryBackground = Color(0xFF1E2831);
 const Color bottomNavBackground = Color(0xFF0F1A23);
 const Color activeIconColor = Color(0xFF00A6FF);
 const Color inactiveIconColor = Color(0xFFE5EDF5);
@@ -13,7 +14,7 @@ const Color textMuted = Color(0xFF6B7684);
 // Dimensions
 const double defaultPadding = 31.0;
 const double headerTopPadding = 44.0;
-const double headerBottomPadding = 35.0;
+const double headerBottomPadding = 37.0;
 const double logoHeight = 20.0;
 const double searchBarHeight = 48.0;
 const double categoryCardWidth = 115.0;

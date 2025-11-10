@@ -6,6 +6,8 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/account_recovery.dart';
 import 'package:lidle/pages/register_screen.dart';
 import 'package:lidle/pages/register_verify_screen.dart';
+import 'package:lidle/pages/account_recovery_code.dart';
+import 'package:lidle/pages/account_recovery_new_password.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'pages/home_page.dart';
@@ -54,6 +56,8 @@ class LidleApp extends StatelessWidget {
         AccountRecovery.routeName: (context) => const AccountRecovery(),
         RegisterScreen.routeName: (context) => const RegisterScreen(),
         RegisterVerifyScreen.routeName: (context) => const RegisterVerifyScreen(),
+        AccountRecoveryCode.routeName: (context) => const AccountRecoveryCode(),
+        AccountRecoveryNewPassword.routeName: (context) => const AccountRecoveryNewPassword(),
       },
     );
   }

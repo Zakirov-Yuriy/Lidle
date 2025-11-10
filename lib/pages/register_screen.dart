@@ -36,9 +36,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // const background = Color(0xFF1F2A33); // Replaced by primaryBackground
     const primaryBlue = Color(0xFF0EA5E9);
+    const textGray = Color(0xFF9CA3AF);
 
     return Scaffold(
+      backgroundColor: primaryBackground, // Use the new primary background color
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -271,9 +274,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             validator: validator,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: textMuted),
+              hintStyle: const TextStyle(color: activeIconColor),
               filled: true,
-              fillColor: secondaryBackground,
+              fillColor: formBackground, // Use the new form background color
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,
@@ -322,9 +325,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             },
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: textMuted),
+              hintStyle: const TextStyle(color: activeIconColor),
               filled: true,
-              fillColor: secondaryBackground,
+              fillColor: formBackground, // Use the new form background color
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 18,
@@ -335,7 +338,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               suffixIcon: IconButton(
                 icon: Icon(
-                  (isFirst ? showPassword : showRepeatPassword)
+                  (isFirst ? showPassword : showPassword)
                       ? Icons.visibility_off
                       : Icons.visibility,
                   color: Colors.white70,
