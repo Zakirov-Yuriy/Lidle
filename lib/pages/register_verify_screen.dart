@@ -92,7 +92,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
               children: [
                 // Логотип
                 Padding(
-                  padding: const EdgeInsets.only(left: 70, top: 44),
+                  padding: const EdgeInsets.only(left: 60, top: 44),
                   child: Row(
                     children: [
                       Image.asset(logoAsset, height: logoHeight),
@@ -256,31 +256,28 @@ class _PasswordField extends StatelessWidget {
   Widget build(BuildContext context) {
     return _Labeled(
       label: 'Пароль',
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 17.0),
-        child: TextField(
-          controller: controller,
-          obscureText: !show,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Введите пароль',
-            hintStyle:
-                const TextStyle(color: _RegisterVerifyScreenState.hintColor),
-            filled: true,
-            fillColor: _RegisterVerifyScreenState.fieldFill,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(5),
-              borderSide: BorderSide.none,
+      child: TextField(
+        controller: controller,
+        obscureText: !show,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Введите пароль',
+          hintStyle:
+              const TextStyle(color: _RegisterVerifyScreenState.hintColor),
+          filled: true,
+          fillColor: _RegisterVerifyScreenState.fieldFill,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide.none,
+          ),
+          suffixIcon: IconButton(
+            icon: Icon(
+              show ? Icons.visibility_off : Icons.visibility,
+              color: Colors.white70,
             ),
-            suffixIcon: IconButton(
-              icon: Icon(
-                show ? Icons.visibility_off : Icons.visibility,
-                color: Colors.white70,
-              ),
-              onPressed: onToggle,
-            ),
+            onPressed: onToggle,
           ),
         ),
       ),

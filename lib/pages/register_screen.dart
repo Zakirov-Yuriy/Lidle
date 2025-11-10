@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/widgets/custom_%D1%81heckbox.dart';
+import 'package:lidle/widgets/custom_checkbox.dart';
 import 'register_verify_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -19,6 +19,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool showRepeatPassword = false;
 
   final _formKey = GlobalKey<FormState>();
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _trySubmit() {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (isValid && agreeTerms) {
+      Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,17 +112,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   style: TextStyle(color: textGray, fontSize: 16),
                 ),
                 const SizedBox(height: 16),
-                _buildTextField('Ваше имя', 'Введите'),
-                _buildTextField('Ваша фамилия', 'Введите'),
+                _buildTextField(
+                  'Ваше имя',
+                  'Введите',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Пожалуйста, введите ваше имя';
+                    }
+                    return null;
+                  },
+                ),
+                _buildTextField(
+                  'Ваша фамилия',
+                  'Введите',
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Пожалуйста, введите вашу фамилию';
+                    }
+                    return null;
+                  },
+                ),
                 _buildTextField(
                   'Электронная почта',
                   'Введите',
                   keyboard: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || !value.contains('@')) {
+                      return 'Пожалуйста, введите корректный email';
+                    }
+                    return null;
+                  },
                 ),
                 _buildTextField(
                   'Ваш номер телефона',
                   'Введите',
                   keyboard: TextInputType.phone,
+                  validator: (value) {
+                    if (value == null || value.length < 10) {
+                      return 'Пожалуйста, введите корректный номер телефона';
+                    }
+                    return null;
+                  },
                 ),
                 _buildPasswordField('Пароль', 'Введите', true),
                 _buildPasswordField('Повторите пароль', 'Введите', false),
@@ -179,11 +223,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   width: double.infinity,
                   height: 53,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
-                    },
+                    onPressed: agreeTerms ? _trySubmit : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: primaryBlue,
+                      disabledBackgroundColor: Colors.grey,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -212,6 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String label,
     String hint, {
     TextInputType keyboard = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     const fieldFill = Color(0xFF12171D);
     const hintColor = Color(0xFF6B7280);
@@ -226,9 +270,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 6),
-          TextField(
+          TextFormField(
             keyboardType: keyboard,
             style: const TextStyle(color: Colors.white),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            validator: validator,
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: hintColor),
@@ -263,9 +309,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 9),
-          TextField(
+          TextFormField(
+            controller: isFirst ? _passwordController : null,
             obscureText: isFirst ? !showPassword : !showRepeatPassword,
             style: const TextStyle(color: Colors.white),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Пожалуйста, введите пароль';
+              }
+              if (isFirst) {
+                if (value.length < 6) {
+                  return 'Пароль должен быть не менее 6 символов';
+                }
+              } else {
+                if (value != _passwordController.text) {
+                  return 'Пароли не совпадают';
+                }
+              }
+              return null;
+            },
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: hintColor),
