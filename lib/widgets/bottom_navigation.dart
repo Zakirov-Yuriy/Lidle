@@ -1,10 +1,17 @@
+/// Виджет нижней навигационной панели приложения.
+/// Обеспечивает навигацию между основными разделами приложения.
 import 'package:flutter/material.dart';
 import '../constants.dart';
 
+/// `BottomNavigation` - это StatelessWidget, который отображает
+/// нижнюю навигационную панель с иконками.
 class BottomNavigation extends StatelessWidget {
+  /// Индекс текущего выбранного элемента навигации.
   final int selectedIndex;
+  /// Callback-функция, вызываемая при выборе нового элемента.
   final ValueChanged<int> onItemSelected;
 
+  /// Конструктор для `BottomNavigation`.
   const BottomNavigation({
     super.key,
     required this.selectedIndex,
@@ -51,6 +58,10 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
+  /// Приватный метод для построения отдельного элемента навигации.
+  /// [iconPath] - путь к иконке элемента.
+  /// [index] - индекс элемента.
+  /// Возвращает виджет, представляющий элемент навигации.
   Widget _buildNavItem(String iconPath, int index) {
     final isSelected = selectedIndex == index;
 
@@ -72,6 +83,9 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
+  /// Приватный метод для построения центрального элемента "Добавить".
+  /// [index] - индекс элемента.
+  /// Возвращает виджет, представляющий центральный элемент.
   Widget _buildCenterAdd(int index) {
     final isSelected = selectedIndex == index;
 

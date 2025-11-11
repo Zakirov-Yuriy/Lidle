@@ -1,10 +1,16 @@
+/// Виджет карточки категории, используемый на главной странице.
+/// Отображает изображение категории и ее заголовок.
 import 'package:flutter/material.dart';
 import '../models/home_models.dart';
 import '../constants.dart';
 
+/// `CategoryCard` - это StatelessWidget, который отображает
+/// отдельную карточку категории с изображением и заголовком.
 class CategoryCard extends StatelessWidget {
+  /// Объект [Category], содержащий данные для отображения.
   final Category category;
 
+  /// Конструктор для `CategoryCard`.
   const CategoryCard({
     super.key,
     required this.category,
@@ -17,7 +23,6 @@ class CategoryCard extends StatelessWidget {
       margin: const EdgeInsets.only(right: 11),
       child: Stack(
         children: [
-          // Изображение
           ClipRRect(
             borderRadius: BorderRadius.circular(5),
             child: Image.asset(
@@ -27,7 +32,6 @@ class CategoryCard extends StatelessWidget {
               fit: BoxFit.cover,
             ),
           ),
-          // Текст вверху слева
           Positioned(
             top: 15,
             left: 10,

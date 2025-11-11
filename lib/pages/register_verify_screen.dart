@@ -1,29 +1,47 @@
+/// Страница верификации регистрации.
+/// Пользователь вводит код, отправленный на его электронную почту или телефон,
+/// для завершения процесса регистрации.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 
+/// `RegisterVerifyScreen` - это StatefulWidget, который управляет состоянием
+/// страницы верификации регистрации, включая таймеры для отправки кода
+/// и поля ввода.
 class RegisterVerifyScreen extends StatefulWidget {
+  /// Именованный маршрут для этой страницы.
   static const routeName = '/register-verify';
 
+  /// Конструктор для `RegisterVerifyScreen`.
   const RegisterVerifyScreen({super.key});
 
   @override
   State<RegisterVerifyScreen> createState() => _RegisterVerifyScreenState();
 }
 
+/// Состояние для виджета `RegisterVerifyScreen`.
 class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
+  /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
+  /// Контроллер для текстового поля "Пароль".
   final _passwordCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController(); // без предзаполнения
-  final _phoneCtrl = TextEditingController(); // без предзаполнения
+  /// Контроллер для текстового поля "Электронная почта".
+  final _emailCtrl = TextEditingController();
+  /// Контроллер для текстового поля "Телефон".
+  final _phoneCtrl = TextEditingController();
 
+  /// Флаг для отображения/скрытия текста в поле "Пароль".
   bool _showPassword = false;
 
-  // Таймеры для "Отправить код"
+  /// Продолжительность кулдауна перед повторной отправкой кода.
   static const _cooldown = Duration(seconds: 40);
+  /// Таймер для отправки кода на электронную почту.
   Timer? _emailTimer;
+  /// Таймер для отправки кода на телефон.
   Timer? _phoneTimer;
+  /// Оставшееся время до возможности повторной отправки кода на почту.
   Duration _emailLeft = Duration.zero;
+  /// Оставшееся время до возможности повторной отправки кода на телефон.
   Duration _phoneLeft = Duration.zero;
 
   @override
@@ -36,6 +54,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     super.dispose();
   }
 
+  /// Запускает таймер для отправки кода на электронную почту.
   void _startEmailTimer() {
     _emailTimer?.cancel();
     setState(() => _emailLeft = _cooldown);
@@ -50,6 +69,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     });
   }
 
+  /// Запускает таймер для отправки кода на телефон.
   void _startPhoneTimer() {
     _phoneTimer?.cancel();
     setState(() => _phoneLeft = _cooldown);
@@ -64,6 +84,9 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     });
   }
 
+  /// Форматирует объект [Duration] в строку "MM:SS".
+  /// [d] - объект Duration для форматирования.
+  /// Возвращает отформатированную строку.
   String _fmt(Duration d) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '00:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
@@ -81,7 +104,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Логотип
                 Padding(
                   padding: const EdgeInsets.only(left: 60, top: 44),
                   child: Row(
@@ -93,14 +115,13 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 ),
                 const SizedBox(height: 38),
 
-                // Навигация
                 Row(
                   children: [
                     InkWell(
                       onTap: () => Navigator.maybePop(context),
                       borderRadius: BorderRadius.circular(24),
-                      child: Row(
-                        children: const [
+                      child: const Row(
+                        children: [
                           Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
                           SizedBox(width: 8),
                           Text('Назад',
@@ -125,7 +146,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 ),
                 const SizedBox(height: 52),
 
-                // Заголовок
                 const Text(
                   'Регистрация в LIDLE',
                   style: TextStyle(
@@ -141,7 +161,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 ),
                 const SizedBox(height: 17),
 
-                // Пароль
                 _PasswordField(
                   controller: _passwordCtrl,
                   show: _showPassword,
@@ -149,10 +168,9 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 ),
                 const SizedBox(height: 18),
 
-                // Почта
                 _SendCodeField(
                   label: 'Электронная почта',
-                  hint: 'Введите почту', // 👈 нужный hint
+                  hint: 'Введите почту',
                   controller: _emailCtrl,
                   keyboard: TextInputType.emailAddress,
                   canSend: _emailLeft == Duration.zero,
@@ -165,10 +183,9 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 ),
                 const SizedBox(height: 17),
 
-                // Телефон
                 _SendCodeField(
                   label: 'Телефон',
-                  hint: 'Введите телефон', // 👈 нужный hint
+                  hint: 'Введите телефон',
                   controller: _phoneCtrl,
                   keyboard: TextInputType.phone,
                   canSend: _phoneLeft == Duration.zero,
@@ -180,15 +197,13 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                   text: _fmt(_phoneLeft),
                 ),
 
-                const SizedBox(height: 120), // место под кнопку
+                const SizedBox(height: 120),
               ],
             ),
           ),
         ),
       ),
-      
 
-      // Кнопка у низа с отступом 66
       bottomNavigationBar: Builder(
         builder: (context) {
           final insets = MediaQuery.of(context).viewInsets.bottom;
@@ -206,7 +221,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 height: 53,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: обработка отправки
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeIconColor,
@@ -230,13 +244,18 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   }
 }
 
-
-/// Поле "Пароль"
+/// Приватный виджет `_PasswordField` для отображения поля ввода пароля.
+/// Включает метку, текстовое поле с возможностью скрытия/отображения текста
+/// и стилизацию.
 class _PasswordField extends StatelessWidget {
+  /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
+  /// Флаг, указывающий, виден ли текст пароля.
   final bool show;
+  /// Callback-функция для переключения видимости пароля.
   final VoidCallback onToggle;
 
+  /// Конструктор для `_PasswordField`.
   const _PasswordField({
     required this.controller,
     required this.show,
@@ -276,16 +295,24 @@ class _PasswordField extends StatelessWidget {
   }
 }
 
-
-/// Поле с кнопкой "Отправить код"
+/// Приватный виджет `_SendCodeField` для поля ввода с кнопкой "Отправить код".
+/// Используется для ввода электронной почты или номера телефона,
+/// с возможностью отправки кода верификации.
 class _SendCodeField extends StatelessWidget {
+  /// Метка для текстового поля (например, "Электронная почта").
   final String label;
-  final String hint; // 👈 добавили параметр для разных подсказок
+  /// Подсказка в поле ввода.
+  final String hint;
+  /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
+  /// Тип клавиатуры для ввода.
   final TextInputType keyboard;
+  /// Флаг, указывающий, можно ли отправить код (таймер не активен).
   final bool canSend;
+  /// Callback-функция для отправки кода.
   final VoidCallback onSend;
 
+  /// Конструктор для `_SendCodeField`.
   const _SendCodeField({
     required this.label,
     required this.hint,
@@ -317,9 +344,9 @@ class _SendCodeField extends StatelessWidget {
       child: TextField(
         controller: controller,
         keyboardType: keyboard,
-        style: const TextStyle(color: Colors.white, fontSize: 14), // Изменен размер текста
+        style: const TextStyle(color: Colors.white, fontSize: 14),
         decoration: InputDecoration(
-          hintText: hint, // 👈 используем нужный hint
+          hintText: hint,
           hintStyle:
               const TextStyle(color: textMuted),
           filled: true,
@@ -339,11 +366,15 @@ class _SendCodeField extends StatelessWidget {
   }
 }
 
-/// Подпись "Осталось: ..."
+/// Приватный виджет `_CooldownText` для отображения текста обратного отсчета.
+/// Используется для показа оставшегося времени до возможности повторной отправки кода.
 class _CooldownText extends StatelessWidget {
+  /// Флаг, указывающий, должен ли текст быть видимым.
   final bool visible;
+  /// Текст для отображения (отформатированное время).
   final String text;
 
+  /// Конструктор для `_CooldownText`.
   const _CooldownText({required this.visible, required this.text});
 
   @override
@@ -366,12 +397,15 @@ class _CooldownText extends StatelessWidget {
   }
 }
 
-
-/// Обёртка для заголовков полей
+/// Приватный виджет `_Labeled` для обертки полей ввода с меткой.
+/// Предоставляет стандартную структуру для заголовков полей.
 class _Labeled extends StatelessWidget {
+  /// Метка для поля ввода.
   final String label;
+  /// Дочерний виджет (обычно TextField).
   final Widget child;
 
+  /// Конструктор для `_Labeled`.
   const _Labeled({required this.label, required this.child});
 
   @override

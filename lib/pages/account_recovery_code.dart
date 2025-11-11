@@ -1,18 +1,27 @@
+/// Страница для ввода кода восстановления аккаунта.
+/// Пользователь вводит код, полученный по электронной почте или SMS,
+/// для продолжения процесса восстановления пароля.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/account_recovery_new_password.dart';
 
+/// `AccountRecoveryCode` - это StatefulWidget, который позволяет пользователю
+/// ввести код для восстановления аккаунта.
 class AccountRecoveryCode extends StatefulWidget {
+  /// Именованный маршрут для этой страницы.
   static const routeName = '/account-recovery-code';
 
+  /// Конструктор для `AccountRecoveryCode`.
   const AccountRecoveryCode({super.key});
 
   @override
   State<AccountRecoveryCode> createState() => _AccountRecoveryCodeState();
 }
 
+/// Состояние для виджета `AccountRecoveryCode`.
 class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
+  /// Контроллер для текстового поля ввода кода.
   final _codeCtrl = TextEditingController();
 
   @override
@@ -21,8 +30,10 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
     super.dispose();
   }
 
+  /// Обработчик нажатия кнопки "Продолжить".
+  /// Временно отображает SnackBar и переходит на страницу установки нового пароля.
+  /// TODO: Добавить логику проверки кода восстановления.
   void _submit() {
-    // TODO: сюда вашу проверку кода
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Проверяем код...')),
     );
@@ -41,7 +52,6 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Верхняя строка с логотипом (как в остальных экранах)
               Padding(
                 padding: const EdgeInsets.only(left: 45),
                 child: Row(
@@ -53,7 +63,6 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
               ),
               const SizedBox(height: 24),
 
-              // Хедер: назад + заголовок + "Отмена"
               Row(
                 children: [
                   InkWell(
@@ -85,7 +94,6 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
               ),
               const SizedBox(height: 12),
 
-              // Подзаголовок
               Text(
                 'Введите код с письма на  электронной почте или\nсмс на телефоне',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -96,13 +104,12 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
               ),
               const SizedBox(height: 12),
 
-              // Поле "Код с письма или смс"
               TextField(
                 controller: _codeCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6), // при желании поменяйте длину
+                  LengthLimitingTextInputFormatter(6),
                 ],
                 style: const TextStyle(color: Colors.white, fontSize: 14),
                 cursorColor: Colors.white70,
@@ -125,12 +132,11 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
               ),
               const SizedBox(height: 16),
 
-              // Кнопка "Продолжить"
               SizedBox(
                 width: double.infinity,
                 height: 53,
                 child: ElevatedButton(
-                  onPressed: _submit, // кнопка активна всегда — как в ваших требованиях
+                  onPressed: _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeIconColor,
                     foregroundColor: Colors.white,
@@ -143,7 +149,6 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
               ),
               const SizedBox(height: 17),
 
-              // Информационный текст
               const Text(
                 'На вашу почту или номер телефона был\nотправлен код',
                 style: TextStyle(color: Colors.white, fontSize: 16, height: 1.35),

@@ -1,3 +1,6 @@
+/// Главная страница приложения Lidle.
+/// Отображает категории предложений, строку поиска, последние объявления
+/// и нижнюю навигационную панель.
 import 'package:flutter/material.dart';
 import '../constants.dart';
 import '../models/home_models.dart';
@@ -6,18 +9,29 @@ import '../widgets/search_bar.dart' as custom_widgets;
 import '../widgets/category_card.dart';
 import '../widgets/listing_card.dart';
 import '../widgets/bottom_navigation.dart';
-import 'signIn_screen.dart';
+import 'sign_in_screen.dart';
 
+/// `HomePage` - это StatefulWidget, который управляет состоянием
+/// главной страницы приложения, включая выбранный элемент навигации
+/// и отображение списков категорий и объявлений.
 class HomePage extends StatefulWidget {
+  /// Конструктор для `HomePage`.
   const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
+/// Состояние для виджета `HomePage`.
 class _HomePageState extends State<HomePage> {
+  /// Индекс выбранного элемента в нижней навигационной панели.
   int _selectedIndex = 0;
 
+  /// Обработчик выбора элемента в нижней навигационной панели.
+  /// Если выбран элемент с индексом 4 (профиль пользователя),
+  /// осуществляется переход на страницу входа. В противном случае
+  /// обновляется выбранный индекс.
+  /// [index] - индекс выбранного элемента.
   void _onItemSelected(int index) {
     if (index == 4) {
       Navigator.of(context).pushNamed(SignInScreen.routeName);
@@ -26,7 +40,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Sample data - in a real app, this would come from a repository or API
   final List<Category> _categories = [
     const Category(
       title: 'Недвижи-\nмость',
@@ -47,11 +60,6 @@ class _HomePageState extends State<HomePage> {
       title: 'Подработка',
       color: Colors.teal,
       imagePath: 'assets/17.png',
-    ),
-    const Category(
-      title: 'Услуги',
-      color: Colors.green,
-      imagePath: 'assets/14.png',
     ),
   ];
 
@@ -137,6 +145,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Приватный метод для построения секции категорий.
+  /// Включает заголовок "Предложения на LIDLE", кнопку "Смотреть все"
+  /// и горизонтальный список карточек категорий.
   Widget _buildCategoriesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,6 +197,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  /// Приватный метод для построения секции последних объявлений.
+  /// Включает заголовок "Самое новое" и адаптивную сетку карточек объявлений.
   Widget _buildLatestSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +217,12 @@ class _HomePageState extends State<HomePage> {
         const SizedBox(height: 10),
         LayoutBuilder(
           builder: (context, constraints) {
-            final itemWidth = (constraints.maxWidth - defaultPadding - defaultPadding - listingCardSpacing) / 2;
+            final itemWidth =
+                (constraints.maxWidth -
+                    defaultPadding -
+                    defaultPadding -
+                    listingCardSpacing) /
+                2;
             double tileHeight = 263;
             if (itemWidth < 170) tileHeight = 275;
             if (itemWidth < 140) tileHeight = 300;

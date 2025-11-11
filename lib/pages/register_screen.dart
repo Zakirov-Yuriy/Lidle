@@ -1,24 +1,38 @@
+/// Страница регистрации нового пользователя.
+/// Позволяет пользователю ввести свои данные, установить пароль
+/// и согласиться с условиями использования.
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
 import 'register_verify_screen.dart';
 
+/// `RegisterScreen` - это StatefulWidget, который управляет состоянием
+/// формы регистрации пользователя.
 class RegisterScreen extends StatefulWidget {
+  /// Именованный маршрут для этой страницы.
   static const routeName = '/register';
 
+  /// Конструктор для `RegisterScreen`.
   const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
+/// Состояние для виджета `RegisterScreen`.
 class _RegisterScreenState extends State<RegisterScreen> {
+  /// Флаг согласия с условиями пользовательского соглашения и политики конфиденциальности.
   bool agreeTerms = false;
+  /// Флаг согласия на рекламную и информационную рассылку.
   bool agreeMarketing = false;
+  /// Флаг для отображения/скрытия текста в поле "Пароль".
   bool showPassword = false;
+  /// Флаг для отображения/скрытия текста в поле "Повторите пароль".
   bool showRepeatPassword = false;
 
+  /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
+  /// Контроллер для текстового поля "Пароль".
   final _passwordController = TextEditingController();
 
   @override
@@ -27,6 +41,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  /// Обработчик нажатия кнопки "Войти" (или "Зарегистрироваться").
+  /// Выполняет валидацию формы и, в случае успеха, переходит на страницу верификации.
   void _trySubmit() {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (isValid && agreeTerms) {
@@ -36,12 +52,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // const background = Color(0xFF1F2A33); // Replaced by primaryBackground
     const primaryBlue = Color(0xFF0EA5E9);
-    const textGray = Color(0xFF9CA3AF);
 
     return Scaffold(
-      backgroundColor: primaryBackground, // Use the new primary background color
+      backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -50,7 +64,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Логотип
                 Padding(
                   padding: const EdgeInsets.only(left: 60.0, top: 44.0),
                   child: Row(
@@ -66,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     InkWell(
                       onTap: () => Navigator.pop(context),
                       borderRadius: BorderRadius.circular(24),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
                           SizedBox(width: 10),
@@ -81,7 +94,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Expanded(
+                    const Expanded(
                       child: Text(' ', style: TextStyle(color: Colors.white)),
                     ),
                     TextButton(
@@ -251,6 +264,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  /// Приватный метод для построения текстового поля ввода.
+  /// [label] - метка поля.
+  /// [hint] - подсказка в поле ввода.
+  /// [keyboard] - тип клавиатуры.
+  /// [validator] - функция валидации ввода.
   Widget _buildTextField(
     String label,
     String hint, {
@@ -269,7 +287,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 6),
           TextFormField(
             keyboardType: keyboard,
-            style: const TextStyle(color: Colors.white, fontSize: 14), // Изменен размер текста
+            style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: validator,
             decoration: InputDecoration(
@@ -292,6 +310,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  /// Приватный метод для построения поля ввода пароля.
+  /// [label] - метка поля.
+  /// [hint] - подсказка в поле ввода.
+  /// [isFirst] - флаг, указывающий, является ли это первым полем пароля (для контроллера).
   Widget _buildPasswordField(String label, String hint, bool isFirst) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -306,7 +328,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           TextFormField(
             controller: isFirst ? _passwordController : null,
             obscureText: isFirst ? !showPassword : !showRepeatPassword,
-            style: const TextStyle(color: Colors.white, fontSize: 14), // Изменен размер текста
+            style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: (value) {
               if (value == null || value.isEmpty) {
@@ -358,6 +380,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  /// Приватный метод для построения чекбокса с текстом.
+  /// [value] - текущее значение чекбокса.
+  /// [text] - виджет текста, отображаемого рядом с чекбоксом.
+  /// [onChanged] - callback-функция при изменении состояния чекбокса.
   Widget _buildCheckBox({
     required bool value,
     required Widget text,

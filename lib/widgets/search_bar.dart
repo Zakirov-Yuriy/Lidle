@@ -1,8 +1,13 @@
+/// Виджет строки поиска, используемый на главной странице.
+/// Включает иконку меню, текстовое поле для поиска и иконку настроек.
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 
+/// `SearchBarWidget` - это StatelessWidget, который отображает
+/// строку поиска в верхней части главной страницы.
 class SearchBarWidget extends StatelessWidget {
+  /// Конструктор для `SearchBarWidget`.
   const SearchBarWidget({super.key});
 
   @override
@@ -18,7 +23,7 @@ class SearchBarWidget extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
               decoration: BoxDecoration(
                 color: secondaryBackground,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(5),
               ),
               child: Row(
                 children: [

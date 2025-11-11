@@ -1,9 +1,15 @@
+/// Страница для установки нового пароля после успешного восстановления аккаунта.
+/// Пользователь вводит и подтверждает новый пароль.
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 
+/// `AccountRecoveryNewPassword` - это StatefulWidget, который позволяет пользователю
+/// установить новый пароль для своего аккаунта.
 class AccountRecoveryNewPassword extends StatefulWidget {
+  /// Именованный маршрут для этой страницы.
   static const routeName = '/account-recovery-new-password';
 
+  /// Конструктор для `AccountRecoveryNewPassword`.
   const AccountRecoveryNewPassword({super.key});
 
   @override
@@ -11,12 +17,17 @@ class AccountRecoveryNewPassword extends StatefulWidget {
       _AccountRecoveryNewPasswordState();
 }
 
+/// Состояние для виджета `AccountRecoveryNewPassword`.
 class _AccountRecoveryNewPasswordState
     extends State<AccountRecoveryNewPassword> {
+  /// Контроллер для текстового поля "Новый пароль".
   final _newCtrl = TextEditingController();
+  /// Контроллер для текстового поля "Повторите пароль".
   final _repeatCtrl = TextEditingController();
 
+  /// Флаг для отображения/скрытия текста в поле "Новый пароль".
   bool _showNew = false;
+  /// Флаг для отображения/скрытия текста в поле "Повторите пароль".
   bool _showRepeat = false;
 
   @override
@@ -26,6 +37,9 @@ class _AccountRecoveryNewPasswordState
     super.dispose();
   }
 
+  /// Обработчик нажатия кнопки "Подтвердить".
+  /// Выполняет валидацию введенных паролей и отправляет их на сервер.
+  /// TODO: Добавить логику отправки нового пароля на сервер.
   void _submit() {
     final newPass = _newCtrl.text.trim();
     final repPass = _repeatCtrl.text.trim();
@@ -46,7 +60,6 @@ class _AccountRecoveryNewPasswordState
       return;
     }
 
-    // TODO: отправить новый пароль на сервер
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Пароль обновлён')),
     );
@@ -65,7 +78,6 @@ class _AccountRecoveryNewPasswordState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Логотип
               Padding(
                 padding: const EdgeInsets.only(left: 45),
                 child: Row(
@@ -77,7 +89,6 @@ class _AccountRecoveryNewPasswordState
               ),
               const SizedBox(height: 24),
 
-              // Хедер
               Row(
                 children: [
                   InkWell(
@@ -111,7 +122,6 @@ class _AccountRecoveryNewPasswordState
               ),
               const SizedBox(height: 12),
 
-              // Подзаголовок
               Text(
                 'Введите ваш новый пароль',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -121,7 +131,6 @@ class _AccountRecoveryNewPasswordState
               ),
               const SizedBox(height: 12),
 
-              // Поле "Новый пароль"
               _PasswordField(
                 label: 'Новый пароль',
                 controller: _newCtrl,
@@ -130,7 +139,6 @@ class _AccountRecoveryNewPasswordState
               ),
               const SizedBox(height: 12),
 
-              // Поле "Повторите пароль"
               _PasswordField(
                 label: 'Повторите пароль',
                 controller: _repeatCtrl,
@@ -139,12 +147,11 @@ class _AccountRecoveryNewPasswordState
               ),
               const SizedBox(height: 16),
 
-              // Кнопка "Подтвердить"
               SizedBox(
                 width: double.infinity,
                 height: 53,
                 child: ElevatedButton(
-                  onPressed: _submit, // активна всегда
+                  onPressed: _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeIconColor,
                     foregroundColor: Colors.white,
@@ -165,13 +172,20 @@ class _AccountRecoveryNewPasswordState
   }
 }
 
-/// Поле пароля, как в макете (тёмное, с иконкой-глазом)
+/// Приватный виджет `_PasswordField` для отображения поля ввода пароля.
+/// Включает метку, текстовое поле с возможностью скрытия/отображения текста
+/// и стилизацию в соответствии с макетом.
 class _PasswordField extends StatelessWidget {
+  /// Метка для текстового поля (например, "Новый пароль").
   final String label;
+  /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
+  /// Флаг, указывающий, виден ли текст пароля.
   final bool visible;
+  /// Callback-функция для переключения видимости пароля.
   final VoidCallback onToggle;
 
+  /// Конструктор для `_PasswordField`.
   const _PasswordField({
     required this.label,
     required this.controller,
@@ -193,11 +207,11 @@ class _PasswordField extends StatelessWidget {
           style: const TextStyle(color: Colors.white, fontSize: 14),
           cursorColor: Colors.white70,
           decoration: InputDecoration(
-            hintText: label, // как на скрине — тот же текст в hint
+            hintText: label,
             hintStyle: const TextStyle(color: textMuted),
             isDense: true,
             filled: true,
-            fillColor: formBackground, // Use the new form background color
+            fillColor: formBackground,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(

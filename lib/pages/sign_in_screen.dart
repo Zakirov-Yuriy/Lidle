@@ -1,23 +1,35 @@
+/// Страница входа в аккаунт.
+/// Позволяет пользователю ввести свои учетные данные (email и пароль)
+/// для входа в приложение. Также предоставляет ссылки для восстановления пароля
+/// и регистрации нового аккаунта.
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
-// import 'header.dart'; // если Header в отдельном файле
 
+/// `SignInScreen` - это StatefulWidget, который управляет состоянием
+/// формы входа пользователя.
 class SignInScreen extends StatefulWidget {
+  /// Именованный маршрут для этой страницы.
   static const routeName = '/sign-in';
 
+  /// Конструктор для `SignInScreen`.
   const SignInScreen({super.key});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
+/// Состояние для виджета `SignInScreen`.
 class _SignInScreenState extends State<SignInScreen> {
+  /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
+  /// Контроллер для текстового поля "Электронная почта".
   final _emailCtrl = TextEditingController();
+  /// Контроллер для текстового поля "Пароль".
   final _passCtrl = TextEditingController();
+  /// Флаг для скрытия/отображения текста пароля.
   bool _obscure = true;
 
   @override
@@ -34,13 +46,11 @@ class _SignInScreenState extends State<SignInScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Верхний бар, как ты просил
             Padding(
               padding: const EdgeInsets.only(left: 41.0, bottom: 39.0),
               child: const Header(),
             ),
 
-            // Контент со скроллом и отступами
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(31, 24, 31, 24),
@@ -49,7 +59,6 @@ class _SignInScreenState extends State<SignInScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Заголовок
                       RichText(
                         text: TextSpan(
                           style: const TextStyle(
@@ -84,7 +93,6 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Email
                       const _FieldLabel('Электронная почта'),
                       const SizedBox(height: 9),
                       TextFormField(
@@ -92,7 +100,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         keyboardType: TextInputType.emailAddress,
                         style: const TextStyle(
                           color: textPrimary,
-                          fontSize: 14, // Изменен размер текста
+                          fontSize: 14,
                         ),
                         decoration: _inputDecoration('Введите'),
                         validator: (v) {
@@ -106,13 +114,15 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                       const SizedBox(height: 9),
 
-                      // Пароль
                       const _FieldLabel('Пароль'),
                       const SizedBox(height: 9),
                       TextFormField(
                         controller: _passCtrl,
                         obscureText: _obscure,
-                        style: const TextStyle(color: textPrimary, fontSize: 14), // Изменен размер текста
+                        style: const TextStyle(
+                          color: textPrimary,
+                          fontSize: 14,
+                        ),
                         decoration: _inputDecoration('Введите').copyWith(
                           suffixIcon: IconButton(
                             onPressed: () =>
@@ -135,7 +145,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Ссылки
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -154,7 +163,6 @@ class _SignInScreenState extends State<SignInScreen> {
 
                       const SizedBox(height: 22),
 
-                      // Кнопка входа
                       SizedBox(
                         width: double.infinity,
                         height: 53,
@@ -188,7 +196,6 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  // ——— actions ———
   void _onForgotPassword() {
     Navigator.of(context).pushNamed(AccountRecovery.routeName);
   }
@@ -201,15 +208,11 @@ class _SignInScreenState extends State<SignInScreen> {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
-    // TODO: вызов API/репозитория авторизации
-    // context.read<AuthCubit>().signIn(_emailCtrl.text.trim(), _passCtrl.text.trim());
-
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Входим...')));
   }
 
-  // Общий стиль для инпутов
   static InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
@@ -243,9 +246,12 @@ class _SignInScreenState extends State<SignInScreen> {
   );
 }
 
-// Небольшой виджет для заголовков полей (DRY/SOLID — переиспользуем)
+/// Приватный виджет `_FieldLabel` для отображения заголовков полей ввода.
+/// Используется для соблюдения принципов DRY/SOLID (повторного использования кода).
 class _FieldLabel extends StatelessWidget {
+  /// Текст заголовка поля.
   final String text;
+  /// Конструктор для `_FieldLabel`.
   const _FieldLabel(this.text);
 
   @override

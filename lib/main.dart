@@ -11,23 +11,21 @@ import 'package:lidle/pages/account_recovery_new_password.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'pages/home_page.dart';
-import 'pages/signIn_screen.dart';
+import 'pages/sign_in_screen.dart';
 
+/// Главная функция, точка входа в приложение.
+/// Выполняет асинхронную инициализацию необходимых сервисов.
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Инициализация Hive
   if (kIsWeb) {
-    // Для веб-платформы
     await Hive.initFlutter();
   } else {
-    // Для мобильных платформ
     final appDocumentDir = await getApplicationDocumentsDirectory();
     await Hive.initFlutter(appDocumentDir.path);
   }
   await HiveService.init();
 
-  // Устанавливаем стиль системной панели
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -37,7 +35,10 @@ void main() async {
   runApp(const LidleApp());
 }
 
+/// Корневой виджет приложения Lidle.
+/// Определяет основные настройки приложения, такие как заголовок, тема и маршруты.
 class LidleApp extends StatelessWidget {
+  /// Конструктор для LidleApp.
   const LidleApp({super.key});
 
   @override
@@ -50,7 +51,7 @@ class LidleApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       home: const HomePage(),
-    
+
       routes: {
         SignInScreen.routeName: (context) => const SignInScreen(),
         AccountRecovery.routeName: (context) => const AccountRecovery(),

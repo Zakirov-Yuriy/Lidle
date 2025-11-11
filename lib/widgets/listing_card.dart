@@ -1,10 +1,16 @@
+/// Виджет карточки объявления, используемый для отображения отдельных предложений.
+/// Включает изображение, название, цену, местоположение и дату публикации.
 import 'package:flutter/material.dart';
 import '../models/home_models.dart';
 import '../constants.dart';
 
+/// `ListingCard` - это StatelessWidget, который отображает
+/// отдельную карточку объявления.
 class ListingCard extends StatelessWidget {
+  /// Объект [Listing], содержащий данные для отображения.
   final Listing listing;
 
+  /// Конструктор для `ListingCard`.
   const ListingCard({
     super.key,
     required this.listing,
@@ -17,11 +23,9 @@ class ListingCard extends StatelessWidget {
         final cardHeight = constraints.maxHeight;
         final cardWidth = constraints.maxWidth;
 
-        // FIX: немного уменьшаем долю высоты под изображение
-        double imageProportion = cardWidth < 140 ? 0.50 : 0.58; // было 0.604
+        double imageProportion = cardWidth < 140 ? 0.50 : 0.58;
         final imageHeight = cardHeight * imageProportion;
 
-        // Масштаб шрифтов относительно базовой высоты 263
         final scale = cardHeight / 263;
         final titleFontSize = 14 * scale;
         final priceFontSize = 16 * scale;
@@ -32,7 +36,6 @@ class ListingCard extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Изображение
             SizedBox(
               width: double.infinity,
               height: imageHeight,
@@ -57,12 +60,10 @@ class ListingCard extends StatelessWidget {
 
             SizedBox(height: 8 * scale),
 
-            // Информация
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Название и избранное
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -74,7 +75,7 @@ class ListingCard extends StatelessWidget {
                             fontSize: titleFontSize,
                             fontWeight: FontWeight.w400,
                           ),
-                          maxLines: 1, // FIX: только одна строка
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -87,8 +88,7 @@ class ListingCard extends StatelessWidget {
                     ],
                   ),
 
-                  SizedBox(height: 3 * scale), // FIX: было 4
-                  // Цена
+                  SizedBox(height: 3 * scale),
                   Text(
                     listing.price,
                     style: TextStyle(
@@ -98,21 +98,19 @@ class ListingCard extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(height: 3 * scale), // FIX: было 4
-                  // Адрес
+                  SizedBox(height: 3 * scale),
                   Text(
                     listing.location,
                     style: TextStyle(
                       color: textSecondary,
                       fontSize: locationFontSize,
                     ),
-                    maxLines: 1, // FIX: было 2
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
 
                   SizedBox(height: 1 * scale),
 
-                  // Дата
                   Text(
                     listing.date,
                     style: TextStyle(
