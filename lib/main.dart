@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'pages/home_page.dart';
 import 'pages/sign_in_screen.dart';
+import 'pages/profile_dashboard.dart';
 
 /// Главная функция, точка входа в приложение.
 /// Выполняет асинхронную инициализацию необходимых сервисов.
@@ -56,9 +57,12 @@ class LidleApp extends StatelessWidget {
         SignInScreen.routeName: (context) => const SignInScreen(),
         AccountRecovery.routeName: (context) => const AccountRecovery(),
         RegisterScreen.routeName: (context) => const RegisterScreen(),
-        RegisterVerifyScreen.routeName: (context) => const RegisterVerifyScreen(),
+        RegisterVerifyScreen.routeName: (context) =>
+            const RegisterVerifyScreen(),
         AccountRecoveryCode.routeName: (context) => const AccountRecoveryCode(),
-        AccountRecoveryNewPassword.routeName: (context) => const AccountRecoveryNewPassword(),
+        AccountRecoveryNewPassword.routeName: (context) =>
+            const AccountRecoveryNewPassword(),
+        ProfileDashboard.routeName: (context) => const ProfileDashboard(),
       },
     );
   }

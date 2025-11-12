@@ -1,5 +1,6 @@
 /// Виджет заголовка приложения, отображающий логотип.
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 
 /// `Header` - это StatelessWidget, который отображает
@@ -13,12 +14,11 @@ class Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(
         top: headerTopPadding,
-        left: defaultPadding,
-        bottom: headerBottomPadding,
+        left: headerLeftPadding,
       ),
       child: Row(
         children: [
-          Image.asset(logoAsset, height: logoHeight),
+          SvgPicture.asset(logoAsset, height: logoHeight),
           const Spacer(),
         ],
       ),

@@ -2,8 +2,10 @@
 /// Позволяет пользователю ввести свои данные, установить пароль
 /// и согласиться с условиями использования.
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
+import 'package:lidle/services/auth_service.dart';
 import 'register_verify_screen.dart';
 
 /// `RegisterScreen` - это StatefulWidget, который управляет состоянием
@@ -23,30 +25,73 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   /// Флаг согласия с условиями пользовательского соглашения и политики конфиденциальности.
   bool agreeTerms = false;
+
   /// Флаг согласия на рекламную и информационную рассылку.
   bool agreeMarketing = false;
+
   /// Флаг для отображения/скрытия текста в поле "Пароль".
   bool showPassword = false;
+
   /// Флаг для отображения/скрытия текста в поле "Повторите пароль".
   bool showRepeatPassword = false;
 
   /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
+
   /// Контроллер для текстового поля "Пароль".
   final _passwordController = TextEditingController();
+
+  /// Контроллер для текстового поля "Повторите пароль".
+  final _repeatPasswordController = TextEditingController();
+
+  /// Контроллер для текстового поля "Имя".
+  final _nameController = TextEditingController();
+
+  /// Контроллер для текстового поля "Фамилия".
+  final _surnameController = TextEditingController();
+
+  /// Контроллер для текстового поля "Email".
+  final _emailController = TextEditingController();
+
+  /// Контроллер для текстового поля "Телефон".
+  final _phoneController = TextEditingController();
 
   @override
   void dispose() {
     _passwordController.dispose();
+    _repeatPasswordController.dispose();
+    _nameController.dispose();
+    _surnameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   /// Обработчик нажатия кнопки "Войти" (или "Зарегистрироваться").
-  /// Выполняет валидацию формы и, в случае успеха, переходит на страницу верификации.
-  void _trySubmit() {
+  /// Выполняет валидацию формы, отправляет данные на сервер и переходит на страницу верификации.
+  Future<void> _trySubmit() async {
     final isValid = _formKey.currentState?.validate() ?? false;
-    if (isValid && agreeTerms) {
-      Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
+    if (!isValid || !agreeTerms) return;
+
+    try {
+      await AuthService.register(
+        name: _nameController.text.trim(),
+        lastName: _surnameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text.trim(),
+        passwordConfirmation: _repeatPasswordController.text.trim(),
+      );
+
+      if (mounted) {
+        Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка регистрации: $e')));
+      }
     }
   }
 
@@ -65,16 +110,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(left: 60.0, top: 44.0),
+                  padding: const EdgeInsets.only(
+                    left: 41.0,
+                    top: 44.0,
+                    bottom: 35.0,
+                  ),
                   child: Row(
                     children: [
-                      Image.asset(logoAsset, height: logoHeight),
+                      SvgPicture.asset(logoAsset, height: logoHeight),
                       const Spacer(),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     InkWell(
                       onTap: () => Navigator.pop(context),
@@ -82,7 +131,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: const Row(
                         children: [
                           Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
-                          SizedBox(width: 10),
                           Text(
                             'Назад',
                             style: TextStyle(
@@ -93,10 +141,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    const Expanded(
-                      child: Text(' ', style: TextStyle(color: Colors.white)),
-                    ),
+
                     TextButton(
                       onPressed: () => Navigator.pop(context),
                       child: const Text(
@@ -110,7 +155,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 25),
+                const SizedBox(height: 20),
                 const Text(
                   'Вы уже почти в LIDLE',
                   style: TextStyle(
@@ -128,6 +173,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildTextField(
                   'Ваше имя',
                   'Введите',
+                  controller: _nameController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Пожалуйста, введите ваше имя';
@@ -138,6 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildTextField(
                   'Ваша фамилия',
                   'Введите',
+                  controller: _surnameController,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Пожалуйста, введите вашу фамилию';
@@ -148,6 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildTextField(
                   'Электронная почта',
                   'Введите',
+                  controller: _emailController,
                   keyboard: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || !value.contains('@')) {
@@ -159,6 +207,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 _buildTextField(
                   'Ваш номер телефона',
                   'Введите',
+                  controller: _phoneController,
                   keyboard: TextInputType.phone,
                   validator: (value) {
                     if (value == null || value.length < 10) {
@@ -267,11 +316,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   /// Приватный метод для построения текстового поля ввода.
   /// [label] - метка поля.
   /// [hint] - подсказка в поле ввода.
+  /// [controller] - контроллер для поля.
   /// [keyboard] - тип клавиатуры.
   /// [validator] - функция валидации ввода.
   Widget _buildTextField(
     String label,
     String hint, {
+    TextEditingController? controller,
     TextInputType keyboard = TextInputType.text,
     String? Function(String?)? validator,
   }) {
@@ -286,6 +337,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 6),
           TextFormField(
+            controller: controller,
             keyboardType: keyboard,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -326,7 +378,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 9),
           TextFormField(
-            controller: isFirst ? _passwordController : null,
+            controller: isFirst
+                ? _passwordController
+                : _repeatPasswordController,
             obscureText: isFirst ? !showPassword : !showRepeatPassword,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,

@@ -3,7 +3,11 @@
 /// для завершения процесса регистрации.
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/auth_service.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/sign_in_screen.dart';
 
 /// `RegisterVerifyScreen` - это StatefulWidget, который управляет состоянием
 /// страницы верификации регистрации, включая таймеры для отправки кода
@@ -23,15 +27,12 @@ class RegisterVerifyScreen extends StatefulWidget {
 class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
-  /// Контроллер для текстового поля "Пароль".
-  final _passwordCtrl = TextEditingController();
+  /// Контроллер для текстового поля "Код".
+  final _codeCtrl = TextEditingController();
   /// Контроллер для текстового поля "Электронная почта".
   final _emailCtrl = TextEditingController();
   /// Контроллер для текстового поля "Телефон".
   final _phoneCtrl = TextEditingController();
-
-  /// Флаг для отображения/скрытия текста в поле "Пароль".
-  bool _showPassword = false;
 
   /// Продолжительность кулдауна перед повторной отправкой кода.
   static const _cooldown = Duration(seconds: 40);
@@ -46,12 +47,46 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
 
   @override
   void dispose() {
-    _passwordCtrl.dispose();
+    _codeCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
     _emailTimer?.cancel();
     _phoneTimer?.cancel();
     super.dispose();
+  }
+
+  /// Отправляет код на электронную почту.
+  Future<void> _sendEmailCode() async {
+    if (_emailCtrl.text.isEmpty) return;
+
+    try {
+      await AuthService.sendCode(email: _emailCtrl.text);
+      _startEmailTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Код отправлен на email')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    }
+  }
+
+  /// Отправляет код на телефон.
+  Future<void> _sendPhoneCode() async {
+    if (_phoneCtrl.text.isEmpty) return;
+
+    try {
+      await AuthService.sendCode(email: _phoneCtrl.text); // Note: API may not support phone, using as email for now
+      _startPhoneTimer();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Код отправлен на телефон')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    }
   }
 
   /// Запускает таймер для отправки кода на электронную почту.
@@ -84,6 +119,44 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     });
   }
 
+  /// Подтверждает код верификации.
+  Future<void> _verify() async {
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите код')),
+      );
+      return;
+    }
+
+    String email = _emailCtrl.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите email')),
+      );
+      return;
+    }
+
+    try {
+      final response = await AuthService.verify(
+        email: email,
+        code: code,
+      );
+
+      // Предполагаем, что verify возвращает токен
+      if (response['data'] != null && response['data']['token'] != null) {
+        await HiveService.saveUserData('token', response['data']['token']);
+      }
+      // Переход на экран входа после верификации
+      Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    }
+  }
+
   /// Форматирует объект [Duration] в строку "MM:SS".
   /// [d] - объект Duration для форматирования.
   /// Возвращает отформатированную строку.
@@ -108,7 +181,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                   padding: const EdgeInsets.only(left: 60, top: 44),
                   child: Row(
                     children: [
-                      Image.asset(logoAsset, height: logoHeight),
+                      SvgPicture.asset(logoAsset, height: logoHeight),
                       const Spacer(),
                     ],
                   ),
@@ -161,10 +234,8 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 ),
                 const SizedBox(height: 17),
 
-                _PasswordField(
-                  controller: _passwordCtrl,
-                  show: _showPassword,
-                  onToggle: () => setState(() => _showPassword = !_showPassword),
+                _CodeField(
+                  controller: _codeCtrl,
                 ),
                 const SizedBox(height: 18),
 
@@ -174,7 +245,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                   controller: _emailCtrl,
                   keyboard: TextInputType.emailAddress,
                   canSend: _emailLeft == Duration.zero,
-                  onSend: _startEmailTimer,
+                  onSend: _sendEmailCode,
                 ),
                 const SizedBox(height: 8),
                 _CooldownText(
@@ -189,7 +260,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                   controller: _phoneCtrl,
                   keyboard: TextInputType.phone,
                   canSend: _phoneLeft == Duration.zero,
-                  onSend: _startPhoneTimer,
+                  onSend: _sendPhoneCode,
                 ),
                 const SizedBox(height: 8),
                 _CooldownText(
@@ -220,8 +291,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 width: double.infinity,
                 height: 53,
                 child: ElevatedButton(
-                  onPressed: () {
-                  },
+                  onPressed: _verify,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: activeIconColor,
                     foregroundColor: Colors.white,
@@ -239,6 +309,41 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Приватный виджет `_CodeField` для отображения поля ввода кода подтверждения.
+/// Включает метку и текстовое поле.
+class _CodeField extends StatelessWidget {
+  /// Контроллер для управления текстом в поле.
+  final TextEditingController controller;
+
+  /// Конструктор для `_CodeField`.
+  const _CodeField({
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _Labeled(
+      label: 'Код подтверждения',
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Введите код с письма или смс',
+          hintStyle: const TextStyle(color: textMuted),
+          filled: true,
+          fillColor: secondaryBackground,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(5),
+            borderSide: BorderSide.none,
+          ),
+        ),
       ),
     );
   }

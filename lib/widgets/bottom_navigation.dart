@@ -35,12 +35,7 @@ class BottomNavigation extends StatelessWidget {
             color: bottomNavBackground,
             borderRadius: BorderRadius.circular(37.5),
             boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 18,
-                spreadRadius: 2,
-                offset: Offset(0, 6),
-              ),
+              
             ],
           ),
           child: Row(

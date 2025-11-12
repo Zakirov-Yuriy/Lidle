@@ -9,7 +9,9 @@ import '../widgets/search_bar.dart' as custom_widgets;
 import '../widgets/category_card.dart';
 import '../widgets/listing_card.dart';
 import '../widgets/bottom_navigation.dart';
+import '../hive_service.dart';
 import 'sign_in_screen.dart';
+import 'profile_dashboard.dart';
 
 /// `HomePage` - это StatefulWidget, который управляет состоянием
 /// главной страницы приложения, включая выбранный элемент навигации
@@ -29,12 +31,21 @@ class _HomePageState extends State<HomePage> {
 
   /// Обработчик выбора элемента в нижней навигационной панели.
   /// Если выбран элемент с индексом 4 (профиль пользователя),
-  /// осуществляется переход на страницу входа. В противном случае
-  /// обновляется выбранный индекс.
+  /// проверяется наличие токена авторизации. Если токен есть -
+  /// переход на профиль, иначе - на страницу входа.
   /// [index] - индекс выбранного элемента.
-  void _onItemSelected(int index) {
+  void _onItemSelected(int index) async {
     if (index == 4) {
-      Navigator.of(context).pushNamed(SignInScreen.routeName);
+      // Проверяем, авторизован ли пользователь
+      final token = await HiveService.getUserData('token');
+      if (!mounted) return; // Проверяем, что виджет еще mounted
+      if (token != null && token.isNotEmpty) {
+        // Пользователь авторизован - переходим в профиль
+        Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
+      } else {
+        // Пользователь не авторизован - переходим на вход
+        Navigator.of(context).pushNamed(SignInScreen.routeName);
+      }
     } else {
       setState(() => _selectedIndex = index);
     }
@@ -118,19 +129,22 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 41.0),
+              padding: const EdgeInsets.only(bottom: 35.0),
               child: const Header(),
             ),
-            const custom_widgets.SearchBarWidget(),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 19.0),
+              child: const custom_widgets.SearchBarWidget(),
+            ),
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 24),
                     _buildCategoriesSection(),
                     const SizedBox(height: 25),
                     _buildLatestSection(),
+                    SizedBox(height: 10),
                   ],
                 ),
               ),
@@ -150,7 +164,6 @@ class _HomePageState extends State<HomePage> {
   /// и горизонтальный список карточек категорий.
   Widget _buildCategoriesSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
@@ -169,6 +182,11 @@ class _HomePageState extends State<HomePage> {
               ),
               TextButton(
                 onPressed: () {},
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: const Text(
                   viewAll,
                   style: TextStyle(
@@ -181,7 +199,7 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 19),
         SizedBox(
           height: 85,
           child: ListView.builder(
@@ -193,6 +211,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ),
+        
       ],
     );
   }
@@ -231,7 +250,7 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.only(
                 left: defaultPadding,
                 right: defaultPadding,
-                bottom: 60,
+                bottom: 75,
               ),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -248,6 +267,7 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
+        
       ],
     );
   }

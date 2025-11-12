@@ -5,8 +5,11 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
+import 'package:lidle/services/auth_service.dart';
+import 'package:lidle/hive_service.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
+import 'profile_dashboard.dart';
 
 /// `SignInScreen` - это StatefulWidget, который управляет состоянием
 /// формы входа пользователя.
@@ -47,13 +50,13 @@ class _SignInScreenState extends State<SignInScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 41.0, bottom: 39.0),
+              padding: const EdgeInsets.only(bottom: 76.0),
               child: const Header(),
             ),
 
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(31, 24, 31, 24),
+                padding: const EdgeInsets.fromLTRB(31, 0, 31, 0),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -143,7 +146,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         },
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
 
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -161,7 +164,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ],
                       ),
 
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 20),
 
                       SizedBox(
                         width: double.infinity,
@@ -204,13 +207,32 @@ class _SignInScreenState extends State<SignInScreen> {
     Navigator.of(context).pushNamed(RegisterScreen.routeName);
   }
 
-  void _onSubmit() {
+  Future<void> _onSubmit() async {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Входим...')));
+    try {
+      final response = await AuthService.login(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text.trim(),
+        remember: true,
+      );
+
+      // Проверяем успешный ответ с токеном
+      if (response['access_token'] != null) {
+        await HiveService.saveUserData('token', response['access_token']);
+        // Переход на профиль пользователя
+        Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка входа: неверные учетные данные')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка входа: $e')),
+      );
+    }
   }
 
   static InputDecoration _inputDecoration(String hint) {

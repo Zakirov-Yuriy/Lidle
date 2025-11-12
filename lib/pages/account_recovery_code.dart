@@ -3,7 +3,9 @@
 /// для продолжения процесса восстановления пароля.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/auth_service.dart';
 import 'package:lidle/pages/account_recovery_new_password.dart';
 
 /// `AccountRecoveryCode` - это StatefulWidget, который позволяет пользователю
@@ -24,20 +26,70 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
   /// Контроллер для текстового поля ввода кода.
   final _codeCtrl = TextEditingController();
 
+  /// Флаг загрузки для кнопки повторной отправки.
+  bool _isResending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Автоматически отправляем код при входе на страницу
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendEmailCode();
+    });
+  }
+
   @override
   void dispose() {
     _codeCtrl.dispose();
     super.dispose();
   }
 
+  /// Отправляет код на электронную почту.
+  Future<void> _sendEmailCode() async {
+    if (_isResending) return;
+
+    setState(() => _isResending = true);
+
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, String>;
+    final email = args['email']!;
+
+    try {
+      await AuthService.forgotPassword(email: email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Код отправлен на email')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    } finally {
+      if (mounted) {
+        setState(() => _isResending = false);
+      }
+    }
+  }
+
   /// Обработчик нажатия кнопки "Продолжить".
-  /// Временно отображает SnackBar и переходит на страницу установки нового пароля.
-  /// TODO: Добавить логику проверки кода восстановления.
+  /// Переходит на страницу установки нового пароля с передачей email и token.
+  /// TODO: Добавить логику проверки кода восстановления на сервере.
   void _submit() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Проверяем код...')),
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Введите код')));
+      return;
+    }
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, String>;
+    final email = args['email']!;
+    Navigator.of(context).pushNamed(
+      AccountRecoveryNewPassword.routeName,
+      arguments: {'email': email, 'token': code},
     );
-    Navigator.of(context).pushNamed(AccountRecoveryNewPassword.routeName);
   }
 
   @override
@@ -53,31 +105,34 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 45),
+                padding: const EdgeInsets.only(left: 41.0, bottom: 37.0),
                 child: Row(
                   children: [
-                    Image.asset(logoAsset, height: logoHeight),
+                    SvgPicture.asset(logoAsset, height: logoHeight),
                     const Spacer(),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
 
               Row(
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: () => Navigator.maybePop(context),
-                    child: Icon(Icons.chevron_left, color: textPrimary, size: 28),
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: textPrimary,
+                      size: 28,
+                    ),
                   ),
-                  const SizedBox(width: 4),
+
                   Expanded(
                     child: Text(
                       'Восстановление пароля',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: textPrimary,
                         fontWeight: FontWeight.w600,
-                        fontSize: 24,
+                        fontSize: 22,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -85,24 +140,29 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                   TextButton(
                     onPressed: () => Navigator.maybePop(context),
                     style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       foregroundColor: const Color(0xFF60A5FA),
-                      textStyle: const TextStyle(fontWeight: FontWeight.w400, fontSize: 16),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.w400,
+                        fontSize: 16,
+                      ),
                     ),
                     child: const Text('Отмена'),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
 
+              const SizedBox(height: 15),
               Text(
-                'Введите код с письма на  электронной почте или\nсмс на телефоне',
+                'Введите код с письма на  электронной почте или смс на телефоне',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: textSecondary,
                   fontSize: 16,
-                  height: 1.35,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 9),
 
               TextField(
                 controller: _codeCtrl,
@@ -119,14 +179,20 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                   isDense: true,
                   filled: true,
                   fillColor: secondaryBackground,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
-                    borderSide: const BorderSide(color: Color(0xFF334155), width: 1),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF334155),
+                      width: 1,
+                    ),
                   ),
                 ),
               ),
@@ -141,8 +207,13 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                     backgroundColor: activeIconColor,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                   child: const Text('Продолжить'),
                 ),
@@ -151,7 +222,37 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
 
               const Text(
                 'На вашу почту или номер телефона был\nотправлен код',
-                style: TextStyle(color: Colors.white, fontSize: 16, height: 1.35),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: TextButton(
+                  onPressed: _isResending ? null : _sendEmailCode,
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF60A5FA),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  child: _isResending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF60A5FA)),
+                          ),
+                        )
+                      : const Text('Отправить код повторно'),
+                ),
               ),
             ],
           ),

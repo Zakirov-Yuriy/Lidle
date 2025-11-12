@@ -2,7 +2,9 @@
 /// Пользователь вводит свой номер телефона или адрес электронной почты
 /// для начала процесса восстановления пароля.
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/auth_service.dart';
 import 'package:lidle/pages/account_recovery_code.dart';
 
 /// `AccountRecovery` - это StatefulWidget, который управляет состоянием
@@ -25,6 +27,7 @@ class _AccountRecoveryState extends State<AccountRecovery> {
 
   /// Флаг, указывающий, валиден ли формат введенных данных (email/телефон).
   bool _isValid = false;
+
   /// Флаг, указывающий, найден ли профиль пользователя.
   bool _notFound = false;
 
@@ -56,7 +59,7 @@ class _AccountRecoveryState extends State<AccountRecovery> {
   }
 
   /// Обработчик нажатия кнопки "Продолжить".
-  /// Выполняет валидацию ввода и эмулирует проверку пользователя на бэкенде.
+  /// Выполняет валидацию ввода, отправляет запрос на сброс пароля и переходит к вводу кода.
   Future<void> _submit() async {
     final input = _controller.text.trim();
 
@@ -76,15 +79,16 @@ class _AccountRecoveryState extends State<AccountRecovery> {
       return;
     }
 
-    final exists = true;
-
-    setState(() {
-      _notFound = !exists;
-    });
-
-    if (exists) {
+    try {
+      await AuthService.forgotPassword(email: input);
       if (!mounted) return;
-      Navigator.of(context).pushNamed(AccountRecoveryCode.routeName);
+      Navigator.of(
+        context,
+      ).pushNamed(AccountRecoveryCode.routeName, arguments: {'email': input});
+    } catch (e) {
+      setState(() {
+        _notFound = true;
+      });
     }
   }
 
@@ -110,31 +114,34 @@ class _AccountRecoveryState extends State<AccountRecovery> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 45),
+                padding: const EdgeInsets.only(left: 41.0, bottom: 37.0),
                 child: Row(
                   children: [
-                    Image.asset(logoAsset, height: logoHeight),
+                    SvgPicture.asset(logoAsset, height: logoHeight),
                     const Spacer(),
                   ],
                 ),
               ),
-              const SizedBox(height: 37),
 
               Row(
                 children: [
                   InkWell(
                     borderRadius: BorderRadius.circular(24),
                     onTap: () => Navigator.maybePop(context),
-                    child: Icon(Icons.chevron_left, color: textPrimary, size: 28),
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: textPrimary,
+                      size: 28,
+                    ),
                   ),
-                  const SizedBox(width: 11),
+                  // const SizedBox(width: 0),
                   Expanded(
                     child: Text(
                       'Восстановление пароля',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: textPrimary,
                         fontWeight: FontWeight.w600,
-                        fontSize: 24,
+                        fontSize: 22,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -142,9 +149,14 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                   TextButton(
                     onPressed: () => Navigator.maybePop(context),
                     style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       foregroundColor: const Color(0xFF60A5FA),
                       textStyle: const TextStyle(
-                          fontWeight: FontWeight.w400, fontSize: 16),
+                        fontWeight: FontWeight.w400,
+                        fontSize: 16,
+                      ),
                     ),
                     child: const Text('Отмена'),
                   ),
@@ -156,8 +168,8 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                 subtitle,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: textSecondary,
-                  fontSize: 16,
-                  height: 1.35,
+                  fontSize: 15,
+                  height: 1.45,
                 ),
               ),
               const SizedBox(height: 10),
@@ -174,16 +186,20 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                   isDense: true,
                   filled: true,
                   fillColor: fill,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(5),
-                    borderSide:
-                        const BorderSide(color: Color(0xFF334155), width: 1),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF334155),
+                      width: 1,
+                    ),
                   ),
                 ),
               ),
@@ -200,9 +216,12 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5)),
+                      borderRadius: BorderRadius.circular(5),
+                    ),
                     textStyle: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w400),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                   child: const Text('Продолжить'),
                 ),
@@ -214,7 +233,10 @@ class _AccountRecoveryState extends State<AccountRecovery> {
                 const Text(
                   'Профиля с этим номером или почтой не\nсуществует. Проверьте, нет ли ошибки.',
                   style: TextStyle(
-                      color: Color(0xFFFF5A5A), fontSize: 14, height: 1.35),
+                    color: Color(0xFFFF5A5A),
+                    fontSize: 14,
+                    height: 1.35,
+                  ),
                 ),
             ],
           ),
