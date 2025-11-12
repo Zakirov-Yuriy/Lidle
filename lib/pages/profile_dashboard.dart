@@ -69,27 +69,27 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
               _ProfileHeader(
                 name: 'Влад Борман',
                 userId: 'ID: 2342124342',
-                avatarUrl: 'assets/Ellipse.png',
+                avatarUrl: 'assets/profile_dashboard/Ellipse.png',
               ),
               const SizedBox(height: 29),
 
               // 3 быстрых карточки
               Row(
-                children: const [
+                children: [
                   _QuickCard(
-                    icon: Icons.favorite,
+                    iconPath: 'assets/profile_dashboard/heart-rounded.svg',
                     title: 'Избранное',
                     subtitle: '14 товаров',
                   ),
                   SizedBox(width: 10),
                   _QuickCard(
-                    icon: Icons.shopping_cart,
+                    iconPath: 'assets/profile_dashboard/shopping-cart-01.svg',
                     title: 'Покупки',
                     subtitle: '2 товаров',
                   ),
                   SizedBox(width: 10),
                   _QuickCard(
-                    icon: Icons.star,
+                    iconPath: 'assets/profile_dashboard/eva_star-fill.svg',
                     title: 'Отзывы',
                     subtitle: '0 товаров',
                   ),
@@ -100,9 +100,9 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
               // Раздел «Ваши объявления»
               const _SectionTitle('Ваши объявления'),
               const SizedBox(height: 10),
-              const _MenuItem(title: 'Активные / Неактивные', count: 4),
+              const _MenuItem(title: 'Активные / Неактивные', count: 4, trailingChevron: true),
               const Divider(color: Color(0xFF474747), height: 8),
-              const _MenuItem(title: 'Отклики', count: 4),
+              const _MenuItem(title: 'Отклики', count: 4, trailingChevron: true),
               const Divider(color: Color(0xFF474747), height: 8),
               const _MenuItem(title: 'Архив', trailingChevron: true),
               const Divider(color: Color(0xFF474747), height: 8),
@@ -140,26 +140,26 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
               const SizedBox(height: 41),
 
               // Кнопка выхода нужна для тестов 
-              // SizedBox(
-              //   width: double.infinity,
-              //   height: 53,
-              //   child: ElevatedButton(
-              //     onPressed: _logout,
-              //     style: ElevatedButton.styleFrom(
-              //       backgroundColor: Colors.redAccent,
-              //       foregroundColor: Colors.white,
-              //       shape: RoundedRectangleBorder(
-              //         borderRadius: BorderRadius.circular(5),
-              //       ),
-              //       elevation: 0,
-              //     ),
-              //     child: const Text(
-              //       'Выйти',
-              //       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-              //     ),
-              //   ),
-              // ),
-              // const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                height: 53,
+                child: ElevatedButton(
+                  onPressed: _logout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Выйти',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 22),
 
               
             ],
@@ -230,12 +230,12 @@ class _ProfileHeader extends StatelessWidget {
 }
 
 class _QuickCard extends StatelessWidget {
-  final IconData icon;
+  final String iconPath;
   final String title;
   final String subtitle;
 
   const _QuickCard({
-    required this.icon,
+    required this.iconPath,
     required this.title,
     required this.subtitle,
   });
@@ -255,7 +255,7 @@ class _QuickCard extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 13.0, left: 10.0, bottom: 2),
-              child: Row(children: [Icon(icon, color: Colors.white70)]),
+              child: Row(children: [SvgPicture.asset(iconPath, height: 24, color: Colors.white70)]),
             ),
 
             Padding(
@@ -346,8 +346,8 @@ class _MenuItem extends StatelessWidget {
                 child: Text(
                   '$count',
                   style: const TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF767676),
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ),
