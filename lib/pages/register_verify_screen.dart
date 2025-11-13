@@ -3,10 +3,12 @@
 /// для завершения процесса регистрации.
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/services/auth_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/pages/sign_in_screen.dart';
 
 /// `RegisterVerifyScreen` - это StatefulWidget, который управляет состоянием
@@ -56,37 +58,21 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   }
 
   /// Отправляет код на электронную почту.
-  Future<void> _sendEmailCode() async {
+  void _sendEmailCode() {
     if (_emailCtrl.text.isEmpty) return;
 
-    try {
-      await AuthService.sendCode(email: _emailCtrl.text);
-      _startEmailTimer();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Код отправлен на email')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
-    }
+    // Отправляем событие отправки кода в AuthBloc
+    context.read<AuthBloc>().add(SendCodeEvent(email: _emailCtrl.text));
+    _startEmailTimer();
   }
 
   /// Отправляет код на телефон.
-  Future<void> _sendPhoneCode() async {
+  void _sendPhoneCode() {
     if (_phoneCtrl.text.isEmpty) return;
 
-    try {
-      await AuthService.sendCode(email: _phoneCtrl.text); // Note: API may not support phone, using as email for now
-      _startPhoneTimer();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Код отправлен на телефон')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
-    }
+    // Отправляем событие отправки кода в AuthBloc
+    context.read<AuthBloc>().add(SendCodeEvent(email: _phoneCtrl.text)); // Note: API may not support phone, using as email for now
+    _startPhoneTimer();
   }
 
   /// Запускает таймер для отправки кода на электронную почту.
@@ -120,7 +106,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   }
 
   /// Подтверждает код верификации.
-  Future<void> _verify() async {
+  void _verify() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -138,23 +124,11 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
       return;
     }
 
-    try {
-      final response = await AuthService.verify(
-        email: email,
-        code: code,
-      );
-
-      // Предполагаем, что verify возвращает токен
-      if (response['data'] != null && response['data']['token'] != null) {
-        await HiveService.saveUserData('token', response['data']['token']);
-      }
-      // Переход на экран входа после верификации
-      Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
-    }
+    // Отправляем событие верификации в AuthBloc
+    context.read<AuthBloc>().add(VerifyEmailEvent(
+      email: email,
+      code: code,
+    ));
   }
 
   /// Форматирует объект [Duration] в строку "MM:SS".
@@ -167,7 +141,23 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthCodeSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Код отправлен')),
+          );
+        } else if (state is AuthEmailVerified) {
+          // Успешная верификация - переходим на экран входа
+          Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
+        } else if (state is AuthError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка: ${state.message}')),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -310,6 +300,8 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
           );
         },
       ),
+        );
+      },
     );
   }
 }
@@ -342,57 +334,6 @@ class _CodeField extends StatelessWidget {
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(5),
             borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Приватный виджет `_PasswordField` для отображения поля ввода пароля.
-/// Включает метку, текстовое поле с возможностью скрытия/отображения текста
-/// и стилизацию.
-class _PasswordField extends StatelessWidget {
-  /// Контроллер для управления текстом в поле.
-  final TextEditingController controller;
-  /// Флаг, указывающий, виден ли текст пароля.
-  final bool show;
-  /// Callback-функция для переключения видимости пароля.
-  final VoidCallback onToggle;
-
-  /// Конструктор для `_PasswordField`.
-  const _PasswordField({
-    required this.controller,
-    required this.show,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _Labeled(
-      label: 'Пароль',
-      child: TextField(
-        controller: controller,
-        obscureText: !show,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Введите пароль',
-          hintStyle:
-              const TextStyle(color: textMuted),
-          filled: true,
-          fillColor: secondaryBackground,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
-          ),
-          suffixIcon: IconButton(
-            icon: Icon(
-              show ? Icons.visibility_off : Icons.visibility,
-              color: Colors.white70,
-            ),
-            onPressed: onToggle,
           ),
         ),
       ),

@@ -1,11 +1,13 @@
-/// Страница регистрации нового пользователя.
-/// Позволяет пользователю ввести свои данные, установить пароль
-/// и согласиться с условиями использования.
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
-import 'package:lidle/services/auth_service.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/blocs/auth/auth_event.dart';
 import 'register_verify_screen.dart';
 
 /// `RegisterScreen` - это StatefulWidget, который управляет состоянием
@@ -36,295 +38,281 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool showRepeatPassword = false;
 
   /// Глобальный ключ для управления состоянием формы.
-  final _formKey = GlobalKey<FormState>();
-
-  /// Контроллер для текстового поля "Пароль".
-  final _passwordController = TextEditingController();
-
-  /// Контроллер для текстового поля "Повторите пароль".
-  final _repeatPasswordController = TextEditingController();
-
-  /// Контроллер для текстового поля "Имя".
-  final _nameController = TextEditingController();
-
-  /// Контроллер для текстового поля "Фамилия".
-  final _surnameController = TextEditingController();
-
-  /// Контроллер для текстового поля "Email".
-  final _emailController = TextEditingController();
-
-  /// Контроллер для текстового поля "Телефон".
-  final _phoneController = TextEditingController();
-
-  @override
-  void dispose() {
-    _passwordController.dispose();
-    _repeatPasswordController.dispose();
-    _nameController.dispose();
-    _surnameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
+  final _formKey = GlobalKey<FormBuilderState>();
 
   /// Обработчик нажатия кнопки "Войти" (или "Зарегистрироваться").
-  /// Выполняет валидацию формы, отправляет данные на сервер и переходит на страницу верификации.
-  Future<void> _trySubmit() async {
-    final isValid = _formKey.currentState?.validate() ?? false;
+  /// Выполняет валидацию формы и отправляет событие регистрации в AuthBloc.
+  void _trySubmit() {
+    final formState = _formKey.currentState;
+    final isValid = formState?.validate() ?? false;
     if (!isValid || !agreeTerms) return;
 
-    try {
-      await AuthService.register(
-        name: _nameController.text.trim(),
-        lastName: _surnameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
-        password: _passwordController.text.trim(),
-        passwordConfirmation: _repeatPasswordController.text.trim(),
-      );
+    formState?.save();
+    final formData = formState?.value ?? {};
 
-      if (mounted) {
-        Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка регистрации: $e')));
-      }
-    }
+    // Отправляем событие регистрации в AuthBloc
+    context.read<AuthBloc>().add(RegisterEvent(
+      name: (formData['name'] as String?)?.trim() ?? '',
+      lastName: (formData['lastName'] as String?)?.trim() ?? '',
+      email: (formData['email'] as String?)?.trim() ?? '',
+      phone: (formData['phone'] as String?)?.trim() ?? '',
+      password: (formData['password'] as String?)?.trim() ?? '',
+      passwordConfirmation: (formData['passwordConfirmation'] as String?)?.trim() ?? '',
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF0EA5E9);
 
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: 41.0,
-                    top: 44.0,
-                    bottom: 35.0,
-                  ),
-                  child: Row(
-                    children: [
-                      SvgPicture.asset(logoAsset, height: logoHeight),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthRegistered) {
+          // Успешная регистрация - переходим на страницу верификации
+          Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
+        } else if (state is AuthError) {
+          // Ошибка регистрации - показываем Snackbar с кнопкой повтора
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка регистрации: ${state.message}'),
+              backgroundColor: Colors.redAccent,
+              action: SnackBarAction(
+                label: 'Повторить',
+                textColor: Colors.white,
+                onPressed: _trySubmit,
+              ),
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: primaryBackground,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: FormBuilder(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InkWell(
-                      onTap: () => Navigator.pop(context),
-                      borderRadius: BorderRadius.circular(24),
-                      child: const Row(
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 41.0,
+                        top: 44.0,
+                        bottom: 35.0,
+                      ),
+                      child: Row(
                         children: [
-                          Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
-                          Text(
-                            'Назад',
-                            style: TextStyle(
-                              color: Color(0xFF60A5FA),
-                              fontSize: 16,
-                            ),
-                          ),
+                          SvgPicture.asset(logoAsset, height: logoHeight),
+                          const Spacer(),
                         ],
                       ),
                     ),
-
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Отмена',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF60A5FA),
-                          fontWeight: FontWeight.w400,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(24),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
+                              Text(
+                                'Назад',
+                                style: TextStyle(
+                                  color: Color(0xFF60A5FA),
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'Отмена',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF60A5FA),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Вы уже почти в LIDLE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 24,
                       ),
                     ),
+                    const SizedBox(height: 11),
+                    const Text(
+                      'Выберите способ входа',
+                      style: TextStyle(color: textSecondary, fontSize: 16),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      'name',
+                      'Ваше имя',
+                      'Введите',
+                      validators: [
+                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите ваше имя'),
+                      ],
+                    ),
+                    _buildTextField(
+                      'lastName',
+                      'Ваша фамилия',
+                      'Введите',
+                      validators: [
+                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите вашу фамилию'),
+                      ],
+                    ),
+                    _buildTextField(
+                      'email',
+                      'Электронная почта',
+                      'Введите',
+                      keyboard: TextInputType.emailAddress,
+                      validators: [
+                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите email'),
+                        FormBuilderValidators.email(errorText: 'Пожалуйста, введите корректный email'),
+                      ],
+                    ),
+                    _buildTextField(
+                      'phone',
+                      'Ваш номер телефона',
+                      'Введите',
+                      keyboard: TextInputType.phone,
+                      validators: [
+                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите номер телефона'),
+                        FormBuilderValidators.minLength(10, errorText: 'Пожалуйста, введите корректный номер телефона'),
+                      ],
+                    ),
+                    _buildPasswordField('password', 'Пароль', 'Введите', true),
+                    _buildPasswordField('passwordConfirmation', 'Повторите пароль', 'Введите', false),
+                    const SizedBox(height: 27),
+                    _buildCheckBox(
+                      value: agreeTerms,
+                      text: RichText(
+                        text: const TextSpan(
+                          text: 'Я соглашаюсь с ',
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          children: [
+                            TextSpan(
+                              text: 'Пользовательским \nсоглашением ',
+                              style: TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 16,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'и ',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            TextSpan(
+                              text: 'Политикой \nконфиденциальности',
+                              style: TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      onChanged: (v) => setState(() => agreeTerms = v ?? false),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildCheckBox(
+                      value: agreeMarketing,
+                      text: RichText(
+                        text: const TextSpan(
+                          text: 'Я соглашаюсь на ',
+                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          children: [
+                            TextSpan(
+                              text: 'Рекламную ',
+                              style: TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 16,
+                              ),
+                            ),
+                            TextSpan(
+                              text: 'и ',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            TextSpan(
+                              text: '\nИнформационную рассылку',
+                              style: TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      onChanged: (v) => setState(() => agreeMarketing = v ?? false),
+                    ),
+                    const SizedBox(height: 25),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 53,
+                      child: ElevatedButton(
+                        onPressed: (agreeTerms && state is! AuthLoading) ? _trySubmit : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: state is AuthLoading ? Colors.grey : primaryBlue,
+                          disabledBackgroundColor: Colors.grey,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        child: state is AuthLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Text(
+                                'Войти',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 77),
                   ],
                 ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Вы уже почти в LIDLE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 24,
-                  ),
-                ),
-                const SizedBox(height: 11),
-                const Text(
-                  'Выберите способ входа',
-                  style: TextStyle(color: textSecondary, fontSize: 16),
-                ),
-                const SizedBox(height: 16),
-                _buildTextField(
-                  'Ваше имя',
-                  'Введите',
-                  controller: _nameController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Пожалуйста, введите ваше имя';
-                    }
-                    return null;
-                  },
-                ),
-                _buildTextField(
-                  'Ваша фамилия',
-                  'Введите',
-                  controller: _surnameController,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Пожалуйста, введите вашу фамилию';
-                    }
-                    return null;
-                  },
-                ),
-                _buildTextField(
-                  'Электронная почта',
-                  'Введите',
-                  controller: _emailController,
-                  keyboard: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || !value.contains('@')) {
-                      return 'Пожалуйста, введите корректный email';
-                    }
-                    return null;
-                  },
-                ),
-                _buildTextField(
-                  'Ваш номер телефона',
-                  'Введите',
-                  controller: _phoneController,
-                  keyboard: TextInputType.phone,
-                  validator: (value) {
-                    if (value == null || value.length < 10) {
-                      return 'Пожалуйста, введите корректный номер телефона';
-                    }
-                    return null;
-                  },
-                ),
-                _buildPasswordField('Пароль', 'Введите', true),
-                _buildPasswordField('Повторите пароль', 'Введите', false),
-                const SizedBox(height: 27),
-                _buildCheckBox(
-                  value: agreeTerms,
-                  text: RichText(
-                    text: const TextSpan(
-                      text: 'Я соглашаюсь с ',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                      children: [
-                        TextSpan(
-                          text: 'Пользовательским \nсоглашением ',
-                          style: TextStyle(
-                            color: Color(0xFF38BDF8),
-                            fontSize: 16,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'и ',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        TextSpan(
-                          text: 'Политикой \nконфиденциальности',
-                          style: TextStyle(
-                            color: Color(0xFF38BDF8),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  onChanged: (v) => setState(() => agreeTerms = v ?? false),
-                ),
-                const SizedBox(height: 16),
-                _buildCheckBox(
-                  value: agreeMarketing,
-                  text: RichText(
-                    text: const TextSpan(
-                      text: 'Я соглашаюсь на ',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                      children: [
-                        TextSpan(
-                          text: 'Рекламную ',
-                          style: TextStyle(
-                            color: Color(0xFF38BDF8),
-                            fontSize: 16,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'и ',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        TextSpan(
-                          text: '\nИнформационную рассылку',
-                          style: TextStyle(
-                            color: Color(0xFF38BDF8),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  onChanged: (v) => setState(() => agreeMarketing = v ?? false),
-                ),
-                const SizedBox(height: 25),
-                SizedBox(
-                  width: double.infinity,
-                  height: 53,
-                  child: ElevatedButton(
-                    onPressed: agreeTerms ? _trySubmit : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryBlue,
-                      disabledBackgroundColor: Colors.grey,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    child: const Text(
-                      'Войти',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 77),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   /// Приватный метод для построения текстового поля ввода.
+  /// [name] - имя поля для FormBuilder.
   /// [label] - метка поля.
   /// [hint] - подсказка в поле ввода.
-  /// [controller] - контроллер для поля.
   /// [keyboard] - тип клавиатуры.
-  /// [validator] - функция валидации ввода.
+  /// [validators] - список валидаторов для поля.
   Widget _buildTextField(
+    String name,
     String label,
     String hint, {
-    TextEditingController? controller,
     TextInputType keyboard = TextInputType.text,
-    String? Function(String?)? validator,
+    List<FormFieldValidator<String>>? validators,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -336,12 +324,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 6),
-          TextFormField(
-            controller: controller,
+          FormBuilderTextField(
+            name: name,
             keyboardType: keyboard,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            validator: validator,
+            validator: FormBuilderValidators.compose(validators ?? []),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: textMuted),
@@ -363,10 +351,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   /// Приватный метод для построения поля ввода пароля.
+  /// [name] - имя поля для FormBuilder.
   /// [label] - метка поля.
   /// [hint] - подсказка в поле ввода.
   /// [isFirst] - флаг, указывающий, является ли это первым полем пароля (для контроллера).
-  Widget _buildPasswordField(String label, String hint, bool isFirst) {
+  Widget _buildPasswordField(String name, String label, String hint, bool isFirst) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -377,28 +366,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 9),
-          TextFormField(
-            controller: isFirst
-                ? _passwordController
-                : _repeatPasswordController,
+          FormBuilderTextField(
+            name: name,
             obscureText: isFirst ? !showPassword : !showRepeatPassword,
             style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Пожалуйста, введите пароль';
-              }
-              if (isFirst) {
-                if (value.length < 6) {
-                  return 'Пароль должен быть не менее 6 символов';
-                }
-              } else {
-                if (value != _passwordController.text) {
-                  return 'Пароли не совпадают';
-                }
-              }
-              return null;
-            },
+            validator: FormBuilderValidators.compose([
+              FormBuilderValidators.required(errorText: 'Пожалуйста, введите пароль'),
+              FormBuilderValidators.minLength(6, errorText: 'Пароль должен быть не менее 6 символов'),
+              if (!isFirst)
+                (val) {
+                  if (val != _formKey.currentState?.fields['password']?.value) {
+                    return 'Пароли не совпадают';
+                  }
+                  return null;
+                },
+            ]),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(color: textMuted),

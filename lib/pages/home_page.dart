@@ -2,6 +2,7 @@
 /// Отображает категории предложений, строку поиска, последние объявления
 /// и нижнюю навигационную панель.
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../constants.dart';
 import '../models/home_models.dart';
 import '../widgets/header.dart';
@@ -9,13 +10,15 @@ import '../widgets/search_bar.dart' as custom_widgets;
 import '../widgets/category_card.dart';
 import '../widgets/listing_card.dart';
 import '../widgets/bottom_navigation.dart';
-import '../hive_service.dart';
-import 'sign_in_screen.dart';
-import 'profile_dashboard.dart';
+import '../blocs/listings/listings_bloc.dart';
+import '../blocs/listings/listings_state.dart';
+import '../blocs/listings/listings_event.dart';
+import '../blocs/navigation/navigation_bloc.dart';
+import '../blocs/navigation/navigation_state.dart';
+import '../blocs/navigation/navigation_event.dart';
 
-/// `HomePage` - это StatefulWidget, который управляет состоянием
-/// главной страницы приложения, включая выбранный элемент навигации
-/// и отображение списков категорий и объявлений.
+/// `HomePage` - это StatefulWidget, который отображает главную страницу
+/// приложения с использованием Bloc для управления состоянием.
 class HomePage extends StatefulWidget {
   /// Конструктор для `HomePage`.
   const HomePage({super.key});
@@ -24,137 +27,79 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-/// Состояние для виджета `HomePage`.
 class _HomePageState extends State<HomePage> {
-  /// Индекс выбранного элемента в нижней навигационной панели.
-  int _selectedIndex = 0;
-
-  /// Обработчик выбора элемента в нижней навигационной панели.
-  /// Если выбран элемент с индексом 4 (профиль пользователя),
-  /// проверяется наличие токена авторизации. Если токен есть -
-  /// переход на профиль, иначе - на страницу входа.
-  /// [index] - индекс выбранного элемента.
-  void _onItemSelected(int index) async {
-    if (index == 4) {
-      // Проверяем, авторизован ли пользователь
-      final token = await HiveService.getUserData('token');
-      if (!mounted) return; // Проверяем, что виджет еще mounted
-      if (token != null && token.isNotEmpty) {
-        // Пользователь авторизован - переходим в профиль
-        Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
-      } else {
-        // Пользователь не авторизован - переходим на вход
-        Navigator.of(context).pushNamed(SignInScreen.routeName);
-      }
-    } else {
-      setState(() => _selectedIndex = index);
-    }
+  @override
+  void initState() {
+    super.initState();
+    // Загружаем данные при инициализации страницы
+    context.read<ListingsBloc>().add(LoadListingsEvent());
   }
-
-  final List<Category> _categories = [
-    const Category(
-      title: 'Недвижи-\nмость',
-      color: Colors.blue,
-      imagePath: 'assets/14.png',
-    ),
-    const Category(
-      title: 'Авто\nи мото',
-      color: Colors.purple,
-      imagePath: 'assets/15.png',
-    ),
-    const Category(
-      title: 'Работа',
-      color: Colors.orange,
-      imagePath: 'assets/16.png',
-    ),
-    const Category(
-      title: 'Подработка',
-      color: Colors.teal,
-      imagePath: 'assets/17.png',
-    ),
-  ];
-
-  final List<Listing> _listings = [
-    const Listing(
-      imagePath: 'assets/apartment1.png',
-      title: '4-к. квартира, 169,5 м²...',
-      price: '78 970 000 ₽',
-      location: 'Москва, ул. Кусинена, 21А',
-      date: 'Сегодня',
-    ),
-    const Listing(
-      imagePath: 'assets/acura_mdx.png',
-      title: 'Acura MDX 3.5 AT, 20...',
-      price: '2 399 999 ₽',
-      location: 'Брянск, Авиационная ул., 34',
-      date: '29.08.2024',
-    ),
-    const Listing(
-      imagePath: 'assets/acura_rdx.png',
-      title: 'Acura RDX 2.3 AT, 2007...',
-      price: '2 780 000 ₽',
-      location: 'Москва, Отрадная ул., 11',
-      date: '29.08.2024',
-    ),
-    const Listing(
-      imagePath: 'assets/studio.png',
-      title: 'Студия, 35,7 м², 2/6 эт...',
-      price: '6 500 000 ₽',
-      location: 'Москва, Варшавское ш., 125',
-      date: '11.05.2024',
-    ),
-    const Listing(
-      imagePath: 'assets/acura_rdx.png',
-      title: 'Acura RDX 2.3 AT, 2007...',
-      price: '2 780 000 ₽',
-      location: 'Москва, Отрадная ул., 11',
-      date: '29.08.2024',
-    ),
-    const Listing(
-      imagePath: 'assets/studio.png',
-      title: 'Студия, 35,7 м², 2/6 эт...',
-      price: '6 500 000 ₽',
-      location: 'Москва, Варшавское ш., 125',
-      date: '11.05.2024',
-    ),
-  ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 35.0),
-              child: const Header(),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 19.0),
-              child: const custom_widgets.SearchBarWidget(),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildCategoriesSection(),
-                    const SizedBox(height: 25),
-                    _buildLatestSection(),
-                    SizedBox(height: 10),
-                  ],
+    return BlocListener<NavigationBloc, NavigationState>(
+      listener: (context, state) {
+        if (state is NavigationToProfile || state is NavigationToHome) {
+          context.read<NavigationBloc>().executeNavigation(context);
+        }
+      },
+      child: BlocBuilder<NavigationBloc, NavigationState>(
+        builder: (context, navigationState) {
+          return BlocBuilder<ListingsBloc, ListingsState>(
+            builder: (context, listingsState) {
+              return Scaffold(
+                extendBody: true,
+                backgroundColor: primaryBackground,
+                body: SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 35.0),
+                        child: Header(),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 19.0),
+                        child: custom_widgets.SearchBarWidget(
+                          onSearchChanged: (query) {
+                            if (query.isNotEmpty) {
+                              context.read<ListingsBloc>().add(SearchListingsEvent(query: query));
+                            } else {
+                              context.read<ListingsBloc>().add(ResetFiltersEvent());
+                            }
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildCategoriesSection(listingsState),
+                              const SizedBox(height: 25),
+                              _buildLatestSection(listingsState),
+                              SizedBox(height: 10),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: BottomNavigation(
-        selectedIndex: _selectedIndex,
-        onItemSelected: _onItemSelected,
+                bottomNavigationBar: BottomNavigation(
+                  selectedIndex: navigationState.selectedIndex,
+                  onItemSelected: (index) {
+                    if (index == 4) {
+                      context.read<NavigationBloc>().add(NavigateToProfileEvent());
+                    } else {
+                      context.read<NavigationBloc>().add(ChangeNavigationIndexEvent(index));
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -162,7 +107,71 @@ class _HomePageState extends State<HomePage> {
   /// Приватный метод для построения секции категорий.
   /// Включает заголовок "Предложения на LIDLE", кнопку "Смотреть все"
   /// и горизонтальный список карточек категорий.
-  Widget _buildCategoriesSection() {
+  Widget _buildCategoriesSection(ListingsState state) {
+    if (state is ListingsLoading) {
+      return const Column(
+        children: [
+          SizedBox(height: 50),
+          Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+            ),
+          ),
+          SizedBox(height: 50),
+        ],
+      );
+    }
+
+    if (state is ListingsError) {
+      return Column(
+        children: [
+          const SizedBox(height: 50),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.redAccent,
+                  size: 48,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ошибка загрузки категорий',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  state.message,
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => context.read<ListingsBloc>().add(LoadListingsEvent()),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Повторить'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 50),
+        ],
+      );
+    }
+
+    final categories = (state is ListingsLoaded) ? state.categories : <Category>[];
+
     return Column(
       children: [
         Padding(
@@ -205,20 +214,118 @@ class _HomePageState extends State<HomePage> {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _categories.length,
+            itemCount: categories.length,
             itemBuilder: (context, index) {
-              return CategoryCard(category: _categories[index]);
+              return CategoryCard(category: categories[index]);
             },
           ),
         ),
-        
+
       ],
     );
   }
 
   /// Приватный метод для построения секции последних объявлений.
   /// Включает заголовок "Самое новое" и адаптивную сетку карточек объявлений.
-  Widget _buildLatestSection() {
+  Widget _buildLatestSection(ListingsState state) {
+    if (state is ListingsLoading) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+            child: Text(
+              latestTitle,
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 50),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (state is ListingsError) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+            child: Text(
+              latestTitle,
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 50),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Ошибка загрузки объявлений',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.read<ListingsBloc>().add(LoadListingsEvent()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8B5CF6),
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final listings = (state is ListingsLoaded)
+        ? state.filteredListings
+        : (state is ListingsSearchResults)
+            ? state.searchResults
+            : (state is ListingsFiltered)
+                ? state.filteredListings
+            : <Listing>[];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -258,16 +365,16 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSpacing: listingCardSpacing,
                 mainAxisExtent: tileHeight,
               ),
-              itemCount: _listings.length,
+              itemCount: listings.length,
               itemBuilder: (context, index) {
-                return ListingCard(listing: _listings[index]);
+                return ListingCard(listing: listings[index]);
               },
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
             );
           },
         ),
-        
+
       ],
     );
   }

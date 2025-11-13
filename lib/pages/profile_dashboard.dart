@@ -1,179 +1,180 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/bottom_navigation.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/blocs/profile/profile_bloc.dart';
+import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/blocs/profile/profile_event.dart';
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/navigation/navigation_event.dart';
 
-class ProfileDashboard extends StatefulWidget {
+class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
 
   const ProfileDashboard({super.key});
 
   @override
-  State<ProfileDashboard> createState() => _ProfileDashboardState();
-}
-
-class _ProfileDashboardState extends State<ProfileDashboard> {
-  /// Индекс выбранного элемента в нижней навигационной панели (4 = профиль).
-  int _selectedIndex = 4;
-
-  /// Обработчик выбора элемента в нижней навигационной панели.
-  void _onItemSelected(int index) {
-    if (index == 4) {
-      // Уже находимся на профиле
-      return;
-    }
-    if (index == 0) {
-      // Переход на главный экран
-      Navigator.of(context).pushReplacementNamed('/');
-      return;
-    }
-    // Для других вкладок можно добавить навигацию позже
-    setState(() => _selectedIndex = index);
-  }
-
-  /// Обработчик выхода из аккаунта.
-  /// Удаляет токен авторизации и переходит на главную страницу.
-  Future<void> _logout() async {
-    await HiveService.deleteUserData('token');
-    if (!mounted) return;
-    Navigator.of(context).pushReplacementNamed('/');
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 31),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ЛОГО
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 41.0,
-                  top: 44.0,
-                  bottom: 35.0,
-                ),
-                child: Row(
-                  children: [
-                    SvgPicture.asset(logoAsset, height: logoHeight),
-                    const Spacer(),
-                  ],
-                ),
-              ),
+    // Загружаем профиль при первом построении
+    context.read<ProfileBloc>().add(LoadProfileEvent());
 
-              // Хедер профиля (аватар + имя + ID)
-              _ProfileHeader(
-                name: 'Влад Борман',
-                userId: 'ID: 2342124342',
-                avatarUrl: 'assets/profile_dashboard/Ellipse.png',
-              ),
-              const SizedBox(height: 29),
+    return BlocListener<ProfileBloc, ProfileState>(
+      listener: (context, state) {
+        if (state is ProfileLoggedOut) {
+          Navigator.of(context).pushReplacementNamed('/');
+        }
+      },
+      child: BlocBuilder<NavigationBloc, NavigationState>(
+        builder: (context, navigationState) {
+          return BlocBuilder<ProfileBloc, ProfileState>(
+            builder: (context, profileState) {
+              return Scaffold(
+                backgroundColor: primaryBackground,
+                body: SafeArea(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 31),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ЛОГО
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            left: 41.0,
+                            top: 44.0,
+                            bottom: 35.0,
+                          ),
+                          child: Row(
+                            children: [
+                              SvgPicture.asset(logoAsset, height: logoHeight),
+                              const Spacer(),
+                            ],
+                          ),
+                        ),
 
-              // 3 быстрых карточки
-              Row(
-                children: [
-                  _QuickCard(
-                    iconPath: 'assets/profile_dashboard/heart-rounded.svg',
-                    title: 'Избранное',
-                    subtitle: '14 товаров',
-                  ),
-                  SizedBox(width: 10),
-                  _QuickCard(
-                    iconPath: 'assets/profile_dashboard/shopping-cart-01.svg',
-                    title: 'Покупки',
-                    subtitle: '2 товаров',
-                  ),
-                  SizedBox(width: 10),
-                  _QuickCard(
-                    iconPath: 'assets/profile_dashboard/eva_star-fill.svg',
-                    title: 'Отзывы',
-                    subtitle: '0 товаров',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
+                        // Хедер профиля (аватар + имя + ID)
+                        _ProfileHeader(
+                          name: profileState is ProfileLoaded ? profileState.name : 'Загрузка...',
+                          userId: profileState is ProfileLoaded ? profileState.userId : 'ID: ...',
+                          avatarUrl: 'assets/profile_dashboard/Ellipse.png',
+                        ),
+                        const SizedBox(height: 29),
 
-              // Раздел «Ваши объявления»
-              const _SectionTitle('Ваши объявления'),
-              const SizedBox(height: 10),
-              const _MenuItem(title: 'Активные / Неактивные', count: 4, trailingChevron: true),
-              const Divider(color: Color(0xFF474747), height: 8),
-              const _MenuItem(title: 'Отклики', count: 4, trailingChevron: true),
-              const Divider(color: Color(0xFF474747), height: 8),
-              const _MenuItem(title: 'Архив', trailingChevron: true),
-              const Divider(color: Color(0xFF474747), height: 8),
-              const SizedBox(height: 20),
+                        // 3 быстрых карточки
+                        Row(
+                          children: [
+                            _QuickCard(
+                              iconPath: 'assets/profile_dashboard/heart-rounded.svg',
+                              title: 'Избранное',
+                              subtitle: '14 товаров',
+                            ),
+                            SizedBox(width: 10),
+                            _QuickCard(
+                              iconPath: 'assets/profile_dashboard/shopping-cart-01.svg',
+                              title: 'Покупки',
+                              subtitle: '2 товаров',
+                            ),
+                            SizedBox(width: 10),
+                            _QuickCard(
+                              iconPath: 'assets/profile_dashboard/eva_star-fill.svg',
+                              title: 'Отзывы',
+                              subtitle: '0 товаров',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
 
-              // Раздел «Сообщения»
-              const _SectionTitle('Сообщения'),
-              const SizedBox(height: 11),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  mainAxisExtent: 86, // <-- фиксируем высоту карточки
-                ),
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  const items = [
-                    ('Сообщения с юзерами', 'Сообщения: 134', false),
-                    ('Сообщения с компаниями', 'Сообщения: 11', false),
-                    ('Поддержка VSETUT', 'Сообщения: Нет', false),
-                    ('Предложения цен', 'Сообщения: 2 + 1', true),
-                  ];
-                  final (title, subtitle, highlight) = items[index];
-                  return _MessageCard(
-                    title: title,
-                    subtitle: subtitle,
-                    highlight: highlight,
-                  );
-                },
-              ),
+                        // Раздел «Ваши объявления»
+                        const _SectionTitle('Ваши объявления'),
+                        const SizedBox(height: 10),
+                        const _MenuItem(title: 'Активные / Неактивные', count: 4, trailingChevron: true),
+                        const Divider(color: Color(0xFF474747), height: 8),
+                        const _MenuItem(title: 'Отклики', count: 4, trailingChevron: true),
+                        const Divider(color: Color(0xFF474747), height: 8),
+                        const _MenuItem(title: 'Архив', trailingChevron: true),
+                        const Divider(color: Color(0xFF474747), height: 8),
+                        const SizedBox(height: 20),
 
-              const SizedBox(height: 41),
+                        // Раздел «Сообщения»
+                        const _SectionTitle('Сообщения'),
+                        const SizedBox(height: 11),
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            mainAxisExtent: 86, // <-- фиксируем высоту карточки
+                          ),
+                          itemCount: 4,
+                          itemBuilder: (context, index) {
+                            const items = [
+                              ('Сообщения с юзерами', 'Сообщения: 134', false),
+                              ('Сообщения с компаниями', 'Сообщения: 11', false),
+                              ('Поддержка VSETUT', 'Сообщения: Нет', false),
+                              ('Предложения цен', 'Сообщения: 2 + 1', true),
+                            ];
+                            final (title, subtitle, highlight) = items[index];
+                            return _MessageCard(
+                              title: title,
+                              subtitle: subtitle,
+                              highlight: highlight,
+                            );
+                          },
+                        ),
 
-              // Кнопка выхода нужна для тестов 
-              SizedBox(
-                width: double.infinity,
-                height: 53,
-                child: ElevatedButton(
-                  onPressed: _logout,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
+                        const SizedBox(height: 41),
+
+                        // Кнопка выхода нужна для тестов
+                        SizedBox(
+                          width: double.infinity,
+                          height: 53,
+                          child: ElevatedButton(
+                            onPressed: () => context.read<ProfileBloc>().add(LogoutProfileEvent()),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'Выйти',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                      ],
                     ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Выйти',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
                   ),
                 ),
-              ),
-              const SizedBox(height: 22),
 
-              
-            ],
-          ),
-        ),
+                // Нижняя навигация
+                bottomNavigationBar: BottomNavigation(
+                  selectedIndex: navigationState.selectedIndex,
+                  onItemSelected: (index) {
+                    if (index == 4) {
+                      // Уже на профиле
+                      return;
+                    }
+                    if (index == 0) {
+                      context.read<NavigationBloc>().add(NavigateToHomeEvent());
+                    } else {
+                      context.read<NavigationBloc>().add(ChangeNavigationIndexEvent(index));
+                    }
+                  },
+                ),
+              );
+            },
+          );
+        },
       ),
-
-      // Нижняя навигация
-      bottomNavigationBar: BottomNavigation(
-        selectedIndex: _selectedIndex,
-        onItemSelected: _onItemSelected,
-      ),
-    );
-  }
+      );
+    }
 }
 
 /* =========================  WIDGETS  ========================= */

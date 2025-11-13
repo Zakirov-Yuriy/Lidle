@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/profile/profile_bloc.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/pages/account_recovery.dart';
 import 'package:lidle/pages/register_screen.dart';
 import 'package:lidle/pages/register_verify_screen.dart';
@@ -44,26 +50,45 @@ class LidleApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: appTitle,
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        scaffoldBackgroundColor: primaryBackground,
-        fontFamily: 'Roboto',
-      ),
-      home: const HomePage(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthBloc>(
+          create: (context) => AuthBloc(),
+        ),
+        BlocProvider<ListingsBloc>(
+          create: (context) => ListingsBloc(),
+        ),
+        BlocProvider<NavigationBloc>(
+          create: (context) => NavigationBloc(),
+        ),
+        BlocProvider<ProfileBloc>(
+          create: (context) => ProfileBloc(),
+        ),
+        BlocProvider<PasswordRecoveryBloc>(
+          create: (context) => PasswordRecoveryBloc(),
+        ),
+      ],
+      child: MaterialApp(
+        title: appTitle,
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          scaffoldBackgroundColor: primaryBackground,
+          fontFamily: 'Roboto',
+        ),
+        home: const HomePage(),
 
-      routes: {
-        SignInScreen.routeName: (context) => const SignInScreen(),
-        AccountRecovery.routeName: (context) => const AccountRecovery(),
-        RegisterScreen.routeName: (context) => const RegisterScreen(),
-        RegisterVerifyScreen.routeName: (context) =>
-            const RegisterVerifyScreen(),
-        AccountRecoveryCode.routeName: (context) => const AccountRecoveryCode(),
-        AccountRecoveryNewPassword.routeName: (context) =>
-            const AccountRecoveryNewPassword(),
-        ProfileDashboard.routeName: (context) => const ProfileDashboard(),
-      },
+        routes: {
+          SignInScreen.routeName: (context) => const SignInScreen(),
+          AccountRecovery.routeName: (context) => const AccountRecovery(),
+          RegisterScreen.routeName: (context) => const RegisterScreen(),
+          RegisterVerifyScreen.routeName: (context) =>
+              const RegisterVerifyScreen(),
+          AccountRecoveryCode.routeName: (context) => const AccountRecoveryCode(),
+          AccountRecoveryNewPassword.routeName: (context) =>
+              const AccountRecoveryNewPassword(),
+          ProfileDashboard.routeName: (context) => const ProfileDashboard(),
+        },
+      ),
     );
   }
 }

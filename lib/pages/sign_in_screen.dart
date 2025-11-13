@@ -1,12 +1,12 @@
-/// Страница входа в аккаунт.
-/// Позволяет пользователю ввести свои учетные данные (email и пароль)
-/// для входа в приложение. Также предоставляет ссылки для восстановления пароля
-/// и регистрации нового аккаунта.
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/services/auth_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/blocs/auth/auth_event.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
 import 'profile_dashboard.dart';
@@ -27,175 +27,190 @@ class SignInScreen extends StatefulWidget {
 /// Состояние для виджета `SignInScreen`.
 class _SignInScreenState extends State<SignInScreen> {
   /// Глобальный ключ для управления состоянием формы.
-  final _formKey = GlobalKey<FormState>();
-  /// Контроллер для текстового поля "Электронная почта".
-  final _emailCtrl = TextEditingController();
-  /// Контроллер для текстового поля "Пароль".
-  final _passCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormBuilderState>();
   /// Флаг для скрытия/отображения текста пароля.
   bool _obscure = true;
 
   @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 76.0),
-              child: const Header(),
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthAuthenticated) {
+          // Успешный вход - переходим на профиль
+          Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
+        } else if (state is AuthError) {
+          // Ошибка входа - показываем Snackbar
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ошибка входа: ${state.message}'),
+              backgroundColor: Colors.redAccent,
+              action: SnackBarAction(
+                label: 'Повторить',
+                textColor: Colors.white,
+                onPressed: _onSubmit,
+              ),
             ),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 76.0),
+                  child: const Header(),
+                ),
 
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(31, 0, 31, 0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          style: const TextStyle(
-                            color: textPrimary,
-                            fontSize: 24,
-                            height: 1.25,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          children: const [
-                            TextSpan(text: 'Вы уже почти в  '),
-                            TextSpan(
-                              text: 'LIDLE',
-
-                              style: TextStyle(
-                                letterSpacing: 1.1,
-                                fontWeight: FontWeight.w400,
-                                fontFamily: 'BebasNeue',
-                                fontSize: 36,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 11),
-                      const Text(
-                        'Выберите способ входа',
-                        style: TextStyle(
-                          color: textMuted,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      const _FieldLabel('Электронная почта'),
-                      const SizedBox(height: 9),
-                      TextFormField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        style: const TextStyle(
-                          color: textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration('Введите'),
-                        validator: (v) {
-                          final s = (v ?? '').trim();
-                          if (s.isEmpty) return 'Введите почту';
-                          final ok = RegExp(
-                            r'^[^@]+@[^@]+\.[^@]+$',
-                          ).hasMatch(s);
-                          return ok ? null : 'Неверный формат почты';
-                        },
-                      ),
-                      const SizedBox(height: 9),
-
-                      const _FieldLabel('Пароль'),
-                      const SizedBox(height: 9),
-                      TextFormField(
-                        controller: _passCtrl,
-                        obscureText: _obscure,
-                        style: const TextStyle(
-                          color: textPrimary,
-                          fontSize: 14,
-                        ),
-                        decoration: _inputDecoration('Введите').copyWith(
-                          suffixIcon: IconButton(
-                            onPressed: () =>
-                                setState(() => _obscure = !_obscure),
-                            icon: Icon(
-                              _obscure
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
-                              color: textMuted,
-                            ),
-                          ),
-                        ),
-                        validator: (v) {
-                          final s = (v ?? '').trim();
-                          if (s.isEmpty) return 'Введите пароль';
-                          if (s.length < 6) return 'Минимум 6 символов';
-                          return null;
-                        },
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(31, 0, 31, 0),
+                    child: FormBuilder(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          TextButton(
-                            onPressed: _onForgotPassword,
-                            style: _linkStyle,
-                            child: const Text('Забыл пароль'),
-                          ),
-                          TextButton(
-                            onPressed: _onSignUp,
-                            style: _linkStyle,
-                            child: const Text('Регистрация'),
-                          ),
-                        ],
-                      ),
+                          RichText(
+                            text: TextSpan(
+                              style: const TextStyle(
+                                color: textPrimary,
+                                fontSize: 24,
+                                height: 1.25,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              children: const [
+                                TextSpan(text: 'Вы уже почти в  '),
+                                TextSpan(
+                                  text: 'LIDLE',
 
-                      const SizedBox(height: 20),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 53,
-                        child: ElevatedButton(
-                          onPressed: _onSubmit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: activeIconColor,
-                            foregroundColor: textPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
+                                  style: TextStyle(
+                                    letterSpacing: 1.1,
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'BebasNeue',
+                                    fontSize: 36,
+                                  ),
+                                ),
+                              ],
                             ),
-                            elevation: 0,
                           ),
-                          child: const Text(
-                            'Войти',
+                          const SizedBox(height: 11),
+                          const Text(
+                            'Выберите способ входа',
                             style: TextStyle(
+                              color: textMuted,
                               fontSize: 16,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 24),
+
+                          const _FieldLabel('Электронная почта'),
+                          const SizedBox(height: 9),
+                          FormBuilderTextField(
+                            name: 'email',
+                            keyboardType: TextInputType.emailAddress,
+                            style: const TextStyle(
+                              color: textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration('Введите'),
+                            validator: FormBuilderValidators.compose([
+                              FormBuilderValidators.required(errorText: 'Введите почту'),
+                              FormBuilderValidators.email(errorText: 'Неверный формат почты'),
+                            ]),
+                          ),
+                          const SizedBox(height: 9),
+
+                          const _FieldLabel('Пароль'),
+                          const SizedBox(height: 9),
+                          FormBuilderTextField(
+                            name: 'password',
+                            obscureText: _obscure,
+                            style: const TextStyle(
+                              color: textPrimary,
+                              fontSize: 14,
+                            ),
+                            decoration: _inputDecoration('Введите').copyWith(
+                              suffixIcon: IconButton(
+                                onPressed: () =>
+                                    setState(() => _obscure = !_obscure),
+                                icon: Icon(
+                                  _obscure
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: textMuted,
+                                ),
+                              ),
+                            ),
+                            validator: FormBuilderValidators.compose([
+                              FormBuilderValidators.required(errorText: 'Введите пароль'),
+                              FormBuilderValidators.minLength(6, errorText: 'Минимум 6 символов'),
+                            ]),
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              TextButton(
+                                onPressed: _onForgotPassword,
+                                style: _linkStyle,
+                                child: const Text('Забыл пароль'),
+                              ),
+                              TextButton(
+                                onPressed: _onSignUp,
+                                style: _linkStyle,
+                                child: const Text('Регистрация'),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          SizedBox(
+                            width: double.infinity,
+                            height: 53,
+                            child: ElevatedButton(
+                              onPressed: state is AuthLoading ? null : _onSubmit,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: state is AuthLoading ? Colors.grey : activeIconColor,
+                                foregroundColor: textPrimary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: state is AuthLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Войти',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -207,32 +222,20 @@ class _SignInScreenState extends State<SignInScreen> {
     Navigator.of(context).pushNamed(RegisterScreen.routeName);
   }
 
-  Future<void> _onSubmit() async {
-    final ok = _formKey.currentState?.validate() ?? false;
+  void _onSubmit() {
+    final formState = _formKey.currentState;
+    final ok = formState?.validate() ?? false;
     if (!ok) return;
 
-    try {
-      final response = await AuthService.login(
-        email: _emailCtrl.text.trim(),
-        password: _passCtrl.text.trim(),
-        remember: true,
-      );
+    formState?.save();
+    final formData = formState?.value ?? {};
 
-      // Проверяем успешный ответ с токеном
-      if (response['access_token'] != null) {
-        await HiveService.saveUserData('token', response['access_token']);
-        // Переход на профиль пользователя
-        Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ошибка входа: неверные учетные данные')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка входа: $e')),
-      );
-    }
+    // Отправляем событие входа в AuthBloc
+    context.read<AuthBloc>().add(LoginEvent(
+      email: (formData['email'] as String?)?.trim() ?? '',
+      password: (formData['password'] as String?)?.trim() ?? '',
+      remember: true,
+    ));
   }
 
   static InputDecoration _inputDecoration(String hint) {

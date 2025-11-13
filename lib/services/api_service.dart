@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -14,17 +15,25 @@ class ApiService {
 
   /// Выполняет GET запрос.
   static Future<Map<String, dynamic>> get(String endpoint, {String? token}) async {
-    final headers = {...defaultHeaders};
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+      ).timeout(const Duration(seconds: 30));
+
+      return _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException catch (e) {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    } catch (e) {
+      throw Exception('Неизвестная ошибка');
     }
-
-    final response = await http.get(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-    );
-
-    return _handleResponse(response);
   }
 
   /// Выполняет POST запрос.
@@ -33,18 +42,26 @@ class ApiService {
     Map<String, dynamic> body, {
     String? token,
   }) async {
-    final headers = {...defaultHeaders};
-    if (token != null) {
-      headers['Authorization'] = 'Bearer $token';
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 30));
+
+      return _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException catch (e) {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    } catch (e) {
+      throw Exception('Неизвестная ошибка');
     }
-
-    final response = await http.post(
-      Uri.parse('$baseUrl$endpoint'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
-
-    return _handleResponse(response);
   }
 
   /// Обрабатывает ответ от сервера.

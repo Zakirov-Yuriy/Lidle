@@ -4,8 +4,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/services/auth_service.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
 import 'package:lidle/pages/account_recovery_new_password.dart';
 
 /// `AccountRecoveryCode` - это StatefulWidget, который позволяет пользователю
@@ -44,8 +47,8 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
     super.dispose();
   }
 
-  /// Отправляет код на электронную почту.
-  Future<void> _sendEmailCode() async {
+  /// Отправляет код на электронную почту через BLoC.
+  void _sendEmailCode() {
     if (_isResending) return;
 
     setState(() => _isResending = true);
@@ -54,41 +57,32 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
         ModalRoute.of(context)!.settings.arguments as Map<String, String>;
     final email = args['email']!;
 
-    try {
-      await AuthService.forgotPassword(email: email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Код отправлен на email')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    } finally {
+    context.read<PasswordRecoveryBloc>().add(SendRecoveryCodeEvent(email));
+
+    // Сброс флага через некоторое время
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() => _isResending = false);
       }
-    }
+    });
   }
 
   /// Обработчик нажатия кнопки "Продолжить".
-  /// Переходит на страницу установки нового пароля с передачей email и token.
-  /// TODO: Добавить логику проверки кода восстановления на сервере.
+  /// Отправляет событие верификации кода через BLoC.
   void _submit() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Введите код')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Введите код')),
+      );
       return;
     }
     final args =
         ModalRoute.of(context)!.settings.arguments as Map<String, String>;
     final email = args['email']!;
-    Navigator.of(context).pushNamed(
-      AccountRecoveryNewPassword.routeName,
-      arguments: {'email': email, 'token': code},
+
+    context.read<PasswordRecoveryBloc>().add(
+      VerifyRecoveryCodeEvent(email: email, code: code),
     );
   }
 
@@ -96,7 +90,26 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
+    return BlocConsumer<PasswordRecoveryBloc, PasswordRecoveryState>(
+      listener: (context, state) {
+        if (state is RecoveryCodeSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Код отправлен на email')),
+          );
+        } else if (state is PasswordRecoveryError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка: ${state.message}')),
+          );
+        } else if (state is RecoveryCodeVerified) {
+          // Переход на страницу нового пароля
+          Navigator.of(context).pushNamed(
+            AccountRecoveryNewPassword.routeName,
+            arguments: {'email': state.email, 'token': state.token},
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -258,6 +271,8 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
           ),
         ),
       ),
+        );
+      },
     );
   }
 }

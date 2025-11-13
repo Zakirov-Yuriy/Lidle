@@ -2,8 +2,11 @@
 /// Пользователь вводит и подтверждает новый пароль.
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/services/auth_service.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
+import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
 
 /// `AccountRecoveryNewPassword` - это StatefulWidget, который позволяет пользователю
 /// установить новый пароль для своего аккаунта.
@@ -42,8 +45,8 @@ class _AccountRecoveryNewPasswordState
   }
 
   /// Обработчик нажатия кнопки "Подтвердить".
-  /// Выполняет валидацию введенных паролей и отправляет их на сервер.
-  Future<void> _submit() async {
+  /// Выполняет валидацию и отправляет событие сброса пароля через BLoC.
+  void _submit() {
     final newPass = _newCtrl.text.trim();
     final repPass = _repeatCtrl.text.trim();
 
@@ -57,9 +60,7 @@ class _AccountRecoveryNewPasswordState
     }
 
     if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
       return;
     }
 
@@ -68,29 +69,35 @@ class _AccountRecoveryNewPasswordState
     final email = args['email']!;
     final token = args['token']!;
 
-    try {
-      await AuthService.resetPassword(
+    context.read<PasswordRecoveryBloc>().add(
+      ResetPasswordEvent(
         email: email,
         password: newPass,
         passwordConfirmation: repPass,
         token: token,
-      );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Пароль обновлён')));
-      Navigator.of(context).pushReplacementNamed('/sign-in');
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-    }
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
+    return BlocConsumer<PasswordRecoveryBloc, PasswordRecoveryState>(
+      listener: (context, state) {
+        if (state is PasswordResetSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Пароль обновлён')),
+          );
+          Navigator.of(context).pushReplacementNamed('/sign-in');
+        } else if (state is PasswordRecoveryError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка: ${state.message}')),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -198,6 +205,8 @@ class _AccountRecoveryNewPasswordState
           ),
         ),
       ),
+        );
+      },
     );
   }
 }
