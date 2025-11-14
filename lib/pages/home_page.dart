@@ -16,6 +16,11 @@ import '../blocs/listings/listings_event.dart';
 import '../blocs/navigation/navigation_bloc.dart';
 import '../blocs/navigation/navigation_state.dart';
 import '../blocs/navigation/navigation_event.dart';
+import '../blocs/auth/auth_bloc.dart';
+import '../blocs/auth/auth_state.dart';
+import '../pages/filters_screen.dart';
+import '../pages/profile_menu_screen.dart';
+import '../pages/sign_in_screen.dart';
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу
 /// приложения с использованием Bloc для управления состоянием.
@@ -60,13 +65,27 @@ class _HomePageState extends State<HomePage> {
                       ),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 19.0),
-                        child: custom_widgets.SearchBarWidget(
-                          onSearchChanged: (query) {
-                            if (query.isNotEmpty) {
-                              context.read<ListingsBloc>().add(SearchListingsEvent(query: query));
-                            } else {
-                              context.read<ListingsBloc>().add(ResetFiltersEvent());
-                            }
+                        child: BlocBuilder<AuthBloc, AuthState>(
+                          builder: (context, authState) {
+                            return custom_widgets.SearchBarWidget(
+                              onSearchChanged: (query) {
+                                if (query.isNotEmpty) {
+                                  context.read<ListingsBloc>().add(SearchListingsEvent(query: query));
+                                } else {
+                                  context.read<ListingsBloc>().add(ResetFiltersEvent());
+                                }
+                              },
+                              onSettingsPressed: () {
+                                Navigator.pushNamed(context, FiltersScreen.routeName);
+                              },
+                              onMenuPressed: () {
+                                if (authState is AuthAuthenticated) {
+                                  Navigator.pushNamed(context, ProfileMenuScreen.routeName);
+                                } else {
+                                  Navigator.pushNamed(context, SignInScreen.routeName);
+                                }
+                              },
+                            );
                           },
                         ),
                       ),

@@ -9,6 +9,7 @@ import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
+import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/account_recovery.dart';
 import 'package:lidle/pages/register_screen.dart';
 import 'package:lidle/pages/register_verify_screen.dart';
@@ -19,6 +20,7 @@ import 'constants.dart';
 import 'pages/home_page.dart';
 import 'pages/sign_in_screen.dart';
 import 'pages/profile_dashboard.dart';
+import 'pages/profile_menu_screen.dart';
 
 /// Главная функция, точка входа в приложение.
 /// Выполняет асинхронную инициализацию необходимых сервисов.
@@ -52,23 +54,15 @@ class LidleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(
-          create: (context) => AuthBloc(),
-        ),
-        BlocProvider<ListingsBloc>(
-          create: (context) => ListingsBloc(),
-        ),
-        BlocProvider<NavigationBloc>(
-          create: (context) => NavigationBloc(),
-        ),
-        BlocProvider<ProfileBloc>(
-          create: (context) => ProfileBloc(),
-        ),
+        BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+        BlocProvider<ListingsBloc>(create: (context) => ListingsBloc()),
+        BlocProvider<NavigationBloc>(create: (context) => NavigationBloc()),
+        BlocProvider<ProfileBloc>(create: (context) => ProfileBloc()),
         BlocProvider<PasswordRecoveryBloc>(
           create: (context) => PasswordRecoveryBloc(),
         ),
       ],
-      child: MaterialApp(
+      child: MaterialApp( 
         title: appTitle,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
@@ -79,14 +73,17 @@ class LidleApp extends StatelessWidget {
 
         routes: {
           SignInScreen.routeName: (context) => const SignInScreen(),
+          ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),
           AccountRecovery.routeName: (context) => const AccountRecovery(),
           RegisterScreen.routeName: (context) => const RegisterScreen(),
           RegisterVerifyScreen.routeName: (context) =>
               const RegisterVerifyScreen(),
-          AccountRecoveryCode.routeName: (context) => const AccountRecoveryCode(),
+          AccountRecoveryCode.routeName: (context) =>
+              const AccountRecoveryCode(),
           AccountRecoveryNewPassword.routeName: (context) =>
               const AccountRecoveryNewPassword(),
           ProfileDashboard.routeName: (context) => const ProfileDashboard(),
+          FiltersScreen.routeName: (context) => const FiltersScreen(),
         },
       ),
     );
