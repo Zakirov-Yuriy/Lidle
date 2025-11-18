@@ -16,6 +16,7 @@ import '../blocs/listings/listings_event.dart';
 import '../blocs/navigation/navigation_bloc.dart';
 import '../blocs/navigation/navigation_state.dart';
 import '../blocs/navigation/navigation_event.dart';
+import '../pages/favorites_screen.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../pages/filters_screen.dart';
@@ -44,7 +45,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -56,7 +57,7 @@ class _HomePageState extends State<HomePage> {
                 extendBody: true,
                 backgroundColor: primaryBackground,
                 body: SafeArea(
-                  bottom: false,
+                  bottom: true,
                   child: Column(
                     children: [
                       const Padding(
@@ -110,6 +111,8 @@ class _HomePageState extends State<HomePage> {
                   onItemSelected: (index) {
                     if (index == 4) {
                       context.read<NavigationBloc>().add(NavigateToProfileEvent());
+                    } else if (index == 1) {
+                      context.read<NavigationBloc>().add(NavigateToFavoritesEvent());
                     } else {
                       context.read<NavigationBloc>().add(ChangeNavigationIndexEvent(index));
                     }

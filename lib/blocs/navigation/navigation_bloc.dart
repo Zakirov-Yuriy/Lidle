@@ -5,6 +5,7 @@ import 'navigation_state.dart';
 import '../../hive_service.dart';
 import '../../pages/sign_in_screen.dart';
 import '../../pages/profile_dashboard.dart';
+import '../../pages/favorites_screen.dart';
 
 /// Bloc для управления состоянием навигации.
 /// Обрабатывает события навигации и управляет переходами между страницами.
@@ -15,6 +16,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<ChangeNavigationIndexEvent>(_onChangeNavigationIndex);
     on<NavigateToProfileEvent>(_onNavigateToProfile);
     on<NavigateToHomeEvent>(_onNavigateToHome);
+    on<NavigateToFavoritesEvent>(_onNavigateToFavorites);
   }
 
   /// Обработчик события изменения индекса навигации.
@@ -54,6 +56,15 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     _navigateToHome();
   }
 
+  /// Обработчик события навигации к избранному.
+  void _onNavigateToFavorites(
+    NavigateToFavoritesEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(const NavigationToFavorites());
+    _navigateToFavorites();
+  }
+
   /// Приватный метод для навигации к профилю.
   /// Используется для выполнения перехода на страницу профиля.
   void _navigateToProfile() {
@@ -72,6 +83,12 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     // Навигация будет выполнена в UI через BlocListener
   }
 
+  /// Приватный метод для навигации к избранному.
+  /// Используется для выполнения перехода на страницу избранного.
+  void _navigateToFavorites() {
+    // Навигация будет выполнена в UI через BlocListener
+  }
+
   /// Метод для выполнения навигации с учетом контекста.
   /// [context] - BuildContext для выполнения навигации.
   void executeNavigation(BuildContext context) {
@@ -79,6 +96,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeProfileNavigation(context);
     } else if (state is NavigationToHome) {
       _executeHomeNavigation(context);
+    } else if (state is NavigationToFavorites) {
+      _executeFavoritesNavigation(context);
     }
   }
 
@@ -97,5 +116,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   /// Выполняет навигацию к домашней странице.
   void _executeHomeNavigation(BuildContext context) {
     Navigator.of(context).pushReplacementNamed('/');
+  }
+
+  /// Выполняет навигацию к избранному.
+  void _executeFavoritesNavigation(BuildContext context) {
+    Navigator.of(context).pushReplacementNamed(FavoritesScreen.routeName);
   }
 }

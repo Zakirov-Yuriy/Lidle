@@ -27,3 +27,8 @@ class NavigationToProfile extends NavigationState {
 class NavigationToHome extends NavigationState {
   const NavigationToHome() : super(0);
 }
+
+/// Состояние навигации к избранному.
+class NavigationToFavorites extends NavigationState {
+  const NavigationToFavorites() : super(1);
+}

@@ -15,3 +15,6 @@ class NavigateToProfileEvent extends NavigationEvent {}
 
 /// Событие навигации к домашней странице.
 class NavigateToHomeEvent extends NavigationEvent {}
+
+/// Событие навигации к избранному.
+class NavigateToFavoritesEvent extends NavigationEvent {}
