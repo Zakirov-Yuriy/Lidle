@@ -28,8 +28,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Статические данные объявлений.
   /// В будущем можно заменить на загрузку из API.
-  static final List<Listing> _staticListings = [
+  static final List<Listing> staticListings = [
     const Listing(
+      id: 'listing_1',
       imagePath: 'assets/apartment1.png',
       title: '4-к. квартира, 169,5 м²...',
       price: '78 970 000 ₽',
@@ -37,6 +38,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: 'Сегодня',
     ),
     const Listing(
+      id: 'listing_2',
       imagePath: 'assets/acura_mdx.png',
       title: 'Acura MDX 3.5 AT, 20...',
       price: '2 399 999 ₽',
@@ -44,6 +46,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '29.08.2024',
     ),
     const Listing(
+      id: 'listing_3',
       imagePath: 'assets/acura_rdx.png',
       title: 'Acura RDX 2.3 AT, 2007...',
       price: '2 780 000 ₽',
@@ -51,6 +54,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '29.08.2024',
     ),
     const Listing(
+      id: 'listing_4',
       imagePath: 'assets/studio.png',
       title: 'Студия, 35,7 м², 2/6 эт...',
       price: '6 500 000 ₽',
@@ -97,7 +101,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // final categories = await ApiService.getCategories();
 
       emit(ListingsLoaded(
-        listings: _staticListings,
+        listings: staticListings,
         categories: _staticCategories,
       ));
     } catch (e) {
@@ -117,7 +121,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // final categories = await ApiService.getCategories();
 
       emit(ListingsLoaded(
-        listings: _staticListings,
+        listings: staticListings,
         categories: _staticCategories,
       ));
     } catch (e) {

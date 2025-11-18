@@ -8,6 +8,7 @@ void main() {
   group('ListingCard Widget Tests', () {
     testWidgets('should display listing title', (WidgetTester tester) async {
       const listing = Listing(
+        id: 'test_listing_1',
         imagePath: 'assets/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
@@ -32,6 +33,7 @@ void main() {
 
     testWidgets('should display listing price', (WidgetTester tester) async {
       const listing = Listing(
+        id: 'test_listing_2',
         imagePath: 'assets/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
@@ -56,6 +58,7 @@ void main() {
 
     testWidgets('should display listing location', (WidgetTester tester) async {
       const listing = Listing(
+        id: 'test_listing_3',
         imagePath: 'assets/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
@@ -80,6 +83,7 @@ void main() {
 
     testWidgets('should display listing date', (WidgetTester tester) async {
       const listing = Listing(
+        id: 'test_listing_4',
         imagePath: 'assets/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
@@ -104,6 +108,7 @@ void main() {
 
     testWidgets('should display image', (WidgetTester tester) async {
       const listing = Listing(
+        id: 'test_listing_5',
         imagePath: 'assets/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
@@ -134,6 +139,7 @@ void main() {
 
     testWidgets('should have favorite icon', (WidgetTester tester) async {
       const listing = Listing(
+        id: 'test_listing_6',
         imagePath: 'assets/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',

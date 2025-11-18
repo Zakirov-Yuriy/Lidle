@@ -1,12 +1,11 @@
-/// Виджет карточки объявления, используемый для отображения отдельных предложений.
-/// Включает изображение, название, цену, местоположение и дату публикации.
 import 'package:flutter/material.dart';
 import '../models/home_models.dart';
 import '../constants.dart';
+import '../hive_service.dart';
 
-/// `ListingCard` - это StatelessWidget, который отображает
-/// отдельную карточку объявления.
-class ListingCard extends StatelessWidget {
+/// `ListingCard` - это StatefulWidget, который отображает
+/// отдельную карточку объявления с возможностью добавления в избранное.
+class ListingCard extends StatefulWidget {
   /// Объект [Listing], содержащий данные для отображения.
   final Listing listing;
 
@@ -15,6 +14,26 @@ class ListingCard extends StatelessWidget {
     super.key,
     required this.listing,
   });
+
+  @override
+  State<ListingCard> createState() => _ListingCardState();
+}
+
+class _ListingCardState extends State<ListingCard> {
+  late bool _isFavorite;
+
+  @override
+  void initState() {
+    super.initState();
+    _isFavorite = HiveService.getFavorites().contains(widget.listing.id);
+  }
+
+  void _toggleFavorite() {
+    setState(() {
+      _isFavorite = !_isFavorite;
+    });
+    HiveService.toggleFavorite(widget.listing.id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +61,7 @@ class ListingCard extends StatelessWidget {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8 * scale),
                 child: Image.asset(
-                  listing.imagePath,
+                  widget.listing.imagePath,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
@@ -69,7 +88,7 @@ class ListingCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          listing.title,
+                          widget.listing.title,
                           style: TextStyle(
                             color: textPrimary,
                             fontSize: titleFontSize,
@@ -80,17 +99,20 @@ class ListingCard extends StatelessWidget {
                         ),
                       ),
                       SizedBox(width: 4 * scale),
-                      Icon(
-                        Icons.favorite_border,
-                        color: textPrimary,
-                        size: iconSize,
+                      GestureDetector(
+                        onTap: _toggleFavorite,
+                        child: Icon(
+                          _isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: _isFavorite ? Colors.red : textPrimary,
+                          size: iconSize,
+                        ),
                       ),
                     ],
                   ),
 
                   SizedBox(height: 3 * scale),
                   Text(
-                    listing.price,
+                    widget.listing.price,
                     style: TextStyle(
                       color: textPrimary,
                       fontSize: priceFontSize,
@@ -100,7 +122,7 @@ class ListingCard extends StatelessWidget {
 
                   SizedBox(height: 3 * scale),
                   Text(
-                    listing.location,
+                    widget.listing.location,
                     style: TextStyle(
                       color: textSecondary,
                       fontSize: locationFontSize,
@@ -112,7 +134,7 @@ class ListingCard extends StatelessWidget {
                   SizedBox(height: 1 * scale),
 
                   Text(
-                    listing.date,
+                    widget.listing.date,
                     style: TextStyle(
                       color: textMuted,
                       fontSize: dateFontSize,

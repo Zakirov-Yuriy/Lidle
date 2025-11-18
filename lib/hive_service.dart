@@ -72,4 +72,21 @@ class HiveService {
   static Future<void> close() async {
     await Hive.close();
   }
+
+  /// Возвращает список favorite ids из settingsBox.
+  static List<String> getFavorites() {
+    final favorites = settingsBox.get('favorites', defaultValue: <String>[]);
+    return favorites is List ? favorites.cast<String>() : [];
+  }
+
+  /// Добавляет или удаляет favorite id из списка favorites.
+  static Future<void> toggleFavorite(String listingId) async {
+    final favorites = getFavorites().toSet();
+    if (favorites.contains(listingId)) {
+      favorites.remove(listingId);
+    } else {
+      favorites.add(listingId);
+    }
+    await settingsBox.put('favorites', favorites.toList());
+  }
 }

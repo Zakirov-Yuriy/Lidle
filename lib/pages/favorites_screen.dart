@@ -1,13 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/widgets/header.dart';
+import 'package:lidle/blocs/listings/listings_bloc.dart';
 import '../constants.dart';
 import '../widgets/bottom_navigation.dart';
+import '../models/home_models.dart';
+import '../widgets/listing_card.dart';
+import '../hive_service.dart';
 
-class FavoritesScreen extends StatelessWidget {
+class FavoritesScreen extends StatefulWidget {
   static const routeName = '/favorites';
 
   const FavoritesScreen({super.key});
+
+  @override
+  State<FavoritesScreen> createState() => _FavoritesScreenState();
+}
+
+class _FavoritesScreenState extends State<FavoritesScreen> {
+  List<Listing> _favoritedListings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  void _loadFavorites() {
+    final favoriteIds = HiveService.getFavorites();
+    final allListings = ListingsBloc.staticListings;
+    setState(() {
+      _favoritedListings = allListings.where((listing) => favoriteIds.contains(listing.id)).toList();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,18 +39,18 @@ class FavoritesScreen extends StatelessWidget {
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 0.0),
-                        child: Header(),
-                      ),
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 0.0),
+              child: Header(),
+            ),
             const SizedBox(height: headerTopPadding),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: () => Navigator.of(context).pushReplacementNamed('/'),
                     child: const Icon(Icons.arrow_back_ios_new_rounded,
                         color: textPrimary, size: 20),
                   ),
@@ -49,17 +73,32 @@ class FavoritesScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            // Здесь можно будет вставить список избранного
-            const Expanded(
-              child: Center(
-                child: Text(
-                  'Пока что здесь пусто',
-                  style: TextStyle(
-                    color: textMuted,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
+            Expanded(
+              child: _favoritedListings.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'Пока что здесь пусто',
+                        style: TextStyle(
+                          color: textMuted,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+                      child: GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          mainAxisExtent: 263,
+                        ),
+                        itemCount: _favoritedListings.length,
+                        itemBuilder: (context, index) {
+                          return ListingCard(listing: _favoritedListings[index]);
+                        },
+                      ),
+                    ),
             ),
           ],
         ),

@@ -23,6 +23,8 @@ class Category {
 /// Модель данных для объявления (листинга).
 /// Используется для отображения отдельных объявлений на главной странице.
 class Listing {
+  /// Уникальный идентификатор объявления.
+  final String id;
   /// Путь к изображению, представляющему объявление.
   final String imagePath;
   /// Заголовок объявления.
@@ -36,6 +38,7 @@ class Listing {
 
   /// Конструктор для создания экземпляра [Listing].
   const Listing({
+    required this.id,
     required this.imagePath,
     required this.title,
     required this.price,
