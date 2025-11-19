@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/bottom_navigation.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
@@ -9,6 +10,9 @@ import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/blocs/listings/listings_bloc.dart';
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -64,10 +68,19 @@ class ProfileDashboard extends StatelessWidget {
                         // 3 быстрых карточки
                         Row(
                           children: [
-                            _QuickCard(
-                              iconPath: 'assets/profile_dashboard/heart-rounded.svg',
-                              title: 'Избранное',
-                              subtitle: '14 товаров',
+                            ValueListenableBuilder(
+                              valueListenable: HiveService.settingsBox.listenable(keys: ['favorites']),
+                              builder: (context, box, child) {
+                                final favorites = HiveService.getFavorites();
+                                final allListings = ListingsBloc.staticListings;
+                                final favoritedCount = allListings.where((listing) => favorites.contains(listing.id)).length;
+                                return _QuickCard(
+                                  iconPath: 'assets/profile_dashboard/heart-rounded.svg',
+                                  title: 'Избранное',
+                                  subtitle: '$favoritedCount товаров',
+                                  onTap: () => Navigator.of(context).pushNamed('/favorites'),
+                                );
+                              },
                             ),
                             SizedBox(width: 10),
                             _QuickCard(
@@ -79,7 +92,7 @@ class ProfileDashboard extends StatelessWidget {
                             _QuickCard(
                               iconPath: 'assets/profile_dashboard/eva_star-fill.svg',
                               title: 'Отзывы',
-                              subtitle: '0 товаров',
+                              subtitle: '0 отзовов',
                             ),
                           ],
                         ),
@@ -234,60 +247,70 @@ class _QuickCard extends StatelessWidget {
   final String iconPath;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const _QuickCard({
     required this.iconPath,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 86,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: primaryBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Color(0xFF474747)),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 13.0, left: 10.0, bottom: 2),
-              child: Row(children: [SvgPicture.asset(iconPath, height: 24, color: Colors.white70)]),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.only(left: 10.0),
-              child: Row(
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(left: 10.0),
-              child: Row(
-                children: [
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: textSecondary, fontSize: 10),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+    final card = Container(
+      height: 86,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: primaryBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Color(0xFF474747)),
       ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 13.0, left: 10.0, bottom: 2),
+            child: Row(children: [SvgPicture.asset(iconPath, height: 24, color: Colors.white70)]),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.only(left: 10.0),
+            child: Row(
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: 10.0),
+            child: Row(
+              children: [
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: textSecondary, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return Expanded(
+      child: onTap != null
+          ? InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: card,
+            )
+          : card,
     );
   }
 }
