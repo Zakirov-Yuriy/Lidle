@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/header.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/widgets/sort_filter_dialog.dart';
 import '../constants.dart';
 import '../widgets/bottom_navigation.dart';
 import '../models/home_models.dart';
@@ -30,6 +31,52 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final allListings = ListingsBloc.staticListings;
     setState(() {
       _favoritedListings = allListings.where((listing) => favoriteIds.contains(listing.id)).toList();
+    });
+  }
+
+  void _sortListings(SortOption option) {
+    // Вспомогательная функция для парсинга цены из строки.
+    double _parsePrice(String price) {
+      try {
+        // Удаляем все символы, кроме цифр, и преобразуем в число.
+        return double.parse(price.replaceAll(RegExp(r'[^0-9]'), ''));
+      } catch (e) {
+        return 0.0; // Возвращаем 0 в случае ошибки.
+      }
+    }
+
+    // Вспомогательная функция для парсинга даты. Предполагается формат "ДД.ММ.ГГГГ".
+    DateTime _parseDate(String date) {
+      try {
+        final parts = date.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      } catch (e) {
+        // Обработка ошибок парсинга
+      }
+      // Возвращаем старую дату по умолчанию для некорректных форматов.
+      return DateTime(1970);
+    }
+
+    setState(() {
+      switch (option) {
+        case SortOption.newest:
+          _favoritedListings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
+          break;
+        case SortOption.oldest:
+          _favoritedListings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
+          break;
+        case SortOption.mostExpensive:
+          _favoritedListings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
+          break;
+        case SortOption.cheapest:
+          _favoritedListings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
+          break;
+      }
     });
   }
 
@@ -64,10 +111,21 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     ),
                   ),
                   const Spacer(),
-                  const Icon(
-                    Icons.swap_vert,
-                    color: textPrimary,
-                    size: 24,
+                  IconButton(
+                    icon: const Icon(
+                      Icons.swap_vert,
+                      color: textPrimary,
+                      size: 24,
+                    ),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => SortFilterDialog(
+                          onSortChanged: _sortListings,
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
