@@ -6,6 +6,8 @@ import '../../hive_service.dart';
 import '../../pages/sign_in_screen.dart';
 import '../../pages/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
+import '../../pages/add_listing_screen.dart';
+import '../../pages/add_listing_screen.dart';
 
 /// Bloc для управления состоянием навигации.
 /// Обрабатывает события навигации и управляет переходами между страницами.
@@ -17,6 +19,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToProfileEvent>(_onNavigateToProfile);
     on<NavigateToHomeEvent>(_onNavigateToHome);
     on<NavigateToFavoritesEvent>(_onNavigateToFavorites);
+    on<NavigateToAddListingEvent>(_onNavigateToAddListing);
+    on<SelectNavigationIndexEvent>(_onSelectNavigationIndex);
   }
 
   /// Обработчик события изменения индекса навигации.
@@ -65,6 +69,57 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     _navigateToFavorites();
   }
 
+  /// Обработчик события навигации к добавлению объявления.
+  void _onNavigateToAddListing(
+    NavigateToAddListingEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(const NavigationToAddListing());
+    _navigateToAddListing();
+  }
+
+  /// Обработчик события выбора элемента навигации.
+  /// Проверяет авторизацию для защищенных разделов.
+  Future<void> _onSelectNavigationIndex(
+    SelectNavigationIndexEvent event,
+    Emitter<NavigationState> emit,
+  ) async {
+    // Индексы: 0 - Домой, 1 - Избранное, 4 - Профиль, 3 - Сообщения, 2 - Добавить (пока редирект на sign_in)
+    if (event.index == 0) {
+      // Домой всегда доступен
+      emit(const NavigationToHome());
+      _navigateToHome();
+    } else {
+      // Для остальных разделов проверяем авторизацию
+      final token = await HiveService.getUserData('token');
+      if (token != null && token.isNotEmpty) {
+        // Авторизован - выполняем соответствующую навигацию
+        switch (event.index) {
+          case 1:
+            emit(const NavigationToFavorites());
+            _navigateToFavorites();
+            break;
+          case 2:
+            emit(const NavigationToAddListing());
+            _navigateToAddListing();
+            break;
+          case 4:
+            emit(const NavigationToProfile());
+            _navigateToProfile();
+            break;
+          default:
+            // Для других (сообщения, etc.) - пока на home
+            emit(const NavigationToHome());
+            _navigateToHome();
+        }
+      } else {
+        // Не авторизован - редирект на sign_in
+        emit(const NavigationToSignIn());
+        _navigateToSignIn();
+      }
+    }
+  }
+
   /// Приватный метод для навигации к профилю.
   /// Используется для выполнения перехода на страницу профиля.
   void _navigateToProfile() {
@@ -84,8 +139,12 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   }
 
   /// Приватный метод для навигации к избранному.
-  /// Используется для выполнения перехода на страницу избранного.
   void _navigateToFavorites() {
+    // Навигация будет выполнена в UI через BlocListener
+  }
+
+  /// Приватный метод для навигации к добавлению объявления.
+  void _navigateToAddListing() {
     // Навигация будет выполнена в UI через BlocListener
   }
 
@@ -98,6 +157,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeHomeNavigation(context);
     } else if (state is NavigationToFavorites) {
       _executeFavoritesNavigation(context);
+    } else if (state is NavigationToAddListing) {
+      _executeAddListingNavigation(context);
+    } else if (state is NavigationToSignIn) {
+      _executeSignInNavigation(context);
     }
   }
 
@@ -107,7 +170,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     if (!context.mounted) return;
 
     if (token != null && token.isNotEmpty) {
-      Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
+      Navigator.of(context).pushNamed(ProfileDashboard.routeName);
     } else {
       Navigator.of(context).pushNamed(SignInScreen.routeName);
     }
@@ -120,6 +183,16 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
 
   /// Выполняет навигацию к избранному.
   void _executeFavoritesNavigation(BuildContext context) {
-    Navigator.of(context).pushReplacementNamed(FavoritesScreen.routeName);
+    Navigator.of(context).pushNamed(FavoritesScreen.routeName);
+  }
+
+  /// Выполняет навигацию к экрану входа.
+  void _executeSignInNavigation(BuildContext context) {
+    Navigator.of(context).pushNamed(SignInScreen.routeName);
+  }
+
+  /// Выполняет навигацию к добавлению объявления.
+  void _executeAddListingNavigation(BuildContext context) {
+    Navigator.of(context).pushNamed(AddListingScreen.routeName);
   }
 }

@@ -30,7 +30,13 @@ class ProfileDashboard extends StatelessWidget {
           Navigator.of(context).pushReplacementNamed('/');
         }
       },
-      child: BlocBuilder<NavigationBloc, NavigationState>(
+      child: BlocListener<NavigationBloc, NavigationState>(
+        listener: (context, state) {
+          if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites) {
+            context.read<NavigationBloc>().executeNavigation(context);
+          }
+        },
+        child: BlocBuilder<NavigationBloc, NavigationState>(
         builder: (context, navigationState) {
           return BlocBuilder<ProfileBloc, ProfileState>(
             builder: (context, profileState) {
@@ -168,17 +174,8 @@ class ProfileDashboard extends StatelessWidget {
 
                 // Нижняя навигация
                 bottomNavigationBar: BottomNavigation(
-                  selectedIndex: navigationState.selectedIndex,
                   onItemSelected: (index) {
-                    if (index == 4) {
-                      // Уже на профиле
-                      return;
-                    }
-                    if (index == 0) {
-                      context.read<NavigationBloc>().add(NavigateToHomeEvent());
-                    } else {
-                      context.read<NavigationBloc>().add(ChangeNavigationIndexEvent(index));
-                    }
+                    context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
                   },
                 ),
               );
@@ -186,7 +183,7 @@ class ProfileDashboard extends StatelessWidget {
           );
         },
       ),
-      );
+      ));
     }
 }
 

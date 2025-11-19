@@ -18,3 +18,14 @@ class NavigateToHomeEvent extends NavigationEvent {}
 
 /// Событие навигации к избранному.
 class NavigateToFavoritesEvent extends NavigationEvent {}
+
+/// Событие навигации к добавлению объявления.
+class NavigateToAddListingEvent extends NavigationEvent {}
+
+/// Событие выбора элемента навигации с проверкой авторизации.
+/// Проверяет авторизацию и перенаправляет на sign_in если необходимо.
+class SelectNavigationIndexEvent extends NavigationEvent {
+  final int index;
+
+  SelectNavigationIndexEvent(this.index);
+}

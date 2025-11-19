@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/header.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/widgets/sort_filter_dialog.dart';
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/navigation/navigation_event.dart';
 import '../constants.dart';
 import '../widgets/bottom_navigation.dart';
 import '../models/home_models.dart';
@@ -100,7 +104,13 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<NavigationBloc, NavigationState>(
+      listener: (context, state) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites) {
+          context.read<NavigationBloc>().executeNavigation(context);
+        }
+      },
+      child: Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
@@ -115,7 +125,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               child: Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Navigator.of(context).pushReplacementNamed('/'),
+                    onTap: () => Navigator.of(context).pop(),
                     child: const Icon(Icons.arrow_back_ios_new_rounded,
                         color: textPrimary, size: 20),
                   ),
@@ -180,18 +190,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         ),
       ),
       bottomNavigationBar: BottomNavigation(
-        selectedIndex: 1,
         onItemSelected: (index) {
-          if (index == 0) {
-            // Возврат на домашнюю страницу
-            Navigator.of(context).pushReplacementNamed('/');
-          } else if (index == 4) {
-            // Переход к профилю - нужно будет обновить логику позже
-            Navigator.of(context).pushNamed('/profile_dashboard');
+          if (index == 4) {
+            // Переход к профилю
+            context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+          } else {
+            context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
           }
-          // Другие индексы пока не обрабатываем
         },
       ),
-    );
+    ));
   }
 }

@@ -248,7 +248,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             TextSpan(
                               text: '\nИнформационную рассылку',
                               style: TextStyle(
-                                color: Color(0xFF38BDF8),
+                                color: Color.fromARGB(255, 248, 110, 56),
                                 fontSize: 16,
                               ),
                             ),

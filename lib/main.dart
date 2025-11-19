@@ -22,6 +22,7 @@ import 'pages/sign_in_screen.dart';
 import 'pages/profile_dashboard.dart';
 import 'pages/profile_menu_screen.dart';
 import 'pages/favorites_screen.dart';
+import 'pages/add_listing_screen.dart';
 
 /// Главная функция, точка входа в приложение.
 /// Выполняет асинхронную инициализацию необходимых сервисов.
@@ -86,6 +87,7 @@ class LidleApp extends StatelessWidget {
           ProfileDashboard.routeName: (context) => const ProfileDashboard(),
           FiltersScreen.routeName: (context) => const FiltersScreen(),
           FavoritesScreen.routeName: (context) => const FavoritesScreen(),
+          AddListingScreen.routeName: (context) => const AddListingScreen(),
         },
       ),
     );

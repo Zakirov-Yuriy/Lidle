@@ -32,3 +32,13 @@ class NavigationToHome extends NavigationState {
 class NavigationToFavorites extends NavigationState {
   const NavigationToFavorites() : super(1);
 }
+
+/// Состояние навигации к добавлению объявления.
+class NavigationToAddListing extends NavigationState {
+  const NavigationToAddListing() : super(2);
+}
+
+/// Состояние навигации к экрану входа.
+class NavigationToSignIn extends NavigationState {
+  const NavigationToSignIn() : super(-1); // -1 означает специальный переход
+}

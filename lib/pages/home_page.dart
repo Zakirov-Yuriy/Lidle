@@ -45,7 +45,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -107,15 +107,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 bottomNavigationBar: BottomNavigation(
-                  selectedIndex: navigationState.selectedIndex,
                   onItemSelected: (index) {
-                    if (index == 4) {
-                      context.read<NavigationBloc>().add(NavigateToProfileEvent());
-                    } else if (index == 1) {
-                      context.read<NavigationBloc>().add(NavigateToFavoritesEvent());
-                    } else {
-                      context.read<NavigationBloc>().add(ChangeNavigationIndexEvent(index));
-                    }
+                    context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
                   },
                 ),
               );
