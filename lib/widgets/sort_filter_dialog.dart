@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants.dart';
+import 'custom_checkbox.dart';
 
 enum SortOption {
   newest,
@@ -9,7 +10,7 @@ enum SortOption {
 }
 
 class SortFilterDialog extends StatefulWidget {
-  final Function(SortOption) onSortChanged;
+  final Function(Set<SortOption>) onSortChanged;
 
   const SortFilterDialog({super.key, required this.onSortChanged});
 
@@ -18,12 +19,12 @@ class SortFilterDialog extends StatefulWidget {
 }
 
 class _SortFilterDialogState extends State<SortFilterDialog> {
-  SortOption? _selectedOption;
+  Set<SortOption> _selectedOptions = {};
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20.0),
+      padding: const EdgeInsets.only(top: 25.0, right: 13, left: 24),
       decoration: const BoxDecoration(
         color: Color(0xFF222E3A),
         borderRadius: BorderRadius.only(
@@ -36,7 +37,18 @@ class _SortFilterDialogState extends State<SortFilterDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+
+              IconButton(
+                icon: const Icon(Icons.close, color: textPrimary),
+                onPressed: () => Navigator.of(context).pop(),
+
+              ),
+            ],
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
                 'Сортировать товар',
@@ -46,38 +58,45 @@ class _SortFilterDialogState extends State<SortFilterDialog> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close, color: textPrimary),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+
             ],
           ),
-          const SizedBox(height: 20),
-          _buildRadio('Новые', SortOption.newest),
-          _buildRadio('Старое', SortOption.oldest),
-          _buildRadio('Дорогие', SortOption.mostExpensive),
-          _buildRadio('Дешевые', SortOption.cheapest),
-          const SizedBox(height: 20),
+          const SizedBox(height: 23),
+          _buildCheckbox('Новые', SortOption.newest),
+          const SizedBox(height: 23),
+          _buildCheckbox('Старое', SortOption.oldest),
+          const SizedBox(height: 23),
+          _buildCheckbox('Дорогие', SortOption.mostExpensive),
+          const SizedBox(height: 23),
+          _buildCheckbox('Дешевые', SortOption.cheapest),
+          const SizedBox(height: 30),
         ],
       ),
     );
   }
 
-  Widget _buildRadio(String title, SortOption option) {
-    return RadioListTile<SortOption>(
-      title: Text(title, style: const TextStyle(color: textPrimary)),
-      value: option,
-      groupValue: _selectedOption,
-      onChanged: (SortOption? value) {
-        setState(() {
-          _selectedOption = value;
-        });
-        if (value != null) {
-          widget.onSortChanged(value);
-        }
-        Navigator.of(context).pop();
-      },
-      activeColor: Colors.blue,
+  Widget _buildCheckbox(String title, SortOption option) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 24.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          CustomCheckbox(
+            value: _selectedOptions.contains(option),
+            onChanged: (bool value) {
+              setState(() {
+                if (value) {
+                  _selectedOptions.add(option);
+                } else {
+                  _selectedOptions.remove(option);
+                }
+              });
+              widget.onSortChanged(_selectedOptions);
+            },
+          ),
+        ],
+      ),
     );
   }
 }

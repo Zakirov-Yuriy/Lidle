@@ -34,7 +34,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     });
   }
 
-  void _sortListings(SortOption option) {
+  void _sortListings(Set<SortOption> options) {
     // Вспомогательная функция для парсинга цены из строки.
     double _parsePrice(String price) {
       try {
@@ -62,22 +62,40 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       return DateTime(1970);
     }
 
-    setState(() {
-      switch (option) {
-        case SortOption.newest:
-          _favoritedListings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
-          break;
-        case SortOption.oldest:
-          _favoritedListings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
-          break;
-        case SortOption.mostExpensive:
-          _favoritedListings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
-          break;
-        case SortOption.cheapest:
-          _favoritedListings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
-          break;
+    // Приоритет сортировки: newest, oldest, mostExpensive, cheapest
+    const priorityOrder = [
+      SortOption.newest,
+      SortOption.oldest,
+      SortOption.mostExpensive,
+      SortOption.cheapest,
+    ];
+
+    SortOption? selectedOption;
+    for (final option in priorityOrder) {
+      if (options.contains(option)) {
+        selectedOption = option;
+        break;
       }
-    });
+    }
+
+    if (selectedOption != null) {
+      setState(() {
+        switch (selectedOption!) {
+          case SortOption.newest:
+            _favoritedListings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
+            break;
+          case SortOption.oldest:
+            _favoritedListings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
+            break;
+          case SortOption.mostExpensive:
+            _favoritedListings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
+            break;
+          case SortOption.cheapest:
+            _favoritedListings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
+            break;
+        }
+      });
+    }
   }
 
   @override
