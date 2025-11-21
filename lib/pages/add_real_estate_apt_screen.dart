@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lidle/widgets/custom_checkbox.dart';
 
 import '../constants.dart';
 
@@ -9,8 +10,7 @@ class AddRealEstateAptScreen extends StatefulWidget {
   const AddRealEstateAptScreen({super.key});
 
   @override
-  State<AddRealEstateAptScreen> createState() =>
-      _AddRealEstateAptScreenState();
+  State<AddRealEstateAptScreen> createState() => _AddRealEstateAptScreenState();
 }
 
 class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
@@ -55,7 +55,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               Row(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 41, bottom: 28),
+                    padding: const EdgeInsets.only(left: 41, bottom: 44),
                     child: SvgPicture.asset(logoAsset, height: logoHeight),
                   ),
                   const Spacer(),
@@ -92,47 +92,49 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   // TODO: реализовать загрузку изображений
                 },
                 child: Container(
-                  height: 126,
+                  height: 118,
                   decoration: BoxDecoration(
                     color: secondaryBackground,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.add_a_photo_outlined,
-                            color: textSecondary),
+                        Icon(Icons.add_a_photo_outlined, color: textSecondary),
                         SizedBox(height: 10),
                         Text(
                           'Добавить изображение',
-                          style: TextStyle(
-                            color: textSecondary,
-                            fontSize: 14,
-                          ),
+                          style: TextStyle(color: textSecondary, fontSize: 16),
                         ),
                       ],
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 13),
 
               _buildTextField(
                 label: 'Заголовок объявления',
                 hint: 'Например, уютная 2-комнатная квартира',
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 7),
+              Text(
+                'Введите не менее 16 символов',
+                style: TextStyle(color: textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 15),
 
               _buildDropdown(
                 label: 'Категория',
                 hint: 'Продажа квартир',
+                subtitle: 'Недвижимость / Квартиры',
                 onTap: () {
                   // Если нужно открыть экран выбора категории:
                   // Navigator.pushNamed(context, '/category-selection');
                 },
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 13),
 
               _buildTextField(
                 label: 'Описание',
@@ -147,88 +149,183 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               // Цена
               const Text(
                 'Цена*',
-                style: TextStyle(color: textPrimary, fontSize: 14),
+                style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 9),
-              Container(
-                decoration: BoxDecoration(
-                  color: formBackground,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(color: textPrimary),
-                        decoration: const InputDecoration(
-                          hintText: '1 000 000',
-                          hintStyle:
-                              TextStyle(color: textSecondary, fontSize: 14),
-                          border: InputBorder.none,
-                        ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: formBackground,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: textPrimary),
+                              decoration: const InputDecoration(
+                                hintText: '1 000 000',
+                                hintStyle: TextStyle(
+                                  color: Color.fromARGB(255, 255, 255, 255),
+                                  fontSize: 14,
+                                ),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    IconButton(
-                      onPressed: () {
-                        // TODO: доп. настройки цены
-                      },
-                      icon: const Icon(Icons.more_vert, color: textSecondary),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: formBackground,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                  ],
-                ),
+                    width: 53,
+                    height: 48,
+                    alignment: Alignment.center,
+                    child: Text(
+                      '₽',
+                      style: TextStyle(color: textPrimary, fontSize: 16),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 15),
 
               // Чекбоксы по цене
-              _buildCheckbox(
-                title: 'Возможен торг',
-                value: isBargain,
-                onChanged: (v) => setState(() => isBargain = v),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Возможен торг',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isBargain,
+                    onChanged: (v) => setState(() => isBargain = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Без комиссии',
-                value: isNoCommission,
-                onChanged: (v) => setState(() => isNoCommission = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Без комиссии',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isNoCommission,
+                    onChanged: (v) => setState(() => isNoCommission = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Возможность обмена',
-                value: isExchange,
-                onChanged: (v) => setState(() => isExchange = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Возможность обмена',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isExchange,
+                    onChanged: (v) => setState(() => isExchange = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Готов принять в залог',
-                value: isPledge,
-                onChanged: (v) => setState(() => isPledge = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Готов принять в залог',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isPledge,
+                    onChanged: (v) => setState(() => isPledge = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Срочно',
-                value: isUrgent,
-                onChanged: (v) => setState(() => isUrgent = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Срочно',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isUrgent,
+                    onChanged: (v) => setState(() => isUrgent = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Рассрочка',
-                value: isInstallment,
-                onChanged: (v) => setState(() => isInstallment = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Рассрочка',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isInstallment,
+                    onChanged: (v) => setState(() => isInstallment = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Удалённая сделка',
-                value: isRemoteDeal,
-                onChanged: (v) => setState(() => isRemoteDeal = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Удалённая сделка',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isRemoteDeal,
+                    onChanged: (v) => setState(() => isRemoteDeal = v),
+                  ),
+                ],
               ),
-              _buildCheckbox(
-                title: 'Клиент может предложить свою цену',
-                value: isClientPrice,
-                onChanged: (v) => setState(() => isClientPrice = v),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Клиент может предложить свою цену',
+                      style: TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  CustomCheckbox(
+                    value: isClientPrice,
+                    onChanged: (v) => setState(() => isClientPrice = v),
+                  ),
+                ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 15),
 
               // Ипотека
               const Text(
                 'Ипотека',
-                style: TextStyle(color: textPrimary, fontSize: 14),
+                style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
               Row(
@@ -247,60 +344,89 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 ],
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 13),
               // Рассрочка
               const Text(
                 'Рассрочка',
-                style: TextStyle(color: textPrimary, fontSize: 14),
+                style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildChoiceButton(
-                    'Да',
-                    isMortgageYes,
-                    () => _toggleMortgage(true),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: isInstallment
+                            ? activeIconColor
+                            : Colors.transparent,
+                        side: isInstallment
+                            ? null
+                            : const BorderSide(color: Colors.white),
+                        // padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      onPressed: () => setState(() => isInstallment = true),
+                      child: Text(
+                        'Да',
+                        style: TextStyle(
+                          color: isInstallment ? Colors.white : textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Нет',
-                    !isMortgageYes,
-                    () => _toggleMortgage(false),
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: !isInstallment
+                            ? activeIconColor
+                            : Colors.transparent,
+                        side: !isInstallment
+                            ? null
+                            : const BorderSide(color: Colors.white),
+                        // padding: const EdgeInsets.symmetric(vertical: 1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      onPressed: () => setState(() => isInstallment = false),
+                      child: Text(
+                        'Нет',
+                        style: TextStyle(
+                          color: !isInstallment ? Colors.white : textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 13),
 
               // Блок характеристик квартиры
-              // const Text(
-              //   'Параметры недвижимости',
-              //   style: TextStyle(color: textPrimary, fontSize: 16),
-              // ),
-              // const SizedBox(height: 18),
-
               _buildDropdown(
                 label: 'Тип дома',
-                hint: 'Столбец',
+                hint: 'Сталинка',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
-
               _buildTextField(
                 label: 'Название ЖК',
                 hint: 'Название жилого комплекса',
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Номер квартиры',
-                hint: 'Номер квартиры',
-              ),
+              _buildTextField(label: 'Номер квартиры', hint: 'Номер квартиры'),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Этаж*',
-                hint: 'Укажите этаж',
-              ),
+              _buildTextField(label: 'Этаж*', hint: 'Укажите этаж'),
               const SizedBox(height: 9),
 
               _buildTextField(
@@ -312,56 +438,90 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               _buildDropdown(
                 label: 'Тип сделки',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
+              _buildDropdown(
                 label: 'Общая площадь(м²)*',
                 hint: 'Цифрами',
-                keyboardType: TextInputType.number,
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Тип стен',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Класс жилья',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
+              _buildDropdown(
                 label: 'Количество комнат*',
                 hint: 'Цифрами',
-                keyboardType: TextInputType.number,
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Планировка',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Санузел',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Отделка',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Ремонт',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
@@ -373,21 +533,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildChoiceButton(
-                    'Да',
-                    true,
-                    () {
-                      // TODO: сохранить значение
-                    },
-                  ),
+                  _buildChoiceButton('Да', true, () {
+                    // TODO: сохранить значение
+                  }),
                   const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Нет',
-                    false,
-                    () {
-                      // TODO: сохранить значение
-                    },
-                  ),
+                  _buildChoiceButton('Нет', false, () {
+                    // TODO: сохранить значение
+                  }),
                 ],
               ),
               const SizedBox(height: 18),
@@ -395,24 +547,40 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               _buildDropdown(
                 label: 'Бытовая техника',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Мультимедиа',
                 hint: 'Цифрами',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Комфорт',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Коммуникации',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
@@ -455,12 +623,20 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               _buildDropdown(
                 label: 'Инфраструктура (до 500 метров)',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Ландшафт (до 1 км)',
                 hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
 
               const SizedBox(height: 27),
@@ -487,37 +663,49 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 ],
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 12),
               // Блок характеристик квартиры
               const Text(
                 'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
-                style: TextStyle(color: textPrimary, fontSize: 12),
+                style: TextStyle(color: textMuted, fontSize: 11),
               ),
+
               const SizedBox(height: 18),
 
-              // Локация
+              // Автопродление
+              
               const Text(
-                'Локализация',
+                'Автопродление',
                 style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const Text(
+                'Обьявление будет деактивирано\n через 30 дней',
+                style: TextStyle(color: textMuted, fontSize: 11),
               ),
               const SizedBox(height: 18),
 
               _buildDropdown(
                 label: 'Ваш город',
                 hint: 'Ваш город',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
+              _buildDropdown(
                 label: 'Улица*',
                 hint: 'Ваша улица',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
               ),
+
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Номер дома*',
-                hint: 'Номер дома',
-              ),
+              _buildTextField(label: 'Номер дома*', hint: 'Номер дома'),
               const SizedBox(height: 9),
 
               const Text(
@@ -550,10 +738,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 18),
 
-              _buildTextField(
-                label: 'Контактное лицо*',
-                hint: 'Александр',
-              ),
+              _buildTextField(label: 'Контактное лицо*', hint: 'Александр'),
               const SizedBox(height: 9),
 
               _buildTextField(
@@ -592,11 +777,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildButton('Предпросмотр', onPressed: () {}),
               const SizedBox(height: 10),
-              _buildButton(
-                'Опубликовать',
-                onPressed: () {},
-                isPrimary: true,
-              ),
+              _buildButton('Опубликовать', onPressed: () {}, isPrimary: true),
             ],
           ),
         ),
@@ -616,8 +797,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(color: textPrimary, fontSize: 14)),
+        Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
         const SizedBox(height: 9),
         TextField(
           maxLines: maxLines,
@@ -625,7 +805,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
           style: const TextStyle(color: textPrimary),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: textSecondary, fontSize: 14),
+            hintStyle: const TextStyle(
+              color: Color.fromARGB(255, 255, 255, 255),
+              fontSize: 14,
+            ),
             filled: true,
             fillColor: formBackground,
             border: OutlineInputBorder(
@@ -639,7 +822,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
             padding: const EdgeInsets.only(top: 7),
             child: Text(
               'Введите не менее $minLength символов',
-              style: const TextStyle(color: textMuted, fontSize: 12),
+              style: const TextStyle(color: textSecondary, fontSize: 12),
             ),
           ),
       ],
@@ -650,17 +833,20 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     required String label,
     required String hint,
     VoidCallback? onTap,
+    String? subtitle,
+    Widget? icon,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(color: textPrimary, fontSize: 14)),
+        Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
         const SizedBox(height: 9),
         GestureDetector(
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: 55,
+            width: double.infinity,
+            padding: const EdgeInsets.only(left: 9, right: 9),
             decoration: BoxDecoration(
               color: formBackground,
               borderRadius: BorderRadius.circular(6),
@@ -668,13 +854,44 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
                 value: null,
-                hint: Text(
-                  hint,
-                  style:
-                      const TextStyle(color: textSecondary, fontSize: 14),
-                ),
-                icon: const Icon(Icons.keyboard_arrow_down,
-                    color: textSecondary),
+                hint: subtitle != null
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 5.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              hint,
+                              style: const TextStyle(
+                                color: Color.fromARGB(255, 255, 255, 255),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: Color(0xFF7A7A7A),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Text(
+                        hint,
+                        style: const TextStyle(
+                          color: Color.fromARGB(255, 255, 255, 255),
+                          fontSize: 14,
+                        ),
+                      ),
+
+                icon:
+                    icon ??
+                    const Text(
+                      'Изменить',
+                      style: TextStyle(color: Color(0xFF009EE2), fontSize: 14),
+                    ),
                 items: const [],
                 onChanged: (_) {
                   // тут позже можно подвязать реальные значения
@@ -703,10 +920,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
       checkColor: Colors.white,
       title: Text(
         title,
-        style: const TextStyle(
-          color: textPrimary,
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: textPrimary, fontSize: 14),
       ),
     );
   }
@@ -719,15 +933,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     return Expanded(
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
-          backgroundColor:
-              isSelected ? activeIconColor : Colors.transparent,
-          side: isSelected
-              ? null
-              : const BorderSide(color: Colors.white),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          backgroundColor: isSelected ? activeIconColor : Colors.transparent,
+          side: isSelected ? null : const BorderSide(color: Colors.white),
+          // padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,
         child: Text(
@@ -750,22 +959,15 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              isPrimary ? activeIconColor : Colors.transparent,
-          side: isPrimary
-              ? null
-              : const BorderSide(color: Colors.white),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          backgroundColor: isPrimary ? activeIconColor : Colors.transparent,
+          side: isPrimary ? null : const BorderSide(color: Colors.white),
+          // padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,
         child: Text(
           text,
-          style: TextStyle(
-            color: isPrimary ? Colors.white : textPrimary,
-          ),
+          style: TextStyle(color: isPrimary ? Colors.white : textPrimary),
         ),
       ),
     );
