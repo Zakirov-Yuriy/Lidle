@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/header.dart';
+import 'add_real_estate_apt_screen.dart';
 
 class RealEstateApartmentsScreen extends StatelessWidget {
   const RealEstateApartmentsScreen({super.key});
@@ -81,7 +82,14 @@ class RealEstateApartmentsScreen extends StatelessWidget {
             style: const TextStyle(color: Colors.white),
           ),
           onTap: () {
-            // TODO: navigate to detailed form or filtered listings
+            if (title == "Продажа квартир") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddRealEstateAptScreen()),
+              );
+            } else {
+              // TODO: handle other cases
+            }
           },
         ),
         const Divider(color: Colors.white24, height: 0.9),
