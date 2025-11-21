@@ -78,6 +78,7 @@ flutter:
     - assets/settings.svg
     - assets/BottomNavigation/
     - assets/profile_dashboard/
+    - assets/categories/
     
 
   # An image asset can refer to one or more resolution-specific "variants", see

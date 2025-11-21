@@ -11,6 +11,7 @@ import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/account_recovery.dart';
+import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/pages/register_screen.dart';
 import 'package:lidle/pages/register_verify_screen.dart';
 import 'package:lidle/pages/account_recovery_code.dart';
@@ -23,6 +24,7 @@ import 'pages/profile_dashboard.dart';
 import 'pages/profile_menu_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing_screen.dart';
+import 'pages/category_selection_screen.dart';
 
 /// Главная функция, точка входа в приложение.
 /// Выполняет асинхронную инициализацию необходимых сервисов.
@@ -64,14 +66,15 @@ class LidleApp extends StatelessWidget {
           create: (context) => PasswordRecoveryBloc(),
         ),
       ],
-      child: MaterialApp( 
+      child: MaterialApp(
         title: appTitle,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           scaffoldBackgroundColor: primaryBackground,
           fontFamily: 'Roboto',
-        ),
-        home: const HomePage(),
+        ), 
+        // home: const HomePage(),
+        home: const RealEstateSubcategoriesScreen(),
 
         routes: {
           SignInScreen.routeName: (context) => const SignInScreen(),
@@ -88,6 +91,7 @@ class LidleApp extends StatelessWidget {
           FiltersScreen.routeName: (context) => const FiltersScreen(),
           FavoritesScreen.routeName: (context) => const FavoritesScreen(),
           AddListingScreen.routeName: (context) => const AddListingScreen(),
+          CategorySelectionScreen.routeName: (context) => const CategorySelectionScreen(),
         },
       ),
     );
