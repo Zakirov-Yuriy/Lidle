@@ -11,7 +11,6 @@ import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/hive_service.dart';
-import 'package:lidle/models/home_models.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 
 class ProfileDashboard extends StatelessWidget {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lidle/pages/real_estate_subcategories_screen.dart';
+import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
 
 import '../constants.dart';
@@ -28,6 +30,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   bool isInstallment = false; // Рассрочка
   bool isRemoteDeal = false; // Удалённая сделка
   bool isClientPrice = false; // Клиент может предложить свою цену
+  bool isAutoRenewal = false; // Автопродление
+  bool isAutoRenewal1 = false;
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -130,8 +134,12 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 hint: 'Продажа квартир',
                 subtitle: 'Недвижимость / Квартиры',
                 onTap: () {
-                  // Если нужно открыть экран выбора категории:
-                  // Navigator.pushNamed(context, '/category-selection');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const RealEstateSubcategoriesScreen(),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 13),
@@ -142,6 +150,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
                 minLength: 70,
                 maxLines: 4,
+                height: 149,
               ),
 
               const SizedBox(height: 24),
@@ -673,14 +682,28 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 18),
 
               // Автопродление
-              
-              const Text(
-                'Автопродление',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const Text(
-                'Обьявление будет деактивирано\n через 30 дней',
-                style: TextStyle(color: textMuted, fontSize: 11),
+              Row(
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Автопродление',
+                        style: TextStyle(color: textPrimary, fontSize: 16),
+                      ),
+                      Text(
+                        'Обьявление будет деактивирано\n через 30 дней',
+                        style: TextStyle(color: textMuted, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+
+                  CustomSwitch(
+                    value: isAutoRenewal,
+                    onChanged: (v) => setState(() => isAutoRenewal = v),
+                  ),
+                ],
               ),
               const SizedBox(height: 18),
 
@@ -793,27 +816,32 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     int maxLines = 1,
     int minLength = 0,
     TextInputType keyboardType = TextInputType.text,
+    double height = 45,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
         const SizedBox(height: 9),
-        TextField(
-          maxLines: maxLines,
-          keyboardType: keyboardType,
-          style: const TextStyle(color: textPrimary),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(
-              color: Color.fromARGB(255, 255, 255, 255),
-              fontSize: 14,
-            ),
-            filled: true,
-            fillColor: formBackground,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(6),
-              borderSide: BorderSide.none,
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: height),
+          child: TextField(
+            minLines: 1,
+            maxLines: maxLines,
+            keyboardType: keyboardType,
+            style: const TextStyle(color: textPrimary),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(
+                color: Color.fromARGB(255, 255, 255, 255),
+                fontSize: 14,
+              ),
+              filled: true,
+              fillColor: formBackground,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(6),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
         ),
@@ -844,7 +872,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
         GestureDetector(
           onTap: onTap,
           child: Container(
-            height: 55,
+            height: 45,
             width: double.infinity,
             padding: const EdgeInsets.only(left: 9, right: 9),
             decoration: BoxDecoration(
@@ -904,26 +932,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     );
   }
 
-  Widget _buildCheckbox({
-    required String title,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return CheckboxListTile(
-      value: value,
-      onChanged: (v) {
-        if (v != null) onChanged(v);
-      },
-      controlAffinity: ListTileControlAffinity.leading,
-      contentPadding: EdgeInsets.zero,
-      activeColor: activeIconColor,
-      checkColor: Colors.white,
-      title: Text(
-        title,
-        style: const TextStyle(color: textPrimary, fontSize: 14),
-      ),
-    );
-  }
 
   Widget _buildChoiceButton(
     String text,
@@ -935,7 +943,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
         style: OutlinedButton.styleFrom(
           backgroundColor: isSelected ? activeIconColor : Colors.transparent,
           side: isSelected ? null : const BorderSide(color: Colors.white),
-          // padding: const EdgeInsets.symmetric(vertical: 12),
+
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,
@@ -961,7 +969,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: isPrimary ? activeIconColor : Colors.transparent,
           side: isPrimary ? null : const BorderSide(color: Colors.white),
-          // padding: const EdgeInsets.symmetric(vertical: 16),
+          minimumSize: const Size.fromHeight(51),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,

@@ -62,21 +62,22 @@ lib/
 ├── models/            # Модели данных
 │   └── home_models.dart  # Модели для главной страницы
 ├── pages/             # UI экраны/страницы
-│   ├── account_recovery_code.dart        # Ввод кода восстановления
-│   ├── account_recovery.dart             # Начало восстановления пароля
-│   ├── account_recovery_new_password.dart # Новый пароль при восстановлении
-│   ├── add_listing_screen.dart           # Добавление нового объявления
-│   ├── category_selection_screen.dart    # Выбор категории
-│   ├── favorites_screen.dart             # Избранные объявления
-│   ├── filters_screen.dart               # Фильтры поиска
-│   ├── home_page.dart                   # Главная страница
-│   ├── profile_dashboard.dart           # Панель пользователя
-│   ├── profile_menu_screen.dart         # Меню профиля
+│   ├── account_recovery_code.dart          # Ввод кода восстановления
+│   ├── account_recovery.dart               # Начало восстановления пароля
+│   ├── account_recovery_new_password.dart   # Новый пароль при восстановлении
+│   ├── add_listing_screen.dart             # Добавление нового объявления
+│   ├── add_real_estate_apt_screen.dart      # Добавление объявления о квартире
+│   ├── category_selection_screen.dart      # Выбор категории
+│   ├── favorites_screen.dart               # Избранные объявления
+│   ├── filters_screen.dart                 # Фильтры поиска
+│   ├── home_page.dart                      # Главная страница
+│   ├── profile_dashboard.dart              # Панель пользователя
+│   ├── profile_menu_screen.dart            # Меню профиля
 │   ├── real_estate_subcategories_screen.dart # Подкатегории недвижимости
-│   ├── real_estate_apartments_screen.dart     # Экран квартир
-│   ├── register_screen.dart              # Регистрация
-│   ├── register_verify_screen.dart       # Подтверждение регистрации
-│   └── sign_in_screen.dart              # Авторизация
+│   ├── real_estate_apartments_screen.dart   # Экран квартир
+│   ├── register_screen.dart                # Регистрация
+│   ├── register_verify_screen.dart         # Подтверждение регистрации
+│   └── sign_in_screen.dart                 # Авторизация
 ├── services/          # Сервисы API и бизнес-логики
 │   ├── api_service.dart  # Основной API сервис
 │   └── auth_service.dart # Сервис аутентификации
@@ -93,20 +94,20 @@ lib/
 └── main.dart         # Точка входа в приложение
 ```
 
+# Стек технологий
+
+| Framework | Language | State Management | Storage & Caching | UI & Styling | HTTP Communication | Testing | Linting | IDE |
+| ---------- | -------- | ----------------- | ----------------- | ------------ | ------------------ | ------- | ------- | --- |
+| ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white) | ![Dart](https://img.shields.io/badge/Dart-00B4AB?logo=dart&logoColor=white) | ![BLoC](https://img.shields.io/badge/BLoC-02569B?logo=flutter&logoColor=white) | ![Hive](https://img.shields.io/badge/Hive-02569B?logo=flutter&logoColor=white) | ![Material Design](https://img.shields.io/badge/Material%20Design-02569B?logo=flutter&logoColor=white) | ![HTTP](https://img.shields.io/badge/HTTP-02569B?logo=dart&logoColor=white) | ![Flutter Test](https://img.shields.io/badge/Flutter%20Test-02569B?logo=flutter&logoColor=white) | ![analysis_options](https://img.shields.io/badge/analysis_options-02569B?logo=dart&logoColor=white) | ![VS Code](https://img.shields.io/badge/VS%20Code-007ACC?logo=visualstudiocode&logoColor=white) |
+
 # Ключевые технологии
 
 - **Flutter**: Кроссплатформенный мобильный фреймворк
+- **Dart**: Язык программирования
 - **BLoC Pattern**: Управление состоянием для предсказуемых обновлений UI
 - **Hive**: NoSQL база данных для локального хранения данных
 - **HTTP**: Коммуникация с REST API
 - **Flutter SVG**: Поддержка векторной графики
-- **Carousel Slider**: Функционал карусели изображений
-- **Form Builder**: Продвинутая валидация форм
-
-# Управление состоянием
-
-Приложение использует множественные BLoC для управления различными аспектами состояния приложения:
-
 - `AuthBloc`: Обрабатывает аутентификацию пользователей и управление сессиями
 - `ListingsBloc`: Управляет данными объявлений маркетплейса
 - `NavigationBloc`: Контролирует состояние нижней навигации

@@ -16,7 +16,6 @@ import '../blocs/listings/listings_event.dart';
 import '../blocs/navigation/navigation_bloc.dart';
 import '../blocs/navigation/navigation_state.dart';
 import '../blocs/navigation/navigation_event.dart';
-import '../pages/favorites_screen.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../pages/filters_screen.dart';
