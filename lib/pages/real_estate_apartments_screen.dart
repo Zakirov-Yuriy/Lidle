@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lidle/widgets/header.dart';
 import 'add_real_estate_apt_screen.dart';
 
 class RealEstateApartmentsScreen extends StatelessWidget {
@@ -13,12 +12,9 @@ class RealEstateApartmentsScreen extends StatelessWidget {
       body: Column(
          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           Padding(
-            padding: const EdgeInsets.only(top: 20.0, bottom: 30),
-            child:  const Header(),
-          ),
+          
           Padding(
-            padding: const EdgeInsets.only(left: 20.0, right: 20),
+            padding: const EdgeInsets.only(left: 10.0, right: 10, top: 20),
             child: Row(
               children: [
                 IconButton(
@@ -49,7 +45,7 @@ class RealEstateApartmentsScreen extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(left: 32.0, right: 32),
+            padding: const EdgeInsets.only(left: 25.0, right: 25),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

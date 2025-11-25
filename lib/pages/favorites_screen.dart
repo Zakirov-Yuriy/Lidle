@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:lidle/widgets/header.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/widgets/sort_filter_dialog.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
@@ -111,15 +110,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         }
       },
       child: Scaffold(
+      extendBody: true,
       backgroundColor: primaryBackground,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
-            const Padding(
-              padding: EdgeInsets.only(bottom: 0.0),
-              child: Header(),
-            ),
-            const SizedBox(height: headerTopPadding),
+            // const Padding(
+            //   padding: EdgeInsets.only(bottom: 0.0),
+            //   child: Header(),
+            // ),
+            // const SizedBox(height: headerTopPadding),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
               child: Row(
@@ -158,7 +159,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 15),
             Expanded(
               child: _favoritedListings.isEmpty
                   ? const Center(
@@ -191,12 +192,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       ),
       bottomNavigationBar: BottomNavigation(
         onItemSelected: (index) {
-          if (index == 4) {
-            // Переход к профилю
-            context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
-          } else {
-            context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
-          }
+          context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
         },
       ),
     ));

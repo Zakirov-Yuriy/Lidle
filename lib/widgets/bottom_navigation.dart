@@ -27,7 +27,7 @@ class BottomNavigation extends StatelessWidget {
         case '/favorites':
           return 1; // Избранное
         case '/profile-dashboard':
-          return 4; // Профиль
+          return 5; // Профиль
         default:
           return 0; // По умолчанию домой
       }
@@ -39,9 +39,9 @@ class BottomNavigation extends StatelessWidget {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(
-          defaultPadding,
+          12,
           0,
-          defaultPadding,
+          12,
           bottomNavPaddingBottom,
         ),
         child: Container(
@@ -59,8 +59,9 @@ class BottomNavigation extends StatelessWidget {
               _buildNavItem(homeIconAsset, 0, selectedIndex),
               _buildNavItem(heartIconAsset, 1, selectedIndex),
               _buildCenterAdd(2, selectedIndex),
-              _buildNavItem(messageIconAsset, 3, selectedIndex),
-              _buildNavItem(userIconAsset, 4, selectedIndex),
+              _buildNavItem(shoppingCartIconAsset, 3, selectedIndex),
+              _buildNavItem(messageIconAsset, 4, selectedIndex),
+              _buildNavItem(userIconAsset, 5, selectedIndex),
             ],
           ),
         ),

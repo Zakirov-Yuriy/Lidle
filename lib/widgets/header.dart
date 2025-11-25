@@ -19,7 +19,6 @@ class Header extends StatelessWidget {
       child: Row(
         children: [
           SvgPicture.asset(logoAsset, height: logoHeight),
-          const Spacer(),
         ],
       ),
     );

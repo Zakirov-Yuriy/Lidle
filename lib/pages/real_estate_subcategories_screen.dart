@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:lidle/widgets/header.dart';
 import 'real_estate_apartments_screen.dart';
 
 class RealEstateSubcategoriesScreen extends StatelessWidget {
@@ -23,18 +22,18 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-           Padding(
-            padding: const EdgeInsets.only(top: 20.0, bottom: 30),
-            child: const Header(),
-          ),
           Padding(
-            padding: const EdgeInsets.only(left: 20.0, right: 20),
+            padding: const EdgeInsets.only(left: 10.0, right: 10, top: 23),
             child: Container(
               color: const Color(0xFF1C2834),
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios, color: Colors.lightBlueAccent, size: 18),
+                    icon: const Icon(
+                      Icons.arrow_back_ios,
+                      color: Colors.lightBlueAccent,
+                      size: 16,
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                   const Text(
@@ -62,7 +61,7 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
             ),
           ),
           const Padding(
-            padding: const EdgeInsets.only(left: 32.0, right: 32),
+            padding: const EdgeInsets.only(left: 25.0, right: 25),
             child: Text(
               'Категория: Недвижимость',
               style: TextStyle(
@@ -74,7 +73,7 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
+              padding: const EdgeInsets.symmetric(horizontal: 25.0),
               child: ListView.builder(
                 itemCount: subcategories.length + 1,
                 itemBuilder: (context, index) {
@@ -86,18 +85,25 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
                             subcategories[index],
                             style: const TextStyle(color: Colors.white),
                           ),
-                          trailing: const Icon(Icons.chevron_right, color: Colors.white70),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: Colors.white70,
+                          ),
                           onTap: () {
                             if (subcategories[index] == 'Квартиры') {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const RealEstateApartmentsScreen()),
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const RealEstateApartmentsScreen(),
+                                ),
                               );
                             }
                             // Навигация или логика выбора подкатегории для других элементов
                           },
                         ),
-                        if (index < subcategories.length - 1) const Divider(color: Colors.white24, height: 1),
+                        if (index < subcategories.length - 1)
+                          const Divider(color: Colors.white24, height: 1),
                       ],
                     );
                   } else {

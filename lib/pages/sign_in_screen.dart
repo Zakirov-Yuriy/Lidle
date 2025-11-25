@@ -60,13 +60,13 @@ class _SignInScreenState extends State<SignInScreen> {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 76.0),
+                  padding: const EdgeInsets.only(bottom: 18.0, left: 3),
                   child: const Header(),
                 ),
 
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(31, 0, 31, 0),
+                    padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
                     child: FormBuilder(
                       key: _formKey,
                       child: Column(
@@ -81,30 +81,21 @@ class _SignInScreenState extends State<SignInScreen> {
                                 fontWeight: FontWeight.w700,
                               ),
                               children: const [
-                                TextSpan(text: 'Вы уже почти в  '),
-                                TextSpan(
-                                  text: 'LIDLE',
-
-                                  style: TextStyle(
-                                    letterSpacing: 1.1,
-                                    fontWeight: FontWeight.w400,
-                                    fontFamily: 'BebasNeue',
-                                    fontSize: 36,
-                                  ),
-                                ),
+                                TextSpan(text: 'Вы уже почти с нами'),
+                                
                               ],
                             ),
                           ),
                           const SizedBox(height: 11),
                           const Text(
-                            'Выберите способ входа',
+                            'Введите личные данные',
                             style: TextStyle(
                               color: textMuted,
                               fontSize: 16,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 17),
 
                           const _FieldLabel('Электронная почта'),
                           const SizedBox(height: 9),
@@ -168,7 +159,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             ],
                           ),
 
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 12),
 
                           SizedBox(
                             width: double.infinity,
@@ -267,7 +258,7 @@ class _SignInScreenState extends State<SignInScreen> {
   static final _linkStyle = TextButton.styleFrom(
     foregroundColor: activeIconColor,
     padding: EdgeInsets.zero,
-    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+    textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
   );
 }
 

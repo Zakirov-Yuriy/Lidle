@@ -69,11 +69,15 @@ class _SortFilterDialogState extends State<SortFilterDialog> {
           _buildCheckbox('Дорогие', SortOption.mostExpensive),
           const SizedBox(height: 23),
           _buildCheckbox('Дешевые', SortOption.cheapest),
-          const SizedBox(height: 30),
+          const SizedBox(height: 60),
+          
+          
         ],
+        
       ),
     );
   }
+  
 
   Widget _buildCheckbox(String title, SortOption option) {
     return Padding(

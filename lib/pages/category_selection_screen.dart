@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/header.dart';
 import 'real_estate_subcategories_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {
@@ -45,12 +44,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 39.0, bottom: 20),
-            child: const Header(),
-          ),
+          
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             child: Row(
               children: [
                 IconButton(
@@ -59,7 +55,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                   icon: const Icon(
                     Icons.arrow_back_ios,
 
-                    size: 18,
+                    size: 16,
                     color: Color(0xFF009EE2),
                   ),
                   onPressed: () => Navigator.of(context).pop(),
@@ -76,7 +72,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
             ),
           ),
           const Padding(
-            padding: EdgeInsets.only(bottom: 10, left: 23),
+            padding: EdgeInsets.only(bottom: 10, left: 25),
             child: Text(
               'Все предложения на LIDLE',
               style: TextStyle(
@@ -88,7 +84,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           ),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.only(left: 23, bottom: 106),
+              padding: const EdgeInsets.only(left: 25, bottom: 106),
 
               itemCount: categories.length,
               itemBuilder: (context, index) {

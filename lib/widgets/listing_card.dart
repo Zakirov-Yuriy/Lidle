@@ -59,7 +59,7 @@ class _ListingCardState extends State<ListingCard> {
               width: double.infinity,
               height: imageHeight,
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(8 * scale),
+                borderRadius: BorderRadius.circular(5 * scale),
                 child: Image.asset(
                   widget.listing.imagePath,
                   fit: BoxFit.cover,
@@ -77,7 +77,7 @@ class _ListingCardState extends State<ListingCard> {
               ),
             ),
 
-            SizedBox(height: 8 * scale),
+            SizedBox(height: 2 * scale),
 
             Expanded(
               child: Column(

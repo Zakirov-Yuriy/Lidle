@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
@@ -90,25 +89,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
           backgroundColor: primaryBackground,
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: const EdgeInsets.symmetric(horizontal: 25),
             child: FormBuilder(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 41.0,
-                        top: 44.0,
-                        bottom: 35.0,
-                      ),
-                      child: Row(
-                        children: [
-                          SvgPicture.asset(logoAsset, height: logoHeight),
-                          const Spacer(),
-                        ],
-                      ),
-                    ),
+                    // Padding(
+                    //   padding: const EdgeInsets.only(
+                    //     left: 41.0,
+                    //     top: 44.0,
+                    //     bottom: 35.0,
+                    //   ),
+                    //   child: Row(
+                    //     children: [
+                    //       SvgPicture.asset(logoAsset, height: logoHeight),
+                    //       const Spacer(),
+                    //     ],
+                    //   ),
+                    // ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -117,7 +116,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(24),
                           child: const Row(
                             children: [
-                              Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
+                              Icon(Icons.chevron_left_rounded, color: Color(0xFF60A5FA)),
                               Text(
                                 'Назад',
                                 style: TextStyle(
@@ -142,21 +141,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    
+                    // const SizedBox(height: 11),
                     const Text(
-                      'Вы уже почти в LIDLE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 24,
-                      ),
-                    ),
-                    const SizedBox(height: 11),
-                    const Text(
-                      'Выберите способ входа',
+                      'Введите личные данные',
                       style: TextStyle(color: textSecondary, fontSize: 16),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     _buildTextField(
                       'name',
                       'Ваше имя',
@@ -191,11 +182,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validators: [
                         FormBuilderValidators.required(errorText: 'Пожалуйста, введите номер телефона'),
                         FormBuilderValidators.minLength(10, errorText: 'Пожалуйста, введите корректный номер телефона'),
-                      ],
+                      ],                 
                     ),
                     _buildPasswordField('password', 'Пароль', 'Введите', true),
                     _buildPasswordField('passwordConfirmation', 'Повторите пароль', 'Введите', false),
-                    const SizedBox(height: 27),
+                    const SizedBox(height:10),
                     _buildCheckBox(
                       value: agreeTerms,
                       text: RichText(
@@ -235,7 +226,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(color: Colors.white70, fontSize: 16),
                           children: [
                             TextSpan(
-                              text: 'Рекламную ',
+                              text: 'Рекламную \n',
                               style: TextStyle(
                                 color: Color(0xFF38BDF8),
                                 fontSize: 16,
@@ -246,9 +237,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
-                              text: '\nИнформационную рассылку',
+                              text: 'Информационную рассылку',
                               style: TextStyle(
-                                color: Color.fromARGB(255, 248, 110, 56),
+                                color: Color(0xFF38BDF8),
                                 fontSize: 16,
                               ),
                             ),
@@ -259,13 +250,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 25),
                     SizedBox(
-                      width: double.infinity,
+                      width: double.infinity,   
                       height: 53,
                       child: ElevatedButton(
                         onPressed: (agreeTerms && state is! AuthLoading) ? _trySubmit : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: state is AuthLoading ? Colors.grey : primaryBlue,
-                          disabledBackgroundColor: Colors.grey,
+                          backgroundColor: state is AuthLoading ? primaryBlue : primaryBlue,
+                          disabledBackgroundColor: primaryBlue,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -286,11 +277,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w400,
+                                  color: Colors.white
                                 ),
                               ),
                       ),
                     ),
-                    const SizedBox(height: 77),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),

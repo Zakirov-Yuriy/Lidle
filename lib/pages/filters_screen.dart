@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:lidle/constants.dart';
 
 class FiltersScreen extends StatefulWidget {
@@ -47,20 +46,20 @@ class _FiltersScreenState extends State<FiltersScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 72.0,
-                  top: 44.0,
-                  bottom: 35.0,
-                ),
-                child: Row(
-                  children: [SvgPicture.asset(logoAsset, height: logoHeight)],
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.only(
+              //     left: 72.0,
+              //     top: 44.0,
+              //     bottom: 35.0,
+              //   ),
+              //   child: Row(
+              //     children: [SvgPicture.asset(logoAsset, height: logoHeight)],
+              //   ),
+              // ),
 
               // ШАПКА: X  |  Фильтры   |  Сбросить
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: Row(
                   children: [
                     Padding(
@@ -73,7 +72,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           padding: EdgeInsets.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        splashRadius: 18,
+                        // splashRadius: 18,
                       ),
                     ),
                     
@@ -102,11 +101,11 @@ class _FiltersScreenState extends State<FiltersScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 10),
 
               // Категории + тег "Недвижимость"
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: const Text(
                   'Категории',
                   style: TextStyle(
@@ -118,7 +117,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               ),
               const SizedBox(height: 12),
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -131,7 +130,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               // Выбор города
               const SizedBox(height: 11),
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: const Text(
                   'Выберете город',
                   style: TextStyle(color: Colors.white, fontSize: 16),
@@ -139,7 +138,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               ),
               const SizedBox(height: 9),
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: _PickField(
                   label: _city ?? 'Выберите город',
                   onTap: () async {
@@ -152,7 +151,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
 
               // Выбор категории
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: const Text(
                   'Выберите категорию',
                   style: TextStyle(color: Colors.white, fontSize: 15),
@@ -160,7 +159,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               ),
               const SizedBox(height: 9),
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: _PickField(
                   label: _category ?? 'Выберите категорию',
                   onTap: () async {
@@ -173,7 +172,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
 
               // Сортировка
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: const Text(
                   'Сортировка',
                   style: TextStyle(color: Colors.white, fontSize: 15),
@@ -181,7 +180,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               ),
               const SizedBox(height: 12),
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: Column(
                   children: [
                     Row(
@@ -229,11 +228,11 @@ class _FiltersScreenState extends State<FiltersScreen> {
               ),
               const SizedBox(height: 20),
               const Divider(color: Color(0xFF474747)),
-              const SizedBox(height: 14),
+              // const SizedBox(height: 14),
 
               // Частное лицо / Бизнес
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: const Text(
                   'Частное лицо / Бизнес',
                   style: TextStyle(color: Colors.white, fontSize: 15),
@@ -241,7 +240,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
               ),
               const SizedBox(height: 12),
               Padding(
-                padding: const EdgeInsets.only(left: 31.0, right: 31.0),
+                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: Row(
                   children: [
                     Flexible(
@@ -284,9 +283,9 @@ class _FiltersScreenState extends State<FiltersScreen> {
       // Кнопка "Показать" на низу
       bottomNavigationBar: Padding(
         padding: EdgeInsets.fromLTRB(
-          31,
+          25,
           0,
-          31,
+          25,
           43 + MediaQuery.of(context).padding.bottom,
         ),
         child: SizedBox(

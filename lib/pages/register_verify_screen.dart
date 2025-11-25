@@ -4,7 +4,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
@@ -29,21 +28,28 @@ class RegisterVerifyScreen extends StatefulWidget {
 class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
+
   /// Контроллер для текстового поля "Код".
   final _codeCtrl = TextEditingController();
+
   /// Контроллер для текстового поля "Электронная почта".
   final _emailCtrl = TextEditingController();
+
   /// Контроллер для текстового поля "Телефон".
   final _phoneCtrl = TextEditingController();
 
   /// Продолжительность кулдауна перед повторной отправкой кода.
   static const _cooldown = Duration(seconds: 40);
+
   /// Таймер для отправки кода на электронную почту.
   Timer? _emailTimer;
+
   /// Таймер для отправки кода на телефон.
   Timer? _phoneTimer;
+
   /// Оставшееся время до возможности повторной отправки кода на почту.
   Duration _emailLeft = Duration.zero;
+
   /// Оставшееся время до возможности повторной отправки кода на телефон.
   Duration _phoneLeft = Duration.zero;
 
@@ -71,7 +77,9 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     if (_phoneCtrl.text.isEmpty) return;
 
     // Отправляем событие отправки кода в AuthBloc
-    context.read<AuthBloc>().add(SendCodeEvent(email: _phoneCtrl.text)); // Note: API may not support phone, using as email for now
+    context.read<AuthBloc>().add(
+      SendCodeEvent(email: _phoneCtrl.text),
+    ); // Note: API may not support phone, using as email for now
     _startPhoneTimer();
   }
 
@@ -109,26 +117,23 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   void _verify() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите код')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Введите код')));
       return;
     }
 
     String email = _emailCtrl.text.trim();
 
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Введите email')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Введите email')));
       return;
     }
 
     // Отправляем событие верификации в AuthBloc
-    context.read<AuthBloc>().add(VerifyEmailEvent(
-      email: email,
-      code: code,
-    ));
+    context.read<AuthBloc>().add(VerifyEmailEvent(email: email, code: code));
   }
 
   /// Форматирует объект [Duration] в строку "MM:SS".
@@ -144,162 +149,151 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthCodeSent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Код отправлен')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Код отправлен')));
         } else if (state is AuthEmailVerified) {
           // Успешная верификация - переходим на экран входа
           Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка: ${state.message}')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Ошибка: ${state.message}')));
         }
       },
       builder: (context, state) {
         return Scaffold(
-      resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 60, top: 44),
-                  child: Row(
-                    children: [
-                      SvgPicture.asset(logoAsset, height: logoHeight),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 38),
-
-                Row(
+          resizeToAvoidBottomInset: true,
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    InkWell(
-                      onTap: () => Navigator.maybePop(context),
-                      borderRadius: BorderRadius.circular(24),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.chevron_left, color: Color(0xFF60A5FA)),
-                          SizedBox(width: 8),
-                          Text('Назад',
-                              style: TextStyle(
-                                  color: Color(0xFF60A5FA), fontSize: 16)),
-                        ],
+                    // const SizedBox(height: 23),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        InkWell(
+                          onTap: () => Navigator.maybePop(context),
+                          borderRadius: BorderRadius.circular(24),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.chevron_left,
+                                color: Color(0xFF60A5FA),
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Назад',
+                                style: TextStyle(
+                                  color: Color(0xFF60A5FA),
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.maybePop(context),
+                          child: const Text(
+                            'Отмена',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Color(0xFF60A5FA),
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Введите номер телефона или электронную почту\nдля отправки кода',
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 15,
+                        height: 1.3,
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.maybePop(context),
+                    const SizedBox(height: 7),
+
+                    _CodeField(controller: _codeCtrl),
+                    const SizedBox(height: 13),
+
+                    _SendCodeField(
+                      label: 'Электронная почта',
+                      hint: 'Введите почту',
+                      controller: _emailCtrl,
+                      keyboard: TextInputType.emailAddress,
+                      canSend: _emailLeft == Duration.zero,
+                      onSend: _sendEmailCode,
+                    ),
+                    const SizedBox(height: 8),
+                    _CooldownText(
+                      visible: _emailLeft > Duration.zero,
+                      text: _fmt(_emailLeft),
+                    ),
+                    const SizedBox(height: 12),
+
+                    _SendCodeField(
+                      label: 'Телефон',
+                      hint: 'Введите телефон',
+                      controller: _phoneCtrl,
+                      keyboard: TextInputType.phone,
+                      canSend: _phoneLeft == Duration.zero,
+                      onSend: _sendPhoneCode,
+                    ),
+                    const SizedBox(height: 8),
+                    _CooldownText(
+                      visible: _phoneLeft > Duration.zero,
+                      text: _fmt(_phoneLeft),
+                    ),
+
+                    // const SizedBox(height: 120),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          bottomNavigationBar: Builder(
+            builder: (context) {
+              return AnimatedPadding(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.fromLTRB(25, 12, 25, 48),
+                child: SafeArea(
+                  top: false,
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 53,
+                    child: ElevatedButton(
+                      onPressed: _verify,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: activeIconColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
                       child: const Text(
-                        'Отмена',
+                        'Подтвердить',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Color(0xFF60A5FA),
                           fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 52),
-
-                const Text(
-                  'Регистрация в LIDLE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 24,
                   ),
                 ),
-                const SizedBox(height: 9),
-                const Text(
-                  'Введите номер телефона или электронную почту\nдля отправки кода',
-                  style: TextStyle(color: textSecondary, fontSize: 16, height: 1.3),
-                ),
-                const SizedBox(height: 17),
-
-                _CodeField(
-                  controller: _codeCtrl,
-                ),
-                const SizedBox(height: 18),
-
-                _SendCodeField(
-                  label: 'Электронная почта',
-                  hint: 'Введите почту',
-                  controller: _emailCtrl,
-                  keyboard: TextInputType.emailAddress,
-                  canSend: _emailLeft == Duration.zero,
-                  onSend: _sendEmailCode,
-                ),
-                const SizedBox(height: 8),
-                _CooldownText(
-                  visible: _emailLeft > Duration.zero,
-                  text: _fmt(_emailLeft),
-                ),
-                const SizedBox(height: 17),
-
-                _SendCodeField(
-                  label: 'Телефон',
-                  hint: 'Введите телефон',
-                  controller: _phoneCtrl,
-                  keyboard: TextInputType.phone,
-                  canSend: _phoneLeft == Duration.zero,
-                  onSend: _sendPhoneCode,
-                ),
-                const SizedBox(height: 8),
-                _CooldownText(
-                  visible: _phoneLeft > Duration.zero,
-                  text: _fmt(_phoneLeft),
-                ),
-
-                const SizedBox(height: 120),
-              ],
-            ),
+              );
+            },
           ),
-        ),
-      ),
-
-      bottomNavigationBar: Builder(
-        builder: (context) {
-          final insets = MediaQuery.of(context).viewInsets.bottom;
-          final safe = MediaQuery.of(context).padding.bottom;
-          final bottomOffset = (insets > 0) ? insets + 16 : 66 + safe;
-
-          return AnimatedPadding(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOut,
-            padding: EdgeInsets.fromLTRB(32, 12, 32, bottomOffset),
-            child: SafeArea(
-              top: false,
-              child: SizedBox(
-                width: double.infinity,
-                height: 53,
-                child: ElevatedButton(
-                  onPressed: _verify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: activeIconColor,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                  ),
-                  child: const Text(
-                    'Подтвердить',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
         );
       },
     );
@@ -313,9 +307,7 @@ class _CodeField extends StatelessWidget {
   final TextEditingController controller;
 
   /// Конструктор для `_CodeField`.
-  const _CodeField({
-    required this.controller,
-  });
+  const _CodeField({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -330,7 +322,10 @@ class _CodeField extends StatelessWidget {
           hintStyle: const TextStyle(color: textMuted),
           filled: true,
           fillColor: secondaryBackground,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 18,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(5),
             borderSide: BorderSide.none,
@@ -347,14 +342,19 @@ class _CodeField extends StatelessWidget {
 class _SendCodeField extends StatelessWidget {
   /// Метка для текстового поля (например, "Электронная почта").
   final String label;
+
   /// Подсказка в поле ввода.
   final String hint;
+
   /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
+
   /// Тип клавиатуры для ввода.
   final TextInputType keyboard;
+
   /// Флаг, указывающий, можно ли отправить код (таймер не активен).
   final bool canSend;
+
   /// Callback-функция для отправки кода.
   final VoidCallback onSend;
 
@@ -378,8 +378,7 @@ class _SendCodeField extends StatelessWidget {
           minimumSize: const Size(0, 0),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          foregroundColor:
-              canSend ? activeIconColor : Colors.white38,
+          foregroundColor: canSend ? activeIconColor : Colors.white38,
         ),
         child: const Text('Отправить код', style: TextStyle(fontSize: 14)),
       ),
@@ -393,19 +392,22 @@ class _SendCodeField extends StatelessWidget {
         style: const TextStyle(color: Colors.white, fontSize: 14),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle:
-              const TextStyle(color: textMuted),
+          hintStyle: const TextStyle(color: textMuted),
           filled: true,
           fillColor: secondaryBackground,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 18,
+          ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(5),
             borderSide: BorderSide.none,
           ),
           suffixIcon: suffix,
-          suffixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
         ),
       ),
     );
@@ -417,6 +419,7 @@ class _SendCodeField extends StatelessWidget {
 class _CooldownText extends StatelessWidget {
   /// Флаг, указывающий, должен ли текст быть видимым.
   final bool visible;
+
   /// Текст для отображения (отформатированное время).
   final String text;
 
@@ -428,14 +431,15 @@ class _CooldownText extends StatelessWidget {
     if (!visible) return const SizedBox(height: 20);
     return RichText(
       text: TextSpan(
-        style: const TextStyle(
-            fontSize: 14, color: textSecondary),
+        style: const TextStyle(fontSize: 14, color: textSecondary),
         children: [
           const TextSpan(text: 'Осталось: '),
           TextSpan(
             text: text,
             style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w600),
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -448,6 +452,7 @@ class _CooldownText extends StatelessWidget {
 class _Labeled extends StatelessWidget {
   /// Метка для поля ввода.
   final String label;
+
   /// Дочерний виджет (обычно TextField).
   final Widget child;
 
@@ -461,9 +466,11 @@ class _Labeled extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: const TextStyle(color: Colors.white, fontSize: 16)),
-          const SizedBox(height: 6),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          const SizedBox(height: 9),
           child,
         ],
       ),

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
@@ -57,7 +58,7 @@ class LidleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+        BlocProvider<AuthBloc>(create: (context) => AuthBloc()..add(const CheckAuthStatusEvent())),
         BlocProvider<ListingsBloc>(create: (context) => ListingsBloc()),
         BlocProvider<NavigationBloc>(create: (context) => NavigationBloc()),
         BlocProvider<ProfileBloc>(create: (context) => ProfileBloc()),
@@ -73,6 +74,7 @@ class LidleApp extends StatelessWidget {
           fontFamily: 'Roboto',
         ), 
         home: const HomePage(),
+    
         
 
         routes: {

@@ -36,15 +36,18 @@ class _AddListingScreenState extends State<AddListingScreen> {
               Row(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 41, bottom: 28),
+                    padding: const EdgeInsets.only(left: 3, bottom: 20),
                     child: SvgPicture.asset(logoAsset, height: logoHeight),
                   ),
                   const Spacer(),
                 ],
               ),
               Row(
-                children: const [
-                  Icon(Icons.close, color: textPrimary),
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Icon(Icons.close, color: textPrimary),
+                  ),
                   SizedBox(width: 13),
                   Text(
                     'Создайте объявление',
@@ -56,14 +59,15 @@ class _AddListingScreenState extends State<AddListingScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 17),
-
-              const Text(
-                'Опишите товар или услугу',
-                style: TextStyle(color: textPrimary, fontSize: 16),
+              SizedBox(height: 15),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 17.0),
+                child: const Text(
+                  'Опишите товар или услугу',
+                  style: TextStyle(color: textPrimary, fontSize: 16),
+                 
+                ),
               ),
-              const SizedBox(height: 17),
-
               // Блок добавления изображений
               GestureDetector(
                 onTap: () {

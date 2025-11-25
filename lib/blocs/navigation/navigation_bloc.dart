@@ -104,6 +104,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             _navigateToAddListing();
             break;
           case 4:
+             emit(const NavigationToProfile());
+            _navigateToProfile();
+            break;
+          case 5:
             emit(const NavigationToProfile());
             _navigateToProfile();
             break;

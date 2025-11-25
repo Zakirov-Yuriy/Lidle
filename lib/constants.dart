@@ -12,10 +12,10 @@ const Color textPrimary = Colors.white;
 const Color textSecondary = Color(0xFF9BA5B0);
 const Color textMuted = Color(0xFF6B7684);
 
-const double defaultPadding = 31.0;
-const double headerTopPadding = 44.0;
-const double headerBottomPadding = 37.0;
-const double headerLeftPadding = 72.0;
+const double defaultPadding = 25.0;
+const double headerTopPadding = 19.0;
+const double headerBottomPadding = 12.0;
+const double headerLeftPadding = 23.0;
 
 const double logoHeight = 20.0;
 const double searchBarHeight = 48.0;
@@ -23,7 +23,7 @@ const double categoryCardWidth = 115.0;
 const double categoryCardHeight = 83.0;
 const double listingCardSpacing = 16.0;
 const double bottomNavHeight = 57.0;
-const double bottomNavPaddingBottom = 17.0;
+const double bottomNavPaddingBottom = 0.0;
 
 const String appTitle = 'LIDLE';
 const String searchPlaceholder = 'Поиск';
@@ -36,5 +36,6 @@ const String settingsIconAsset = 'assets/settings.svg';
 const String homeIconAsset = 'assets/BottomNavigation/home-02.png';
 const String heartIconAsset = 'assets/BottomNavigation/heart-rounded.png';
 const String plusIconAsset = 'assets/BottomNavigation/plus-circle.png';
+const String shoppingCartIconAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 const String messageIconAsset = 'assets/BottomNavigation/message-circle-01.png';
 const String userIconAsset = 'assets/BottomNavigation/user-01.png';

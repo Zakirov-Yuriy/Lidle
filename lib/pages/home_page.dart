@@ -3,6 +3,7 @@
 /// и нижнюю навигационную панель.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 import '../models/home_models.dart';
 import '../widgets/header.dart';
@@ -56,15 +57,40 @@ class _HomePageState extends State<HomePage> {
                 extendBody: true,
                 backgroundColor: primaryBackground,
                 body: SafeArea(
-                  bottom: true,
+                  bottom: false,
                   child: Column(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 35.0),
-                        child: Header(),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 21, right: 23),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Header(),
+                            const Spacer(),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 15.0),
+                              child: SvgPicture.asset(
+                                'assets/home_page/marker-pin.svg',
+                                width: 20,
+                                height: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 7),
+                            Padding(
+                              padding: const EdgeInsets.only(top: 15.0),
+                              child: const Text(
+                                'г. Мариуполь. ДНР',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFFAAAAAA),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 19.0),
+                        padding: const EdgeInsets.only( left: 7.0, right: 11.0),
                         child: BlocBuilder<AuthBloc, AuthState>(
                           builder: (context, authState) {
                             return custom_widgets.SearchBarWidget(
@@ -95,7 +121,6 @@ class _HomePageState extends State<HomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _buildCategoriesSection(listingsState),
-                              const SizedBox(height: 25),
                               _buildLatestSection(listingsState),
                               SizedBox(height: 10),
                             ],
@@ -189,7 +214,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
           child: Row(
             children: [
               Expanded(
@@ -222,16 +247,19 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        const SizedBox(height: 19),
-        SizedBox(
-          height: 85,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: categories.length,
-            itemBuilder: (context, index) {
-              return CategoryCard(category: categories[index]);
-            },
+        const SizedBox(height: 10),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 20.0),
+          child: SizedBox(
+            height: 85,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                return CategoryCard(category: categories[index]);
+              },
+            ),
           ),
         ),
 
@@ -244,10 +272,10 @@ class _HomePageState extends State<HomePage> {
   Widget _buildLatestSection(ListingsState state) {
     if (state is ListingsLoading) {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        // crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               latestTitle,
               style: const TextStyle(
@@ -275,7 +303,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               latestTitle,
               style: const TextStyle(
@@ -340,56 +368,58 @@ class _HomePageState extends State<HomePage> {
                 ? state.filteredListings
             : <Listing>[];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
-          child: Text(
-            latestTitle,
-            style: const TextStyle(
-              color: textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 81.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              latestTitle,
+              style: const TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final itemWidth =
-                (constraints.maxWidth -
-                    defaultPadding -
-                    defaultPadding -
-                    listingCardSpacing) /
-                2;
-            double tileHeight = 263;
-            if (itemWidth < 170) tileHeight = 275;
-            if (itemWidth < 140) tileHeight = 300;
-
-            return GridView.builder(
-              padding: const EdgeInsets.only(
-                left: defaultPadding,
-                right: defaultPadding,
-                bottom: 75,
-              ),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: listingCardSpacing,
-                mainAxisSpacing: listingCardSpacing,
-                mainAxisExtent: tileHeight,
-              ),
-              itemCount: listings.length,
-              itemBuilder: (context, index) {
-                return ListingCard(listing: listings[index]);
-              },
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-            );
-          },
-        ),
-
-      ],
+          const SizedBox(height: 10),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth =
+                  (constraints.maxWidth -
+                      12 -
+                      12 -
+                      9) /
+                  2;
+              double tileHeight = 263;
+              if (itemWidth < 170) tileHeight = 275;
+              if (itemWidth < 140) tileHeight = 300;
+      
+              return GridView.builder(
+                padding: const EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                ),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 9,
+                  mainAxisSpacing: 0,
+                  mainAxisExtent: tileHeight,
+                ),
+                itemCount: listings.length,
+                itemBuilder: (context, index) {
+                  return ListingCard(listing: listings[index]);
+                },
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+              );
+            },
+          ),
+      
+        ],
+      ),
     );
   }
 }

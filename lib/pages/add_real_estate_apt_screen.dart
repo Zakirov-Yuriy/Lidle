@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
@@ -16,6 +19,81 @@ class AddRealEstateAptScreen extends StatefulWidget {
 }
 
 class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
+  List<File> _images = [];
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage(ImageSource source) async {
+    final pickedFile = await _picker.pickImage(source: source);
+    if (pickedFile != null) {
+      setState(() {
+        _images.add(File(pickedFile.path));
+      });
+    }
+  }
+
+  void _showImageSourceActionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF232E3C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 43.0),
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 30.0),
+                child: Column(
+                  children: <Widget>[
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: SvgPicture.asset(
+                        'assets/showImageSourceActionSheet/camera-01.svg',
+                      ),
+                      title: const Text(
+                        'Сделать фотографию',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        _pickImage(ImageSource.camera);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: SvgPicture.asset(
+                        'assets/showImageSourceActionSheet/image-01.svg',
+                      ),
+                      title: const Text(
+                        'Загрузить фотографию',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        _pickImage(ImageSource.gallery);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],          ),
+        );
+      },
+    );
+  }
+
   // Переключатели
   bool isIndividualSelected = true; // Частное лицо / Бизнес
   bool isSecondarySelected = true; // Вторичка / Новостройка
@@ -51,27 +129,24 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(defaultPadding),
+          padding: const EdgeInsets.symmetric(
+            horizontal: defaultPadding,
+            vertical: 19,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Логотип
-              Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 41, bottom: 44),
-                    child: SvgPicture.asset(logoAsset, height: logoHeight),
-                  ),
-                  const Spacer(),
-                ],
-              ),
+              
 
               // Заголовок
               Row(
-                children: const [
-                  Icon(Icons.close, color: textPrimary),
-                  SizedBox(width: 13),
-                  Text(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close, color: textPrimary),
+                  ),
+                  const SizedBox(width: 13),
+                  const Text(
                     'Создайте объявление',
                     style: TextStyle(
                       color: textPrimary,
@@ -93,7 +168,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               // Добавить изображение
               GestureDetector(
                 onTap: () {
-                  // TODO: реализовать загрузку изображений
+                  _showImageSourceActionSheet(context);
                 },
                 child: Container(
                   height: 118,
@@ -101,19 +176,41 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     color: secondaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.add_a_photo_outlined, color: textSecondary),
-                        SizedBox(height: 10),
-                        Text(
-                          'Добавить изображение',
-                          style: TextStyle(color: textSecondary, fontSize: 16),
+                  child: _images.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.add_a_photo_outlined,
+                                color: textSecondary,
+                              ),
+                              SizedBox(height: 10),
+                              Text(
+                                'Добавить изображение',
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : GridView.builder(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 4,
+                                crossAxisSpacing: 4,
+                                mainAxisSpacing: 4,
+                              ),
+                          itemCount: _images.length,
+                          itemBuilder: (context, index) {
+                            return Image.file(
+                              _images[index],
+                              fit: BoxFit.cover,
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                  ),
                 ),
               ),
               const SizedBox(height: 13),
@@ -137,7 +234,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const RealEstateSubcategoriesScreen(),
+                      builder: (context) =>
+                          const RealEstateSubcategoriesScreen(),
                     ),
                   );
                 },
@@ -931,7 +1029,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
       ],
     );
   }
-
 
   Widget _buildChoiceButton(
     String text,

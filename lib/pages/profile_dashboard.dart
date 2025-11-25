@@ -10,6 +10,10 @@ import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/pages/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 
@@ -23,12 +27,18 @@ class ProfileDashboard extends StatelessWidget {
     // Загружаем профиль при первом построении
     context.read<ProfileBloc>().add(LoadProfileEvent());
 
-    return BlocListener<ProfileBloc, ProfileState>(
+    return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is ProfileLoggedOut) {
-          Navigator.of(context).pushReplacementNamed('/');
+        if (state is AuthInitial || state is AuthLoggedOut) {
+          Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
         }
       },
+      child: BlocListener<ProfileBloc, ProfileState>(
+        listener: (context, state) {
+          if (state is ProfileLoggedOut) {
+            Navigator.of(context).pushReplacementNamed('/');
+          }
+        },
       child: BlocListener<NavigationBloc, NavigationState>(
         listener: (context, state) {
           if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites) {
@@ -39,28 +49,30 @@ class ProfileDashboard extends StatelessWidget {
         builder: (context, navigationState) {
           return BlocBuilder<ProfileBloc, ProfileState>(
             builder: (context, profileState) {
-              return Scaffold(
+            return Scaffold(
+                extendBody: true,
                 backgroundColor: primaryBackground,
                 body: SafeArea(
+                  bottom: false,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 31),
+                    padding: const EdgeInsets.symmetric(horizontal: 21, vertical: 15),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ЛОГО
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            left: 41.0,
-                            top: 44.0,
-                            bottom: 35.0,
-                          ),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(logoAsset, height: logoHeight),
-                              const Spacer(),
-                            ],
-                          ),
-                        ),
+                        // // ЛОГО
+                        // Padding(
+                        //   padding: const EdgeInsets.only(
+                        //     left: 41.0,
+                        //     top: 44.0,
+                        //     bottom: 35.0,
+                        //   ),
+                        //   child: Row(
+                        //     children: [
+                        //       SvgPicture.asset(logoAsset, height: logoHeight),
+                        //       const Spacer(),
+                        //     ],
+                        //   ),
+                        // ),
 
                         // Хедер профиля (аватар + имя + ID)
                         _ProfileHeader(
@@ -120,6 +132,7 @@ class ProfileDashboard extends StatelessWidget {
                         GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.zero,
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
                             crossAxisSpacing: 12,
@@ -134,7 +147,10 @@ class ProfileDashboard extends StatelessWidget {
                               ('Поддержка VSETUT', 'Сообщения: Нет', false),
                               ('Предложения цен', 'Сообщения: 2 + 1', true),
                             ];
-                            final (title, subtitle, highlight) = items[index];
+                            final item = items[index];
+                            final title = item.$1;
+                            final subtitle = item.$2;
+                            final highlight = item.$3;
                             return _MessageCard(
                               title: title,
                               subtitle: subtitle,
@@ -142,15 +158,14 @@ class ProfileDashboard extends StatelessWidget {
                             );
                           },
                         ),
-
-                        const SizedBox(height: 41),
+                        const SizedBox(height: 24),
 
                         // Кнопка выхода нужна для тестов
                         SizedBox(
                           width: double.infinity,
-                          height: 53,
+                          // height: 53,
                           child: ElevatedButton(
-                            onPressed: () => context.read<ProfileBloc>().add(LogoutProfileEvent()),
+                            onPressed: () => context.read<AuthBloc>().add(const LogoutEvent()),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.redAccent,
                               foregroundColor: Colors.white,
@@ -158,6 +173,8 @@ class ProfileDashboard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               elevation: 0,
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size(double.infinity, 44), // Fixed height
                             ),
                             child: const Text(
                               'Выйти',
@@ -182,8 +199,9 @@ class ProfileDashboard extends StatelessWidget {
           );
         },
       ),
-      ));
-    }
+      ),
+    ));
+  }
 }
 
 /* =========================  WIDGETS  ========================= */
@@ -342,7 +360,7 @@ class _MenuItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(5),
       onTap: () {},
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),

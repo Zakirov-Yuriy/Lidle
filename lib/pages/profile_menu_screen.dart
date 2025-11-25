@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/pages/sign_in_screen.dart';
 
 class ProfileMenuScreen extends StatelessWidget {
   static const routeName = '/profile-menu';
@@ -9,27 +12,21 @@ class ProfileMenuScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthInitial || (state is AuthError && !(state is AuthAuthenticated))) {
+          Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
+        }
+      },
+      child: Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 31, vertical: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 23, vertical: 15),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 41.0, bottom: 37.0),
-                child: Row(
-                  children: [
-                    SvgPicture.asset(logoAsset, height: logoHeight),
-                    const Spacer(),
-                  ],
-                ),
-              ),
-
-              _buildSearchBar(context),
-              const SizedBox(height: 19),
-
+              
               const Text(
                 'Личная информация',
                 style: TextStyle(
@@ -73,58 +70,13 @@ class ProfileMenuScreen extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 
   /* ------------------------ UI COMPONENTS ------------------------ */
 
-  Widget _buildLogo() {
-    return Center(child: Image.asset(logoAsset, height: logoHeight));
-  }
-
-  Widget _buildSearchBar(BuildContext context) {
-    return Row(
-      children: [
-        GestureDetector(
-          onTap: () => Navigator.of(context).pop(),
-          child: const Icon(Icons.close, color: Colors.white),
-        ),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: secondaryBackground,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 13),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Поиск',
-                    style: TextStyle(color: textSecondary, fontSize: 16),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pushNamed(context, '/filters'),
-                  child: SvgPicture.asset(
-                    settingsIconAsset,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      textSecondary,
-                      BlendMode.srcIn,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
+  
   Widget _buildMainProfile() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

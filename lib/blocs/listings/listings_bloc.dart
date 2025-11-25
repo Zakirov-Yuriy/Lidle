@@ -61,6 +61,22 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Москва, Варшавское ш., 125',
       date: '11.05.2024',
     ),
+     const Listing(
+      id: 'listing_3',
+      imagePath: 'assets/image.png',
+      title: 'Студия, 35,7 м², 2/6 эт...',
+      price: '6 500 000 ₽',
+      location: 'Москва, Варшавское ш., 125',
+      date: '11.05.2024',
+    ),
+    const Listing(
+      id: 'listing_4',
+      imagePath: 'assets/image2.png',
+      title: '3-к. квартира, 125,5 м²...',
+      price: '44 500 000 ₽ ',
+      location: 'Москва, Истринская ул., 8к3',
+      date: '09.08.2024',
+    ),
   ];
 
   /// Статические данные категорий.

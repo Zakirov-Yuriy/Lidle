@@ -34,6 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  image_picker: ^1.1.2
   flutter_svg: ^2.0.10+1
   carousel_slider: ^5.1.1
   hive: ^2.2.3
@@ -79,6 +80,9 @@ flutter:
     - assets/BottomNavigation/
     - assets/profile_dashboard/
     - assets/categories/
+    - assets/home_page/
+    - assets/showImageSourceActionSheet/
+    - assets/fonts/
     
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -134,4 +138,3 @@ flutter_native_splash:
     # Center-logo background color (commented out for full image display)
     # icon_background_color: "#232E3C"
     # icon_background_color_dark: "#232E3C"
-
