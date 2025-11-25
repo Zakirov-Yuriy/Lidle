@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lidle/pages/create_listing_screen.dart';
 import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
@@ -45,7 +46,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 children: [
                   const Spacer(),
                   Padding(
-                    padding: const EdgeInsets.only(right: 43.0),
+                    padding: const EdgeInsets.only(right: 13.0),
                     child: IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
                       onPressed: () => Navigator.of(context).pop(),
@@ -81,8 +82,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                         style: TextStyle(color: Colors.white),
                       ),
                       onTap: () {
-                        _pickImage(ImageSource.gallery);
                         Navigator.of(context).pop();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const CreateListingScreen(),
+                          ),
+                        );
                       },
                     ),
                   ],

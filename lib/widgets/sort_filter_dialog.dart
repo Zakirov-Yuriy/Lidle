@@ -24,12 +24,12 @@ class _SortFilterDialogState extends State<SortFilterDialog> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(top: 25.0, right: 13, left: 24),
+      padding: const EdgeInsets.only(top: 10.0, right: 13, left: 24),
       decoration: const BoxDecoration(
         color: Color(0xFF222E3A),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20.0),
-          topRight: Radius.circular(20.0),
+          topLeft: Radius.circular(0.0),
+          topRight: Radius.circular(0.0),
         ),
       ),
       child: Column(
