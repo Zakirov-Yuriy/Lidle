@@ -24,6 +24,9 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
+  Set<String> _selectedHousingClassTypes = {};
+  Set<String> _selectedHeatingTypes = {}; // New state for Heating filter
+  Set<String> _selectedCommunicationTypes = {}; // New state for Communications filter
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -673,11 +676,36 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Класс жилья',
-                hint: 'Выбрать',
+                hint: _selectedHousingClassTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedHousingClassTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Класс жилья',
+                        options: const [
+                          'Эконом',
+                          'Комфорт',
+                          'Бизнес',
+                          'Премиум',
+                        ],
+                        selectedOptions: _selectedHousingClassTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedHousingClassTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
@@ -712,12 +740,41 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 9),
 
               _buildDropdown(
-                label: 'Отделка',
-                hint: 'Выбрать',
+                label: 'Отопление',
+                hint: _selectedHeatingTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedHeatingTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Отопление',
+                        options: const [
+                          'Централизованное',
+                          'Собственная котельная',
+                          'Индивидуальное газовое',
+                          'Индивидуальное электро',
+                          'Твердопливное',
+                          'Тепловой насос',
+                          'Комбинированное',
+                          'Другое',
+                        ],
+                        selectedOptions: _selectedHeatingTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedHeatingTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
@@ -782,11 +839,41 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Коммуникации',
-                hint: 'Выбрать',
+                hint: _selectedCommunicationTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedCommunicationTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Коммуникации',
+                        options: const [
+                          'Газ',
+                          'Центраный',
+                          'Скважина',
+                          'Электичество',
+                          'Центральная',
+                          'Канализация',
+                          'Вывоз отходов',
+                          'Без коммуникаций',
+                          
+                        ],
+                        selectedOptions: _selectedCommunicationTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedCommunicationTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true, // Assuming multiple selections are allowed for communications
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
