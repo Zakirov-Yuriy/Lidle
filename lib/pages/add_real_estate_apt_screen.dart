@@ -10,6 +10,7 @@ import 'package:lidle/widgets/custom_checkbox.dart';
 import 'package:lidle/widgets/selection_dialog.dart';
 import 'package:lidle/widgets/city_selection_dialog.dart'; // Import the new city selection dialog
 import 'package:lidle/widgets/street_selection_dialog.dart'; // Import the new street selection dialog
+import 'package:lidle/pages/publication_tariff_screen.dart'; // Import the new publication tariff screen
 
 import '../constants.dart';
 
@@ -1158,7 +1159,18 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildButton('Предпросмотр', onPressed: () {}),
               const SizedBox(height: 10),
-              _buildButton('Опубликовать', onPressed: () {}, isPrimary: true),
+              _buildButton(
+                'Опубликовать',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PublicationTariffScreen(),
+                    ),
+                  );
+                },
+                isPrimary: true,
+              ),
             ],
           ),
         ),

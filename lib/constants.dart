@@ -15,7 +15,7 @@ const Color textMuted = Color(0xFF6B7684);
 const double defaultPadding = 25.0;
 const double headerTopPadding = 19.0;
 const double headerBottomPadding = 12.0;
-const double headerLeftPadding = 23.0;
+const double headerLeftPadding = 25.0;
 
 const double logoHeight = 20.0;
 const double searchBarHeight = 48.0;
