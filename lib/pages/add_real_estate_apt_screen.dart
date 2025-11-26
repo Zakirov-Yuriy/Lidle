@@ -23,6 +23,7 @@ class AddRealEstateAptScreen extends StatefulWidget {
 class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
+  Set<String> _selectedWallTypes = {};
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -634,11 +635,39 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Тип стен',
-                hint: 'Выбрать',
+                hint: _selectedWallTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedWallTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Тип стен',
+                        options: const [
+                          'Газоблок',
+                          'Кирпич',
+                          'Панель',
+                          'Монолит',
+                          'Дерево',
+                          'Каркасный',
+                          'СИП-панель',
+                        ],
+                        selectedOptions: _selectedWallTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedWallTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
