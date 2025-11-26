@@ -7,6 +7,7 @@ import 'package:lidle/pages/create_listing_screen.dart';
 import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
+import 'package:lidle/widgets/selection_dialog.dart';
 
 import '../constants.dart';
 
@@ -20,6 +21,7 @@ class AddRealEstateAptScreen extends StatefulWidget {
 }
 
 class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
+  Set<String> _selectedHouseTypes = {};
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -523,11 +525,45 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               // Блок характеристик квартиры
               _buildDropdown(
                 label: 'Тип дома',
-                hint: 'Сталинка',
+                hint: _selectedHouseTypes.isEmpty
+                    ? 'Сталинка'
+                    : _selectedHouseTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Тип дома',
+                        options: const [
+                          'Все объявления',
+                          'Царский дом',
+                          'Сталинка',
+                          'Хрущевка',
+                          'Чешка',
+                          'Гостинка',
+                          'Совмин',
+                          'Общежитие',
+                          'Жилой фонд 80-90-е',
+                          'Жилой фонд 91-2000-е',
+                          'Жилой фонд 2001-2010-е',
+                          'Жилой фонд 2011-2020-е',
+                          'Жилой фонд от 2021 г.',
+                        ],
+                        selectedOptions: _selectedHouseTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedHouseTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
               _buildTextField(
@@ -976,24 +1012,25 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
         GestureDetector(
           onTap: onTap,
           child: Container(
-            height: 45,
+            height: subtitle != null ? 60 : 45,
             width: double.infinity,
-            padding: const EdgeInsets.only(left: 9, right: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
               color: formBackground,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: null,
-                hint: subtitle != null
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 5.0),
-                        child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: subtitle != null
+                      ? Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
                               hint,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Color.fromARGB(255, 255, 255, 255),
                                 fontSize: 14,
@@ -1008,27 +1045,18 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                               ),
                             ),
                           ],
+                        )
+                      : Text(
+                          hint,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 255, 255, 255),
+                            fontSize: 14,
+                          ),
                         ),
-                      )
-                    : Text(
-                        hint,
-                        style: const TextStyle(
-                          color: Color.fromARGB(255, 255, 255, 255),
-                          fontSize: 14,
-                        ),
-                      ),
-
-                icon:
-                    icon ??
-                    const Text(
-                      'Изменить',
-                      style: TextStyle(color: Color(0xFF009EE2), fontSize: 14),
-                    ),
-                items: const [],
-                onChanged: (_) {
-                  // тут позже можно подвязать реальные значения
-                },
-              ),
+                ),
+                if (icon != null) icon,
+              ],
             ),
           ),
         ),
