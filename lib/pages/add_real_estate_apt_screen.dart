@@ -8,6 +8,8 @@ import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
 import 'package:lidle/widgets/selection_dialog.dart';
+import 'package:lidle/widgets/city_selection_dialog.dart'; // Import the new city selection dialog
+import 'package:lidle/widgets/street_selection_dialog.dart'; // Import the new street selection dialog
 
 import '../constants.dart';
 
@@ -27,6 +29,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedHousingClassTypes = {};
   Set<String> _selectedHeatingTypes = {}; // New state for Heating filter
   Set<String> _selectedCommunicationTypes = {}; // New state for Communications filter
+  Set<String> _selectedCity = {}; // New state for selected city
+  Set<String> _selectedStreet = {}; // New state for selected street
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -992,22 +996,92 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 18),
 
               _buildDropdown(
-                label: 'Ваш город',
-                hint: 'Ваш город',
+                label: 'Ваш город*',
+                hint: _selectedCity.isEmpty
+                    ? 'Ваш город'
+                    : _selectedCity.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return CitySelectionDialog(
+                        title: 'Ваш город',
+                        options: const [
+                          
+                          'Абаза',
+                          'Абакан',
+                          'Абдулино',
+                          'Абинск',
+                          'Агидель',
+                          'Агрыз',
+                          'Адыгейск',
+                          'Азнакаево',
+                          'Бабаево',
+                          'Бабушкин Бавлы',
+                          'Багратионовск',
+                          
+                       
+                          // Add more cities as needed
+                        ],
+                        selectedOptions: _selectedCity,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedCity = selected;
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Улица*',
-                hint: 'Ваша улица',
+                hint: _selectedStreet.isEmpty
+                    ? 'Ваша улица'
+                    : _selectedStreet.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return StreetSelectionDialog(
+                        title: 'Улица',
+                        groupedOptions: const {
+                          'Центральный район': [
+                            'Аэродромная улица',
+                            'Бахмутская улица',
+                            'бул. Богдана Хмельницкого',
+                            'бул. Шевченко Георгиевская',
+                            'ул. Гранитная улица Греческая',
+                            'ул. Евпаторийская улица',
+                            'ул. Заводская',
+                            'Запорожское шоссе',
+                          ],
+                          'Приморский район': [
+                            'ул. Амурская',
+                            'Бердянский переулок',
+                            'ул. Большая Азовская',
+                          ],
+                        },
+                        selectedOptions: _selectedStreet,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedStreet = selected;
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
               ),
 
               const SizedBox(height: 9),

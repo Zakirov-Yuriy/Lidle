@@ -7,7 +7,6 @@ import '../../pages/sign_in_screen.dart';
 import '../../pages/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
 import '../../pages/add_listing_screen.dart';
-import '../../pages/add_listing_screen.dart';
 
 /// Bloc для управления состоянием навигации.
 /// Обрабатывает события навигации и управляет переходами между страницами.
