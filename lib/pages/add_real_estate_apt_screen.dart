@@ -22,6 +22,7 @@ class AddRealEstateAptScreen extends StatefulWidget {
 
 class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedHouseTypes = {};
+  Set<String> _selectedDealTypes = {};
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -586,11 +587,38 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Тип сделки',
-                hint: 'Выбрать',
+                hint: _selectedDealTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedDealTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Тип сделки',
+                        options: const [
+                          'От застройщика',
+                          'Переуступка',
+                          'Рассрочка от',
+                          'Рассрочка от банка',
+                          'Банковский кредит',
+                          'Лизинг',
+                        ],
+                        selectedOptions: _selectedDealTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedDealTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
