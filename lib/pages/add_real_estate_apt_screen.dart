@@ -32,6 +32,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedCommunicationTypes = {}; // New state for Communications filter
   Set<String> _selectedCity = {}; // New state for selected city
   Set<String> _selectedStreet = {}; // New state for selected street
+  Set<String> _selectedRoomCounts = {}; // New state for Room Count filter
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -631,13 +632,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 9),
 
-              _buildDropdown(
+              _buildTextField(
                 label: 'Общая площадь(м²)*',
                 hint: 'Цифрами',
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
+                
               ),
               const SizedBox(height: 9),
 
@@ -716,11 +714,38 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Количество комнат*',
-                hint: 'Цифрами',
+                hint: _selectedRoomCounts.isEmpty
+                    ? 'Цифрами'
+                    : _selectedRoomCounts.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Количество комнат',
+                        options: const [
+                          '1',
+                          '2',
+                          '3',
+                          '4',
+                          '5',
+                          '6+',
+                        ],
+                        selectedOptions: _selectedRoomCounts,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedRoomCounts = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
