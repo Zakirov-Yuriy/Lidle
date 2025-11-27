@@ -33,6 +33,11 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedCity = {}; // New state for selected city
   Set<String> _selectedStreet = {}; // New state for selected street
   Set<String> _selectedRoomCounts = {}; // New state for Room Count filter
+  Set<String> _selectedLayoutTypes = {}; // New state for Layout filter
+  Set<String> _selectedBathroomTypes = {}; // New state for Bathroom filter
+  Set<String> _selectedRenovationTypes = {}; // New state for Renovation filter
+  Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
+  Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -129,6 +134,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   bool isClientPrice = false; // Клиент может предложить свою цену
   bool isAutoRenewal = false; // Автопродление
   bool isAutoRenewal1 = false;
+  bool? _selectedFurnished; // New state for Мебелирован filter
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -751,21 +757,73 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Планировка',
-                hint: 'Выбрать',
+                hint: _selectedLayoutTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedLayoutTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Планировка',
+                        options: const [
+                          'Смежная, проходная',
+                          'Раздельная',
+                          'Студия',
+                          'Пентхаус',
+                          'Многоуровневая',
+                          'Малосемека, гостинка',
+                        ],
+                        selectedOptions: _selectedLayoutTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedLayoutTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Санузел',
-                hint: 'Выбрать',
+                hint: _selectedBathroomTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedBathroomTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Санузел',
+                        options: const [
+                          'Раздельный',
+                          'Смежный',
+                          '2 и более',
+                          'Санузел отсутствует',
+                        ],
+                        selectedOptions: _selectedBathroomTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedBathroomTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
@@ -810,11 +868,39 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Ремонт',
-                hint: 'Выбрать',
+                hint: _selectedRenovationTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedRenovationTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Ремонт',
+                        options: const [
+                          'Авторский проект',
+                          'Евроремонт',
+                          'Косметический ремонт',
+                          'Жилое состояние',
+                          'После строительства',
+                          'Под чистовую отделку',
+                          'Аварийное состояние',
+                        ],
+                        selectedOptions: _selectedRenovationTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedRenovationTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
@@ -826,12 +912,16 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildChoiceButton('Да', true, () {
-                    // TODO: сохранить значение
+                  _buildChoiceButton('Да', _selectedFurnished == true, () {
+                    setState(() {
+                      _selectedFurnished = true;
+                    });
                   }),
                   const SizedBox(width: 10),
-                  _buildChoiceButton('Нет', false, () {
-                    // TODO: сохранить значение
+                  _buildChoiceButton('Нет', _selectedFurnished == false, () {
+                    setState(() {
+                      _selectedFurnished = false;
+                    });
                   }),
                 ],
               ),
@@ -839,21 +929,86 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Бытовая техника',
-                hint: 'Выбрать',
+                hint: _selectedAppliancesTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedAppliancesTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Бытовая техника',
+                        options: const [
+                          'Электрочайник',
+                          'Кофемашина',
+                          'Фен',
+                          'Плита',
+                          'Варочная панель',
+                          'Микроволновая печь',
+                          'Мультиварка',
+                          'Холодильник',
+                          'Посудомоечная машина',
+                          'Стиральная машина',
+                          'Сушильная машина',
+                          'Утюг',
+                          'Пылесос',
+                          'Без бытовой техники',
+                        ],
+                        selectedOptions: _selectedAppliancesTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedAppliancesTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Мультимедиа',
-                hint: 'Цифрами',
+                hint: _selectedMultimediaTypes.isEmpty
+                    ? 'Цифрами'
+                    : _selectedMultimediaTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Мультимедиа',
+                        options: const [
+                          'Wi-Fi',
+                          'Скоростной интернет',
+                          'ПК, принтер, сканер',
+                          'Телевизор',
+                          'Кабильное, цифровое ТВ',
+                          'Спутниковое ТВ',
+                          'Домашний кинотеатр',
+                          'X-box, Playstation',
+                          'Без мультимедиа',
+                        ],
+                        selectedOptions: _selectedMultimediaTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedMultimediaTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
