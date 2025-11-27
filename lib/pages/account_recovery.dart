@@ -2,7 +2,6 @@
 /// Пользователь вводит свой номер телефона или адрес электронной почты
 /// для начала процесса восстановления пароля.
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
@@ -52,60 +51,53 @@ class AccountRecovery extends StatelessWidget {
         return Scaffold(
           backgroundColor: primaryBackground,
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 31, vertical: 44),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical:28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              
+
+              Row(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 41.0, bottom: 37.0),
-                    child: Row(
-                      children: [
-                        SvgPicture.asset(logoAsset, height: logoHeight),
-                        const Spacer(),
-                      ],
+                  InkWell(
+                    borderRadius: BorderRadius.circular(50),
+                    onTap: () => Navigator.maybePop(context),
+                    child: Icon(
+                      Icons.chevron_left,
+                      color: textPrimary,
+                      size: 28,
                     ),
                   ),
 
-                  Row(
-                    children: [
-                      InkWell(
-                        borderRadius: BorderRadius.circular(24),
-                        onTap: () => Navigator.maybePop(context),
-                        child: Icon(
-                          Icons.chevron_left,
-                          color: textPrimary,
-                          size: 28,
-                        ),
+                  Expanded(
+                    child: Text(
+                      'Восстановление пароля',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: textPrimary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
-                      Expanded(
-                        child: Text(
-                          'Восстановление пароля',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 22,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.maybePop(context),
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          foregroundColor: const Color(0xFF60A5FA),
-                          textStyle: const TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontSize: 16,
-                          ),
-                        ),
-                        child: const Text('Отмена'),
-                      ),
-                    ],
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: const Color(0xFF60A5FA),
+                      textStyle: const TextStyle(
+                        fontWeight: FontWeight.w400,
+                        fontSize: 16,
+                      ),
+                    ),
+                    child: const Text('Отмена'),
+                  ),
+                ],
+              ),
+                  const SizedBox(height: 17),
 
                   Text(
                     subtitle,
@@ -115,7 +107,7 @@ class AccountRecovery extends StatelessWidget {
                       height: 1.45,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 15),
 
                   _RecoveryForm(
                     isLoading: isLoading,

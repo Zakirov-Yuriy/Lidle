@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/header.dart';
 import 'add_real_estate_apt_screen.dart';
 
 class RealEstateApartmentsScreen extends StatelessWidget {
@@ -13,36 +14,47 @@ class RealEstateApartmentsScreen extends StatelessWidget {
          crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           
-          Padding(
-            padding: const EdgeInsets.only(left: 10.0, right: 10, top: 20),
+          Column(
+            children: [
+              Padding(
+            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
             child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios, color: Colors.lightBlueAccent, size: 18),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                const Text(
-                  'Назад',
-                  style: TextStyle(
-                    color: Colors.lightBlueAccent,
-                    fontSize: 16,
-                  ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context); // Закрыть экран при отмене
-                  },
-                  child: const Text(
-                    'Отмена',
-                    style: TextStyle(
-                      color: Colors.lightBlueAccent,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [const Header()],
             ),
+          ),
+              Padding(
+                padding: const EdgeInsets.only(left: 10.0, right: 10),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back_ios, color: Colors.lightBlueAccent, size: 18),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Text(
+                      'Назад',
+                      style: TextStyle(
+                        color: Colors.lightBlueAccent,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context); // Закрыть экран при отмене
+                      },
+                      child: const Text(
+                        'Отмена',
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.only(left: 25.0, right: 25),

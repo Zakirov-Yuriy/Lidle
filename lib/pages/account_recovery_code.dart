@@ -3,7 +3,6 @@
 /// для продолжения процесса восстановления пароля.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
@@ -113,24 +112,16 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 31, vertical: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical:28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 41.0, bottom: 37.0),
-                child: Row(
-                  children: [
-                    SvgPicture.asset(logoAsset, height: logoHeight),
-                    const Spacer(),
-                  ],
-                ),
-              ),
+              
 
               Row(
                 children: [
                   InkWell(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(50),
                     onTap: () => Navigator.maybePop(context),
                     child: Icon(
                       Icons.chevron_left,
@@ -144,8 +135,8 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                       'Восстановление пароля',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -167,7 +158,7 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                 ],
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 16),
               Text(
                 'Введите код с письма на  электронной почте или смс на телефоне',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -175,7 +166,7 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 15),
 
               TextField(
                 controller: _codeCtrl,
@@ -231,12 +222,12 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                   child: const Text('Продолжить'),
                 ),
               ),
-              const SizedBox(height: 17),
+              const SizedBox(height: 12),
 
               const Text(
                 'На вашу почту или номер телефона был\nотправлен код',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textSecondary,
                   fontSize: 16,
                   height: 1.35,
                 ),

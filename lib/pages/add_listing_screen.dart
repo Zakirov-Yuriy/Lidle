@@ -266,7 +266,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? activeIconColor : Colors.transparent,
+          backgroundColor: isPrimary ? activeIconColor : primaryBackground,
           side: isPrimary ? null : const BorderSide(color: Colors.white),
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

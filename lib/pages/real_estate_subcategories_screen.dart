@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/header.dart';
 import 'real_estate_apartments_screen.dart';
 
 class RealEstateSubcategoriesScreen extends StatelessWidget {
@@ -22,42 +23,53 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 10.0, right: 10, top: 23),
-            child: Container(
-              color: const Color(0xFF1C2834),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios,
-                      color: Colors.lightBlueAccent,
-                      size: 16,
+          Container(
+            color: const Color(0xFF1C2834),
+            child: Column(
+              children: [
+                 Padding(
+          padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [const Header()],
+          ),
                     ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  const Text(
-                    'Назад',
-                    style: TextStyle(
-                      color: Colors.lightBlueAccent,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context); // Закрыть экран при отмене
-                    },
-                    child: const Text(
-                      'Отмена',
-                      style: TextStyle(
-                        color: Colors.lightBlueAccent,
-                        fontSize: 16,
+                Padding(
+                  padding: const EdgeInsets.only(left: 10.0, right: 20),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.lightBlueAccent,
+                          size: 16,
+                        ),
+                        onPressed: () => Navigator.pop(context),
                       ),
-                    ),
+                      const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Закрыть экран при отмене
+                        },
+                        child: const Text(
+                          'Отмена',
+                          style: TextStyle(
+                            color: Colors.lightBlueAccent,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const Padding(

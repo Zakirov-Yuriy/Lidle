@@ -62,7 +62,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '11.05.2024',
     ),
      const Listing(
-      id: 'listing_3',
+      id: 'listing_5',
       imagePath: 'assets/image.png',
       title: 'Студия, 35,7 м², 2/6 эт...',
       price: '6 500 000 ₽',
@@ -70,7 +70,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '11.05.2024',
     ),
     const Listing(
-      id: 'listing_4',
+      id: 'listing_6',
       imagePath: 'assets/image2.png',
       title: '3-к. квартира, 125,5 м²...',
       price: '44 500 000 ₽ ',

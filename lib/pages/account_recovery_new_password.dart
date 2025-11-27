@@ -1,7 +1,6 @@
 /// Страница для установки нового пароля после успешного восстановления аккаунта.
 /// Пользователь вводит и подтверждает новый пароль.
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
@@ -99,26 +98,18 @@ class _AccountRecoveryNewPasswordState
       builder: (context, state) {
         return Scaffold(
       backgroundColor: primaryBackground,
-      body: SafeArea(
+      body:SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 31, vertical: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical:28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 41, bottom: 37),
-                child: Row(
-                  children: [
-                    SvgPicture.asset(logoAsset, height: logoHeight),
-                    const Spacer(),
-                  ],
-                ),
-              ),
+              
 
               Row(
                 children: [
                   InkWell(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(50),
                     onTap: () => Navigator.maybePop(context),
                     child: Icon(
                       Icons.chevron_left,
@@ -132,8 +123,8 @@ class _AccountRecoveryNewPasswordState
                       'Восстановление пароля',
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -154,7 +145,7 @@ class _AccountRecoveryNewPasswordState
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 17),
 
               Text(
                 'Введите ваш новый пароль',
@@ -163,7 +154,7 @@ class _AccountRecoveryNewPasswordState
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 14),
 
               _PasswordField(
                 label: 'Новый пароль',
@@ -179,7 +170,7 @@ class _AccountRecoveryNewPasswordState
                 visible: _showRepeat,
                 onToggle: () => setState(() => _showRepeat = !_showRepeat),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
 
               SizedBox(
                 width: double.infinity,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/widgets/header.dart';
 import 'real_estate_subcategories_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {
@@ -26,17 +27,17 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       {'title': 'Авто и мото', 'image': 'assets/categories/auto.png'},
       {'title': 'Работа', 'image': 'assets/categories/job.png'},
       {'title': 'Подработка', 'image': 'assets/categories/part_time.png'},
-      {'title': 'Электроника', 'image': 'assets/categories/electronics.png'},
-      {'title': 'Одежда, обувь', 'image': 'assets/categories/clothes.png'},
-      {'title': 'Животные', 'image': 'assets/categories/animals.png'},
-      {'title': 'Для дома и дачи', 'image': 'assets/categories/home.png'},
-      {'title': 'Детский мир', 'image': 'assets/categories/kids.png'},
-      {'title': 'Бизнес и услуги', 'image': 'assets/categories/business.png'},
-      {'title': 'Аренда и прокат', 'image': 'assets/categories/rent.png'},
-      {'title': 'Мода и стиль', 'image': 'assets/categories/fashion.png'},
-      {'title': 'Хобби, отдых и спорт', 'image': 'assets/categories/hobby.png'},
-      {'title': 'Отдам даром', 'image': 'assets/categories/free.png'},
-      {'title': 'Обмен', 'image': 'assets/categories/exchange.png'},
+      // {'title': 'Электроника', 'image': 'assets/categories/electronics.png'},
+      // {'title': 'Одежда, обувь', 'image': 'assets/categories/clothes.png'},
+      // {'title': 'Животные', 'image': 'assets/categories/animals.png'},
+      // {'title': 'Для дома и дачи', 'image': 'assets/categories/home.png'},
+      // {'title': 'Детский мир', 'image': 'assets/categories/kids.png'},
+      // {'title': 'Бизнес и услуги', 'image': 'assets/categories/business.png'},
+      // {'title': 'Аренда и прокат', 'image': 'assets/categories/rent.png'},
+      // {'title': 'Мода и стиль', 'image': 'assets/categories/fashion.png'},
+      // {'title': 'Хобби, отдых и спорт', 'image': 'assets/categories/hobby.png'},
+      // {'title': 'Отдам даром', 'image': 'assets/categories/free.png'},
+      // {'title': 'Обмен', 'image': 'assets/categories/exchange.png'},
     ];
 
     return Scaffold(
@@ -44,9 +45,16 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [const Header(),],
+            ),
+          ),
+
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               children: [
                 IconButton(
@@ -95,7 +103,8 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const RealEstateSubcategoriesScreen(),
+                          builder: (context) =>
+                              const RealEstateSubcategoriesScreen(),
                         ),
                       );
                     } else {
@@ -109,7 +118,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                     }
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+                    margin: const EdgeInsets.only(bottom: 10),
 
                     child: Stack(
                       children: [
@@ -127,7 +136,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                             style: const TextStyle(
                               color: Color.fromARGB(255, 0, 0, 0),
                               fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ),

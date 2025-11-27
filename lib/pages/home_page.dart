@@ -29,6 +29,8 @@ class HomePage extends StatefulWidget {
   /// Конструктор для `HomePage`.
   const HomePage({super.key});
 
+  static const String routeName = '/home'; // Добавлена константа routeName
+
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -369,7 +371,7 @@ class _HomePageState extends State<HomePage> {
             : <Listing>[];
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 81.0),
+      padding: const EdgeInsets.only(bottom: 110.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -185,7 +185,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                                 Icons.chevron_left,
                                 color: Color(0xFF60A5FA),
                               ),
-                              SizedBox(width: 8),
+                              SizedBox(width: 0),
                               Text(
                                 'Назад',
                                 style: TextStyle(
@@ -312,7 +312,7 @@ class _CodeField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _Labeled(
-      label: 'Код подтверждения',
+      label: 'Пороль',
       child: TextField(
         controller: controller,
         keyboardType: TextInputType.number,

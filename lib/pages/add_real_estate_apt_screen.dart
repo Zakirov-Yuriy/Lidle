@@ -38,6 +38,9 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedRenovationTypes = {}; // New state for Renovation filter
   Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
   Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
+  Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
+  Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter
+  Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -134,7 +137,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   bool isClientPrice = false; // Клиент может предложить свою цену
   bool isAutoRenewal = false; // Автопродление
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished; // New state for Мебелирован filter
+  bool? _selectedFurnished = true; // Initialize to true so 'Да' is active by default
+
+  // New state for publication type buttons
+  String? _selectedPublicationType; // 'Standard' or 'Premium'
+
+  // New state for "Предпросмотр" and "Опубликовать" buttons
+  String _selectedAction = 'publish'; // Default to 'publish'
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -975,7 +984,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               _buildDropdown(
                 label: 'Мультимедиа',
                 hint: _selectedMultimediaTypes.isEmpty
-                    ? 'Цифрами'
+                    ? 'Выбрать'
                     : _selectedMultimediaTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
@@ -1014,11 +1023,56 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Комфорт',
-                hint: 'Выбрать',
+                hint: _selectedComfortTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedComfortTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Комфорт',
+                        options: const [
+                          'Все объявления',
+                          'Подогрев полов',
+                          'Автоматное отопление',
+                          'Односпальная кровать',
+                          'Двухспальная кровать',
+                          'Доп. спальное место',
+                          'Ванна',
+                          'Душевая кабина',
+                          'Сауна',
+                          'Джакузи',
+                          'Бильярд',
+                          'Кондиционер',
+                          'Утюг, гладильная доска',
+                          'Гардероб',
+                          'Сейф',
+                          'Видеонаблюдение',
+                          'Охраняемая территория',
+                          'Терраса',
+                          'Парковочное место',
+                          'Фитнес-центр, спортзал',
+                          'Бассейн',
+                          'Баня',
+                          'Сауна',
+                          'Хамам',
+                        ],
+                        selectedOptions: _selectedComfortTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedComfortTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
@@ -1100,21 +1154,93 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Инфраструктура (до 500 метров)',
-                hint: 'Выбрать',
+                hint: _selectedInfrastructureTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedInfrastructureTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Инфраструктура (до 500 метров)',
+                        options: const [
+                          'Центр города',
+                          'Достопримечательности',
+                          'Исторические места',
+                          'Музеи выставки',
+                          'Парк, зеленая зона',
+                          'Детская площадка',
+                          'Отделения банка, банкомат',
+                          'Аптека',
+                          'Супермаркет, магазин',
+                          'Остановка транспорта',
+                          'Стоянка',
+                          'Рынок',
+                          'Горнолыжные трассы',
+                          'Автовокзал',
+                          'ЖД станция',
+                        ],
+                        selectedOptions: _selectedInfrastructureTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedInfrastructureTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
               ),
               const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Ландшафт (до 1 км)',
-                hint: 'Выбрать',
+                hint: _selectedLandscapeTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedLandscapeTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Ландшафт (до 1 км)',
+                        options: const [
+                          'Река',
+                          'Водохранилище',
+                          'Водопад',
+                          'Озера',
+                          'Море',
+                          'Океан',
+                          'Острова',
+                          'Холмы',
+                          'Горы',
+                          'Каньоны',
+                          'Парк',
+                          'Пещеры',
+                          'Лес',
+                          'Пляж',
+                          'Город',
+                        ],
+                        selectedOptions: _selectedLandscapeTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedLandscapeTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
               ),
 
               const SizedBox(height: 27),
@@ -1171,6 +1297,41 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   CustomSwitch(
                     value: isAutoRenewal,
                     onChanged: (v) => setState(() => isAutoRenewal = v),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // New section for Publication Type
+              const Text(
+                'Тип публикации',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildButton(
+                      'Стандартная',
+                      onPressed: () {
+                        setState(() {
+                          _selectedPublicationType = 'Standard';
+                        });
+                      },
+                      isPrimary: _selectedPublicationType == 'Standard',
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _buildButton(
+                      'Премиум',
+                      onPressed: () {
+                        setState(() {
+                          _selectedPublicationType = 'Premium';
+                        });
+                      },
+                      isPrimary: _selectedPublicationType == 'Premium',
+                    ),
                   ),
                 ],
               ),
@@ -1335,13 +1496,25 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 hint: 'https://wa.me/номер',
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 22),
 
-              _buildButton('Предпросмотр', onPressed: () {}),
+              _buildButton(
+                'Предпросмотр',
+                onPressed: () {
+                  setState(() {
+                    _selectedAction = 'preview';
+                  });
+                  // Add actual preview logic here
+                },
+                isPrimary: _selectedAction == 'preview',
+              ),
               const SizedBox(height: 10),
               _buildButton(
                 'Опубликовать',
                 onPressed: () {
+                  setState(() {
+                    _selectedAction = 'publish';
+                  });
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1349,8 +1522,9 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     ),
                   );
                 },
-                isPrimary: true,
+                isPrimary: _selectedAction == 'publish',
               ),
+              const SizedBox(height: 32),
             ],
           ),
         ),
@@ -1508,7 +1682,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? activeIconColor : Colors.transparent,
+          backgroundColor: isPrimary ? activeIconColor : primaryBackground,
           side: isPrimary ? null : const BorderSide(color: Colors.white),
           minimumSize: const Size.fromHeight(51),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
