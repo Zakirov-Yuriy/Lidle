@@ -101,50 +101,218 @@ flutter build ios --release
 
 LIDLE следует подходу чистой архитектуры с использованием паттерна BLoC (Business Logic Component) для управления состоянием.
 
-# Структура проекта
+## 📁 Структура проекта
 
+Проект LIDLE организован согласно принципам чистой архитектуры Flutter с четким разделением ответственности. Ниже представлена полная структура проекта с подробными описаниями.
+
+### 📱 Корневые файлы проекта
+```
+📄 pubspec.yaml          # Конфигурация проекта, зависимости, assets
+📄 pubspec.lock          # Заблокированные версии зависимостей
+📄 analysis_options.yaml # Настройки статического анализа кода
+📄 .gitignore           # Исключаемые из git файлы
+📄 README.md            # Документация проекта
+📄 package.json         # Node.js зависимости (для некоторых инструментов)
+📄 package-lock.json    # Заблокированные версии Node.js зависимостей
+```
+
+### 📂 Директория lib/ (Основной код приложения)
+
+#### 🧠 Слой бизнес-логики (BLoC)
+```
+lib/blocs/
+├── auth/               # 🔐 Управление аутентификацией
+│   └── auth_bloc.dart  # Логика входа/регистрации/восстановления
+├── listings/           # 📦 Управление объявлениями
+│   └── listings_bloc.dart # Получение, фильтрация, сортировка объявлений
+├── navigation/         # 🧭 Навигация приложения
+│   └── navigation_bloc.dart # Состояние нижней навигации
+├── profile/            # 👤 Профиль пользователя
+│   └── profile_bloc.dart # Управление данными профиля
+└── password_recovery/  # 🔑 Восстановление пароля
+    └── password_recovery_bloc.dart
+```
+
+#### 📊 Модели данных
+```
+lib/models/
+└── home_models.dart    # 📋 Модели для главной страницы
+    ├── Category       # Категории товаров/услуг
+    ├── Listing        # Структура объявления
+    ├── User           # Данные пользователя
+    └── Filter         # Параметры фильтрации
+```
+
+#### 📱 Пользовательский интерфейс (Pages)
+```
+lib/pages/
+├── 🔐 Аутентификация
+│   ├── sign_in_screen.dart                 # Вход в приложение
+│   ├── register_screen.dart                # Регистрация нового пользователя
+│   ├── register_verify_screen.dart         # Подтверждение email
+│   ├── account_recovery.dart               # Запрос восстановления пароля
+│   ├── account_recovery_code.dart          # Ввод кода восстановления
+│   └── account_recovery_new_password.dart  # Установка нового пароля
+├── 🏠 Главный интерфейс
+│   ├── home_page.dart                      # Главная страница с объявлениями
+│   ├── category_selection_screen.dart      # Выбор категории товаров
+│   ├── real_estate_subcategories_screen.dart # Подкатегории недвижимости
+│   └── real_estate_apartments_screen.dart  # Список квартир
+├── ➕ Создание объявлений
+│   ├── add_listing_screen.dart             # Общий экран добавления
+│   ├── add_real_estate_apt_screen.dart     # Добавление квартиры (продажа)
+│   └── add_real_estate_rent_apt_screen.dart # Добавление квартиры (аренда)
+├── 🔍 Поиск и фильтры
+│   ├── filters_screen.dart                 # Настройки фильтров
+│   └── favorites_screen.dart               # Избранные объявления
+└── 👤 Профиль пользователя
+    ├── profile_dashboard.dart              # Панель управления профилем
+    ├── profile_menu_screen.dart            # Меню настроек
+    ├── publication_success_screen.dart     # Успешная публикация
+    └── publication_tariff_screen.dart      # Выбор тарифа публикации
+```
+
+#### 🔧 Сервисы и утилиты
+```
+lib/services/
+├── api_service.dart     # 🌐 Основной API клиент
+│   ├── GET/POST/PUT/DELETE запросы
+│   ├── Обработка ответов сервера
+│   └── Управление токенами аутентификации
+└── auth_service.dart    # 🔐 Сервис аутентификации
+    ├── Управление сессиями
+    ├── Хранение токенов
+    └── Проверка авторизации
+```
+
+#### 🎨 Переиспользуемые компоненты (Widgets)
+```
+lib/widgets/
+├── 🧭 Навигация
+│   ├── bottom_navigation.dart     # Нижняя панель навигации
+│   └── header.dart               # Заголовок приложения
+├── 📋 Карточки и списки
+│   ├── category_card.dart        # Карточка категории
+│   ├── listing_card.dart         # Карточка объявления
+│   └── search_bar.dart           # Панель поиска
+├── 🎛️ Формы и элементы управления
+│   ├── custom_button.dart        # Кастомная кнопка
+│   ├── custom_checkbox.dart      # Кастомный чекбокс
+│   └── сustom_witch.dart         # Кастомный переключатель
+└── 📱 Диалоги и модальные окна
+    ├── city_selection_dialog.dart   # Выбор города
+    ├── street_selection_dialog.dart # Выбор улицы
+    ├── selection_dialog.dart        # Общий диалог выбора
+    └── sort_filter_dialog.dart      # Диалог сортировки/фильтров
+```
+
+#### ⚙️ Конфигурация и утилиты
 ```
 lib/
-├── blocs/              # BLoC компоненты для управления состоянием
-│   ├── auth/          # Логика аутентификации
-│   ├── listings/      # Логика объявлений маркетплейса
-│   ├── navigation/    # Логика нижней навигации
-│   ├── profile/       # Логика профиля пользователя
-│   └── password_recovery/  # Логика восстановления пароля
-├── models/            # Модели данных
-│   └── home_models.dart  # Модели для главной страницы
-├── pages/             # UI экраны/страницы
-│   ├── account_recovery_code.dart          # Ввод кода восстановления
-│   ├── account_recovery.dart               # Начало восстановления пароля
-│   ├── account_recovery_new_password.dart   # Новый пароль при восстановлении
-│   ├── add_listing_screen.dart             # Добавление нового объявления
-│   ├── add_real_estate_apt_screen.dart      # Добавление объявления о квартире
-│   ├── category_selection_screen.dart      # Выбор категории
-│   ├── favorites_screen.dart               # Избранные объявления
-│   ├── filters_screen.dart                 # Фильтры поиска
-│   ├── home_page.dart                      # Главная страница
-│   ├── profile_dashboard.dart              # Панель пользователя
-│   ├── profile_menu_screen.dart            # Меню профиля
-│   ├── real_estate_subcategories_screen.dart # Подкатегории недвижимости
-│   ├── real_estate_apartments_screen.dart   # Экран квартир
-│   ├── register_screen.dart                # Регистрация
-│   ├── register_verify_screen.dart         # Подтверждение регистрации
-│   └── sign_in_screen.dart                 # Авторизация
-├── services/          # Сервисы API и бизнес-логики
-│   ├── api_service.dart  # Основной API сервис
-│   └── auth_service.dart # Сервис аутентификации
-├── widgets/           # Переиспользуемые UI компоненты
-│   ├── bottom_navigation.dart  # Нижняя навигация
-│   ├── category_card.dart      # Карточка категории
-│   ├── custom_checkbox.dart    # Кастомный чекбокс
-│   ├── header.dart             # Заголовок приложения
-│   ├── listing_card.dart       # Карточка объявления
-│   ├── search_bar.dart         # Строка поиска
-│   └── sort_filter_dialog.dart # Диалог сортировки/фильтров
-├── constants.dart     # Константы приложения и теминг
-├── hive_service.dart  # Сервис локального хранения
-└── main.dart         # Точка входа в приложение
+├── main.dart            # 🚀 Точка входа приложения
+│   ├── Инициализация приложения
+│   ├── Настройка зависимостей
+│   └── Запуск главного виджета
+├── constants.dart       # 🎨 Константы и тема приложения
+│   ├── Цветовая палитра
+│   ├── Размеры и отступы
+│   └── Текстовые стили
+└── hive_service.dart    # 💾 Сервис локального хранения
+    ├── Инициализация Hive
+    ├── Управление боксами данных
+    └── Кэширование данных
 ```
+
+### 📱 Платформо-специфичные директории
+
+#### 🤖 Android
+```
+android/
+├── app/
+│   ├── src/main/
+│   │   ├── AndroidManifest.xml    # Конфигурация приложения
+│   │   ├── res/                  # Ресурсы (иконки, строки)
+│   │   └── java/                 # Нативный код (при необходимости)
+│   └── build.gradle.kts          # Конфигурация сборки Android
+└── gradle/                       # Система сборки Gradle
+```
+
+#### 🍎 iOS
+```
+ios/
+├── Runner/
+│   ├── AppDelegate.swift         # Точка входа iOS приложения
+│   ├── Info.plist               # Конфигурация приложения
+│   └── Assets.xcassets/         # Ассеты приложения
+└── Flutter/                     # Конфигурация Flutter для iOS
+```
+
+#### 🖥️ Web
+```
+web/
+├── index.html          # HTML шаблон веб-приложения
+├── manifest.json       # Манифест PWA
+└── icons/             # Иконки для различных размеров
+```
+
+### 📦 Ресурсы приложения
+```
+assets/
+├── 🖼️ Графические элементы
+│   ├── logo.png/logo.svg         # Логотипы приложения
+│   ├── logo_app.png              # Иконка приложения
+│   └── settings.svg              # Иконки настроек
+├── 📂 Категории товаров
+│   └── categories/               # Иконки категорий
+│       ├── auto.png, real_estate.png, electronics.png, etc.
+├── 🧭 Навигация
+│   └── BottomNavigation/         # Иконки нижней навигации
+│       ├── home-02.png, heart-rounded.png, etc.
+├── 👤 Профиль
+│   └── profile_dashboard/        # Элементы профиля
+├── 🏠 Недвижимость
+│   └── home_page/                # Иконки для недвижимости
+└── 🎉 Специальные экраны
+    ├── publication_success/      # Ассеты успешной публикации
+    └── publication_tariff/       # Элементы тарифов
+```
+
+### 🧪 Тесты
+```
+test/
+├── 🧩 Unit тесты
+│   ├── models_test.dart          # Тестирование моделей данных
+│   ├── api_service_test.dart     # Тестирование API сервиса
+│   └── auth_service_test.dart    # Тестирование аутентификации
+├── 🎨 Widget тесты
+│   ├── category_card_test.dart   # Тестирование карточек категорий
+│   └── listing_card_test.dart    # Тестирование карточек объявлений
+└── 📄 Конфигурационные файлы
+    ├── api_service_test.mocks.dart # Сгенерированные моки
+    └── widget_test.dart          # Базовый тест приложения
+```
+
+### 🔧 Система сборки
+```
+build/               # 📦 Сгенерированные файлы сборки
+linux/               # 🐧 Linux специфичные файлы
+macos/               # 🍎 macOS специфичные файлы
+windows/             # 🪟 Windows специфичные файлы
+```
+
+### 📊 Архитектурные принципы
+
+Проект следует **Clean Architecture** с четким разделением на слои:
+
+1. **🎨 Presentation Layer** (pages/, widgets/) - UI компоненты
+2. **🧠 Business Logic Layer** (blocs/) - Логика приложения
+3. **📊 Data Layer** (services/, models/) - Доступ к данным
+
+Каждый слой имеет четкую ответственность и зависит только от нижележащих слоев, обеспечивая:
+- 🔄 **Тестируемость** - каждый компонент можно тестировать изолированно
+- 🔧 **Поддерживаемость** - изменения в одном слое не затрагивают другие
+- 📈 **Масштабируемость** - легкое добавление новых функций
+- 🎯 **Читаемость** - четкая структура и命名约定
 
 # Стек технологий
 
