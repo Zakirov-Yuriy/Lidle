@@ -27,13 +27,13 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
             color: const Color(0xFF1C2834),
             child: Column(
               children: [
-                 Padding(
-          padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [const Header()],
-          ),
-                    ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [const Header()],
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.only(left: 10.0, right: 20),
                   child: Row(
@@ -73,7 +73,7 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
             ),
           ),
           const Padding(
-            padding: const EdgeInsets.only(left: 25.0, right: 25),
+            padding: EdgeInsets.only(left: 25.0, right: 25),
             child: Text(
               'Категория: Недвижимость',
               style: TextStyle(

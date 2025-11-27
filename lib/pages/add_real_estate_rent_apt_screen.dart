@@ -278,39 +278,39 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
               ),
               const SizedBox(height: 13),
 
-              _buildDropdown(
-                label: 'Срок аренды',
-                hint: _selectedRentalPeriodTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedRentalPeriodTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Срок аренды',
-                        options: const [
-                          'Долгосрочная',
-                          'Посуточно',
-                          'На несколько месяцев',
-                        ],
-                        selectedOptions: _selectedRentalPeriodTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRentalPeriodTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 13),
+              // _buildDropdown(
+              //   label: 'Срок аренды',
+              //   hint: _selectedRentalPeriodTypes.isEmpty
+              //       ? 'Выбрать'
+              //       : _selectedRentalPeriodTypes.join(', '),
+              //   icon: const Icon(
+              //     Icons.keyboard_arrow_down_rounded,
+              //     color: textSecondary,
+              //   ),
+              //   onTap: () {
+              //     showDialog(
+              //       context: context,
+              //       builder: (BuildContext context) {
+              //         return SelectionDialog(
+              //           title: 'Срок аренды',
+              //           options: const [
+              //             'Долгосрочная',
+              //             'Посуточно',
+              //             'На несколько месяцев',
+              //           ],
+              //           selectedOptions: _selectedRentalPeriodTypes,
+              //           onSelectionChanged: (Set<String> selected) {
+              //             setState(() {
+              //               _selectedRentalPeriodTypes = selected;
+              //             });
+              //           },
+              //           allowMultipleSelection: false,
+              //         );
+              //       },
+              //     );
+              //   },
+              // ),
+              // const SizedBox(height: 13),
 
               _buildTextField(
                 label: 'Описание',

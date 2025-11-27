@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/header.dart';
 import 'add_real_estate_apt_screen.dart';
+import 'add_real_estate_rent_apt_screen.dart'; // Import AddRealEstateRentAptScreen
 
 class RealEstateApartmentsScreen extends StatelessWidget {
   const RealEstateApartmentsScreen({super.key});
@@ -95,8 +96,11 @@ class RealEstateApartmentsScreen extends StatelessWidget {
                 context,
                 MaterialPageRoute(builder: (context) => const AddRealEstateAptScreen()),
               );
-            } else {
-              // TODO: handle other cases
+            } else if (title == "Долгосрочная аренда квартир") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddRealEstateRentAptScreen()),
+              );
             }
           },
         ),

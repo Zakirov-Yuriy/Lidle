@@ -264,6 +264,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 label: 'Категория',
                 hint: 'Продажа квартир',
                 subtitle: 'Недвижимость / Квартиры',
+                showChangeText: true,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -273,7 +274,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     ),
                   );
                 },
-                showChangeText: true, // Show "Изменить" for Категория
               ),
               const SizedBox(height: 13),
 
@@ -1588,6 +1588,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
+    bool showChangeText = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1640,14 +1641,14 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           ),
                         ),
                 ),
-                // "Изменить" text
-                Text(
-                  'Изменить',
-                  style: TextStyle(
-                    color: Colors.blue, // Синий цвет
-                    fontSize: 14,       // Размер 14
+                if (showChangeText)
+                  Text(
+                    'Изменить',
+                    style: TextStyle(
+                      color: Colors.blue, // Синий цвет
+                      fontSize: 14,       // Размер 14
+                    ),
                   ),
-                ),
                 if (icon != null) icon,
               ],
             ),
