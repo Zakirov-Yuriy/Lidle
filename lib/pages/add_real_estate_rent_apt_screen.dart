@@ -274,6 +274,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                     ),
                   );
                 },
+                showChangeText: true,
               ),
               const SizedBox(height: 13),
 
@@ -1622,6 +1623,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
+    bool showChangeText = false, // New parameter to control "Изменить" text
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1674,14 +1676,14 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                           ),
                         ),
                 ),
-                // "Изменить" text
-                Text(
-                  'Изменить',
-                  style: TextStyle(
-                    color: Colors.blue, // Синий цвет
-                    fontSize: 14,       // Размер 14
+                if (showChangeText) // Conditionally show "Изменить" text
+                  Text(
+                    'Изменить',
+                    style: TextStyle(
+                      color: Colors.blue, // Синий цвет
+                      fontSize: 14,       // Размер 14
+                    ),
                   ),
-                ),
                 if (icon != null) icon,
               ],
             ),
