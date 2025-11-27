@@ -273,6 +273,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     ),
                   );
                 },
+                showChangeText: true, // Show "Изменить" for Категория
               ),
               const SizedBox(height: 13),
 
@@ -1638,6 +1639,14 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                             fontSize: 14,
                           ),
                         ),
+                ),
+                // "Изменить" text
+                Text(
+                  'Изменить',
+                  style: TextStyle(
+                    color: Colors.blue, // Синий цвет
+                    fontSize: 14,       // Размер 14
+                  ),
                 ),
                 if (icon != null) icon,
               ],
