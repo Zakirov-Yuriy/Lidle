@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // Import for SvgPicture
 import '../constants.dart'; // Assuming constants.dart contains color definitions
 import '../widgets/header.dart'; // Import the Header widget
+import 'publication_success_screen.dart'; // Import the PublicationSuccessScreen
 
 class PublicationTariffScreen extends StatelessWidget {
   static const String routeName = '/publication-tariff';
@@ -27,7 +28,7 @@ class PublicationTariffScreen extends StatelessWidget {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.arrow_back_ios, color: textPrimary),
+                      child: const Icon(Icons.arrow_back_ios, color: textPrimary, size: 16,),
                     ),
                     
                     const Text(
@@ -180,7 +181,16 @@ class PublicationTariffScreen extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {
-                print('Selected $tariffName tariff');
+                if (isPrimary) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PublicationSuccessScreen(),
+                    ),
+                  );
+                } else {
+                  print('Selected $tariffName tariff');
+                }
               },
               child: Text(
                 'Опубликовать',
