@@ -85,6 +85,9 @@ flutter:
     - assets/fonts/
     - assets/publication_tariff/
     - assets/publication_success/
+    - assets/my_purchases/
+
+   
     
 
   # An image asset can refer to one or more resolution-specific "variants", see

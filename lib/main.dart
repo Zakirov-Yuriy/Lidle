@@ -25,6 +25,7 @@ import 'pages/profile_menu_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing_screen.dart';
 import 'pages/category_selection_screen.dart';
+import 'pages/my_purchases_screen.dart'; // Import the new screen
 
 /// Главная функция, точка входа в приложение.
 /// Выполняет асинхронную инициализацию необходимых сервисов.
@@ -75,8 +76,6 @@ class LidleApp extends StatelessWidget {
         ), 
         home: const HomePage(),
        
-    
-        
 
         routes: {
           SignInScreen.routeName: (context) => const SignInScreen(),
@@ -94,6 +93,7 @@ class LidleApp extends StatelessWidget {
           FavoritesScreen.routeName: (context) => const FavoritesScreen(),
           AddListingScreen.routeName: (context) => const AddListingScreen(),
           CategorySelectionScreen.routeName: (context) => const CategorySelectionScreen(),
+          MyPurchasesScreen.routeName: (context) => const MyPurchasesScreen(), // Add the new route
         },
       ),
     );

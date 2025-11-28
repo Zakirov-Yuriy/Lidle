@@ -47,7 +47,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToSignIn) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -134,7 +134,11 @@ class _HomePageState extends State<HomePage> {
                 ),
                 bottomNavigationBar: BottomNavigation(
                   onItemSelected: (index) {
-                    context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                    if (index == 3) { // Shopping cart icon
+                      context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                    } else {
+                      context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                    }
                   },
                 ),
               );

@@ -2,6 +2,7 @@
 /// Автоматически определяет текущий экран и обеспечивает навигацию.
 import 'package:flutter/material.dart';
 import '../constants.dart';
+import '../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 
 /// `BottomNavigation` - это StatelessWidget, который отображает
 /// нижнюю навигационную панель с иконками.
@@ -26,6 +27,8 @@ class BottomNavigation extends StatelessWidget {
           return 0; // Домой
         case '/favorites':
           return 1; // Избранное
+        case MyPurchasesScreen.routeName:
+          return 3; // Мои покупки
         case '/profile-dashboard':
           return 5; // Профиль
         default:

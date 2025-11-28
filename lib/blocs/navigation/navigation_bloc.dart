@@ -7,6 +7,7 @@ import '../../pages/sign_in_screen.dart';
 import '../../pages/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
 import '../../pages/add_listing_screen.dart';
+import '../../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 
 /// Bloc для управления состоянием навигации.
 /// Обрабатывает события навигации и управляет переходами между страницами.
@@ -19,6 +20,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToHomeEvent>(_onNavigateToHome);
     on<NavigateToFavoritesEvent>(_onNavigateToFavorites);
     on<NavigateToAddListingEvent>(_onNavigateToAddListing);
+    on<NavigateToMyPurchasesEvent>(_onNavigateToMyPurchases); // Handle new event
     on<SelectNavigationIndexEvent>(_onSelectNavigationIndex);
   }
 
@@ -77,6 +79,15 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     _navigateToAddListing();
   }
 
+  /// Обработчик события навигации к Моим покупкам.
+  void _onNavigateToMyPurchases(
+    NavigateToMyPurchasesEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(const NavigationToMyPurchases());
+    _navigateToMyPurchases();
+  }
+
   /// Обработчик события выбора элемента навигации.
   /// Проверяет авторизацию для защищенных разделов.
   Future<void> _onSelectNavigationIndex(
@@ -101,6 +112,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           case 2:
             emit(const NavigationToAddListing());
             _navigateToAddListing();
+            break;
+          case 3: // Мои покупки
+            emit(const NavigationToMyPurchases());
+            _navigateToMyPurchases();
             break;
           case 4:
              emit(const NavigationToProfile());
@@ -151,6 +166,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     // Навигация будет выполнена в UI через BlocListener
   }
 
+  /// Приватный метод для навигации к Моим покупкам.
+  void _navigateToMyPurchases() {
+    // Навигация будет выполнена в UI через BlocListener
+  }
+
   /// Метод для выполнения навигации с учетом контекста.
   /// [context] - BuildContext для выполнения навигации.
   void executeNavigation(BuildContext context) {
@@ -162,6 +182,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeFavoritesNavigation(context);
     } else if (state is NavigationToAddListing) {
       _executeAddListingNavigation(context);
+    } else if (state is NavigationToMyPurchases) {
+      _executeMyPurchasesNavigation(context); // Handle MyPurchases navigation
     } else if (state is NavigationToSignIn) {
       _executeSignInNavigation(context);
     }
@@ -197,5 +219,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   /// Выполняет навигацию к добавлению объявления.
   void _executeAddListingNavigation(BuildContext context) {
     Navigator.of(context).pushNamed(AddListingScreen.routeName);
+  }
+
+  /// Выполняет навигацию к Моим покупкам.
+  void _executeMyPurchasesNavigation(BuildContext context) {
+    Navigator.of(context).pushNamed(MyPurchasesScreen.routeName);
   }
 }

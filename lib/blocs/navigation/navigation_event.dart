@@ -22,6 +22,9 @@ class NavigateToFavoritesEvent extends NavigationEvent {}
 /// Событие навигации к добавлению объявления.
 class NavigateToAddListingEvent extends NavigationEvent {}
 
+/// Событие навигации к Моим покупкам.
+class NavigateToMyPurchasesEvent extends NavigationEvent {}
+
 /// Событие выбора элемента навигации с проверкой авторизации.
 /// Проверяет авторизацию и перенаправляет на sign_in если необходимо.
 class SelectNavigationIndexEvent extends NavigationEvent {

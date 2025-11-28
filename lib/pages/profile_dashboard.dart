@@ -16,6 +16,7 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/pages/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -104,6 +105,7 @@ class ProfileDashboard extends StatelessWidget {
                               iconPath: 'assets/profile_dashboard/shopping-cart-01.svg',
                               title: 'Покупки',
                               subtitle: '2 товаров',
+                              onTap: () => Navigator.of(context).pushNamed(MyPurchasesScreen.routeName),
                             ),
                             SizedBox(width: 10),
                             _QuickCard(

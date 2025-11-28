@@ -38,6 +38,11 @@ class NavigationToAddListing extends NavigationState {
   const NavigationToAddListing() : super(2);
 }
 
+/// Состояние навигации к Моим покупкам.
+class NavigationToMyPurchases extends NavigationState {
+  const NavigationToMyPurchases() : super(3);
+}
+
 /// Состояние навигации к экрану входа.
 class NavigationToSignIn extends NavigationState {
   const NavigationToSignIn() : super(-1); // -1 означает специальный переход
