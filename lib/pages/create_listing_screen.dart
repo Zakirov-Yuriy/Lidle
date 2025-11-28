@@ -276,13 +276,14 @@ class AddListingForm extends StatelessWidget {
   Widget _imageCell(File img, int index) {
     return Stack(
       children: [
-        Container(
-          width: 115,
-          height: 89,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: Image.file(
+            img,
+            width: 115,
+            height: 89,
+            fit: BoxFit.cover,
           ),
-          child: Image.file(img, fit: BoxFit.cover),
         ),
         Positioned(
           top: 4,
