@@ -10,7 +10,7 @@ void main() {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(
@@ -28,7 +28,7 @@ void main() {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(
@@ -45,14 +45,14 @@ void main() {
       final imageWidget = tester.widget<Image>(imageFinder);
       expect(imageWidget.image, isA<AssetImage>());
       final assetImage = imageWidget.image as AssetImage;
-      expect(assetImage.assetName, 'assets/14.png');
+      expect(assetImage.assetName, 'assets/home_page/14.png');
     });
 
     testWidgets('should have correct dimensions', (WidgetTester tester) async {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(
@@ -74,7 +74,7 @@ void main() {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(
@@ -96,7 +96,7 @@ void main() {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(
@@ -119,7 +119,7 @@ void main() {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(
@@ -144,7 +144,7 @@ void main() {
       const carCategory = Category(
         title: 'Автомобили',
         color: Colors.blue,
-        imagePath: 'assets/acura_mdx.png',
+        imagePath: 'assets/home_page/acura_mdx.png',
       );
 
       await tester.pumpWidget(
@@ -160,14 +160,14 @@ void main() {
       final imageFinder = find.byType(Image);
       final imageWidget = tester.widget<Image>(imageFinder);
       final assetImage = imageWidget.image as AssetImage;
-      expect(assetImage.assetName, 'assets/acura_mdx.png');
+      expect(assetImage.assetName, 'assets/home_page/acura_mdx.png');
     });
 
     testWidgets('should fit BoxFit.cover for image', (WidgetTester tester) async {
       const category = Category(
         title: 'Test Category',
         color: Colors.blue,
-        imagePath: 'assets/14.png',
+        imagePath: 'assets/home_page/14.png',
       );
 
       await tester.pumpWidget(

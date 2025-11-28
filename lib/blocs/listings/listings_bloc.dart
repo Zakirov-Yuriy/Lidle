@@ -31,7 +31,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   static final List<Listing> staticListings = [
     const Listing(
       id: 'listing_1',
-      imagePath: 'assets/apartment1.png',
+      imagePath: 'assets/home_page/apartment1.png',
       title: '4-к. квартира, 169,5 м²...',
       price: '78 970 000 ₽',
       location: 'Москва, ул. Кусинена, 21А',
@@ -39,7 +39,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ),
     const Listing(
       id: 'listing_2',
-      imagePath: 'assets/acura_mdx.png',
+      imagePath: 'assets/home_page/acura_mdx.png',
       title: 'Acura MDX 3.5 AT, 20...',
       price: '2 399 999 ₽',
       location: 'Брянск, Авиационная ул., 34',
@@ -47,7 +47,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ),
     const Listing(
       id: 'listing_3',
-      imagePath: 'assets/acura_rdx.png',
+      imagePath: 'assets/home_page/acura_rdx.png',
       title: 'Acura RDX 2.3 AT, 2007...',
       price: '2 780 000 ₽',
       location: 'Москва, Отрадная ул., 11',
@@ -55,7 +55,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ),
     const Listing(
       id: 'listing_4',
-      imagePath: 'assets/studio.png',
+      imagePath: 'assets/home_page/studio.png',
       title: 'Студия, 35,7 м², 2/6 эт...',
       price: '6 500 000 ₽',
       location: 'Москва, Варшавское ш., 125',
@@ -63,7 +63,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ),
      const Listing(
       id: 'listing_5',
-      imagePath: 'assets/image.png',
+      imagePath: 'assets/home_page/image.png',
       title: 'Студия, 35,7 м², 2/6 эт...',
       price: '6 500 000 ₽',
       location: 'Москва, Варшавское ш., 125',
@@ -71,7 +71,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ),
     const Listing(
       id: 'listing_6',
-      imagePath: 'assets/image2.png',
+      imagePath: 'assets/home_page/image2.png',
       title: '3-к. квартира, 125,5 м²...',
       price: '44 500 000 ₽ ',
       location: 'Москва, Истринская ул., 8к3',
@@ -85,22 +85,22 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     const Category(
       title: 'Недвижи-\nмость',
       color: Colors.blue,
-      imagePath: 'assets/14.png',
+      imagePath: 'assets/home_page/14.png',
     ),
     const Category(
       title: 'Авто\nи мото',
       color: Colors.purple,
-      imagePath: 'assets/15.png',
+      imagePath: 'assets/home_page/15.png',
     ),
     const Category(
       title: 'Работа',
       color: Colors.orange,
-      imagePath: 'assets/16.png',
+      imagePath: 'assets/home_page/16.png',
     ),
     const Category(
       title: 'Подработка',
       color: Colors.teal,
-      imagePath: 'assets/17.png',
+      imagePath: 'assets/home_page/17.png',
     ),
   ];
 

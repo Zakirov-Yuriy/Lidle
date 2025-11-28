@@ -9,7 +9,7 @@ void main() {
     testWidgets('should display listing title', (WidgetTester tester) async {
       const listing = Listing(
         id: 'test_listing_1',
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -34,7 +34,7 @@ void main() {
     testWidgets('should display listing price', (WidgetTester tester) async {
       const listing = Listing(
         id: 'test_listing_2',
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -59,7 +59,7 @@ void main() {
     testWidgets('should display listing location', (WidgetTester tester) async {
       const listing = Listing(
         id: 'test_listing_3',
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -84,7 +84,7 @@ void main() {
     testWidgets('should display listing date', (WidgetTester tester) async {
       const listing = Listing(
         id: 'test_listing_4',
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -109,7 +109,7 @@ void main() {
     testWidgets('should display image', (WidgetTester tester) async {
       const listing = Listing(
         id: 'test_listing_5',
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -134,13 +134,13 @@ void main() {
       final imageWidget = tester.widget<Image>(imageFinder);
       expect(imageWidget.image, isA<AssetImage>());
       final assetImage = imageWidget.image as AssetImage;
-      expect(assetImage.assetName, 'assets/apartment1.png');
+      expect(assetImage.assetName, 'assets/home_page/apartment1.png');
     });
 
     testWidgets('should have favorite icon', (WidgetTester tester) async {
       const listing = Listing(
         id: 'test_listing_6',
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -165,7 +165,7 @@ void main() {
 
     testWidgets('should have ClipRRect for image', (WidgetTester tester) async {
       const listing = Listing(
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -190,7 +190,7 @@ void main() {
 
     testWidgets('should handle long title with ellipsis', (WidgetTester tester) async {
       const listing = Listing(
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Very Long Listing Title That Should Be Truncated',
         price: '100 000 ₽',
         location: 'Москва',
@@ -219,7 +219,7 @@ void main() {
 
     testWidgets('should handle long location with ellipsis', (WidgetTester tester) async {
       const listing = Listing(
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Very Long Location Name That Should Be Truncated',
@@ -248,7 +248,7 @@ void main() {
 
     testWidgets('should have correct text colors', (WidgetTester tester) async {
       const listing = Listing(
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
@@ -286,7 +286,7 @@ void main() {
 
     testWidgets('should use LayoutBuilder for responsive design', (WidgetTester tester) async {
       const listing = Listing(
-        imagePath: 'assets/apartment1.png',
+        imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',

@@ -31,8 +31,8 @@ const String categoriesTitle = 'Предложения на LIDLE';
 const String viewAll = 'Смотреть все';
 const String latestTitle = 'Самое новое';
 
-const String logoAsset = 'assets/logo.svg';
-const String settingsIconAsset = 'assets/settings.svg';
+const String logoAsset = 'assets/home_page/logo.svg';
+const String settingsIconAsset = 'assets/home_page/settings.svg';
 const String homeIconAsset = 'assets/BottomNavigation/home-02.png';
 const String heartIconAsset = 'assets/BottomNavigation/heart-rounded.png';
 const String plusIconAsset = 'assets/BottomNavigation/plus-circle.png';

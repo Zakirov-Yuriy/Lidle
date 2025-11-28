@@ -29,7 +29,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
   Set<String> _selectedHeatingTypes = {}; // New state for Heating filter
-  Set<String> _selectedCommunicationTypes = {}; // New state for Communications filter
+  Set<String> _selectedCommunicationTypes =
+      {}; // New state for Communications filter
   Set<String> _selectedCity = {}; // New state for selected city
   Set<String> _selectedStreet = {}; // New state for selected street
   Set<String> _selectedRoomCounts = {}; // New state for Room Count filter
@@ -39,7 +40,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
   Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
   Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
-  Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter
+  Set<String> _selectedInfrastructureTypes =
+      {}; // New state for Infrastructure filter
   Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -115,7 +117,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   ],
                 ),
               ),
-            ],          ),
+            ],
+          ),
         );
       },
     );
@@ -137,10 +140,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   bool isClientPrice = false; // Клиент может предложить свою цену
   bool isAutoRenewal = false; // Автопродление
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished = true; // Initialize to true so 'Да' is active by default
+  bool? _selectedFurnished =
+      true; // Initialize to true so 'Да' is active by default
 
-  // New state for publication type buttons
-  String? _selectedPublicationType; // 'Standard' or 'Premium'
+ 
 
   // New state for "Предпросмотр" and "Опубликовать" buttons
   String _selectedAction = 'publish'; // Default to 'publish'
@@ -170,8 +173,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              
-
               // Заголовок
               Row(
                 children: [
@@ -648,11 +649,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Общая площадь(м²)*',
-                hint: 'Цифрами',
-                
-              ),
+              _buildTextField(label: 'Общая площадь(м²)*', hint: 'Цифрами'),
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -743,14 +740,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     builder: (BuildContext context) {
                       return SelectionDialog(
                         title: 'Количество комнат',
-                        options: const [
-                          '1',
-                          '2',
-                          '3',
-                          '4',
-                          '5',
-                          '6+',
-                        ],
+                        options: const ['1', '2', '3', '4', '5', '6+'],
                         selectedOptions: _selectedRoomCounts,
                         onSelectionChanged: (Set<String> selected) {
                           setState(() {
@@ -1101,7 +1091,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           'Канализация',
                           'Вывоз отходов',
                           'Без коммуникаций',
-                          
                         ],
                         selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (Set<String> selected) {
@@ -1109,7 +1098,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection: true, // Assuming multiple selections are allowed for communications
+                        allowMultipleSelection:
+                            true, // Assuming multiple selections are allowed for communications
                       );
                     },
                   );
@@ -1303,41 +1293,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 18),
 
-              // New section for Publication Type
-              const Text(
-                'Тип публикации',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildButton(
-                      'Стандартная',
-                      onPressed: () {
-                        setState(() {
-                          _selectedPublicationType = 'Standard';
-                        });
-                      },
-                      isPrimary: _selectedPublicationType == 'Standard',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildButton(
-                      'Премиум',
-                      onPressed: () {
-                        setState(() {
-                          _selectedPublicationType = 'Premium';
-                        });
-                      },
-                      isPrimary: _selectedPublicationType == 'Premium',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
               _buildDropdown(
                 label: 'Ваш город*',
                 hint: _selectedCity.isEmpty
@@ -1354,7 +1309,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       return CitySelectionDialog(
                         title: 'Ваш город',
                         options: const [
-                          
                           'Абаза',
                           'Абакан',
                           'Абдулино',
@@ -1366,8 +1320,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-                          
-                       
+
                           // Add more cities as needed
                         ],
                         selectedOptions: _selectedCity,
@@ -1646,7 +1599,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     'Изменить',
                     style: TextStyle(
                       color: Colors.blue, // Синий цвет
-                      fontSize: 14,       // Размер 14
+                      fontSize: 14, // Размер 14
                     ),
                   ),
                 if (icon != null) icon,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/city_selection_dialog.dart';
+import 'package:lidle/widgets/selection_dialog.dart';
 
 class FiltersScreen extends StatefulWidget {
   static const routeName = '/filters';
@@ -15,15 +17,15 @@ enum SortKind { newest, oldest, expensive, cheap }
 enum AccountKind { all, private, business }
 
 class _FiltersScreenState extends State<FiltersScreen> {
-  String? _city = 'Мариуполь';
-  String? _category; // «Выберите категорию»
+  Set<String> _selectedCity = {'Мариуполь'};
+  Set<String> _selectedCategories = {}; // «Выберите категорию»
   SortKind _sort = SortKind.newest;
   AccountKind _account = AccountKind.private;
 
   void _reset() {
     setState(() {
-      _city = 'Мариуполь';
-      _category = null;
+      _selectedCity = {'Мариуполь'};
+      _selectedCategories = {};
       _sort = SortKind.newest;
       _account = AccountKind.private;
     });
@@ -121,50 +123,96 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 child: Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: const [_GreyTag(text: 'Недвижимость')],
+                  children: _selectedCategories.map((category) => _GreyTag(text: category)).toList(),
                 ),
               ),
               const SizedBox(height: 16),
               const Divider(color: Color(0xFF474747)),
 
               // Выбор города
-              const SizedBox(height: 11),
-              Padding(
-                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
-                child: const Text(
-                  'Выберете город',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
+          
               const SizedBox(height: 9),
               Padding(
                 padding: const EdgeInsets.only(left: 25.0, right: 25.0),
-                child: _PickField(
-                  label: _city ?? 'Выберите город',
-                  onTap: () async {
-                    // TODO: показать выбор города
-                    // финальное значение запишите в _city
+                child: _buildDropdown(
+                  label: 'Выберете город',
+                  hint: _selectedCity.isEmpty
+                      ? 'Ваш город'
+                      : _selectedCity.join(', '),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_right_outlined,
+                    color: textSecondary,
+                  ),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return CitySelectionDialog(
+                          title: 'Ваш город',
+                          options: const [
+                            'Абаза',
+                            'Абакан',
+                            'Абдулино',
+                            'Абинск',
+                            'Агидель',
+                            'Агрыз',
+                            'Адыгейск',
+                            'Азнакаево',
+                            'Бабаево',
+                            'Бабушкин Бавлы',
+                            'Багратионовск',
+
+                            // Add more cities as needed
+                          ],
+                          selectedOptions: _selectedCity,
+                          onSelectionChanged: (Set<String> selected) {
+                            setState(() {
+                              _selectedCity = selected;
+                            });
+                          },
+                        );
+                      },
+                    );
                   },
                 ),
               ),
               const SizedBox(height: 14),
 
               // Выбор категории
+              
               Padding(
                 padding: const EdgeInsets.only(left: 25.0, right: 25.0),
-                child: const Text(
-                  'Выберите категорию',
-                  style: TextStyle(color: Colors.white, fontSize: 15),
-                ),
-              ),
-              const SizedBox(height: 9),
-              Padding(
-                padding: const EdgeInsets.only(left: 25.0, right: 25.0),
-                child: _PickField(
-                  label: _category ?? 'Выберите категорию',
-                  onTap: () async {
-                    // TODO: показать выбор категории
-                    // финальное значение запишите в _category
+                child: _buildDropdown(
+                  label: 'Выберите категорию',
+                  hint: _selectedCategories.isEmpty
+                      ? 'Выберите категорию'
+                      : _selectedCategories.join(', '),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_right_outlined,
+                    color: textSecondary,
+                  ),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return SelectionDialog(
+                          title: 'Выберите категорию',
+                          options: const [
+                            'Недвижимость',
+                            'Авто и мото',
+                            'Работа',
+                            'Подработка',
+                          ],
+                          selectedOptions: _selectedCategories,
+                          onSelectionChanged: (Set<String> selected) {
+                            setState(() {
+                              _selectedCategories = selected;
+                            });
+                          },
+                          allowMultipleSelection: true,
+                        );
+                      },
+                    );
                   },
                 ),
               ),
@@ -309,6 +357,82 @@ class _FiltersScreenState extends State<FiltersScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required String hint,
+    VoidCallback? onTap,
+    String? subtitle,
+    Widget? icon,
+    bool showChangeText = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        const SizedBox(height: 9),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: subtitle != null ? 60 : 45,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            decoration: BoxDecoration(
+              color: formBackground,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: subtitle != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              hint,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color.fromARGB(255, 255, 255, 255),
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: Color(0xFF7A7A7A),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          hint,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color.fromARGB(255, 255, 255, 255),
+                            fontSize: 14,
+                          ),
+                        ),
+                ),
+                if (showChangeText)
+                  Text(
+                    'Изменить',
+                    style: TextStyle(
+                      color: Colors.blue, // Синий цвет
+                      fontSize: 14, // Размер 14
+                    ),
+                  ),
+                if (icon != null) icon,
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

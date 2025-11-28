@@ -74,9 +74,9 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
-    - assets/logo.svg
-    - assets/logo.png
-    - assets/settings.svg
+    - assets/home_page/logo.svg
+    - assets/home_page/logo.png
+    - assets/home_page/settings.svg
     - assets/BottomNavigation/
     - assets/profile_dashboard/
     - assets/categories/
@@ -116,8 +116,8 @@ flutter_native_splash:
   color_dark: "#232E3C"
 
   # General image for all platforms (except Android 12+)
-  image: assets/logo.png
-  image_dark: assets/logo.png
+  image: assets/home_page/logo.png
+  image_dark: assets/home_page/logo.png
 
   # Image alignment
   android_gravity: fill_horizontal|center_vertical
@@ -134,8 +134,8 @@ flutter_native_splash:
     color_dark: "#232E3C"
 
     # Center logo - for Android 12+ the image should be 1152x1152 px for full circle display
-    image: assets/logo.png
-    image_dark: assets/logo.png
+    image: assets/home_page/logo.png
+    image_dark: assets/home_page/logo.png
 
     # Center-logo background color (commented out for full image display)
     # icon_background_color: "#232E3C"

@@ -20,16 +20,19 @@ class AddRealEstateRentAptScreen extends StatefulWidget {
   const AddRealEstateRentAptScreen({super.key});
 
   @override
-  State<AddRealEstateRentAptScreen> createState() => _AddRealEstateRentAptScreenState();
+  State<AddRealEstateRentAptScreen> createState() =>
+      _AddRealEstateRentAptScreenState();
 }
 
-class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen> {
+class _AddRealEstateRentAptScreenState
+    extends State<AddRealEstateRentAptScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
   Set<String> _selectedHeatingTypes = {}; // New state for Heating filter
-  Set<String> _selectedCommunicationTypes = {}; // New state for Communications filter
+  Set<String> _selectedCommunicationTypes =
+      {}; // New state for Communications filter
   Set<String> _selectedCity = {}; // New state for selected city
   Set<String> _selectedStreet = {}; // New state for selected street
   Set<String> _selectedRoomCounts = {}; // New state for Room Count filter
@@ -39,9 +42,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
   Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
   Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
   Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
-  Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter
-  Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter
-  Set<String> _selectedRentalPeriodTypes = {}; // New state for Rental Period filter
+
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -116,7 +117,8 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                   ],
                 ),
               ),
-            ],          ),
+            ],
+          ),
         );
       },
     );
@@ -138,24 +140,16 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
   bool isClientPrice = false; // Клиент может предложить свою цену
   bool isAutoRenewal = false; // Автопродление
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished = true; // Initialize to true so 'Да' is active by default
+  bool? _selectedFurnished =
+      true; // Initialize to true so 'Да' is active by default
 
   // New state for publication type buttons
-  String? _selectedPublicationType; // 'Standard' or 'Premium'
 
   // New state for "Предпросмотр" and "Опубликовать" buttons
   String _selectedAction = 'publish'; // Default to 'publish'
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
-  }
-
-  void _toggleMarketType(bool isSecondary) {
-    setState(() => isSecondarySelected = isSecondary);
-  }
-
-  void _toggleMortgage(bool yes) {
-    setState(() => isMortgageYes = yes);
   }
 
   @override
@@ -171,8 +165,6 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              
-
               // Заголовок
               Row(
                 children: [
@@ -311,7 +303,6 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
               //   },
               // ),
               // const SizedBox(height: 13),
-
               _buildTextField(
                 label: 'Описание',
                 hint:
@@ -411,7 +402,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                 children: [
                   const Expanded(
                     child: Text(
-                      'Возможность обмена',
+                      'Готов сотрудничать с риэлтором',
                       style: TextStyle(color: textPrimary, fontSize: 14),
                     ),
                   ),
@@ -426,7 +417,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                 children: [
                   const Expanded(
                     child: Text(
-                      'Готов принять в залог',
+                      'Для совместной аренды',
                       style: TextStyle(color: textPrimary, fontSize: 14),
                     ),
                   ),
@@ -441,7 +432,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                 children: [
                   const Expanded(
                     child: Text(
-                      'Срочно',
+                      'С домашними питомцами',
                       style: TextStyle(color: textPrimary, fontSize: 14),
                     ),
                   ),
@@ -451,80 +442,11 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Рассрочка',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isInstallment,
-                    onChanged: (v) => setState(() => isInstallment = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Удалённая сделка',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isRemoteDeal,
-                    onChanged: (v) => setState(() => isRemoteDeal = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Клиент может предложить свою цену',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isClientPrice,
-                    onChanged: (v) => setState(() => isClientPrice = v),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 15),
-
-              // Ипотека
-              const Text(
-                'Ипотека',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Да',
-                    isMortgageYes,
-                    () => _toggleMortgage(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Нет',
-                    !isMortgageYes,
-                    () => _toggleMortgage(false),
-                  ),
-                ],
-              ),
 
               const SizedBox(height: 13),
               // Рассрочка
               const Text(
-                'Рассрочка',
+                'Вид обьекта',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
@@ -546,7 +468,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                       ),
                       onPressed: () => setState(() => isInstallment = true),
                       child: Text(
-                        'Да',
+                        'Вторичка',
                         style: TextStyle(
                           color: isInstallment ? Colors.white : textPrimary,
                           fontSize: 14,
@@ -571,7 +493,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                       ),
                       onPressed: () => setState(() => isInstallment = false),
                       child: Text(
-                        'Нет',
+                        'Новострой',
                         style: TextStyle(
                           color: !isInstallment ? Colors.white : textPrimary,
                           fontSize: 14,
@@ -645,6 +567,10 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                 hint: 'Общее количество этажей',
               ),
               const SizedBox(height: 9),
+              _buildTextField(label: 'Площадь кухни(м2)*', hint: 'Цифрами'),
+              const SizedBox(height: 9),
+              _buildTextField(label: 'Общая площадь(м2)*', hint: 'Цифрами'),
+              const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Тип сделки',
@@ -683,11 +609,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Общая площадь(м²)*',
-                hint: 'Цифрами',
-                
-              ),
+              _buildTextField(label: 'Общая площадь(м²)*', hint: 'Цифрами'),
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -778,14 +700,37 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                     builder: (BuildContext context) {
                       return SelectionDialog(
                         title: 'Количество комнат',
-                        options: const [
-                          '1',
-                          '2',
-                          '3',
-                          '4',
-                          '5',
-                          '6+',
-                        ],
+                        options: const ['1', '2', '3', '4', '5', '6+'],
+                        selectedOptions: _selectedRoomCounts,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedRoomCounts = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Количество спальных мест*',
+                hint: _selectedRoomCounts.isEmpty
+                    ? 'Цифрами'
+                    : _selectedRoomCounts.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Количество спальных мест',
+                        options: const ['1', '2', '3', '4', '5', '6+'],
                         selectedOptions: _selectedRoomCounts,
                         onSelectionChanged: (Set<String> selected) {
                           setState(() {
@@ -1136,7 +1081,6 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                           'Канализация',
                           'Вывоз отходов',
                           'Без коммуникаций',
-                          
                         ],
                         selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (Set<String> selected) {
@@ -1144,55 +1088,19 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection: true, // Assuming multiple selections are allowed for communications
+                        allowMultipleSelection:
+                            true, // Assuming multiple selections are allowed for communications
                       );
                     },
                   );
                 },
               ),
               const SizedBox(height: 9),
-
-              const Text(
-                'Вид объекта',
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Вторичка',
-                    isSecondarySelected,
-                    () => _toggleMarketType(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Новостройка',
-                    !isSecondarySelected,
-                    () => _toggleMarketType(false),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              _buildTextField(
-                label: 'Год постройки',
-                hint: 'Укажите год',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(
-                label: 'Площадь кухни(м²)',
-                hint: 'Цифрами',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
-
               _buildDropdown(
                 label: 'Инфраструктура (до 500 метров)',
-                hint: _selectedInfrastructureTypes.isEmpty
+                hint: _selectedCommunicationTypes.isEmpty
                     ? 'Выбрать'
-                    : _selectedInfrastructureTypes.join(', '),
+                    : _selectedCommunicationTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
@@ -1204,14 +1112,13 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                       return SelectionDialog(
                         title: 'Инфраструктура (до 500 метров)',
                         options: const [
-                          'Центр города',
+                          'Центор города',
                           'Достопримечательности',
                           'Исторические места',
                           'Музеи выставки',
                           'Парк, зеленая зона',
                           'Детская площадка',
                           'Отделения банка, банкомат',
-                          'Аптека',
                           'Супермаркет, магазин',
                           'Остановка транспорта',
                           'Стоянка',
@@ -1220,25 +1127,25 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                           'Автовокзал',
                           'ЖД станция',
                         ],
-                        selectedOptions: _selectedInfrastructureTypes,
+                        selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (Set<String> selected) {
                           setState(() {
-                            _selectedInfrastructureTypes = selected;
+                            _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection: true,
+                        allowMultipleSelection:
+                            true, // Assuming multiple selections are allowed for communications
                       );
                     },
                   );
                 },
               ),
               const SizedBox(height: 9),
-
               _buildDropdown(
                 label: 'Ландшафт (до 1 км)',
-                hint: _selectedLandscapeTypes.isEmpty
+                hint: _selectedCommunicationTypes.isEmpty
                     ? 'Выбрать'
-                    : _selectedLandscapeTypes.join(', '),
+                    : _selectedCommunicationTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
@@ -1266,20 +1173,21 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                           'Пляж',
                           'Город',
                         ],
-                        selectedOptions: _selectedLandscapeTypes,
+                        selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (Set<String> selected) {
                           setState(() {
-                            _selectedLandscapeTypes = selected;
+                            _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection: true,
+                        allowMultipleSelection:
+                            true, // Assuming multiple selections are allowed for communications
                       );
                     },
                   );
                 },
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 21),
 
               // Частное лицо / Бизнес
               const Text(
@@ -1339,38 +1247,38 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
               const SizedBox(height: 18),
 
               // New section for Publication Type
-              const Text(
-                'Тип публикации',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildButton(
-                      'Стандартная',
-                      onPressed: () {
-                        setState(() {
-                          _selectedPublicationType = 'Standard';
-                        });
-                      },
-                      isPrimary: _selectedPublicationType == 'Standard',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _buildButton(
-                      'Премиум',
-                      onPressed: () {
-                        setState(() {
-                          _selectedPublicationType = 'Premium';
-                        });
-                      },
-                      isPrimary: _selectedPublicationType == 'Premium',
-                    ),
-                  ),
-                ],
-              ),
+              // const Text(
+              //   'Тип публикации',
+              //   style: TextStyle(color: textPrimary, fontSize: 16),
+              // ),
+              // const SizedBox(height: 12),
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: _buildButton(
+              //         'Стандартная',
+              //         onPressed: () {
+              //           setState(() {
+              //             _selectedPublicationType = 'Standard';
+              //           });
+              //         },
+              //         isPrimary: _selectedPublicationType == 'Standard',
+              //       ),
+              //     ),
+              //     const SizedBox(width: 10),
+              //     Expanded(
+              //       child: _buildButton(
+              //         'Премиум',
+              //         onPressed: () {
+              //           setState(() {
+              //             _selectedPublicationType = 'Premium';
+              //           });
+              //         },
+              //         isPrimary: _selectedPublicationType == 'Premium',
+              //       ),
+              //     ),
+              //   ],
+              // ),
               const SizedBox(height: 18),
 
               _buildDropdown(
@@ -1389,7 +1297,6 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                       return CitySelectionDialog(
                         title: 'Ваш город',
                         options: const [
-                          
                           'Абаза',
                           'Абакан',
                           'Абдулино',
@@ -1401,8 +1308,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-                          
-                       
+
                           // Add more cities as needed
                         ],
                         selectedOptions: _selectedCity,
@@ -1681,7 +1587,7 @@ class _AddRealEstateRentAptScreenState extends State<AddRealEstateRentAptScreen>
                     'Изменить',
                     style: TextStyle(
                       color: Colors.blue, // Синий цвет
-                      fontSize: 14,       // Размер 14
+                      fontSize: 14, // Размер 14
                     ),
                   ),
                 if (icon != null) icon,
