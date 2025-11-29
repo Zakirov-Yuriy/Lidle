@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lidle/pages/create_listing_screen.dart';
 import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
@@ -106,13 +105,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       ),
                       onTap: () {
                         Navigator.of(context).pop();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CreateListingScreen(),
-                            settings: const RouteSettings(arguments: {'source': 'sell'}),
-                          ),
-                        );
+                        _pickImage(ImageSource.gallery);
                       },
                     ),
                   ],
@@ -123,6 +116,12 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
         );
       },
     );
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
   }
 
   // Переключатели
@@ -235,15 +234,70 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 4,
-                                mainAxisSpacing: 4,
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                                childAspectRatio: 115 / 89, // Adjust aspect ratio for 115x89
                               ),
-                          itemCount: _images.length,
+                          itemCount: _images.length + 1, // +1 for the "Add more photos" button
                           itemBuilder: (context, index) {
-                            return Image.file(
-                              _images[index],
-                              fit: BoxFit.cover,
+                            if (index == _images.length) {
+                              // This is the "Add more photos" button
+                              return GestureDetector(
+                                onTap: () => _showImageSourceActionSheet(context),
+                                child: Container(
+                                  width: 115,
+                                  height: 89,
+                                  decoration: BoxDecoration(
+                                    color: formBackground, // Use secondaryBackground for consistency
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      color: textSecondary,
+                                      size: 30,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Container(
+                              width: 115,
+                              height: 189,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              clipBehavior: Clip.antiAlias, // Clip the image to the border radius
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Image.file(
+                                      _images[index],
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () => _removeImage(index),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           },
                         ),

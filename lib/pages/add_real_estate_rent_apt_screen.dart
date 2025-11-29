@@ -105,14 +105,14 @@ class _AddRealEstateRentAptScreenState
                         style: TextStyle(color: Colors.white),
                       ),
                       onTap: () {
-                        Navigator.of(context).pop();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const CreateListingScreen(),
-                            settings: const RouteSettings(arguments: {'source': 'rent'}),
-                          ),
-                        );
+                        // Navigator.of(context).pop();
+                        // Navigator.push(
+                        //   // context,
+                        //   // MaterialPageRoute(
+                        //   //   builder: (context) => const CreateListingScreen(),
+                        //   //   settings: const RouteSettings(arguments: {'source': 'rent'}),
+                        //   // ),
+                        // );
                       },
                     ),
                   ],
