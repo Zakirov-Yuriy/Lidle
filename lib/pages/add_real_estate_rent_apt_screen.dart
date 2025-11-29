@@ -110,6 +110,7 @@ class _AddRealEstateRentAptScreenState
                           context,
                           MaterialPageRoute(
                             builder: (context) => const CreateListingScreen(),
+                            settings: const RouteSettings(arguments: {'source': 'rent'}),
                           ),
                         );
                       },

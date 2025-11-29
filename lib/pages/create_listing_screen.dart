@@ -199,7 +199,7 @@ class AddListingForm extends StatelessWidget {
           const Text('Категория', style: TextStyle(color: Colors.white, fontSize: 16)),
           const SizedBox(height: 7),
 
-          _categoryTile(),
+          _categoryTile(context),
 
           const SizedBox(height: 13),
 
@@ -326,7 +326,24 @@ class AddListingForm extends StatelessWidget {
   //  Category Tile
   // =======================================================================
 
-  Widget _categoryTile() {
+  Widget _categoryTile(BuildContext context) {
+    // Get arguments from route
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+    final source = args?['source'];
+
+    // Default values
+    String hint = 'Продажа квартир';
+    String subtitle = 'Недвижимость / Квартиры';
+
+    // Set based on source
+    if (source == 'rent') {
+      hint = 'Аренда квартир';
+      subtitle = 'Недвижимость';
+    } else if (source == 'sell') {
+      hint = 'Продажа квартир';
+      subtitle = 'Недвижимость / Квартиры';
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
@@ -335,17 +352,17 @@ class AddListingForm extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Продажа квартир',
+                  hint,
                   style: TextStyle(fontSize: 15, color: Colors.white),
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Недвижимость / Квартиры',
+                  subtitle,
                   style: TextStyle(fontSize: 13, color: textMuted),
                 ),
               ],

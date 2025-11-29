@@ -110,6 +110,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           context,
                           MaterialPageRoute(
                             builder: (context) => const CreateListingScreen(),
+                            settings: const RouteSettings(arguments: {'source': 'sell'}),
                           ),
                         );
                       },
