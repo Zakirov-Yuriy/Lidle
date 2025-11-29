@@ -12,21 +12,25 @@ class FiltersScreen extends StatefulWidget {
   State<FiltersScreen> createState() => _FiltersScreenState();
 }
 
-enum SortKind { newest, oldest, expensive, cheap }
+enum DateSort { newest, oldest }
+
+enum PriceSort { expensive, cheap }
 
 enum AccountKind { all, private, business }
 
 class _FiltersScreenState extends State<FiltersScreen> {
   Set<String> _selectedCity = {'Мариуполь'};
   Set<String> _selectedCategories = {}; // «Выберите категорию»
-  SortKind _sort = SortKind.newest;
+  DateSort? _dateSort = DateSort.newest;
+  PriceSort? _priceSort;
   AccountKind _account = AccountKind.private;
 
   void _reset() {
     setState(() {
       _selectedCity = {'Мариуполь'};
       _selectedCategories = {};
-      _sort = SortKind.newest;
+      _dateSort = DateSort.newest;
+      _priceSort = null;
       _account = AccountKind.private;
     });
   }
@@ -236,16 +240,16 @@ class _FiltersScreenState extends State<FiltersScreen> {
                         Expanded(
                           child: _ChoiceButton(
                             text: 'Новые',
-                            selected: _sort == SortKind.newest,
-                            onTap: () => setState(() => _sort = SortKind.newest),
+                            selected: _dateSort == DateSort.newest,
+                            onTap: () => setState(() => _dateSort = DateSort.newest),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: _ChoiceButton(
                             text: 'Старое',
-                            selected: _sort == SortKind.oldest,
-                            onTap: () => setState(() => _sort = SortKind.oldest),
+                            selected: _dateSort == DateSort.oldest,
+                            onTap: () => setState(() => _dateSort = DateSort.oldest),
                           ),
                         ),
                       ],
@@ -256,17 +260,17 @@ class _FiltersScreenState extends State<FiltersScreen> {
                         Expanded(
                           child: _ChoiceButton(
                             text: 'Дорогие',
-                            selected: _sort == SortKind.expensive,
+                            selected: _priceSort == PriceSort.expensive,
                             onTap: () =>
-                                setState(() => _sort = SortKind.expensive),
+                                setState(() => _priceSort = PriceSort.expensive),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: _ChoiceButton(
                             text: 'Дешевые',
-                            selected: _sort == SortKind.cheap,
-                            onTap: () => setState(() => _sort = SortKind.cheap),
+                            selected: _priceSort == PriceSort.cheap,
+                            onTap: () => setState(() => _priceSort = PriceSort.cheap),
                           ),
                         ),
                       ],

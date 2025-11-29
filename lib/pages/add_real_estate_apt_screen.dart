@@ -346,10 +346,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               // Чекбоксы по цене
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Возможен торг',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isBargain = !isBargain),
+                      child: const Text(
+                        'Возможен торг',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -361,10 +364,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Без комиссии',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isNoCommission = !isNoCommission),
+                      child: const Text(
+                        'Без комиссии',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -376,10 +382,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Возможность обмена',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isExchange = !isExchange),
+                      child: const Text(
+                        'Возможность обмена',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -391,10 +400,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Готов принять в залог',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isPledge = !isPledge),
+                      child: const Text(
+                        'Готов принять в залог',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -406,10 +418,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Срочно',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isUrgent = !isUrgent),
+                      child: const Text(
+                        'Срочно',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -421,10 +436,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Рассрочка',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isInstallment = !isInstallment),
+                      child: const Text(
+                        'Рассрочка',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -436,10 +454,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Удалённая сделка',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isRemoteDeal = !isRemoteDeal),
+                      child: const Text(
+                        'Удалённая сделка',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -451,10 +472,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Клиент может предложить свою цену',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isClientPrice = !isClientPrice),
+                      child: const Text(
+                        'Клиент может предложить свою цену',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -1547,7 +1571,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        GestureDetector(
+          onTap: onTap,
+          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        ),
         const SizedBox(height: 9),
         GestureDetector(
           onTap: onTap,

@@ -122,8 +122,28 @@ class _SelectionDialogState extends State<SelectionDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title,
-              style: const TextStyle(color: textPrimary, fontSize: 16)),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (widget.allowMultipleSelection) {
+                  if (_tempSelectedOptions.contains(title)) {
+                    _tempSelectedOptions.remove(title);
+                  } else {
+                    _tempSelectedOptions.add(title);
+                  }
+                } else {
+                  if (_tempSelectedOptions.contains(title)) {
+                    _tempSelectedOptions.remove(title);
+                  } else {
+                    _tempSelectedOptions.clear();
+                    _tempSelectedOptions.add(title);
+                  }
+                }
+              });
+            },
+            child: Text(title,
+                style: const TextStyle(color: textPrimary, fontSize: 16)),
+          ),
           CustomCheckbox(
             value: _tempSelectedOptions.contains(title),
             onChanged: (bool value) {

@@ -371,10 +371,13 @@ class _AddRealEstateRentAptScreenState
               // Чекбоксы по цене
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Возможен торг',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isBargain = !isBargain),
+                      child: const Text(
+                        'Возможен торг',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -386,10 +389,13 @@ class _AddRealEstateRentAptScreenState
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Без комиссии',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isNoCommission = !isNoCommission),
+                      child: const Text(
+                        'Без комиссии',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -401,10 +407,13 @@ class _AddRealEstateRentAptScreenState
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Готов сотрудничать с риэлтором',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isExchange = !isExchange),
+                      child: const Text(
+                        'Готов сотрудничать с риэлтором',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -416,10 +425,13 @@ class _AddRealEstateRentAptScreenState
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'Для совместной аренды',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isPledge = !isPledge),
+                      child: const Text(
+                        'Для совместной аренды',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -431,10 +443,13 @@ class _AddRealEstateRentAptScreenState
               const SizedBox(height: 12),
               Row(
                 children: [
-                  const Expanded(
-                    child: Text(
-                      'С домашними питомцами',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => isUrgent = !isUrgent),
+                      child: const Text(
+                        'С домашними питомцами',
+                        style: TextStyle(color: textPrimary, fontSize: 14),
+                      ),
                     ),
                   ),
                   CustomCheckbox(
@@ -1535,7 +1550,10 @@ class _AddRealEstateRentAptScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        GestureDetector(
+          onTap: onTap,
+          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        ),
         const SizedBox(height: 9),
         GestureDetector(
           onTap: onTap,

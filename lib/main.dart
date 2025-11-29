@@ -10,6 +10,7 @@ import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
+import 'package:lidle/pages/add_real_estate_apt_screen.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/account_recovery.dart';
 import 'package:lidle/pages/register_screen.dart';
@@ -74,7 +75,8 @@ class LidleApp extends StatelessWidget {
           scaffoldBackgroundColor: primaryBackground,
           fontFamily: 'Roboto',
         ), 
-        home: const HomePage(),
+        // home: const HomePage(),
+        home: const AddRealEstateAptScreen(),
        
 
         routes: {
