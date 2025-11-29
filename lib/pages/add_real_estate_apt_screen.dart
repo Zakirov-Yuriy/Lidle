@@ -206,9 +206,9 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   _showImageSourceActionSheet(context);
                 },
                 child: Container(
-                  height: 118,
+                  // Удаляем явную установку height, чтобы Container всегда адаптировался к содержимому
                   decoration: BoxDecoration(
-                    color: secondaryBackground,
+                    color: _images.isEmpty ? secondaryBackground : primaryBackground, // Меняем цвет фона в зависимости от наличия изображений
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -216,16 +216,23 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Icon(
-                                Icons.add_a_photo_outlined,
-                                color: textSecondary,
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                'Добавить изображение',
-                                style: TextStyle(
+                              Padding(
+                                padding: EdgeInsets.only(top: 28.0),
+                                child: Icon(
+                                  Icons.add_circle_outline,
                                   color: textSecondary,
-                                  fontSize: 16,
+                                  size: 40,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 27.0),
+                                child: Text(
+                                  'Добавить изображение',
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ],
@@ -234,11 +241,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
+                                crossAxisCount: 3, // Устанавливаем 3 фотографии в ряд
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
                                 childAspectRatio: 115 / 89, // Adjust aspect ratio for 115x89
                               ),
+                          shrinkWrap: true, // Позволяет GridView занимать только необходимое пространство
+                          physics: const NeverScrollableScrollPhysics(), // Отключает собственную прокрутку GridView
                           itemCount: _images.length + 1, // +1 for the "Add more photos" button
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
@@ -264,7 +273,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                             }
                             return Container(
                               width: 115,
-                              height: 189,
+                              height: 89, // Исправляем высоту контейнера для изображения на 89
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
@@ -278,8 +287,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                                     ),
                                   ),
                                   Positioned(
-                                    top: 0,
-                                    right: 0,
+                                    top: 7,
+                                    right: 11,
                                     child: GestureDetector(
                                       onTap: () => _removeImage(index),
                                       child: Container(

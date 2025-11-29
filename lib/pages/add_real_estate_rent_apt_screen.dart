@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lidle/pages/create_listing_screen.dart';
 import 'package:lidle/pages/real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/%D1%81ustom_witch.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
