@@ -41,6 +41,8 @@ class _AddRealEstateRentAptScreenState
   Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
   Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
   Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
+  Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter
+  Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -104,14 +106,8 @@ class _AddRealEstateRentAptScreenState
                         style: TextStyle(color: Colors.white),
                       ),
                       onTap: () {
-                        // Navigator.of(context).pop();
-                        // Navigator.push(
-                        //   // context,
-                        //   // MaterialPageRoute(
-                        //   //   builder: (context) => const CreateListingScreen(),
-                        //   //   settings: const RouteSettings(arguments: {'source': 'rent'}),
-                        //   // ),
-                        // );
+                        Navigator.of(context).pop();
+                        _pickImage(ImageSource.gallery);
                       },
                     ),
                   ],
@@ -122,6 +118,12 @@ class _AddRealEstateRentAptScreenState
         );
       },
     );
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+    });
   }
 
   // Переключатели
@@ -198,9 +200,8 @@ class _AddRealEstateRentAptScreenState
                   _showImageSourceActionSheet(context);
                 },
                 child: Container(
-                  height: 118,
                   decoration: BoxDecoration(
-                    color: secondaryBackground,
+                    color: _images.isEmpty ? secondaryBackground : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -208,16 +209,23 @@ class _AddRealEstateRentAptScreenState
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: const [
-                              Icon(
-                                Icons.add_a_photo_outlined,
-                                color: textSecondary,
-                              ),
-                              SizedBox(height: 10),
-                              Text(
-                                'Добавить изображение',
-                                style: TextStyle(
+                              Padding(
+                                padding: EdgeInsets.only(top: 28.0),
+                                child: Icon(
+                                  Icons.add_circle_outline,
                                   color: textSecondary,
-                                  fontSize: 16,
+                                  size: 40,
+                                ),
+                              ),
+                              SizedBox(height: 3),
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 27.0),
+                                child: Text(
+                                  'Добавить изображение',
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
                             ],
@@ -226,15 +234,71 @@ class _AddRealEstateRentAptScreenState
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                crossAxisSpacing: 4,
-                                mainAxisSpacing: 4,
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                                childAspectRatio: 115 / 89,
                               ),
-                          itemCount: _images.length,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _images.length + 1,
                           itemBuilder: (context, index) {
-                            return Image.file(
-                              _images[index],
-                              fit: BoxFit.cover,
+                            if (index == _images.length) {
+                              return GestureDetector(
+                                onTap: () => _showImageSourceActionSheet(context),
+                                child: Container(
+                                  width: 115,
+                                  height: 89,
+                                  decoration: BoxDecoration(
+                                    color: formBackground,
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      color: textSecondary,
+                                      size: 30,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Container(
+                              width: 115,
+                              height: 89,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Image.file(
+                                      _images[index],
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 7,
+                                    right: 11,
+                                    child: GestureDetector(
+                                      onTap: () => _removeImage(index),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           },
                         ),

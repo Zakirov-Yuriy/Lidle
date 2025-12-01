@@ -20,6 +20,7 @@ import '../blocs/navigation/navigation_event.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../pages/filters_screen.dart';
+import '../pages/full_category_screen/full_category_screen.dart';
 import '../pages/profile_menu_screen.dart';
 import '../pages/sign_in_screen.dart';
 
@@ -235,7 +236,7 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => Navigator.pushNamed(context, FullCategoryScreen.routeName),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,

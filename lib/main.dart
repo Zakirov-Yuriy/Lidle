@@ -10,7 +10,6 @@ import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
-import 'package:lidle/pages/add_real_estate_apt_screen.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/account_recovery.dart';
 import 'package:lidle/pages/register_screen.dart';
@@ -26,6 +25,8 @@ import 'pages/profile_menu_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing_screen.dart';
 import 'pages/category_selection_screen.dart';
+import 'pages/full_category_screen/full_category_screen.dart';
+import 'pages/full_category_screen/map_screen.dart';
 import 'pages/my_purchases_screen.dart'; // Import the new screen
 
 /// Главная функция, точка входа в приложение.
@@ -75,8 +76,8 @@ class LidleApp extends StatelessWidget {
           scaffoldBackgroundColor: primaryBackground,
           fontFamily: 'Roboto',
         ), 
-        // home: const HomePage(),
-        home: const AddRealEstateAptScreen(),
+        home: const HomePage(),
+        // home: const AddRealEstateRentAptScreen(),
        
 
         routes: {
@@ -95,6 +96,8 @@ class LidleApp extends StatelessWidget {
           FavoritesScreen.routeName: (context) => const FavoritesScreen(),
           AddListingScreen.routeName: (context) => const AddListingScreen(),
           CategorySelectionScreen.routeName: (context) => const CategorySelectionScreen(),
+          FullCategoryScreen.routeName: (context) => const FullCategoryScreen(),
+          MapScreen.routeName: (context) => const MapScreen(),
           MyPurchasesScreen.routeName: (context) => const MyPurchasesScreen(), // Add the new route
         },
       ),

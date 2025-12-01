@@ -79,14 +79,24 @@ class HiveService {
     return favorites is List ? favorites.cast<String>() : [];
   }
 
+  /// Проверяет, является ли объявление избранным.
+  static bool isFavorite(String listingId) {
+    return getFavorites().contains(listingId);
+  }
+
   /// Добавляет или удаляет favorite id из списка favorites.
-  static Future<void> toggleFavorite(String listingId) async {
+  /// Возвращает true, если объявление стало избранным, иначе false.
+  static bool toggleFavorite(String listingId) {
     final favorites = getFavorites().toSet();
+    bool newFavoriteStatus;
     if (favorites.contains(listingId)) {
       favorites.remove(listingId);
+      newFavoriteStatus = false;
     } else {
       favorites.add(listingId);
+      newFavoriteStatus = true;
     }
-    await settingsBox.put('favorites', favorites.toList());
+    settingsBox.put('favorites', favorites.toList());
+    return newFavoriteStatus;
   }
 }

@@ -86,6 +86,8 @@ flutter:
     - assets/publication_tariff/
     - assets/publication_success/
     - assets/my_purchases/
+    - assets/map/map.png
+    - assets/property_details_screen/
 
    
     
