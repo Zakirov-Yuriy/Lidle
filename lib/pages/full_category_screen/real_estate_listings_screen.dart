@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/widgets/sort_filter_dialog.dart'; // Import SortFilterDialog
 import 'package:lidle/models/home_models.dart'; // Import Listing model
+import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
 
 // Constants for bottom navigation assets
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
@@ -20,12 +20,15 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   late List<bool> _isFavorited;
   int _selectedIndex = 0; // For bottom navigation
   late List<Listing> _listings; // State variable for listings
+  Set<String> _selectedSortOptions = {}; // New state for selected sort options
 
   @override
   void initState() {
     super.initState();
     _isFavorited = List.filled(6, false);
     _listings = _generateSampleListings(); // Initialize listings with sample data
+    // Initialize with a default sort option if desired, e.g., 'Сначала новые'
+    _selectedSortOptions.add('Сначала новые');
   }
 
   // Helper method to generate sample listings
@@ -121,45 +124,33 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     return DateTime(1970);
   }
 
-  void _sortListings(Set<SortOption> options) {
-    // Sorting priority: newest, oldest, mostExpensive, cheapest
-    const priorityOrder = [
-      SortOption.newest,
-      SortOption.oldest,
-      SortOption.mostExpensive,
-      SortOption.cheapest,
-    ];
-
-    SortOption? selectedOption;
-    for (final option in priorityOrder) {
-      if (options.contains(option)) {
-        selectedOption = option;
-        break;
-      }
+  void _sortListings(Set<String> selectedOptions) {
+    // Mapping string options from SelectionDialog to internal SortOption enum
+    SortOption? chosenSortOption;
+    if (selectedOptions.contains('Сначала новые')) {
+      chosenSortOption = SortOption.newest;
+    } else if (selectedOptions.contains('Сначала старые')) {
+      chosenSortOption = SortOption.oldest;
+    } else if (selectedOptions.contains('Сначала дорогие')) {
+      chosenSortOption = SortOption.mostExpensive;
+    } else if (selectedOptions.contains('Сначала дешевые')) {
+      chosenSortOption = SortOption.cheapest;
     }
 
-    if (selectedOption != null) {
+    if (chosenSortOption != null) {
       setState(() {
-        switch (selectedOption!) {
+        switch (chosenSortOption!) {
           case SortOption.newest:
-            _listings.sort(
-              (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
-            );
+            _listings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
             break;
           case SortOption.oldest:
-            _listings.sort(
-              (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
-            );
+            _listings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
             break;
           case SortOption.mostExpensive:
-            _listings.sort(
-              (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
-            );
+            _listings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
             break;
           case SortOption.cheapest:
-            _listings.sort(
-              (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
-            );
+            _listings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
             break;
         }
       });
@@ -353,14 +344,32 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             ),
           ),
           // SizedBox(width: 8),
-          IconButton( // Changed to IconButton
-            icon: const Icon(Icons.swap_vert, color: Colors.white),
-            onPressed: () {
-              showModalBottomSheet(
+          _buildFilterDropdown(
+            label: _selectedSortOptions.isEmpty
+                ? 'Сначала' // Default display if nothing selected
+                : _selectedSortOptions.join(', '),
+            onTap: () {
+              showDialog(
                 context: context,
-                backgroundColor: Colors.transparent,
-                builder: (context) =>
-                    SortFilterDialog(onSortChanged: _sortListings),
+                builder: (BuildContext context) {
+                  return SelectionDialog(
+                    title: 'Сортировать товар',
+                    options: const [
+                      'Сначала новые',
+                      'Сначала старые',
+                      'Сначала дорогие',
+                      'Сначала дешевые',
+                    ],
+                    selectedOptions: _selectedSortOptions,
+                    onSelectionChanged: (Set<String> selected) {
+                      setState(() {
+                        _selectedSortOptions = selected;
+                        _sortListings(_selectedSortOptions); // Apply sorting immediately
+                      });
+                    },
+                    allowMultipleSelection: false, // Only one sort option at a time
+                  );
+                },
               );
             },
           ),
@@ -545,6 +554,25 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // Helper widget for building dropdowns
+  Widget _buildFilterDropdown({
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: 
+             Icon(
+              Icons.import_export,
+              color: Colors.white,
+              size: 25,
+            ),
+        
+        
+      
     );
   }
 }

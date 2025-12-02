@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/widgets/sort_filter_dialog.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import '../constants.dart';
 import '../widgets/bottom_navigation.dart';
@@ -25,11 +25,13 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   List<Listing> _favoritedListings = [];
+  Set<String> _selectedSortOptions = {}; // New state for selected sort options
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    _selectedSortOptions.add('Сначала новые'); // Default sort option
   }
 
   void _loadFavorites() {
@@ -42,7 +44,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     });
   }
 
-  void _sortListings(Set<SortOption> options) {
+  void _sortListings(Set<String> selectedOptions) {
     // Вспомогательная функция для парсинга цены из строки.
     double _parsePrice(String price) {
       try {
@@ -56,58 +58,51 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     // Вспомогательная функция для парсинга даты. Предполагается формат "ДД.ММ.ГГГГ".
     DateTime _parseDate(String date) {
       try {
-        final parts = date.split('.');
-        if (parts.length == 3) {
-          final day = int.parse(parts[0]);
-          final month = int.parse(parts[1]);
-          final year = int.parse(parts[2]);
-          return DateTime(year, month, day);
+        final now = DateTime.now();
+        if (date.contains('Сегодня')) {
+          return now;
+        } else if (date.contains('Вчера')) {
+          return now.subtract(const Duration(days: 1));
+        } else if (date.contains('дня назад')) {
+          final days = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
+          return now.subtract(Duration(days: days));
+        } else if (date.contains('Неделя назад')) {
+          return now.subtract(const Duration(days: 7));
+        } else if (date.contains('недели назад')) {
+          final weeks = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
+          return now.subtract(Duration(days: weeks * 7));
         }
       } catch (e) {
-        // Обработка ошибок парсинга
+        // Error parsing, return a very old date
       }
-      // Возвращаем старую дату по умолчанию для некорректных форматов.
       return DateTime(1970);
     }
 
-    // Приоритет сортировки: newest, oldest, mostExpensive, cheapest
-    const priorityOrder = [
-      SortOption.newest,
-      SortOption.oldest,
-      SortOption.mostExpensive,
-      SortOption.cheapest,
-    ];
-
-    SortOption? selectedOption;
-    for (final option in priorityOrder) {
-      if (options.contains(option)) {
-        selectedOption = option;
-        break;
-      }
+    SortOption? chosenSortOption;
+    if (selectedOptions.contains('Сначала новые')) {
+      chosenSortOption = SortOption.newest;
+    } else if (selectedOptions.contains('Сначала старые')) {
+      chosenSortOption = SortOption.oldest;
+    } else if (selectedOptions.contains('Сначала дорогие')) {
+      chosenSortOption = SortOption.mostExpensive;
+    } else if (selectedOptions.contains('Сначала дешевые')) {
+      chosenSortOption = SortOption.cheapest;
     }
 
-    if (selectedOption != null) {
+    if (chosenSortOption != null) {
       setState(() {
-        switch (selectedOption!) {
+        switch (chosenSortOption!) {
           case SortOption.newest:
-            _favoritedListings.sort(
-              (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
-            );
+            _favoritedListings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
             break;
           case SortOption.oldest:
-            _favoritedListings.sort(
-              (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
-            );
+            _favoritedListings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
             break;
           case SortOption.mostExpensive:
-            _favoritedListings.sort(
-              (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
-            );
+            _favoritedListings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
             break;
           case SortOption.cheapest:
-            _favoritedListings.sort(
-              (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
-            );
+            _favoritedListings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
             break;
         }
       });
@@ -188,18 +183,32 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ),
                     ),
                     const Spacer(),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.swap_vert,
-                        color: textPrimary,
-                        size: 24,
-                      ),
-                      onPressed: () {
-                        showModalBottomSheet(
+                    _buildFilterDropdown(
+                      label: _selectedSortOptions.isEmpty
+                          ? 'Сначала новые' // Default display if nothing selected
+                          : _selectedSortOptions.join(', '),
+                      onTap: () {
+                        showDialog(
                           context: context,
-                          backgroundColor: Colors.transparent,
-                          builder: (context) =>
-                              SortFilterDialog(onSortChanged: _sortListings),
+                          builder: (BuildContext context) {
+                            return SelectionDialog(
+                              title: 'Сортировать товар',
+                              options: const [
+                                'Сначала новые',
+                                'Сначала старые',
+                                'Сначала дорогие',
+                                'Сначала дешевые',
+                              ],
+                              selectedOptions: _selectedSortOptions,
+                              onSelectionChanged: (Set<String> selected) {
+                                setState(() {
+                                  _selectedSortOptions = selected;
+                                  _sortListings(_selectedSortOptions); // Apply sorting immediately
+                                });
+                              },
+                              allowMultipleSelection: false, // Only one sort option at a time
+                            );
+                          },
                         );
                       },
                     ),
@@ -250,6 +259,25 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           },
         ),
       ),
+    );
+  }
+
+  // Helper widget for building dropdowns, similar to real_estate_listings_screen.dart
+  Widget _buildFilterDropdown({
+    required String label,
+    VoidCallback? onTap,
+  }) {
+    return  GestureDetector(
+      onTap: onTap,
+      child: 
+             Icon(
+              Icons.import_export,
+              color: Colors.white,
+              size: 25,
+            ),
+        
+        
+      
     );
   }
 }

@@ -44,10 +44,14 @@ class _SelectionDialogState extends State<SelectionDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
-          children: [IconButton(
-                  icon: const Icon(Icons.close, color: textPrimary),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
+          children: [
+            IconButton(
+              icon: const Icon(Icons.close, color: textPrimary),
+              onPressed: () {
+                widget.onSelectionChanged(_tempSelectedOptions);
+                Navigator.of(context).pop();
+              },
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -59,7 +63,6 @@ class _SelectionDialogState extends State<SelectionDialog> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                
               ],
             ),
             const SizedBox(height: 23),
@@ -72,44 +75,7 @@ class _SelectionDialogState extends State<SelectionDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Отмена',
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 16,
-                      decoration: TextDecoration.underline,
-                      decorationColor: textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    fixedSize: const Size(127, 35),
-                    side: const BorderSide(color: activeIconColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () {
-                    widget.onSelectionChanged(_tempSelectedOptions);
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Готово',
-                    style: TextStyle(color: activeIconColor, fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
+           
           ],
         ),
       ),
