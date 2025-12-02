@@ -48,7 +48,6 @@ class _SelectionDialogState extends State<SelectionDialog> {
             IconButton(
               icon: const Icon(Icons.close, color: textPrimary),
               onPressed: () {
-                widget.onSelectionChanged(_tempSelectedOptions);
                 Navigator.of(context).pop();
               },
             ),
@@ -75,7 +74,52 @@ class _SelectionDialogState extends State<SelectionDialog> {
                 ),
               ),
             ),
-           
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(127, 35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close without applying changes
+                  },
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      decoration: TextDecoration.underline,
+                      decorationColor: textPrimary,
+                      
+                    ),
+                  ),
+                ),
+                // const SizedBox(width: 10),
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    side: const BorderSide(color: activeIconColor),
+                    minimumSize: const Size(127, 35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  onPressed: () {
+                    widget.onSelectionChanged(_tempSelectedOptions);
+                    Navigator.of(context).pop(); // Close and apply changes
+                  },
+                  child: const Text(
+                    'Готово',
+                    style: TextStyle(color: activeIconColor, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -98,6 +142,7 @@ class _SelectionDialogState extends State<SelectionDialog> {
                     _tempSelectedOptions.add(title);
                   }
                 } else {
+                  // For single selection, clear existing and add new
                   if (_tempSelectedOptions.contains(title)) {
                     _tempSelectedOptions.remove(title);
                   } else {
