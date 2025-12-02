@@ -35,14 +35,17 @@ class Listing {
   final String location;
   /// Дата публикации или обновления объявления.
   final String date;
+  /// Флаг, указывающий, добавлено ли объявление в избранное.
+  bool isFavorited; // Added isFavorited field
 
   /// Конструктор для создания экземпляра [Listing].
-  const Listing({
+  Listing({ // Changed to non-const constructor
     required this.id,
     required this.imagePath,
     required this.title,
     required this.price,
     required this.location,
     required this.date,
+    this.isFavorited = false, // Default to false
   });
 }

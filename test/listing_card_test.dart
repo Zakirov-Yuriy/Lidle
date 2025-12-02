@@ -7,13 +7,14 @@ import 'package:lidle/constants.dart';
 void main() {
   group('ListingCard Widget Tests', () {
     testWidgets('should display listing title', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
         id: 'test_listing_1',
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -32,13 +33,14 @@ void main() {
     });
 
     testWidgets('should display listing price', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
         id: 'test_listing_2',
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -57,13 +59,14 @@ void main() {
     });
 
     testWidgets('should display listing location', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
         id: 'test_listing_3',
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -82,13 +85,14 @@ void main() {
     });
 
     testWidgets('should display listing date', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
         id: 'test_listing_4',
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -107,13 +111,14 @@ void main() {
     });
 
     testWidgets('should display image', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
         id: 'test_listing_5',
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -138,13 +143,14 @@ void main() {
     });
 
     testWidgets('should have favorite icon', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
         id: 'test_listing_6',
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -164,12 +170,14 @@ void main() {
     });
 
     testWidgets('should have ClipRRect for image', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
+        id: 'test_listing_7', // Added id for consistency
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -189,12 +197,14 @@ void main() {
     });
 
     testWidgets('should handle long title with ellipsis', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
+        id: 'test_listing_8', // Added id for consistency
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Very Long Listing Title That Should Be Truncated',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -218,12 +228,14 @@ void main() {
     });
 
     testWidgets('should handle long location with ellipsis', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
+        id: 'test_listing_9', // Added id for consistency
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Very Long Location Name That Should Be Truncated',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -247,12 +259,14 @@ void main() {
     });
 
     testWidgets('should have correct text colors', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
+        id: 'test_listing_10', // Added id for consistency
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(
@@ -285,12 +299,14 @@ void main() {
     });
 
     testWidgets('should use LayoutBuilder for responsive design', (WidgetTester tester) async {
-      const listing = Listing(
+      final listing = Listing(
+        id: 'test_listing_11', // Added id for consistency
         imagePath: 'assets/home_page/apartment1.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       await tester.pumpWidget(

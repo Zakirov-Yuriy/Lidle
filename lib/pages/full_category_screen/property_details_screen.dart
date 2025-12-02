@@ -25,37 +25,41 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   ];
 
   final List<Listing> _similarListings = [
-    const Listing(
+    Listing(
       id: '1',
       imagePath: "assets/property_details_screen/image2.png",
       title: "1-к. квартира, 33 м²",
       price: "44 500 000 ₽",
       location: "Москва, Истринская ул, 8к3",
       date: "09.08.2024",
+      isFavorited: false,
     ),
-    const Listing(
+    Listing(
       id: '2',
       imagePath: "assets/property_details_screen/image3.png",
       title: "2-к. квартира, 65,5 м² ",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
+      isFavorited: false,
     ),
-    const Listing(
+    Listing(
       id: '3',
       imagePath: "assets/property_details_screen/image4.png",
       title: "5-к. квартира, 111 м²",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
       date: "11.08.2024",
+      isFavorited: false,
     ),
-    const Listing(
+    Listing(
       id: '4',
       imagePath: "assets/property_details_screen/image5.png",
       title: "1-к. квартира, 30 м² ...",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
+      isFavorited: false,
     ),
   ];
 

@@ -77,7 +77,7 @@ class LidleApp extends StatelessWidget {
           fontFamily: 'Roboto',
         ), 
         home: const HomePage(),
-        // home: const AddRealEstateRentAptScreen(),
+        // home: const RealEstateListingsScreen(),
        
 
         routes: {

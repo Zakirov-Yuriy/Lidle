@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/pages/add_real_estate_apt_screen.dart';
 import 'package:lidle/pages/add_real_estate_rent_apt_screen.dart';
+import 'package:lidle/pages/full_category_screen/real_estate_listings_screen.dart';
 import 'package:lidle/widgets/header.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
 
@@ -167,7 +167,7 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
             if (title == "Продажа квартир") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddRealEstateAptScreen()),
+                MaterialPageRoute(builder: (context) => const RealEstateListingsScreen()),
               );
             } else if (title == "Долгосрочная аренда квартир") {
               Navigator.push(

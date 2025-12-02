@@ -53,12 +53,14 @@ void main() {
 
   group('Listing Model', () {
     test('should create Listing with required parameters', () {
-      const listing = Listing(
+      final listing = Listing(
+        id: 'test_listing_id_1',
         imagePath: 'assets/listing.png',
         title: 'Test Listing',
         price: '100 000 ₽',
         location: 'Москва',
         date: '2024-01-01',
+        isFavorited: false,
       );
 
       expect(listing.imagePath, 'assets/listing.png');
@@ -66,43 +68,30 @@ void main() {
       expect(listing.price, '100 000 ₽');
       expect(listing.location, 'Москва');
       expect(listing.date, '2024-01-01');
+      expect(listing.isFavorited, false);
     });
 
-    test('should be const constructor', () {
-      const listing1 = Listing(
-        imagePath: 'path.png',
-        title: 'Title',
-        price: '1000',
-        location: 'Location',
-        date: '2024-01-01',
-      );
-
-      const listing2 = Listing(
-        imagePath: 'path.png',
-        title: 'Title',
-        price: '1000',
-        location: 'Location',
-        date: '2024-01-01',
-      );
-
-      expect(listing1, listing2);
-    });
+    // Removed the "should be const constructor" test as Listing is no longer const
 
     test('should handle different listings', () {
-      const carListing = Listing(
+      final carListing = Listing(
+        id: 'car_listing_id',
         imagePath: 'assets/car.png',
         title: 'BMW X5',
         price: '5 000 000 ₽',
         location: 'Москва',
         date: '2024-01-15',
+        isFavorited: false,
       );
 
-      const apartmentListing = Listing(
+      final apartmentListing = Listing(
+        id: 'apartment_listing_id',
         imagePath: 'assets/apartment.png',
         title: '3-комнатная квартира',
         price: '15 000 000 ₽',
         location: 'Санкт-Петербург',
         date: '2024-01-20',
+        isFavorited: true,
       );
 
       expect(carListing.title, 'BMW X5');
@@ -111,6 +100,8 @@ void main() {
       expect(apartmentListing.price, '15 000 000 ₽');
       expect(carListing.location, 'Москва');
       expect(apartmentListing.location, 'Санкт-Петербург');
+      expect(carListing.isFavorited, false);
+      expect(apartmentListing.isFavorited, true);
     });
   });
 }
