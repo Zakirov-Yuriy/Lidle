@@ -106,10 +106,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         const Spacer(),
 
         GestureDetector(
-          onTap: () {
-            // share logic
-          },
-          child: const Icon(Icons.share, color: Colors.white, size: 23),
+          onTap: () => _showShareBottomSheet(context),
+          child: const Icon(Icons.share_outlined, color: Colors.white, size: 23),
         ),
       ],
     );
@@ -407,6 +405,104 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showShareBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext bc) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: secondaryBackground, // Using secondaryBackground from constants.dart
+            borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20.0),
+                child: Text(
+                  "Поделиться",
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 4,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  children: <Widget>[
+                    _buildShareItem("Быстрая отправка", Icons.send, "assets/publication_success/email_10401109.png"),
+                    _buildShareItem("Chats", Icons.chat, "assets/publication_success/icons8-чат-100.png"),
+                    _buildShareItem("Telegram", Icons.send, "assets/publication_success/icons8-telegram-100.png"),
+                    _buildShareItem("Открыть в Браузере", Icons.open_in_browser, "assets/publication_success/free-icon-yandex-6124986.png"),
+                    _buildShareItem("Читалка", Icons.menu_book, null), // Placeholder icon as asset not found
+                    _buildShareItem("WhatsApp", Icons.message, "assets/publication_success/icons8-whatsapp-100.png"),
+                    _buildShareItem("Сообщения", Icons.message, "assets/publication_success/icons8-чат-100.png"),
+                    _buildShareItem("Gmail", Icons.mail, "assets/publication_success/icons8-gmail-100.png"),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey[800], // Darker grey for the button
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                  ),
+                  onPressed: () => Navigator.pop(bc),
+                  child: const Text(
+                    "Отмена",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 50),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShareItem(String title, IconData defaultIcon, String? assetPath) {
+    return GestureDetector(
+      onTap: () {
+        // Handle share action for each item
+        Navigator.pop(context); // Close the bottom sheet after selection
+        // TODO: Implement actual share logic based on the selected item
+        print("Share $title tapped");
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          if (assetPath != null) 
+            Image.asset(assetPath, width: 50, height: 50) // Use Image.asset if path is provided
+          else 
+            Icon(defaultIcon, size: 50, color: Colors.white), // Fallback to Icon if asset not found
+          const SizedBox(height: 8),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: textPrimary, fontSize: 10),
+          ),
+        ],
       ),
     );
   }
