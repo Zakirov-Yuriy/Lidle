@@ -5,6 +5,7 @@ import 'package:lidle/widgets/header.dart';
 import 'package:lidle/models/home_models.dart'; // Import Listing model
 import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
 import 'package:lidle/widgets/listing_card.dart'; // Import ListingCard
+import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart'; // Import IntermediateFiltersScreen
 
 // Constants for bottom navigation assets
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
@@ -263,20 +264,30 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             ],
           ),
           const Spacer(),
-          Row(
-            children: [
-              SvgPicture.asset(
-                'assets/home_page/settings.svg',
-                color: Colors.white,
-                width: 18,
-                height: 18,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                "Фильтры",
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ],
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const IntermediateFiltersScreen(),
+                ),
+              );
+            },
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/home_page/settings.svg',
+                  color: Colors.white,
+                  width: 18,
+                  height: 18,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  "Фильтры",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ],
+            ),
           ),
         ],
       ),
