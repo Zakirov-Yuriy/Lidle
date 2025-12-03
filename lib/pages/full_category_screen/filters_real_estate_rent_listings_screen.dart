@@ -1146,7 +1146,7 @@ class _FiltersRealEstateRentListingsScreenState
                   ),
                 ),
                 const Icon(
-                  Icons.keyboard_arrow_right_outlined,
+                  Icons.keyboard_arrow_down,
                   color: textSecondary,
                 ),
               ],

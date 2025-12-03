@@ -56,4 +56,16 @@ class Listing {
     required this.date,
     this.isFavorited = false, // Default to false
   });
+
+  factory Listing.fromJson(Map<String, dynamic> json) {
+    return Listing(
+      id: json['id'] ?? UniqueKey().toString(), // Assuming 'id' might be missing, generate a unique one
+      imagePath: json['image'] ?? 'assets/home_page/image.png', // Default image if not provided
+      title: json['title'] ?? 'No Title',
+      price: json['price'] ?? '0',
+      location: json['address'] ?? 'Unknown Location', // Assuming 'address' corresponds to 'location'
+      date: json['date'] ?? 'Unknown Date',
+      isFavorited: json['isFavorited'] ?? false,
+    );
+  }
 }

@@ -4,20 +4,22 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
 import 'package:lidle/models/home_models.dart'; // Import Listing model
 import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
+import 'package:lidle/widgets/listing_card.dart'; // Import ListingCard
 
 // Constants for bottom navigation assets
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
-const String messageIconAssetLocal = 'assets/BottomNavigation/message-circle-01.png';
+const String messageIconAssetLocal =
+    'assets/BottomNavigation/message-circle-01.png';
 
 class RealEstateListingsScreen extends StatefulWidget {
   const RealEstateListingsScreen({super.key});
 
   @override
-  State<RealEstateListingsScreen> createState() => _RealEstateListingsScreenState();
+  State<RealEstateListingsScreen> createState() =>
+      _RealEstateListingsScreenState();
 }
 
 class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
-  late List<bool> _isFavorited;
   int _selectedIndex = 0; // For bottom navigation
   late List<Listing> _listings; // State variable for listings
   Set<String> _selectedSortOptions = {}; // New state for selected sort options
@@ -25,8 +27,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   @override
   void initState() {
     super.initState();
-    _isFavorited = List.filled(6, false);
-    _listings = _generateSampleListings(); // Initialize listings with sample data
+    _listings =
+        _generateSampleListings(); // Initialize listings with sample data
     // Initialize with a default sort option if desired, e.g., 'Сначала новые'
     _selectedSortOptions.add('Сначала новые');
   }
@@ -141,16 +143,24 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       setState(() {
         switch (chosenSortOption!) {
           case SortOption.newest:
-            _listings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
+            _listings.sort(
+              (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
+            );
             break;
           case SortOption.oldest:
-            _listings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
+            _listings.sort(
+              (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
+            );
             break;
           case SortOption.mostExpensive:
-            _listings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
+            _listings.sort(
+              (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
+            );
             break;
           case SortOption.cheapest:
-            _listings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
+            _listings.sort(
+              (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
+            );
             break;
         }
       });
@@ -167,12 +177,12 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             // const SizedBox(height: 16),
             // _buildTopBar(context),
             Padding(
-                  padding: const EdgeInsets.only(bottom: 20, right: 25, top: 0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [const Header()],
-                  ),
-                ),
+              padding: const EdgeInsets.only(bottom: 20, right: 25, top: 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [const Header()],
+              ),
+            ),
             const SizedBox(height: 16),
             _buildSearchField(context),
             const SizedBox(height: 20),
@@ -190,8 +200,6 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       ),
     );
   }
-
-
 
   // ============================================================
   // Поле поиска
@@ -269,7 +277,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                 style: TextStyle(color: Colors.white, fontSize: 16),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -282,8 +290,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   Widget _buildCategoryChips() {
     final chipStyle = BoxDecoration(
       color: primaryBackground,
-      borderRadius: BorderRadius.circular(11),  
-      border: Border.all(color: Colors.white),  
+      borderRadius: BorderRadius.circular(11),
+      border: Border.all(color: Colors.white),
     );
 
     Widget chip(String label, {IconData? icon}) {
@@ -296,14 +304,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             Text(label, style: const TextStyle(color: Colors.white)),
             if (icon != null) ...[
               const SizedBox(width: 6),
-              Icon(
-                icon,
-                color: Colors.white,
-                size: 18,
-              ),
+              Icon(icon, color: Colors.white, size: 18),
             ],
-            
-            
           ],
         ),
       );
@@ -334,8 +336,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[ // Removed const here
-          const Text( // Added const back to Text
+        children: <Widget>[
+          // Removed const here
+          const Text(
+            // Added const back to Text
             "Продажа квартир",
             style: TextStyle(
               color: Colors.white,
@@ -364,10 +368,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                     onSelectionChanged: (Set<String> selected) {
                       setState(() {
                         _selectedSortOptions = selected;
-                        _sortListings(_selectedSortOptions); // Apply sorting immediately
+                        _sortListings(
+                          _selectedSortOptions,
+                        ); // Apply sorting immediately
                       });
                     },
-                    allowMultipleSelection: false, // Only one sort option at a time
+                    allowMultipleSelection:
+                        false, // Only one sort option at a time
                   );
                 },
               );
@@ -392,88 +399,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         crossAxisSpacing: 8,
         childAspectRatio: 0.70,
       ),
-      itemBuilder: (_, i) => _buildListingCard(
-        index: i,
-        listing: _listings[i], // Pass the Listing object
-      ),
+      itemBuilder: (_, i) => ListingCard(listing: _listings[i]),
     );
   }
 
-  Widget _buildListingCard({
-    required int index,
-    required Listing listing, // Changed to accept a Listing object
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: primaryBackground,
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Column(
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
-            child: Image.asset(
-              listing.imagePath,
-              height: 159,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 10.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        listing.title,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          // Toggle favorite status on the Listing object
-                          _listings[index].isFavorited = !_listings[index].isFavorited;
-                        });
-                      },
-                      child: Icon(
-                        _listings[index].isFavorited ? Icons.favorite : Icons.favorite_border,
-                        color: _listings[index].isFavorited ? Colors.red : Colors.white70,
-                        size: 20,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  listing.price,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  listing.location,
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(height: 1),
-                Text(
-                  listing.date,
-                  style: const TextStyle(color: Colors.white54, fontSize: 10),
-                ),
-              ],
-            ),
-          )
-        ],
-      ),
-    );
-  }
+
 
   // ============================================================
   // Нижнее меню навигации
@@ -483,12 +413,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          12,
-          0,
-          12,
-          bottomNavPaddingBottom,
-        ),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, bottomNavPaddingBottom),
         child: Container(
           height: bottomNavHeight,
           decoration: BoxDecoration(
@@ -558,21 +483,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }
 
   // Helper widget for building dropdowns
-  Widget _buildFilterDropdown({
-    required String label,
-    VoidCallback? onTap,
-  }) {
+  Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
-      child: 
-             Icon(
-              Icons.import_export,
-              color: Colors.white,
-              size: 25,
-            ),
-        
-        
-      
+      child: Icon(Icons.import_export, color: Colors.white, size: 25),
     );
   }
 }

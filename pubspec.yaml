@@ -46,6 +46,7 @@ dependencies:
   form_builder_validators: ^11.0.0 # Added for form validation helpers
   mockito: ^5.5.0
   bloc_test: ^9.1.7
+  url_launcher: ^6.3.0 # Added for making phone calls
 
 dev_dependencies:
   flutter_test:

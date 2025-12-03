@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/home_models.dart';
 import '../constants.dart';
 import '../hive_service.dart';
+import '../pages/full_category_screen/mini_property_details_screen.dart';
 
 /// `ListingCard` - это StatefulWidget, который отображает
 /// отдельную карточку объявления с возможностью добавления в избранное.
@@ -52,11 +53,20 @@ class _ListingCardState extends State<ListingCard> {
         final dateFontSize = 12 * scale;
         final iconSize = 18 * scale;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: double.infinity,
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MiniPropertyDetailsScreen(listing: widget.listing),
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
               height: imageHeight,
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(5 * scale),
@@ -144,6 +154,7 @@ class _ListingCardState extends State<ListingCard> {
               ),
             ),
           ],
+        ),
         );
       },
     );

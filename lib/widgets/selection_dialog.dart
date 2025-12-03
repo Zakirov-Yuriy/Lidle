@@ -35,7 +35,7 @@ class _SelectionDialogState extends State<SelectionDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: const Color(0xFF222E3A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
         constraints: BoxConstraints(
