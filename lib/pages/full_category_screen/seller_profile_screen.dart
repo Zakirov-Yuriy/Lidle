@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/header.dart';
 import 'package:lidle/widgets/listing_card.dart';
+import 'package:lidle/widgets/complaint_dialog.dart';
 
 
 class SellerProfileScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class SellerProfileScreen extends StatefulWidget {
 
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
   int selectedStars = 1; // оценка по умолчанию
+  int _selectedIndex = 0;
   Set<String> _selectedSortOptions = {};
   List<String> _availableSortOptions = const [
     'Сначала новые',
@@ -37,7 +39,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
-      bottomNavigationBar: _buildBottomNavBar(),
+      bottomNavigationBar: _buildBottomNavigation(),
       body: SafeArea(
         child: SingleChildScrollView(
           
@@ -318,7 +320,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               onPressed: () {
-                // логика жалобы
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return const ComplaintDialog();
+                  },
+                );
               },
               child: const Text(
                 "Пожаловаться",
@@ -333,21 +340,73 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   // ---------------- BOTTOM NAVIGATION -------------------
 
-  Widget _buildBottomNavBar() {
-    return Container(
-      height: 65,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1F262E),
+  Widget _buildNavItem(String iconPath, int index, int currentSelected) {
+    final isSelected = currentSelected == index;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () => setState(() => _selectedIndex = index),
+        child: Padding(
+          padding: const EdgeInsets.all(0),
+          child: Image.asset(
+            iconPath,
+            width: 28,
+            height: 28,
+            color: isSelected ? activeIconColor : inactiveIconColor,
+          ),
+        ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: const [
-          Icon(Icons.home_outlined, color: Colors.white),
-          Icon(Icons.grid_view_outlined, color: Colors.white),
-          Icon(Icons.add_circle_outline, color: Colors.white),
-          Icon(Icons.shopping_cart_outlined, color: Colors.white),
-          Icon(Icons.person_outline, color: Colors.white),
-        ],
+    );
+  }
+
+  Widget _buildCenterAdd(int index, int currentSelected) {
+    final isSelected = currentSelected == index;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => setState(() => _selectedIndex = index),
+        child: Container(
+          width: 28,
+          height: 28,
+          alignment: Alignment.center,
+          child: Image.asset(
+            plusIconAsset,
+            width: 28,
+            height: 28,
+            color: isSelected ? activeIconColor : inactiveIconColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(25, 0, 25, bottomNavPaddingBottom),
+        child: Container(
+          height: bottomNavHeight,
+          decoration: BoxDecoration(
+            color: bottomNavBackground,
+            borderRadius: BorderRadius.circular(37.5),
+            boxShadow: const [],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(homeIconAsset, 0, _selectedIndex),
+              _buildNavItem(gridIconAsset, 1, _selectedIndex),
+              _buildCenterAdd(2, _selectedIndex),
+              _buildNavItem(messageIconAsset, 3, _selectedIndex),
+              _buildNavItem(userIconAsset, 4, _selectedIndex),
+            ],
+          ),
+        ),
       ),
     );
   }

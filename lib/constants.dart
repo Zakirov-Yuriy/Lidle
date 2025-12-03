@@ -35,6 +35,7 @@ const String logoAsset = 'assets/home_page/logo.svg';
 const String settingsIconAsset = 'assets/home_page/settings.svg';
 const String homeIconAsset = 'assets/BottomNavigation/home-02.png';
 const String heartIconAsset = 'assets/BottomNavigation/heart-rounded.png';
+const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String plusIconAsset = 'assets/BottomNavigation/plus-circle.png';
 const String shoppingCartIconAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 const String messageIconAsset = 'assets/BottomNavigation/message-circle-01.png';

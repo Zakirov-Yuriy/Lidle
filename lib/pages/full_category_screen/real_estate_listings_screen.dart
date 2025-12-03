@@ -413,7 +413,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 0, 12, bottomNavPaddingBottom),
+        padding: const EdgeInsets.fromLTRB(25, 0, 25, bottomNavPaddingBottom),
         child: Container(
           height: bottomNavHeight,
           decoration: BoxDecoration(

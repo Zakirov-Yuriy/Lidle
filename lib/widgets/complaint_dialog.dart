@@ -1,3 +1,5 @@
+/// Виджет для отображения диалогового окна жалобы.
+/// Позволяет пользователю выбрать причину жалобы и отправить ее.
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/custom_checkbox.dart'; // Import CustomCheckbox
@@ -31,21 +33,27 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
+            Align(
+              alignment: Alignment.topRight,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
             ),
-            Row(
+            const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text(
-                  "Оставить жалобу",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Text(
+                    "Оставить жалобу\nна продавца",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -123,10 +131,10 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                     side: BorderSide(color: activeIconColor, width: 1.4),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 25,
-                      vertical: 12,
+                      // vertical: 12,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: Text(
