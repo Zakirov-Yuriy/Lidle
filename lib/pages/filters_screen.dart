@@ -42,7 +42,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context); // Не используется
 
     return Scaffold(
       backgroundColor: primaryBackground,
@@ -468,39 +468,39 @@ class _GreyTag extends StatelessWidget {
   }
 }
 
-class _PickField extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  const _PickField({required this.label, required this.onTap});
+// class _PickField extends StatelessWidget {
+//   final String label;
+//   final VoidCallback onTap;
+//   const _PickField({required this.label, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        height: 48,
-        decoration: BoxDecoration(
-          color: secondaryBackground,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.white60),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return InkWell(
+//       onTap: onTap,
+//       borderRadius: BorderRadius.circular(8),
+//       child: Container(
+//         height: 48,
+//         decoration: BoxDecoration(
+//           color: secondaryBackground,
+//           borderRadius: BorderRadius.circular(8),
+//         ),
+//         padding: const EdgeInsets.symmetric(horizontal: 14),
+//         child: Row(
+//           children: [
+//             Expanded(
+//               child: Text(
+//                 label,
+//                 style: const TextStyle(color: Colors.white70, fontSize: 14),
+//                 overflow: TextOverflow.ellipsis,
+//               ),
+//             ),
+//             const Icon(Icons.chevron_right, color: Colors.white60),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 class _ChoiceButton extends StatelessWidget {
   final String text;

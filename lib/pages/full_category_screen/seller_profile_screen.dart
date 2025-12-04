@@ -27,13 +27,14 @@ class SellerProfileScreen extends StatefulWidget {
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
   int selectedStars = 1; // оценка по умолчанию
   int _selectedIndex = 0;
-  Set<String> _selectedSortOptions = {};
-  List<String> _availableSortOptions = const [
-    'Сначала новые',
-    'Сначала старые',
-    'Сначала дорогие',
-    'Сначала дешевые',
-  ];
+  // TODO: Implement sorting functionality
+  // Set<String> _selectedSortOptions = {};
+  // List<String> _availableSortOptions = const [
+  //   'Сначала новые',
+  //   'Сначала старые',
+  //   'Сначала дорогие',
+  //   'Сначала дешевые',
+  // ];
 
   @override
   Widget build(BuildContext context) {

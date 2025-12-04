@@ -4,7 +4,6 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/widgets/offer_price_dialog.dart';
 import 'package:lidle/widgets/complaint_dialog.dart'; // Import the new complaint dialog
 import 'package:lidle/widgets/phone_dialog.dart'; // Import the new phone dialog
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart'; // Import SellerProfileScreen

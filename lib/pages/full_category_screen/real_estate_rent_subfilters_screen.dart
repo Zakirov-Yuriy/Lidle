@@ -1,31 +1,43 @@
+// RealEstateSubfiltersScreen
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/selection_dialog.dart';
 import 'package:lidle/widgets/city_selection_dialog.dart';
 import 'package:lidle/widgets/street_selection_dialog.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';
+import 'package:lidle/widgets/surcharge_dialog.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
 
-class RealEstateFullFiltersScreen extends StatefulWidget {
+class RealEstateRentSubfiltersScreen extends StatefulWidget {
   final String selectedCategory;
 
-  const RealEstateFullFiltersScreen({
-    super.key,
-    required this.selectedCategory,
-  });
+  const RealEstateRentSubfiltersScreen({super.key, required this.selectedCategory});
 
   @override
-  State<RealEstateFullFiltersScreen> createState() =>
-      _RealEstateFullFiltersScreenState();
+  State<RealEstateRentSubfiltersScreen> createState() =>
+      _RealEstateRentSubfiltersScreen();
 }
 
-class _RealEstateFullFiltersScreenState
-    extends State<RealEstateFullFiltersScreen> {
+class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScreen> {
   // ======================= Остальные поля =======================
 
   // сделка
-  String dealType = "sell"; // sell / rent / joint
+  String dealType = "rent"; // sell / rent / joint
+
+  // вид аренды
+  String rentType = "daily"; // hourly / daily / monthly
+
+  // время аренды
+  String selectedDate = "";
+  String selectedMonth = "";
+  String selectedYear = "";
+
+  // время окончания аренды
+  String selectedEndDate = "";
+  String selectedEndMonth = "";
+  String selectedEndYear = "";
 
   // ипотека
   bool? mortgageYes = true;
@@ -40,12 +52,17 @@ class _RealEstateFullFiltersScreenState
   bool realtor = false;
   bool buyerOffer = false;
   bool registrySale = false;
+  bool realEstateRegistry = false;
 
   // объект
   bool isSecondary = true;
 
   // частное/бизнес
   bool isPrivate = true;
+
+  // surcharge
+  bool surchargePerDay = false;
+  bool surchargePerHour = false;
 
   // селекты
   Set<String> selectedCity = {};
@@ -71,6 +88,9 @@ class _RealEstateFullFiltersScreenState
   final floorController = TextEditingController();
   final constructionMin = TextEditingController();
   final constructionMax = TextEditingController();
+  final surchargeMinController = TextEditingController();
+  final surchargeMaxController = TextEditingController();
+  final surchargePerDayController = TextEditingController();
 
   // ======================= UI =======================
 
@@ -87,7 +107,7 @@ class _RealEstateFullFiltersScreenState
               _buildHeader(),
               const SizedBox(height: 19),
               _buildSortBlock(),
-              const SizedBox(height: 27),
+              const SizedBox(height: 22),
               const Divider(color: Colors.white24),
               const SizedBox(height: 22),
               // ============ КАТЕГОРИЯ ============
@@ -190,26 +210,133 @@ class _RealEstateFullFiltersScreenState
                     ? 1
                     : 2,
                 onSelect: (i) {
-                  setState(() {
-                    dealType = i == 0
-                        ? "joint"
-                        : i == 1
-                        ? "sell"
-                        : "rent";
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RealEstateSubfiltersScreen(
-                        selectedCategory: widget.selectedCategory,
+                  if (i == 0 || i == 1) {
+                    // Navigate to RealEstateSubfiltersScreen for "Совместная" or "Продажа"
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => RealEstateSubfiltersScreen(
+                          selectedCategory: widget.selectedCategory,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } else {
+                    // Stay on rent screen for "Аренда"
+                    setState(() {
+                      dealType = "rent";
+                    });
+                  }
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 28),
+              _buildTitle("Вид аренды"),
+              const SizedBox(height: 4),
+              _buildThreeButtons(
+                labels: const ["По часам", "Посуточно", "Помесячно"],
+                selectedIndex: rentType == "hourly"
+                    ? 0
+                    : rentType == "daily"
+                    ? 1
+                    : 2,
+                onSelect: (i) {
+                  setState(() {
+                    rentType = i == 0
+                        ? "hourly"
+                        : i == 1
+                        ? "daily"
+                        : "monthly";
+                  });
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              _buildTitle("Валюта: Российский рубль (₽)"),
+              _buildTitle("Стоимость аренды"),
+              // const SizedBox(height: 22),
+              _buildPriceBlock(),
+
+              const SizedBox(height: 7),
+              _buildCheck("Возможен торг", exchange, (v) {
+                setState(() => exchange = v);
+              }),
+              const SizedBox(height: 21),
+
+              // Условия аренды
+              _buildSelectorDropdown(
+                label: "Условия аренды",
+                selected: selectedBuildingTypes,
+                options: const [
+                  'Все объявления',
+                  'Царский дом',
+                  'Сталинка',
+                  'Хрущевка',
+                  'Чешка',
+                  'Гостинка',
+                  'Совмин',
+                  'Общежитие',
+                  'Жилой фонд 80-90-е',
+                  'Жилой фонд 91-2000-е',
+                  'Жилой фонд 2001-2010-е',
+                  'Жилой фонд 2011-2020-е',
+                  'Жилой фонд от 2021 г.',
+                ],
+                onChanged: (v) => setState(() => selectedBuildingTypes = v),
+              ),
+
+              // Время аренды (Дата/Месяц/Год)
+              const SizedBox(height: 22),
+              _buildTitle("Время аренды (Дата/Месяц/Год)"),
+              _buildThreePriceBlock(),
+              Padding(
+                padding: const EdgeInsets.only(top: 5.0),
+                child: Text(
+                  "Дата начала аренды",
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+
+              const SizedBox(height: 18),
+
+              _buildTitle("Время аренды (Дата/Месяц/Год)"),
+              _buildThreePriceBlockEnd(),
+              Padding(
+                padding: const EdgeInsets.only(top: 5.0),
+                child: Text(
+                  "Дата окончания аренды",
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Доплата сверх лимита (₽)
+              _buildTitle("Доплата сверх лимита (₽)"),
+              _buildSurchargeBlock(),
+              Padding(
+                padding: const EdgeInsets.only(top: 5.0),
+                child: Text(
+                  "Определите доплату которую человек должен будет внести в случаее привешение времени аренды",
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+
+              // Депозит*
+              const SizedBox(height: 12),
+              _buildTitle("Депозит*"),
+              _buildPriceBlock(),
+               Padding(
+                padding: const EdgeInsets.only(top: 5.0),
+                child: Text(
+                  "Сумму дипозита опредилят продавец ",
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+
+             
+
+              const SizedBox(height: 34),
               const Divider(color: Colors.white24),
-              const SizedBox(height: 27),
+              const SizedBox(height: 15),
 
               _buildTitle("Валюта: Российский рубль (₽)"),
               _buildTitle("Цена"),
@@ -228,8 +355,8 @@ class _RealEstateFullFiltersScreenState
                 setState(() => exchange = v);
               }),
               const SizedBox(height: 13),
-              _buildCheck("Готов сотрудничать с риэлтором", noCommission, (v) {
-                setState(() => noCommission = v);
+              _buildCheck("Готов сотрудничать с риэлтором", realtor, (v) {
+                setState(() => realtor = v);
               }),
               const SizedBox(height: 13),
               _buildCheck("Срочная продажа", urgent, (v) {
@@ -240,8 +367,8 @@ class _RealEstateFullFiltersScreenState
                 setState(() => registrySale = v);
               }),
               const SizedBox(height: 13),
-              _buildCheck("Учёт в росреестре", realtor, (v) {
-                setState(() => realtor = v);
+              _buildCheck("Учёт в росреестре", realEstateRegistry, (v) {
+                setState(() => realEstateRegistry = v);
               }),
               const SizedBox(height: 13),
               _buildCheck("Пpедложить свою цену", buyerOffer, (v) {
@@ -665,7 +792,7 @@ class _RealEstateFullFiltersScreenState
         const Text(
           "Сортировка",
           style: TextStyle(
-            color: Colors.white,
+            color: Color.fromARGB(255, 255, 255, 255),
             fontSize: 16,
             fontWeight: FontWeight.w500,
           ),
@@ -810,6 +937,200 @@ class _RealEstateFullFiltersScreenState
         const SizedBox(width: 12),
         Expanded(child: _buildInput("До", areaController)),
       ],
+    );
+  }
+
+  // ========== SURCHARGE BLOCK ==========
+  Widget _buildSurchargeBlock() {
+    return Row(
+      children: [
+        Expanded(child: _buildInput("От", surchargeMinController)),
+        const SizedBox(width: 12),
+        Expanded(child: _buildInput("До", surchargeMaxController)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            onTap: () async {
+              final result = await showDialog(
+                context: context,
+                builder: (_) => SurchargeDialog(
+                  initialPerDay: surchargePerDay,
+                  initialPerHour: surchargePerHour,
+                ),
+              );
+              if (result != null) {
+                setState(() {
+                  surchargePerDay = result['perDay'];
+                  surchargePerHour = result['perHour'];
+                });
+              }
+            },
+            child: Container(
+              height: 45,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: secondaryBackground,
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      surchargePerDay
+                          ? "За сутки"
+                          : surchargePerHour
+                          ? "За часы"
+                          : "За сутки",
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== THREE PRICE BLOCK ==========
+  Widget _buildThreePriceBlock() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildSelectableInput(
+            selectedDate,
+            "Дата",
+            () => _showSelectionDialog(
+              "Выберите дату",
+              List.generate(31, (i) => (i + 1).toString()),
+              (value) => setState(() => selectedDate = value),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildSelectableInput(
+            selectedMonth,
+            "Месяц",
+            () => _showSelectionDialog("Выберите месяц", const [
+              'Январь',
+              'Февраль',
+              'Март',
+              'Апрель',
+              'Май',
+              'Июнь',
+              'Июль',
+              'Август',
+              'Сентябрь',
+              'Октябрь',
+              'Ноябрь',
+              'Декабрь',
+            ], (value) => setState(() => selectedMonth = value)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildSelectableInput(
+            selectedYear,
+            "Год",
+            () => _showSelectionDialog(
+              "Выберите год",
+              List.generate(10, (i) => (DateTime.now().year + i).toString()),
+              (value) => setState(() => selectedYear = value),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== THREE PRICE BLOCK END ==========
+  Widget _buildThreePriceBlockEnd() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildSelectableInput(
+            selectedEndDate,
+            "Дата",
+            () => _showSelectionDialog(
+              "Выберите дату",
+              List.generate(31, (i) => (i + 1).toString()),
+              (value) => setState(() => selectedEndDate = value),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildSelectableInput(
+            selectedEndMonth,
+            "Месяц",
+            () => _showSelectionDialog("Выберите месяц", const [
+              'Январь',
+              'Февраль',
+              'Март',
+              'Апрель',
+              'Май',
+              'Июнь',
+              'Июль',
+              'Август',
+              'Сентябрь',
+              'Октябрь',
+              'Ноябрь',
+              'Декабрь',
+            ], (value) => setState(() => selectedEndMonth = value)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildSelectableInput(
+            selectedEndYear,
+            "Год",
+            () => _showSelectionDialog(
+              "Выберите год",
+              List.generate(10, (i) => (DateTime.now().year + i).toString()),
+              (value) => setState(() => selectedEndYear = value),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== SELECTION DIALOG ==========
+  void _showSelectionDialog(
+    String title,
+    List<String> options,
+    Function(String) onSelected,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: primaryBackground,
+          title: Text(title, style: const TextStyle(color: Colors.white)),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 300,
+            child: ListView.builder(
+              itemCount: options.length,
+              itemBuilder: (context, index) {
+                return ListTile(
+                  title: Text(
+                    options[index],
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    onSelected(options[index]);
+                    Navigator.of(context).pop();
+                  },
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1013,6 +1334,36 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
+  // ========== SELECTABLE INPUT ==========
+  Widget _buildSelectableInput(
+    String value,
+    String placeholder,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 45,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                value.isEmpty ? placeholder : value,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ========== TWO OPTION ==========
   Widget _buildTwoOption({
     required String yes,
@@ -1043,7 +1394,6 @@ class _RealEstateFullFiltersScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            
             onPressed: () {},
             child: const Text(
               "Сохранить настройки фильтра",
@@ -1083,7 +1433,11 @@ class _RealEstateFullFiltersScreenState
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => RealEstateFilteredScreen(selectedCategory: widget.selectedCategory)),
+                MaterialPageRoute(
+                  builder: (context) => RealEstateFilteredScreen(
+                    selectedCategory: widget.selectedCategory,
+                  ),
+                ),
               );
             },
             child: const Text(

@@ -41,8 +41,8 @@ class _AddRealEstateRentAptScreenState
   Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
   Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
   Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
-  Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter
-  Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter
+  // Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter - не используется
+  // Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter - не используется
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();

@@ -24,7 +24,7 @@ class RealEstateFilteredScreen extends StatefulWidget {
 
 class _RealEstateFilteredScreen
     extends State<RealEstateFilteredScreen> {
-  late List<bool> _isFavorited;
+  // late List<bool> _isFavorited; // Не используется, вместо этого используется isFavorited из объектов Listing
   int _selectedIndex = 0; // For bottom navigation
   late List<Listing> _listings; // State variable for listings
   Set<String> _selectedSortOptions = {}; // New state for selected sort options
@@ -32,7 +32,6 @@ class _RealEstateFilteredScreen
   @override
   void initState() {
     super.initState();
-    _isFavorited = List.filled(6, false);
     _listings =
         _generateSampleListings(); // Initialize listings with sample data
     // Initialize with a default sort option if desired, e.g., 'Сначала новые'
