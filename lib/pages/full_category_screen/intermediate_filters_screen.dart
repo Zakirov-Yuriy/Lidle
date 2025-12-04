@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
+import 'package:lidle/widgets/city_selection_dialog.dart';
 // основной экран фильтров
 
 class IntermediateFiltersScreen extends StatefulWidget {
@@ -24,6 +26,35 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
 
   // view mode
   String viewMode = "gallery";
+
+  // город
+  Set<String> selectedCities = {};
+
+  // список городов
+  final List<String> cities = [
+    'Киев',
+    'Харьков',
+    'Одесса',
+    'Днепр',
+    'Запорожье',
+    'Львов',
+    'Кривой Рог',
+    'Николаев',
+    'Мариуполь',
+    'Винница',
+    'Херсон',
+    'Полтава',
+    'Черкассы',
+    'Черновцы',
+    'Житомир',
+    'Сумы',
+    'Хмельницкий',
+    'Ровно',
+    'Ивано-Франковск',
+    'Тернополь',
+    'Луцк',
+    'Ужгород',
+  ];
 
   // Цена
   final TextEditingController priceFrom = TextEditingController();
@@ -58,9 +89,23 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     const SizedBox(height: 18),
                     _buildSectionTitle("Выберите город"),
                     _buildClickableBox(
-                      value: "Выбрать",
+                      value: selectedCities.isEmpty ? "Выбрать" : selectedCities.first,
                       icon: Icons.chevron_right,
-                      onTap: () {},
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) => CitySelectionDialog(
+                            title: "Выберите город",
+                            options: cities,
+                            selectedOptions: selectedCities,
+                            onSelectionChanged: (Set<String> newSelection) {
+                              setState(() {
+                                selectedCities = newSelection;
+                              });
+                            },
+                          ),
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 18),
@@ -117,6 +162,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                   setState(() {
                     selectedSort = "recommended";
                     selectedCurrency = "uah";
+                    selectedCities.clear();
                     priceFrom.clear();
                     priceTo.clear();
                     sellerType = "business";
@@ -252,7 +298,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     return Row(
       children: [
         _buildSelectableButton(
-          text: "грн.",
+          text: "₽",
           isActive: selectedCurrency == "uah",
           onTap: () => setState(() => selectedCurrency = "uah"),
         ),
@@ -384,7 +430,12 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             
           ),
           onPressed: () {
-            Navigator.pop(context);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RealEstateFullSubcategoriesScreen(),
+              ),
+            );
           },
           child: const Text(
             "Применить",
