@@ -1,3 +1,7 @@
+// ============================================================
+// "Пользовательский переключатель"
+// ============================================================
+
 import 'package:flutter/material.dart';
 
 class CustomSwitch extends StatelessWidget {
@@ -16,7 +20,7 @@ class CustomSwitch extends StatelessWidget {
         height: 20,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: const Color(0xFF17212B), // фон как на скриншоте
+          color: const Color(0xFF17212B),
           borderRadius: BorderRadius.circular(30),
         ),
         child: AnimatedAlign(

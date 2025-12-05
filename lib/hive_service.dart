@@ -99,4 +99,14 @@ class HiveService {
     settingsBox.put('favorites', favorites.toList());
     return newFavoriteStatus;
   }
+
+  /// Сохраняет выбранный город в настройки.
+  static Future<void> saveSelectedCity(String city) async {
+    await settingsBox.put('selectedCity', city);
+  }
+
+  /// Получает выбранный город из настроек, по умолчанию 'г. Мариуполь. ДНР'.
+  static String getSelectedCity() {
+    return settingsBox.get('selectedCity', defaultValue: 'г. Мариуполь. ДНР');
+  }
 }

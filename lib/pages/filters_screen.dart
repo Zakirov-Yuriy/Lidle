@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/city_selection_dialog.dart';
 import 'package:lidle/widgets/selection_dialog.dart';
 
@@ -25,7 +26,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
   PriceSort? _priceSort;
   AccountKind _account = AccountKind.private;
 
-  void _reset() {
+  void _reset() async {
     setState(() {
       _selectedCity = {'Мариуполь'};
       _selectedCategories = {};
@@ -33,9 +34,14 @@ class _FiltersScreenState extends State<FiltersScreen> {
       _priceSort = null;
       _account = AccountKind.private;
     });
+    await HiveService.saveSelectedCity('г. Мариуполь. ДНР');
   }
 
-  void _submit() {
+  void _submit() async {
+    // Сохранить выбранный город
+    if (_selectedCity.isNotEmpty) {
+      await HiveService.saveSelectedCity(_selectedCity.first);
+    }
     // TODO: верните выбранные фильтры на предыдущий экран или примените их
     Navigator.maybePop(context);
   }

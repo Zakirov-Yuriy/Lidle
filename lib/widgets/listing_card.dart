@@ -1,16 +1,16 @@
+// ============================================================
+//  "Карточка объявления"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import '../models/home_models.dart';
 import '../constants.dart';
 import '../hive_service.dart';
 import '../pages/full_category_screen/mini_property_details_screen.dart';
 
-/// `ListingCard` - это StatefulWidget, который отображает
-/// отдельную карточку объявления с возможностью добавления в избранное.
 class ListingCard extends StatefulWidget {
-  /// Объект [Listing], содержащий данные для отображения.
   final Listing listing;
 
-  /// Конструктор для `ListingCard`.
   const ListingCard({
     super.key,
     required this.listing,

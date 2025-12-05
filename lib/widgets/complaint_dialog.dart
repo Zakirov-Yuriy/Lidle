@@ -1,8 +1,10 @@
-/// Виджет для отображения диалогового окна жалобы.
-/// Позволяет пользователю выбрать причину жалобы и отправить ее.
+// ============================================================
+//  "Диалог жалобы"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/widgets/custom_checkbox.dart'; // Import CustomCheckbox
+import 'package:lidle/widgets/custom_checkbox.dart';
 
 class ComplaintDialog extends StatefulWidget {
   const ComplaintDialog({super.key});
@@ -89,11 +91,10 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                 });
               },
             ),
-            const SizedBox(height: 34), // Increased spacing before buttons
+            const SizedBox(height: 34),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // ===== КНОПКА ОТМЕНА =====
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
@@ -105,24 +106,21 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                     padding: EdgeInsets.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     splashFactory:
-                        NoSplash.splashFactory, // без эффекта нажатия
+                        NoSplash.splashFactory,
                   ),
                   child: const Text(
                     "Отмена",
                     style: TextStyle(
-                      inherit: false, // ВАЖНО — отключает перезапись стиля
+                      inherit: false,
                       color: Colors.white,
                       fontSize: 16,
-                      decoration: TextDecoration.underline, // подчёркивание
+                      decoration: TextDecoration.underline,
                       decorationColor: Colors.white,
                       decorationThickness: 1.2,
                     ),
                   ),
                 ),
-
                 const SizedBox(width: 21),
-
-                // ===== КНОПКА ОТПРАВИТЬ =====
                 OutlinedButton(
                   onPressed: () {
                     Navigator.of(context).pop();
@@ -131,7 +129,6 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                     side: BorderSide(color: activeIconColor, width: 1.4),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 25,
-                      // vertical: 12,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -140,7 +137,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
                   child: Text(
                     "Отправить",
                     style: TextStyle(
-                      color: activeIconColor, // синий текст
+                      color: activeIconColor,
                       fontSize: 16,
                     ),
                   ),
@@ -169,7 +166,6 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
             ),
           ),
           CustomCheckbox(
-            // Use CustomCheckbox instead of Checkbox
             value: isChecked,
             onChanged: onChanged,
           ),

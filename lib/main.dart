@@ -29,8 +29,12 @@ import 'pages/full_category_screen/full_category_screen.dart';
 import 'pages/full_category_screen/map_screen.dart';
 import 'pages/my_purchases_screen.dart'; // Import the new screen
 
-/// Главная функция, точка входа в приложение.
-/// Выполняет асинхронную инициализацию необходимых сервисов.
+// ============================================================
+//  Главная функция
+// Выполняет асинхронную инициализацию необходимых сервисов.
+// ============================================================
+
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -51,8 +55,11 @@ void main() async {
   runApp(const LidleApp());
 }
 
-/// Корневой виджет приложения Lidle.
-/// Определяет основные настройки приложения, такие как заголовок, тема и маршруты.
+// ============================================================
+//  Корневой виджет приложения
+// ============================================================
+
+
 class LidleApp extends StatelessWidget {
   /// Конструктор для LidleApp.
   const LidleApp({super.key});

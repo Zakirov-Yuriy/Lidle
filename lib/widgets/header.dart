@@ -1,12 +1,12 @@
-/// Виджет заголовка приложения, отображающий логотип.
+// ============================================================
+//  "Заголовок"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 
-/// `Header` - это StatelessWidget, который отображает
-/// логотип приложения в верхней части экрана.
 class Header extends StatelessWidget {
-  /// Конструктор для `Header`.
   const Header({super.key});
 
   @override

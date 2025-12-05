@@ -1,16 +1,14 @@
-/// Виджет нижней навигационной панели приложения.
-/// Автоматически определяет текущий экран и обеспечивает навигацию.
+// ============================================================
+// "Нижняя навигация"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import '../constants.dart';
-import '../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
+import '../pages/my_purchases_screen.dart';
 
-/// `BottomNavigation` - это StatelessWidget, который отображает
-/// нижнюю навигационную панель с иконками.
 class BottomNavigation extends StatelessWidget {
-  /// Callback-функция, вызываемая при выборе нового элемента.
   final ValueChanged<int>? onItemSelected;
 
-  /// Конструктор для `BottomNavigation`.
   const BottomNavigation({
     super.key,
     this.onItemSelected,
@@ -20,19 +18,18 @@ class BottomNavigation extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentRoute = ModalRoute.of(context)?.settings.name;
 
-    // Определяем индекс на основе текущего роута
     int getSelectedIndex() {
       switch (currentRoute) {
         case '/':
-          return 0; // Домой
+          return 0;
         case '/favorites':
-          return 1; // Избранное
+          return 1;
         case MyPurchasesScreen.routeName:
-          return 3; // Мои покупки
+          return 3;
         case '/profile-dashboard':
-          return 5; // Профиль
+          return 5;
         default:
-          return 0; // По умолчанию домой
+          return 0;
       }
     }
 
@@ -72,11 +69,6 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
-  /// Приватный метод для построения отдельного элемента навигации.
-  /// [iconPath] - путь к иконке элемента.
-  /// [index] - индекс элемента.
-  /// [currentSelected] - текущий выбранный индекс.
-  /// Возвращает виджет, представляющий элемент навигации.
   Widget _buildNavItem(String iconPath, int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -98,10 +90,6 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
-  /// Приватный метод для построения центрального элемента "Добавить".
-  /// [index] - индекс элемента.
-  /// [currentSelected] - текущий выбранный индекс.
-  /// Возвращает виджет, представляющий центральный элемент.
   Widget _buildCenterAdd(int index, int currentSelected) {
     final isSelected = currentSelected == index;
 

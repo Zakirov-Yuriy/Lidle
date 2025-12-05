@@ -1,3 +1,7 @@
+// ============================================================
+//  "Диалог доплаты"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/custom_checkbox.dart';

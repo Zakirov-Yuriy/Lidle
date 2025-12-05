@@ -1,16 +1,13 @@
-/// Виджет кастомного чекбокса.
-/// Предоставляет стилизованный чекбокс с анимацией состояния.
+// ============================================================
+//  "Пользовательский чекбокс"
+// ============================================================
+
 import 'package:flutter/material.dart';
 
-/// `CustomCheckbox` - это StatelessWidget, который отображает
-/// настраиваемый чекбокс.
 class CustomCheckbox extends StatelessWidget {
-  /// Текущее состояние чекбокса (отмечен или нет).
   final bool value;
-  /// Callback-функция, вызываемая при изменении состояния чекбокса.
   final ValueChanged<bool>? onChanged;
 
-  /// Конструктор для `CustomCheckbox`.
   const CustomCheckbox({
     super.key,
     required this.value,

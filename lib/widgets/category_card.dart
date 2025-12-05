@@ -1,19 +1,15 @@
-/// Виджет карточки категории, используемый на главной странице.
-/// Отображает изображение категории и ее заголовок.
+// ============================================================
+//  "Карточка категории"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import '../models/home_models.dart';
 import '../constants.dart';
 
-/// `CategoryCard` - это StatelessWidget, который отображает
-/// отдельную карточку категории с изображением и заголовком.
 class CategoryCard extends StatelessWidget {
-  /// Объект [Category], содержащий данные для отображения.
   final Category category;
-
-  /// Callback, вызываемый при нажатии на категорию.
   final VoidCallback? onTap;
 
-  /// Конструктор для `CategoryCard`.
   const CategoryCard({
     super.key,
     required this.category,

@@ -1,3 +1,7 @@
+// ============================================================
+//  "Диалог предложения цены"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 
@@ -8,7 +12,7 @@ class OfferPriceDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor:
-          primaryBackground, // Assuming primaryBackground is a dark color
+          primaryBackground, 
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: Container(
         padding: const EdgeInsets.only(top: 25.0, left: 12.0, right: 12.0,  bottom: 37.0),
@@ -73,7 +77,6 @@ class OfferPriceDialog extends StatelessWidget {
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  // TODO: Implement logic to send the offer
                   Navigator.of(context).pop(); // Close the dialog
                 },
                 style: ElevatedButton.styleFrom(

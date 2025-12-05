@@ -1,3 +1,7 @@
+// ============================================================
+//  "Диалог выбора улицы"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import '../constants.dart';
 
@@ -8,7 +12,7 @@ class _SectionHeader {
 
 class StreetSelectionDialog extends StatefulWidget {
   final String title;
-  final Map<String, List<String>> groupedOptions; // Use a map for grouped options
+  final Map<String, List<String>> groupedOptions;
   final Set<String> selectedOptions;
   final Function(Set<String>) onSelectionChanged;
 
@@ -26,14 +30,14 @@ class StreetSelectionDialog extends StatefulWidget {
 
 class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
   late Set<String> _currentSelectedOptions;
-  late List<dynamic> _displayOptions; // Changed to dynamic to hold both streets and headers
+  late List<dynamic> _displayOptions;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _currentSelectedOptions = Set<String>.from(widget.selectedOptions);
-    _buildDisplayOptions(widget.groupedOptions); // Initial build
+    _buildDisplayOptions(widget.groupedOptions);
     _searchController.addListener(_filterOptions);
   }
 
@@ -46,15 +50,14 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
 
   void _buildDisplayOptions(Map<String, List<String>> groupedStreets) {
     List<dynamic> newDisplayOptions = [];
-    
-    // Sort sections by key (e.g., "Центральный район", "Приморский район")
+
     final sortedSectionKeys = groupedStreets.keys.toList()..sort();
 
     for (var sectionKey in sortedSectionKeys) {
-      newDisplayOptions.add(_SectionHeader(sectionKey)); // Add section header
+      newDisplayOptions.add(_SectionHeader(sectionKey));
       List<String> streetsInSection = List<String>.from(groupedStreets[sectionKey]!);
-      streetsInSection.sort(); // Sort streets within each section
-      newDisplayOptions.addAll(streetsInSection); // Add sorted streets
+      streetsInSection.sort();
+      newDisplayOptions.addAll(streetsInSection);
     }
 
     setState(() {
@@ -74,17 +77,17 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
         filteredGroupedStreets[sectionKey] = filteredStreets;
       }
     });
-    
-    _buildDisplayOptions(filteredGroupedStreets); // Rebuild with filtered streets
+
+    _buildDisplayOptions(filteredGroupedStreets);
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF222E3A), // Match SelectionDialog
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), // Match SelectionDialog
+      backgroundColor: const Color(0xFF222E3A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 10, 13, 20), // Match SelectionDialog
+        padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
@@ -92,7 +95,7 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton( // Close button on the top right
+            IconButton(
               icon: const Icon(Icons.close, color: textPrimary),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -103,13 +106,13 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
                   widget.title,
                   style: const TextStyle(
                     color: textPrimary,
-                    fontSize: 18, // Match SelectionDialog
-                    fontWeight: FontWeight.bold, // Match SelectionDialog
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 23), // Match SelectionDialog
+            const SizedBox(height: 23),
             TextField(
               controller: _searchController,
               style: const TextStyle(color: textPrimary),
@@ -126,7 +129,7 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
               ),
             ),
             const SizedBox(height: 15),
-            Flexible( // Use Flexible instead of Expanded for better sizing with SingleChildScrollView
+            Flexible(
               child: ScrollbarTheme(
                 data: ScrollbarThemeData(
                   thumbColor: WidgetStateProperty.all<Color?>(const Color(0xFF3C3C3C)),
@@ -135,7 +138,7 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
                 child: Scrollbar(
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: _displayOptions.length, // Use _displayOptions
+                    itemCount: _displayOptions.length,
                     itemBuilder: (context, index) {
                       final item = _displayOptions[index];
                       if (item is _SectionHeader) {
@@ -157,10 +160,7 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
                           onTap: () {
                             _currentSelectedOptions.clear();
                             _currentSelectedOptions.add(option);
-                            // Do not pop here. The user explicitly chose 'Выбрать' or 'Отмена' in the image.
-                            // widget.onSelectionChanged(_currentSelectedOptions);
-                            // Navigator.of(context).pop();
-                            setState(() {}); // Update the UI to show selection
+                            setState(() {});
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -181,34 +181,32 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
                   ),
                 ),
               ),
-            ), // Закрывающая скобка для Flexible
-            const SizedBox(height: 20), // Match SelectionDialog
+            ),
+            const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Match SelectionDialog
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: () {
-                    // Reset selection to original if cancelled
-                    // _currentSelectedOptions = Set<String>.from(widget.selectedOptions); 
                     Navigator.of(context).pop();
                   },
                   child: const Text(
                     'Отмена',
                     style: TextStyle(
-                      color: textPrimary, // Match SelectionDialog
+                      color: textPrimary,
                       fontSize: 16,
-                      decoration: TextDecoration.underline, // Match SelectionDialog
-                      decorationColor: textPrimary, // Match SelectionDialog
+                      decoration: TextDecoration.underline,
+                      decorationColor: textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                OutlinedButton( // Change to OutlinedButton
+                OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    fixedSize: const Size(127, 35), // Match SelectionDialog
-                    side: const BorderSide(color: activeIconColor), // Match SelectionDialog
+                    fixedSize: const Size(127, 35),
+                    side: const BorderSide(color: activeIconColor),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8), // Match SelectionDialog
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   onPressed: () {
@@ -216,8 +214,8 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
                     Navigator.of(context).pop();
                   },
                   child: const Text(
-                    'Выбрать', // Change text to 'Выбрать' as per image
-                    style: TextStyle(color: activeIconColor, fontSize: 16), // Match SelectionDialog
+                    'Выбрать',
+                    style: TextStyle(color: activeIconColor, fontSize: 16),
                   ),
                 ),
               ],

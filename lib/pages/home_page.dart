@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 import '../models/home_models.dart';
+import '../hive_service.dart';
 import '../widgets/header.dart';
 import '../widgets/search_bar.dart' as custom_widgets;
 import '../widgets/category_card.dart';
@@ -38,11 +39,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  late String _selectedCity;
+
   @override
   void initState() {
     super.initState();
     // Загружаем данные при инициализации страницы
     context.read<ListingsBloc>().add(LoadListingsEvent());
+    _selectedCity = HiveService.getSelectedCity();
   }
 
   @override
@@ -82,8 +86,8 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(width: 7),
                             Padding(
                               padding: const EdgeInsets.only(top: 15.0),
-                              child: const Text(
-                                'г. Мариуполь. ДНР',
+                              child: Text(
+                                _selectedCity,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: Color(0xFFAAAAAA),
@@ -105,8 +109,11 @@ class _HomePageState extends State<HomePage> {
                                   context.read<ListingsBloc>().add(ResetFiltersEvent());
                                 }
                               },
-                              onSettingsPressed: () {
-                                Navigator.pushNamed(context, FiltersScreen.routeName);
+                              onSettingsPressed: () async {
+                                await Navigator.pushNamed(context, FiltersScreen.routeName);
+                                setState(() {
+                                  _selectedCity = HiveService.getSelectedCity();
+                                });
                               },
                               onMenuPressed: () {
                                 if (authState is AuthAuthenticated) {

@@ -1,13 +1,12 @@
-/// Виджет строки поиска, используемый на главной странице.
-/// Включает иконку меню, текстовое поле для поиска и иконку настроек.
+// ============================================================
+//  "Панель поиска"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 
-/// `SearchBarWidget` - это StatefulWidget, который отображает
-/// интерактивную строку поиска в верхней части главной страницы.
 class SearchBarWidget extends StatefulWidget {
-  /// Конструктор для `SearchBarWidget`.
   const SearchBarWidget({
     super.key,
     this.onMenuPressed,
@@ -15,22 +14,17 @@ class SearchBarWidget extends StatefulWidget {
     this.onSearchChanged,
   });
 
-  /// Callback для нажатия на иконку меню.
   final VoidCallback? onMenuPressed;
 
-  /// Callback для нажатия на иконку настроек.
   final VoidCallback? onSettingsPressed;
 
-  /// Callback для изменения текста поиска.
   final ValueChanged<String>? onSearchChanged;
 
   @override
   State<SearchBarWidget> createState() => _SearchBarWidgetState();
 }
 
-/// Состояние для виджета `SearchBarWidget`.
 class _SearchBarWidgetState extends State<SearchBarWidget> {
-  /// Контроллер для текстового поля поиска.
   final TextEditingController _searchController = TextEditingController();
 
   @override
