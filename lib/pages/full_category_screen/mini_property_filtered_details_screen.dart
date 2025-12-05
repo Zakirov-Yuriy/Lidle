@@ -4,17 +4,21 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/widgets/complaint_dialog.dart'; // Import the new complaint dialog
-import 'package:lidle/widgets/phone_dialog.dart'; // Import the new phone dialog
-import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart'; // Import SellerProfileScreen
+import 'package:lidle/widgets/complaint_dialog.dart'; 
+import 'package:lidle/widgets/phone_dialog.dart'; 
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+
+// ============================================================
+// "Мини-экран деталей отфильтрованной недвижимости"
+// ============================================================
 
 class MiniPropertyDetailsScreen extends StatefulWidget {
-  final Listing listing; // Add this line
+  final Listing listing; 
 
   const MiniPropertyDetailsScreen({
     super.key,
     required this.listing,
-  }); // Modify this line
+  }); 
 
   @override
   State<MiniPropertyDetailsScreen> createState() =>
@@ -116,7 +120,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 25,
-                // vertical: 19,
+                
               ),
               child: Row(
                 children: [
@@ -129,7 +133,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                     ),
                   ),
                   const Text(
-                    'Назад', // Changed title
+                    'Назад', 
                     style: TextStyle(
                       color: activeIconColor,
                       fontSize: 16,
@@ -177,7 +181,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     );
   }
 
-  // ----------------------- UI BLOCKS -----------------------
+  
 
   Widget _buildImageCarousel() {
     return Column(
@@ -197,11 +201,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         ),
         const SizedBox(
           height: 10,
-        ), // Add spacing between carousel and indicators
+        ), 
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            1, // Only one image for now from the listing
+            1, 
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),
@@ -214,15 +218,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(
         horizontal: 5.0,
-      ), // Ensure horizontal margin is 4.0
-      height: 11.0, // Reduced height
-      width: 11.0, // Reduced width
+      ), 
+      height: 11.0, 
+      width: 11.0, 
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isActive ? Colors.blue : primaryBackground.withOpacity(0.5),
         border: Border.all(
-          color: Colors.grey, // Border color for inactive dot
-          width: 1.0, // Adjusted border width to make inner circle 7.0x7.0
+          color: Colors.grey, 
+          width: 1.0, 
         ),
       ),
     );
@@ -241,7 +245,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
-                widget.listing.id, // Assuming ID can be displayed as a number
+                widget.listing.id, 
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
@@ -266,7 +270,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ),
           const SizedBox(height: 4),
           const Text(
-            "354 582 ₽ за м²", // This information is not in the Listing model
+            "354 582 ₽ за м²", 
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
@@ -495,7 +499,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             crossAxisSpacing: 8,
             childAspectRatio: 0.70,
           ),
-          itemCount: _similarListings.take(4).length, // Take only first 4 listings
+          itemCount: _similarListings.take(4).length, 
           itemBuilder: (context, index) {
             final listing = _similarListings[index];
             return GestureDetector(
@@ -565,7 +569,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     );
   }
 
-  // ----------------------- HELPERS -----------------------
+  
 
   static Widget _card({required Widget child}) {
     return Container(
@@ -585,7 +589,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       builder: (BuildContext bc) {
         return Container(
           decoration: const BoxDecoration(
-            color: secondaryBackground, // Using secondaryBackground from constants.dart
+            color: secondaryBackground, 
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
@@ -615,7 +619,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                     _buildShareItem("Chats", Icons.chat, "assets/publication_success/icons8-чат-100.png"),
                     _buildShareItem("Telegram", Icons.send, "assets/publication_success/icons8-telegram-100.png"),
                     _buildShareItem("Открыть в Браузере", Icons.open_in_browser, "assets/publication_success/free-icon-yandex-6124986.png"),
-                    _buildShareItem("Читалка", Icons.menu_book, null), // Placeholder icon as asset not found
+                    _buildShareItem("Читалка", Icons.menu_book, null), 
                     _buildShareItem("WhatsApp", Icons.message, "assets/publication_success/icons8-whatsapp-100.png"),
                     _buildShareItem("Сообщения", Icons.message, "assets/publication_success/icons8-чат-100.png"),
                     _buildShareItem("Gmail", Icons.mail, "assets/publication_success/icons8-gmail-100.png"),
@@ -628,7 +632,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[800], // Darker grey for the button
+                    backgroundColor: Colors.grey[800], 
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(50),
@@ -653,18 +657,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget _buildShareItem(String title, IconData defaultIcon, String? assetPath) {
     return GestureDetector(
       onTap: () {
-        // Handle share action for each item
-        Navigator.pop(context); // Close the bottom sheet after selection
-        // TODO: Implement actual share logic based on the selected item
+        
+        Navigator.pop(context); 
+        
         print("Share $title tapped");
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           if (assetPath != null) 
-            Image.asset(assetPath, width: 50, height: 50) // Use Image.asset if path is provided
+            Image.asset(assetPath, width: 50, height: 50) 
           else 
-            Icon(defaultIcon, size: 50, color: Colors.white), // Fallback to Icon if asset not found
+            Icon(defaultIcon, size: 50, color: Colors.white), 
           const SizedBox(height: 8),
           Text(
             title,
@@ -677,7 +681,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 }
 
-// Reusable small widgets
+
 class _InfoRow extends StatelessWidget {
   final String title;
   final String value;
@@ -719,7 +723,7 @@ class _AllListingsButton extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => SellerProfileScreen(
-              sellerName: "Андрей Коломойский", // Placeholder name
+              sellerName: "Андрей Коломойский", 
               sellerAvatar: const AssetImage(
                 "assets/property_details_screen/Andrey.png",
               ),
@@ -735,7 +739,7 @@ class _AllListingsButton extends StatelessWidget {
                       "isFavorited": listing.isFavorited,
                     },
                   )
-                  .toList(), // Populated with similar listings
+                  .toList(), 
             ),
           ),
         );
@@ -776,7 +780,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   @override
   void initState() {
     super.initState();
-    // Initialize _isFavorited by checking HiveService
+    
     _isFavorited = HiveService.isFavorite(widget.listing.id);
   }
 
@@ -819,7 +823,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           ? SvgPicture.asset(
                               'assets/profile_dashboard/heart-rounded.svg',
                               colorFilter: const ColorFilter.mode(
-                                Colors.red, // Solid red for favorited SVG
+                                Colors.red, 
                                 BlendMode.srcIn,
                               ),
                               width: 20,
@@ -828,15 +832,15 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           : Image.asset(
                               'assets/BottomNavigation/heart-rounded.png',
                               color:
-                                  Colors.white70, // Apply color filter to PNG
+                                  Colors.white70, 
                               colorBlendMode: BlendMode.srcIn,
                               width: 20,
                               height: 20,
                             ),
                     ),
-                    // const SizedBox(
-                    //   width: 5,
-                    // ), // Add a small space for visual separation
+                    
+                    
+                    
                   ],
                 ),
                 const SizedBox(height: 3),

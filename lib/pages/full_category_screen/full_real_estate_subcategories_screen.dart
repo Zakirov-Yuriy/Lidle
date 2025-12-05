@@ -4,6 +4,10 @@ import 'package:lidle/pages/full_category_screen/full_real_estate_apartments_scr
 import 'package:lidle/widgets/header.dart';
 import 'map_screen.dart';
 
+// ============================================================
+// "Экран подкатегорий недвижимости"
+// ============================================================
+
 class FullRealEstateSubcategoriesScreen extends StatefulWidget {
   const FullRealEstateSubcategoriesScreen({super.key});
 
@@ -67,7 +71,7 @@ class _FullRealEstateSubcategoriesScreenState
                       const Spacer(),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context); // Закрыть экран при отмене
+                          Navigator.pop(context);
                         },
                         child: const Text(
                           'Отмена',
@@ -122,7 +126,6 @@ class _FullRealEstateSubcategoriesScreenState
                                 ),
                               );
                             }
-                            // Навигация или логика выбора подкатегории для других элементов
                           },
                         ),
                         if (index < subcategories.length - 1)

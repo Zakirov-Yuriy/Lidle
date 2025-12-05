@@ -292,13 +292,13 @@ test/
 -  **Тестируемость** - каждый компонент можно тестировать изолированно
 -  **Поддерживаемость** - изменения в одном слое не затрагивают другие
 -  **Масштабируемость** - легкое добавление новых функций
--  **Читаемость** - четкая структура и命名约定
+-  **Читаемость** - четкая структура 
 
 # Стек технологий
 
-| Framework | Language | State Management | Storage & Caching | UI & Styling | HTTP Communication | Testing | Linting | IDE |
+| Framework | Language | State Management | Storage & Caching | UI & Styling | HTTP Communication | Testing | Linting |
 | ---------- | -------- | ----------------- | ----------------- | ------------ | ------------------ | ------- | ------- | --- |
-| ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white) | ![Dart](https://img.shields.io/badge/Dart-00B4AB?logo=dart&logoColor=white) | ![BLoC](https://img.shields.io/badge/BLoC-02569B?logo=flutter&logoColor=white) | ![Hive](https://img.shields.io/badge/Hive-02569B?logo=flutter&logoColor=white) | ![Material Design](https://img.shields.io/badge/Material%20Design-02569B?logo=flutter&logoColor=white) | ![HTTP](https://img.shields.io/badge/HTTP-02569B?logo=dart&logoColor=white) | ![Flutter Test](https://img.shields.io/badge/Flutter%20Test-02569B?logo=flutter&logoColor=white) | ![analysis_options](https://img.shields.io/badge/analysis_options-02569B?logo=dart&logoColor=white) | !
+| ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white) | ![Dart](https://img.shields.io/badge/Dart-00B4AB?logo=dart&logoColor=white) | ![BLoC](https://img.shields.io/badge/BLoC-02569B?logo=flutter&logoColor=white) | ![Hive](https://img.shields.io/badge/Hive-02569B?logo=flutter&logoColor=white) | ![Material Design](https://img.shields.io/badge/Material%20Design-02569B?logo=flutter&logoColor=white) | ![HTTP](https://img.shields.io/badge/HTTP-02569B?logo=dart&logoColor=white) | ![Flutter Test](https://img.shields.io/badge/Flutter%20Test-02569B?logo=flutter&logoColor=white) | ![analysis_options](https://img.shields.io/badge/analysis_options-02569B?logo=dart&logoColor=white) | 
 
 # Основные зависимости
 

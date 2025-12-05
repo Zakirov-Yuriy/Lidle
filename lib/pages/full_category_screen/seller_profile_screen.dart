@@ -5,12 +5,15 @@ import 'package:lidle/widgets/header.dart';
 import 'package:lidle/widgets/listing_card.dart';
 import 'package:lidle/widgets/complaint_dialog.dart';
 
+// ============================================================
+// "Экран профиля продавца"
+// ============================================================
 
 class SellerProfileScreen extends StatefulWidget {
   static const String routeName = "/seller-profile";
 
   final String sellerName;
-  final ImageProvider sellerAvatar; // Changed to ImageProvider
+  final ImageProvider sellerAvatar; 
   final List<Map<String, dynamic>> sellerListings;
 
   const SellerProfileScreen({
@@ -25,16 +28,16 @@ class SellerProfileScreen extends StatefulWidget {
 }
 
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
-  int selectedStars = 1; // оценка по умолчанию
+  int selectedStars = 1; 
   int _selectedIndex = 0;
-  // TODO: Implement sorting functionality
-  // Set<String> _selectedSortOptions = {};
-  // List<String> _availableSortOptions = const [
-  //   'Сначала новые',
-  //   'Сначала старые',
-  //   'Сначала дорогие',
-  //   'Сначала дешевые',
-  // ];
+  
+  
+  
+  
+  
+  
+  
+  
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +73,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              // const SizedBox(height: 10), // Removed as _buildListingsGrid handles its own spacing
+              
               _buildListingsGrid(),
 
               const SizedBox(height: 36),
@@ -86,7 +89,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  // ---------------- HEADER -------------------
+  
 
   Widget _buildHeader() {
     return Row(
@@ -95,7 +98,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           onTap: () => Navigator.pop(context),
           child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.lightBlue, size: 22),
         ),
-        // const SizedBox(width: 12),
+        
 
         const Text(
           "Назад",
@@ -114,7 +117,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  // ---------------- SELLER INFO -------------------
+  
 
   Widget _buildSellerInfo() {
     return Column(
@@ -123,7 +126,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           children: [
             CircleAvatar(
               radius: 38,
-              backgroundImage: widget.sellerAvatar, // Use ImageProvider directly
+              backgroundImage: widget.sellerAvatar, 
             ),
             const SizedBox(width: 16),
             Column(
@@ -171,7 +174,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
         const SizedBox(height: 15),
 
-        // Подписаться
+        
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -193,7 +196,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  // ---------------- RATE SELLER BLOCK -------------------
+  
 
   Widget _buildRateSeller() {
     return Container(
@@ -241,7 +244,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  // ---------------- TITLE "LISTINGS" -------------------
+  
 
   Widget _buildListingsTitle() {
     return const Text(
@@ -254,25 +257,25 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  // ---------------- GRID OF LISTINGS -------------------
+  
 
   Widget _buildListingsGrid() {
     return GridView.builder(
-      // padding: const EdgeInsets.symmetric(horizontal: 25),
-      itemCount: widget.sellerListings.length, // Using widget.sellerListings
-      shrinkWrap: true, // Added to allow GridView inside SingleChildScrollView
-      physics: const NeverScrollableScrollPhysics(), // Added to prevent nested scrolling issues
+      
+      itemCount: widget.sellerListings.length, 
+      shrinkWrap: true, 
+      physics: const NeverScrollableScrollPhysics(), 
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         mainAxisSpacing: 15,
         crossAxisSpacing: 8,
         childAspectRatio: 0.70,
       ),
-      itemBuilder: (_, i) => ListingCard(listing: Listing.fromJson(widget.sellerListings[i])), // Using Listing.fromJson
+      itemBuilder: (_, i) => ListingCard(listing: Listing.fromJson(widget.sellerListings[i])), 
     );
   }
 
-  // ---------------- COMPLAINT BLOCK -------------------
+  
 
   Widget _buildComplaintBlock() {
     return Container(
@@ -337,7 +340,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  // ---------------- BOTTOM NAVIGATION -------------------
+  
 
   Widget _buildNavItem(String iconPath, int index, int currentSelected) {
     final isSelected = currentSelected == index;
@@ -417,7 +420,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       builder: (BuildContext bc) {
         return Container(
           decoration: const BoxDecoration(
-            color: secondaryBackground, // Using secondaryBackground from constants.dart
+            color: secondaryBackground, 
             borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
           ),
           child: Column(
@@ -447,7 +450,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                     _buildShareItem("Chats", Icons.chat, "assets/publication_success/icons8-чат-100.png"),
                     _buildShareItem("Telegram", Icons.send, "assets/publication_success/icons8-telegram-100.png"),
                     _buildShareItem("Открыть в Браузере", Icons.open_in_browser, "assets/publication_success/free-icon-yandex-6124986.png"),
-                    _buildShareItem("Читалка", Icons.menu_book, null), // Placeholder icon as asset not found
+                    _buildShareItem("Читалка", Icons.menu_book, null), 
                     _buildShareItem("WhatsApp", Icons.message, "assets/publication_success/icons8-whatsapp-100.png"),
                     _buildShareItem("Сообщения", Icons.message, "assets/publication_success/icons8-чат-100.png"),
                     _buildShareItem("Gmail", Icons.mail, "assets/publication_success/icons8-gmail-100.png"),
@@ -460,7 +463,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[800], // Darker grey for the button
+                    backgroundColor: Colors.grey[800], 
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(50),
@@ -485,18 +488,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Widget _buildShareItem(String title, IconData defaultIcon, String? assetPath) {
     return GestureDetector(
       onTap: () {
-        // Handle share action for each item
-        Navigator.pop(context); // Close the bottom sheet after selection
-        // TODO: Implement actual share logic based on the selected item
+        
+        Navigator.pop(context); 
+        
         print("Share $title tapped");
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           if (assetPath != null) 
-            Image.asset(assetPath, width: 50, height: 50) // Use Image.asset if path is provided
+            Image.asset(assetPath, width: 50, height: 50) 
           else 
-            Icon(defaultIcon, size: 50, color: Colors.white), // Fallback to Icon if asset not found
+            Icon(defaultIcon, size: 50, color: Colors.white), 
           const SizedBox(height: 8),
           Text(
             title,

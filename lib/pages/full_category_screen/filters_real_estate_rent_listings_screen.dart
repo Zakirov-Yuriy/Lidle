@@ -6,6 +6,10 @@ import 'package:lidle/widgets/selection_dialog.dart';
 import 'package:lidle/widgets/city_selection_dialog.dart';
 import 'package:lidle/widgets/street_selection_dialog.dart';
 
+// ============================================================
+// "Экран фильтров для аренды недвижимости"
+// ============================================================
+
 class FiltersRealEstateRentListingsScreen extends StatefulWidget {
   static const String routeName = '/real-estate-filters';
 
@@ -18,24 +22,19 @@ class FiltersRealEstateRentListingsScreen extends StatefulWidget {
 
 class _FiltersRealEstateRentListingsScreenState
     extends State<FiltersRealEstateRentListingsScreen> {
-  // ===== Состояние =====
 
-  // Сортировка
-  String _sortType = 'newest'; // newest / cheapest / expensive
+  String _sortType = 'newest';
 
-  // Тумблеры
-  bool isSecondarySelected = true; // Вторичка / Новостройка
-  bool isIndividualSelected = true; // Частное лицо / Бизнес
-  bool? _isFurnished = null; // null - не выбрано, true - с мебелью, false - без
+  bool isSecondarySelected = true;
+  bool isIndividualSelected = true;
+  bool? _isFurnished = null;
 
-  // Чекбоксы цены
   bool isBargain = false;
   bool isNoCommission = false;
   bool isRealtor = false;
   bool isCoRent = false;
   bool isPetsAllowed = false;
 
-  // Dropdown / мульти-выбор
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
@@ -53,8 +52,6 @@ class _FiltersRealEstateRentListingsScreenState
   Set<String> _selectedLandscapeTypes = {};
   Set<String> _selectedCity = {};
   Set<String> _selectedStreet = {};
-
-  // ===== Методы =====
 
   void _resetFilters() {
     setState(() {
@@ -104,7 +101,6 @@ class _FiltersRealEstateRentListingsScreenState
               ),
             ),
             _buildHeader(),
-            // const Divider(height: 1, color: Color(0xFF303A46)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
@@ -119,30 +115,23 @@ class _FiltersRealEstateRentListingsScreenState
                     const Divider(height: 1, color: textMuted),
                     const SizedBox(height: 22),
 
-                    // Категория
                     _buildCategorySelector(),
                     const SizedBox(height: 21),
 
                     const Divider(height: 1, color: textMuted),
                     const SizedBox(height: 13),
 
-                    // Город / улица / дом
                     _buildCityStreetBlock(),
                     const SizedBox(height: 21),
                     const Divider(height: 1, color: textMuted),
                     const SizedBox(height: 12),
 
-                    // Валюта / цена
                     _buildCurrencyAndPrice(),
                     const SizedBox(height: 16),
-                    
 
-                    // Чекбоксы цены
                     _buildPriceCheckboxes(),
                     const SizedBox(height: 20),
-                    
 
-                    // Вид объекта
                     _buildSectionTitle('Вид объекта'),
                     const SizedBox(height: 10),
                     _buildTwoChoiceRow(
@@ -156,7 +145,6 @@ class _FiltersRealEstateRentListingsScreenState
                     ),
                     const SizedBox(height: 16),
 
-                    // Тип дома и основные поля
                     _buildDropdown(
                       label: 'Тип дома',
                       hint: _selectedHouseTypes.isEmpty
@@ -411,7 +399,6 @@ class _FiltersRealEstateRentListingsScreenState
                     ),
                     const SizedBox(height: 16),
 
-                    // Меблированная
                     _buildSectionTitle('Меблированная'),
                     const SizedBox(height: 10),
                     _buildTwoChoiceRow(
@@ -621,7 +608,6 @@ class _FiltersRealEstateRentListingsScreenState
                     ),
                     const SizedBox(height: 20),
 
-                    // Частное лицо / бизнес
                     _buildSectionTitle('Частное лицо / Бизнес'),
                     const SizedBox(height: 10),
                     _buildTwoChoiceRow(
@@ -635,7 +621,6 @@ class _FiltersRealEstateRentListingsScreenState
                     ),
                     const SizedBox(height: 24),
 
-                    // Нижние кнопки
                     _buildBottomButtons(),
                     const SizedBox(height: 24),
                   ],
@@ -648,13 +633,10 @@ class _FiltersRealEstateRentListingsScreenState
     );
   }
 
-  // ===== UI helpers =====
-
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: defaultPadding,
-        // vertical: 10,
       ),
       child: Row(
         children: [
@@ -734,7 +716,6 @@ class _FiltersRealEstateRentListingsScreenState
               ? null
               : const BorderSide(color: Colors.white, width: 1),
           minimumSize: const Size(0, 35),
-          // padding: const EdgeInsets.symmetric(horizontal: 6),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onTap,
@@ -928,7 +909,6 @@ class _FiltersRealEstateRentListingsScreenState
               ),
             ),
             onPressed: () {
-              // TODO: сохранить настройки фильтра
             },
             child: Text(
               'Сохранить настройки фильтра',
@@ -948,7 +928,6 @@ class _FiltersRealEstateRentListingsScreenState
               ),
             ),
             onPressed: () {
-              // TODO: показать результаты на карте
             },
             child: const Text(
               'Показать на карте',
@@ -968,7 +947,6 @@ class _FiltersRealEstateRentListingsScreenState
               ),
             ),
             onPressed: () {
-              // TODO: применить фильтры и закрыть экран
               Navigator.pop(context);
             },
             child: const Text(
@@ -977,12 +955,10 @@ class _FiltersRealEstateRentListingsScreenState
             ),
           ),
         ),
-        
+
       ],
     );
   }
-
-  // ===== Общие билдеры =====
 
   Widget _buildSectionTitle(String text) {
     return Text(

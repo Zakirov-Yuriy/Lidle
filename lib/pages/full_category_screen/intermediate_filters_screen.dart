@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
 import 'package:lidle/widgets/city_selection_dialog.dart';
-// основной экран фильтров
+
+// ============================================================
+// "Промежуточный экран фильтров"
+// ============================================================
 
 class IntermediateFiltersScreen extends StatefulWidget {
   static const String routeName = "/intermediate-filters";
@@ -15,22 +18,22 @@ class IntermediateFiltersScreen extends StatefulWidget {
 }
 
 class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
-  // сортировка
+  
   String selectedSort = "recommended";
 
-  // валюта
+  
   String selectedCurrency = "uah";
 
-  // тип продавца
+  
   String sellerType = "business";
 
-  // view mode
+  
   String viewMode = "gallery";
 
-  // город
+  
   Set<String> selectedCities = {};
 
-  // список городов
+  
   final List<String> cities = [
     'Киев',
     'Харьков',
@@ -56,7 +59,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     'Ужгород',
   ];
 
-  // Цена
+  
   final TextEditingController priceFrom = TextEditingController();
   final TextEditingController priceTo = TextEditingController();
 
@@ -123,10 +126,10 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     const SizedBox(height: 18),
                     _buildSellerTypeButtons(),
 
-                    // const SizedBox(height: 25),
-                    // _buildViewModeSelector(),
+                    
+                    
 
-                    // const SizedBox(height: 20),
+                    
                   ],
                 ),
               ),
@@ -139,7 +142,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- HEADER -------------------
+  
 
   Widget _buildHeader() {
     return Padding(
@@ -194,7 +197,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- SECTION TITLE -------------------
+  
 
   Widget _buildSectionTitle(String title) {
     return Text(
@@ -207,7 +210,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- SORT BUTTONS -------------------
+  
 
   Widget _buildSortButtons() {
     return Row(
@@ -227,7 +230,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- SELECTABLE BUTTON -------------------
+  
 
   Widget _buildSelectableButton({
     required String text,
@@ -260,7 +263,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- CLICKABLE BOX -------------------
+  
 
   Widget _buildClickableBox({
     required String value,
@@ -292,7 +295,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- CURRENCY BUTTONS -------------------
+  
 
   Widget _buildCurrencyButtons() {
     return Row(
@@ -318,7 +321,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- PRICE FIELDS -------------------
+  
 
   Widget _buildPriceFields() {
     return Row(
@@ -353,7 +356,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- SELLER TYPE -------------------
+  
 
   Widget _buildSellerTypeButtons() {
     return Row(
@@ -373,45 +376,45 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  // ---------------- VIEW MODE -------------------
+  
 
-  // Widget _buildViewModeSelector() {
-  //   return Container(
-  //     padding: const EdgeInsets.symmetric(vertical: 12),
-  //     decoration: const BoxDecoration(color: Color(0xFF151B24)),
-  //     child: Row(
-  //       mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //       children: [
-  //         _buildViewModeItem(Icons.grid_view, "ГАЛЕРЕЯ", "gallery"),
-  //         _buildViewModeItem(Icons.list_alt, "СПИСОК", "list"),
-  //         _buildViewModeItem(Icons.table_rows, "ПЛИТКА", "tiles"),
-  //       ],
-  //     ),
-  //   );
-  // }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
-  // Widget _buildViewModeItem(IconData icon, String label, String key) {
-  //   bool active = viewMode == key;
+  
+  
 
-  //   return GestureDetector(
-  //     onTap: () => setState(() => viewMode = key),
-  //     child: Column(
-  //       children: [
-  //         Icon(icon, color: active ? const Color(0xFF1AD1C5) : Colors.white60),
-  //         const SizedBox(height: 4),
-  //         Text(
-  //           label,
-  //           style: TextStyle(
-  //             color: active ? const Color(0xFF1AD1C5) : Colors.white60,
-  //             fontSize: 11,
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
-  // ---------------- APPLY BUTTON -------------------
+  
 
   Widget _buildApplyButton() {
     return Container(

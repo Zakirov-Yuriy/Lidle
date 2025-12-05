@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/widgets/header.dart';
 
+// ============================================================
+// "Полный экран подкатегорий квартир в недвижимости"
+// ============================================================
 
 class RealEstateFullApartmentsScreen extends StatelessWidget {
   const RealEstateFullApartmentsScreen({super.key});
@@ -9,7 +12,7 @@ class RealEstateFullApartmentsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E293B), // тёмный фон
+      backgroundColor: const Color(0xFF1E293B), 
       
       body: Column(
          crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,7 +45,7 @@ class RealEstateFullApartmentsScreen extends StatelessWidget {
                     const Spacer(),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); // Закрыть экран при отмене
+                        Navigator.pop(context); 
                       },
                       child: const Text(
                         'Отмена',

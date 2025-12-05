@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
 
+// ============================================================
+// "Экран карты"
+// ============================================================
+
 class MapScreen extends StatelessWidget {
   static const String routeName = '/map';
 

@@ -1,4 +1,4 @@
-// RealEstateSubfiltersScreen
+
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
@@ -9,6 +9,10 @@ import 'package:lidle/widgets/custom_checkbox.dart';
 import 'package:lidle/widgets/surcharge_dialog.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_rent_subfilters_screen.dart';
+
+// ============================================================
+// "Подфильтры недвижимости"
+// ============================================================
 
 class RealEstateSubfiltersScreen extends StatefulWidget {
   final String selectedCategory;
@@ -28,13 +32,13 @@ class RealEstateSubfiltersScreen extends StatefulWidget {
 }
 
 class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
-  // ======================= Остальные поля =======================
+  
 
-  // сделка
-  late String dealType; // sell / rent / joint
+  
+  late String dealType; 
 
-  // вид аренды
-  late String rentType; // hourly / daily / monthly / joint
+  
+  late String rentType; 
 
   @override
   void initState() {
@@ -43,23 +47,23 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     rentType = dealType == "joint" ? "joint" : "daily";
   }
 
-  // время аренды
+  
   String selectedDate = "";
   String selectedMonth = "";
   String selectedYear = "";
 
-  // время окончания аренды
+  
   String selectedEndDate = "";
   String selectedEndMonth = "";
   String selectedEndYear = "";
 
-  // ипотека
+  
   bool? mortgageYes = true;
 
-  // рассрочка
+  
   bool? installmentYes = true;
 
-  // чекбоксы
+  
   bool noCommission = false;
   bool exchange = false;
   bool urgent = false;
@@ -68,17 +72,17 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
   bool registrySale = false;
   bool realEstateRegistry = false;
 
-  // объект
+  
   bool isSecondary = true;
 
-  // частное/бизнес
+  
   bool isPrivate = true;
 
-  // surcharge
+  
   bool surchargePerDay = false;
   bool surchargePerHour = false;
 
-  // селекты
+  
   Set<String> selectedCity = {};
   Set<String> selectedStreet = {};
   Set<String> selectedBuildingTypes = {};
@@ -94,7 +98,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
   Set<String> selectedLandscape = {};
   Set<String> selectedRooms = {};
 
-  // текстовые контроллеры
+  
   final houseNumberController = TextEditingController();
   final areaController = TextEditingController();
   final kitchenAreaController = TextEditingController();
@@ -106,7 +110,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
   final surchargeMaxController = TextEditingController();
   final surchargePerDayController = TextEditingController();
 
-  // ======================= UI =======================
+  
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +128,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               const SizedBox(height: 22),
               const Divider(color: Colors.white24),
               const SizedBox(height: 22),
-              // ============ КАТЕГОРИЯ ============
+              
               _buildTitle("Выберите категорию"),
               _buildSelectedBox(
                 widget.selectedCategory,
@@ -135,7 +139,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               const Divider(color: Colors.white24),
               const SizedBox(height: 13),
 
-              // ============ ГОРОД ============
+              
               _buildTitle("Выберите город"),
               _buildSelector(
                 selectedCity.isEmpty ? "Мариуполь" : selectedCity.first,
@@ -169,7 +173,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ============ УЛИЦА ============
+              
               _buildTitle("Выберите улицу"),
               _buildSelector(
                 selectedStreet.isEmpty ? "Центр" : selectedStreet.join(", "),
@@ -206,7 +210,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
                 showArrow: true,
               ),
 
-              // Номер дома
+              
               const SizedBox(height: 16),
               _buildTitle("Номер дома"),
               _buildInput("12", houseNumberController),
@@ -225,7 +229,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
                     : 2,
                 onSelect: (i) {
                   if (i == 2) {
-                    // Navigate to RealEstateRentSubfiltersScreen for "Аренда"
+                    
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -268,7 +272,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
 
               _buildTitle("Валюта: Российский рубль (₽)"),
               _buildTitle("Стоимость аренды"),
-              // const SizedBox(height: 22),
+              
               _buildPriceBlock(),
 
               const SizedBox(height: 7),
@@ -277,7 +281,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               }),
               const SizedBox(height: 21),
 
-              // Условия аренды
+              
               _buildSelectorDropdown(
                 label: "Условия аренды",
                 selected: selectedBuildingTypes,
@@ -299,7 +303,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
                 onChanged: (v) => setState(() => selectedBuildingTypes = v),
               ),
 
-              // Время аренды (Дата/Месяц/Год)
+              
               const SizedBox(height: 22),
               _buildTitle("Время аренды (Дата/Месяц/Год)"),
               _buildThreePriceBlock(),
@@ -324,7 +328,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               ),
               const SizedBox(height: 14),
 
-              // Доплата сверх лимита (₽)
+              
               _buildTitle("Доплата сверх лимита (₽)"),
               _buildSurchargeBlock(),
               Padding(
@@ -335,7 +339,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
                 ),
               ),
 
-              // Депозит*
+              
               const SizedBox(height: 12),
               _buildTitle("Депозит*"),
               _buildPriceBlock(),
@@ -353,15 +357,15 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               const Divider(color: Colors.white24),
               const SizedBox(height: 18),
 
-              // _buildTitle("Валюта: Российский рубль (₽)"),
-              // _buildTitle("Цена"),
+              
+              
 
-              // // Цена
-              // _buildPriceBlock(),
+              
+              
 
-              // const SizedBox(height: 18),
+              
 
-              // ============ ЧЕКБОКСЫ ============
+              
               _buildCheck("Без комиссии", noCommission, (v) {
                 setState(() => noCommission = v);
               }),
@@ -392,7 +396,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
 
               const SizedBox(height: 16),
 
-              // ============ ИПОТЕКА ============
+              
               _buildTitle("Ипотека"),
               const SizedBox(height: 4),
               _buildToggleYesNo(
@@ -404,7 +408,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
 
               const SizedBox(height: 12),
 
-              // ============ РАССРОЧКА ============
+              
               _buildTitle("Рассрочка"),
               const SizedBox(height: 4),
               _buildToggleYesNo(
@@ -416,7 +420,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
 
               const SizedBox(height: 17),
 
-              // ============ СЕЛЕКТЫ ============
+              
               _buildSelectorDropdown(
                 label: "Тип дома",
                 selected: selectedBuildingTypes,
@@ -582,7 +586,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
 
               const SizedBox(height: 13),
               _buildTitle("Меблирована"),
-              // const SizedBox(height: 4),
+              
               _buildToggleYesNo(
                 labelYes: "С мебелью",
                 labelNo: "Без мебели",
@@ -763,7 +767,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               const Divider(color: Colors.white24),
               const SizedBox(height: 21),
 
-              // нижние кнопки
+              
               _buildBottomButtons(),
 
               const SizedBox(height: 60),
@@ -774,7 +778,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== HEADER ==========
+  
   Widget _buildHeader() {
     return Row(
       children: [
@@ -799,9 +803,9 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // --- сортировка ---
-  String? selectedDateSort = "new"; // "new" or "old"
-  String? selectedPriceSort; // "expensive" or "cheap"
+  
+  String? selectedDateSort = "new"; 
+  String? selectedPriceSort; 
 
   Widget _buildSortBlock() {
     return Column(
@@ -875,7 +879,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== TITLE ==========
+  
   Widget _buildTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9.0),
@@ -890,7 +894,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== SELECTED BOX (категория) ==========
+  
   Widget _buildSelectedBox(
     String text, {
     required bool showRemove,
@@ -899,7 +903,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      // margin: const EdgeInsets.only(top: 9),
+      
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(5),
@@ -919,7 +923,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== SELECTOR BOX ==========
+  
   Widget _buildSelector(
     String text, {
     VoidCallback? onTap,
@@ -947,7 +951,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== PRICE ==========
+  
   Widget _buildPriceBlock() {
     return Row(
       children: [
@@ -958,7 +962,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== SURCHARGE BLOCK ==========
+  
   Widget _buildSurchargeBlock() {
     return Row(
       children: [
@@ -1012,7 +1016,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== THREE PRICE BLOCK ==========
+  
   Widget _buildThreePriceBlock() {
     return Row(
       children: [
@@ -1064,7 +1068,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== THREE PRICE BLOCK END ==========
+  
   Widget _buildThreePriceBlockEnd() {
     return Row(
       children: [
@@ -1116,7 +1120,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== SELECTION DIALOG ==========
+  
   void _showSelectionDialog(
     String title,
     List<String> options,
@@ -1152,7 +1156,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== CHECKBOX ==========
+  
   Widget _buildCheck(String text, bool value, Function(bool) onChanged) {
     return Row(
       children: [
@@ -1168,7 +1172,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== TOGGLE YES/NO ==========
+  
   Widget _buildToggleYesNo({
     required String labelYes,
     required String labelNo,
@@ -1214,7 +1218,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== THREE BUTTONS ==========
+  
   Widget _buildThreeButtons({
     required List<String> labels,
     required int selectedIndex,
@@ -1256,7 +1260,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== DROPDOWN ==========
+  
   Widget _buildSelectorDropdown({
     required String label,
     required Set<String> selected,
@@ -1267,7 +1271,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(label),
-        // const SizedBox(height: 10),
+        
         GestureDetector(
           onTap: () {
             showDialog(
@@ -1307,7 +1311,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== RANGE ==========
+  
   Widget _buildRange(
     String label,
     TextEditingController a,
@@ -1317,7 +1321,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(label),
-        // const SizedBox(height: 10),
+        
         Row(
           children: [
             Expanded(child: _buildInput("От", a)),
@@ -1329,7 +1333,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== TEXT INPUT ==========
+  
   Widget _buildInput(String label, TextEditingController controller) {
     return Container(
       height: 45,
@@ -1352,7 +1356,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== SELECTABLE INPUT ==========
+  
   Widget _buildSelectableInput(
     String value,
     String placeholder,
@@ -1382,7 +1386,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== TWO OPTION ==========
+  
   Widget _buildTwoOption({
     required String yes,
     required String no,
@@ -1398,7 +1402,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
-  // ========== BOTTOM BUTTONS ==========
+  
   Widget _buildBottomButtons() {
     return Column(
       children: [

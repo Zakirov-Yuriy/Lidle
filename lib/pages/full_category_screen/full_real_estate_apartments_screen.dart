@@ -5,6 +5,9 @@ import 'package:lidle/pages/full_category_screen/real_estate_rent_listings_scree
 import 'package:lidle/widgets/header.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
 
+// ============================================================
+// "Экран подкатегорий квартир в недвижимости"
+// ============================================================
 
 class FullRealEstateApartmentsScreen extends StatefulWidget {
   const FullRealEstateApartmentsScreen({super.key});
@@ -19,8 +22,8 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryBackground, // тёмный фон
-      
+      backgroundColor: primaryBackground,
+
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -53,7 +56,7 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
                       const Spacer(),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context); // Закрыть экран при отмене
+                          Navigator.pop(context);
                         },
                         child: const Text(
                           'Отмена',

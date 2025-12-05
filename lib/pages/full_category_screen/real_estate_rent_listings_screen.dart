@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/models/home_models.dart'; // Import Listing model
-import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
+import 'package:lidle/models/home_models.dart'; 
+import 'package:lidle/widgets/selection_dialog.dart'; 
 import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
 
-// Constants for bottom navigation assets
+// ============================================================
+// "Экран объявлений аренды недвижимости"
+// ============================================================
+
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String messageIconAssetLocal =
     'assets/BottomNavigation/message-circle-01.png';
@@ -21,21 +24,21 @@ class RealEstateRentListingsScreen extends StatefulWidget {
 
 class _RealEstateRentListingsScreenState
     extends State<RealEstateRentListingsScreen> {
-  // late List<bool> _isFavorited; // Не используется, вместо этого используется isFavorited из объектов Listing
-  int _selectedIndex = 0; // For bottom navigation
-  late List<Listing> _listings; // State variable for listings
-  Set<String> _selectedSortOptions = {}; // New state for selected sort options
+  
+  int _selectedIndex = 0; 
+  late List<Listing> _listings; 
+  Set<String> _selectedSortOptions = {}; 
 
   @override
   void initState() {
     super.initState();
     _listings =
-        _generateSampleListings(); // Initialize listings with sample data
-    // Initialize with a default sort option if desired, e.g., 'Сначала новые'
+        _generateSampleListings(); 
+    
     _selectedSortOptions.add('Сначала новые');
   }
 
-  // Helper method to generate sample listings
+  
   List<Listing> _generateSampleListings() {
     return [
       Listing(
@@ -95,17 +98,17 @@ class _RealEstateRentListingsScreenState
     ];
   }
 
-  // Helper function to parse price from string.
+  
   double _parsePrice(String price) {
     try {
-      // Remove all characters except digits and convert to number.
+      
       return double.parse(price.replaceAll(RegExp(r'[^0-9]'), ''));
     } catch (e) {
-      return 0.0; // Return 0 in case of error.
+      return 0.0; 
     }
   }
 
-  // Helper function to parse date. Assumes format "DD.MM.YYYY".
+  
   DateTime _parseDate(String date) {
     try {
       final now = DateTime.now();
@@ -123,13 +126,13 @@ class _RealEstateRentListingsScreenState
         return now.subtract(Duration(days: weeks * 7));
       }
     } catch (e) {
-      // Error parsing, return a very old date
+      
     }
     return DateTime(1970);
   }
 
   void _sortListings(Set<String> selectedOptions) {
-    // Mapping string options from SelectionDialog to internal SortOption enum
+    
     SortOption? chosenSortOption;
     if (selectedOptions.contains('Сначала новые')) {
       chosenSortOption = SortOption.newest;
@@ -176,8 +179,8 @@ class _RealEstateRentListingsScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // const SizedBox(height: 16),
-            // _buildTopBar(context),
+            
+            
             Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 25, top: 0),
               child: Row(
@@ -200,9 +203,9 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  // ============================================================
-  // Поле поиска
-  // ============================================================
+  
+  
+  
 
   Widget _buildSearchField(BuildContext context) {
     return Padding(
@@ -213,7 +216,7 @@ class _RealEstateRentListingsScreenState
             onTap: () => Navigator.pop(context),
             child: const Icon(Icons.arrow_back_ios, color: textMuted),
           ),
-          // const SizedBox(width: 12),
+          
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -258,9 +261,9 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  // ============================================================
-  // Заголовок "Продажа квартир"
-  // ============================================================
+  
+  
+  
 
   Widget _buildSectionHeader() {
     return Padding(
@@ -268,9 +271,9 @@ class _RealEstateRentListingsScreenState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          // Removed const here
+          
           const Text(
-            // Added const back to Text
+            
             "Долгосрочная аренда квартир",
             style: TextStyle(
               color: Colors.white,
@@ -278,10 +281,10 @@ class _RealEstateRentListingsScreenState
               fontWeight: FontWeight.w600,
             ),
           ),
-          // SizedBox(width: 8),
+          
           _buildFilterDropdown(
             label: _selectedSortOptions.isEmpty
-                ? 'Сначала' // Default display if nothing selected
+                ? 'Сначала' 
                 : _selectedSortOptions.join(', '),
             onTap: () {
               showDialog(
@@ -301,11 +304,11 @@ class _RealEstateRentListingsScreenState
                         _selectedSortOptions = selected;
                         _sortListings(
                           _selectedSortOptions,
-                        ); // Apply sorting immediately
+                        ); 
                       });
                     },
                     allowMultipleSelection:
-                        false, // Only one sort option at a time
+                        false, 
                   );
                 },
               );
@@ -316,9 +319,9 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  // ============================================================
-  // GRID обьявлений
-  // ============================================================
+  
+  
+  
 
   Widget _buildListingsGrid() {
     return GridView.builder(
@@ -332,14 +335,14 @@ class _RealEstateRentListingsScreenState
       ),
       itemBuilder: (_, i) => _buildListingCard(
         index: i,
-        listing: _listings[i], // Pass the Listing object
+        listing: _listings[i], 
       ),
     );
   }
 
   Widget _buildListingCard({
     required int index,
-    required Listing listing, // Changed to accept a Listing object
+    required Listing listing, 
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -377,7 +380,7 @@ class _RealEstateRentListingsScreenState
                     GestureDetector(
                       onTap: () {
                         setState(() {
-                          // Toggle favorite status on the Listing object
+                          
                           _listings[index].isFavorited =
                               !_listings[index].isFavorited;
                         });
@@ -421,9 +424,9 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  // ============================================================
-  // Нижнее меню навигации
-  // ============================================================
+  
+  
+  
 
   Widget _buildBottomNavigation() {
     return SafeArea(
@@ -452,7 +455,7 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  /// Приватный метод для построения отдельного элемента навигации.
+  
   Widget _buildNavItem(String iconPath, int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -474,7 +477,7 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  /// Приватный метод для построения центрального элемента "Добавить".
+  
   Widget _buildCenterAdd(int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -498,7 +501,7 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  // Helper widget for building dropdowns
+  
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,

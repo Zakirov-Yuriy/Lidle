@@ -5,6 +5,10 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/header.dart';
 
+// ============================================================
+// "Полный экран деталей недвижимости"
+// ============================================================
+
 class PropertyDetailsScreen extends StatefulWidget {
   const PropertyDetailsScreen({super.key});
 
@@ -21,7 +25,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     "assets/home_page/image.png",
     "assets/home_page/apartment1.png",
     "assets/home_page/apartment1.png",
-    // Add more images if needed
+    
   ];
 
   final List<Listing> _similarListings = [
@@ -97,7 +101,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 25,
-                // vertical: 19,
+                
               ),
               child: Row(
                 children: [
@@ -110,7 +114,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     ),
                   ),
                   const Text(
-                    'Назад', // Changed title
+                    'Назад', 
                     style: TextStyle(
                       color: activeIconColor,
                       fontSize: 16,
@@ -121,7 +125,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   IconButton(
                     icon: const Icon(Icons.share_outlined, color: textPrimary),
                     onPressed: () {
-                      // TODO: Implement share functionality
+                      
                     },
                   ),
                 ],
@@ -160,7 +164,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
-  // ----------------------- UI BLOCKS -----------------------
+  
 
   Widget _buildImageCarousel() {
     return Column(
@@ -180,7 +184,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
         const SizedBox(
           height: 10,
-        ), // Add spacing between carousel and indicators
+        ), 
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -197,15 +201,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       duration: const Duration(milliseconds: 150),
       margin: const EdgeInsets.symmetric(
         horizontal: 5.0,
-      ), // Ensure horizontal margin is 4.0
-      height: 11.0, // Reduced height
-      width: 11.0, // Reduced width
+      ), 
+      height: 11.0, 
+      width: 11.0, 
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isActive ? Colors.blue : primaryBackground.withOpacity(0.5),
         border: Border.all(
-          color: Colors.grey, // Border color for inactive dot
-          width: 1.0, // Adjusted border width to make inner circle 7.0x7.0
+          color: Colors.grey, 
+          width: 1.0, 
         ),
       ),
     );
@@ -216,7 +220,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          // SizedBox(height: 4),
+          
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -259,7 +263,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           ),
           SizedBox(height: 4),
           Text("Без скидки", style: TextStyle(color: textMuted, fontSize: 12)),
-          // SizedBox(height: 16),
+          
         ],
       ),
     );
@@ -459,15 +463,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
         const SizedBox(height: 12),
         GridView.builder(
-          shrinkWrap: true, // Important to allow GridView inside ListView
+          shrinkWrap: true, 
           physics:
-              const NeverScrollableScrollPhysics(), // Disable GridView's own scrolling
+              const NeverScrollableScrollPhysics(), 
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 9,
-            mainAxisSpacing: 9, // Add some vertical spacing
+            mainAxisSpacing: 9, 
             mainAxisExtent:
-                263, // Height of each card, similar to favorites_screen
+                263, 
           ),
           itemCount: _similarListings.length,
           itemBuilder: (context, i) {
@@ -516,7 +520,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
-  // ----------------------- HELPERS -----------------------
+  
 
   static Widget _card({required Widget child}) {
     return Container(
@@ -530,7 +534,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 }
 
-// Reusable small widgets
+
 class _InfoRow extends StatelessWidget {
   final String title;
   final String value;
@@ -622,7 +626,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   @override
   void initState() {
     super.initState();
-    // Initialize _isFavorited by checking HiveService
+    
     _isFavorited = HiveService.isFavorite(widget.listing.id);
   }
 
@@ -665,7 +669,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           ? SvgPicture.asset(
                               'assets/profile_dashboard/heart-rounded.svg',
                               colorFilter: const ColorFilter.mode(
-                                Colors.red, // Solid red for favorited SVG
+                                Colors.red, 
                                 BlendMode.srcIn,
                               ),
                               width: 20,
@@ -674,7 +678,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           : Image.asset(
                               'assets/BottomNavigation/heart-rounded.png',
                               color:
-                                  Colors.white70, // Apply color filter to PNG
+                                  Colors.white70, 
                               colorBlendMode: BlendMode.srcIn,
                               width: 20,
                               height: 20,
@@ -682,7 +686,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                     ),
                     const SizedBox(
                       width: 5,
-                    ), // Add a small space for visual separation
+                    ), 
                   ],
                 ),
                 const SizedBox(height: 4),

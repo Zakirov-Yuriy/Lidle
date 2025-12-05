@@ -7,6 +7,10 @@ import 'package:lidle/widgets/custom_checkbox.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
 
+// ============================================================
+// "Полный экран фильтров недвижимости"
+// ============================================================
+
 class RealEstateFullFiltersScreen extends StatefulWidget {
   final String selectedCategory;
 
@@ -22,18 +26,18 @@ class RealEstateFullFiltersScreen extends StatefulWidget {
 
 class _RealEstateFullFiltersScreenState
     extends State<RealEstateFullFiltersScreen> {
-  // ======================= Остальные поля =======================
+  
 
-  // сделка
-  String dealType = "sell"; // sell / rent / joint
+  
+  String dealType = "sell"; 
 
-  // ипотека
+  
   bool? mortgageYes = true;
 
-  // рассрочка
+  
   bool? installmentYes = true;
 
-  // чекбоксы
+  
   bool noCommission = false;
   bool exchange = false;
   bool urgent = false;
@@ -41,13 +45,13 @@ class _RealEstateFullFiltersScreenState
   bool buyerOffer = false;
   bool registrySale = false;
 
-  // объект
+  
   bool isSecondary = true;
 
-  // частное/бизнес
+  
   bool isPrivate = true;
 
-  // селекты
+  
   Set<String> selectedCity = {};
   Set<String> selectedStreet = {};
   Set<String> selectedBuildingTypes = {};
@@ -63,7 +67,7 @@ class _RealEstateFullFiltersScreenState
   Set<String> selectedLandscape = {};
   Set<String> selectedRooms = {};
 
-  // текстовые контроллеры
+  
   final houseNumberController = TextEditingController();
   final areaController = TextEditingController();
   final kitchenAreaController = TextEditingController();
@@ -72,7 +76,7 @@ class _RealEstateFullFiltersScreenState
   final constructionMin = TextEditingController();
   final constructionMax = TextEditingController();
 
-  // ======================= UI =======================
+  
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +94,7 @@ class _RealEstateFullFiltersScreenState
               const SizedBox(height: 27),
               const Divider(color: Colors.white24),
               const SizedBox(height: 22),
-              // ============ КАТЕГОРИЯ ============
+              
               _buildTitle("Выберите категорию"),
               _buildSelectedBox(
                 widget.selectedCategory,
@@ -101,7 +105,7 @@ class _RealEstateFullFiltersScreenState
               const Divider(color: Colors.white24),
               const SizedBox(height: 13),
 
-              // ============ ГОРОД ============
+              
               _buildTitle("Выберите город"),
               _buildSelector(
                 selectedCity.isEmpty ? "Мариуполь" : selectedCity.first,
@@ -135,7 +139,7 @@ class _RealEstateFullFiltersScreenState
               ),
               const SizedBox(height: 16),
 
-              // ============ УЛИЦА ============
+              
               _buildTitle("Выберите улицу"),
               _buildSelector(
                 selectedStreet.isEmpty ? "Центр" : selectedStreet.join(", "),
@@ -172,7 +176,7 @@ class _RealEstateFullFiltersScreenState
                 showArrow: true,
               ),
 
-              // Номер дома
+              
               const SizedBox(height: 16),
               _buildTitle("Номер дома"),
               _buildInput("12", houseNumberController),
@@ -215,12 +219,12 @@ class _RealEstateFullFiltersScreenState
               _buildTitle("Валюта: Российский рубль (₽)"),
               _buildTitle("Цена"),
 
-              // Цена
+              
               _buildPriceBlock(),
 
               const SizedBox(height: 15),
 
-              // ============ ЧЕКБОКСЫ ============
+              
               _buildCheck("Без комиссии", noCommission, (v) {
                 setState(() => noCommission = v);
               }),
@@ -251,7 +255,7 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 16),
 
-              // ============ ИПОТЕКА ============
+              
               _buildTitle("Ипотека"),
               const SizedBox(height: 4),
               _buildToggleYesNo(
@@ -263,7 +267,7 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 12),
 
-              // ============ РАССРОЧКА ============
+              
               _buildTitle("Рассрочка"),
               const SizedBox(height: 4),
               _buildToggleYesNo(
@@ -275,7 +279,7 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 17),
 
-              // ============ СЕЛЕКТЫ ============
+              
               _buildSelectorDropdown(
                 label: "Тип дома",
                 selected: selectedBuildingTypes,
@@ -441,7 +445,7 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 13),
               _buildTitle("Меблирована"),
-              // const SizedBox(height: 4),
+              
               _buildToggleYesNo(
                 labelYes: "С мебелью",
                 labelNo: "Без мебели",
@@ -622,7 +626,7 @@ class _RealEstateFullFiltersScreenState
               const Divider(color: Colors.white24),
               const SizedBox(height: 21),
 
-              // нижние кнопки
+              
               _buildBottomButtons(),
 
               const SizedBox(height: 60),
@@ -633,7 +637,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== HEADER ==========
+  
   Widget _buildHeader() {
     return Row(
       children: [
@@ -658,9 +662,9 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // --- сортировка ---
-  String? selectedDateSort = "new"; // "new" or "old"
-  String? selectedPriceSort; // "expensive" or "cheap"
+  
+  String? selectedDateSort = "new"; 
+  String? selectedPriceSort; 
 
   Widget _buildSortBlock() {
     return Column(
@@ -734,7 +738,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== TITLE ==========
+  
   Widget _buildTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9.0),
@@ -749,7 +753,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== SELECTED BOX (категория) ==========
+  
   Widget _buildSelectedBox(
     String text, {
     required bool showRemove,
@@ -758,7 +762,7 @@ class _RealEstateFullFiltersScreenState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      // margin: const EdgeInsets.only(top: 9),
+      
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(5),
@@ -778,7 +782,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== SELECTOR BOX ==========
+  
   Widget _buildSelector(
     String text, {
     VoidCallback? onTap,
@@ -806,7 +810,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== PRICE ==========
+  
   Widget _buildPriceBlock() {
     return Row(
       children: [
@@ -817,7 +821,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== CHECKBOX ==========
+  
   Widget _buildCheck(String text, bool value, Function(bool) onChanged) {
     return Row(
       children: [
@@ -833,7 +837,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== TOGGLE YES/NO ==========
+  
   Widget _buildToggleYesNo({
     required String labelYes,
     required String labelNo,
@@ -879,7 +883,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== THREE BUTTONS ==========
+  
   Widget _buildThreeButtons({
     required List<String> labels,
     required int selectedIndex,
@@ -921,7 +925,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== DROPDOWN ==========
+  
   Widget _buildSelectorDropdown({
     required String label,
     required Set<String> selected,
@@ -932,7 +936,7 @@ class _RealEstateFullFiltersScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(label),
-        // const SizedBox(height: 10),
+        
         GestureDetector(
           onTap: () {
             showDialog(
@@ -972,7 +976,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== RANGE ==========
+  
   Widget _buildRange(
     String label,
     TextEditingController a,
@@ -982,7 +986,7 @@ class _RealEstateFullFiltersScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(label),
-        // const SizedBox(height: 10),
+        
         Row(
           children: [
             Expanded(child: _buildInput("От", a)),
@@ -994,7 +998,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== TEXT INPUT ==========
+  
   Widget _buildInput(String label, TextEditingController controller) {
     return Container(
       height: 45,
@@ -1017,7 +1021,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== TWO OPTION ==========
+  
   Widget _buildTwoOption({
     required String yes,
     required String no,
@@ -1033,7 +1037,7 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  // ========== BOTTOM BUTTONS ==========
+  
   Widget _buildBottomButtons() {
     return Column(
       children: [

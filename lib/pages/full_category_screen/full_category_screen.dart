@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lidle/widgets/header.dart';
 import 'full_real_estate_subcategories_screen.dart';
 
+// ============================================================
+// "Экран всех категорий предложений"
+// ============================================================
+
 class FullCategoryScreen extends StatefulWidget {
   static const String routeName = '/full-category';
 
@@ -18,7 +22,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen> {
     'Авто и мото',
     'Работа',
     'Подработка',
-  }; // Some categories start active, excluding 'Электроника'
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -27,17 +31,6 @@ class _FullCategoryScreenState extends State<FullCategoryScreen> {
       {'title': 'Авто и мото', 'image': 'assets/categories/auto.png'},
       {'title': 'Работа', 'image': 'assets/categories/job.png'},
       {'title': 'Подработка', 'image': 'assets/categories/part_time.png'},
-      // {'title': 'Электроника', 'image': 'assets/categories/electronics.png'},
-      // {'title': 'Одежда, обувь', 'image': 'assets/categories/clothes.png'},
-      // {'title': 'Животные', 'image': 'assets/categories/animals.png'},
-      // {'title': 'Для дома и дачи', 'image': 'assets/categories/home.png'},
-      // {'title': 'Детский мир', 'image': 'assets/categories/kids.png'},
-      // {'title': 'Бизнес и услуги', 'image': 'assets/categories/business.png'},
-      // {'title': 'Аренда и прокат', 'image': 'assets/categories/rent.png'},
-      // {'title': 'Мода и стиль', 'image': 'assets/categories/fashion.png'},
-      // {'title': 'Хобби, отдых и спорт', 'image': 'assets/categories/hobby.png'},
-      // {'title': 'Отдам даром', 'image': 'assets/categories/free.png'},
-      // {'title': 'Обмен', 'image': 'assets/categories/exchange.png'},
     ];
 
     return Scaffold(
@@ -140,7 +133,6 @@ class _FullCategoryScreenState extends State<FullCategoryScreen> {
                             ),
                           ),
                         ),
-                        // Inactive overlay
                         if (!_activeCategories.contains(item['title']!))
                           Container(
                             height: 93,

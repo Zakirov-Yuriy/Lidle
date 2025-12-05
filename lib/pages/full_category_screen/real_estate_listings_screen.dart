@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/header.dart';
-import 'package:lidle/models/home_models.dart'; // Import Listing model
-import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
-import 'package:lidle/widgets/listing_card.dart'; // Import ListingCard
-import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart'; // Import IntermediateFiltersScreen
+import 'package:lidle/models/home_models.dart'; 
+import 'package:lidle/widgets/selection_dialog.dart'; 
+import 'package:lidle/widgets/listing_card.dart'; 
+import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
 
-// Constants for bottom navigation assets
+// ============================================================
+// "Экран объявлений недвижимости"
+// ============================================================
+
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String messageIconAssetLocal =
     'assets/BottomNavigation/message-circle-01.png';
@@ -21,20 +24,20 @@ class RealEstateListingsScreen extends StatefulWidget {
 }
 
 class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
-  int _selectedIndex = 0; // For bottom navigation
-  late List<Listing> _listings; // State variable for listings
-  Set<String> _selectedSortOptions = {}; // New state for selected sort options
+  int _selectedIndex = 0; 
+  late List<Listing> _listings; 
+  Set<String> _selectedSortOptions = {}; 
 
   @override
   void initState() {
     super.initState();
     _listings =
-        _generateSampleListings(); // Initialize listings with sample data
-    // Initialize with a default sort option if desired, e.g., 'Сначала новые'
+        _generateSampleListings(); 
+    
     _selectedSortOptions.add('Сначала новые');
   }
 
-  // Helper method to generate sample listings
+  
   List<Listing> _generateSampleListings() {
     return [
       Listing(
@@ -94,17 +97,17 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     ];
   }
 
-  // Helper function to parse price from string.
+  
   double _parsePrice(String price) {
     try {
-      // Remove all characters except digits and convert to number.
+      
       return double.parse(price.replaceAll(RegExp(r'[^0-9]'), ''));
     } catch (e) {
-      return 0.0; // Return 0 in case of error.
+      return 0.0; 
     }
   }
 
-  // Helper function to parse date. Assumes format "DD.MM.YYYY".
+  
   DateTime _parseDate(String date) {
     try {
       final now = DateTime.now();
@@ -122,13 +125,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         return now.subtract(Duration(days: weeks * 7));
       }
     } catch (e) {
-      // Error parsing, return a very old date
+      
     }
     return DateTime(1970);
   }
 
   void _sortListings(Set<String> selectedOptions) {
-    // Mapping string options from SelectionDialog to internal SortOption enum
+    
     SortOption? chosenSortOption;
     if (selectedOptions.contains('Сначала новые')) {
       chosenSortOption = SortOption.newest;
@@ -175,8 +178,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // const SizedBox(height: 16),
-            // _buildTopBar(context),
+            
+            
             Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 25, top: 0),
               child: Row(
@@ -202,9 +205,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  // ============================================================
-  // Поле поиска
-  // ============================================================
+  
+  
+  
 
   Widget _buildSearchField(BuildContext context) {
     return Padding(
@@ -215,7 +218,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             onTap: () => Navigator.pop(context),
             child: const Icon(Icons.arrow_back_ios, color: textMuted),
           ),
-          // const SizedBox(width: 12),
+          
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -238,9 +241,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  // ============================================================
-  // Локация + Фильтры
-  // ============================================================
+  
+  
+  
 
   Widget _buildLocationAndFilters() {
     return Padding(
@@ -294,9 +297,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  // ============================================================
-  // ЧИПЫ КАТЕГОРИЙ
-  // ============================================================
+  
+  
+  
 
   Widget _buildCategoryChips() {
     final chipStyle = BoxDecoration(
@@ -338,9 +341,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  // ============================================================
-  // Заголовок "Продажа квартир"
-  // ============================================================
+  
+  
+  
 
   Widget _buildSectionHeader() {
     return Padding(
@@ -348,9 +351,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          // Removed const here
+          
           const Text(
-            // Added const back to Text
+            
             "Продажа квартир",
             style: TextStyle(
               color: Colors.white,
@@ -358,10 +361,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          // SizedBox(width: 8),
+          
           _buildFilterDropdown(
             label: _selectedSortOptions.isEmpty
-                ? 'Сначала' // Default display if nothing selected
+                ? 'Сначала' 
                 : _selectedSortOptions.join(', '),
             onTap: () {
               showDialog(
@@ -381,11 +384,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                         _selectedSortOptions = selected;
                         _sortListings(
                           _selectedSortOptions,
-                        ); // Apply sorting immediately
+                        ); 
                       });
                     },
                     allowMultipleSelection:
-                        false, // Only one sort option at a time
+                        false, 
                   );
                 },
               );
@@ -396,9 +399,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  // ============================================================
-  // GRID обьявлений
-  // ============================================================
+  
+  
+  
 
   Widget _buildListingsGrid() {
     return GridView.builder(
@@ -416,9 +419,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
 
 
-  // ============================================================
-  // Нижнее меню навигации
-  // ============================================================
+  
+  
+  
 
   Widget _buildBottomNavigation() {
     return SafeArea(
@@ -447,7 +450,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  /// Приватный метод для построения отдельного элемента навигации.
+  
   Widget _buildNavItem(String iconPath, int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -469,7 +472,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  /// Приватный метод для построения центрального элемента "Добавить".
+  
   Widget _buildCenterAdd(int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -493,7 +496,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  // Helper widget for building dropdowns
+  
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,

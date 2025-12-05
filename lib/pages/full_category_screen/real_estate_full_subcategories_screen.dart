@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_apartments_screen.dart';
 import 'package:lidle/widgets/header.dart';
 
+// ============================================================
+// "Полный экран подкатегорий недвижимости"
+// ============================================================
+
 class RealEstateFullSubcategoriesScreen extends StatelessWidget {
   const RealEstateFullSubcategoriesScreen({super.key});
 
@@ -56,7 +60,7 @@ class RealEstateFullSubcategoriesScreen extends StatelessWidget {
                       const Spacer(),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context); // Закрыть экран при отмене
+                          Navigator.pop(context); 
                         },
                         child: const Text(
                           'Отмена',
@@ -111,7 +115,7 @@ class RealEstateFullSubcategoriesScreen extends StatelessWidget {
                                 ),
                               );
                             }
-                            // Навигация или логика выбора подкатегории для других элементов
+                            
                           },
                         ),
                         if (index < subcategories.length - 1)
