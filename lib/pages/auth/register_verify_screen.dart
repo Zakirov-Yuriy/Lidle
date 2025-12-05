@@ -8,7 +8,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
-import 'package:lidle/pages/sign_in_screen.dart';
+import 'sign_in_screen.dart';
 
 /// `RegisterVerifyScreen` - это StatefulWidget, который управляет состоянием
 /// страницы верификации регистрации, включая таймеры для отправки кода

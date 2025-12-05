@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../constants.dart'; // Import for primaryBackground
-import '../widgets/components/header.dart'; // Import the Header widget
+import '../../constants.dart'; // Import for primaryBackground
+import '../../widgets/components/header.dart'; // Import the Header widget
 
 class PublicationSuccessScreen extends StatelessWidget {
   const PublicationSuccessScreen({super.key});

@@ -24,7 +24,7 @@ import '../pages/filters_screen.dart';
 import '../pages/full_category_screen/full_category_screen.dart';
 import '../pages/full_category_screen/real_estate_listings_screen.dart';
 import '../pages/profile_menu_screen.dart';
-import '../pages/sign_in_screen.dart';
+import '../pages/auth/sign_in_screen.dart';
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу
 /// приложения с использованием Bloc для управления состоянием.

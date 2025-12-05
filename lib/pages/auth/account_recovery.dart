@@ -7,7 +7,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
-import 'package:lidle/pages/account_recovery_code.dart';
+import 'account_recovery_code.dart';
 
 /// `AccountRecovery` - это StatelessWidget, который отображает страницу
 /// восстановления аккаунта с использованием Bloc для управления состоянием.

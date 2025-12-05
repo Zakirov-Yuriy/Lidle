@@ -9,7 +9,7 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
-import 'profile_dashboard.dart';
+import 'package:lidle/pages/profile_dashboard.dart';
 
 /// `SignInScreen` - это StatefulWidget, который управляет состоянием
 /// формы входа пользователя.

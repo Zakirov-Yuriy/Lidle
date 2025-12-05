@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // Import for SvgPicture
-import '../constants.dart'; // Assuming constants.dart contains color definitions
-import '../widgets/components/header.dart'; // Import the Header widget
+import '../../constants.dart'; // Assuming constants.dart contains color definitions
+import '../../widgets/components/header.dart'; // Import the Header widget
 import 'publication_success_screen.dart'; // Import the PublicationSuccessScreen
 
 class PublicationTariffScreen extends StatelessWidget {

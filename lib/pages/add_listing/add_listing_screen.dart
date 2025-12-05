@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../constants.dart';
+import '../../constants.dart';
 
 class AddListingScreen extends StatefulWidget {
   static const String routeName = '/add-listing';

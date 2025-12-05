@@ -13,7 +13,7 @@ import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
-import 'package:lidle/pages/sign_in_screen.dart';
+import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen

@@ -3,15 +3,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:lidle/pages/real_estate_subcategories_screen.dart';
+import 'real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; // Import the new city selection dialog
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; // Import the new street selection dialog
-import 'package:lidle/pages/publication_tariff_screen.dart'; // Import the new publication tariff screen
+import 'publication_tariff_screen.dart'; // Import the new publication tariff screen
 
-import '../constants.dart';
+import '../../constants.dart';
 
 class AddRealEstateRentAptScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';

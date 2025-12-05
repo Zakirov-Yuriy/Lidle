@@ -8,7 +8,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
-import 'package:lidle/pages/account_recovery_new_password.dart';
+import 'account_recovery_new_password.dart';
 
 /// `AccountRecoveryCode` - это StatefulWidget, который позволяет пользователю
 /// ввести код для восстановления аккаунта.
