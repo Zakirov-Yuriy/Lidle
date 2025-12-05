@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
@@ -55,7 +56,15 @@ class _AccountRecoveryNewPasswordState
     }
 
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: CustomErrorSnackBar(
+            message: error,
+            onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+          ),
+          backgroundColor: primaryBackground,
+        ),
+      );
       return;
     }
 
@@ -87,7 +96,13 @@ class _AccountRecoveryNewPasswordState
           Navigator.of(context).pushReplacementNamed('/sign-in');
         } else if (state is PasswordRecoveryError) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ошибка: ${state.message}')),
+            SnackBar(
+              content: CustomErrorSnackBar(
+                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+              ),
+              backgroundColor: primaryBackground,
+            ),
           );
         }
       },

@@ -4,6 +4,7 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
@@ -70,13 +71,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Ошибка регистрации: ${state.message}'),
-              backgroundColor: Colors.redAccent,
-              action: SnackBarAction(
-                label: 'Повторить',
-                textColor: Colors.white,
-                onPressed: _trySubmit,
+              content: CustomErrorSnackBar(
+                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
+              backgroundColor: primaryBackground,
             ),
           );
         }
