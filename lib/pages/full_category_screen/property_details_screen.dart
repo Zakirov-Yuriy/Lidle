@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости"

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
-import 'package:lidle/widgets/city_selection_dialog.dart';
-import 'package:lidle/widgets/selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 
 class FiltersScreen extends StatefulWidget {
   static const routeName = '/filters';

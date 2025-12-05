@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/widgets/header.dart';
-import 'package:lidle/models/home_models.dart'; 
-import 'package:lidle/widgets/selection_dialog.dart'; 
+import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_filtered_details_screen.dart';
 

@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/widgets/custom_checkbox.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 
 class ComplaintDialog extends StatefulWidget {
   const ComplaintDialog({super.key});

@@ -3,7 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/widgets/bottom_navigation.dart';
+import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';

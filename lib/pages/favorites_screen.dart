@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
-import 'package:lidle/widgets/selection_dialog.dart'; // Import SelectionDialog
+import 'package:lidle/widgets/dialogs/selection_dialog.dart'; // Import SelectionDialog
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import '../constants.dart';
-import '../widgets/bottom_navigation.dart';
+import '../widgets/navigation/bottom_navigation.dart';
 import '../models/home_models.dart';
-import '../widgets/listing_card.dart';
+import '../widgets/cards/listing_card.dart';
 import '../hive_service.dart';
 import 'package:lidle/pages/home_page.dart';
 

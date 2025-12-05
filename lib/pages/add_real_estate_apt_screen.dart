@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lidle/pages/real_estate_subcategories_screen.dart';
-import 'package:lidle/widgets/%D1%81ustom_witch.dart';
-import 'package:lidle/widgets/custom_checkbox.dart';
-import 'package:lidle/widgets/selection_dialog.dart';
-import 'package:lidle/widgets/city_selection_dialog.dart'; // Import the new city selection dialog
-import 'package:lidle/widgets/street_selection_dialog.dart'; // Import the new street selection dialog
+import 'package:lidle/widgets/components/custom_switch.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; // Import the new city selection dialog
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; // Import the new street selection dialog
 import 'package:lidle/pages/publication_tariff_screen.dart'; // Import the new publication tariff screen
 
 import '../constants.dart';

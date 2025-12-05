@@ -3,8 +3,8 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../constants.dart';
-import '../pages/my_purchases_screen.dart';
+import 'package:lidle/constants.dart';
+import 'package:lidle/pages/my_purchases_screen.dart';
 
 class BottomNavigation extends StatelessWidget {
   final ValueChanged<int>? onItemSelected;

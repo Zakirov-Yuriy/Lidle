@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
-import 'package:lidle/widgets/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 
 // ============================================================
 // "Промежуточный экран фильтров"

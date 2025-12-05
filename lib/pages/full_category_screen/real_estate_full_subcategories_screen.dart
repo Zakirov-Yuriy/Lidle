@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_apartments_screen.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 
 // ============================================================
 // "Полный экран подкатегорий недвижимости"

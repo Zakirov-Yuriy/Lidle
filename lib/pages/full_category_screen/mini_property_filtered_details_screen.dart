@@ -3,9 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
-import 'package:lidle/widgets/header.dart';
-import 'package:lidle/widgets/complaint_dialog.dart'; 
-import 'package:lidle/widgets/phone_dialog.dart'; 
+import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
 // ============================================================

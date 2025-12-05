@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/full_category_screen/full_real_estate_apartments_screen.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 import 'map_screen.dart';
 
 // ============================================================

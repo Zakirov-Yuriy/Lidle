@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 import 'add_real_estate_apt_screen.dart';
 import 'add_real_estate_rent_apt_screen.dart'; // Import AddRealEstateRentAptScreen
 

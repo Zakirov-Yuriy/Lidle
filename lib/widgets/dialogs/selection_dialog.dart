@@ -3,8 +3,8 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../constants.dart';
-import 'custom_checkbox.dart';
+import 'package:lidle/constants.dart';
+import '../components/custom_checkbox.dart';
 
 class SelectionDialog extends StatefulWidget {
   final String title;

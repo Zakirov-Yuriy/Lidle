@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart'; // Import Bloc
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart'; // Import NavigationBloc
 import 'package:lidle/blocs/navigation/navigation_event.dart'; // Import NavigationEvent
-import 'package:lidle/widgets/bottom_navigation.dart'; // Import custom BottomNavigation
+import 'package:lidle/widgets/navigation/bottom_navigation.dart'; // Import custom BottomNavigation
 import 'package:lidle/constants.dart'; // Import constants
-import 'package:lidle/widgets/header.dart'; // Import Header widget
+import 'package:lidle/widgets/components/header.dart'; // Import Header widget
 
 class MyPurchasesScreen extends StatelessWidget {
   static const String routeName = '/my-purchases'; // Define route name

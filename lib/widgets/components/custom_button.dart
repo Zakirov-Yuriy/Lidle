@@ -3,7 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../constants.dart';
+import 'package:lidle/constants.dart';
 
 class CustomButton extends StatelessWidget {
   final String text;

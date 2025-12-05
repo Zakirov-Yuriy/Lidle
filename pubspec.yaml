@@ -1,5 +1,5 @@
 name: lidle
-description: "A new Flutter project."
+description: "LIDLE - современное кроссплатформенное мобильное приложение маркетплейса на базе Flutter для удобной покупки и продажи автомобилей, недвижимости и других товаров/услуг."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

@@ -2,11 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/widgets/selection_dialog.dart';
-import 'package:lidle/widgets/city_selection_dialog.dart';
-import 'package:lidle/widgets/street_selection_dialog.dart';
-import 'package:lidle/widgets/custom_checkbox.dart';
-import 'package:lidle/widgets/surcharge_dialog.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/dialogs/surcharge_dialog.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
 

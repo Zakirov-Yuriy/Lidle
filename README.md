@@ -48,7 +48,7 @@ LIDLE - современное кроссплатформенное мобиль
 # Быстрый старт
 
 # Предварительные требования
-- **Flutter SDK**: ^3.9.2 ([установка](https://flutter.dev/docs/get-started/install))
+- **Flutter SDK**: ^3.9.2 [Установка](https://flutter.dev/docs/get-started/install)
 - **Dart SDK**: включен во Flutter
 - **IDE**: Android Studio или VS Code с плагином Flutter
 - **Устройство**: Android/iOS эмулятор или физическое устройство
@@ -297,7 +297,7 @@ test/
 # Стек технологий
 
 | Framework | Language | State Management | Storage & Caching | UI & Styling | HTTP Communication | Testing | Linting |
-| ---------- | -------- | ----------------- | ----------------- | ------------ | ------------------ | ------- | ------- | --- |
+| ---------- | -------- | ----------------- | ----------------- | ------------ | ------------------ | ------- | ------- |
 | ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white) | ![Dart](https://img.shields.io/badge/Dart-00B4AB?logo=dart&logoColor=white) | ![BLoC](https://img.shields.io/badge/BLoC-02569B?logo=flutter&logoColor=white) | ![Hive](https://img.shields.io/badge/Hive-02569B?logo=flutter&logoColor=white) | ![Material Design](https://img.shields.io/badge/Material%20Design-02569B?logo=flutter&logoColor=white) | ![HTTP](https://img.shields.io/badge/HTTP-02569B?logo=dart&logoColor=white) | ![Flutter Test](https://img.shields.io/badge/Flutter%20Test-02569B?logo=flutter&logoColor=white) | ![analysis_options](https://img.shields.io/badge/analysis_options-02569B?logo=dart&logoColor=white) | 
 
 # Основные зависимости
@@ -315,6 +315,11 @@ test/
 - **image_picker**: ^1.1.2 - Выбор изображений из галереи/камеры
 - **carousel_slider**: ^5.1.1 - Карусель изображений
 - **flutter_native_splash**: ^2.4.7 - Кастомный splash screen
+- **cupertino_icons**: ^1.0.8 - Иконки в стиле iOS
+
+# Utilities
+- **path_provider**: ^2.1.3 - Доступ к файловой системе устройства
+- **url_launcher**: ^6.3.0 - Открытие URL, email и телефонных звонков
 
 # Development & Testing
 - **mockito**: ^5.5.0 + **bloc_test**: ^9.1.7 - Моки и тестирование BLoC

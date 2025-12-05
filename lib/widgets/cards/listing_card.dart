@@ -3,10 +3,10 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../models/home_models.dart';
-import '../constants.dart';
-import '../hive_service.dart';
-import '../pages/full_category_screen/mini_property_details_screen.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 
 class ListingCard extends StatefulWidget {
   final Listing listing;

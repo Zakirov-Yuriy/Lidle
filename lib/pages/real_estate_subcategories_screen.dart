@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 import 'real_estate_apartments_screen.dart';
 
 class RealEstateSubcategoriesScreen extends StatelessWidget {

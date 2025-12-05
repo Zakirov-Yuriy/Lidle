@@ -3,8 +3,8 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../models/home_models.dart';
-import '../constants.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/constants.dart';
 
 class CategoryCard extends StatelessWidget {
   final Category category;

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lidle/widgets/header.dart';
+import 'package:lidle/widgets/components/header.dart';
 import 'full_real_estate_subcategories_screen.dart';
 
 // ============================================================

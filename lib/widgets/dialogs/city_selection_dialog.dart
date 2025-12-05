@@ -3,7 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../constants.dart';
+import 'package:lidle/constants.dart';
 
 class _LetterHeader {
   final String letter;

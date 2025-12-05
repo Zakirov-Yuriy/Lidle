@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lidle/models/home_models.dart';
-import 'package:lidle/widgets/listing_card.dart';
+import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/constants.dart';
 
 void main() {
