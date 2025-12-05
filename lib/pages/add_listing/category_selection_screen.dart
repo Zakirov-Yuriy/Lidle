@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'real_estate_subcategories_screen.dart';
 
+// ============================================================
+// "Виджет: Экран выбора категории объявления"
+// ============================================================
 class CategorySelectionScreen extends StatefulWidget {
   static const String routeName = '/category-selection';
 
@@ -12,13 +15,16 @@ class CategorySelectionScreen extends StatefulWidget {
       _CategorySelectionScreenState();
 }
 
+// ============================================================
+// "Класс состояния: Управление состоянием экрана выбора категории"
+// ============================================================
 class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   final Set<String> _activeCategories = {
     'Недвижимость',
     'Авто и мото',
     'Работа',
     'Подработка',
-  }; // Some categories start active, excluding 'Электроника'
+  }; 
 
   @override
   Widget build(BuildContext context) {
@@ -27,17 +33,6 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       {'title': 'Авто и мото', 'image': 'assets/categories/auto.png'},
       {'title': 'Работа', 'image': 'assets/categories/job.png'},
       {'title': 'Подработка', 'image': 'assets/categories/part_time.png'},
-      // {'title': 'Электроника', 'image': 'assets/categories/electronics.png'},
-      // {'title': 'Одежда, обувь', 'image': 'assets/categories/clothes.png'},
-      // {'title': 'Животные', 'image': 'assets/categories/animals.png'},
-      // {'title': 'Для дома и дачи', 'image': 'assets/categories/home.png'},
-      // {'title': 'Детский мир', 'image': 'assets/categories/kids.png'},
-      // {'title': 'Бизнес и услуги', 'image': 'assets/categories/business.png'},
-      // {'title': 'Аренда и прокат', 'image': 'assets/categories/rent.png'},
-      // {'title': 'Мода и стиль', 'image': 'assets/categories/fashion.png'},
-      // {'title': 'Хобби, отдых и спорт', 'image': 'assets/categories/hobby.png'},
-      // {'title': 'Отдам даром', 'image': 'assets/categories/free.png'},
-      // {'title': 'Обмен', 'image': 'assets/categories/exchange.png'},
     ];
 
     return Scaffold(
@@ -140,7 +135,6 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                             ),
                           ),
                         ),
-                        // Inactive overlay
                         if (!_activeCategories.contains(item['title']!))
                           Container(
                             height: 93,

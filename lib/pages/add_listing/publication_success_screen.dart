@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../constants.dart'; // Import for primaryBackground
-import '../../widgets/components/header.dart'; // Import the Header widget
+import '../../constants.dart';
+import '../../widgets/components/header.dart';
 
+// ============================================================
+// "Виджет: Экран успешной публикации объявления"
+// ============================================================
 class PublicationSuccessScreen extends StatelessWidget {
   const PublicationSuccessScreen({super.key});
 
@@ -14,7 +17,7 @@ class PublicationSuccessScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Header(), // Add the Header widget
+              const Header(), 
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
@@ -26,16 +29,16 @@ class PublicationSuccessScreen extends StatelessWidget {
                       onTap: () => Navigator.pop(context),
                       child: const Icon(
                         Icons.arrow_back_ios,
-                        color: activeIconColor, // Changed color to activeIconColor
-                        size: 16, // Reduced size
+                        color: activeIconColor, 
+                        size: 16, 
                       ),
                     ),
                     const Text(
-                      'Назад', // Changed title as per the image
+                      'Назад', 
                       style: TextStyle(
-                        color: activeIconColor, // Consistent color with the icon
+                        color: activeIconColor, 
                         fontSize: 16,
-                        fontWeight: FontWeight.w400, // Consistent font weight
+                        fontWeight: FontWeight.w400, 
                       ),
                     ),
                     const Spacer(),
@@ -49,7 +52,7 @@ class PublicationSuccessScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding( // Wrap existing content in a padding to align with the header structure
+              Padding( 
                 padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,6 +74,9 @@ class PublicationSuccessScreen extends StatelessWidget {
   }
 }
 
+// ============================================================
+// "Виджет: Карточка с информацией об успешной публикации"
+// ============================================================
 class _SuccessInfoCard extends StatelessWidget {
   const _SuccessInfoCard();
 
@@ -110,6 +116,9 @@ class _SuccessInfoCard extends StatelessWidget {
   }
 }
 
+// ============================================================
+// "Виджет: Карточка объявления с изображением и деталями"
+// ============================================================
 class _ListingCard extends StatelessWidget {
   const _ListingCard();
 
@@ -128,19 +137,19 @@ class _ListingCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 11.0),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(5), // Apply border radius
+                borderRadius: BorderRadius.circular(5), 
                 child: Image.asset(
-                  "assets/publication_success/PublicationSuccessScreen.png", // Corrected asset path
+                  "assets/publication_success/PublicationSuccessScreen.png", 
                   fit: BoxFit.cover,
                   height: 260,
                   width: double.infinity,
                 ),
               ),
             ),
-            Container( // Added Container to apply background and border radius
+            Container( 
               decoration: BoxDecoration(
-                color: formBackground, // Set background color
-                borderRadius: BorderRadius.circular(5), // Apply border radius
+                color: formBackground, 
+                borderRadius: BorderRadius.circular(5), 
               ),
               padding: const EdgeInsets.only(top: 11, left: 16, right: 14, bottom: 11),
               child: Column(
@@ -187,6 +196,9 @@ class _ListingCard extends StatelessWidget {
   }
 }
 
+// ============================================================
+// "Виджет: Блок с вариантами поделиться объявлением"
+// ============================================================
 class _ShareBlock extends StatelessWidget {
   const _ShareBlock();
 
@@ -203,14 +215,14 @@ class _ShareBlock extends StatelessWidget {
       _ShareItem(imageAssetPath: "assets/publication_success/icons8-gmail-100.png", label: "Gmail"),
     ];
 
-    return Container( // Added Container to apply background and border radius
+    return Container( 
       decoration: BoxDecoration(
-        color: formBackground, // Set background color
-        borderRadius: BorderRadius.circular(5), // Apply border radius
+        color: formBackground, 
+        borderRadius: BorderRadius.circular(5), 
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center, // Centered title as per the image
+        crossAxisAlignment: CrossAxisAlignment.center, 
         children: [
           const Text(
             "Поделиться",
@@ -222,10 +234,10 @@ class _ShareBlock extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: items.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4, // Changed to 3 to provide more space for text
+              crossAxisCount: 4, 
               mainAxisSpacing: 16,
               crossAxisSpacing: 16,
-              childAspectRatio: 0.8, // Reset to 1.0
+              childAspectRatio: 0.8, 
             ),
             itemBuilder: (context, i) => items[i],
           ),
@@ -235,6 +247,9 @@ class _ShareBlock extends StatelessWidget {
   }
 }
 
+// ============================================================
+// "Виджет: Элемент списка для поделиться (иконка + текст)"
+// ============================================================
 class _ShareItem extends StatelessWidget {
   final String imageAssetPath;
   final String label;

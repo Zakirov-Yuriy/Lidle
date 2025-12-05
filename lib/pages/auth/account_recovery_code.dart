@@ -1,6 +1,3 @@
-/// Страница для ввода кода восстановления аккаунта.
-/// Пользователь вводит код, полученный по электронной почте или SMS,
-/// для продолжения процесса восстановления пароля.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,31 +7,29 @@ import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
 import 'account_recovery_new_password.dart';
 
-/// `AccountRecoveryCode` - это StatefulWidget, который позволяет пользователю
-/// ввести код для восстановления аккаунта.
+// ============================================================
+// "Экран ввода кода восстановления пароля"
+// ============================================================
 class AccountRecoveryCode extends StatefulWidget {
-  /// Именованный маршрут для этой страницы.
   static const routeName = '/account-recovery-code';
 
-  /// Конструктор для `AccountRecoveryCode`.
   const AccountRecoveryCode({super.key});
 
   @override
   State<AccountRecoveryCode> createState() => _AccountRecoveryCodeState();
 }
 
-/// Состояние для виджета `AccountRecoveryCode`.
+// ============================================================
+// "Состояние экрана ввода кода восстановления"
+// ============================================================
 class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
-  /// Контроллер для текстового поля ввода кода.
   final _codeCtrl = TextEditingController();
 
-  /// Флаг загрузки для кнопки повторной отправки.
   bool _isResending = false;
 
   @override
   void initState() {
     super.initState();
-    // Автоматически отправляем код при входе на страницу
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _sendEmailCode();
     });
@@ -46,7 +41,9 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
     super.dispose();
   }
 
-  /// Отправляет код на электронную почту через BLoC.
+  // ============================================================
+  // "Отправка кода восстановления на email"
+  // ============================================================
   void _sendEmailCode() {
     if (_isResending) return;
 
@@ -58,7 +55,6 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
 
     context.read<PasswordRecoveryBloc>().add(SendRecoveryCodeEvent(email));
 
-    // Сброс флага через некоторое время
     Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         setState(() => _isResending = false);
@@ -66,8 +62,9 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
     });
   }
 
-  /// Обработчик нажатия кнопки "Продолжить".
-  /// Отправляет событие верификации кода через BLoC.
+  // ============================================================
+  // "Верификация введенного кода восстановления"
+  // ============================================================
   void _submit() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
@@ -100,7 +97,6 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
             SnackBar(content: Text('Ошибка: ${state.message}')),
           );
         } else if (state is RecoveryCodeVerified) {
-          // Переход на страницу нового пароля
           Navigator.of(context).pushNamed(
             AccountRecoveryNewPassword.routeName,
             arguments: {'email': state.email, 'token': state.token},

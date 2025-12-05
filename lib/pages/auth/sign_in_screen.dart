@@ -11,35 +11,35 @@ import 'account_recovery.dart';
 import 'register_screen.dart';
 import 'package:lidle/pages/profile_dashboard.dart';
 
-/// `SignInScreen` - это StatefulWidget, который управляет состоянием
-/// формы входа пользователя.
+// ============================================================
+// "Главный экран входа в систему"
+// ============================================================
 class SignInScreen extends StatefulWidget {
-  /// Именованный маршрут для этой страницы.
   static const routeName = '/sign-in';
 
-  /// Конструктор для `SignInScreen`.
   const SignInScreen({super.key});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
 }
 
-/// Состояние для виджета `SignInScreen`.
+// ============================================================
+// "Состояние экрана входа"
+// ============================================================
 class _SignInScreenState extends State<SignInScreen> {
-  /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormBuilderState>();
-  /// Флаг для скрытия/отображения текста пароля.
   bool _obscure = true;
 
+  // ============================================================
+  // "Метод построения интерфейса с управлением состоянием"
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          // Успешный вход - переходим на профиль
           Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
         } else if (state is AuthError) {
-          // Ошибка входа - показываем Snackbar
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка входа: ${state.message}'),
@@ -67,6 +67,9 @@ class _SignInScreenState extends State<SignInScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
+                    // ============================================================
+                    // "Форма входа с валидацией"
+                    // ============================================================
                     child: FormBuilder(
                       key: _formKey,
                       child: Column(
@@ -99,6 +102,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                           const _FieldLabel('Электронная почта'),
                           const SizedBox(height: 9),
+                          // ============================================================
+                          // "Поле ввода электронной почты"
+                          // ============================================================
                           FormBuilderTextField(
                             name: 'email',
                             keyboardType: TextInputType.emailAddress,
@@ -116,6 +122,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                           const _FieldLabel('Пароль'),
                           const SizedBox(height: 9),
+                          // ============================================================
+                          // "Поле ввода пароля с показом/скрытием"
+                          // ============================================================
                           FormBuilderTextField(
                             name: 'password',
                             obscureText: _obscure,
@@ -161,6 +170,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
                           const SizedBox(height: 12),
 
+                          // ============================================================
+                          // "Кнопка входа с индикацией загрузки"
+                          // ============================================================
                           SizedBox(
                             width: double.infinity,
                             height: 53,
@@ -213,6 +225,9 @@ class _SignInScreenState extends State<SignInScreen> {
     Navigator.of(context).pushNamed(RegisterScreen.routeName);
   }
 
+  // ============================================================
+  // "Логика обработки отправки формы входа"
+  // ============================================================
   void _onSubmit() {
     final formState = _formKey.currentState;
     final ok = formState?.validate() ?? false;
@@ -221,7 +236,6 @@ class _SignInScreenState extends State<SignInScreen> {
     formState?.save();
     final formData = formState?.value ?? {};
 
-    // Отправляем событие входа в AuthBloc
     context.read<AuthBloc>().add(LoginEvent(
       email: (formData['email'] as String?)?.trim() ?? '',
       password: (formData['password'] as String?)?.trim() ?? '',
@@ -229,6 +243,9 @@ class _SignInScreenState extends State<SignInScreen> {
     ));
   }
 
+  // ============================================================
+  // "Стилизация полей ввода"
+  // ============================================================
   static InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
@@ -262,12 +279,11 @@ class _SignInScreenState extends State<SignInScreen> {
   );
 }
 
-/// Приватный виджет `_FieldLabel` для отображения заголовков полей ввода.
-/// Используется для соблюдения принципов DRY/SOLID (повторного использования кода).
+// ============================================================
+// "Виджет метки поля формы"
+// ============================================================
 class _FieldLabel extends StatelessWidget {
-  /// Текст заголовка поля.
   final String text;
-  /// Конструктор для `_FieldLabel`.
   const _FieldLabel(this.text);
 
   @override

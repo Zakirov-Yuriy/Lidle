@@ -1,6 +1,3 @@
-/// Страница верификации регистрации.
-/// Пользователь вводит код, отправленный на его электронную почту или телефон,
-/// для завершения процесса регистрации.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -10,47 +7,38 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'sign_in_screen.dart';
 
-/// `RegisterVerifyScreen` - это StatefulWidget, который управляет состоянием
-/// страницы верификации регистрации, включая таймеры для отправки кода
-/// и поля ввода.
+// ============================================================
+// "Экран верификации email при регистрации"
+// ============================================================
 class RegisterVerifyScreen extends StatefulWidget {
-  /// Именованный маршрут для этой страницы.
   static const routeName = '/register-verify';
 
-  /// Конструктор для `RegisterVerifyScreen`.
   const RegisterVerifyScreen({super.key});
 
   @override
   State<RegisterVerifyScreen> createState() => _RegisterVerifyScreenState();
 }
 
-/// Состояние для виджета `RegisterVerifyScreen`.
+// ============================================================
+// "Состояние экрана верификации с таймерами"
+// ============================================================
 class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
-  /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormState>();
 
-  /// Контроллер для текстового поля "Код".
   final _codeCtrl = TextEditingController();
 
-  /// Контроллер для текстового поля "Электронная почта".
   final _emailCtrl = TextEditingController();
 
-  /// Контроллер для текстового поля "Телефон".
   final _phoneCtrl = TextEditingController();
 
-  /// Продолжительность кулдауна перед повторной отправкой кода.
   static const _cooldown = Duration(seconds: 40);
 
-  /// Таймер для отправки кода на электронную почту.
   Timer? _emailTimer;
 
-  /// Таймер для отправки кода на телефон.
   Timer? _phoneTimer;
 
-  /// Оставшееся время до возможности повторной отправки кода на почту.
   Duration _emailLeft = Duration.zero;
 
-  /// Оставшееся время до возможности повторной отправки кода на телефон.
   Duration _phoneLeft = Duration.zero;
 
   @override
@@ -63,27 +51,31 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     super.dispose();
   }
 
-  /// Отправляет код на электронную почту.
+  // ============================================================
+  // "Отправка кода на email"
+  // ============================================================
   void _sendEmailCode() {
     if (_emailCtrl.text.isEmpty) return;
 
-    // Отправляем событие отправки кода в AuthBloc
     context.read<AuthBloc>().add(SendCodeEvent(email: _emailCtrl.text));
     _startEmailTimer();
   }
 
-  /// Отправляет код на телефон.
+  // ============================================================
+  // "Отправка кода на телефон"
+  // ============================================================
   void _sendPhoneCode() {
     if (_phoneCtrl.text.isEmpty) return;
 
-    // Отправляем событие отправки кода в AuthBloc
     context.read<AuthBloc>().add(
       SendCodeEvent(email: _phoneCtrl.text),
-    ); // Note: API may not support phone, using as email for now
+    );
     _startPhoneTimer();
   }
 
-  /// Запускает таймер для отправки кода на электронную почту.
+  // ============================================================
+  // "Запуск таймера для email"
+  // ============================================================
   void _startEmailTimer() {
     _emailTimer?.cancel();
     setState(() => _emailLeft = _cooldown);
@@ -98,7 +90,9 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     });
   }
 
-  /// Запускает таймер для отправки кода на телефон.
+  // ============================================================
+  // "Запуск таймера для телефона"
+  // ============================================================
   void _startPhoneTimer() {
     _phoneTimer?.cancel();
     setState(() => _phoneLeft = _cooldown);
@@ -113,7 +107,9 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     });
   }
 
-  /// Подтверждает код верификации.
+  // ============================================================
+  // "Верификация введенного кода"
+  // ============================================================
   void _verify() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
@@ -132,13 +128,12 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
       return;
     }
 
-    // Отправляем событие верификации в AuthBloc
     context.read<AuthBloc>().add(VerifyEmailEvent(email: email, code: code));
   }
 
-  /// Форматирует объект [Duration] в строку "MM:SS".
-  /// [d] - объект Duration для форматирования.
-  /// Возвращает отформатированную строку.
+  // ============================================================
+  // "Форматирование времени для отображения"
+  // ============================================================
   String _fmt(Duration d) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '00:${two(d.inMinutes % 60)}:${two(d.inSeconds % 60)}';
@@ -153,7 +148,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
             context,
           ).showSnackBar(const SnackBar(content: Text('Код отправлен')));
         } else if (state is AuthEmailVerified) {
-          // Успешная верификация - переходим на экран входа
           Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
         } else if (state is AuthError) {
           ScaffoldMessenger.of(
@@ -172,7 +166,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // const SizedBox(height: 23),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -253,7 +246,6 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                       text: _fmt(_phoneLeft),
                     ),
 
-                    // const SizedBox(height: 120),
                   ],
                 ),
               ),
@@ -300,13 +292,12 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   }
 }
 
-/// Приватный виджет `_CodeField` для отображения поля ввода кода подтверждения.
-/// Включает метку и текстовое поле.
+// ============================================================
+// "Поле ввода кода верификации"
+// ============================================================
 class _CodeField extends StatelessWidget {
-  /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
 
-  /// Конструктор для `_CodeField`.
   const _CodeField({required this.controller});
 
   @override
@@ -336,29 +327,22 @@ class _CodeField extends StatelessWidget {
   }
 }
 
-/// Приватный виджет `_SendCodeField` для поля ввода с кнопкой "Отправить код".
-/// Используется для ввода электронной почты или номера телефона,
-/// с возможностью отправки кода верификации.
+// ============================================================
+// "Поле с кнопкой отправки кода"
+// ============================================================
 class _SendCodeField extends StatelessWidget {
-  /// Метка для текстового поля (например, "Электронная почта").
   final String label;
 
-  /// Подсказка в поле ввода.
   final String hint;
 
-  /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
 
-  /// Тип клавиатуры для ввода.
   final TextInputType keyboard;
 
-  /// Флаг, указывающий, можно ли отправить код (таймер не активен).
   final bool canSend;
 
-  /// Callback-функция для отправки кода.
   final VoidCallback onSend;
 
-  /// Конструктор для `_SendCodeField`.
   const _SendCodeField({
     required this.label,
     required this.hint,
@@ -414,16 +398,14 @@ class _SendCodeField extends StatelessWidget {
   }
 }
 
-/// Приватный виджет `_CooldownText` для отображения текста обратного отсчета.
-/// Используется для показа оставшегося времени до возможности повторной отправки кода.
+// ============================================================
+// "Текст отображения времени до повторной отправки"
+// ============================================================
 class _CooldownText extends StatelessWidget {
-  /// Флаг, указывающий, должен ли текст быть видимым.
   final bool visible;
 
-  /// Текст для отображения (отформатированное время).
   final String text;
 
-  /// Конструктор для `_CooldownText`.
   const _CooldownText({required this.visible, required this.text});
 
   @override
@@ -447,16 +429,14 @@ class _CooldownText extends StatelessWidget {
   }
 }
 
-/// Приватный виджет `_Labeled` для обертки полей ввода с меткой.
-/// Предоставляет стандартную структуру для заголовков полей.
+// ============================================================
+// "Обертка с меткой для полей формы"
+// ============================================================
 class _Labeled extends StatelessWidget {
-  /// Метка для поля ввода.
   final String label;
 
-  /// Дочерний виджет (обычно TextField).
   final Widget child;
 
-  /// Конструктор для `_Labeled`.
   const _Labeled({required this.label, required this.child});
 
   @override

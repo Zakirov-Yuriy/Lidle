@@ -7,12 +7,15 @@ import 'real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; // Import the new city selection dialog
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; // Import the new street selection dialog
-import 'publication_tariff_screen.dart'; // Import the new publication tariff screen
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
+import 'publication_tariff_screen.dart'; 
 
 import '../../constants.dart';
 
+// ============================================================
+// "Виджет: Экран добавления аренды квартиры в недвижимость"
+// ============================================================
 class AddRealEstateRentAptScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
@@ -23,26 +26,27 @@ class AddRealEstateRentAptScreen extends StatefulWidget {
       _AddRealEstateRentAptScreenState();
 }
 
+// ============================================================
+// "Класс состояния: Управление состоянием экрана аренды квартиры"
+// ============================================================
 class _AddRealEstateRentAptScreenState
     extends State<AddRealEstateRentAptScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; // New state for Heating filter
+  Set<String> _selectedHeatingTypes = {}; 
   Set<String> _selectedCommunicationTypes =
-      {}; // New state for Communications filter
-  Set<String> _selectedCity = {}; // New state for selected city
-  Set<String> _selectedStreet = {}; // New state for selected street
-  Set<String> _selectedRoomCounts = {}; // New state for Room Count filter
-  Set<String> _selectedLayoutTypes = {}; // New state for Layout filter
-  Set<String> _selectedBathroomTypes = {}; // New state for Bathroom filter
-  Set<String> _selectedRenovationTypes = {}; // New state for Renovation filter
-  Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
-  Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
-  Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
-  // Set<String> _selectedInfrastructureTypes = {}; // New state for Infrastructure filter - не используется
-  // Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter - не используется
+      {}; 
+  Set<String> _selectedCity = {}; 
+  Set<String> _selectedStreet = {}; 
+  Set<String> _selectedRoomCounts = {}; 
+  Set<String> _selectedLayoutTypes = {}; 
+  Set<String> _selectedBathroomTypes = {}; 
+  Set<String> _selectedRenovationTypes = {}; 
+  Set<String> _selectedAppliancesTypes = {}; 
+  Set<String> _selectedMultimediaTypes = {}; 
+  Set<String> _selectedComfortTypes = {}; 
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -126,29 +130,25 @@ class _AddRealEstateRentAptScreenState
     });
   }
 
-  // Переключатели
-  bool isIndividualSelected = true; // Частное лицо / Бизнес
-  bool isSecondarySelected = true; // Вторичка / Новостройка
-  bool isMortgageYes = true; // Ипотека Да / Нет
+  bool isIndividualSelected = true; 
+  bool isSecondarySelected = true; 
+  bool isMortgageYes = true; 
 
-  // Чекбоксы цены
-  bool isBargain = false; // Возможен торг
-  bool isNoCommission = false; // Без комиссии
-  bool isExchange = false; // Возможность обмена
-  bool isPledge = false; // Готов принять в залог
-  bool isUrgent = false; // Срочно
-  bool isInstallment = false; // Рассрочка
-  bool isRemoteDeal = false; // Удалённая сделка
-  bool isClientPrice = false; // Клиент может предложить свою цену
-  bool isAutoRenewal = false; // Автопродление
+  bool isBargain = false; 
+  bool isNoCommission = false; 
+  bool isExchange = false; 
+  bool isPledge = false; 
+  bool isUrgent = false; 
+  bool isInstallment = false; 
+  bool isRemoteDeal = false; 
+  bool isClientPrice = false; 
+  bool isAutoRenewal = false; 
   bool isAutoRenewal1 = false;
   bool? _selectedFurnished =
-      true; // Initialize to true so 'Да' is active by default
+      true; 
 
-  // New state for publication type buttons
 
-  // New state for "Предпросмотр" and "Опубликовать" buttons
-  String _selectedAction = 'publish'; // Default to 'publish'
+  String _selectedAction = 'publish'; 
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -167,7 +167,6 @@ class _AddRealEstateRentAptScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Заголовок
               Row(
                 children: [
                   GestureDetector(
@@ -187,14 +186,12 @@ class _AddRealEstateRentAptScreenState
               ),
               const SizedBox(height: 17),
 
-              // Блок "Опишите товар или услугу"
               const Text(
                 'Опишите товар или услугу',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 17),
 
-              // Добавить изображение
               GestureDetector(
                 onTap: () {
                   _showImageSourceActionSheet(context);
@@ -334,39 +331,6 @@ class _AddRealEstateRentAptScreenState
               ),
               const SizedBox(height: 13),
 
-              // _buildDropdown(
-              //   label: 'Срок аренды',
-              //   hint: _selectedRentalPeriodTypes.isEmpty
-              //       ? 'Выбрать'
-              //       : _selectedRentalPeriodTypes.join(', '),
-              //   icon: const Icon(
-              //     Icons.keyboard_arrow_down_rounded,
-              //     color: textSecondary,
-              //   ),
-              //   onTap: () {
-              //     showDialog(
-              //       context: context,
-              //       builder: (BuildContext context) {
-              //         return SelectionDialog(
-              //           title: 'Срок аренды',
-              //           options: const [
-              //             'Долгосрочная',
-              //             'Посуточно',
-              //             'На несколько месяцев',
-              //           ],
-              //           selectedOptions: _selectedRentalPeriodTypes,
-              //           onSelectionChanged: (Set<String> selected) {
-              //             setState(() {
-              //               _selectedRentalPeriodTypes = selected;
-              //             });
-              //           },
-              //           allowMultipleSelection: false,
-              //         );
-              //       },
-              //     );
-              //   },
-              // ),
-              // const SizedBox(height: 13),
               _buildTextField(
                 label: 'Описание',
                 hint:
@@ -378,7 +342,6 @@ class _AddRealEstateRentAptScreenState
 
               const SizedBox(height: 24),
 
-              // Цена
               const Text(
                 'Цена*',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -431,7 +394,6 @@ class _AddRealEstateRentAptScreenState
               ),
               const SizedBox(height: 15),
 
-              // Чекбоксы по цене
               Row(
                 children: [
                   Expanded(
@@ -523,7 +485,6 @@ class _AddRealEstateRentAptScreenState
               ),
 
               const SizedBox(height: 13),
-              // Рассрочка
               const Text(
                 'Вид обьекта',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -540,7 +501,6 @@ class _AddRealEstateRentAptScreenState
                         side: isInstallment
                             ? null
                             : const BorderSide(color: Colors.white),
-                        // padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
@@ -565,7 +525,6 @@ class _AddRealEstateRentAptScreenState
                         side: !isInstallment
                             ? null
                             : const BorderSide(color: Colors.white),
-                        // padding: const EdgeInsets.symmetric(vertical: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
@@ -585,7 +544,6 @@ class _AddRealEstateRentAptScreenState
 
               const SizedBox(height: 13),
 
-              // Блок характеристик квартиры
               _buildDropdown(
                 label: 'Тип дома',
                 hint: _selectedHouseTypes.isEmpty
@@ -973,7 +931,6 @@ class _AddRealEstateRentAptScreenState
               ),
               const SizedBox(height: 9),
 
-              // Мебелирован
               const Text(
                 'Мебелирован',
                 style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1168,7 +1125,7 @@ class _AddRealEstateRentAptScreenState
                           });
                         },
                         allowMultipleSelection:
-                            true, // Assuming multiple selections are allowed for communications
+                            true, 
                       );
                     },
                   );
@@ -1213,7 +1170,7 @@ class _AddRealEstateRentAptScreenState
                           });
                         },
                         allowMultipleSelection:
-                            true, // Assuming multiple selections are allowed for communications
+                            true, 
                       );
                     },
                   );
@@ -1259,7 +1216,7 @@ class _AddRealEstateRentAptScreenState
                           });
                         },
                         allowMultipleSelection:
-                            true, // Assuming multiple selections are allowed for communications
+                            true, 
                       );
                     },
                   );
@@ -1268,7 +1225,6 @@ class _AddRealEstateRentAptScreenState
 
               const SizedBox(height: 21),
 
-              // Частное лицо / Бизнес
               const Text(
                 'Частное лицо / Бизнес*',
                 style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1291,7 +1247,6 @@ class _AddRealEstateRentAptScreenState
               ),
 
               const SizedBox(height: 12),
-              // Блок характеристик квартиры
               const Text(
                 'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
                 style: TextStyle(color: textMuted, fontSize: 11),
@@ -1299,7 +1254,6 @@ class _AddRealEstateRentAptScreenState
 
               const SizedBox(height: 18),
 
-              // Автопродление
               Row(
                 children: [
                   const Column(
@@ -1325,39 +1279,6 @@ class _AddRealEstateRentAptScreenState
               ),
               const SizedBox(height: 18),
 
-              // New section for Publication Type
-              // const Text(
-              //   'Тип публикации',
-              //   style: TextStyle(color: textPrimary, fontSize: 16),
-              // ),
-              // const SizedBox(height: 12),
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: _buildButton(
-              //         'Стандартная',
-              //         onPressed: () {
-              //           setState(() {
-              //             _selectedPublicationType = 'Standard';
-              //           });
-              //         },
-              //         isPrimary: _selectedPublicationType == 'Standard',
-              //       ),
-              //     ),
-              //     const SizedBox(width: 10),
-              //     Expanded(
-              //       child: _buildButton(
-              //         'Премиум',
-              //         onPressed: () {
-              //           setState(() {
-              //             _selectedPublicationType = 'Premium';
-              //           });
-              //         },
-              //         isPrimary: _selectedPublicationType == 'Premium',
-              //       ),
-              //     ),
-              //   ],
-              // ),
               const SizedBox(height: 18),
 
               _buildDropdown(
@@ -1388,7 +1309,6 @@ class _AddRealEstateRentAptScreenState
                           'Бабушкин Бавлы',
                           'Багратионовск',
 
-                          // Add more cities as needed
                         ],
                         selectedOptions: _selectedCity,
                         onSelectionChanged: (Set<String> selected) {
@@ -1475,7 +1395,6 @@ class _AddRealEstateRentAptScreenState
 
               const SizedBox(height: 27),
 
-              // Контактные данные
               const Text(
                 'Ваши контактные данные',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -1508,13 +1427,13 @@ class _AddRealEstateRentAptScreenState
 
               _buildTextField(
                 label: 'Ссылка на ваш чат в телеграм',
-                hint: 'https://t.me/username',
+                hint: 'https:',
               ),
               const SizedBox(height: 9),
 
               _buildTextField(
                 label: 'Ссылка на ваш whatsapp',
-                hint: 'https://wa.me/номер',
+                hint: 'https:',
               ),
 
               const SizedBox(height: 22),
@@ -1525,7 +1444,6 @@ class _AddRealEstateRentAptScreenState
                   setState(() {
                     _selectedAction = 'preview';
                   });
-                  // Add actual preview logic here
                 },
                 isPrimary: _selectedAction == 'preview',
               ),
@@ -1553,7 +1471,6 @@ class _AddRealEstateRentAptScreenState
     );
   }
 
-  // ====== Общие билдеры (повторяем стиль AddListingScreen) ======
 
   Widget _buildTextField({
     required String label,
@@ -1608,7 +1525,7 @@ class _AddRealEstateRentAptScreenState
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
-    bool showChangeText = false, // New parameter to control "Изменить" text
+    bool showChangeText = false, 
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1664,12 +1581,12 @@ class _AddRealEstateRentAptScreenState
                           ),
                         ),
                 ),
-                if (showChangeText) // Conditionally show "Изменить" text
+                if (showChangeText) 
                   Text(
                     'Изменить',
                     style: TextStyle(
-                      color: Colors.blue, // Синий цвет
-                      fontSize: 14, // Размер 14
+                      color: Colors.blue, 
+                      fontSize: 14, 
                     ),
                   ),
                 if (icon != null) icon,

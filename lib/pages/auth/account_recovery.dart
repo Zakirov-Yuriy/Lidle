@@ -1,6 +1,3 @@
-/// Страница восстановления аккаунта.
-/// Пользователь вводит свой номер телефона или адрес электронной почты
-/// для начала процесса восстановления пароля.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
@@ -9,13 +6,12 @@ import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
 import 'account_recovery_code.dart';
 
-/// `AccountRecovery` - это StatelessWidget, который отображает страницу
-/// восстановления аккаунта с использованием Bloc для управления состоянием.
+// ============================================================
+// "Экран восстановления пароля"
+// ============================================================
 class AccountRecovery extends StatelessWidget {
-  /// Именованный маршрут для этой страницы.
   static const routeName = '/account-recovery';
 
-  /// Конструктор для `AccountRecovery`.
   const AccountRecovery({super.key});
 
   @override
@@ -137,7 +133,9 @@ class AccountRecovery extends StatelessWidget {
   }
 }
 
-/// Виджет формы восстановления пароля.
+// ============================================================
+// "Форма восстановления пароля"
+// ============================================================
 class _RecoveryForm extends StatefulWidget {
   final bool isLoading;
   final bool isProfileNotFound;
@@ -155,6 +153,9 @@ class _RecoveryForm extends StatefulWidget {
   State<_RecoveryForm> createState() => _RecoveryFormState();
 }
 
+// ============================================================
+// "Состояние формы восстановления пароля"
+// ============================================================
 class _RecoveryFormState extends State<_RecoveryForm> {
   final _controller = TextEditingController();
   bool _isValid = false;
@@ -165,6 +166,9 @@ class _RecoveryFormState extends State<_RecoveryForm> {
     super.dispose();
   }
 
+  // ============================================================
+  // "Валидация email или номера телефона"
+  // ============================================================
   bool _isEmailOrPhone(String v) {
     final email = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,}$');
     final digits = v.replaceAll(RegExp(r'\D'), '');
@@ -178,6 +182,9 @@ class _RecoveryFormState extends State<_RecoveryForm> {
     });
   }
 
+  // ============================================================
+  // "Отправка запроса на восстановление пароля"
+  // ============================================================
   void _submit() {
     final input = _controller.text.trim();
 

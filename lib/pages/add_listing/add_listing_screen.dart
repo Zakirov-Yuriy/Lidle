@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../constants.dart';
 
+// ============================================================
+// "Виджет: Экран добавления объявления"
+// ============================================================
 class AddListingScreen extends StatefulWidget {
   static const String routeName = '/add-listing';
 
@@ -11,17 +14,26 @@ class AddListingScreen extends StatefulWidget {
   State<AddListingScreen> createState() => _AddListingScreenState();
 }
 
+// ============================================================
+// "Класс состояния: Управление состоянием экрана добавления объявления"
+// ============================================================
 class _AddListingScreenState extends State<AddListingScreen> {
   bool isIndividualSelected = true;
   bool isPreviewSelected = false;
   bool isPublishSelected = false;
 
+// ============================================================
+// "Логика: Переключение выбора типа пользователя (частное лицо/бизнес)"
+// ============================================================
   void _toggleSelection(bool isIndividual) {
     setState(() {
       isIndividualSelected = isIndividual;
     });
   }
 
+// ============================================================
+// "Виджет: Основной интерфейс экрана добавления объявления"
+// ============================================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,10 +80,8 @@ class _AddListingScreenState extends State<AddListingScreen> {
                  
                 ),
               ),
-              // Блок добавления изображений
               GestureDetector(
                 onTap: () {
-                  // TODO: Добавить загрузку изображений
                 },
                 child: Container(
                   height: 126,
@@ -160,6 +170,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
   }
 
+// ============================================================
+// "Виджет: Построение текстового поля с валидацией"
+// ============================================================
   Widget _buildTextField({
     required String label,
     required String hint,
@@ -197,6 +210,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
   }
 
+// ============================================================
+// "Виджет: Построение выпадающего списка с навигацией"
+// ============================================================
   Widget _buildDropdown({required String label, required String hint}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,6 +248,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
   }
 
+// ============================================================
+// "Виджет: Построение кнопки выбора типа"
+// ============================================================
   Widget _buildChoiceButton(String text, bool selected, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
@@ -257,6 +276,9 @@ class _AddListingScreenState extends State<AddListingScreen> {
     );
   }
 
+// ============================================================
+// "Виджет: Построение кнопки действия"
+// ============================================================
   Widget _buildButton(
     String text, {
     required VoidCallback onPressed,

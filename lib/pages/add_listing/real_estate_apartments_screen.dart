@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'add_real_estate_apt_screen.dart';
-import 'add_real_estate_rent_apt_screen.dart'; // Import AddRealEstateRentAptScreen
+import 'add_real_estate_rent_apt_screen.dart';
 
+// ============================================================
+// "Виджет: Экран подкатегорий недвижимости (квартиры)"
+// ============================================================
 class RealEstateApartmentsScreen extends StatelessWidget {
   const RealEstateApartmentsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E293B), // тёмный фон
+      backgroundColor: const Color(0xFF1E293B), 
       
       body: Column(
          crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,7 +45,7 @@ class RealEstateApartmentsScreen extends StatelessWidget {
                     const Spacer(),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); // Закрыть экран при отмене
+                        Navigator.pop(context); 
                       },
                       child: const Text(
                         'Отмена',
@@ -81,6 +84,9 @@ class RealEstateApartmentsScreen extends StatelessWidget {
     );
   }
 
+// ============================================================
+// "Виджет: Построение плитки опции (продажа/аренда квартир)"
+// ============================================================
   Widget _buildOptionTile(BuildContext context, String title) {
     return Column(
       children: [

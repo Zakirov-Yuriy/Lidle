@@ -1,5 +1,3 @@
-/// Страница для установки нового пароля после успешного восстановления аккаунта.
-/// Пользователь вводит и подтверждает новый пароль.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
@@ -7,13 +5,12 @@ import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_state.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_event.dart';
 
-/// `AccountRecoveryNewPassword` - это StatefulWidget, который позволяет пользователю
-/// установить новый пароль для своего аккаунта.
+// ============================================================
+// "Экран установки нового пароля"
+// ============================================================
 class AccountRecoveryNewPassword extends StatefulWidget {
-  /// Именованный маршрут для этой страницы.
   static const routeName = '/account-recovery-new-password';
 
-  /// Конструктор для `AccountRecoveryNewPassword`.
   const AccountRecoveryNewPassword({super.key});
 
   @override
@@ -21,19 +18,17 @@ class AccountRecoveryNewPassword extends StatefulWidget {
       _AccountRecoveryNewPasswordState();
 }
 
-/// Состояние для виджета `AccountRecoveryNewPassword`.
+// ============================================================
+// "Состояние экрана установки нового пароля"
+// ============================================================
 class _AccountRecoveryNewPasswordState
     extends State<AccountRecoveryNewPassword> {
-  /// Контроллер для текстового поля "Новый пароль".
   final _newCtrl = TextEditingController();
 
-  /// Контроллер для текстового поля "Повторите пароль".
   final _repeatCtrl = TextEditingController();
 
-  /// Флаг для отображения/скрытия текста в поле "Новый пароль".
   bool _showNew = false;
 
-  /// Флаг для отображения/скрытия текста в поле "Повторите пароль".
   bool _showRepeat = false;
 
   @override
@@ -43,8 +38,9 @@ class _AccountRecoveryNewPasswordState
     super.dispose();
   }
 
-  /// Обработчик нажатия кнопки "Подтвердить".
-  /// Выполняет валидацию и отправляет событие сброса пароля через BLoC.
+  // ============================================================
+  // "Валидация и отправка нового пароля"
+  // ============================================================
   void _submit() {
     final newPass = _newCtrl.text.trim();
     final repPass = _repeatCtrl.text.trim();
@@ -202,23 +198,18 @@ class _AccountRecoveryNewPasswordState
   }
 }
 
-/// Приватный виджет `_PasswordField` для отображения поля ввода пароля.
-/// Включает текстовое поле с возможностью скрытия/отображения текста
-/// и стилизацию в соответствии с макетом.
+// ============================================================
+// "Виджет поля пароля с переключением видимости"
+// ============================================================
 class _PasswordField extends StatelessWidget {
-  /// Метка для текстового поля (например, "Новый пароль").
   final String label;
 
-  /// Контроллер для управления текстом в поле.
   final TextEditingController controller;
 
-  /// Флаг, указывающий, виден ли текст пароля.
   final bool visible;
 
-  /// Callback-функция для переключения видимости пароля.
   final VoidCallback onToggle;
 
-  /// Конструктор для `_PasswordField`.
   const _PasswordField({
     required this.label,
     required this.controller,

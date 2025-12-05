@@ -7,12 +7,15 @@ import 'real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; // Import the new city selection dialog
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; // Import the new street selection dialog
-import 'publication_tariff_screen.dart'; // Import the new publication tariff screen
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
+import 'publication_tariff_screen.dart'; 
 
 import '../../constants.dart';
 
+// ============================================================
+// "Виджет: Экран добавления квартиры в недвижимость"
+// ============================================================
 class AddRealEstateAptScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
@@ -22,26 +25,32 @@ class AddRealEstateAptScreen extends StatefulWidget {
   State<AddRealEstateAptScreen> createState() => _AddRealEstateAptScreenState();
 }
 
+// ============================================================
+// "Класс состояния: Управление состоянием экрана добавления квартиры"
+// ============================================================
 class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
+// ============================================================
+// "Переменные состояния: Хранение выбранных опций для формы квартиры"
+// ============================================================
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; // New state for Heating filter
+  Set<String> _selectedHeatingTypes = {}; 
   Set<String> _selectedCommunicationTypes =
-      {}; // New state for Communications filter
-  Set<String> _selectedCity = {}; // New state for selected city
-  Set<String> _selectedStreet = {}; // New state for selected street
-  Set<String> _selectedRoomCounts = {}; // New state for Room Count filter
-  Set<String> _selectedLayoutTypes = {}; // New state for Layout filter
-  Set<String> _selectedBathroomTypes = {}; // New state for Bathroom filter
-  Set<String> _selectedRenovationTypes = {}; // New state for Renovation filter
-  Set<String> _selectedAppliancesTypes = {}; // New state for Appliances filter
-  Set<String> _selectedMultimediaTypes = {}; // New state for Multimedia filter
-  Set<String> _selectedComfortTypes = {}; // New state for Comfort filter
+      {}; 
+  Set<String> _selectedCity = {}; 
+  Set<String> _selectedStreet = {}; 
+  Set<String> _selectedRoomCounts = {}; 
+  Set<String> _selectedLayoutTypes = {}; 
+  Set<String> _selectedBathroomTypes = {}; 
+  Set<String> _selectedRenovationTypes = {}; 
+  Set<String> _selectedAppliancesTypes = {}; 
+  Set<String> _selectedMultimediaTypes = {}; 
+  Set<String> _selectedComfortTypes = {}; 
   Set<String> _selectedInfrastructureTypes =
-      {}; // New state for Infrastructure filter
-  Set<String> _selectedLandscapeTypes = {}; // New state for Landscape filter
+      {}; 
+  Set<String> _selectedLandscapeTypes = {}; 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -124,29 +133,26 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     });
   }
 
-  // Переключатели
-  bool isIndividualSelected = true; // Частное лицо / Бизнес
-  bool isSecondarySelected = true; // Вторичка / Новостройка
-  bool isMortgageYes = true; // Ипотека Да / Нет
+  bool isIndividualSelected = true; 
+  bool isSecondarySelected = true; 
+  bool isMortgageYes = true; 
 
-  // Чекбоксы цены
-  bool isBargain = false; // Возможен торг
-  bool isNoCommission = false; // Без комиссии
-  bool isExchange = false; // Возможность обмена
-  bool isPledge = false; // Готов принять в залог
-  bool isUrgent = false; // Срочно
-  bool isInstallment = false; // Рассрочка
-  bool isRemoteDeal = false; // Удалённая сделка
-  bool isClientPrice = false; // Клиент может предложить свою цену
-  bool isAutoRenewal = false; // Автопродление
+  bool isBargain = false; 
+  bool isNoCommission = false; 
+  bool isExchange = false; 
+  bool isPledge = false; 
+  bool isUrgent = false; 
+  bool isInstallment = false; 
+  bool isRemoteDeal = false; 
+  bool isClientPrice = false; 
+  bool isAutoRenewal = false; 
   bool isAutoRenewal1 = false;
   bool? _selectedFurnished =
-      true; // Initialize to true so 'Да' is active by default
+      true; 
 
  
 
-  // New state for "Предпросмотр" and "Опубликовать" buttons
-  String _selectedAction = 'publish'; // Default to 'publish'
+  String _selectedAction = 'publish'; 
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -173,7 +179,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Заголовок
               Row(
                 children: [
                   GestureDetector(
@@ -193,22 +198,19 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 17),
 
-              // Блок "Опишите товар или услугу"
               const Text(
                 'Опишите товар или услугу',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 17),
 
-              // Добавить изображение
               GestureDetector(
                 onTap: () {
                   _showImageSourceActionSheet(context);
                 },
                 child: Container(
-                  // Удаляем явную установку height, чтобы Container всегда адаптировался к содержимому
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground, // Меняем цвет фона в зависимости от наличия изображений
+                    color: _images.isEmpty ? secondaryBackground : primaryBackground, 
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -241,24 +243,23 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3, // Устанавливаем 3 фотографии в ряд
+                                crossAxisCount: 3, 
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
-                                childAspectRatio: 115 / 89, // Adjust aspect ratio for 115x89
+                                childAspectRatio: 115 / 89, 
                               ),
-                          shrinkWrap: true, // Позволяет GridView занимать только необходимое пространство
-                          physics: const NeverScrollableScrollPhysics(), // Отключает собственную прокрутку GridView
-                          itemCount: _images.length + 1, // +1 for the "Add more photos" button
+                          shrinkWrap: true, 
+                          physics: const NeverScrollableScrollPhysics(), 
+                          itemCount: _images.length + 1, 
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
-                              // This is the "Add more photos" button
                               return GestureDetector(
                                 onTap: () => _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
                                   decoration: BoxDecoration(
-                                    color: formBackground, // Use secondaryBackground for consistency
+                                    color: formBackground, 
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Center(
@@ -273,11 +274,11 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                             }
                             return Container(
                               width: 115,
-                              height: 89, // Исправляем высоту контейнера для изображения на 89
+                              height: 89, 
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              clipBehavior: Clip.antiAlias, // Clip the image to the border radius
+                              clipBehavior: Clip.antiAlias, 
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -353,7 +354,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               const SizedBox(height: 24),
 
-              // Цена
               const Text(
                 'Цена*',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -406,7 +406,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Чекбоксы по цене
               Row(
                 children: [
                   Expanded(
@@ -553,7 +552,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               const SizedBox(height: 15),
 
-              // Ипотека
               const Text(
                 'Ипотека',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -576,7 +574,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
 
               const SizedBox(height: 13),
-              // Рассрочка
               const Text(
                 'Рассрочка',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -593,7 +590,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                         side: isInstallment
                             ? null
                             : const BorderSide(color: Colors.white),
-                        // padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
@@ -618,7 +614,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                         side: !isInstallment
                             ? null
                             : const BorderSide(color: Colors.white),
-                        // padding: const EdgeInsets.symmetric(vertical: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(5),
                         ),
@@ -638,7 +633,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               const SizedBox(height: 13),
 
-              // Блок характеристик квартиры
               _buildDropdown(
                 label: 'Тип дома',
                 hint: _selectedHouseTypes.isEmpty
@@ -992,7 +986,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
               const SizedBox(height: 9),
 
-              // Мебелирован
               const Text(
                 'Мебелирован',
                 style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1187,7 +1180,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           });
                         },
                         allowMultipleSelection:
-                            true, // Assuming multiple selections are allowed for communications
+                            true, 
                       );
                     },
                   );
@@ -1324,7 +1317,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               const SizedBox(height: 27),
 
-              // Частное лицо / Бизнес
               const Text(
                 'Частное лицо / Бизнес*',
                 style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1347,7 +1339,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
               ),
 
               const SizedBox(height: 12),
-              // Блок характеристик квартиры
               const Text(
                 'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
                 style: TextStyle(color: textMuted, fontSize: 11),
@@ -1355,7 +1346,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               const SizedBox(height: 18),
 
-              // Автопродление
               Row(
                 children: [
                   const Column(
@@ -1409,7 +1399,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           'Бабушкин Бавлы',
                           'Багратионовск',
 
-                          // Add more cities as needed
                         ],
                         selectedOptions: _selectedCity,
                         onSelectionChanged: (Set<String> selected) {
@@ -1496,7 +1485,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               const SizedBox(height: 27),
 
-              // Контактные данные
               const Text(
                 'Ваши контактные данные',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -1529,13 +1517,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildTextField(
                 label: 'Ссылка на ваш чат в телеграм',
-                hint: 'https://t.me/username',
+                hint: 'https:',
               ),
               const SizedBox(height: 9),
 
               _buildTextField(
                 label: 'Ссылка на ваш whatsapp',
-                hint: 'https://wa.me/номер',
+                hint: 'https:',
               ),
 
               const SizedBox(height: 22),
@@ -1546,7 +1534,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   setState(() {
                     _selectedAction = 'preview';
                   });
-                  // Add actual preview logic here
                 },
                 isPrimary: _selectedAction == 'preview',
               ),
@@ -1574,7 +1561,6 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     );
   }
 
-  // ====== Общие билдеры (повторяем стиль AddListingScreen) ======
 
   Widget _buildTextField({
     required String label,
@@ -1689,8 +1675,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   Text(
                     'Изменить',
                     style: TextStyle(
-                      color: Colors.blue, // Синий цвет
-                      fontSize: 14, // Размер 14
+                      color: Colors.blue, 
+                      fontSize: 14, 
                     ),
                   ),
                 if (icon != null) icon,

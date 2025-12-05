@@ -27,7 +27,7 @@ import 'pages/add_listing/add_listing_screen.dart';
 import 'pages/add_listing/category_selection_screen.dart';
 import 'pages/full_category_screen/full_category_screen.dart';
 import 'pages/full_category_screen/map_screen.dart';
-import 'pages/my_purchases_screen.dart'; // Import the new screen
+import 'pages/my_purchases_screen.dart'; 
 
 // ============================================================
 //  Главная функция

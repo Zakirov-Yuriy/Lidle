@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart'; // Import for SvgPicture
-import '../../constants.dart'; // Assuming constants.dart contains color definitions
-import '../../widgets/components/header.dart'; // Import the Header widget
-import 'publication_success_screen.dart'; // Import the PublicationSuccessScreen
+import 'package:flutter_svg/flutter_svg.dart'; 
+import '../../constants.dart';
+import '../../widgets/components/header.dart';
+import 'publication_success_screen.dart';
 
+// ============================================================
+// "Виджет: Экран выбора тарифа публикации"
+// ============================================================
 class PublicationTariffScreen extends StatelessWidget {
   static const String routeName = '/publication-tariff';
 
@@ -18,7 +21,7 @@ class PublicationTariffScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Header(), // Add the Header widget
+              const Header(), 
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
@@ -93,6 +96,9 @@ class PublicationTariffScreen extends StatelessWidget {
     );
   }
 
+// ============================================================
+// "Виджет: Построение карточки тарифа публикации"
+// ============================================================
   Widget _buildTariffCard(
     BuildContext context, {
     required String tariffName,
@@ -134,8 +140,8 @@ class PublicationTariffScreen extends StatelessWidget {
               children: [
                 SvgPicture.asset(
                   'assets/publication_tariff/check.svg',
-                  width: 20, // Adjust size as needed
-                  height: 20, // Adjust size as needed
+                  width: 20, 
+                  height: 20, 
                 ),
                 const SizedBox(width: 8),
                 Text(

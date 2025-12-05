@@ -9,38 +9,35 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'register_verify_screen.dart';
 
-/// `RegisterScreen` - это StatefulWidget, который управляет состоянием
-/// формы регистрации пользователя.
+// ============================================================
+// "Экран регистрации пользователя"
+// ============================================================
 class RegisterScreen extends StatefulWidget {
-  /// Именованный маршрут для этой страницы.
   static const routeName = '/register';
 
-  /// Конструктор для `RegisterScreen`.
   const RegisterScreen({super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-/// Состояние для виджета `RegisterScreen`.
+// ============================================================
+// "Состояние экрана регистрации"
+// ============================================================
 class _RegisterScreenState extends State<RegisterScreen> {
-  /// Флаг согласия с условиями пользовательского соглашения и политики конфиденциальности.
   bool agreeTerms = false;
 
-  /// Флаг согласия на рекламную и информационную рассылку.
   bool agreeMarketing = false;
 
-  /// Флаг для отображения/скрытия текста в поле "Пароль".
   bool showPassword = false;
 
-  /// Флаг для отображения/скрытия текста в поле "Повторите пароль".
   bool showRepeatPassword = false;
 
-  /// Глобальный ключ для управления состоянием формы.
   final _formKey = GlobalKey<FormBuilderState>();
 
-  /// Обработчик нажатия кнопки "Войти" (или "Зарегистрироваться").
-  /// Выполняет валидацию формы и отправляет событие регистрации в AuthBloc.
+  // ============================================================
+  // "Логика обработки отправки формы регистрации"
+  // ============================================================
   void _trySubmit() {
     final formState = _formKey.currentState;
     final isValid = formState?.validate() ?? false;
@@ -49,7 +46,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     formState?.save();
     final formData = formState?.value ?? {};
 
-    // Отправляем событие регистрации в AuthBloc
     context.read<AuthBloc>().add(RegisterEvent(
       name: (formData['name'] as String?)?.trim() ?? '',
       lastName: (formData['lastName'] as String?)?.trim() ?? '',
@@ -60,6 +56,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ));
   }
 
+  // ============================================================
+  // "Метод построения интерфейса регистрации"
+  // ============================================================
   @override
   Widget build(BuildContext context) {
     const primaryBlue = Color(0xFF0EA5E9);
@@ -67,10 +66,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthRegistered) {
-          // Успешная регистрация - переходим на страницу верификации
           Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
         } else if (state is AuthError) {
-          // Ошибка регистрации - показываем Snackbar с кнопкой повтора
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Ошибка регистрации: ${state.message}'),
@@ -95,19 +92,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Padding(
-                    //   padding: const EdgeInsets.only(
-                    //     left: 41.0,
-                    //     top: 44.0,
-                    //     bottom: 35.0,
-                    //   ),
-                    //   child: Row(
-                    //     children: [
-                    //       SvgPicture.asset(logoAsset, height: logoHeight),
-                    //       const Spacer(),
-                    //     ],
-                    //   ),
-                    // ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -141,8 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ],
                     ),
-                    
-                    // const SizedBox(height: 11),
+
                     const Text(
                       'Введите личные данные',
                       style: TextStyle(color: textSecondary, fontSize: 16),
@@ -293,12 +276,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// Приватный метод для построения текстового поля ввода.
-  /// [name] - имя поля для FormBuilder.
-  /// [label] - метка поля.
-  /// [hint] - подсказка в поле ввода.
-  /// [keyboard] - тип клавиатуры.
-  /// [validators] - список валидаторов для поля.
+  // ============================================================
+  // "Виджет текстового поля формы"
+  // ============================================================
   Widget _buildTextField(
     String name,
     String label,
@@ -342,11 +322,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// Приватный метод для построения поля ввода пароля.
-  /// [name] - имя поля для FormBuilder.
-  /// [label] - метка поля.
-  /// [hint] - подсказка в поле ввода.
-  /// [isFirst] - флаг, указывающий, является ли это первым полем пароля (для контроллера).
+  // ============================================================
+  // "Виджет поля пароля с показом/скрытием"
+  // ============================================================
   Widget _buildPasswordField(String name, String label, String hint, bool isFirst) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -409,10 +387,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  /// Приватный метод для построения чекбокса с текстом.
-  /// [value] - текущее значение чекбокса.
-  /// [text] - виджет текста, отображаемого рядом с чекбоксом.
-  /// [onChanged] - callback-функция при изменении состояния чекбокса.
+  // ============================================================
+  // "Виджет чекбокса с текстом"
+  // ============================================================
   Widget _buildCheckBox({
     required bool value,
     required Widget text,

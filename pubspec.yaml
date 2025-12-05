@@ -1,38 +1,16 @@
 name: lidle
 description: "LIDLE - современное кроссплатформенное мобильное приложение маркетплейса на базе Flutter для удобной покупки и продажи автомобилей, недвижимости и других товаров/услуг."
-# The following line prevents the package from being accidentally published to
-# pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+publish_to: 'none' # Удалить эту строку, если хотите опубликовать в pub.dev
 
-# The following defines the version and build number for your application.
-# A version number is three numbers separated by dots, like 1.2.43
-# followed by an optional build number separated by a +.
-# Both the version and the builder number may be overridden in flutter
-# build by specifying --build-name and --build-number, respectively.
-# In Android, build-name is used as versionName while build-number used as versionCode.
-# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
-# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
-# Read more about iOS versioning at
-# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
-# In Windows, build-name is used as the major, minor, and patch parts
-# of the product and file versions while build-number is used as the build suffix.
 version: 1.0.0+1
 
 environment:
   sdk: ^3.9.2
 
-# Dependencies specify other packages that your package needs in order to work.
-# To automatically upgrade your package dependencies to the latest versions
-# consider running `flutter pub upgrade --major-versions`. Alternatively,
-# dependencies can be manually updated by changing the version numbers below to
-# the latest version available on pub.dev. To see which dependencies have newer
-# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
   flutter_svg: ^2.0.10+1
@@ -40,39 +18,26 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.3
-  http: ^1.2.1 # Added http package for API calls
-  flutter_bloc: ^8.1.6 # Added Bloc for state management
-  flutter_form_builder: ^10.2.0 # Added for advanced form validation
-  form_builder_validators: ^11.0.0 # Added for form validation helpers
+  http: ^1.2.1 # Добавлен пакет http для API вызовов
+  flutter_bloc: ^8.1.6 # Добавлен Bloc для управления состоянием
+  flutter_form_builder: ^10.2.0 # Добавлен для расширенной валидации форм
+  form_builder_validators: ^11.0.0 # Добавлен для помощников валидации форм
   mockito: ^5.5.0
   bloc_test: ^9.1.7
-  url_launcher: ^6.3.0 # Added for making phone calls
+  url_launcher: ^6.3.0 # Добавлен для совершения телефонных звонков
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
   flutter_lints: ^5.0.0
   flutter_native_splash: ^2.4.7
   flutter_launcher_icons: ^0.14.4
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
 flutter:
 
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
     - assets/home_page/logo.svg
@@ -90,20 +55,9 @@ flutter:
     - assets/map/map.png
     - assets/property_details_screen/
 
-   
-    
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
 
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
 
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
   fonts:
     - family: BebasNeue
       fonts:
@@ -111,38 +65,36 @@ flutter:
     - family: Roboto
       fonts:
         - asset: assets/fonts/Roboto-Regular.ttf
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
 
-# Flutter native splash screen configuration
+
+# Конфигурация нативного экрана загрузки Flutter
 flutter_native_splash:
-  # General color for all platforms (except Android 12+)
+  # Общий цвет для всех платформ (кроме Android 12+)
   color: "#232E3C"
   color_dark: "#232E3C"
 
-  # General image for all platforms (except Android 12+)
+  # Общее изображение для всех платформ (кроме Android 12+)
   image: assets/home_page/logo.png
   image_dark: assets/home_page/logo.png
 
-  # Image alignment
+  # Выравнивание изображения
   android_gravity: fill_horizontal|center_vertical
   ios_content_mode: scaleAspectFit
   web_image_mode: center
 
-  # Fullscreen mode
+  # Полноэкранный режим
   fullscreen: true
 
-  # Android 12+ configuration
+  # Конфигурация для Android 12+
   android_12:
-    # Background color
+    # Цвет фона
     color: "#232E3C"
     color_dark: "#232E3C"
 
-    # Center logo - for Android 12+ the image should be 1152x1152 px for full circle display
+    # Центрированный логотип - для Android 12+ изображение должно быть 1152x1152 px для полного кругового отображения
     image: assets/home_page/logo.png
     image_dark: assets/home_page/logo.png
 
-    # Center-logo background color (commented out for full image display)
+    # Цвет фона центрированного логотипа (закомментировано для полного отображения изображения)
     # icon_background_color: "#232E3C"
     # icon_background_color_dark: "#232E3C"

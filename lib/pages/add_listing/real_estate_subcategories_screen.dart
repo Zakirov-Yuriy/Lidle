@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'real_estate_apartments_screen.dart';
 
+// ============================================================
+// "Виджет: Экран подкатегорий недвижимости"
+// ============================================================
 class RealEstateSubcategoriesScreen extends StatelessWidget {
   const RealEstateSubcategoriesScreen({super.key});
 
@@ -56,7 +59,7 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
                       const Spacer(),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context); // Закрыть экран при отмене
+                          Navigator.pop(context); 
                         },
                         child: const Text(
                           'Отмена',
@@ -111,7 +114,6 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
                                 ),
                               );
                             }
-                            // Навигация или логика выбора подкатегории для других элементов
                           },
                         ),
                         if (index < subcategories.length - 1)
