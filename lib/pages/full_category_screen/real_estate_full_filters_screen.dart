@@ -202,6 +202,7 @@ class _RealEstateFullFiltersScreenState
                     MaterialPageRoute(
                       builder: (context) => RealEstateSubfiltersScreen(
                         selectedCategory: widget.selectedCategory,
+                        selectedDealType: dealType,
                       ),
                     ),
                   );
@@ -636,11 +637,14 @@ class _RealEstateFullFiltersScreenState
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(Icons.close, color: Colors.white, size: 18),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(Icons.close, color: Colors.white, size: 18),
+        ),
         const SizedBox(width: 13),
         const Text(
           "Фильтры",
-          style: TextStyle(fontSize: 18, color: Colors.white),
+          style: TextStyle(fontSize: 18, color: Color.fromARGB(255, 255, 255, 255)),
         ),
         const Spacer(),
         GestureDetector(

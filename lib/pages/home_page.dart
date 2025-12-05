@@ -21,6 +21,7 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_state.dart';
 import '../pages/filters_screen.dart';
 import '../pages/full_category_screen/full_category_screen.dart';
+import '../pages/full_category_screen/real_estate_listings_screen.dart';
 import '../pages/profile_menu_screen.dart';
 import '../pages/sign_in_screen.dart';
 
@@ -264,7 +265,21 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: categories.length,
               itemBuilder: (context, index) {
-                return CategoryCard(category: categories[index]);
+                final category = categories[index];
+                return CategoryCard(
+                  category: category,
+                  onTap: () {
+                    if (category.title == 'Недвижи-\nмость') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RealEstateListingsScreen(),
+                        ),
+                      );
+                    }
+                    // Для других категорий можно добавить логику позже
+                  },
+                );
               },
             ),
           ),

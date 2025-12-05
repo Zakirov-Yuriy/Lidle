@@ -217,6 +217,7 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
                       MaterialPageRoute(
                         builder: (context) => RealEstateSubfiltersScreen(
                           selectedCategory: widget.selectedCategory,
+                          selectedDealTypeFromRentScreen: i == 0 ? "joint" : "sell",
                         ),
                       ),
                     );
@@ -232,7 +233,7 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
               _buildTitle("Вид аренды"),
               const SizedBox(height: 4),
               _buildThreeButtons(
-                labels: const ["По часам", "Посуточно", "Помесячно"],
+                labels: const ["Совместная", "По часово", "По суточно"],
                 selectedIndex: rentType == "hourly"
                     ? 0
                     : rentType == "daily"
@@ -763,11 +764,14 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(Icons.close, color: Colors.white, size: 18),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(Icons.close, color: Colors.white, size: 18),
+        ),
         const SizedBox(width: 13),
         const Text(
           "Фильтры",
-          style: TextStyle(fontSize: 18, color: Colors.white),
+          style: TextStyle(fontSize: 18, color: Color.fromARGB(255, 255, 255, 255)),
         ),
         const Spacer(),
         GestureDetector(

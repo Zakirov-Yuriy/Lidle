@@ -2,10 +2,6 @@
 
 LIDLE - современное кроссплатформенное мобильное приложение маркетплейса на базе Flutter, предназначенное для удобной покупки и продажи автомобилей, недвижимости и других товаров/услуг. Приложение предоставляет интуитивный интерфейс для просмотра объявлений, управления личным профилем, публикации объявлений и обработки всех аспектов аутентификации пользователей.
 
-# 📱 Скриншоты
-
-*Добавьте скриншоты приложения здесь для визуального представления функциональности.*
-
 
 # Аутентификация и безопасность
 - Регистрация пользователей с email верификацией
@@ -20,10 +16,11 @@ LIDLE - современное кроссплатформенное мобиль
 - Управление собственными объявлениями
 
 # Категории и навигация
-- Широкий спектр категорий товаров и услуг
+- Широкий спектр категорий товаров и услуг (Недвижимость, Авто и мото, Работа, Подработка)
 - Подкатегории для детальной фильтрации
 - Интуитивная навигация между разделами
 - Быстрый доступ к популярным категориям
+- Специальная навигация для категории "Недвижимость" на экран RealEstateListingsScreen
 
 # Профиль пользователя
 - Личная панель управления
@@ -142,7 +139,10 @@ lib/pages/
 │   ├── home_page.dart                      # Главная страница с объявлениями
 │   ├── category_selection_screen.dart      # Выбор категории товаров
 │   ├── real_estate_subcategories_screen.dart # Подкатегории недвижимости
-│   └── real_estate_apartments_screen.dart  # Список квартир
+│   ├── real_estate_apartments_screen.dart  # Список квартир
+│   └── full_category_screen/
+│       ├── full_category_screen.dart       # Полный экран категорий
+│       └── real_estate_listings_screen.dart # Экран объявлений недвижимости
 ├──  Создание объявлений
 │   ├── add_listing_screen.dart             # Общий экран добавления
 │   ├── add_real_estate_apt_screen.dart     # Добавление квартиры (продажа)
@@ -154,7 +154,8 @@ lib/pages/
     ├── profile_dashboard.dart              # Панель управления профилем
     ├── profile_menu_screen.dart            # Меню настроек
     ├── publication_success_screen.dart     # Успешная публикация
-    └── publication_tariff_screen.dart      # Выбор тарифа публикации
+    ├── publication_tariff_screen.dart      # Выбор тарифа публикации
+    └── my_purchases_screen.dart            # Мои покупки
 ```
 
 #  Сервисы и утилиты
@@ -177,7 +178,7 @@ lib/widgets/
 │   ├── bottom_navigation.dart     # Нижняя панель навигации
 │   └── header.dart               # Заголовок приложения
 ├──  Карточки и списки
-│   ├── category_card.dart        # Карточка категории
+│   ├── category_card.dart        # Карточка категории с поддержкой onTap для навигации
 │   ├── listing_card.dart         # Карточка объявления
 │   └── search_bar.dart           # Панель поиска
 ├──  Формы и элементы управления
@@ -297,7 +298,7 @@ test/
 
 | Framework | Language | State Management | Storage & Caching | UI & Styling | HTTP Communication | Testing | Linting | IDE |
 | ---------- | -------- | ----------------- | ----------------- | ------------ | ------------------ | ------- | ------- | --- |
-| ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white) | ![Dart](https://img.shields.io/badge/Dart-00B4AB?logo=dart&logoColor=white) | ![BLoC](https://img.shields.io/badge/BLoC-02569B?logo=flutter&logoColor=white) | ![Hive](https://img.shields.io/badge/Hive-02569B?logo=flutter&logoColor=white) | ![Material Design](https://img.shields.io/badge/Material%20Design-02569B?logo=flutter&logoColor=white) | ![HTTP](https://img.shields.io/badge/HTTP-02569B?logo=dart&logoColor=white) | ![Flutter Test](https://img.shields.io/badge/Flutter%20Test-02569B?logo=flutter&logoColor=white) | ![analysis_options](https://img.shields.io/badge/analysis_options-02569B?logo=dart&logoColor=white) | ![VS Code](https://img.shields.io/badge/VS%20Code-007ACC?logo=visualstudiocode&logoColor=white) |
+| ![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white) | ![Dart](https://img.shields.io/badge/Dart-00B4AB?logo=dart&logoColor=white) | ![BLoC](https://img.shields.io/badge/BLoC-02569B?logo=flutter&logoColor=white) | ![Hive](https://img.shields.io/badge/Hive-02569B?logo=flutter&logoColor=white) | ![Material Design](https://img.shields.io/badge/Material%20Design-02569B?logo=flutter&logoColor=white) | ![HTTP](https://img.shields.io/badge/HTTP-02569B?logo=dart&logoColor=white) | ![Flutter Test](https://img.shields.io/badge/Flutter%20Test-02569B?logo=flutter&logoColor=white) | ![analysis_options](https://img.shields.io/badge/analysis_options-02569B?logo=dart&logoColor=white) | !
 
 # Основные зависимости
 
@@ -397,6 +398,3 @@ test/
 - **Сервисы**: `ApiService`, `AuthService` - конфигурация, сигнатуры методов
 - **UI компоненты**: `CategoryCard`, `ListingCard` - рендеринг, стилизация, адаптивность
 - **Приложение**: Базовый smoke тест для проверки запуска
-
-
-

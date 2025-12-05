@@ -12,8 +12,15 @@ import 'package:lidle/pages/full_category_screen/real_estate_rent_subfilters_scr
 
 class RealEstateSubfiltersScreen extends StatefulWidget {
   final String selectedCategory;
+  final String? selectedDealType;
+  final String? selectedDealTypeFromRentScreen;
 
-  const RealEstateSubfiltersScreen({super.key, required this.selectedCategory});
+  const RealEstateSubfiltersScreen({
+    super.key,
+    required this.selectedCategory,
+    this.selectedDealType,
+    this.selectedDealTypeFromRentScreen,
+  });
 
   @override
   State<RealEstateSubfiltersScreen> createState() =>
@@ -24,10 +31,17 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
   // ======================= Остальные поля =======================
 
   // сделка
-  String dealType = "sell"; // sell / rent / joint
+  late String dealType; // sell / rent / joint
 
   // вид аренды
-  String rentType = "daily"; // hourly / daily / monthly
+  late String rentType; // hourly / daily / monthly / joint
+
+  @override
+  void initState() {
+    super.initState();
+    dealType = widget.selectedDealTypeFromRentScreen ?? widget.selectedDealType ?? "sell";
+    rentType = dealType == "joint" ? "joint" : "daily";
+  }
 
   // время аренды
   String selectedDate = "";
@@ -231,19 +245,21 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
               _buildTitle("Вид аренды"),
               const SizedBox(height: 4),
               _buildThreeButtons(
-                labels: const ["По часам", "Посуточно", "Помесячно"],
-                selectedIndex: rentType == "hourly"
+                labels: const ["Совместная", "По часово", "По суточно"],
+                selectedIndex: rentType == "joint"
                     ? 0
-                    : rentType == "daily"
+                    : rentType == "hourly"
                     ? 1
-                    : 2,
+                    : rentType == "daily"
+                    ? 2
+                    : 0,
                 onSelect: (i) {
                   setState(() {
                     rentType = i == 0
-                        ? "hourly"
+                        ? "joint"
                         : i == 1
-                        ? "daily"
-                        : "monthly";
+                        ? "hourly"
+                        : "daily";
                   });
                 },
               ),
@@ -762,11 +778,14 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        const Icon(Icons.close, color: Colors.white, size: 18),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(Icons.close, color: Colors.white, size: 18),
+        ),
         const SizedBox(width: 13),
         const Text(
           "Фильтры",
-          style: TextStyle(fontSize: 18, color: Colors.white),
+          style: TextStyle(fontSize: 18, color: Color.fromARGB(255, 255, 255, 255)),
         ),
         const Spacer(),
         GestureDetector(
