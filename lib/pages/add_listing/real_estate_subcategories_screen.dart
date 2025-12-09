@@ -105,15 +105,13 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
                             color: Colors.white70,
                           ),
                           onTap: () {
-                            if (subcategories[index] == 'Квартиры') {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const RealEstateApartmentsScreen(),
-                                ),
-                              );
-                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    RealEstateApartmentsScreen(subcategory: subcategories[index]),
+                              ),
+                            );
                           },
                         ),
                         if (index < subcategories.length - 1)
