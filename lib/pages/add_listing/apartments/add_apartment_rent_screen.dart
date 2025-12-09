@@ -3,35 +3,34 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
-import 'real_estate_subcategories_screen.dart';
+import '../real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
-import 'publication_tariff_screen.dart'; 
+import '../publication_tariff_screen.dart'; 
 
-import '../../constants.dart';
+import '../../../constants.dart';
 
 // ============================================================
-// "Виджет: Экран добавления квартиры в недвижимость"
+// "Виджет: Экран добавления аренды квартиры в недвижимость"
 // ============================================================
-class AddRealEstateAptScreen extends StatefulWidget {
+class AddApartmentRentScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
-  const AddRealEstateAptScreen({super.key});
+  const AddApartmentRentScreen({super.key});
 
   @override
-  State<AddRealEstateAptScreen> createState() => _AddRealEstateAptScreenState();
+  State<AddApartmentRentScreen> createState() =>
+      _AddApartmentRentScreenState();
 }
 
 // ============================================================
-// "Класс состояния: Управление состоянием экрана добавления квартиры"
+// "Класс состояния: Управление состоянием экрана аренды квартиры"
 // ============================================================
-class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
-// ============================================================
-// "Переменные состояния: Хранение выбранных опций для формы квартиры"
-// ============================================================
+class _AddApartmentRentScreenState
+    extends State<AddApartmentRentScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
@@ -48,9 +47,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   Set<String> _selectedAppliancesTypes = {}; 
   Set<String> _selectedMultimediaTypes = {}; 
   Set<String> _selectedComfortTypes = {}; 
-  Set<String> _selectedInfrastructureTypes =
-      {}; 
-  Set<String> _selectedLandscapeTypes = {}; 
+
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -150,20 +147,11 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
   bool? _selectedFurnished =
       true; 
 
- 
 
   String _selectedAction = 'publish'; 
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
-  }
-
-  void _toggleMarketType(bool isSecondary) {
-    setState(() => isSecondarySelected = isSecondary);
-  }
-
-  void _toggleMortgage(bool yes) {
-    setState(() => isMortgageYes = yes);
   }
 
   @override
@@ -210,7 +198,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground, 
+                    color: _images.isEmpty ? secondaryBackground : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -243,14 +231,14 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3, 
+                                crossAxisCount: 3,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
-                                childAspectRatio: 115 / 89, 
+                                childAspectRatio: 115 / 89,
                               ),
-                          shrinkWrap: true, 
-                          physics: const NeverScrollableScrollPhysics(), 
-                          itemCount: _images.length + 1, 
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _images.length + 1,
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
@@ -259,7 +247,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                                   width: 115,
                                   height: 89,
                                   decoration: BoxDecoration(
-                                    color: formBackground, 
+                                    color: formBackground,
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Center(
@@ -274,11 +262,11 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                             }
                             return Container(
                               width: 115,
-                              height: 89, 
+                              height: 89,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              clipBehavior: Clip.antiAlias, 
+                              clipBehavior: Clip.antiAlias,
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -328,9 +316,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
 
               _buildDropdown(
                 label: 'Категория',
-                hint: 'Продажа квартир',
-                subtitle: 'Недвижимость / Квартиры',
-                showChangeText: true,
+                hint: 'Аренда квартир',
+                subtitle: 'Недвижимость',
                 onTap: () {
                   Navigator.push(
                     context,
@@ -340,6 +327,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     ),
                   );
                 },
+                showChangeText: true,
               ),
               const SizedBox(height: 13),
 
@@ -448,7 +436,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     child: GestureDetector(
                       onTap: () => setState(() => isExchange = !isExchange),
                       child: const Text(
-                        'Возможность обмена',
+                        'Готов сотрудничать с риэлтором',
                         style: TextStyle(color: textPrimary, fontSize: 14),
                       ),
                     ),
@@ -466,7 +454,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     child: GestureDetector(
                       onTap: () => setState(() => isPledge = !isPledge),
                       child: const Text(
-                        'Готов принять в залог',
+                        'Для совместной аренды',
                         style: TextStyle(color: textPrimary, fontSize: 14),
                       ),
                     ),
@@ -484,7 +472,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     child: GestureDetector(
                       onTap: () => setState(() => isUrgent = !isUrgent),
                       child: const Text(
-                        'Срочно',
+                        'С домашними питомцами',
                         style: TextStyle(color: textPrimary, fontSize: 14),
                       ),
                     ),
@@ -495,87 +483,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isInstallment = !isInstallment),
-                      child: const Text(
-                        'Рассрочка',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isInstallment,
-                    onChanged: (v) => setState(() => isInstallment = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isRemoteDeal = !isRemoteDeal),
-                      child: const Text(
-                        'Удалённая сделка',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isRemoteDeal,
-                    onChanged: (v) => setState(() => isRemoteDeal = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isClientPrice = !isClientPrice),
-                      child: const Text(
-                        'Клиент может предложить свою цену',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isClientPrice,
-                    onChanged: (v) => setState(() => isClientPrice = v),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 15),
-
-              const Text(
-                'Ипотека',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Да',
-                    isMortgageYes,
-                    () => _toggleMortgage(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Нет',
-                    !isMortgageYes,
-                    () => _toggleMortgage(false),
-                  ),
-                ],
-              ),
 
               const SizedBox(height: 13),
               const Text(
-                'Рассрочка',
+                'Вид обьекта',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
@@ -596,7 +507,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       ),
                       onPressed: () => setState(() => isInstallment = true),
                       child: Text(
-                        'Да',
+                        'Вторичка',
                         style: TextStyle(
                           color: isInstallment ? Colors.white : textPrimary,
                           fontSize: 14,
@@ -620,7 +531,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       ),
                       onPressed: () => setState(() => isInstallment = false),
                       child: Text(
-                        'Нет',
+                        'Новострой',
                         style: TextStyle(
                           color: !isInstallment ? Colors.white : textPrimary,
                           fontSize: 14,
@@ -692,6 +603,10 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 label: 'Этажность*',
                 hint: 'Общее количество этажей',
               ),
+              const SizedBox(height: 9),
+              _buildTextField(label: 'Площадь кухни(м2)*', hint: 'Цифрами'),
+              const SizedBox(height: 9),
+              _buildTextField(label: 'Общая площадь(м2)*', hint: 'Цифрами'),
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -822,6 +737,36 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                     builder: (BuildContext context) {
                       return SelectionDialog(
                         title: 'Количество комнат',
+                        options: const ['1', '2', '3', '4', '5', '6+'],
+                        selectedOptions: _selectedRoomCounts,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedRoomCounts = selected;
+                          });
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Количество спальных мест*',
+                hint: _selectedRoomCounts.isEmpty
+                    ? 'Цифрами'
+                    : _selectedRoomCounts.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Количество спальных мест',
                         options: const ['1', '2', '3', '4', '5', '6+'],
                         selectedOptions: _selectedRoomCounts,
                         onSelectionChanged: (Set<String> selected) {
@@ -1187,48 +1132,11 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                 },
               ),
               const SizedBox(height: 9),
-
-              const Text(
-                'Вид объекта',
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Вторичка',
-                    isSecondarySelected,
-                    () => _toggleMarketType(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Новостройка',
-                    !isSecondarySelected,
-                    () => _toggleMarketType(false),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              _buildTextField(
-                label: 'Год постройки',
-                hint: 'Укажите год',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(
-                label: 'Площадь кухни(м²)',
-                hint: 'Цифрами',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
-
               _buildDropdown(
                 label: 'Инфраструктура (до 500 метров)',
-                hint: _selectedInfrastructureTypes.isEmpty
+                hint: _selectedCommunicationTypes.isEmpty
                     ? 'Выбрать'
-                    : _selectedInfrastructureTypes.join(', '),
+                    : _selectedCommunicationTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
@@ -1240,14 +1148,13 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                       return SelectionDialog(
                         title: 'Инфраструктура (до 500 метров)',
                         options: const [
-                          'Центр города',
+                          'Центор города',
                           'Достопримечательности',
                           'Исторические места',
                           'Музеи выставки',
                           'Парк, зеленая зона',
                           'Детская площадка',
                           'Отделения банка, банкомат',
-                          'Аптека',
                           'Супермаркет, магазин',
                           'Остановка транспорта',
                           'Стоянка',
@@ -1256,25 +1163,25 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           'Автовокзал',
                           'ЖД станция',
                         ],
-                        selectedOptions: _selectedInfrastructureTypes,
+                        selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (Set<String> selected) {
                           setState(() {
-                            _selectedInfrastructureTypes = selected;
+                            _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection: true,
+                        allowMultipleSelection:
+                            true, 
                       );
                     },
                   );
                 },
               ),
               const SizedBox(height: 9),
-
               _buildDropdown(
                 label: 'Ландшафт (до 1 км)',
-                hint: _selectedLandscapeTypes.isEmpty
+                hint: _selectedCommunicationTypes.isEmpty
                     ? 'Выбрать'
-                    : _selectedLandscapeTypes.join(', '),
+                    : _selectedCommunicationTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
@@ -1302,20 +1209,21 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           'Пляж',
                           'Город',
                         ],
-                        selectedOptions: _selectedLandscapeTypes,
+                        selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (Set<String> selected) {
                           setState(() {
-                            _selectedLandscapeTypes = selected;
+                            _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection: true,
+                        allowMultipleSelection:
+                            true, 
                       );
                     },
                   );
                 },
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 21),
 
               const Text(
                 'Частное лицо / Бизнес*',
@@ -1369,6 +1277,8 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 18),
+
               const SizedBox(height: 18),
 
               _buildDropdown(
@@ -1615,7 +1525,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
-    bool showChangeText = false,
+    bool showChangeText = false, 
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1671,7 +1581,7 @@ class _AddRealEstateAptScreenState extends State<AddRealEstateAptScreen> {
                           ),
                         ),
                 ),
-                if (showChangeText)
+                if (showChangeText) 
                   Text(
                     'Изменить',
                     style: TextStyle(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'add_real_estate_apt_screen.dart';
-import 'add_real_estate_rent_apt_screen.dart';
+import 'add_apartment_sell_screen.dart';
+import 'add_apartment_rent_screen.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
@@ -100,12 +100,12 @@ class RealEstateApartmentsScreen extends StatelessWidget {
             if (title == "Продажа квартир") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddRealEstateAptScreen()),
+                MaterialPageRoute(builder: (context) => const AddApartmentSellScreen()),
               );
             } else if (title == "Долгосрочная аренда квартир") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddRealEstateRentAptScreen()),
+                MaterialPageRoute(builder: (context) => const AddApartmentRentScreen()),
               );
             }
           },
