@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
@@ -8,6 +9,7 @@ import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+
 
 // ============================================================
 // "Мини-экран деталей недвижимости"
@@ -110,75 +112,86 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
-              child: const Header(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 25,
-                
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: activeIconColor,
-                      size: 16,
-                    ),
-                  ),
-                  const Text(
-                    'Назад', 
-                    style: TextStyle(
-                      color: activeIconColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined, color: textPrimary),
-                    onPressed: () => _showShareBottomSheet(context),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
-                children: [
-                  _buildImageCarousel(),
-                  const SizedBox(height: 16),
-                  _buildMainInfoCard(),
-                  const SizedBox(height: 16),
-                  const _OfferPriceButton(),
-                  const SizedBox(height: 19),
-                  _buildLocationCard(),
-                  const SizedBox(height: 10),
-                  _buildAboutApartmentCard(),
-                  const SizedBox(height: 10),
-                  _buildDescriptionCard(),
-                  const SizedBox(height: 24),
-                  _buildSellerCard(),
-                  const SizedBox(height: 19),
-                  _buildComplaintButton(),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20.0),
+                  child: const Header(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
+                        ),
+                      ),
+                      const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined, color: textPrimary),
+                        onPressed: () {
+                          final textToShare = '''
+${widget.listing.title}
+Цена: ${widget.listing.price}
+Адрес: ${widget.listing.location}
+Дата: ${widget.listing.date}
+                          ''';
 
-                  const SizedBox(height: 29),
-                  
-                  
-                  _buildBottomActionButtons(),
-                  const SizedBox(height: 36),
-                ],
-              ),
+                          Share.share(textToShare);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
+                    children: [
+                      _buildImageCarousel(),
+                      const SizedBox(height: 16),
+                      _buildMainInfoCard(),
+                      const SizedBox(height: 16),
+                      const _OfferPriceButton(),
+                      const SizedBox(height: 19),
+                      _buildLocationCard(),
+                      const SizedBox(height: 10),
+                      _buildAboutApartmentCard(),
+                      const SizedBox(height: 10),
+                      _buildDescriptionCard(),
+                      const SizedBox(height: 24),
+                      _buildSellerCard(),
+                      const SizedBox(height: 19),
+                      _buildComplaintButton(),
+                      const SizedBox(height: 55),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomActionButtons(),
+          ),
+        ],
       ),
     );
   }
@@ -480,52 +493,56 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   Widget _buildBottomActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return const PhoneDialog(
-                    phoneNumbers: ["+7 949 456 56 67", "+7 949 433 33 98"],
-                  );
-                },
-              );
-            },
-            child: Container(
-              height: 43,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.red),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Text(
-                  "Позвонить",
-                  style: TextStyle(color: Colors.red, fontSize: 16),
+    return Container(
+      padding: const EdgeInsets.only(left: 25, right: 25, bottom: 50),
+      color: Colors.transparent,
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return const PhoneDialog(
+                      phoneNumbers: ["+7 949 456 56 67", "+7 949 433 33 98"],
+                    );
+                  },
+                );
+              },
+              child: Container(
+                height: 43,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    "Позвонить",
+                    style: TextStyle(color: Colors.red, fontSize: 16),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            height: 43,
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                "Написать",
-                style: TextStyle(color: Colors.white, fontSize: 16),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 43,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  "Написать",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -542,103 +559,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     );
   }
 
-  void _showShareBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext bc) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: secondaryBackground, 
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
-                child: Text(
-                  "Поделиться",
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  children: <Widget>[
-                    _buildShareItem("Быстрая отправка", Icons.send, "assets/publication_success/email_10401109.png"),
-                    _buildShareItem("Chats", Icons.chat, "assets/publication_success/icons8-чат-100.png"),
-                    _buildShareItem("Telegram", Icons.send, "assets/publication_success/icons8-telegram-100.png"),
-                    _buildShareItem("Открыть в Браузере", Icons.open_in_browser, "assets/publication_success/free-icon-yandex-6124986.png"),
-                    _buildShareItem("Читалка", Icons.menu_book, null), 
-                    _buildShareItem("WhatsApp", Icons.message, "assets/publication_success/icons8-whatsapp-100.png"),
-                    _buildShareItem("Сообщения", Icons.message, "assets/publication_success/icons8-чат-100.png"),
-                    _buildShareItem("Gmail", Icons.mail, "assets/publication_success/icons8-gmail-100.png"),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[800], 
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  onPressed: () => Navigator.pop(bc),
-                  child: const Text(
-                    "Отмена",
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 50),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
-  Widget _buildShareItem(String title, IconData defaultIcon, String? assetPath) {
-    return GestureDetector(
-      onTap: () {
-        
-        Navigator.pop(context); 
-        
-        print("Share $title tapped");
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          if (assetPath != null) 
-            Image.asset(assetPath, width: 50, height: 50) 
-          else 
-            Icon(defaultIcon, size: 50, color: Colors.white), 
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: textPrimary, fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 

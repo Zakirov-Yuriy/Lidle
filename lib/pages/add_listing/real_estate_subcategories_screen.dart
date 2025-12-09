@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/pages/add_listing/real_estate_apartments_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'real_estate_apartments_screen.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости"

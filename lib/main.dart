@@ -48,8 +48,10 @@ void main() async {
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
+      statusBarColor: Color(0xFF232E3C), 
       statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFF232E3C), 
+      systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
   runApp(const LidleApp());
@@ -82,7 +84,8 @@ class LidleApp extends StatelessWidget {
         theme: ThemeData(
           scaffoldBackgroundColor: primaryBackground,
           fontFamily: 'Roboto',
-        ), 
+          brightness: Brightness.dark,
+        ),
         home: const HomePage(),
         // home: const RealEstateListingsScreen(),
        

@@ -4,6 +4,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости"
@@ -25,7 +26,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     "assets/home_page/image.png",
     "assets/home_page/apartment1.png",
     "assets/home_page/apartment1.png",
-    
   ];
 
   final List<Listing> _similarListings = [
@@ -90,81 +90,82 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
-              child: const Header(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 25,
-                
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: activeIconColor,
-                      size: 16,
-                    ),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20.0),
+                  child: const Header(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
+                        ),
+                      ),
+                      const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined, color: textPrimary),
+                        onPressed: () {},
+                      ),
+                    ],
                   ),
-                  const Text(
-                    'Назад', 
-                    style: TextStyle(
-                      color: activeIconColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined, color: textPrimary),
-                    onPressed: () {
-                      
-                    },
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
-                children: [
-                  _buildImageCarousel(),
-                  const SizedBox(height: 16),
-                  _buildMainInfoCard(),
-                  const SizedBox(height: 16),
-                  const _OfferPriceButton(),
-                  const SizedBox(height: 19),
-                  _buildLocationCard(),
-                  const SizedBox(height: 10),
-                  _buildAboutApartmentCard(),
-                  const SizedBox(height: 10),
-                  _buildDescriptionCard(),
-                  const SizedBox(height: 24),
-                  _buildSellerCard(),
-                  const SizedBox(height: 19),
-                  _buildComplaintButton(),
-                  const SizedBox(height: 29),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
+                    children: [
+                      _buildImageCarousel(),
+                      const SizedBox(height: 16),
+                      _buildMainInfoCard(),
+                      const SizedBox(height: 16),
+                      const _OfferPriceButton(),
+                      const SizedBox(height: 19),
+                      _buildLocationCard(),
+                      const SizedBox(height: 10),
+                      _buildAboutApartmentCard(),
+                      const SizedBox(height: 10),
+                      _buildDescriptionCard(),
+                      const SizedBox(height: 24),
+                      _buildSellerCard(),
+                      const SizedBox(height: 19),
+                      _buildComplaintButton(),
+                      const SizedBox(height: 29),
                   _buildSimilarOffersSection(),
-                  const SizedBox(height: 36),
-                  _buildBottomActionButtons(),
-                  const SizedBox(height: 36),
-                ],
-              ),
+                  const SizedBox(height: 55),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomActionButtons(),
+          ),
+        ],
       ),
     );
   }
-
-  
 
   Widget _buildImageCarousel() {
     return Column(
@@ -182,9 +183,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
         ),
-        const SizedBox(
-          height: 10,
-        ), 
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
@@ -199,18 +198,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Widget _buildPageIndicator(bool isActive) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.symmetric(
-        horizontal: 5.0,
-      ), 
-      height: 11.0, 
-      width: 11.0, 
+      margin: const EdgeInsets.symmetric(horizontal: 5.0),
+      height: 11.0,
+      width: 11.0,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isActive ? Colors.blue : primaryBackground.withOpacity(0.5),
-        border: Border.all(
-          color: Colors.grey, 
-          width: 1.0, 
-        ),
+        border: Border.all(color: Colors.grey, width: 1.0),
       ),
     );
   }
@@ -220,7 +214,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: const [
-          
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -263,7 +256,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           ),
           SizedBox(height: 4),
           Text("Без скидки", style: TextStyle(color: textMuted, fontSize: 12)),
-          
         ],
       ),
     );
@@ -463,15 +455,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ),
         const SizedBox(height: 12),
         GridView.builder(
-          shrinkWrap: true, 
-          physics:
-              const NeverScrollableScrollPhysics(), 
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
             crossAxisSpacing: 9,
-            mainAxisSpacing: 9, 
-            mainAxisExtent:
-                263, 
+            mainAxisSpacing: 9,
+            mainAxisExtent: 263,
           ),
           itemCount: _similarListings.length,
           itemBuilder: (context, i) {
@@ -483,44 +473,58 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Widget _buildBottomActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 43,
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.red),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                "Позвонить",
-                style: TextStyle(color: Colors.red, fontSize: 16),
+    return Container(
+      padding: const EdgeInsets.only(left: 25, right: 25, bottom: 50),
+      color: Colors.transparent, // теперь будет работать
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return const PhoneDialog(
+                      phoneNumbers: ["+7 949 456 56 67", "+7 949 433 33 98"],
+                    );
+                  },
+                );
+              },
+              child: Container(
+                height: 43,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    "Позвонить",
+                    style: TextStyle(color: Colors.red, fontSize: 16),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            height: 43,
-            decoration: BoxDecoration(
-              color: Colors.blue, 
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                "Написать",
-                style: TextStyle(color: Colors.white, fontSize: 16),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 43,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  "Написать",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
-
-  
 
   static Widget _card({required Widget child}) {
     return Container(
@@ -533,7 +537,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 }
-
 
 class _InfoRow extends StatelessWidget {
   final String title;
@@ -626,7 +629,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   @override
   void initState() {
     super.initState();
-    
+
     _isFavorited = HiveService.isFavorite(widget.listing.id);
   }
 
@@ -669,7 +672,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           ? SvgPicture.asset(
                               'assets/profile_dashboard/heart-rounded.svg',
                               colorFilter: const ColorFilter.mode(
-                                Colors.red, 
+                                Colors.red,
                                 BlendMode.srcIn,
                               ),
                               width: 20,
@@ -677,16 +680,13 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                             )
                           : Image.asset(
                               'assets/BottomNavigation/heart-rounded.png',
-                              color:
-                                  Colors.white70, 
+                              color: Colors.white70,
                               colorBlendMode: BlendMode.srcIn,
                               width: 20,
                               height: 20,
                             ),
                     ),
-                    const SizedBox(
-                      width: 5,
-                    ), 
+                    const SizedBox(width: 5),
                   ],
                 ),
                 const SizedBox(height: 4),

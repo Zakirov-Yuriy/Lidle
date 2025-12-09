@@ -145,8 +145,8 @@ lib/pages/
 │       └── real_estate_listings_screen.dart # Экран объявлений недвижимости
 ├──  Создание объявлений
 │   ├── add_listing_screen.dart             # Общий экран добавления
-│   ├── add_real_estate_apt_screen.dart     # Добавление квартиры (продажа)
-│   └── add_real_estate_rent_apt_screen.dart # Добавление квартиры (аренда)
+│   ├── add_apartment_sell_screen.dart      # Добавление квартиры (продажа)
+│   └── add_apartment_rent_screen.dart      # Добавление квартиры (аренда)
 ├──  Поиск и фильтры
 │   ├── filters_screen.dart                 # Настройки фильтров
 │   └── favorites_screen.dart               # Избранные объявления

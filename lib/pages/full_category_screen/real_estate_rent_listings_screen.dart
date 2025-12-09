@@ -13,6 +13,7 @@ import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listin
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String messageIconAssetLocal =
     'assets/BottomNavigation/message-circle-01.png';
+const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateRentListingsScreen extends StatefulWidget {
   const RealEstateRentListingsScreen({super.key});
@@ -442,13 +443,14 @@ class _RealEstateRentListingsScreenState
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavItem(homeIconAsset, 0, _selectedIndex),
-              _buildNavItem(gridIconAsset, 1, _selectedIndex),
-              _buildCenterAdd(2, _selectedIndex),
-              _buildNavItem(messageIconAsset, 3, _selectedIndex),
-              _buildNavItem(userIconAsset, 4, _selectedIndex),
-            ],
+          children: [
+            _buildNavItem(homeIconAsset, 0, _selectedIndex),
+            _buildNavItem(gridIconAsset, 1, _selectedIndex),
+            _buildCenterAdd(2, _selectedIndex),
+            _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
+            _buildNavItem(messageIconAsset, 4, _selectedIndex),
+            _buildNavItem(userIconAsset, 5, _selectedIndex),
+          ],
           ),
         ),
       ),
