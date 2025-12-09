@@ -109,74 +109,82 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
-              child: const Header(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 25,
-                
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: activeIconColor,
-                      size: 16,
-                    ),
-                  ),
-                  const Text(
-                    'Назад', 
-                    style: TextStyle(
-                      color: activeIconColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.share_outlined, color: textPrimary),
-                    onPressed: () => _showShareBottomSheet(context),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
-                children: [
-                  _buildImageCarousel(),
-                  const SizedBox(height: 16),
-                  _buildMainInfoCard(),
-                  const SizedBox(height: 10),
-                  
-                  _buildLocationCard(),
-                  const SizedBox(height: 10),
-                  _buildAboutApartmentCard(),
-                  const SizedBox(height: 10),
-                  _buildDescriptionCard(),
-                  const SizedBox(height: 24),
-                  _buildSellerCard(),
-                  const SizedBox(height: 19),
-                  _buildComplaintButton(),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20.0),
+                  child: const Header(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 25,
 
-                  const SizedBox(height: 29),
-                  _buildSellerListingsSection(),
-                  const SizedBox(height: 21),
-                  _buildBottomActionButtons(),
-                  const SizedBox(height: 36),
-                ],
-              ),
+                  ),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
+                        ),
+                      ),
+                      const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.share_outlined, color: textPrimary),
+                        onPressed: () => _showShareBottomSheet(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
+                    children: [
+                      _buildImageCarousel(),
+                      const SizedBox(height: 16),
+                      _buildMainInfoCard(),
+                      const SizedBox(height: 10),
+
+                      _buildLocationCard(),
+                      const SizedBox(height: 10),
+                      _buildAboutApartmentCard(),
+                      const SizedBox(height: 10),
+                      _buildDescriptionCard(),
+                      const SizedBox(height: 24),
+                      _buildSellerCard(),
+                      const SizedBox(height: 19),
+                      _buildComplaintButton(),
+
+                      const SizedBox(height: 29),
+                      _buildSellerListingsSection(),
+                      const SizedBox(height: 55),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _buildBottomActionButtons(),
+          ),
+        ],
       ),
     );
   }
@@ -520,52 +528,56 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   Widget _buildBottomActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return const PhoneDialog(
-                    phoneNumbers: ["+7 949 456 56 67", "+7 949 433 33 98"],
-                  );
-                },
-              );
-            },
-            child: Container(
-              height: 43,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.red),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Text(
-                  "Позвонить",
-                  style: TextStyle(color: Colors.red, fontSize: 16),
+    return Container(
+      padding: const EdgeInsets.only(left: 25, right: 25, bottom: 50),
+      color: Colors.transparent,
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return const PhoneDialog(
+                      phoneNumbers: ["+7 949 456 56 67", "+7 949 433 33 98"],
+                    );
+                  },
+                );
+              },
+              child: Container(
+                height: 43,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.red),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    "Позвонить",
+                    style: TextStyle(color: Colors.red, fontSize: 16),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Container(
-            height: 43,
-            decoration: BoxDecoration(
-              color: Colors.blue,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Center(
-              child: Text(
-                "Написать",
-                style: TextStyle(color: Colors.white, fontSize: 16),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 43,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Center(
+                child: Text(
+                  "Написать",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

@@ -95,3 +95,6 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.temp
+
+# Project specific
+ВОПРОСЫ.md

@@ -148,7 +148,11 @@ class _FullRealEstateSubcategoriesScreenState
                   width: double.infinity,
                   height: 51,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pushNamed(context, MapScreen.routeName),
+                    onPressed: () {
+                      setState(() {
+                        _showAllActive = true;
+                      });
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _showAllActive
                           ? const Color(0xFF009EE2)
@@ -175,7 +179,12 @@ class _FullRealEstateSubcategoriesScreenState
                   width: double.infinity,
                   height: 51,
                   child: ElevatedButton(
-                    onPressed: () => setState(() => _showAllActive = false),
+                    onPressed: () {
+                      setState(() {
+                        _showAllActive = false;
+                      });
+                      Navigator.pushNamed(context, MapScreen.routeName);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: !_showAllActive
                           ? const Color(0xFF009EE2)

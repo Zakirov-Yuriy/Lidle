@@ -7,10 +7,9 @@ import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_filtered_details_screen.dart';
 
-
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
-const String messageIconAssetLocal =
-    'assets/BottomNavigation/message-circle-01.png';
+const String messageIconAssetLocal = 'assets/BottomNavigation/message-circle-01.png';
+const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 // ============================================================
 // "Экран отфильтрованных объявлений недвижимости"
@@ -22,27 +21,21 @@ class RealEstateFilteredScreen extends StatefulWidget {
   const RealEstateFilteredScreen({super.key, required this.selectedCategory});
 
   @override
-  State<RealEstateFilteredScreen> createState() =>
-      _RealEstateFilteredScreen();
+  State<RealEstateFilteredScreen> createState() => _RealEstateFilteredScreen();
 }
 
-class _RealEstateFilteredScreen
-    extends State<RealEstateFilteredScreen> {
-  
-  int _selectedIndex = 0; 
-  late List<Listing> _listings; 
-  Set<String> _selectedSortOptions = {}; 
+class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
+  int _selectedIndex = 0;
+  late List<Listing> _listings;
+  Set<String> _selectedSortOptions = {};
 
   @override
   void initState() {
     super.initState();
-    _listings =
-        _generateSampleListings(); 
-    
+    _listings = _generateSampleListings();
     _selectedSortOptions.add('Сначала новые');
   }
 
-  
   List<Listing> _generateSampleListings() {
     return [
       Listing(
@@ -102,125 +95,139 @@ class _RealEstateFilteredScreen
     ];
   }
 
-  
   double _parsePrice(String price) {
-    try {
-      
-      return double.parse(price.replaceAll(RegExp(r'[^0-9]'), ''));
-    } catch (e) {
-      return 0.0; 
-    }
+    return double.tryParse(price.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0.0;
   }
 
-  
   DateTime _parseDate(String date) {
+    final now = DateTime.now();
     try {
-      final now = DateTime.now();
-      if (date.contains('Сегодня')) {
-        return now;
-      } else if (date.contains('Вчера')) {
-        return now.subtract(const Duration(days: 1));
-      } else if (date.contains('дня назад')) {
+      if (date.contains('Сегодня')) return now;
+      if (date.contains('Вчера')) return now.subtract(const Duration(days: 1));
+      if (date.contains('дня назад')) {
         final days = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
         return now.subtract(Duration(days: days));
-      } else if (date.contains('Неделя назад')) {
-        return now.subtract(const Duration(days: 7));
-      } else if (date.contains('недели назад')) {
+      }
+      if (date.contains('Неделя назад')) return now.subtract(const Duration(days: 7));
+      if (date.contains('недели назад')) {
         final weeks = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
         return now.subtract(Duration(days: weeks * 7));
       }
-    } catch (e) {
-      
-    }
+    } catch (_) {}
     return DateTime(1970);
   }
 
   void _sortListings(Set<String> selectedOptions) {
-    
     SortOption? chosenSortOption;
-    if (selectedOptions.contains('Сначала новые')) {
-      chosenSortOption = SortOption.newest;
-    } else if (selectedOptions.contains('Сначала старые')) {
-      chosenSortOption = SortOption.oldest;
-    } else if (selectedOptions.contains('Сначала дорогие')) {
-      chosenSortOption = SortOption.mostExpensive;
-    } else if (selectedOptions.contains('Сначала дешевые')) {
-      chosenSortOption = SortOption.cheapest;
-    }
+
+    if (selectedOptions.contains('Сначала новые')) chosenSortOption = SortOption.newest;
+    if (selectedOptions.contains('Сначала старые')) chosenSortOption = SortOption.oldest;
+    if (selectedOptions.contains('Сначала дорогие')) chosenSortOption = SortOption.mostExpensive;
+    if (selectedOptions.contains('Сначала дешевые')) chosenSortOption = SortOption.cheapest;
 
     if (chosenSortOption != null) {
       setState(() {
         switch (chosenSortOption!) {
           case SortOption.newest:
-            _listings.sort(
-              (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
-            );
+            _listings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
             break;
           case SortOption.oldest:
-            _listings.sort(
-              (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
-            );
+            _listings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
             break;
           case SortOption.mostExpensive:
-            _listings.sort(
-              (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
-            );
+            _listings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
             break;
           case SortOption.cheapest:
-            _listings.sort(
-              (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
-            );
+            _listings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
             break;
         }
       });
     }
   }
 
+  // ============================================================
+  //                          BUILD
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
+
+      bottomNavigationBar: _buildBottomNavigation(),
+
       body: SafeArea(
         child: Column(
           children: [
-            
-            
+
+            // ---------------- FIXED HEADER ----------------
             Padding(
-              padding: const EdgeInsets.only(bottom: 20, right: 25, top: 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [const Header()],
+              padding: const EdgeInsets.only(right: 12, top: 0),
+              child: const Header(),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ---------------- FIXED SEARCH FIELD ----------------
+            _buildSearchField(context),
+
+            const SizedBox(height: 3),
+
+            // ======================================================
+            // ВСЁ НИЖЕ — СКРОЛЛИТСЯ
+            // ======================================================
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  
+
+                  // Начало скролла — ровно здесь
+                  SliverToBoxAdapter(child: _buildSectionHeader()),
+                  SliverToBoxAdapter(child: const SizedBox(height: 18)),
+
+                  // GRID объявлений
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    sliver: SliverGrid(
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 15,
+                        crossAxisSpacing: 8,
+                        childAspectRatio: 0.70,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => _buildListingCard(
+                          index: index,
+                          listing: _listings[index],
+                        ),
+                        childCount: _listings.length,
+                      ),
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            _buildSearchField(context),
-            const SizedBox(height: 20),
-
-            _buildSectionHeader(),
-            const SizedBox(height: 22),
-            Expanded(child: _buildListingsGrid()),
-            const SizedBox(height: 16),
-            _buildBottomNavigation(),
           ],
         ),
       ),
     );
   }
 
-  
-  
-  
+  // ============================================================
+  //                      UI COMPONENTS
+  // ============================================================
 
   Widget _buildSearchField(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         children: [
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: const Icon(Icons.arrow_back_ios, color: textMuted),
           ),
-          
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -245,7 +252,7 @@ class _RealEstateFilteredScreen
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => FiltersRealEstateRentListingsScreen(),
+                          builder: (_) => FiltersRealEstateRentListingsScreen(),
                         ),
                       );
                     },
@@ -255,7 +262,7 @@ class _RealEstateFilteredScreen
                       width: 20,
                       height: 20,
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
@@ -265,16 +272,12 @@ class _RealEstateFilteredScreen
     );
   }
 
-  
-  
-  
-
   Widget _buildSectionHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
+        children: [
           Text(
             widget.selectedCategory,
             style: const TextStyle(
@@ -283,36 +286,30 @@ class _RealEstateFilteredScreen
               fontWeight: FontWeight.w600,
             ),
           ),
-          
           _buildFilterDropdown(
             label: _selectedSortOptions.isEmpty
-                ? 'Сначала' 
+                ? 'Сначала'
                 : _selectedSortOptions.join(', '),
             onTap: () {
               showDialog(
                 context: context,
-                builder: (BuildContext context) {
-                  return SelectionDialog(
-                    title: 'Сортировать товар',
-                    options: const [
-                      'Сначала новые',
-                      'Сначала старые',
-                      'Сначала дорогие',
-                      'Сначала дешевые',
-                    ],
-                    selectedOptions: _selectedSortOptions,
-                    onSelectionChanged: (Set<String> selected) {
-                      setState(() {
-                        _selectedSortOptions = selected;
-                        _sortListings(
-                          _selectedSortOptions,
-                        ); 
-                      });
-                    },
-                    allowMultipleSelection:
-                        false, 
-                  );
-                },
+                builder: (_) => SelectionDialog(
+                  title: 'Сортировать товар',
+                  options: const [
+                    'Сначала новые',
+                    'Сначала старые',
+                    'Сначала дорогие',
+                    'Сначала дешевые',
+                  ],
+                  selectedOptions: _selectedSortOptions,
+                  onSelectionChanged: (Set<String> selected) {
+                    setState(() {
+                      _selectedSortOptions = selected;
+                      _sortListings(selected);
+                    });
+                  },
+                  allowMultipleSelection: false,
+                ),
               );
             },
           ),
@@ -321,37 +318,16 @@ class _RealEstateFilteredScreen
     );
   }
 
-  
-  
-  
-
-  Widget _buildListingsGrid() {
-    return GridView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 25),
-      itemCount: _listings.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 15,
-        crossAxisSpacing: 8,
-        childAspectRatio: 0.70,
-      ),
-      itemBuilder: (_, i) => _buildListingCard(
-        index: i,
-        listing: _listings[i], 
-      ),
-    );
-  }
-
   Widget _buildListingCard({
     required int index,
-    required Listing listing, 
+    required Listing listing,
   }) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => MiniPropertyDetailsScreen(listing: listing),
+            builder: (_) => MiniPropertyDetailsScreen(listing: listing),
           ),
         );
       },
@@ -382,16 +358,12 @@ class _RealEstateFilteredScreen
                       Expanded(
                         child: Text(
                           listing.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
                         ),
                       ),
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            
                             _listings[index].isFavorited =
                                 !_listings[index].isFavorited;
                           });
@@ -436,10 +408,6 @@ class _RealEstateFilteredScreen
     );
   }
 
-  
-  
-  
-
   Widget _buildBottomNavigation() {
     return SafeArea(
       top: false,
@@ -450,16 +418,16 @@ class _RealEstateFilteredScreen
           decoration: BoxDecoration(
             color: bottomNavBackground,
             borderRadius: BorderRadius.circular(37.5),
-            boxShadow: const [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(homeIconAsset, 0, _selectedIndex),
-              _buildNavItem(gridIconAsset, 1, _selectedIndex),
-              _buildCenterAdd(2, _selectedIndex),
-              _buildNavItem(messageIconAsset, 3, _selectedIndex),
-              _buildNavItem(userIconAsset, 4, _selectedIndex),
+              _buildNavItem(homeIconAsset, 0),
+              _buildNavItem(gridIconAsset, 1),
+              _buildCenterAdd(2),
+              _buildNavItem(shoppingCartAsset, 3),
+              _buildNavItem(messageIconAssetLocal, 4),
+              _buildNavItem(userIconAsset, 5),
             ],
           ),
         ),
@@ -467,57 +435,40 @@ class _RealEstateFilteredScreen
     );
   }
 
-  
-  Widget _buildNavItem(String iconPath, int index, int currentSelected) {
-    final isSelected = currentSelected == index;
+  Widget _buildNavItem(String iconPath, int index) {
+    final isSelected = _selectedIndex == index;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(50),
-        onTap: () => setState(() => _selectedIndex = index),
-        child: Padding(
-          padding: const EdgeInsets.all(0),
-          child: Image.asset(
-            iconPath,
-            width: 28,
-            height: 28,
-            color: isSelected ? activeIconColor : inactiveIconColor,
-          ),
-        ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(50),
+      onTap: () => setState(() => _selectedIndex = index),
+      child: Image.asset(
+        iconPath,
+        width: 28,
+        height: 28,
+        color: isSelected ? activeIconColor : inactiveIconColor,
       ),
     );
   }
 
-  
-  Widget _buildCenterAdd(int index, int currentSelected) {
-    final isSelected = currentSelected == index;
+  Widget _buildCenterAdd(int index) {
+    final isSelected = _selectedIndex == index;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: () => setState(() => _selectedIndex = index),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          child: Image.asset(
-            plusIconAsset,
-            width: 28,
-            height: 28,
-            color: isSelected ? activeIconColor : inactiveIconColor,
-          ),
-        ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () => setState(() => _selectedIndex = index),
+      child: Image.asset(
+        plusIconAsset,
+        width: 28,
+        height: 28,
+        color: isSelected ? activeIconColor : inactiveIconColor,
       ),
     );
   }
 
-  
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
-      child: Icon(Icons.import_export, color: Colors.white, size: 25),
+      child: const Icon(Icons.import_export, color: Colors.white, size: 25),
     );
   }
 }

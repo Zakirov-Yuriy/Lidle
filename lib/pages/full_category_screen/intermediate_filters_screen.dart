@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/selectable_button.dart';
 
 // ============================================================
 // "Промежуточный экран фильтров"
@@ -215,55 +216,28 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   Widget _buildSortButtons() {
     return Row(
       children: [
-        _buildSelectableButton(
-          text: "Рекомендованное вам",
-          isActive: selectedSort == "recommended",
-          onTap: () => setState(() => selectedSort = "recommended"),
+        Expanded(
+          child: SelectableButton(
+            text: "Рекомендованное вам",
+            isActive: selectedSort == "recommended",
+            onTap: () => setState(() => selectedSort = "recommended"),
+            maxWidth: 200,
+          ),
         ),
         const SizedBox(width: 10),
-        _buildSelectableButton(
-          text: "Самые новые",
-          isActive: selectedSort == "newest",
-          onTap: () => setState(() => selectedSort = "newest"),
+        Expanded(
+          child: SelectableButton(
+            text: "Самые новые",
+            isActive: selectedSort == "newest",
+            onTap: () => setState(() => selectedSort = "newest"),
+            maxWidth: 200,
+          ),
         ),
       ],
     );
   }
 
-  
 
-  Widget _buildSelectableButton({
-    required String text,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isActive ? activeIconColor : primaryBackground,
-            borderRadius: BorderRadius.circular(5),
-            border: Border.all(
-              color: isActive ? activeIconColor : Colors.white,
-            ),
-          ),
-          child: Center(
-            child: Text(
-              text,
-              style: TextStyle(
-                color:  Colors.white,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  
 
   Widget _buildClickableBox({
     required String value,
@@ -300,23 +274,26 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   Widget _buildCurrencyButtons() {
     return Row(
       children: [
-        _buildSelectableButton(
+        SelectableButton(
           text: "₽",
           isActive: selectedCurrency == "uah",
           onTap: () => setState(() => selectedCurrency = "uah"),
+          maxWidth: 175,
         ),
-        const SizedBox(width: 10),
-        _buildSelectableButton(
-          text: "\$",
-          isActive: selectedCurrency == "usd",
-          onTap: () => setState(() => selectedCurrency = "usd"),
-        ),
-        const SizedBox(width: 10),
-        _buildSelectableButton(
-          text: "€",
-          isActive: selectedCurrency == "eur",
-          onTap: () => setState(() => selectedCurrency = "eur"),
-        ),
+        // const SizedBox(width: 10),
+        // SelectableButton(
+        //   text: "\$",
+        //   isActive: selectedCurrency == "usd",
+        //   onTap: () => setState(() => selectedCurrency = "usd"),
+        //   maxWidth: 200,
+        // ),
+        // const SizedBox(width: 10),
+        // SelectableButton(
+        //   text: "€",
+        //   isActive: selectedCurrency == "eur",
+        //   onTap: () => setState(() => selectedCurrency = "eur"),
+        //   maxWidth: 200,
+        // ),
       ],
     );
   }
@@ -361,16 +338,22 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   Widget _buildSellerTypeButtons() {
     return Row(
       children: [
-        _buildSelectableButton(
-          text: "Бизнес",
-          isActive: sellerType == "business",
-          onTap: () => setState(() => sellerType = "business"),
+        Expanded(
+          child: SelectableButton(
+            text: "Бизнес",
+            isActive: sellerType == "business",
+            onTap: () => setState(() => sellerType = "business"),
+            maxWidth: 200,
+          ),
         ),
         const SizedBox(width: 10),
-        _buildSelectableButton(
-          text: "Частное",
-          isActive: sellerType == "private",
-          onTap: () => setState(() => sellerType = "private"),
+        Expanded(
+          child: SelectableButton(
+            text: "Частное",
+            isActive: sellerType == "private",
+            onTap: () => setState(() => sellerType = "private"),
+            maxWidth: 200,
+          ),
         ),
       ],
     );

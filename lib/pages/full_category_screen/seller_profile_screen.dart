@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -8,6 +9,8 @@ import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 // ============================================================
 // "Экран профиля продавца"
 // ============================================================
+
+const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class SellerProfileScreen extends StatefulWidget {
   static const String routeName = "/seller-profile";
@@ -109,9 +112,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         ),
         const Spacer(),
 
-        GestureDetector(
-          onTap: () => _showShareBottomSheet(context),
-          child: const Icon(Icons.share_outlined, color: Colors.white, size: 23),
+        IconButton(
+          icon: const Icon(Icons.share_outlined, color: Colors.white, size: 23),
+          onPressed: () {
+            Share.share('Поделиться профилем продавца ${widget.sellerName}');
+          },
         ),
       ],
     );
@@ -387,127 +392,29 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildBottomNavigation() {
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(25, 0, 25, bottomNavPaddingBottom),
-        child: Container(
-          height: bottomNavHeight,
-          decoration: BoxDecoration(
-            color: bottomNavBackground,
-            borderRadius: BorderRadius.circular(37.5),
-            boxShadow: const [],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildNavItem(homeIconAsset, 0, _selectedIndex),
-              _buildNavItem(gridIconAsset, 1, _selectedIndex),
-              _buildCenterAdd(2, _selectedIndex),
-              _buildNavItem(messageIconAsset, 3, _selectedIndex),
-              _buildNavItem(userIconAsset, 4, _selectedIndex),
-            ],
-          ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 0, 25, 48),
+      child: Container(
+        height: bottomNavHeight,
+        decoration: BoxDecoration(
+          color: bottomNavBackground,
+          borderRadius: BorderRadius.circular(37.5),
+          boxShadow: const [],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildNavItem(homeIconAsset, 0, _selectedIndex),
+            _buildNavItem(gridIconAsset, 1, _selectedIndex),
+            _buildCenterAdd(2, _selectedIndex),
+            _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
+            _buildNavItem(messageIconAsset, 4, _selectedIndex),
+            _buildNavItem(userIconAsset, 5, _selectedIndex),
+          ],
         ),
       ),
     );
   }
 
-  void _showShareBottomSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext bc) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: secondaryBackground, 
-            borderRadius: BorderRadius.vertical(top: Radius.circular(0)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
-                child: Text(
-                  "Поделиться",
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  children: <Widget>[
-                    _buildShareItem("Быстрая отправка", Icons.send, "assets/publication_success/email_10401109.png"),
-                    _buildShareItem("Chats", Icons.chat, "assets/publication_success/icons8-чат-100.png"),
-                    _buildShareItem("Telegram", Icons.send, "assets/publication_success/icons8-telegram-100.png"),
-                    _buildShareItem("Открыть в Браузере", Icons.open_in_browser, "assets/publication_success/free-icon-yandex-6124986.png"),
-                    _buildShareItem("Читалка", Icons.menu_book, null), 
-                    _buildShareItem("WhatsApp", Icons.message, "assets/publication_success/icons8-whatsapp-100.png"),
-                    _buildShareItem("Сообщения", Icons.message, "assets/publication_success/icons8-чат-100.png"),
-                    _buildShareItem("Gmail", Icons.mail, "assets/publication_success/icons8-gmail-100.png"),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[800], 
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                  ),
-                  onPressed: () => Navigator.pop(bc),
-                  child: const Text(
-                    "Отмена",
-                    style: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 50),
-            ],
-          ),
-        );
-      },
-    );
-  }
 
-  Widget _buildShareItem(String title, IconData defaultIcon, String? assetPath) {
-    return GestureDetector(
-      onTap: () {
-        
-        Navigator.pop(context); 
-        
-        print("Share $title tapped");
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: <Widget>[
-          if (assetPath != null) 
-            Image.asset(assetPath, width: 50, height: 50) 
-          else 
-            Icon(defaultIcon, size: 50, color: Colors.white), 
-          const SizedBox(height: 8),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: textPrimary, fontSize: 10),
-          ),
-        ],
-      ),
-    );
-  }
 }
