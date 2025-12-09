@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/pages/add_listing/apartments/add_apartment_rent_screen.dart';
+import 'package:lidle/pages/add_listing/apartments/add_apartment_sell_screen.dart';
+import 'package:lidle/pages/add_listing/rooms/add_room_rent_screen.dart';
+import 'package:lidle/pages/add_listing/rooms/add_room_sell_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'apartments/add_apartment_sell_screen.dart';
-import 'apartments/add_apartment_rent_screen.dart';
+
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
@@ -87,7 +90,7 @@ class RealEstateApartmentsScreen extends StatelessWidget {
                   'Недвижимость: ${subcategory == 'Недвижимость за рубежом' ? 'За рубежом' : subcategory}',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 17,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -133,10 +136,20 @@ class RealEstateApartmentsScreen extends StatelessWidget {
             style: const TextStyle(color: Colors.white),
           ),
           onTap: () {
-            if (title.startsWith("Продажа")) {
+            if (title == "Продажа комнат") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddRoomSellScreen()),
+              );
+            } else if (title.startsWith("Продажа")) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddApartmentSellScreen()),
+              );
+            } else if (title == "Долгосрочная аренда комнат") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddRoomRentScreen()),
               );
             } else if (title.startsWith("Аренда") || title.startsWith("Долгосрочная аренда")) {
               Navigator.push(

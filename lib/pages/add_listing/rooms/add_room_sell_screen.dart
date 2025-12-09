@@ -3,52 +3,52 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../real_estate_subcategories_screen.dart';
+import '../publication_tariff_screen.dart';
+
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
-import '../publication_tariff_screen.dart'; 
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 
 import '../../../constants.dart';
 
-// ============================================================
-// "Виджет: Экран добавления аренды квартиры в недвижимость"
-// ============================================================
-class AddApartmentRentScreen extends StatefulWidget {
-  static const String routeName = '/add-real-estate-apt';
+/// ============================================================
+/// Экран: Создание объявления — Продажа комнат
+/// ============================================================
+class AddRoomSellScreen extends StatefulWidget {
+  static const String routeName = '/add-room-sell';
 
-  const AddApartmentRentScreen({super.key});
+  const AddRoomSellScreen({super.key});
 
   @override
-  State<AddApartmentRentScreen> createState() =>
-      _AddApartmentRentScreenState();
+  State<AddRoomSellScreen> createState() => _AddRoomSellScreenState();
 }
 
-// ============================================================
-// "Класс состояния: Управление состоянием экрана аренды квартиры"
-// ============================================================
-class _AddApartmentRentScreenState
-    extends State<AddApartmentRentScreen> {
+class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
+  // ======================= СЕТЫ ДЛЯ ДИАЛОГОВ =======================
+
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; 
-  Set<String> _selectedCommunicationTypes =
-      {}; 
-  Set<String> _selectedCity = {}; 
-  Set<String> _selectedStreet = {}; 
-  Set<String> _selectedRoomCounts = {}; 
-  Set<String> _selectedLayoutTypes = {}; 
-  Set<String> _selectedBathroomTypes = {}; 
-  Set<String> _selectedRenovationTypes = {}; 
-  Set<String> _selectedAppliancesTypes = {}; 
-  Set<String> _selectedMultimediaTypes = {}; 
-  Set<String> _selectedComfortTypes = {}; 
+  Set<String> _selectedHeatingTypes = {};
+  Set<String> _selectedCommunicationTypes = {};
+  Set<String> _selectedCity = {};
+  Set<String> _selectedStreet = {};
+  Set<String> _selectedRoomCounts = {};
+  Set<String> _selectedLayoutTypes = {};
+  Set<String> _selectedBathroomTypes = {};
+  Set<String> _selectedRenovationTypes = {};
+  Set<String> _selectedAppliancesTypes = {};
+  Set<String> _selectedMultimediaTypes = {};
+  Set<String> _selectedComfortTypes = {};
 
-  List<File> _images = [];
+  // ======================= КАРТИНКИ =======================
+
+  final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
@@ -130,25 +130,23 @@ class _AddApartmentRentScreenState
     });
   }
 
-  bool isIndividualSelected = true; 
-  bool isSecondarySelected = true; 
-  bool isMortgageYes = true; 
+  // ======================= СТЕЙТ ПЕРЕКЛЮЧАТЕЛЕЙ =======================
 
-  bool isBargain = false; 
-  bool isNoCommission = false; 
-  bool isExchange = false; 
-  bool isPledge = false; 
-  bool isUrgent = false; 
-  bool isInstallment = false; 
-  bool isRemoteDeal = false; 
-  bool isClientPrice = false; 
-  bool isAutoRenewal = false; 
-  bool isAutoRenewal1 = false;
-  bool? _selectedFurnished =
-      true; 
+  bool isIndividualSelected = true; // Частное лицо / Бизнес
+  bool isSecondarySelected = true; // Вторичка / Новостройка (если нужно)
+  bool isInstallment = false; // Рассрочка да/нет
 
+  bool isBargain = false; // Возможен торг
+  bool isNoCommission = false; // Без комиссии
+  bool isExchange = false; // Возможность обмена
+  bool isRealtorReady = false; // Готов сотрудничать с риэлтором
+  bool isUrgentBuyout = false; // Срочный выкуп
+  bool isRosreestr = false; // Учёт в росреестре
 
-  String _selectedAction = 'publish'; 
+  bool isAutoRenewal = false; // Автопродление
+  bool? _selectedFurnished = true; // Меблирован: да/нет
+
+  String _selectedAction = 'publish'; // preview / publish
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -167,6 +165,7 @@ class _AddApartmentRentScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ---------------- HEADER ----------------
               Row(
                 children: [
                   GestureDetector(
@@ -192,13 +191,14 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 17),
 
+              // ---------------- ФОТО ----------------
               GestureDetector(
-                onTap: () {
-                  _showImageSourceActionSheet(context);
-                },
+                onTap: () => _showImageSourceActionSheet(context),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground,
+                    color: _images.isEmpty
+                        ? secondaryBackground
+                        : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -231,18 +231,19 @@ class _AddApartmentRentScreenState
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 10,
-                                mainAxisSpacing: 10,
-                                childAspectRatio: 115 / 89,
-                              ),
+                            crossAxisCount: 3,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 115 / 89,
+                          ),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _images.length + 1,
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
-                                onTap: () => _showImageSourceActionSheet(context),
+                                onTap: () =>
+                                    _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
@@ -283,8 +284,10 @@ class _AddApartmentRentScreenState
                                       child: Container(
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(5),
+                                          color:
+                                              Colors.black.withOpacity(0.5),
+                                          borderRadius:
+                                              BorderRadius.circular(5),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -303,21 +306,24 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 13),
 
+              // ---------------- ЗАГОЛОВОК ----------------
               _buildTextField(
                 label: 'Заголовок объявления',
-                hint: 'Например, уютная 2-комнатная квартира',
+                hint: 'Например, уютная комната в 3-к квартире',
               ),
               const SizedBox(height: 7),
-              Text(
+              const Text(
                 'Введите не менее 16 символов',
                 style: TextStyle(color: textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 15),
 
+              // ---------------- КАТЕГОРИЯ ----------------
               _buildDropdown(
                 label: 'Категория',
-                hint: 'Аренда квартир',
+                hint: 'Продажа комнат',
                 subtitle: 'Недвижимость',
+                showChangeText: true,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -327,14 +333,14 @@ class _AddApartmentRentScreenState
                     ),
                   );
                 },
-                showChangeText: true,
               ),
               const SizedBox(height: 13),
 
+              // ---------------- ОПИСАНИЕ ----------------
               _buildTextField(
                 label: 'Описание',
                 hint:
-                    'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
+                    'Чем больше информации вы укажете о вашем объекте, тем привлекательнее он будет для покупателей. Без ссылок, телефонов, матершинных слов.',
                 minLength: 70,
                 maxLines: 4,
                 height: 149,
@@ -342,6 +348,7 @@ class _AddApartmentRentScreenState
 
               const SizedBox(height: 24),
 
+              // ---------------- ЦЕНА ----------------
               const Text(
                 'Цена*',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -385,7 +392,7 @@ class _AddApartmentRentScreenState
                     width: 53,
                     height: 48,
                     alignment: Alignment.center,
-                    child: Text(
+                    child: const Text(
                       '₽',
                       style: TextStyle(color: textPrimary, fontSize: 16),
                     ),
@@ -394,160 +401,99 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 15),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isBargain = !isBargain),
-                      child: const Text(
-                        'Возможен торг',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isBargain,
-                    onChanged: (v) => setState(() => isBargain = v),
-                  ),
-                ],
+              // ---------------- ЧЕКБОКСЫ ПОСЛЕ ЦЕНЫ ----------------
+              _buildCheckboxRow(
+                title: 'Возможен торг',
+                value: isBargain,
+                onChanged: (v) => setState(() => isBargain = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isNoCommission = !isNoCommission),
-                      child: const Text(
-                        'Без комиссии',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isNoCommission,
-                    onChanged: (v) => setState(() => isNoCommission = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Без комиссии',
+                value: isNoCommission,
+                onChanged: (v) => setState(() => isNoCommission = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isExchange = !isExchange),
-                      child: const Text(
-                        'Готов сотрудничать с риэлтором',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isExchange,
-                    onChanged: (v) => setState(() => isExchange = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Возможность обмена',
+                value: isExchange,
+                onChanged: (v) => setState(() => isExchange = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isPledge = !isPledge),
-                      child: const Text(
-                        'Для совместной аренды',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isPledge,
-                    onChanged: (v) => setState(() => isPledge = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Готов сотрудничать с риэлтором',
+                value: isRealtorReady,
+                onChanged: (v) => setState(() => isRealtorReady = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isUrgent = !isUrgent),
-                      child: const Text(
-                        'С домашними питомцами',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isUrgent,
-                    onChanged: (v) => setState(() => isUrgent = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Срочный выкуп',
+                value: isUrgentBuyout,
+                onChanged: (v) => setState(() => isUrgentBuyout = v),
+              ),
+              const SizedBox(height: 12),
+              _buildCheckboxRow(
+                title: 'Учёт в рос реестре',
+                value: isRosreestr,
+                onChanged: (v) => setState(() => isRosreestr = v),
               ),
 
-              const SizedBox(height: 13),
+              const SizedBox(height: 18),
+
+              // ---------------- ВИД ОБЪЕКТА ----------------
               const Text(
-                'Вид обьекта',
+                'Вид объекта',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = true),
-                      child: Text(
-                        'Вторичка',
-                        style: TextStyle(
-                          color: isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
+                  _buildChoiceButton(
+                    'Вторичка',
+                    isSecondarySelected,
+                    () => setState(() => isSecondarySelected = true),
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: !isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: !isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = false),
-                      child: Text(
-                        'Новострой',
-                        style: TextStyle(
-                          color: !isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
+                  _buildChoiceButton(
+                    'Новостройка',
+                    !isSecondarySelected,
+                    () => setState(() => isSecondarySelected = false),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 13),
+              const SizedBox(height: 18),
+
+              // ---------------- РАССРОЧКА ----------------
+              const Text(
+                'Рассрочка',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildChoiceButton(
+                    'Да',
+                    isInstallment,
+                    () => setState(() => isInstallment = true),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildChoiceButton(
+                    'Нет',
+                    !isInstallment,
+                    () => setState(() => isInstallment = false),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 18),
+
+              // ---------------- ХАРАКТЕРИСТИКИ ----------------
 
               _buildDropdown(
                 label: 'Тип дома',
                 hint: _selectedHouseTypes.isEmpty
-                    ? 'Сталинка'
+                    ? 'Выбрать'
                     : _selectedHouseTypes.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
@@ -556,7 +502,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Тип дома',
                         options: const [
@@ -575,10 +521,8 @@ class _AddApartmentRentScreenState
                           'Жилой фонд от 2021 г.',
                         ],
                         selectedOptions: _selectedHouseTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHouseTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedHouseTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -587,26 +531,33 @@ class _AddApartmentRentScreenState
                 },
               ),
               const SizedBox(height: 9),
+
               _buildTextField(
                 label: 'Название ЖК',
                 hint: 'Название жилого комплекса',
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(label: 'Номер квартиры', hint: 'Номер квартиры'),
-              const SizedBox(height: 9),
+              
 
-              _buildTextField(label: 'Этаж*', hint: 'Укажите этаж'),
+              _buildTextField(
+                label: 'Номер квартиры',
+                hint: 'Номер квартиры',
+              ),
               const SizedBox(height: 9),
 
               _buildTextField(
                 label: 'Этажность*',
                 hint: 'Общее количество этажей',
+                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 9),
-              _buildTextField(label: 'Площадь кухни(м2)*', hint: 'Цифрами'),
-              const SizedBox(height: 9),
-              _buildTextField(label: 'Общая площадь(м2)*', hint: 'Цифрами'),
+
+              _buildTextField(
+                label: 'Этаж*',
+                hint: 'Укажите этаж',
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -621,7 +572,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Тип сделки',
                         options: const [
@@ -633,10 +584,8 @@ class _AddApartmentRentScreenState
                           'Лизинг',
                         ],
                         selectedOptions: _selectedDealTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedDealTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedDealTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -646,7 +595,11 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(label: 'Общая площадь(м²)*', hint: 'Цифрами'),
+              _buildTextField(
+                label: 'Общая площадь(м²)*',
+                hint: 'Цифрами',
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -661,7 +614,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Тип стен',
                         options: const [
@@ -674,10 +627,8 @@ class _AddApartmentRentScreenState
                           'СИП-панель',
                         ],
                         selectedOptions: _selectedWallTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedWallTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedWallTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -688,7 +639,7 @@ class _AddApartmentRentScreenState
               const SizedBox(height: 9),
 
               _buildDropdown(
-                label: 'Класс жилья',
+                label: 'Класс жилья*',
                 hint: _selectedHousingClassTypes.isEmpty
                     ? 'Выбрать'
                     : _selectedHousingClassTypes.join(', '),
@@ -699,7 +650,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Класс жилья',
                         options: const [
@@ -709,10 +660,9 @@ class _AddApartmentRentScreenState
                           'Премиум',
                         ],
                         selectedOptions: _selectedHousingClassTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHousingClassTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() =>
+                              _selectedHousingClassTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -734,45 +684,13 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Количество комнат',
                         options: const ['1', '2', '3', '4', '5', '6+'],
                         selectedOptions: _selectedRoomCounts,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRoomCounts = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Количество спальных мест*',
-                hint: _selectedRoomCounts.isEmpty
-                    ? 'Цифрами'
-                    : _selectedRoomCounts.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Количество спальных мест',
-                        options: const ['1', '2', '3', '4', '5', '6+'],
-                        selectedOptions: _selectedRoomCounts,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRoomCounts = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedRoomCounts = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -794,7 +712,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Планировка',
                         options: const [
@@ -803,13 +721,11 @@ class _AddApartmentRentScreenState
                           'Студия',
                           'Пентхаус',
                           'Многоуровневая',
-                          'Малосемека, гостинка',
+                          'Малосемейка, гостинка',
                         ],
                         selectedOptions: _selectedLayoutTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedLayoutTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedLayoutTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -831,7 +747,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Санузел',
                         options: const [
@@ -841,10 +757,8 @@ class _AddApartmentRentScreenState
                           'Санузел отсутствует',
                         ],
                         selectedOptions: _selectedBathroomTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedBathroomTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedBathroomTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -866,7 +780,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Отопление',
                         options: const [
@@ -874,16 +788,14 @@ class _AddApartmentRentScreenState
                           'Собственная котельная',
                           'Индивидуальное газовое',
                           'Индивидуальное электро',
-                          'Твердопливное',
+                          'Твердотопливное',
                           'Тепловой насос',
                           'Комбинированное',
                           'Другое',
                         ],
                         selectedOptions: _selectedHeatingTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHeatingTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedHeatingTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -905,7 +817,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Ремонт',
                         options: const [
@@ -913,15 +825,13 @@ class _AddApartmentRentScreenState
                           'Евроремонт',
                           'Косметический ремонт',
                           'Жилое состояние',
-                          'После строительства',
+                          'После строителей',
                           'Под чистовую отделку',
                           'Аварийное состояние',
                         ],
                         selectedOptions: _selectedRenovationTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRenovationTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedRenovationTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -932,23 +842,23 @@ class _AddApartmentRentScreenState
               const SizedBox(height: 9),
 
               const Text(
-                'Мебелирован',
+                'Меблирован',
                 style: TextStyle(color: textPrimary, fontSize: 14),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  _buildChoiceButton('Да', _selectedFurnished == true, () {
-                    setState(() {
-                      _selectedFurnished = true;
-                    });
-                  }),
+                  _buildChoiceButton(
+                    'Да',
+                    _selectedFurnished == true,
+                    () => setState(() => _selectedFurnished = true),
+                  ),
                   const SizedBox(width: 10),
-                  _buildChoiceButton('Нет', _selectedFurnished == false, () {
-                    setState(() {
-                      _selectedFurnished = false;
-                    });
-                  }),
+                  _buildChoiceButton(
+                    'Нет',
+                    _selectedFurnished == false,
+                    () => setState(() => _selectedFurnished = false),
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
@@ -965,7 +875,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Бытовая техника',
                         options: const [
@@ -985,10 +895,8 @@ class _AddApartmentRentScreenState
                           'Без бытовой техники',
                         ],
                         selectedOptions: _selectedAppliancesTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedAppliancesTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedAppliancesTypes = selected);
                         },
                         allowMultipleSelection: true,
                       );
@@ -997,6 +905,21 @@ class _AddApartmentRentScreenState
                 },
               ),
               const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Год постройки',
+                hint: 'Выбрать',
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  // Можно подвязать отдельный диалог/ввод, по макету он тоже dropdown
+                },
+              ),
+              const SizedBox(height: 9),
+
+              
 
               _buildDropdown(
                 label: 'Мультимедиа',
@@ -1010,7 +933,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Мультимедиа',
                         options: const [
@@ -1018,17 +941,15 @@ class _AddApartmentRentScreenState
                           'Скоростной интернет',
                           'ПК, принтер, сканер',
                           'Телевизор',
-                          'Кабильное, цифровое ТВ',
+                          'Кабельное, цифровое ТВ',
                           'Спутниковое ТВ',
                           'Домашний кинотеатр',
                           'X-box, Playstation',
                           'Без мультимедиа',
                         ],
                         selectedOptions: _selectedMultimediaTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedMultimediaTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedMultimediaTypes = selected);
                         },
                         allowMultipleSelection: true,
                       );
@@ -1050,7 +971,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Комфорт',
                         options: const [
@@ -1080,23 +1001,14 @@ class _AddApartmentRentScreenState
                           'Хамам',
                         ],
                         selectedOptions: _selectedComfortTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedComfortTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedComfortTypes = selected);
                         },
                         allowMultipleSelection: true,
                       );
                     },
                   );
                 },
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(
-                label: 'Год постройки',
-                hint: 'Укажите год',
-                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 9),
 
@@ -1112,38 +1024,34 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Коммуникации',
                         options: const [
                           'Газ',
-                          'Центраный',
+                          'Центральный водопровод',
                           'Скважина',
-                          'Электичество',
-                          'Центральная',
-                          'Канализация',
+                          'Электричество',
+                          'Центральная канализация',
+                          'Септик',
                           'Вывоз отходов',
                           'Без коммуникаций',
                         ],
                         selectedOptions: _selectedCommunicationTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCommunicationTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedCommunicationTypes = selected);
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
                 },
               ),
               const SizedBox(height: 9),
+
               _buildDropdown(
                 label: 'Инфраструктура (до 500 метров)',
-                hint: _selectedCommunicationTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedCommunicationTypes.join(', '),
+                hint: 'Выбрать',
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
@@ -1151,14 +1059,14 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Инфраструктура (до 500 метров)',
                         options: const [
-                          'Центор города',
+                          'Центр города',
                           'Достопримечательности',
                           'Исторические места',
-                          'Музеи выставки',
+                          'Музеи, выставки',
                           'Парк, зеленая зона',
                           'Детская площадка',
                           'Отделения банка, банкомат',
@@ -1171,24 +1079,20 @@ class _AddApartmentRentScreenState
                           'ЖД станция',
                         ],
                         selectedOptions: _selectedCommunicationTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCommunicationTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedCommunicationTypes = selected);
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
                 },
               ),
               const SizedBox(height: 9),
+
               _buildDropdown(
                 label: 'Ландшафт (до 1 км)',
-                hint: _selectedCommunicationTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedCommunicationTypes.join(', '),
+                hint: 'Выбрать',
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
@@ -1196,14 +1100,14 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Ландшафт (до 1 км)',
                         options: const [
                           'Река',
                           'Водохранилище',
                           'Водопад',
-                          'Озера',
+                          'Озеро',
                           'Море',
                           'Океан',
                           'Острова',
@@ -1217,13 +1121,10 @@ class _AddApartmentRentScreenState
                           'Город',
                         ],
                         selectedOptions: _selectedCommunicationTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCommunicationTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedCommunicationTypes = selected);
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -1232,6 +1133,7 @@ class _AddApartmentRentScreenState
 
               const SizedBox(height: 21),
 
+              // ---------------- ЧАСТНОЕ ЛИЦО / БИЗНЕС ----------------
               const Text(
                 'Частное лицо / Бизнес*',
                 style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1244,7 +1146,7 @@ class _AddApartmentRentScreenState
                     isIndividualSelected,
                     () => _togglePersonType(true),
                   ),
-                  const SizedBox(width: 10),
+                const SizedBox(width: 10),
                   _buildChoiceButton(
                     'Бизнес',
                     !isIndividualSelected,
@@ -1252,7 +1154,6 @@ class _AddApartmentRentScreenState
                   ),
                 ],
               ),
-
               const SizedBox(height: 12),
               const Text(
                 'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
@@ -1261,6 +1162,7 @@ class _AddApartmentRentScreenState
 
               const SizedBox(height: 18),
 
+              // ---------------- АВТОПРОДЛЕНИЕ ----------------
               Row(
                 children: [
                   const Column(
@@ -1271,23 +1173,22 @@ class _AddApartmentRentScreenState
                         style: TextStyle(color: textPrimary, fontSize: 16),
                       ),
                       Text(
-                        'Обьявление будет деактивирано\n через 30 дней',
+                        'Объявление будет деактивировано\nчерез 30 дней',
                         style: TextStyle(color: textMuted, fontSize: 11),
                       ),
                     ],
                   ),
                   const Spacer(),
-
                   CustomSwitch(
                     value: isAutoRenewal,
                     onChanged: (v) => setState(() => isAutoRenewal = v),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 24),
 
+              // ---------------- АДРЕС ----------------
               _buildDropdown(
                 label: 'Ваш город*',
                 hint: _selectedCity.isEmpty
@@ -1300,7 +1201,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return CitySelectionDialog(
                         title: 'Ваш город',
                         options: const [
@@ -1315,13 +1216,10 @@ class _AddApartmentRentScreenState
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-
                         ],
                         selectedOptions: _selectedCity,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCity = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedCity = selected);
                         },
                       );
                     },
@@ -1342,7 +1240,7 @@ class _AddApartmentRentScreenState
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return StreetSelectionDialog(
                         title: 'Улица',
                         groupedOptions: const {
@@ -1351,8 +1249,9 @@ class _AddApartmentRentScreenState
                             'Бахмутская улица',
                             'бул. Богдана Хмельницкого',
                             'бул. Шевченко Георгиевская',
-                            'ул. Гранитная улица Греческая',
-                            'ул. Евпаторийская улица',
+                            'ул. Гранитная',
+                            'ул. Греческая',
+                            'ул. Евпаторийская',
                             'ул. Заводская',
                             'Запорожское шоссе',
                           ],
@@ -1363,20 +1262,26 @@ class _AddApartmentRentScreenState
                           ],
                         },
                         selectedOptions: _selectedStreet,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedStreet = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedStreet = selected);
                         },
                       );
                     },
                   );
                 },
               ),
-
               const SizedBox(height: 9),
 
-              _buildTextField(label: 'Номер дома*', hint: 'Номер дома'),
+              _buildTextField(
+                label: 'Ваш район',
+                hint: 'Ваш район',
+              ),
+              const SizedBox(height: 9),
+
+              _buildTextField(
+                label: 'Номер дома*',
+                hint: 'Номер дома',
+              ),
               const SizedBox(height: 9),
 
               const Text(
@@ -1384,7 +1289,6 @@ class _AddApartmentRentScreenState
                 style: TextStyle(color: textPrimary, fontSize: 14),
               ),
               const SizedBox(height: 9),
-
               Container(
                 height: 160,
                 decoration: BoxDecoration(
@@ -1402,13 +1306,17 @@ class _AddApartmentRentScreenState
 
               const SizedBox(height: 27),
 
+              // ---------------- КОНТАКТНЫЕ ДАННЫЕ ----------------
               const Text(
                 'Ваши контактные данные',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 18),
 
-              _buildTextField(label: 'Контактное лицо*', hint: 'Александр'),
+              _buildTextField(
+                label: 'Контактное лицо*',
+                hint: 'Александр',
+              ),
               const SizedBox(height: 9),
 
               _buildTextField(
@@ -1434,23 +1342,22 @@ class _AddApartmentRentScreenState
 
               _buildTextField(
                 label: 'Ссылка на ваш чат в телеграм',
-                hint: 'https:',
+                hint: 'https://',
               ),
               const SizedBox(height: 9),
 
               _buildTextField(
                 label: 'Ссылка на ваш whatsapp',
-                hint: 'https:',
+                hint: 'https://',
               ),
 
               const SizedBox(height: 22),
 
+              // ---------------- КНОПКИ ----------------
               _buildButton(
                 'Предпросмотр',
                 onPressed: () {
-                  setState(() {
-                    _selectedAction = 'preview';
-                  });
+                  setState(() => _selectedAction = 'preview');
                 },
                 isPrimary: _selectedAction == 'preview',
               ),
@@ -1458,9 +1365,7 @@ class _AddApartmentRentScreenState
               _buildButton(
                 'Опубликовать',
                 onPressed: () {
-                  setState(() {
-                    _selectedAction = 'publish';
-                  });
+                  setState(() => _selectedAction = 'publish');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1478,6 +1383,9 @@ class _AddApartmentRentScreenState
     );
   }
 
+  // ============================================================
+  // ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ — те же, что в AddApartmentRentScreen
+  // ============================================================
 
   Widget _buildTextField({
     required String label,
@@ -1532,14 +1440,17 @@ class _AddApartmentRentScreenState
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
-    bool showChangeText = false, 
+    bool showChangeText = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 9),
         GestureDetector(
@@ -1588,12 +1499,15 @@ class _AddApartmentRentScreenState
                           ),
                         ),
                 ),
-                if (showChangeText) 
-                  Text(
-                    'Изменить',
-                    style: TextStyle(
-                      color: Colors.blue, 
-                      fontSize: 14, 
+                if (showChangeText)
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: Text(
+                      'Изменить',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 if (icon != null) icon,
@@ -1615,7 +1529,6 @@ class _AddApartmentRentScreenState
         style: OutlinedButton.styleFrom(
           backgroundColor: isSelected ? activeIconColor : Colors.transparent,
           side: isSelected ? null : const BorderSide(color: Colors.white),
-
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,
@@ -1650,6 +1563,30 @@ class _AddApartmentRentScreenState
           style: TextStyle(color: isPrimary ? Colors.white : textPrimary),
         ),
       ),
+    );
+  }
+
+  Widget _buildCheckboxRow({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: Text(
+              title,
+              style: const TextStyle(color: textPrimary, fontSize: 14),
+            ),
+          ),
+        ),
+        CustomCheckbox(
+          value: value,
+          onChanged: (v) => onChanged(v),
+        ),
+      ],
     );
   }
 }

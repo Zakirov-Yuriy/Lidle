@@ -16,21 +16,21 @@ import '../../../constants.dart';
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
 // ============================================================
-class AddApartmentRentScreen extends StatefulWidget {
+class AddRoomRentScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
-  const AddApartmentRentScreen({super.key});
+  const AddRoomRentScreen({super.key});
 
   @override
-  State<AddApartmentRentScreen> createState() =>
-      _AddApartmentRentScreenState();
+  State<AddRoomRentScreen> createState() =>
+      _AddRoomRentScreenState();
 }
 
 // ============================================================
 // "Класс состояния: Управление состоянием экрана аренды квартиры"
 // ============================================================
-class _AddApartmentRentScreenState
-    extends State<AddApartmentRentScreen> {
+class _AddRoomRentScreenState
+    extends State<AddRoomRentScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
@@ -46,7 +46,6 @@ class _AddApartmentRentScreenState
   Set<String> _selectedRenovationTypes = {}; 
   Set<String> _selectedAppliancesTypes = {}; 
   Set<String> _selectedMultimediaTypes = {}; 
-  Set<String> _selectedComfortTypes = {}; 
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -316,7 +315,7 @@ class _AddApartmentRentScreenState
 
               _buildDropdown(
                 label: 'Категория',
-                hint: 'Аренда квартир',
+                hint: 'Долгосрочная аренда комнат',
                 subtitle: 'Недвижимость',
                 onTap: () {
                   Navigator.push(
@@ -723,7 +722,7 @@ class _AddApartmentRentScreenState
               const SizedBox(height: 9),
 
               _buildDropdown(
-                label: 'Количество комнат*',
+                label: 'Количество комнат',
                 hint: _selectedRoomCounts.isEmpty
                     ? 'Цифрами'
                     : _selectedRoomCounts.join(', '),
@@ -752,35 +751,7 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 9),
 
-              _buildDropdown(
-                label: 'Количество спальных мест*',
-                hint: _selectedRoomCounts.isEmpty
-                    ? 'Цифрами'
-                    : _selectedRoomCounts.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Количество спальных мест',
-                        options: const ['1', '2', '3', '4', '5', '6+'],
-                        selectedOptions: _selectedRoomCounts,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRoomCounts = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
+              
 
               _buildDropdown(
                 label: 'Планировка',
@@ -1038,61 +1009,6 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 9),
 
-              _buildDropdown(
-                label: 'Комфорт',
-                hint: _selectedComfortTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedComfortTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Комфорт',
-                        options: const [
-                          'Все объявления',
-                          'Подогрев полов',
-                          'Автоматное отопление',
-                          'Односпальная кровать',
-                          'Двухспальная кровать',
-                          'Доп. спальное место',
-                          'Ванна',
-                          'Душевая кабина',
-                          'Сауна',
-                          'Джакузи',
-                          'Бильярд',
-                          'Кондиционер',
-                          'Утюг, гладильная доска',
-                          'Гардероб',
-                          'Сейф',
-                          'Видеонаблюдение',
-                          'Охраняемая территория',
-                          'Терраса',
-                          'Парковочное место',
-                          'Фитнес-центр, спортзал',
-                          'Бассейн',
-                          'Баня',
-                          'Сауна',
-                          'Хамам',
-                        ],
-                        selectedOptions: _selectedComfortTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedComfortTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: true,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
               _buildTextField(
                 label: 'Год постройки',
                 hint: 'Укажите год',
@@ -1100,6 +1016,7 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 9),
 
+              
               _buildDropdown(
                 label: 'Коммуникации',
                 hint: _selectedCommunicationTypes.isEmpty

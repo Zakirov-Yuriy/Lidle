@@ -88,7 +88,18 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
 
                     const SizedBox(height: 18),
                     _buildSectionTitle("Выберите категорию"),
-                    _buildClickableBox(value: "Недвижимость", onTap: () {}),
+                    _buildClickableBox(
+                      value: "Недвижимость",
+                      icon: Icons.close,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RealEstateFullSubcategoriesScreen(),
+                          ),
+                        );
+                      },
+                    ),
 
                     const SizedBox(height: 18),
                     _buildSectionTitle("Выберите город"),
@@ -416,12 +427,12 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             
           ),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const RealEstateFullSubcategoriesScreen(),
-              ),
-            );
+            // Navigator.push(
+            //   context,
+            //   MaterialPageRoute(
+            //     builder: (context) => const RealEstateFullSubcategoriesScreen(),
+            //   ),
+            // );
           },
           child: const Text(
             "Применить",
