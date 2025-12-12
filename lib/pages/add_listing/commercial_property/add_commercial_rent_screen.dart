@@ -16,7 +16,7 @@ import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import '../../../constants.dart';
 
 /// ============================================================
-/// Экран: Создание объявления — Продажа торговых помещений
+/// Экран: Создание объявления — Аренда торговых помещений
 /// ============================================================
 class AddCommercialRentScreen extends StatefulWidget {
   static const String routeName = '/add-commercial-sell';

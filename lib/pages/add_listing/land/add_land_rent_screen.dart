@@ -16,7 +16,7 @@ import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import '../../../constants.dart';
 
 /// ============================================================
-/// Экран: Создание объявления — Продажа земли
+/// Экран: Создание объявления — Аренда земли
 /// ============================================================
 class AddLandRentScreen extends StatefulWidget {
   static const String routeName = '/add-land-sell';

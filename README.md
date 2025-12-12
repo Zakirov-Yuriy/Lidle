@@ -128,7 +128,7 @@ lib/models/
 #  Пользовательский интерфейс (Pages)
 ```
 lib/pages/
-├──  Аутентификация
+├──  Аутентификация (auth/)
 │   ├── sign_in_screen.dart                 # Вход в приложение
 │   ├── register_screen.dart                # Регистрация нового пользователя
 │   ├── register_verify_screen.dart         # Подтверждение email
@@ -138,24 +138,53 @@ lib/pages/
 ├──  Главный интерфейс
 │   ├── home_page.dart                      # Главная страница с объявлениями
 │   ├── category_selection_screen.dart      # Выбор категории товаров
-│   ├── real_estate_subcategories_screen.dart # Подкатегории недвижимости
-│   ├── real_estate_apartments_screen.dart  # Список квартир
-│   └── full_category_screen/
-│       ├── full_category_screen.dart       # Полный экран категорий
-│       └── real_estate_listings_screen.dart # Экран объявлений недвижимости
-├──  Создание объявлений
-│   ├── add_listing_screen.dart             # Общий экран добавления
-│   ├── add_apartment_sell_screen.dart      # Добавление квартиры (продажа)
-│   └── add_apartment_rent_screen.dart      # Добавление квартиры (аренда)
-├──  Поиск и фильтры
 │   ├── filters_screen.dart                 # Настройки фильтров
-│   └── favorites_screen.dart               # Избранные объявления
+│   ├── favorites_screen.dart               # Избранные объявления
+│   ├── my_purchases_screen.dart            # Мои покупки
+│   └── full_category_screen/
+│       └── real_estate_listings_screen.dart # Экран объявлений недвижимости
+├──  Создание объявлений (add_listing/)
+│   ├── add_listing_screen.dart             # Общий экран добавления
+│   ├── category_selection_screen.dart      # Выбор категории при добавлении
+│   ├── publication_success_screen.dart     # Успешная публикация объявления
+│   ├── publication_tariff_screen.dart      # Выбор тарифа публикации
+│   ├── real_estate_apartments_screen.dart  # Список квартир для добавления
+│   ├── real_estate_subcategories_screen.dart # Подкатегории недвижимости
+│   ├── apartments/
+│   │   ├── add_apartment_rent_screen.dart  # Добавление квартиры (аренда)
+│   │   └── add_apartment_sell_screen.dart  # Добавление квартиры (продажа)
+│   ├── commercial_property/
+│   │   ├── add_commercial_rent_screen.dart # Аренда коммерческой недвижимости
+│   │   ├── add_commercial_sell_screen.dart # Продажа коммерческой недвижимости
+│   │   ├── add_coworking_sell_screen.dart  # Продажа коворкингов
+│   │   ├── add_office_sell_screen.dart     # Продажа офисов
+│   │   └── real_estate_commercial_property_screen.dart # Общий экран коммерческой недвижимости
+│   ├── daily_rent/
+│   │   ├── add_apartment_daily_rent_screen.dart # Посуточная аренда квартир
+│   │   ├── add_daily_share_sell_screen.dart     # Продажа ежедневных долей
+│   │   ├── add_hostel_bed_rent_screen.dart      # Аренда мест в хостелах
+│   │   ├── add_hotel_resort_rent_screen.dart    # Аренда отелей и курортов
+│   │   ├── add_room_daily_rent_screen.dart      # Посуточная аренда комнат
+│   │   └── add_tour_operator_offer_screen.dart  # Предложения туроператоров
+│   ├── foreign_real_estate/
+│   │   ├── add_apartment_abroad_long_rent_screen.dart # Долгосрочная аренда за рубежом
+│   │   ├── add_apartment_abroad_sell_screen.dart       # Продажа квартир за рубежом
+│   │   └── add_house_abroad_long_rent_screen.dart      # Аренда домов за рубежом
+│   ├── garages/
+│   │   ├── add_garage_parking_long_rent_screen.dart # Долгосрочная аренда гаражей
+│   │   └── add_garage_parking_sell_screen.dart       # Продажа гаражей
+│   ├── houses/
+│   │   ├── add_house_rent_screen.dart # Аренда домов
+│   │   └── add_house_sell_screen.dart # Продажа домов
+│   ├── land/
+│   │   ├── add_land_rent_screen.dart # Аренда земли
+│   │   └── add_land_sell_screen.dart # Продажа земли
+│   └── rooms/
+│       ├── add_room_rent_screen.dart # Аренда комнат
+│       └── add_room_sell_screen.dart # Продажа комнат
 └──  Профиль пользователя
     ├── profile_dashboard.dart              # Панель управления профилем
-    ├── profile_menu_screen.dart            # Меню настроек
-    ├── publication_success_screen.dart     # Успешная публикация
-    ├── publication_tariff_screen.dart      # Выбор тарифа публикации
-    └── my_purchases_screen.dart            # Мои покупки
+    └── profile_menu_screen.dart            # Меню настроек
 ```
 
 #  Сервисы и утилиты
@@ -403,3 +432,25 @@ test/
 - **Сервисы**: `ApiService`, `AuthService` - конфигурация, сигнатуры методов
 - **UI компоненты**: `CategoryCard`, `ListingCard` - рендеринг, стилизация, адаптивность
 - **Приложение**: Базовый smoke тест для проверки запуска
+
+# Недавние обновления
+
+# Исправление комментариев в файлах add_listing (12.12.2025)
+
+В рамках улучшения кодовой базы были исправлены комментарии в файлах экранов добавления объявлений в папке `lib/pages/add_listing/`. Все комментарии теперь точно соответствуют назначению каждого экрана.
+
+# Исправленные файлы:
+
+1. **land/add_land_rent_screen.dart** - "Продажа земли" → "Аренда земли"
+2. **houses/add_house_rent_screen.dart** - "Продажа домов" → "Аренда домов"
+3. **garages/add_garage_parking_sell_screen.dart** - "Продажа земли" → "Продажа гаражей"
+4. **garages/add_garage_parking_long_rent_screen.dart** - "Продажа земли" → "Долгосрочная аренда гаражей"
+5. **daily_rent/add_tour_operator_offer_screen.dart** - "Продажа земли" → "Предложения туроператоров"
+6. **daily_rent/add_hotel_resort_rent_screen.dart** - "Продажа земли" → "Аренда отелей и курортов"
+7. **daily_rent/add_hostel_bed_rent_screen.dart** - "Продажа земли" → "Аренда мест в хостелах"
+8. **daily_rent/add_daily_share_sell_screen.dart** - "Продажа земли" → "Продажа ежедневных долей"
+9. **daily_rent/add_apartment_daily_rent_screen.dart** - "Продажа земли" → "Посуточная аренда квартир"
+10. **commercial_property/add_commercial_rent_screen.dart** - "Продажа торговых помещений" → "Аренда торговых помещений"
+
+
+Это улучшение повышает читаемость кода и помогает разработчикам быстрее ориентироваться в структуре приложения.
