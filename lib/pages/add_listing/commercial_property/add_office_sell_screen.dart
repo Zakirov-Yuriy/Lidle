@@ -3,55 +3,62 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
+
 import '../real_estate_subcategories_screen.dart';
+import '../publication_tariff_screen.dart';
+
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
-import '../publication_tariff_screen.dart'; 
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 
 import '../../../constants.dart';
 
-// ============================================================
-// "Виджет: Экран добавления квартиры в недвижимость"
-// ============================================================
-class AddApartmentSellScreen extends StatefulWidget {
-  static const String routeName = '/add-real-estate-apt';
+/// ============================================================
+/// Экран: Создание объявления — Продажа офисов
+/// ============================================================
+class AddOfficeSellScreen extends StatefulWidget {
+  static const String routeName = '/add-office-sell';
 
-  const AddApartmentSellScreen({super.key});
+  final String? initialCategory;
+
+  const AddOfficeSellScreen({super.key, this.initialCategory});
 
   @override
-  State<AddApartmentSellScreen> createState() => _AddApartmentSellScreenState();
+  State<AddOfficeSellScreen> createState() =>
+      _AddOfficeSellScreenState();
 }
 
-// ============================================================
-// "Класс состояния: Управление состоянием экрана добавления квартиры"
-// ============================================================
-class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
-// ============================================================
-// "Переменные состояния: Хранение выбранных опций для формы квартиры"
-// ============================================================
-  Set<String> _selectedHouseTypes = {};
-  Set<String> _selectedDealTypes = {};
-  Set<String> _selectedWallTypes = {};
-  Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; 
-  Set<String> _selectedCommunicationTypes =
-      {}; 
-  Set<String> _selectedCity = {}; 
-  Set<String> _selectedStreet = {}; 
-  Set<String> _selectedRoomCounts = {}; 
-  Set<String> _selectedLayoutTypes = {}; 
-  Set<String> _selectedBathroomTypes = {}; 
-  Set<String> _selectedRenovationTypes = {}; 
-  Set<String> _selectedAppliancesTypes = {}; 
-  Set<String> _selectedMultimediaTypes = {}; 
-  Set<String> _selectedComfortTypes = {}; 
-  Set<String> _selectedInfrastructureTypes =
-      {}; 
-  Set<String> _selectedLandscapeTypes = {}; 
-  List<File> _images = [];
+class _AddOfficeSellScreenState extends State<AddOfficeSellScreen> {
+  late String _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.initialCategory ?? 'Продажа торговых помещений';
+  }
+
+  // ======================= СЕТЫ ДЛЯ ДИАЛОГОВ =======================
+
+  Set<String> _selectedOfficeClass = {};
+  Set<String> _selectedLocationTypes = {};
+  Set<String> _selectedDistanceToCity = {};
+  Set<String> _selectedObjectTypes = {};
+  Set<String> _selectedHeatingTypes = {};
+  Set<String> _selectedComfortTypes = {};
+  Set<String> _selectedAppliancesTypes = {};
+  Set<String> _selectedTypeInside = {};
+  Set<String> _selectedCommunicationTypes = {};
+  Set<String> _selectedInfrastructureTypes = {};
+  Set<String> _selectedLandscapeTypes = {};
+  Set<String> _selectedRegion = {};
+  Set<String> _selectedCity = {};
+  Set<String> _selectedStreet = {};
+
+  // ======================= КАРТИНКИ =======================
+
+  final List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
@@ -133,37 +140,25 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
     });
   }
 
-  bool isIndividualSelected = true; 
-  bool isSecondarySelected = true; 
-  bool isMortgageYes = true; 
+  // ======================= СТЕЙТ ПЕРЕКЛЮЧАТЕЛЕЙ =======================
 
-  bool isBargain = false; 
-  bool isNoCommission = false; 
-  bool isExchange = false; 
-  bool isPledge = false; 
-  bool isUrgent = false; 
-  bool isInstallment = false; 
-  bool isRemoteDeal = false; 
-  bool isClientPrice = false; 
-  bool isAutoRenewal = false; 
-  bool isAutoRenewal1 = false;
-  bool? _selectedFurnished =
-      true; 
+  bool isIndividualSelected = true; // Частное лицо / Бизнес
+  bool isBargain = false; // Возможен торг
+  bool isNoCommission = false; // Без комиссии
+  bool isExchange = false; // Возможность обмена
+  bool isRealtorReady = false; // Готов сотрудничать с риэлтором
+  bool isUrgentBuyout = false; // Срочный выкуп
+  bool isRosreestr = false; // Учёт в рос реестре
 
- 
+  bool isAutoRenewal = false; // Автопродление
+  bool? _selectedFurnished = true; // Меблирование да/нет
+  bool? _selectedBathroom = true; // Санузел да/нет
+  bool? _selectedRenovation = true; // Ремонт да/нет
 
-  String _selectedAction = 'publish'; 
+  String _selectedAction = 'publish'; // preview / publish
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
-  }
-
-  void _toggleMarketType(bool isSecondary) {
-    setState(() => isSecondarySelected = isSecondary);
-  }
-
-  void _toggleMortgage(bool yes) {
-    setState(() => isMortgageYes = yes);
   }
 
   @override
@@ -179,6 +174,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ---------------- HEADER ----------------
               Row(
                 children: [
                   GestureDetector(
@@ -204,13 +200,14 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
               const SizedBox(height: 17),
 
+              // ---------------- ФОТО ----------------
               GestureDetector(
-                onTap: () {
-                  _showImageSourceActionSheet(context);
-                },
+                onTap: () => _showImageSourceActionSheet(context),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground, 
+                    color: _images.isEmpty
+                        ? secondaryBackground
+                        : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -243,23 +240,24 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3, 
+                                crossAxisCount: 3,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
-                                childAspectRatio: 115 / 89, 
+                                childAspectRatio: 115 / 89,
                               ),
-                          shrinkWrap: true, 
-                          physics: const NeverScrollableScrollPhysics(), 
-                          itemCount: _images.length + 1, 
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _images.length + 1,
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
-                                onTap: () => _showImageSourceActionSheet(context),
+                                onTap: () =>
+                                    _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
                                   decoration: BoxDecoration(
-                                    color: formBackground, 
+                                    color: formBackground,
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Center(
@@ -274,11 +272,11 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                             }
                             return Container(
                               width: 115,
-                              height: 89, 
+                              height: 89,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              clipBehavior: Clip.antiAlias, 
+                              clipBehavior: Clip.antiAlias,
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -296,7 +294,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(5),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -315,38 +315,45 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
               const SizedBox(height: 13),
 
+              // ---------------- ЗАГОЛОВОК ----------------
               _buildTextField(
                 label: 'Заголовок объявления',
-                hint: 'Например, уютная 2-комнатная квартира',
+                hint: 'Например, торговое помещение в ТЦ',
               ),
               const SizedBox(height: 7),
-              Text(
+              const Text(
                 'Введите не менее 16 символов',
                 style: TextStyle(color: textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 15),
 
+              // ---------------- КАТЕГОРИЯ ----------------
               _buildDropdown(
                 label: 'Категория',
-                hint: 'Продажа квартир',
-                subtitle: 'Недвижимость / Квартиры',
+                hint: _selectedCategory,
+                subtitle:
+                    'Недвижимость / Коммерчиская недвижимость / Продажа офисов',
                 showChangeText: true,
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
                           const RealEstateSubcategoriesScreen(),
                     ),
                   );
+                  if (result != null) {
+                    setState(() => _selectedCategory = result);
+                  }
                 },
               ),
               const SizedBox(height: 13),
 
+              // ---------------- ОПИСАНИЕ ----------------
               _buildTextField(
                 label: 'Описание',
                 hint:
-                    'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
+                    'Чем больше информации вы укажете о вашем объекте, тем привлекательнее он будет для клиентов. Без ссылок, телефонов, матершинных слов.',
                 minLength: 70,
                 maxLines: 4,
                 height: 149,
@@ -354,6 +361,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
 
               const SizedBox(height: 24),
 
+              // ---------------- ЦЕНА ----------------
               const Text(
                 'Цена*',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -368,13 +376,13 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
+                      child: const Row(
                         children: [
                           Expanded(
                             child: TextField(
                               keyboardType: TextInputType.number,
-                              style: const TextStyle(color: textPrimary),
-                              decoration: const InputDecoration(
+                              style: TextStyle(color: textPrimary),
+                              decoration: InputDecoration(
                                 hintText: '1 000 000',
                                 hintStyle: TextStyle(
                                   color: Color.fromARGB(255, 255, 255, 255),
@@ -397,7 +405,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                     width: 53,
                     height: 48,
                     alignment: Alignment.center,
-                    child: Text(
+                    child: const Text(
                       '₽',
                       style: TextStyle(color: textPrimary, fontSize: 16),
                     ),
@@ -406,692 +414,240 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
               const SizedBox(height: 15),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isBargain = !isBargain),
-                      child: const Text(
-                        'Возможен торг',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isBargain,
-                    onChanged: (v) => setState(() => isBargain = v),
-                  ),
-                ],
+              // ---------------- ЧЕКБОКСЫ ПОСЛЕ ЦЕНЫ ----------------
+              _buildCheckboxRow(
+                title: 'Возможен торг',
+                value: isBargain,
+                onChanged: (v) => setState(() => isBargain = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isNoCommission = !isNoCommission),
-                      child: const Text(
-                        'Без комиссии',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isNoCommission,
-                    onChanged: (v) => setState(() => isNoCommission = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Без комиссии',
+                value: isNoCommission,
+                onChanged: (v) => setState(() => isNoCommission = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isExchange = !isExchange),
-                      child: const Text(
-                        'Возможность обмена',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isExchange,
-                    onChanged: (v) => setState(() => isExchange = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Возможность обмена',
+                value: isExchange,
+                onChanged: (v) => setState(() => isExchange = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isPledge = !isPledge),
-                      child: const Text(
-                        'Готов сотрудничать с риэлтором',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isPledge,
-                    onChanged: (v) => setState(() => isPledge = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Готов сотрудничать с риэлтором',
+                value: isRealtorReady,
+                onChanged: (v) => setState(() => isRealtorReady = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isUrgent = !isUrgent),
-                      child: const Text(
-                        'Срочная продажа',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isUrgent,
-                    onChanged: (v) => setState(() => isUrgent = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Срочный выкуп',
+                value: isUrgentBuyout,
+                onChanged: (v) => setState(() => isUrgentBuyout = v),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isInstallment = !isInstallment),
-                      child: const Text(
-                        'Рассрочка',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isInstallment,
-                    onChanged: (v) => setState(() => isInstallment = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isRemoteDeal = !isRemoteDeal),
-                      child: const Text(
-                        'Учёт в рос реестре',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isRemoteDeal,
-                    onChanged: (v) => setState(() => isRemoteDeal = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isClientPrice = !isClientPrice),
-                      child: const Text(
-                        'Клиент может предложить свою цену',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isClientPrice,
-                    onChanged: (v) => setState(() => isClientPrice = v),
-                  ),
-                ],
+              _buildCheckboxRow(
+                title: 'Учёт в рос реестре',
+                value: isRosreestr,
+                onChanged: (v) => setState(() => isRosreestr = v),
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 18),
+
+              // ======================================================
+              // ХАРАКТЕРИСТИКИ КОММЕРЧЕСКОЙ НЕДВИЖИМОСТИ
+              // ======================================================
+              _buildDropdown(
+                label: 'Класс офиса',
+                hint: _selectedOfficeClass.isEmpty
+                    ? 'Выбрать'
+                    : _selectedOfficeClass.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Класс офиса',
+                        options: const [
+                          'Категория A',
+                          'Категория B',
+                          'Категория C',
+                        ],
+                        selectedOptions: _selectedOfficeClass,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedOfficeClass = selected);
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Расположение',
+                hint: _selectedLocationTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedLocationTypes.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Расположение',
+                        options: const [
+                          'Цокольный этаж / подвал',
+                          'Фасадное помещение',
+                          'Отдельное помещение',
+                          'Отдельное здание',
+                          'Часть здания',
+                          'Другое',
+                        ],
+                        selectedOptions: _selectedLocationTypes,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedLocationTypes = selected);
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Расстояние до ближайшего города',
+                hint: _selectedDistanceToCity.isEmpty
+                    ? 'Выбрать'
+                    : _selectedDistanceToCity.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Расстояние до \nближайшего города',
+                        options: const [
+                          'В городе',
+                          'До 5 км',
+                          'До 10 км',
+                          'До 15 км',
+                          'До 20 км',
+                          'До 25 км',
+                          'До 30 км',
+                          'До 35 км',
+                          'До 40 км',
+                          'До 45 км',
+                          'До 50 км',
+                          'До 55 км',
+                        ],
+                        selectedOptions: _selectedDistanceToCity,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedDistanceToCity = selected);
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              if (_selectedCategory != 'Продажа офисов') ...[
+                _buildDropdown(
+                  label: 'Тип объекта',
+                  hint: _selectedObjectTypes.isEmpty
+                      ? 'Выбрать'
+                      : _selectedObjectTypes.join(', '),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: textSecondary,
+                  ),
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return SelectionDialog(
+                          title: 'Тип объекта',
+                          options: const [
+                            'Торговое помещение',
+                            'Магазин',
+                            'Павильон',
+                            'Офис',
+                            'Бизнес-центр',
+                            'Склад',
+                            'Гостиница',
+                            'Помещение свободного назначения (ПСН)',
+                          ],
+                          selectedOptions: _selectedObjectTypes,
+                          onSelectionChanged: (selected) {
+                            setState(() => _selectedObjectTypes = selected);
+                          },
+                          allowMultipleSelection: false,
+                        );
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(height: 9),
+              ],
+
+              _buildTextField(
+                label: 'Этаж',
+                hint: 'Укажите этаж',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 9),
+
+              _buildTextField(
+                label: 'Этажность',
+                hint: 'Общее количество этажей',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 9),
+
+              _buildTextField(
+                label: 'Общая площадь (м²)',
+                hint: 'Цифрами',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 9),
+
+              _buildTextField(label: 'Год постройки', hint: 'Цифрами'),
+              const SizedBox(height: 9),
 
               const Text(
-                'Ипотека',
-                style: TextStyle(color: textPrimary, fontSize: 16),
+                'Санузел',
+                style: TextStyle(color: textPrimary, fontSize: 14),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   _buildChoiceButton(
                     'Да',
-                    isMortgageYes,
-                    () => _toggleMortgage(true),
+                    _selectedBathroom == true,
+                    () => setState(() => _selectedBathroom = true),
                   ),
                   const SizedBox(width: 10),
                   _buildChoiceButton(
                     'Нет',
-                    !isMortgageYes,
-                    () => _toggleMortgage(false),
+                    _selectedBathroom == false,
+                    () => setState(() => _selectedBathroom = false),
                   ),
-                ],
-              ),
-
-              const SizedBox(height: 13),
-              const Text(
-                'Рассрочка',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = true),
-                      child: Text(
-                        'Да',
-                        style: TextStyle(
-                          color: isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: !isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: !isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = false),
-                      child: Text(
-                        'Нет',
-                        style: TextStyle(
-                          color: !isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 13),
-
-              _buildDropdown(
-                label: 'Тип дома',
-                hint: _selectedHouseTypes.isEmpty
-                    ? 'Сталинка'
-                    : _selectedHouseTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Тип дома',
-                        options: const [
-                          'Все объявления',
-                          'Царский дом',
-                          'Сталинка',
-                          'Хрущевка',
-                          'Чешка',
-                          'Гостинка',
-                          'Совмин',
-                          'Общежитие',
-                          'Жилой фонд 80-90-е',
-                          'Жилой фонд 91-2000-е',
-                          'Жилой фонд 2001-2010-е',
-                          'Жилой фонд 2011-2020-е',
-                          'Жилой фонд от 2021 г.',
-                        ],
-                        selectedOptions: _selectedHouseTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHouseTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-              _buildTextField(
-                label: 'Название ЖК',
-                hint: 'Название жилого комплекса',
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(label: 'Номер квартиры', hint: 'Номер квартиры'),
-              const SizedBox(height: 9),
-
-              _buildTextField(label: 'Этаж*', hint: 'Укажите этаж'),
-              const SizedBox(height: 9),
-
-              _buildTextField(
-                label: 'Этажность*',
-                hint: 'Общее количество этажей',
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Тип сделки',
-                hint: _selectedDealTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedDealTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Тип сделки',
-                        options: const [
-                          'От застройщика',
-                          'Переуступка',
-                          'Рассрочка от',
-                          'Рассрочка от банка',
-                          'Банковский кредит',
-                          'Лизинг',
-                        ],
-                        selectedOptions: _selectedDealTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedDealTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(label: 'Общая площадь(м²)*', hint: 'Цифрами'),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Тип стен',
-                hint: _selectedWallTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedWallTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Тип стен',
-                        options: const [
-                          'Газоблок',
-                          'Кирпич',
-                          'Панель',
-                          'Монолит',
-                          'Дерево',
-                          'Каркасный',
-                          'СИП-панель',
-                        ],
-                        selectedOptions: _selectedWallTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedWallTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Класс жилья',
-                hint: _selectedHousingClassTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedHousingClassTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Класс жилья',
-                        options: const [
-                          'Эконом',
-                          'Комфорт',
-                          'Бизнес',
-                          'Премиум',
-                        ],
-                        selectedOptions: _selectedHousingClassTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHousingClassTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Количество комнат*',
-                hint: _selectedRoomCounts.isEmpty
-                    ? 'Цифрами'
-                    : _selectedRoomCounts.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Количество комнат',
-                        options: const ['1', '2', '3', '4', '5', '6+'],
-                        selectedOptions: _selectedRoomCounts,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRoomCounts = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Планировка',
-                hint: _selectedLayoutTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedLayoutTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Планировка',
-                        options: const [
-                          'Смежная, проходная',
-                          'Раздельная',
-                          'Студия',
-                          'Пентхаус',
-                          'Многоуровневая',
-                          'Малосемека, гостинка',
-                        ],
-                        selectedOptions: _selectedLayoutTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedLayoutTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Санузел',
-                hint: _selectedBathroomTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedBathroomTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Санузел',
-                        options: const [
-                          'Раздельный',
-                          'Смежный',
-                          '2 и более',
-                          'Санузел отсутствует',
-                        ],
-                        selectedOptions: _selectedBathroomTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedBathroomTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Отопление',
-                hint: _selectedHeatingTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedHeatingTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Отопление',
-                        options: const [
-                          'Централизованное',
-                          'Собственная котельная',
-                          'Индивидуальное газовое',
-                          'Индивидуальное электро',
-                          'Твердопливное',
-                          'Тепловой насос',
-                          'Комбинированное',
-                          'Другое',
-                        ],
-                        selectedOptions: _selectedHeatingTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHeatingTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Ремонт',
-                hint: _selectedRenovationTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedRenovationTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Ремонт',
-                        options: const [
-                          'Авторский проект',
-                          'Евроремонт',
-                          'Косметический ремонт',
-                          'Жилое состояние',
-                          'После строительства',
-                          'Под чистовую отделку',
-                          'Аварийное состояние',
-                        ],
-                        selectedOptions: _selectedRenovationTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedRenovationTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              const Text(
-                'Мебелирован',
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton('Да', _selectedFurnished == true, () {
-                    setState(() {
-                      _selectedFurnished = true;
-                    });
-                  }),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton('Нет', _selectedFurnished == false, () {
-                    setState(() {
-                      _selectedFurnished = false;
-                    });
-                  }),
                 ],
               ),
               const SizedBox(height: 18),
-
-              _buildDropdown(
-                label: 'Бытовая техника',
-                hint: _selectedAppliancesTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedAppliancesTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Бытовая техника',
-                        options: const [
-                          'Электрочайник',
-                          'Кофемашина',
-                          'Фен',
-                          'Плита',
-                          'Варочная панель',
-                          'Микроволновая печь',
-                          'Мультиварка',
-                          'Холодильник',
-                          'Посудомоечная машина',
-                          'Стиральная машина',
-                          'Сушильная машина',
-                          'Утюг',
-                          'Пылесос',
-                          'Без бытовой техники',
-                        ],
-                        selectedOptions: _selectedAppliancesTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedAppliancesTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: true,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
-
-              _buildDropdown(
-                label: 'Мультимедиа',
-                hint: _selectedMultimediaTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedMultimediaTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Мультимедиа',
-                        options: const [
-                          'Wi-Fi',
-                          'Скоростной интернет',
-                          'ПК, принтер, сканер',
-                          'Телевизор',
-                          'Кабильное, цифровое ТВ',
-                          'Спутниковое ТВ',
-                          'Домашний кинотеатр',
-                          'X-box, Playstation',
-                          'Без мультимедиа',
-                        ],
-                        selectedOptions: _selectedMultimediaTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedMultimediaTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: true,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Комфорт',
@@ -1105,11 +661,11 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Комфорт',
                         options: const [
-                          'Все объявления',
+                          'Все обьявления',
                           'Подогрев полов',
                           'Автоматное отопление',
                           'Односпальная кровать',
@@ -1131,14 +687,172 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'Фитнес-центр, спортзал',
                           'Бассейн',
                           'Баня',
-                          'Сауна',
                           'Хамам',
+                         
                         ],
                         selectedOptions: _selectedComfortTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedComfortTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedComfortTypes = selected);
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Отопление',
+                hint: _selectedHeatingTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedHeatingTypes.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Отопление',
+                         options: const [
+                          'Централизованное',
+                          'Собственная котельная',
+                          'Индивидуальное газовое',
+                          'Индивидуальное электро',
+                          'Твердопливное',
+                          'Тепловой насос',
+                          'Комбинированное',
+                          'Другое',
+                        ],
+                        selectedOptions: _selectedHeatingTypes,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedHeatingTypes = selected);
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              const Text(
+                'Ремонт',
+                style: TextStyle(color: textPrimary, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildChoiceButton(
+                    'Да',
+                    _selectedRenovation == true,
+                    () => setState(() => _selectedRenovation = true),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildChoiceButton(
+                    'Нет',
+                    _selectedRenovation == false,
+                    () => setState(() => _selectedRenovation = false),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              // ====================== МЕБЛИРОВАНИЕ ==================
+              const Text(
+                'Меблирование',
+                style: TextStyle(color: textPrimary, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildChoiceButton(
+                    'Да',
+                    _selectedFurnished == true,
+                    () => setState(() => _selectedFurnished = true),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildChoiceButton(
+                    'Нет',
+                    _selectedFurnished == false,
+                    () => setState(() => _selectedFurnished = false),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+
+              _buildDropdown(
+                label: 'Бытовая техника',
+                hint: _selectedAppliancesTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedAppliancesTypes.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Бытовая техника',
+                        options: const [
+                          'Электрочайник',
+                          'Кофемашина',
+                          'Фен',
+                          'Плита',
+                          'Варочная панель',
+                          'Микроволновая печь',
+                          'Мультиварка',
+                          'Холодильник',
+                          'Посудомоечная машина',
+                          'Стиральная машина',
+                          'Сушильная машина',
+                          'Утюг',
+                          'Пылесос',
+                          'Без бытовой техники',
+                        ],
+                        selectedOptions: _selectedAppliancesTypes,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedAppliancesTypes = selected);
+                        },
+                        allowMultipleSelection: true,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Тип офиса',
+                hint: _selectedTypeInside.isEmpty
+                    ? 'Выбрать'
+                    : _selectedTypeInside.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Тип офиса',
+                        options: const [
+                          'Open space',
+                          'Кабинетный тип',
+                          'Закрытый тип',
+                          'Открытый тип',
+                          'С зонами общего пользования',
+                          'Другой',
+                        ],
+                        selectedOptions: _selectedTypeInside,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedTypeInside = selected);
                         },
                         allowMultipleSelection: true,
                       );
@@ -1160,7 +874,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Коммуникации',
                         options: const [
@@ -1174,53 +888,16 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'Без коммуникаций',
                         ],
                         selectedOptions: _selectedCommunicationTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCommunicationTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(
+                            () => _selectedCommunicationTypes = selected,
+                          );
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
                 },
-              ),
-              const SizedBox(height: 9),
-
-              const Text(
-                'Вид объекта',
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Вторичка',
-                    isSecondarySelected,
-                    () => _toggleMarketType(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Новостройка',
-                    !isSecondarySelected,
-                    () => _toggleMarketType(false),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              _buildTextField(
-                label: 'Год постройки',
-                hint: 'Укажите год',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(
-                label: 'Площадь кухни(м²)',
-                hint: 'Цифрами',
-                keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 9),
 
@@ -1236,18 +913,17 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Инфраструктура (до 500 метров)',
-                        options: const [
-                          'Центр города',
+                         options: const [
+                          'Центор города',
                           'Достопримечательности',
                           'Исторические места',
                           'Музеи выставки',
                           'Парк, зеленая зона',
                           'Детская площадка',
                           'Отделения банка, банкомат',
-                          'Аптека',
                           'Супермаркет, магазин',
                           'Остановка транспорта',
                           'Стоянка',
@@ -1257,10 +933,10 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'ЖД станция',
                         ],
                         selectedOptions: _selectedInfrastructureTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedInfrastructureTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(
+                            () => _selectedInfrastructureTypes = selected,
+                          );
                         },
                         allowMultipleSelection: true,
                       );
@@ -1282,7 +958,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return SelectionDialog(
                         title: 'Ландшафт (до 1 км)',
                         options: const [
@@ -1303,10 +979,8 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'Город',
                         ],
                         selectedOptions: _selectedLandscapeTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedLandscapeTypes = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedLandscapeTypes = selected);
                         },
                         allowMultipleSelection: true,
                       );
@@ -1315,8 +989,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 },
               ),
 
-              const SizedBox(height: 27),
+              const SizedBox(height: 21),
 
+              // ---------------- ЧАСТНОЕ ЛИЦО / БИЗНЕС ----------------
               const Text(
                 'Частное лицо / Бизнес*',
                 style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1337,7 +1012,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 12),
               const Text(
                 'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
@@ -1346,30 +1020,69 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
 
               const SizedBox(height: 18),
 
+              // ---------------- АВТОПРОДЛЕНИЕ ----------------
               Row(
                 children: [
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Автопродление',
-                        style: TextStyle(color: textPrimary, fontSize: 16),
-                      ),
-                      Text(
-                        'Обьявление будет деактивирано\n через 30 дней',
-                        style: TextStyle(color: textMuted, fontSize: 11),
-                      ),
-                    ],
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Автопродление',
+                          style: TextStyle(color: textPrimary, fontSize: 16),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Объявление будет деактивировано\nчерез 30 дней',
+                          style: TextStyle(color: textMuted, fontSize: 11),
+                        ),
+                      ],
+                    ),
                   ),
-                  const Spacer(),
-
                   CustomSwitch(
                     value: isAutoRenewal,
                     onChanged: (v) => setState(() => isAutoRenewal = v),
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+
+              const SizedBox(height: 24),
+
+              // ---------------- АДРЕС ----------------
+              _buildDropdown(
+                label: 'Ваша область*',
+                hint: _selectedRegion.isEmpty
+                    ? 'Ваша область'
+                    : _selectedRegion.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Ваша область',
+                        options: const [
+                          'Алтайский край',
+                          'Краснодарский край',
+                          'Московская область',
+                          'Ленинградская область',
+                          'Ростовская область',
+                          'Новосибирская область',
+                        ],
+                        selectedOptions: _selectedRegion,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedRegion = selected);
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
 
               _buildDropdown(
                 label: 'Ваш город*',
@@ -1383,7 +1096,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return CitySelectionDialog(
                         title: 'Ваш город',
                         options: const [
@@ -1398,13 +1111,10 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-
                         ],
                         selectedOptions: _selectedCity,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCity = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedCity = selected);
                         },
                       );
                     },
@@ -1416,7 +1126,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               _buildDropdown(
                 label: 'Улица*',
                 hint: _selectedStreet.isEmpty
-                    ? 'Ваша улица'
+                    ? 'Ваш район'
                     : _selectedStreet.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
@@ -1425,7 +1135,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 onTap: () {
                   showDialog(
                     context: context,
-                    builder: (BuildContext context) {
+                    builder: (context) {
                       return StreetSelectionDialog(
                         title: 'Улица',
                         groupedOptions: const {
@@ -1446,28 +1156,24 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           ],
                         },
                         selectedOptions: _selectedStreet,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedStreet = selected;
-                          });
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedStreet = selected);
                         },
                       );
                     },
                   );
                 },
               ),
-
               const SizedBox(height: 9),
 
               _buildTextField(label: 'Номер дома*', hint: 'Номер дома'),
               const SizedBox(height: 9),
 
               const Text(
-                'Местоположение на карте',
+                'Месторасположение*',
                 style: TextStyle(color: textPrimary, fontSize: 14),
               ),
               const SizedBox(height: 9),
-
               Container(
                 height: 160,
                 decoration: BoxDecoration(
@@ -1485,6 +1191,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
 
               const SizedBox(height: 27),
 
+              // ---------------- КОНТАКТНЫЕ ДАННЫЕ ----------------
               const Text(
                 'Ваши контактные данные',
                 style: TextStyle(color: textPrimary, fontSize: 16),
@@ -1517,23 +1224,23 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
 
               _buildTextField(
                 label: 'Ссылка на ваш чат в телеграм',
-                hint: 'https:',
+                hint: 'https://',
               ),
               const SizedBox(height: 9),
 
               _buildTextField(
                 label: 'Ссылка на ваш whatsapp',
-                hint: 'https:',
+                hint: 'https://',
               ),
 
               const SizedBox(height: 22),
 
+              // ---------------- КНОПКИ ----------------
               _buildButton(
                 'Предпросмотр',
                 onPressed: () {
-                  setState(() {
-                    _selectedAction = 'preview';
-                  });
+                  setState(() => _selectedAction = 'preview');
+                  // сюда можно будет подвязать экран предпросмотра
                 },
                 isPrimary: _selectedAction == 'preview',
               ),
@@ -1541,9 +1248,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               _buildButton(
                 'Опубликовать',
                 onPressed: () {
-                  setState(() {
-                    _selectedAction = 'publish';
-                  });
+                  setState(() => _selectedAction = 'publish');
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1561,6 +1266,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
     );
   }
 
+  // ============================================================
+  // ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ
+  // ============================================================
 
   Widget _buildTextField({
     required String label,
@@ -1622,13 +1330,16 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 9),
         GestureDetector(
           onTap: onTap,
           child: Container(
-            height: subtitle != null ? 60 : 45,
+            height: subtitle != null ? 80 : 55,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
@@ -1672,11 +1383,11 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                         ),
                 ),
                 if (showChangeText)
-                  Text(
-                    'Изменить',
-                    style: TextStyle(
-                      color: Colors.blue, 
-                      fontSize: 14, 
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8.0),
+                    child: Text(
+                      'Изменить',
+                      style: TextStyle(color: Colors.blue, fontSize: 14),
                     ),
                   ),
                 if (icon != null) icon,
@@ -1698,7 +1409,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
         style: OutlinedButton.styleFrom(
           backgroundColor: isSelected ? activeIconColor : Colors.transparent,
           side: isSelected ? null : const BorderSide(color: Colors.white),
-
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         ),
         onPressed: onPressed,
@@ -1733,6 +1443,27 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
           style: TextStyle(color: isPrimary ? Colors.white : textPrimary),
         ),
       ),
+    );
+  }
+
+  Widget _buildCheckboxRow({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(!value),
+            child: Text(
+              title,
+              style: const TextStyle(color: textPrimary, fontSize: 14),
+            ),
+          ),
+        ),
+        CustomCheckbox(value: value, onChanged: (v) => onChanged(v)),
+      ],
     );
   }
 }

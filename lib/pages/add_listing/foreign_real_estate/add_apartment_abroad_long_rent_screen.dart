@@ -7,50 +7,51 @@ import '../real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
-import '../publication_tariff_screen.dart'; 
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
+import '../publication_tariff_screen.dart';
 
 import '../../../constants.dart';
 
 // ============================================================
 // "Виджет: Экран добавления квартиры в недвижимость"
 // ============================================================
-class AddApartmentSellScreen extends StatefulWidget {
+class AddApartmentAbroadLongRentScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
-  const AddApartmentSellScreen({super.key});
+  const AddApartmentAbroadLongRentScreen({super.key});
 
   @override
-  State<AddApartmentSellScreen> createState() => _AddApartmentSellScreenState();
+  State<AddApartmentAbroadLongRentScreen> createState() =>
+      _AddApartmentAbroadLongRentScreenState();
 }
 
 // ============================================================
 // "Класс состояния: Управление состоянием экрана добавления квартиры"
 // ============================================================
-class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
-// ============================================================
-// "Переменные состояния: Хранение выбранных опций для формы квартиры"
-// ============================================================
+class _AddApartmentAbroadLongRentScreenState
+    extends State<AddApartmentAbroadLongRentScreen> {
+  // ============================================================
+  // "Переменные состояния: Хранение выбранных опций для формы квартиры"
+  // ============================================================
   Set<String> _selectedHouseTypes = {};
-  Set<String> _selectedDealTypes = {};
+  Set<String> _selectedRegion = {};
   Set<String> _selectedWallTypes = {};
+  Set<String> _selectedPetTypes = {};
   Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; 
-  Set<String> _selectedCommunicationTypes =
-      {}; 
-  Set<String> _selectedCity = {}; 
-  Set<String> _selectedStreet = {}; 
-  Set<String> _selectedRoomCounts = {}; 
-  Set<String> _selectedLayoutTypes = {}; 
-  Set<String> _selectedBathroomTypes = {}; 
-  Set<String> _selectedRenovationTypes = {}; 
-  Set<String> _selectedAppliancesTypes = {}; 
-  Set<String> _selectedMultimediaTypes = {}; 
-  Set<String> _selectedComfortTypes = {}; 
-  Set<String> _selectedInfrastructureTypes =
-      {}; 
-  Set<String> _selectedLandscapeTypes = {}; 
+  Set<String> _selectedHeatingTypes = {};
+  Set<String> _selectedCommunicationTypes = {};
+  Set<String> _selectedCity = {};
+  Set<String> _selectedStreet = {};
+  Set<String> _selectedRoomCounts = {};
+  Set<String> _selectedLayoutTypes = {};
+  Set<String> _selectedBathroomTypes = {};
+  Set<String> _selectedRenovationTypes = {};
+  Set<String> _selectedAppliancesTypes = {};
+  Set<String> _selectedMultimediaTypes = {};
+  Set<String> _selectedComfortTypes = {};
+  Set<String> _selectedInfrastructureTypes = {};
+  Set<String> _selectedLandscapeTypes = {};
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -133,37 +134,33 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
     });
   }
 
-  bool isIndividualSelected = true; 
-  bool isSecondarySelected = true; 
-  bool isMortgageYes = true; 
+  bool isIndividualSelected = true;
+  bool isSecondarySelected = true;
+  bool isObjectTypeYes = true;
+  bool isMortgageYes = true;
 
-  bool isBargain = false; 
-  bool isNoCommission = false; 
-  bool isExchange = false; 
-  bool isPledge = false; 
-  bool isUrgent = false; 
-  bool isInstallment = false; 
-  bool isRemoteDeal = false; 
-  bool isClientPrice = false; 
-  bool isAutoRenewal = false; 
+  bool isBargain = false;
+  bool isNoCommission = false;
+  bool isExchange = false;
+  bool isPledge = false;
+  bool isUrgent = false;
+  bool isInstallment = false;
+  bool isForSharedRental = false;
+  bool isPetsAllowed = false;
+  bool isRemoteDeal = false;
+  bool isClientPrice = false;
+  bool isAutoRenewal = false;
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished =
-      true; 
+  bool? _selectedFurnished = true;
 
- 
-
-  String _selectedAction = 'publish'; 
+  String _selectedAction = 'publish';
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
   }
 
-  void _toggleMarketType(bool isSecondary) {
-    setState(() => isSecondarySelected = isSecondary);
-  }
-
-  void _toggleMortgage(bool yes) {
-    setState(() => isMortgageYes = yes);
+  void _toggleObjectType(bool yes) {
+    setState(() => isObjectTypeYes = yes);
   }
 
   @override
@@ -210,7 +207,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground, 
+                    color: _images.isEmpty
+                        ? secondaryBackground
+                        : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -243,23 +242,24 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3, 
+                                crossAxisCount: 3,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
-                                childAspectRatio: 115 / 89, 
+                                childAspectRatio: 115 / 89,
                               ),
-                          shrinkWrap: true, 
-                          physics: const NeverScrollableScrollPhysics(), 
-                          itemCount: _images.length + 1, 
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _images.length + 1,
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
-                                onTap: () => _showImageSourceActionSheet(context),
+                                onTap: () =>
+                                    _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
                                   decoration: BoxDecoration(
-                                    color: formBackground, 
+                                    color: formBackground,
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Center(
@@ -274,11 +274,11 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                             }
                             return Container(
                               width: 115,
-                              height: 89, 
+                              height: 89,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              clipBehavior: Clip.antiAlias, 
+                              clipBehavior: Clip.antiAlias,
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -296,7 +296,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(5),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -328,8 +330,8 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
 
               _buildDropdown(
                 label: 'Категория',
-                hint: 'Продажа квартир',
-                subtitle: 'Недвижимость / Квартиры',
+                hint: 'Долгосрочная аренда квартир \nза рубежом',
+                subtitle: 'Недвижимость / За рубежом',
                 showChangeText: true,
                 onTap: () {
                   Navigator.push(
@@ -428,7 +430,8 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isNoCommission = !isNoCommission),
+                      onTap: () =>
+                          setState(() => isNoCommission = !isNoCommission),
                       child: const Text(
                         'Без комиссии',
                         style: TextStyle(color: textPrimary, fontSize: 14),
@@ -441,24 +444,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isExchange = !isExchange),
-                      child: const Text(
-                        'Возможность обмена',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isExchange,
-                    onChanged: (v) => setState(() => isExchange = v),
-                  ),
-                ],
-              ),
+
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -478,20 +464,23 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 ],
               ),
               const SizedBox(height: 12),
+
               Row(
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isUrgent = !isUrgent),
+                      onTap: () => setState(
+                        () => isForSharedRental = !isForSharedRental,
+                      ),
                       child: const Text(
-                        'Срочная продажа',
+                        'Для совместной аренды',
                         style: TextStyle(color: textPrimary, fontSize: 14),
                       ),
                     ),
                   ),
                   CustomCheckbox(
-                    value: isUrgent,
-                    onChanged: (v) => setState(() => isUrgent = v),
+                    value: isForSharedRental,
+                    onChanged: (v) => setState(() => isForSharedRental = v),
                   ),
                 ],
               ),
@@ -500,133 +489,39 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isInstallment = !isInstallment),
+                      onTap: () =>
+                          setState(() => isPetsAllowed = !isPetsAllowed),
                       child: const Text(
-                        'Рассрочка',
+                        'Домашние питомцые',
                         style: TextStyle(color: textPrimary, fontSize: 14),
                       ),
                     ),
                   ),
                   CustomCheckbox(
-                    value: isInstallment,
-                    onChanged: (v) => setState(() => isInstallment = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isRemoteDeal = !isRemoteDeal),
-                      child: const Text(
-                        'Учёт в рос реестре',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isRemoteDeal,
-                    onChanged: (v) => setState(() => isRemoteDeal = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isClientPrice = !isClientPrice),
-                      child: const Text(
-                        'Клиент может предложить свою цену',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isClientPrice,
-                    onChanged: (v) => setState(() => isClientPrice = v),
+                    value: isPetsAllowed,
+                    onChanged: (v) => setState(() => isPetsAllowed = v),
                   ),
                 ],
               ),
 
               const SizedBox(height: 15),
-
               const Text(
-                'Ипотека',
+                'Вид обьекта*',
                 style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
                   _buildChoiceButton(
-                    'Да',
-                    isMortgageYes,
-                    () => _toggleMortgage(true),
+                    'Вторичка',
+                    isObjectTypeYes,
+                    () => _toggleObjectType(true),
                   ),
                   const SizedBox(width: 10),
                   _buildChoiceButton(
-                    'Нет',
-                    !isMortgageYes,
-                    () => _toggleMortgage(false),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 13),
-              const Text(
-                'Рассрочка',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = true),
-                      child: Text(
-                        'Да',
-                        style: TextStyle(
-                          color: isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: !isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: !isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = false),
-                      child: Text(
-                        'Нет',
-                        style: TextStyle(
-                          color: !isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
+                    'Новострой',
+                    !isObjectTypeYes,
+                    () => _toggleObjectType(false),
                   ),
                 ],
               ),
@@ -694,41 +589,12 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
               const SizedBox(height: 9),
 
-              _buildDropdown(
-                label: 'Тип сделки',
-                hint: _selectedDealTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedDealTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Тип сделки',
-                        options: const [
-                          'От застройщика',
-                          'Переуступка',
-                          'Рассрочка от',
-                          'Рассрочка от банка',
-                          'Банковский кредит',
-                          'Лизинг',
-                        ],
-                        selectedOptions: _selectedDealTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedDealTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
+              _buildTextField(
+                label: 'Площадь кухни(м²)',
+                hint: 'Цифрами',
+                keyboardType: TextInputType.number,
               ),
+
               const SizedBox(height: 9),
 
               _buildTextField(label: 'Общая площадь(м²)*', hint: 'Цифрами'),
@@ -765,6 +631,45 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           });
                         },
                         allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+
+              const SizedBox(height: 9),
+
+              _buildDropdown(
+                label: 'Домашние питомцы*',
+                hint: _selectedPetTypes.isEmpty
+                    ? 'Выбрать'
+                    : _selectedPetTypes.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Домашние питомцы',
+                        options: const [
+                          'Собаки',
+                          'Кошки',
+                          'Птицы',
+                          'Грызуны',
+                          'Рыбы',
+                          'Рептилии',
+                          'Другие животные',
+                        ],
+                        selectedOptions: _selectedPetTypes,
+                        onSelectionChanged: (Set<String> selected) {
+                          setState(() {
+                            _selectedPetTypes = selected;
+                          });
+                        },
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -988,7 +893,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
 
               const Text(
                 'Мебелирован',
-                style: TextStyle(color: textPrimary, fontSize: 14),
+                style: TextStyle(color: textPrimary, fontSize: 16),
               ),
               const SizedBox(height: 12),
               Row(
@@ -1146,6 +1051,14 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                   );
                 },
               ),
+
+              const SizedBox(height: 9),
+              _buildTextField(
+                label: 'Год постройки',
+                hint: 'Укажите год',
+                keyboardType: TextInputType.number,
+              ),
+
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -1179,49 +1092,13 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
                 },
               ),
-              const SizedBox(height: 9),
 
-              const Text(
-                'Вид объекта',
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Вторичка',
-                    isSecondarySelected,
-                    () => _toggleMarketType(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Новостройка',
-                    !isSecondarySelected,
-                    () => _toggleMarketType(false),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-
-              _buildTextField(
-                label: 'Год постройки',
-                hint: 'Укажите год',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
-
-              _buildTextField(
-                label: 'Площадь кухни(м²)',
-                hint: 'Цифрами',
-                keyboardType: TextInputType.number,
-              ),
               const SizedBox(height: 9),
 
               _buildDropdown(
@@ -1372,6 +1249,41 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               const SizedBox(height: 18),
 
               _buildDropdown(
+                label: 'Ваша область*',
+                hint: _selectedRegion.isEmpty
+                    ? 'Ваша область'
+                    : _selectedRegion.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return SelectionDialog(
+                        title: 'Ваша область',
+                        options: const [
+                          'Алтайский край',
+                          'Краснодарский край',
+                          'Московская область',
+                          'Ленинградская область',
+                          'Ростовская область',
+                          'Новосибирская область',
+                        ],
+                        selectedOptions: _selectedRegion,
+                        onSelectionChanged: (selected) {
+                          setState(() => _selectedRegion = selected);
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              _buildDropdown(
                 label: 'Ваш город*',
                 hint: _selectedCity.isEmpty
                     ? 'Ваш город'
@@ -1398,7 +1310,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-
                         ],
                         selectedOptions: _selectedCity,
                         onSelectionChanged: (Set<String> selected) {
@@ -1521,10 +1432,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Ссылка на ваш whatsapp',
-                hint: 'https:',
-              ),
+              _buildTextField(label: 'Ссылка на ваш whatsapp', hint: 'https:'),
 
               const SizedBox(height: 22),
 
@@ -1560,7 +1468,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
       ),
     );
   }
-
 
   Widget _buildTextField({
     required String label,
@@ -1622,13 +1529,16 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 9),
         GestureDetector(
           onTap: onTap,
           child: Container(
-            height: subtitle != null ? 60 : 45,
+            height: subtitle != null ? 70 : 45,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
@@ -1674,10 +1584,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 if (showChangeText)
                   Text(
                     'Изменить',
-                    style: TextStyle(
-                      color: Colors.blue, 
-                      fontSize: 14, 
-                    ),
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
                   ),
                 if (icon != null) icon,
               ],

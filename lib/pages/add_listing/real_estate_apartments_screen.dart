@@ -1,8 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/pages/add_listing/apartments/add_apartment_rent_screen.dart';
 import 'package:lidle/pages/add_listing/apartments/add_apartment_sell_screen.dart';
+import 'package:lidle/pages/add_listing/commercial_property/add_coworking_sell_screen.dart';
+import 'package:lidle/pages/add_listing/commercial_property/real_estate_commercial_property_screen.dart';
+import 'package:lidle/pages/add_listing/daily_rent/add_apartment_daily_rent_screen.dart';
+import 'package:lidle/pages/add_listing/daily_rent/add_daily_share_sell_screen.dart';
+import 'package:lidle/pages/add_listing/daily_rent/add_hostel_bed_rent_screen.dart';
+import 'package:lidle/pages/add_listing/daily_rent/add_hotel_resort_rent_screen.dart';
+import 'package:lidle/pages/add_listing/daily_rent/add_room_daily_rent_screen.dart';
+import 'package:lidle/pages/add_listing/daily_rent/add_tour_operator_offer_screen.dart';
+import 'package:lidle/pages/add_listing/houses/add_house_rent_screen.dart';
+import 'package:lidle/pages/add_listing/houses/add_house_sell_screen.dart';
+import 'package:lidle/pages/add_listing/land/add_land_sell_screen.dart';
+import 'package:lidle/pages/add_listing/land/add_land_rent_screen.dart';
 import 'package:lidle/pages/add_listing/rooms/add_room_rent_screen.dart';
 import 'package:lidle/pages/add_listing/rooms/add_room_sell_screen.dart';
+import 'package:lidle/pages/add_listing/garages/add_garage_parking_sell_screen.dart';
+import 'package:lidle/pages/add_listing/garages/add_garage_parking_long_rent_screen.dart';
+import 'package:lidle/pages/add_listing/foreign_real_estate/add_apartment_abroad_sell_screen.dart';
+import 'package:lidle/pages/add_listing/foreign_real_estate/add_apartment_abroad_long_rent_screen.dart';
+import 'package:lidle/pages/add_listing/foreign_real_estate/add_house_abroad_sell_screen.dart';
+import 'package:lidle/pages/add_listing/foreign_real_estate/add_house_abroad_long_rent_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 
@@ -136,20 +154,115 @@ class RealEstateApartmentsScreen extends StatelessWidget {
             style: const TextStyle(color: Colors.white),
           ),
           onTap: () {
-            if (title == "Продажа комнат") {
+            if (title == "Дома посуточно, почасово") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddDailyShareSellScreen()),
+              );
+            } else if (title == "Квартиры посуточно, почасово") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddApartmentDailyRentScreen()),
+              );
+            } else if (title == "Комнаты посуточно, почасово") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddRoomDailyRentScreen()),
+              );
+            } else if (title == "Отели, базы отдыха") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddHotelResortRentScreen()),
+              );
+            } else if (title == "Хостелы, койко-места") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddHostelBedRentScreen()),
+              );
+            } else if (title == "Предложения туроператоров") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddTourOperatorOfferScreen()),
+              );
+            } else if (title == "Коворкинги") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AddCoworkingSellScreen(initialCategory: title)),
+              );
+            } else if (title == "Продажа земли") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddLandSellScreen()),
+              );
+            } else if (title == "Продажа комнат") {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddRoomSellScreen()),
+              );
+            } else if (title == "Продажа домов") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddHouseSellScreen()),
+              );
+            } else if (title == "Продажа коммерческая недвижимости") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RealEstateCommercialPropertyScreen(type: title)),
+              );
+            } else if (title == "Аренда коммерческая недвижимости") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RealEstateCommercialPropertyScreen(type: title)),
+              );
+            } else if (title == "Продажа гаражей, парковок") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddGarageParkingSellScreen()),
+              );
+            } else if (title == "Продажа квартир за рубежом") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddApartmentAbroadSellScreen()),
+              );
+            } else if (title == "Продажа домов за рубежом") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddHouseAbroadSellScreen()),
               );
             } else if (title.startsWith("Продажа")) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddApartmentSellScreen()),
               );
+            } else if (title == "Долгосрочная аренда земли") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddLandRentScreen()),
+              );
+            } else if (title == "Долгосрочная аренда домов") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddHouseRentScreen()),
+              );
             } else if (title == "Долгосрочная аренда комнат") {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AddRoomRentScreen()),
+              );
+            } else if (title == "Долгосрочная аренда гаражей, парковок") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddGarageParkingLongRentScreen()),
+              );
+            } else if (title == "Долгосрочная аренда квартир за рубежом") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddApartmentAbroadLongRentScreen()),
+              );
+            } else if (title == "Долгосрочная аренда домов за рубежом") {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AddHouseAbroadLongRentScreen()),
               );
             } else if (title.startsWith("Аренда") || title.startsWith("Долгосрочная аренда")) {
               Navigator.push(

@@ -60,6 +60,7 @@ class _SelectionDialogState extends State<SelectionDialog> {
               children: [
                 Text(
                   widget.title,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: textPrimary,
                     fontSize: 18,
