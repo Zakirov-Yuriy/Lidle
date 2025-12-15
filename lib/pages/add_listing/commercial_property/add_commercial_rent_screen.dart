@@ -147,7 +147,7 @@ class _AddCommercialRentScreenState extends State<AddCommercialRentScreen> {
   bool isNoCommission = false; // Без комиссии
   bool isSharedRent = false; // Для совместной аренды
   bool isRealtorReady = false; // Готов сотрудничать с риэлтором
-  bool isUrgentBuyout = false; // Срочный выкуп
+  bool isUrgentBuyout = false; // 
   bool isRosreestr = false; // Учёт в рос реестре
 
   bool isAutoRenewal = false; // Автопродление
