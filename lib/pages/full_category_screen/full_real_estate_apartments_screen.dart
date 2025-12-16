@@ -22,6 +22,55 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
 
   @override
   Widget build(BuildContext context) {
+    // Определяем опции и заголовок в зависимости от подкатегории
+    List<String> options;
+    String titleText;
+    switch (widget.subcategory) {
+      case 'Квартиры':
+        options = ['Продажа квартир', 'Долгосрочная аренда квартир'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+      case 'Комнаты':
+        options = ['Продажа комнат', 'Долгосрочная аренда комнат'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+      case 'Дома':
+        options = ['Продажа домов', 'Долгосрочная аренда домов'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+      case 'Коммерческая недвижимость':
+        options = ['Продажа коммерческой недвижимости', 'Аренда коммерческой недвижимости', 'Коворкинги'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+
+      case 'Земля':
+        options = ['Продажа земли', 'Долгосрочная аренда земли'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+      case 'Посуточная аренда жилья':
+        options = [
+          'Дома посуточно, почасово',
+          'Квартиры посуточно, почасово',
+          'Комнаты посуточно, почасово',
+          'Отели, базы отдыха',
+          'Хостелы, койко-места',
+          'Предложения Туроператоров'
+        ];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+      case 'Гаражи, парковки':
+        options = ['Продажа гаражей и парковок', 'Аренда гаражей и парковок'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+        break;
+      case 'Недвижимость за рубежом':
+        options = ['Продажа квартир за рубежом', 'Долгосрочная аренда квартир за рубежом', 'Продажа домов за рубежом', 'Долгосрочная аренда домов за рубежом'];
+        titleText = 'Недвижимость: За рубежом';
+        break;
+      default:
+        options = ['Продажа ${widget.subcategory.toLowerCase()}', 'Аренда ${widget.subcategory.toLowerCase()}'];
+        titleText = 'Недвижимость: ${widget.subcategory}';
+    }
+
     return Scaffold(
       backgroundColor: primaryBackground,
 
@@ -76,16 +125,15 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Недвижимость: ${widget.subcategory}',
-                        style: TextStyle(
+                        titleText,
+                        style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 16),
-                      _buildOptionTile(context, "Продажа квартир"),
-                      _buildOptionTile(context, "Долгосрочная аренда квартир"),
+                      ...options.map((option) => _buildOptionTile(context, option)),
                     ],
                   ),
                 ),
@@ -177,12 +225,12 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
             style: const TextStyle(color: Colors.white),
           ),
           onTap: () {
-            if (title == "Продажа квартир") {
+            if (title.toLowerCase().contains("продажа")) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const RealEstateListingsScreen()),
               );
-            } else if (title == "Долгосрочная аренда квартир") {
+            } else {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const RealEstateRentListingsScreen()),

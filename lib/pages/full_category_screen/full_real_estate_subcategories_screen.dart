@@ -117,15 +117,13 @@ class _FullRealEstateSubcategoriesScreenState
                             color: Colors.white70,
                           ),
                           onTap: () {
-                            if (subcategories[index] == 'Квартиры') {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      FullRealEstateApartmentsScreen(subcategory: subcategories[index]),
-                                ),
-                              );
-                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    FullRealEstateApartmentsScreen(subcategory: subcategories[index]),
+                              ),
+                            );
                           },
                         ),
                         if (index < subcategories.length - 1)
