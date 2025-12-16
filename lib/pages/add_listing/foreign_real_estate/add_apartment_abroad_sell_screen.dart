@@ -587,64 +587,6 @@ class _AddApartmentAbroadSellScreenState
               ),
 
               const SizedBox(height: 13),
-              const Text(
-                'Рассрочка',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = true),
-                      child: Text(
-                        'Да',
-                        style: TextStyle(
-                          color: isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: !isInstallment
-                            ? activeIconColor
-                            : Colors.transparent,
-                        side: !isInstallment
-                            ? null
-                            : const BorderSide(color: Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: () => setState(() => isInstallment = false),
-                      child: Text(
-                        'Нет',
-                        style: TextStyle(
-                          color: !isInstallment ? Colors.white : textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 13),
 
               _buildDropdown(
                 label: 'Тип дома',

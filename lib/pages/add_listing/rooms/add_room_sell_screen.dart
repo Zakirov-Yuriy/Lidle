@@ -231,11 +231,11 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                            childAspectRatio: 115 / 89,
-                          ),
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                                childAspectRatio: 115 / 89,
+                              ),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           itemCount: _images.length + 1,
@@ -284,10 +284,10 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                                       child: Container(
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
-                                          color:
-                                              Colors.black.withOpacity(0.5),
-                                          borderRadius:
-                                              BorderRadius.circular(5),
+                                          color: Colors.black.withOpacity(0.5),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -464,32 +464,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
 
               const SizedBox(height: 18),
 
-              // ---------------- РАССРОЧКА ----------------
-              const Text(
-                'Рассрочка',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Да',
-                    isInstallment,
-                    () => setState(() => isInstallment = true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Нет',
-                    !isInstallment,
-                    () => setState(() => isInstallment = false),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 18),
-
               // ---------------- ХАРАКТЕРИСТИКИ ----------------
-
               _buildDropdown(
                 label: 'Тип дома',
                 hint: _selectedHouseTypes.isEmpty
@@ -538,12 +513,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
               ),
               const SizedBox(height: 9),
 
-              
-
-              _buildTextField(
-                label: 'Номер квартиры',
-                hint: 'Номер квартиры',
-              ),
+              _buildTextField(label: 'Номер квартиры', hint: 'Номер квартиры'),
               const SizedBox(height: 9),
 
               _buildTextField(
@@ -661,8 +631,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                         ],
                         selectedOptions: _selectedHousingClassTypes,
                         onSelectionChanged: (selected) {
-                          setState(() =>
-                              _selectedHousingClassTypes = selected);
+                          setState(() => _selectedHousingClassTypes = selected);
                         },
                         allowMultipleSelection: false,
                       );
@@ -919,8 +888,6 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
               ),
               const SizedBox(height: 9),
 
-              
-
               _buildDropdown(
                 label: 'Мультимедиа',
                 hint: _selectedMultimediaTypes.isEmpty
@@ -1039,7 +1006,9 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                         ],
                         selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (selected) {
-                          setState(() => _selectedCommunicationTypes = selected);
+                          setState(
+                            () => _selectedCommunicationTypes = selected,
+                          );
                         },
                         allowMultipleSelection: true,
                       );
@@ -1080,7 +1049,9 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                         ],
                         selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (selected) {
-                          setState(() => _selectedCommunicationTypes = selected);
+                          setState(
+                            () => _selectedCommunicationTypes = selected,
+                          );
                         },
                         allowMultipleSelection: true,
                       );
@@ -1122,7 +1093,9 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                         ],
                         selectedOptions: _selectedCommunicationTypes,
                         onSelectionChanged: (selected) {
-                          setState(() => _selectedCommunicationTypes = selected);
+                          setState(
+                            () => _selectedCommunicationTypes = selected,
+                          );
                         },
                         allowMultipleSelection: true,
                       );
@@ -1146,7 +1119,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                     isIndividualSelected,
                     () => _togglePersonType(true),
                   ),
-                const SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   _buildChoiceButton(
                     'Бизнес',
                     !isIndividualSelected,
@@ -1272,16 +1245,10 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Ваш район',
-                hint: 'Ваш район',
-              ),
+              _buildTextField(label: 'Ваш район', hint: 'Ваш район'),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Номер дома*',
-                hint: 'Номер дома',
-              ),
+              _buildTextField(label: 'Номер дома*', hint: 'Номер дома'),
               const SizedBox(height: 9),
 
               const Text(
@@ -1313,10 +1280,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
               ),
               const SizedBox(height: 18),
 
-              _buildTextField(
-                label: 'Контактное лицо*',
-                hint: 'Александр',
-              ),
+              _buildTextField(label: 'Контактное лицо*', hint: 'Александр'),
               const SizedBox(height: 9),
 
               _buildTextField(
@@ -1504,10 +1468,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
                     padding: EdgeInsets.only(right: 8.0),
                     child: Text(
                       'Изменить',
-                      style: TextStyle(
-                        color: Colors.blue,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.blue, fontSize: 14),
                     ),
                   ),
                 if (icon != null) icon,
@@ -1582,10 +1543,7 @@ class _AddRoomSellScreenState extends State<AddRoomSellScreen> {
             ),
           ),
         ),
-        CustomCheckbox(
-          value: value,
-          onChanged: (v) => onChanged(v),
-        ),
+        CustomCheckbox(value: value, onChanged: (v) => onChanged(v)),
       ],
     );
   }

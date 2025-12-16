@@ -500,30 +500,6 @@ class _AddHouseSellScreenState extends State<AddHouseSellScreen> {
 
               const SizedBox(height: 18),
 
-              // ---------------- РАССРОЧКА ----------------
-              const Text(
-                'Рассрочка',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Да',
-                    isInstallment,
-                    () => setState(() => isInstallment = true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Нет',
-                    !isInstallment,
-                    () => setState(() => isInstallment = false),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 18),
-
               // ---------------- ХАРАКТЕРИСТИКИ ----------------
               _buildDropdown(
                 label: 'Расстояние до ближайшего города',
@@ -1372,8 +1348,6 @@ class _AddHouseSellScreenState extends State<AddHouseSellScreen> {
                 },
               ),
               const SizedBox(height: 9),
-
-              
 
               _buildTextField(label: 'Номер дома*', hint: 'Номер дома'),
               const SizedBox(height: 9),
