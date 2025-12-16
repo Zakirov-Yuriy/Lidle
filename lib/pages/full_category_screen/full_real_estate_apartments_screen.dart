@@ -10,7 +10,8 @@ import 'package:lidle/pages/full_category_screen/map_screen.dart';
 // ============================================================
 
 class FullRealEstateApartmentsScreen extends StatefulWidget {
-  const FullRealEstateApartmentsScreen({super.key});
+  final String subcategory;
+  const FullRealEstateApartmentsScreen({super.key, required this.subcategory});
 
   @override
   State<FullRealEstateApartmentsScreen> createState() => _FullRealEstateApartmentsScreenState();
@@ -74,8 +75,8 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Недвижимость: Квартиры',
+                      Text(
+                        'Недвижимость: ${widget.subcategory}',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,

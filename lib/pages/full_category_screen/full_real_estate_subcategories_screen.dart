@@ -122,7 +122,7 @@ class _FullRealEstateSubcategoriesScreenState
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const FullRealEstateApartmentsScreen(),
+                                      FullRealEstateApartmentsScreen(subcategory: subcategories[index]),
                                 ),
                               );
                             }
