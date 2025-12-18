@@ -28,7 +28,8 @@ class AddApartmentDailyRentScreen extends StatefulWidget {
       _AddApartmentDailyRentScreenState();
 }
 
-class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScreen> {
+class _AddApartmentDailyRentScreenState
+    extends State<AddApartmentDailyRentScreen> {
   // ======================= СЕТЫ ДЛЯ ДИАЛОГОВ =======================
 
   Set<String> _selectedRoomCounts = {};
@@ -282,7 +283,6 @@ class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScree
                 value: isRealtorReady,
                 onChanged: (v) => setState(() => isRealtorReady = v),
               ),
-             
 
               const SizedBox(height: 18),
 
@@ -305,18 +305,17 @@ class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScree
                       return SelectionDialog(
                         title: 'Минимальное количество ночей',
                         options: const [
-                          'В городе',
-                          'До 5 км',
-                          'До 10 км',
-                          'До 15 км',
-                          'До 20 км',
-                          'До 25 км',
-                          'До 30 км',
-                          'До 35 км',
-                          'До 40 км',
-                          'До 45 км',
-                          'До 50 км',
-                          'До 55 км',
+                          '1 ночь',
+                          '2 ночи',
+                          '3 ночи',
+                          '4 ночи',
+                          '5 ночей',
+                          '6 ночей',
+                          '7 ночей',
+                          '8 ночей',
+                          '9 ночей',
+                          '10 ночей',
+                          '11 ночей',
                         ],
                         selectedOptions: _selectedDistanceToCity,
                         onSelectionChanged: (selected) {
@@ -338,10 +337,6 @@ class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScree
               ),
               const SizedBox(height: 17),
 
-              
-
-             
-
               _buildTextField(
                 label: 'Общая площадь(м2)*',
                 hint: 'Цифрами',
@@ -349,15 +344,12 @@ class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScree
               ),
               const SizedBox(height: 9),
 
-               _buildTextField(
+              _buildTextField(
                 label: 'Этаж*',
                 hint: 'Цифрами',
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 9),
-
-
-            
 
               _buildDropdown(
                 label: 'Количество комнат*',
@@ -728,8 +720,7 @@ class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScree
                             _selectedLandscapeTypes = selected;
                           });
                         },
-                        allowMultipleSelection:
-                            true,
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -737,8 +728,6 @@ class _AddApartmentDailyRentScreenState extends State<AddApartmentDailyRentScree
               ),
 
               const SizedBox(height: 21),
-
-             
 
               // ================= Частное лицо / Бизнес =================
               const Text(

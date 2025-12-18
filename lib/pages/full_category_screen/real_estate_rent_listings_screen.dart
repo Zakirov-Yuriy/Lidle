@@ -5,6 +5,27 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
+import 'package:lidle/pages/full_category_screen/rooms/filters_room_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/rooms/filters_room_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/houses/filters_houses_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/houses/filters_houses_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/commercial_property/filters_commercial_property_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/commercial_property/filters_office_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/commercial_property/filters_office_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/land/filters_land_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/land/filters_land_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/garages/filters_garage_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/garages/filters_garage_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_apartment_rent_screen.dart' as apartment_rent;
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_rooms_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_hotel_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_hostel_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_tour_operator_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_foreign_apartment_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_foreign_apartment_rent_screen.dart';
+import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_foreign_house_sell_screen.dart';
+import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_foreign_house_rent_screen.dart';
 
 // ============================================================
 // "Экран объявлений аренды недвижимости"
@@ -16,7 +37,8 @@ const String messageIconAssetLocal =
 const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateRentListingsScreen extends StatefulWidget {
-  const RealEstateRentListingsScreen({super.key});
+  final String? title;
+  const RealEstateRentListingsScreen({super.key, this.title});
 
   @override
   State<RealEstateRentListingsScreen> createState() =>
@@ -133,7 +155,7 @@ class _RealEstateRentListingsScreenState
   }
 
   void _sortListings(Set<String> selectedOptions) {
-    
+
     SortOption? chosenSortOption;
     if (selectedOptions.contains('Сначала новые')) {
       chosenSortOption = SortOption.newest;
@@ -171,6 +193,26 @@ class _RealEstateRentListingsScreenState
         }
       });
     }
+  }
+
+  String _formatTitle(String title) {
+    // Add line break only for specific long titles
+    if (title == 'Продажа производственных помещений') {
+      return 'Продажа производственных\nпомещений';
+    } else if (title == 'Продажа помещений свободного назначения') {
+      return 'Продажа помещений свободного\nназначения';
+    } else if (title == 'Аренда производственных помещений') {
+      return 'Аренда производственных\nпомещений';
+    } else if (title == 'Аренда помещений свободного назначения') {
+      return 'Аренда помещений свободного\nназначения';
+    } else if (title == 'Долгосрочная аренда гаражей, парковок') {
+      return 'Долгосрочная аренда гаражей,\nпарковок';
+    } else if (title == 'Долгосрочная аренда квартир за рубежом') {
+      return 'Долгосрочная аренда квартир за\nрубежом';
+    } else if (title == 'Долгосрочная аренда домов за рубежом') {
+      return 'Долгосрочная аренда домов за\nрубежом';
+    }
+    return title;
   }
 
   @override
@@ -239,12 +281,161 @@ class _RealEstateRentListingsScreenState
                   ),
                   InkWell(
                     onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => FiltersRealEstateRentListingsScreen(),
-                        ),
-                      );
+                      if (widget.title == 'Продажа комнат') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersRoomShellScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Долгосрочная аренда комнат') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersRoomRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа домов') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersHousesShellScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Долгосрочная аренда домов') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersHousesRentScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа торговых помещений') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersCommercialPropertySellScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа офисов') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersOfficeSellScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Аренда офисов') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersOfficeRentScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа гаражей, парковок') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersGarageSellScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа земли') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersLandSellScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Долгосрочная аренда земли') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersLandRentScreenen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Комнаты посуточно, почасово') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DailyHourlyRoomsRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Хостелы, койко-места') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DailyHourlyHostelRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Предложения Туроператоров') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DailyHourlyTourOperatorRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Отели, базы отдыха') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DailyHourlyHotelRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Квартиры посуточно, почасово') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const apartment_rent.DailyHourlyApartmenRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title?.contains('посуточно') == true) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DailyHourlyRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Долгосрочная аренда гаражей, парковок') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersGarageRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа квартир за рубежом') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersForeignApartmentSellScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Долгосрочная аренда квартир за рубежом') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersForeignApartmentRentScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Продажа домов за рубежом') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersForeignHouseSellScreen(),
+                          ),
+                        );
+                      } else if (widget.title == 'Долгосрочная аренда домов за рубежом') {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FiltersForeignHouseRentScreen(),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FiltersRealEstateRentListingsScreen(),
+                          ),
+                        );
+                      }
                     },
                     child: SvgPicture.asset(
                       'assets/home_page/settings.svg',
@@ -273,9 +464,9 @@ class _RealEstateRentListingsScreenState
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
           
-          const Text(
-            
-            "Долгосрочная аренда квартир",
+          Text(
+
+            _formatTitle(widget.title ?? "Долгосрочная аренда квартир"),
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,

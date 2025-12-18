@@ -4,6 +4,8 @@ import 'package:lidle/pages/full_category_screen/real_estate_listings_screen.dar
 import 'package:lidle/pages/full_category_screen/real_estate_rent_listings_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
+import 'package:lidle/pages/full_category_screen/commercial_property/full_real_estate_commercial_property_screen.dart';
+import 'package:lidle/pages/full_category_screen/commercial_property/filters_coworking_screen.dart';
 
 // ============================================================
 // "Экран подкатегорий квартир в недвижимости"
@@ -18,7 +20,6 @@ class FullRealEstateApartmentsScreen extends StatefulWidget {
 }
 
 class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartmentsScreen> {
-  bool _showAllActive = true;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +40,7 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
         titleText = 'Недвижимость: ${widget.subcategory}';
         break;
       case 'Коммерческая недвижимость':
-        options = ['Продажа коммерческой недвижимости', 'Аренда коммерческой недвижимости', 'Коворкинги'];
+        options = ['Продажа коммерческой недвижимости', 'Долгосрочная аренда коммерческая недвижимость', 'Коворкинги'];
         titleText = 'Недвижимость: ${widget.subcategory}';
         break;
 
@@ -59,7 +60,7 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
         titleText = 'Недвижимость: ${widget.subcategory}';
         break;
       case 'Гаражи, парковки':
-        options = ['Продажа гаражей и парковок', 'Аренда гаражей и парковок'];
+        options = ['Продажа гаражей, парковок', 'Долгосрочная аренда гаражей, парковок'];
         titleText = 'Недвижимость: ${widget.subcategory}';
         break;
       case 'Недвижимость за рубежом':
@@ -150,49 +151,10 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
                   height: 51,
                   child: ElevatedButton(
                     onPressed: () {
-                      setState(() {
-                        _showAllActive = true;
-                      });
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _showAllActive
-                          ? const Color(0xFF009EE2)
-                          : primaryBackground,
-                      side: _showAllActive
-                          ? null
-                          : const BorderSide(color: Colors.white24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    child: const Text(
-                      'Показать все',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 51,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _showAllActive = false;
-                      });
                       Navigator.pushNamed(context, MapScreen.routeName);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: !_showAllActive
-                          ? const Color(0xFF009EE2)
-                          : primaryBackground,
-                      side: !_showAllActive
-                          ? null
-                          : const BorderSide(color: Colors.white24),
+                      backgroundColor: const Color(0xFF009EE2),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(5),
                       ),
@@ -225,7 +187,32 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
             style: const TextStyle(color: Colors.white),
           ),
           onTap: () {
-            if (title.toLowerCase().contains("продажа")) {
+            if (title == 'Продажа коммерческой недвижимости') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FullRealEstateCommercialPropertyScreen(type: 'Продажа коммерческая недвижимости')),
+              );
+            } else if (widget.subcategory == 'Комнаты' ||
+                widget.subcategory == 'Дома' ||
+                widget.subcategory == 'Земля' ||
+                widget.subcategory == 'Посуточная аренда жилья' ||
+                widget.subcategory == 'Гаражи, парковки' ||
+                widget.subcategory == 'Недвижимость за рубежом') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RealEstateRentListingsScreen(title: title)),
+              );
+            } else if (title == 'Долгосрочная аренда коммерческая недвижимость') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FullRealEstateCommercialPropertyScreen(type: 'Аренда коммерческая недвижимости')),
+              );
+            } else if (title == 'Коворкинги') {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const FiltersCoworkingScreenen()),
+              );
+            } else if (title.toLowerCase().contains("продажа")) {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const RealEstateListingsScreen()),
