@@ -657,13 +657,13 @@ class _DynamicFilterState
 
               _buildTextField(
                 label: 'Ссылка на ваш чат в телеграм',
-                hint: 'https:',
+                hint: 'https://t.me/Namename',
               ),
               const SizedBox(height: 9),
 
               _buildTextField(
                 label: 'Ссылка на ваш whatsapp',
-                hint: 'https:',
+                hint: 'https://whatsapp/Namename',
               ),
 
               const SizedBox(height: 22),

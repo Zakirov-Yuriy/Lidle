@@ -62,7 +62,7 @@ class RealEstateApartmentsScreen extends StatelessWidget {
           Column(
             children: [
               Padding(
-            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+            padding: const EdgeInsets.only(bottom: 10, right: 23, top: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [const Header()],
@@ -119,7 +119,8 @@ class RealEstateApartmentsScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
+                
                 if (subcategory == 'Посуточная аренда жилья') ...[
                   _buildOptionTile(context, "Дома посуточно, почасово"),
                   _buildOptionTile(context, "Квартиры посуточно, почасово"),

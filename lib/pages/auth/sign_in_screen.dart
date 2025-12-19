@@ -54,6 +54,7 @@ class _SignInScreenState extends State<SignInScreen> {
       },
       builder: (context, state) {
         return Scaffold(
+          backgroundColor: primaryBackground,
           resizeToAvoidBottomInset: true,
           body: SafeArea(
             child: Column(

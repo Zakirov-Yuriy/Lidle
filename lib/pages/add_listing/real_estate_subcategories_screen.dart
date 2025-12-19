@@ -33,7 +33,7 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(
-                    bottom: 20,
+                    bottom: 10,
                     right: 23,
                     top: 20,
                   ),
