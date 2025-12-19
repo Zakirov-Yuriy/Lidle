@@ -21,6 +21,7 @@ import 'package:lidle/pages/add_listing/foreign_real_estate/add_apartment_abroad
 import 'package:lidle/pages/add_listing/foreign_real_estate/add_apartment_abroad_long_rent_screen.dart';
 import 'package:lidle/pages/add_listing/foreign_real_estate/add_house_abroad_sell_screen.dart';
 import 'package:lidle/pages/add_listing/foreign_real_estate/add_house_abroad_long_rent_screen.dart';
+import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 
@@ -247,7 +248,8 @@ class RealEstateApartmentsScreen extends StatelessWidget {
             } else if (title == "Долгосрочная аренда комнат") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddRoomRentScreen()),
+                // MaterialPageRoute(builder: (context) => const AddRoomRentScreen()),
+                MaterialPageRoute(builder: (context) => const DynamicFilter()),
               );
             } else if (title == "Долгосрочная аренда гаражей, парковок") {
               Navigator.push(

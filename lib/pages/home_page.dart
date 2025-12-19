@@ -11,6 +11,8 @@ import '../widgets/components/header.dart';
 import '../widgets/components/search_bar.dart' as custom_widgets;
 import '../widgets/cards/category_card.dart';
 import '../widgets/cards/listing_card.dart';
+import '../widgets/skeletons/category_card_skeleton.dart';
+import '../widgets/skeletons/listing_card_skeleton.dart';
 import '../widgets/navigation/bottom_navigation.dart';
 import '../blocs/listings/listings_bloc.dart';
 import '../blocs/listings/listings_state.dart';
@@ -163,15 +165,57 @@ class _HomePageState extends State<HomePage> {
   /// и горизонтальный список карточек категорий.
   Widget _buildCategoriesSection(ListingsState state) {
     if (state is ListingsLoading) {
-      return const Column(
+      return Column(
         children: [
-          SizedBox(height: 50),
-          Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    categoriesTitle,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {},
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    viewAll,
+                    style: TextStyle(
+                      color: activeIconColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 50),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: SizedBox(
+              height: 85,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 6, // Показываем 6 skeleton карточек
+                itemBuilder: (context, index) {
+                  return const CategoryCardSkeleton();
+                },
+              ),
+            ),
+          ),
         ],
       );
     }
@@ -300,30 +344,57 @@ class _HomePageState extends State<HomePage> {
   /// Включает заголовок "Самое новое" и адаптивную сетку карточек объявлений.
   Widget _buildLatestSection(ListingsState state) {
     if (state is ListingsLoading) {
-      return Column(
-        // crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(
-              latestTitle,
-              style: const TextStyle(
-                color: textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 110.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                latestTitle,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 50),
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B5CF6)),
-              ),
+            const SizedBox(height: 10),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth =
+                    (constraints.maxWidth -
+                        12 -
+                        12 -
+                        9) /
+                    2;
+                double tileHeight = 263;
+                if (itemWidth < 170) tileHeight = 275;
+                if (itemWidth < 140) tileHeight = 300;
+
+                return GridView.builder(
+                  padding: const EdgeInsets.only(
+                    left: 12,
+                    right: 12,
+                  ),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 9,
+                    mainAxisSpacing: 0,
+                    mainAxisExtent: tileHeight,
+                  ),
+                  itemCount: 6, // Показываем 6 skeleton карточек
+                  itemBuilder: (context, index) {
+                    return const ListingCardSkeleton();
+                  },
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                );
+              },
             ),
-          ),
-        ],
+          ],
+        ),
       );
     }
 

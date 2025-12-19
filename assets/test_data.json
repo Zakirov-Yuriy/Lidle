@@ -1,0 +1,1453 @@
+{
+  "success": true,
+  "data": {
+    "attributes": [
+      {
+        "id": 1037,
+        "title": "Этажность",
+        "is_filter": true,
+        "is_range": true,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": true,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": "integer",
+        "order": 1,
+        "values": []
+      },
+      {
+        "id": 1040,
+        "title": "Тип дома",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": true,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": "string",
+        "order": 2,
+        "values": []
+      },
+      {
+        "id": 6,
+        "title": "Количество комнат",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": true,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 1,
+        "values": [
+          {
+            "id": 40,
+            "value": "1",
+            "order": null
+          },
+          {
+            "id": 41,
+            "value": "2",
+            "order": null
+          },
+          {
+            "id": 42,
+            "value": "3",
+            "order": null
+          },
+          {
+            "id": 43,
+            "value": "4",
+            "order": null
+          },
+          {
+            "id": 44,
+            "value": "5",
+            "order": null
+          },
+          {
+            "id": 45,
+            "value": "6+",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 1039,
+        "title": "Постройка дома",
+        "is_filter": true,
+        "is_range": true,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": true,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": "integer",
+        "order": 2,
+        "values": []
+      },
+      {
+        "id": 18,
+        "title": "Ландшафт (до 1 км)",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 3,
+        "values": [
+          {
+            "id": 154,
+            "value": "Река",
+            "order": null
+          },
+          {
+            "id": 155,
+            "value": "Водохранилище",
+            "order": null
+          },
+          {
+            "id": 156,
+            "value": "Водопад",
+            "order": null
+          },
+          {
+            "id": 157,
+            "value": "Озера",
+            "order": null
+          },
+          {
+            "id": 158,
+            "value": "Море",
+            "order": null
+          },
+          {
+            "id": 159,
+            "value": "Океан",
+            "order": null
+          },
+          {
+            "id": 160,
+            "value": "Острова",
+            "order": null
+          },
+          {
+            "id": 161,
+            "value": "Холмы",
+            "order": null
+          },
+          {
+            "id": 162,
+            "value": "Горы",
+            "order": null
+          },
+          {
+            "id": 163,
+            "value": "Каньоны",
+            "order": null
+          },
+          {
+            "id": 164,
+            "value": "Полуостров",
+            "order": null
+          },
+          {
+            "id": 165,
+            "value": "Острова",
+            "order": null
+          },
+          {
+            "id": 166,
+            "value": "Холмы",
+            "order": null
+          },
+          {
+            "id": 167,
+            "value": "Каньоны",
+            "order": null
+          },
+          {
+            "id": 168,
+            "value": "Парк",
+            "order": null
+          },
+          {
+            "id": 169,
+            "value": "Пещеры",
+            "order": null
+          },
+          {
+            "id": 170,
+            "value": "Лес",
+            "order": null
+          },
+          {
+            "id": 171,
+            "value": "Пляж",
+            "order": null
+          },
+          {
+            "id": 172,
+            "value": "Город",
+            "order": null
+          },
+          {
+            "id": 173,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 1038,
+        "title": "Название ЖК",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": true,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": "string",
+        "order": 4,
+        "values": []
+      },
+      {
+        "id": 17,
+        "title": "Инфраструктура (до 500 метров)",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 5,
+        "values": [
+          {
+            "id": 138,
+            "value": "Центр города",
+            "order": null
+          },
+          {
+            "id": 139,
+            "value": "Достопримечательности",
+            "order": null
+          },
+          {
+            "id": 140,
+            "value": "Исторические места",
+            "order": null
+          },
+          {
+            "id": 141,
+            "value": "Музей выставки",
+            "order": null
+          },
+          {
+            "id": 142,
+            "value": "Парк, зеленая зона",
+            "order": null
+          },
+          {
+            "id": 143,
+            "value": "Детская площадка",
+            "order": null
+          },
+          {
+            "id": 144,
+            "value": "Отделения банка, банкомат",
+            "order": null
+          },
+          {
+            "id": 145,
+            "value": "Аптека",
+            "order": null
+          },
+          {
+            "id": 146,
+            "value": "Супермаркет, магазин",
+            "order": null
+          },
+          {
+            "id": 147,
+            "value": "Остановка транспорта",
+            "order": null
+          },
+          {
+            "id": 148,
+            "value": "Стоянка",
+            "order": null
+          },
+          {
+            "id": 149,
+            "value": "Рынок",
+            "order": null
+          },
+          {
+            "id": 150,
+            "value": "Горнолыжные трассы",
+            "order": null
+          },
+          {
+            "id": 151,
+            "value": "Автовокзал",
+            "order": null
+          },
+          {
+            "id": 152,
+            "value": "ЖД станция",
+            "order": null
+          },
+          {
+            "id": 153,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Общая площадь(м2)",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 6,
+        "values": [
+          {
+            "id": 21,
+            "value": "50",
+            "order": null
+          },
+          {
+            "id": 22,
+            "value": "100",
+            "order": null
+          },
+          {
+            "id": 23,
+            "value": "150",
+            "order": null
+          },
+          {
+            "id": 24,
+            "value": "200",
+            "order": null
+          },
+          {
+            "id": 25,
+            "value": "500",
+            "order": null
+          },
+          {
+            "id": 26,
+            "value": "1000",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Меблированная",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 7,
+        "values": [
+          {
+            "id": 74,
+            "value": "Да",
+            "order": null
+          },
+          {
+            "id": 75,
+            "value": "No",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Бытовая техника",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 8,
+        "values": [
+          {
+            "id": 76,
+            "value": "Электрочайник",
+            "order": null
+          },
+          {
+            "id": 77,
+            "value": "Кофемашина",
+            "order": null
+          },
+          {
+            "id": 78,
+            "value": "Фен",
+            "order": null
+          },
+          {
+            "id": 79,
+            "value": "Плита",
+            "order": null
+          },
+          {
+            "id": 80,
+            "value": "Варочная панель",
+            "order": null
+          },
+          {
+            "id": 81,
+            "value": "Микроволновая печь",
+            "order": null
+          },
+          {
+            "id": 82,
+            "value": "Мультиварка",
+            "order": null
+          },
+          {
+            "id": 83,
+            "value": "Холодильник",
+            "order": null
+          },
+          {
+            "id": 84,
+            "value": "Посудомоечная машина",
+            "order": null
+          },
+          {
+            "id": 85,
+            "value": "Стиральная машина",
+            "order": null
+          },
+          {
+            "id": 86,
+            "value": "Сушильная машина",
+            "order": null
+          },
+          {
+            "id": 87,
+            "value": "Утюг",
+            "order": null
+          },
+          {
+            "id": 88,
+            "value": "Пылесос",
+            "order": null
+          },
+          {
+            "id": 89,
+            "value": "Без бытовой техники",
+            "order": null
+          },
+          {
+            "id": 90,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "Частное лицо / Бизнес*",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 9,
+        "values": [
+          {
+            "id": 174,
+            "value": "Частное лицо",
+            "order": null
+          },
+          {
+            "id": 175,
+            "value": "Бизнес",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "title": "Коммуникации",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 10,
+        "values": [
+          {
+            "id": 127,
+            "value": "Газ",
+            "order": null
+          },
+          {
+            "id": 128,
+            "value": "Центренный",
+            "order": null
+          },
+          {
+            "id": 129,
+            "value": "Скважина",
+            "order": null
+          },
+          {
+            "id": 130,
+            "value": "Электричество",
+            "order": null
+          },
+          {
+            "id": 131,
+            "value": "Центральная",
+            "order": null
+          },
+          {
+            "id": 132,
+            "value": "Канализация",
+            "order": null
+          },
+          {
+            "id": 133,
+            "value": "Вывоз отходов",
+            "order": null
+          },
+          {
+            "id": 134,
+            "value": "Без коммуникаций",
+            "order": null
+          },
+          {
+            "id": 135,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "title": "Комфорт",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 11,
+        "values": [
+          {
+            "id": 101,
+            "value": "Все объявления",
+            "order": null
+          },
+          {
+            "id": 102,
+            "value": "Подогрев полов",
+            "order": null
+          },
+          {
+            "id": 103,
+            "value": "Автономное отопление",
+            "order": null
+          },
+          {
+            "id": 104,
+            "value": "Односпальная кровать",
+            "order": null
+          },
+          {
+            "id": 105,
+            "value": "Двуспальная кровать",
+            "order": null
+          },
+          {
+            "id": 106,
+            "value": "Доп. спальное место",
+            "order": null
+          },
+          {
+            "id": 107,
+            "value": "Ванна",
+            "order": null
+          },
+          {
+            "id": 108,
+            "value": "Душевая кабина",
+            "order": null
+          },
+          {
+            "id": 109,
+            "value": "Сауна",
+            "order": null
+          },
+          {
+            "id": 110,
+            "value": "Джакузи",
+            "order": null
+          },
+          {
+            "id": 111,
+            "value": "Бильярд",
+            "order": null
+          },
+          {
+            "id": 112,
+            "value": "Кондиционер",
+            "order": null
+          },
+          {
+            "id": 113,
+            "value": "Утюг, гладильная доска",
+            "order": null
+          },
+          {
+            "id": 114,
+            "value": "Гардероб",
+            "order": null
+          },
+          {
+            "id": 115,
+            "value": "Сейф",
+            "order": null
+          },
+          {
+            "id": 116,
+            "value": "Видеонаблюдение",
+            "order": null
+          },
+          {
+            "id": 117,
+            "value": "Охраняемая территория",
+            "order": null
+          },
+          {
+            "id": 118,
+            "value": "Терраса",
+            "order": null
+          },
+          {
+            "id": 119,
+            "value": "Парковочное место",
+            "order": null
+          },
+          {
+            "id": 120,
+            "value": "Фитнес-центр, спортзал",
+            "order": null
+          },
+          {
+            "id": 121,
+            "value": "Бассейн",
+            "order": null
+          },
+          {
+            "id": 122,
+            "value": "Баня",
+            "order": null
+          },
+          {
+            "id": 123,
+            "value": "Сауна",
+            "order": null
+          },
+          {
+            "id": 124,
+            "value": "Хамам",
+            "order": null
+          },
+          {
+            "id": 125,
+            "value": "Без комфорт",
+            "order": null
+          },
+          {
+            "id": 126,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 13,
+        "title": "Мультимедиа",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 12,
+        "values": [
+          {
+            "id": 91,
+            "value": "Wi-Fi",
+            "order": null
+          },
+          {
+            "id": 92,
+            "value": "Скоростной интернет",
+            "order": null
+          },
+          {
+            "id": 93,
+            "value": "ПК, принтер, сканер",
+            "order": null
+          },
+          {
+            "id": 94,
+            "value": "Телевизор",
+            "order": null
+          },
+          {
+            "id": 95,
+            "value": "Кабельное, цифровое ТВ",
+            "order": null
+          },
+          {
+            "id": 96,
+            "value": "Спутниковое ТВ",
+            "order": null
+          },
+          {
+            "id": 97,
+            "value": "Домашний кинотеатр",
+            "order": null
+          },
+          {
+            "id": 98,
+            "value": "X-box, Playstation",
+            "order": null
+          },
+          {
+            "id": 99,
+            "value": "Без мультимедиа",
+            "order": null
+          },
+          {
+            "id": 100,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 10,
+        "title": "Ремонт",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 13,
+        "values": [
+          {
+            "id": 66,
+            "value": "Авторский проект",
+            "order": null
+          },
+          {
+            "id": 67,
+            "value": "Евроремонт",
+            "order": null
+          },
+          {
+            "id": 68,
+            "value": "Косметический ремонт",
+            "order": null
+          },
+          {
+            "id": 69,
+            "value": "Жилое состояние",
+            "order": null
+          },
+          {
+            "id": 70,
+            "value": "После строительства",
+            "order": null
+          },
+          {
+            "id": 71,
+            "value": "Под чистовую отделку",
+            "order": null
+          },
+          {
+            "id": 72,
+            "value": "Аварийное состояние",
+            "order": null
+          },
+          {
+            "id": 73,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Отопление",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 14,
+        "values": [
+          {
+            "id": 58,
+            "value": "Централизованное",
+            "order": null
+          },
+          {
+            "id": 59,
+            "value": "Собственная котельная",
+            "order": null
+          },
+          {
+            "id": 60,
+            "value": "Индивидуальное газовое",
+            "order": null
+          },
+          {
+            "id": 61,
+            "value": "Индивидуальное Электра",
+            "order": null
+          },
+          {
+            "id": 62,
+            "value": "Твердосплавное",
+            "order": null
+          },
+          {
+            "id": 63,
+            "value": "Тепловой насос",
+            "order": null
+          },
+          {
+            "id": 64,
+            "value": "Комбинированное",
+            "order": null
+          },
+          {
+            "id": 65,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Санузел",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 15,
+        "values": [
+          {
+            "id": 53,
+            "value": "Раздельный",
+            "order": null
+          },
+          {
+            "id": 54,
+            "value": "Смежный",
+            "order": null
+          },
+          {
+            "id": 55,
+            "value": "2 и более",
+            "order": null
+          },
+          {
+            "id": 56,
+            "value": "Санузел отсутствует",
+            "order": null
+          },
+          {
+            "id": 57,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Планировка",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 16,
+        "values": [
+          {
+            "id": 46,
+            "value": "Все",
+            "order": null
+          },
+          {
+            "id": 47,
+            "value": "Раздельная",
+            "order": null
+          },
+          {
+            "id": 48,
+            "value": "Студия",
+            "order": null
+          },
+          {
+            "id": 49,
+            "value": "Пентхаус",
+            "order": null
+          },
+          {
+            "id": 50,
+            "value": "Многоуровневая",
+            "order": null
+          },
+          {
+            "id": 51,
+            "value": "Малосемейка, гостинка",
+            "order": null
+          },
+          {
+            "id": 52,
+            "value": "Смарт-квартира",
+            "order": null
+          },
+          {
+            "id": 793,
+            "value": "Свободная планировка",
+            "order": null
+          },
+          {
+            "id": 794,
+            "value": "Двухсторонняя",
+            "order": null
+          },
+          {
+            "id": 795,
+            "value": "Смежная, проходная",
+            "order": null
+          },
+          {
+            "id": 796,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Класс жилья",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 17,
+        "values": [
+          {
+            "id": 35,
+            "value": "Эконом",
+            "order": null
+          },
+          {
+            "id": 36,
+            "value": "Комфорт",
+            "order": null
+          },
+          {
+            "id": 37,
+            "value": "Бизнес",
+            "order": null
+          },
+          {
+            "id": 38,
+            "value": "Элит",
+            "order": null
+          },
+          {
+            "id": 39,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Тип стен",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 18,
+        "values": [
+          {
+            "id": 27,
+            "value": "Кирпичный",
+            "order": null
+          },
+          {
+            "id": 28,
+            "value": "Панельный",
+            "order": null
+          },
+          {
+            "id": 29,
+            "value": "Монолитный",
+            "order": null
+          },
+          {
+            "id": 30,
+            "value": "Шлакоблочный",
+            "order": null
+          },
+          {
+            "id": 31,
+            "value": "Деревянный",
+            "order": null
+          },
+          {
+            "id": 32,
+            "value": "Газоблок",
+            "order": null
+          },
+          {
+            "id": 33,
+            "value": "СИП панель",
+            "order": null
+          },
+          {
+            "id": 34,
+            "value": "Другое",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Тип сделки",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 19,
+        "values": [
+          {
+            "id": 14,
+            "value": "От застройщика",
+            "order": null
+          },
+          {
+            "id": 15,
+            "value": "Переуступка",
+            "order": null
+          },
+          {
+            "id": 16,
+            "value": "Рассрочка от",
+            "order": null
+          },
+          {
+            "id": 17,
+            "value": "Рассрочка от банка",
+            "order": null
+          },
+          {
+            "id": 18,
+            "value": "Банковский кредит",
+            "order": null
+          },
+          {
+            "id": 19,
+            "value": "Лизинг",
+            "order": null
+          },
+          {
+            "id": 20,
+            "value": "Ипотека",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 1,
+        "title": "Тип дома",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": false,
+        "data_type": null,
+        "order": 20,
+        "values": [
+          {
+            "id": 1,
+            "value": "Все объявления",
+            "order": null
+          },
+          {
+            "id": 2,
+            "value": "Царский дом",
+            "order": null
+          },
+          {
+            "id": 3,
+            "value": "Сталинка",
+            "order": null
+          },
+          {
+            "id": 4,
+            "value": "Хрущевка",
+            "order": null
+          },
+          {
+            "id": 5,
+            "value": "Чешка",
+            "order": null
+          },
+          {
+            "id": 6,
+            "value": "Гостинка",
+            "order": null
+          },
+          {
+            "id": 7,
+            "value": "Совмин",
+            "order": null
+          },
+          {
+            "id": 8,
+            "value": "Общежитие",
+            "order": null
+          },
+          {
+            "id": 9,
+            "value": "Жилой фонд 80-90-е",
+            "order": null
+          },
+          {
+            "id": 10,
+            "value": "Жилой фонд 91-2000-е",
+            "order": null
+          },
+          {
+            "id": 11,
+            "value": "Жилой фонд 2001-2010-е",
+            "order": null
+          },
+          {
+            "id": 12,
+            "value": "Жилой фонд 2011-2020-е",
+            "order": null
+          },
+          {
+            "id": 13,
+            "value": "Жилой фонд от 2021 г.",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "Вид объекта",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": true,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 21,
+        "values": [
+          {
+            "id": 136,
+            "value": "Вторичная",
+            "order": null
+          },
+          {
+            "id": 137,
+            "value": "Новостройка",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "Ипотека",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 22,
+        "values": [
+          {
+            "id": 176,
+            "value": "Да",
+            "order": null
+          },
+          {
+            "id": 177,
+            "value": "Нет",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "title": "Рассрочка",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": false,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 23,
+        "values": [
+          {
+            "id": 178,
+            "value": "Да",
+            "order": null
+          },
+          {
+            "id": 179,
+            "value": "Нет",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 22,
+        "title": "Возможен торг",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 24,
+        "values": [
+          {
+            "id": 180,
+            "value": "Возможен торг",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 23,
+        "title": "Без комиссии",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 25,
+        "values": [
+          {
+            "id": 181,
+            "value": "Без комиссии",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "title": "Возможность обмена",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 26,
+        "values": [
+          {
+            "id": 182,
+            "value": "Возможность обмена",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "title": "Готов сотрудничать с риэлтором",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 27,
+        "values": [
+          {
+            "id": 183,
+            "value": "Готов сотрудничать с риэлтором",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "title": "Срочная продажа",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 28,
+        "values": [
+          {
+            "id": 184,
+            "value": "Срочная продажа",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 27,
+        "title": "Продажа от застройщика",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 29,
+        "values": [
+          {
+            "id": 185,
+            "value": "Продажа от застройщика",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 28,
+        "title": "Учёт в Росреестре",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 30,
+        "values": [
+          {
+            "id": 186,
+            "value": "Учёт в Росреестре",
+            "order": null
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "title": "Клиент может предлагать свою цену",
+        "is_filter": true,
+        "is_range": false,
+        "is_multiple": false,
+        "is_hidden": false,
+        "is_required": false,
+        "is_title_hidden": true,
+        "is_special_design": true,
+        "data_type": null,
+        "order": 31,
+        "values": [
+          {
+            "id": 187,
+            "value": "Клиент может предлагать свою цену",
+            "order": null
+          }
+        ]
+      }
+    ]
+  }
+}

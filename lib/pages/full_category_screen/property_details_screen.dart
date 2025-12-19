@@ -493,13 +493,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               child: Container(
                 height: 43,
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.red),
+                  color: Color(0xFF19D849),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Center(
                   child: Text(
                     "Позвонить",
-                    style: TextStyle(color: Colors.red, fontSize: 16),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
               ),

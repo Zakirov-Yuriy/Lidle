@@ -75,7 +75,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
             ),
           ),
           const Padding(
-            padding: EdgeInsets.only(bottom: 10, left: 25),
+            padding: EdgeInsets.only(bottom: 10, left: 25, right: 25),
             child: Text(
               'Все предложения на LIDLE',
               style: TextStyle(
@@ -113,7 +113,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                     }
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+                    margin: const EdgeInsets.only(bottom: 10, right: 25),
 
                     child: Stack(
                       children: [

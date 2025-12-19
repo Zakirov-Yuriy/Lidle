@@ -1,5 +1,7 @@
 
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -1016,145 +1018,93 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
     );
   }
 
+
+  
+
   
   Widget _buildThreePriceBlock() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildSelectableInput(
-            selectedDate,
-            "Дата",
-            () => _showSelectionDialog(
-              "Выберите дату",
-              List.generate(31, (i) => (i + 1).toString()),
-              (value) => setState(() => selectedDate = value),
-            ),
-          ),
+  return Row(
+    children: [
+      Expanded(
+        child: InlineDropdown(
+          value: selectedDate,
+          placeholder: "Дата",
+          items: List.generate(31, (i) => '${i + 1}'),
+          onSelected: (v) => setState(() => selectedDate = v),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSelectableInput(
-            selectedMonth,
-            "Месяц",
-            () => _showSelectionDialog("Выберите месяц", const [
-              'Январь',
-              'Февраль',
-              'Март',
-              'Апрель',
-              'Май',
-              'Июнь',
-              'Июль',
-              'Август',
-              'Сентябрь',
-              'Октябрь',
-              'Ноябрь',
-              'Декабрь',
-            ], (value) => setState(() => selectedMonth = value)),
-          ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: InlineDropdown(
+          value: selectedMonth,
+          placeholder: "Месяц",
+          items: const [
+            'Январь','Февраль','Март','Апрель','Май','Июнь',
+            'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'
+          ],
+          onSelected: (v) => setState(() => selectedMonth = v),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSelectableInput(
-            selectedYear,
-            "Год",
-            () => _showSelectionDialog(
-              "Выберите год",
-              List.generate(10, (i) => (DateTime.now().year + i).toString()),
-              (value) => setState(() => selectedYear = value),
-            ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: InlineDropdown(
+          value: selectedYear,
+          placeholder: "Год",
+          items: List.generate(
+            10,
+            (i) => (DateTime.now().year + i).toString(),
           ),
+          onSelected: (v) => setState(() => selectedYear = v),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 
   
   Widget _buildThreePriceBlockEnd() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildSelectableInput(
-            selectedEndDate,
-            "Дата",
-            () => _showSelectionDialog(
-              "Выберите дату",
-              List.generate(31, (i) => (i + 1).toString()),
-              (value) => setState(() => selectedEndDate = value),
-            ),
-          ),
+  return Row(
+    children: [
+      Expanded(
+        child: InlineDropdown(
+          value: selectedEndDate,
+          placeholder: "Дата",
+          items: List.generate(31, (i) => '${i + 1}'),
+          onSelected: (v) => setState(() => selectedEndDate = v),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSelectableInput(
-            selectedEndMonth,
-            "Месяц",
-            () => _showSelectionDialog("Выберите месяц", const [
-              'Январь',
-              'Февраль',
-              'Март',
-              'Апрель',
-              'Май',
-              'Июнь',
-              'Июль',
-              'Август',
-              'Сентябрь',
-              'Октябрь',
-              'Ноябрь',
-              'Декабрь',
-            ], (value) => setState(() => selectedEndMonth = value)),
-          ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: InlineDropdown(
+          value: selectedEndMonth,
+          placeholder: "Месяц",
+          items: const [
+            'Январь','Февраль','Март','Апрель','Май','Июнь',
+            'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'
+          ],
+          onSelected: (v) => setState(() => selectedEndMonth = v),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildSelectableInput(
-            selectedEndYear,
-            "Год",
-            () => _showSelectionDialog(
-              "Выберите год",
-              List.generate(10, (i) => (DateTime.now().year + i).toString()),
-              (value) => setState(() => selectedEndYear = value),
-            ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: InlineDropdown(
+          value: selectedEndYear,
+          placeholder: "Год",
+          items: List.generate(
+            10,
+            (i) => (DateTime.now().year + i).toString(),
           ),
+          onSelected: (v) => setState(() => selectedEndYear = v),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
+
 
   
-  void _showSelectionDialog(
-    String title,
-    List<String> options,
-    Function(String) onSelected,
-  ) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: primaryBackground,
-          title: Text(title, style: const TextStyle(color: Colors.white)),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 300,
-            child: ListView.builder(
-              itemCount: options.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(
-                    options[index],
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  onTap: () {
-                    onSelected(options[index]);
-                    Navigator.of(context).pop();
-                  },
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-  }
+
 
   
   Widget _buildCheck(String text, bool value, Function(bool) onChanged) {
@@ -1357,34 +1307,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
   }
 
   
-  Widget _buildSelectableInput(
-    String value,
-    String placeholder,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 45,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: secondaryBackground,
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value.isEmpty ? placeholder : value,
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   
   Widget _buildTwoOption({
@@ -1469,6 +1392,131 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+class InlineDropdown extends StatefulWidget {
+  final String value;
+  final String placeholder;
+  final List<String> items;
+  final ValueChanged<String> onSelected;
+
+  const InlineDropdown({
+    super.key,
+    required this.value,
+    required this.placeholder,
+    required this.items,
+    required this.onSelected,
+  });
+
+  @override
+  State<InlineDropdown> createState() => _InlineDropdownState();
+}
+
+class _InlineDropdownState extends State<InlineDropdown> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _entry;
+
+  void _toggle() {
+    if (_entry != null) {
+      _remove();
+    } else {
+      _show();
+    }
+  }
+
+  void _remove() {
+    _entry?.remove();
+    _entry = null;
+    setState(() {});
+  }
+
+  void _show() {
+    final box = context.findRenderObject() as RenderBox;
+    final size = box.size;
+
+    _entry = OverlayEntry(
+      builder: (_) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _remove,
+        child: Stack(
+          children: [
+            CompositedTransformFollower(
+              link: _link,
+              offset: Offset(0, size.height + 6),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: size.width,
+                  height: 220,
+                  decoration: BoxDecoration(
+                    color: secondaryBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ListView.builder(
+                    itemCount: widget.items.length,
+                    itemBuilder: (_, i) {
+                      final item = widget.items[i];
+                      return InkWell(
+                        onTap: () {
+                          widget.onSelected(item);
+                          _remove();
+                        },
+                        child: Padding(
+                          padding: i == 0
+                              ? const EdgeInsets.only(top: 0, bottom: 14, left: 14, right: 14)
+                              : const EdgeInsets.all(14),
+                          child: Text(
+                            item,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    Overlay.of(context).insert(_entry!);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _link,
+      child: GestureDetector(
+        onTap: _toggle,
+        child: Container(
+          height: 45,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: secondaryBackground,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.value.isEmpty
+                      ? widget.placeholder
+                      : widget.value,
+                  style: const TextStyle(color: Colors.white),
+                ),
+              ),
+              Transform.rotate(
+                angle: _entry != null ? pi / 2 : 0,
+                child: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

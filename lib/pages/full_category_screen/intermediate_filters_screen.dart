@@ -165,7 +165,16 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             children: [
               GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.close, color: Colors.white, size: 26),
+                child: const Icon(Icons.close, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                "Фильтры",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
 
               const SizedBox(width: 16),
@@ -191,19 +200,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
               ),
             ],
           ),
-          Row(
-            children: const [
-              SizedBox(height: 12),
-              Text(
-                "Фильтры",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
+         
         ],
       ),
     );

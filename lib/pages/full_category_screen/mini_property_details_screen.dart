@@ -355,14 +355,24 @@ ${widget.listing.title}
           _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
           _InfoRow(title: "Тип комнат: ", value: "изолированные"),
           SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "Все характеристики ›",
-              style: TextStyle(color: Colors.blue, fontSize: 14),
-            ),
+
+          Row(
+            
+            children: [
+              Text(
+                "Все характеристики",
+                style: TextStyle(color: Colors.blue, fontSize: 14),
+              ),
+              //  SizedBox(width: 4),
+              Icon(
+                Icons.keyboard_arrow_down_sharp,
+                color: Colors.blue,
+                // size: 18,
+              ),
+            ],
           ),
-          SizedBox(height: 8),
+          
+          SizedBox(height: 2),
         ],
       ),
     );
@@ -390,9 +400,20 @@ ${widget.listing.title}
             overflow: TextOverflow.ellipsis,
           ),
           SizedBox(height: 8),
-          Text(
-            "Все описание ›",
-            style: TextStyle(color: Colors.blue, fontSize: 14),
+          Row(
+            
+            children: [
+              Text(
+                "Все описание",
+                style: TextStyle(color: Colors.blue, fontSize: 14),
+              ),
+              //  SizedBox(width: 4),
+              Icon(
+                Icons.keyboard_arrow_down_sharp,
+                color: Colors.blue,
+                // size: 18,
+              ),
+            ],
           ),
           SizedBox(height: 2),
         ],
@@ -513,13 +534,13 @@ ${widget.listing.title}
               child: Container(
                 height: 43,
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.red),
+                  color: Color(0xFF19D849),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Center(
                   child: Text(
                     "Позвонить",
-                    style: TextStyle(color: Colors.red, fontSize: 16),
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
               ),

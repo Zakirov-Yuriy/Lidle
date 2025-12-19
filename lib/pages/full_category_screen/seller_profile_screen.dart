@@ -16,7 +16,7 @@ class SellerProfileScreen extends StatefulWidget {
   static const String routeName = "/seller-profile";
 
   final String sellerName;
-  final ImageProvider sellerAvatar; 
+  final ImageProvider sellerAvatar;
   final List<Map<String, dynamic>> sellerListings;
 
   const SellerProfileScreen({
@@ -31,16 +31,8 @@ class SellerProfileScreen extends StatefulWidget {
 }
 
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
-  int selectedStars = 1; 
+  int selectedStars = 1;
   int _selectedIndex = 0;
-  
-  
-  
-  
-  
-  
-  
-  
 
   @override
   Widget build(BuildContext context) {
@@ -49,42 +41,38 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       bottomNavigationBar: _buildBottomNavigation(),
       body: SafeArea(
         child: SingleChildScrollView(
-          
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0, left: 8),
-              child: const Header(),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Column(
-              children: [
-              _buildHeader(),
-
-              const SizedBox(height: 31),
-              _buildSellerInfo(),
-
-              const SizedBox(height: 18),
-              _buildRateSeller(),
-
-              const SizedBox(height: 25),
-              Row(
-                children: [
-                  _buildListingsTitle(),
-                ],
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20.0, left: 8),
+                child: const Header(),
               ),
-              const SizedBox(height: 16),
-              
-              _buildListingsGrid(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Column(
+                  children: [
+                    _buildHeader(),
 
-              const SizedBox(height: 36),
-              _buildComplaintBlock(),
+                    const SizedBox(height: 31),
+                    _buildSellerInfo(),
 
-              const SizedBox(height: 40),
-            ],),
-            ),
+                    const SizedBox(height: 18),
+                    _buildRateSeller(),
+
+                    const SizedBox(height: 25),
+                    Row(children: [_buildListingsTitle()]),
+                    const SizedBox(height: 16),
+
+                    _buildListingsGrid(),
+
+                    const SizedBox(height: 36),
+                    _buildComplaintBlock(),
+
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -92,23 +80,21 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  
-
   Widget _buildHeader() {
     return Row(
       children: [
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.lightBlue, size: 22),
+          child: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.lightBlue,
+            size: 22,
+          ),
         ),
-        
 
         const Text(
           "Назад",
-          style: TextStyle(
-            color: Colors.lightBlue,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: Colors.lightBlue, fontSize: 16),
         ),
         const Spacer(),
 
@@ -122,17 +108,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  
-
   Widget _buildSellerInfo() {
     return Column(
       children: [
         Row(
           children: [
-            CircleAvatar(
-              radius: 38,
-              backgroundImage: widget.sellerAvatar, 
-            ),
+            CircleAvatar(radius: 38, backgroundImage: widget.sellerAvatar),
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,10 +131,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                   children: const [
                     Text(
                       "На VSEUT с 2024 г.",
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: textSecondary, fontSize: 13),
                     ),
                     SizedBox(width: 10),
                     Text(
@@ -167,10 +145,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 const SizedBox(height: 6),
                 const Text(
                   "Проверенный продавец",
-                  style: TextStyle(
-                    color: Colors.greenAccent,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.greenAccent, fontSize: 14),
                 ),
               ],
             ),
@@ -179,7 +154,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
         const SizedBox(height: 15),
 
-        
         SizedBox(
           width: double.infinity,
           child: OutlinedButton(
@@ -201,8 +175,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  
-
   Widget _buildRateSeller() {
     return Container(
       width: double.infinity,
@@ -216,7 +188,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         children: [
           const Text(
             "Оставить оценку продавцу",
-            style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 7),
           const Text(
@@ -249,8 +225,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  
-
   Widget _buildListingsTitle() {
     return const Text(
       "Объявления продавца",
@@ -262,30 +236,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  
-
   Widget _buildListingsGrid() {
     return GridView.builder(
-      
-      itemCount: widget.sellerListings.length, 
-      shrinkWrap: true, 
-      physics: const NeverScrollableScrollPhysics(), 
+      itemCount: widget.sellerListings.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         mainAxisSpacing: 15,
         crossAxisSpacing: 8,
         childAspectRatio: 0.70,
       ),
-      itemBuilder: (_, i) => ListingCard(listing: Listing.fromJson(widget.sellerListings[i])), 
+      itemBuilder: (_, i) =>
+          ListingCard(listing: Listing.fromJson(widget.sellerListings[i])),
     );
   }
-
-  
 
   Widget _buildComplaintBlock() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(25),
+      padding: const EdgeInsets.only(top: 25, left: 22, bottom: 12, right: 10),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(10),
@@ -300,7 +270,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           const SizedBox(height: 6),
           Text.rich(
             TextSpan(
-              text: "Вы можете оставить жалобу на продавца в случае нарушения им ",
+              text:
+                  "Вы можете оставить жалобу на продавца в случае нарушения им ",
               style: const TextStyle(color: textSecondary, fontSize: 15),
               children: [
                 TextSpan(
@@ -314,38 +285,37 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 23),
+          const SizedBox(height: 7),
 
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.red),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(5),
+          GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (BuildContext context) {
+                  return const ComplaintDialog();
+                },
+              );
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                const Text(
+                  "Пожаловаться",
+                  style: TextStyle(color: Colors.red, fontSize: 16),
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return const ComplaintDialog();
-                  },
-                );
-              },
-              child: const Text(
-                "Пожаловаться",
-                style: TextStyle(color: Colors.red, fontSize: 16),
-              ),
+                const SizedBox(width: 3),
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Colors.red,
+                  size: 16,
+                ),
+              ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
-
-  
 
   Widget _buildNavItem(String iconPath, int index, int currentSelected) {
     final isSelected = currentSelected == index;
@@ -415,6 +385,4 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       ),
     );
   }
-
-
 }

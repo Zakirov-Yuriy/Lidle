@@ -82,7 +82,7 @@ class LidleApp extends StatelessWidget {
         title: appTitle,
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          scaffoldBackgroundColor: primaryBackground,
+          // scaffoldBackgroundColor: primaryBackground,
           fontFamily: 'Roboto',
           brightness: Brightness.dark,
         ),

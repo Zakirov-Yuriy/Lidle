@@ -111,7 +111,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen> {
                     }
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+                    margin: const EdgeInsets.only(bottom: 10, right: 25),
 
                     child: Stack(
                       children: [

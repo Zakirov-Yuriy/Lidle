@@ -275,7 +275,7 @@ class _QuickCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final card = Container(
-      height: 86,
+      height: 96,
       width: double.infinity,
       decoration: BoxDecoration(
         color: primaryBackground,

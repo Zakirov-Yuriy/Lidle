@@ -43,7 +43,7 @@ class _SelectionDialogState extends State<SelectionDialog> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxHeight: 359.0,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

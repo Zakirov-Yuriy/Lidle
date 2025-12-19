@@ -22,10 +22,13 @@ dependencies:
   flutter_bloc: ^8.1.6 # Добавлен Bloc для управления состоянием
   flutter_form_builder: ^10.2.0 # Добавлен для расширенной валидации форм
   form_builder_validators: ^11.0.0 # Добавлен для помощников валидации форм
-  mockito: ^5.5.0
+  mockito: ^5.4.6 # CORRECTED LINE
   bloc_test: ^9.1.7
   url_launcher: ^6.3.0 # Добавлен для совершения телефонных звонков
   share_plus: ^10.0.2 # Добавлен для шаринга
+  freezed_annotation: ^2.4.1 # Added
+  json_annotation: ^4.9.0 # Added
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -34,6 +37,9 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_native_splash: ^2.4.7
   flutter_launcher_icons: ^0.14.4
+  build_runner: ^2.4.11 # Added
+  freezed: ^2.5.2 # Added
+  json_serializable: ^6.8.0 # Added
 
 flutter:
 

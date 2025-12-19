@@ -114,13 +114,14 @@ class _ListingCardState extends State<ListingCard> {
                         child: Icon(
                           _isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: _isFavorite ? Colors.red : textPrimary,
-                          size: iconSize,
+                          // size: iconSize,
                         ),
                       ),
                     ],
                   ),
+                  
 
-                  SizedBox(height: 3 * scale),
+                  // SizedBox(height: 3 * scale),
                   Text(
                     widget.listing.price,
                     style: TextStyle(
@@ -150,6 +151,7 @@ class _ListingCardState extends State<ListingCard> {
                       fontSize: dateFontSize,
                     ),
                   ),
+                  
                 ],
               ),
             ),
