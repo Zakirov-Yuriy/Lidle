@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'real_estate_subcategories_screen.dart';
 
@@ -41,41 +42,42 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+            padding: const EdgeInsets.only(bottom: 25, right: 23, top: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [const Header(),],
             ),
           ),
 
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              children: [
-                IconButton(
-                  padding: EdgeInsets.zero,
+          Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 25,
 
-                  icon: const Icon(
-                    Icons.arrow_back_ios,
-
-                    size: 16,
-                    color: Color(0xFF009EE2),
                   ),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                const Text(
-                  'Назад',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF009EE2),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
+                        ),
+                      ),
+                      const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
           const Padding(
-            padding: EdgeInsets.only(bottom: 10, left: 25, right: 25),
+            padding: EdgeInsets.only(bottom: 10, left: 25, right: 25, top: 7),
             child: Text(
               'Все предложения на LIDLE',
               style: TextStyle(

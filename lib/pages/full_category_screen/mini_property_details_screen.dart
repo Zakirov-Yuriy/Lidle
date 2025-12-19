@@ -10,18 +10,14 @@ import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
-
 // ============================================================
 // "Мини-экран деталей недвижимости"
 // ============================================================
 
 class MiniPropertyDetailsScreen extends StatefulWidget {
-  final Listing listing; 
+  final Listing listing;
 
-  const MiniPropertyDetailsScreen({
-    super.key,
-    required this.listing,
-  }); 
+  const MiniPropertyDetailsScreen({super.key, required this.listing});
 
   @override
   State<MiniPropertyDetailsScreen> createState() =>
@@ -144,9 +140,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.share_outlined, color: textPrimary),
+                        icon: const Icon(
+                          Icons.share_outlined,
+                          color: textPrimary,
+                        ),
                         onPressed: () {
-                          final textToShare = '''
+                          final textToShare =
+                              '''
 ${widget.listing.title}
 Цена: ${widget.listing.price}
 Адрес: ${widget.listing.location}
@@ -161,7 +161,11 @@ ${widget.listing.title}
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
+                    padding: const EdgeInsets.only(
+                      right: 25,
+                      left: 25,
+                      top: 20,
+                    ),
                     children: [
                       _buildImageCarousel(),
                       const SizedBox(height: 16),
@@ -196,8 +200,6 @@ ${widget.listing.title}
     );
   }
 
-  
-
   Widget _buildImageCarousel() {
     return Column(
       children: [
@@ -214,13 +216,11 @@ ${widget.listing.title}
             ),
           ),
         ),
-        const SizedBox(
-          height: 10,
-        ), 
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            1, 
+            1,
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),
@@ -231,18 +231,13 @@ ${widget.listing.title}
   Widget _buildPageIndicator(bool isActive) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.symmetric(
-        horizontal: 5.0,
-      ), 
-      height: 11.0, 
-      width: 11.0, 
+      margin: const EdgeInsets.symmetric(horizontal: 5.0),
+      height: 11.0,
+      width: 11.0,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isActive ? Colors.blue : primaryBackground.withOpacity(0.5),
-        border: Border.all(
-          color: Colors.grey, 
-          width: 1.0, 
-        ),
+        border: Border.all(color: Colors.grey, width: 1.0),
       ),
     );
   }
@@ -260,7 +255,7 @@ ${widget.listing.title}
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
-                widget.listing.id, 
+                widget.listing.id,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
@@ -285,7 +280,7 @@ ${widget.listing.title}
           ),
           const SizedBox(height: 4),
           const Text(
-            "354 582 ₽ за м²", 
+            "354 582 ₽ за м²",
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
@@ -357,7 +352,6 @@ ${widget.listing.title}
           SizedBox(height: 8),
 
           Row(
-            
             children: [
               Text(
                 "Все характеристики",
@@ -371,7 +365,7 @@ ${widget.listing.title}
               ),
             ],
           ),
-          
+
           SizedBox(height: 2),
         ],
       ),
@@ -401,7 +395,6 @@ ${widget.listing.title}
           ),
           SizedBox(height: 8),
           Row(
-            
             children: [
               Text(
                 "Все описание",
@@ -567,8 +560,6 @@ ${widget.listing.title}
     );
   }
 
-  
-
   static Widget _card({required Widget child}) {
     return Container(
       padding: const EdgeInsets.only(left: 9, right: 9, top: 8, bottom: 14),
@@ -579,10 +570,7 @@ ${widget.listing.title}
       child: child,
     );
   }
-
-
 }
-
 
 class _InfoRow extends StatelessWidget {
   final String title;
@@ -658,7 +646,7 @@ class _AllListingsButton extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (context) => SellerProfileScreen(
-              sellerName: "Андрей Коломойский", 
+              sellerName: "Андрей Коломойский",
               sellerAvatar: const AssetImage(
                 "assets/property_details_screen/Andrey.png",
               ),
@@ -674,7 +662,7 @@ class _AllListingsButton extends StatelessWidget {
                       "isFavorited": listing.isFavorited,
                     },
                   )
-                  .toList(), 
+                  .toList(),
             ),
           ),
         );
@@ -715,7 +703,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   @override
   void initState() {
     super.initState();
-    
+
     _isFavorited = HiveService.isFavorite(widget.listing.id);
   }
 
@@ -758,7 +746,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           ? SvgPicture.asset(
                               'assets/profile_dashboard/heart-rounded.svg',
                               colorFilter: const ColorFilter.mode(
-                                Colors.red, 
+                                Colors.red,
                                 BlendMode.srcIn,
                               ),
                               width: 20,
@@ -766,16 +754,13 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                             )
                           : Image.asset(
                               'assets/BottomNavigation/heart-rounded.png',
-                              color:
-                                  Colors.white70, 
+                              color: Colors.white70,
                               colorBlendMode: BlendMode.srcIn,
                               width: 20,
                               height: 20,
                             ),
                     ),
-                    const SizedBox(
-                      width: 5,
-                    ), 
+                    const SizedBox(width: 5),
                   ],
                 ),
                 const SizedBox(height: 4),

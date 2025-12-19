@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
 import 'package:lidle/pages/add_listing/real_estate_apartments_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -31,40 +32,46 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
             child: Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+                  padding: const EdgeInsets.only(
+                    bottom: 20,
+                    right: 23,
+                    top: 20,
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [const Header()],
                   ),
                 ),
+
                 Padding(
-                  padding: const EdgeInsets.only(left: 10.0, right: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
                           Icons.arrow_back_ios,
-                          color: Colors.lightBlueAccent,
+                          color: activeIconColor,
                           size: 16,
                         ),
-                        onPressed: () => Navigator.pop(context),
                       ),
                       const Text(
                         'Назад',
                         style: TextStyle(
-                          color: Colors.lightBlueAccent,
+                          color: activeIconColor,
                           fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const Spacer(),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context); 
+                          Navigator.pop(context);
                         },
                         child: const Text(
                           'Отмена',
                           style: TextStyle(
-                            color: Colors.lightBlueAccent,
+                            color: activeIconColor,
                             fontSize: 16,
                           ),
                         ),
@@ -109,7 +116,9 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    RealEstateApartmentsScreen(subcategory: subcategories[index]),
+                                    RealEstateApartmentsScreen(
+                                      subcategory: subcategories[index],
+                                    ),
                               ),
                             );
                           },

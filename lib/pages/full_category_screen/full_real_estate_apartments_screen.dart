@@ -90,18 +90,23 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 10.0, right: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_ios, color: Colors.lightBlueAccent, size: 18),
-                        onPressed: () => Navigator.pop(context),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
+                        ),
                       ),
                       const Text(
                         'Назад',
                         style: TextStyle(
-                          color: Colors.lightBlueAccent,
+                          color: activeIconColor,
                           fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const Spacer(),
@@ -112,7 +117,7 @@ class _FullRealEstateApartmentsScreenState extends State<FullRealEstateApartment
                         child: const Text(
                           'Отмена',
                           style: TextStyle(
-                            color: Colors.lightBlueAccent,
+                            color: activeIconColor,
                             fontSize: 16,
                           ),
                         ),

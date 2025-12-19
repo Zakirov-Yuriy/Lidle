@@ -50,22 +50,23 @@ class _FullRealEstateSubcategoriesScreenState
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(left: 10.0, right: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
                           Icons.arrow_back_ios,
-                          color: Colors.lightBlueAccent,
+                          color: activeIconColor,
                           size: 16,
                         ),
-                        onPressed: () => Navigator.pop(context),
                       ),
                       const Text(
                         'Назад',
                         style: TextStyle(
-                          color: Colors.lightBlueAccent,
+                          color: activeIconColor,
                           fontSize: 16,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       const Spacer(),
@@ -76,7 +77,7 @@ class _FullRealEstateSubcategoriesScreenState
                         child: const Text(
                           'Отмена',
                           style: TextStyle(
-                            color: Colors.lightBlueAccent,
+                            color: activeIconColor,
                             fontSize: 16,
                           ),
                         ),
