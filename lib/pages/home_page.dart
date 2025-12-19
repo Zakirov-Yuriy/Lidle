@@ -273,7 +273,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+          padding: const EdgeInsets.only(left: 12, right: 25, top: 15, bottom: 10),
           child: Row(
             children: [
               Expanded(
@@ -306,9 +306,9 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-        const SizedBox(height: 10),
+        // const SizedBox(height: 10),
         Padding(
-          padding: const EdgeInsets.only(bottom: 20.0),
+          padding: const EdgeInsets.only(bottom: 19.0),
           child: SizedBox(
             height: 85,
             child: ListView.builder(
@@ -327,6 +327,8 @@ class _HomePageState extends State<HomePage> {
                           builder: (context) => const RealEstateListingsScreen(),
                         ),
                       );
+                    } else if (category.title == 'Смотреть\nвсе') {
+                      Navigator.pushNamed(context, FullCategoryScreen.routeName);
                     }
                     // Для других категорий можно добавить логику позже
                   },

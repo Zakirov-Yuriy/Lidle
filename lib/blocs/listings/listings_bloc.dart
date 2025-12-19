@@ -108,6 +108,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       color: Colors.teal,
       imagePath: 'assets/home_page/17.png',
     ),
+    const Category(
+      title: 'Смотреть\nвсе',
+      color: Color(0xFF00A6FF),
+      imagePath: '',
+    ),
   ];
 
   /// Обработчик события загрузки объявлений.
