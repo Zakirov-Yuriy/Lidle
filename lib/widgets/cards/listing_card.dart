@@ -51,7 +51,6 @@ class _ListingCardState extends State<ListingCard> {
         final priceFontSize = 16 * scale;
         final locationFontSize = 13 * scale;
         final dateFontSize = 12 * scale;
-        final iconSize = 18 * scale;
 
         return GestureDetector(
           onTap: () {

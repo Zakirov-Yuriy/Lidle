@@ -8,6 +8,7 @@ import '../../pages/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
 import '../../pages/add_listing/add_listing_screen.dart';
 import '../../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
+import '../../pages/messages/messages_page.dart'; // Import MessagesPage
 
 /// Bloc для управления состоянием навигации.
 /// Обрабатывает события навигации и управляет переходами между страницами.
@@ -21,6 +22,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToFavoritesEvent>(_onNavigateToFavorites);
     on<NavigateToAddListingEvent>(_onNavigateToAddListing);
     on<NavigateToMyPurchasesEvent>(_onNavigateToMyPurchases); // Handle new event
+    on<NavigateToMessagesEvent>(_onNavigateToMessages);
     on<SelectNavigationIndexEvent>(_onSelectNavigationIndex);
   }
 
@@ -88,13 +90,22 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     _navigateToMyPurchases();
   }
 
+  /// Обработчик события навигации к сообщениям.
+  void _onNavigateToMessages(
+    NavigateToMessagesEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(const NavigationToMessages());
+    _navigateToMessages();
+  }
+
   /// Обработчик события выбора элемента навигации.
   /// Проверяет авторизацию для защищенных разделов.
   Future<void> _onSelectNavigationIndex(
     SelectNavigationIndexEvent event,
     Emitter<NavigationState> emit,
   ) async {
-    // Индексы: 0 - Домой, 1 - Избранное, 4 - Профиль, 3 - Сообщения, 2 - Добавить (пока редирект на sign_in)
+    // Индексы: 0 - Домой, 1 - Избранное, 2 - Добавить, 3 - Мои покупки, 4 - Сообщения, 5 - Профиль
     if (event.index == 0) {
       // Домой всегда доступен
       emit(const NavigationToHome());
@@ -117,16 +128,16 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             emit(const NavigationToMyPurchases());
             _navigateToMyPurchases();
             break;
-          case 4:
-             emit(const NavigationToProfile());
-            _navigateToProfile();
+          case 4: // Сообщения
+            emit(const NavigationToMessages());
+            _navigateToMessages();
             break;
-          case 5:
+          case 5: // Профиль
             emit(const NavigationToProfile());
             _navigateToProfile();
             break;
           default:
-            // Для других (сообщения, etc.) - пока на home
+            // Для других - пока на home
             emit(const NavigationToHome());
             _navigateToHome();
         }
@@ -171,6 +182,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     // Навигация будет выполнена в UI через BlocListener
   }
 
+  /// Приватный метод для навигации к сообщениям.
+  void _navigateToMessages() {
+    // Навигация будет выполнена в UI через BlocListener
+  }
+
   /// Метод для выполнения навигации с учетом контекста.
   /// [context] - BuildContext для выполнения навигации.
   void executeNavigation(BuildContext context) {
@@ -184,6 +200,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeAddListingNavigation(context);
     } else if (state is NavigationToMyPurchases) {
       _executeMyPurchasesNavigation(context); // Handle MyPurchases navigation
+    } else if (state is NavigationToMessages) {
+      _executeMessagesNavigation(context);
     } else if (state is NavigationToSignIn) {
       _executeSignInNavigation(context);
     }
@@ -224,5 +242,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   /// Выполняет навигацию к Моим покупкам.
   void _executeMyPurchasesNavigation(BuildContext context) {
     Navigator.of(context).pushNamed(MyPurchasesScreen.routeName);
+  }
+
+  /// Выполняет навигацию к сообщениям.
+  void _executeMessagesNavigation(BuildContext context) {
+    Navigator.of(context).pushNamed(MessagesPage.routeName);
   }
 }

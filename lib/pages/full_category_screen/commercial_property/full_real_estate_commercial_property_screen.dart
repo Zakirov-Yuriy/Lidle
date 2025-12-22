@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/pages/add_listing/apartments/add_apartment_rent_screen.dart';
 import 'package:lidle/pages/add_listing/apartments/add_apartment_sell_screen.dart';
-import 'package:lidle/pages/add_listing/commercial_property/add_commercial_sell_screen.dart';
-import 'package:lidle/pages/add_listing/commercial_property/add_commercial_rent_screen.dart';
-import 'package:lidle/pages/add_listing/commercial_property/add_office_sell_screen.dart';
 import 'package:lidle/pages/add_listing/houses/add_house_rent_screen.dart';
 import 'package:lidle/pages/add_listing/houses/add_house_sell_screen.dart';
 import 'package:lidle/pages/add_listing/rooms/add_room_rent_screen.dart';

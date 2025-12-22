@@ -109,4 +109,77 @@ class HiveService {
   static String getSelectedCity() {
     return settingsBox.get('selectedCity', defaultValue: 'г. Мариуполь. ДНР');
   }
+
+  /// Сохраняет архивные сообщения.
+  static Future<void> saveArchivedMessages(List<Map<String, dynamic>> messages) async {
+    await settingsBox.put('archivedMessages', messages);
+  }
+
+  /// Получает архивные сообщения.
+  static List<Map<String, dynamic>> getArchivedMessages() {
+    final raw = settingsBox.get('archivedMessages', defaultValue: []);
+    if (raw is List) {
+      return raw.map((item) {
+        if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        } else {
+          return <String, dynamic>{};
+        }
+      }).toList();
+    }
+    return [];
+  }
+
+  /// Добавляет сообщение в архив.
+  static Future<void> addToArchive(Map<String, dynamic> message) async {
+    final archived = getArchivedMessages();
+    archived.add(message);
+    await saveArchivedMessages(archived);
+  }
+
+  /// Удаляет сообщение из архива по индексу.
+  static Future<void> removeFromArchive(int index) async {
+    final archived = getArchivedMessages();
+    if (index >= 0 && index < archived.length) {
+      archived.removeAt(index);
+      await saveArchivedMessages(archived);
+    }
+  }
+
+  /// Сохраняет текущие сообщения.
+  static Future<void> saveCurrentMessages(List<Map<String, dynamic>> messages) async {
+    await settingsBox.put('currentMessages', messages);
+  }
+
+  /// Получает текущие сообщения.
+  static List<Map<String, dynamic>> getCurrentMessages() {
+    final raw = settingsBox.get('currentMessages', defaultValue: []);
+    if (raw is List) {
+      return raw.map((item) {
+        if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        } else {
+          return <String, dynamic>{};
+        }
+      }).toList();
+    }
+    return [];
+  }
+
+  /// Восстанавливает сообщение из архива в текущие.
+  static Future<void> restoreFromArchive(int archiveIndex) async {
+    final archived = getArchivedMessages();
+    if (archiveIndex >= 0 && archiveIndex < archived.length) {
+      final message = archived[archiveIndex];
+      final current = getCurrentMessages();
+      // Check if message already exists (by senderName and isInternal)
+      final exists = current.any((m) => m['senderName'] == message['senderName'] && m['isInternal'] == message['isInternal']);
+      if (!exists) {
+        current.add(message);
+        await saveCurrentMessages(current);
+      }
+      archived.removeAt(archiveIndex);
+      await saveArchivedMessages(archived);
+    }
+  }
 }

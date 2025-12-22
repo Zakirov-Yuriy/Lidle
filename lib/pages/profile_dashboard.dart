@@ -42,7 +42,7 @@ class ProfileDashboard extends StatelessWidget {
         },
       child: BlocListener<NavigationBloc, NavigationState>(
         listener: (context, state) {
-          if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites) {
+          if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToMessages) {
             context.read<NavigationBloc>().executeNavigation(context);
           }
         },

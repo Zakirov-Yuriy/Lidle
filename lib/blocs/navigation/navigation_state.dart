@@ -43,6 +43,11 @@ class NavigationToMyPurchases extends NavigationState {
   const NavigationToMyPurchases() : super(3);
 }
 
+/// Состояние навигации к сообщениям.
+class NavigationToMessages extends NavigationState {
+  const NavigationToMessages() : super(4);
+}
+
 /// Состояние навигации к экрану входа.
 class NavigationToSignIn extends NavigationState {
   const NavigationToSignIn() : super(-1); // -1 означает специальный переход

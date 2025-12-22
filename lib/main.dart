@@ -27,7 +27,9 @@ import 'pages/add_listing/add_listing_screen.dart';
 import 'pages/add_listing/category_selection_screen.dart';
 import 'pages/full_category_screen/full_category_screen.dart';
 import 'pages/full_category_screen/map_screen.dart';
-import 'pages/my_purchases_screen.dart'; 
+import 'pages/my_purchases_screen.dart';
+import 'pages/messages/messages_page.dart'; // Corrected import
+import 'pages/messages/messages_archive_page.dart';
 
 // ============================================================
 //  Главная функция
@@ -109,6 +111,8 @@ class LidleApp extends StatelessWidget {
           FullCategoryScreen.routeName: (context) => const FullCategoryScreen(),
           MapScreen.routeName: (context) => const MapScreen(),
           MyPurchasesScreen.routeName: (context) => const MyPurchasesScreen(), // Add the new route
+          MessagesPage.routeName: (context) => const MessagesPage(), // Corrected route
+          MessagesArchivePage.routeName: (context) => const MessagesArchivePage(),
         },
       ),
     );

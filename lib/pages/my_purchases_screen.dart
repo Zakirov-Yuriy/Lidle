@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart'; // Import Bloc
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart'; // Import NavigationBloc
 import 'package:lidle/blocs/navigation/navigation_event.dart'; // Import NavigationEvent
+import 'package:lidle/blocs/navigation/navigation_state.dart'; // Import NavigationState
 import 'package:lidle/widgets/navigation/bottom_navigation.dart'; // Import custom BottomNavigation
 import 'package:lidle/constants.dart'; // Import constants
 import 'package:lidle/widgets/components/header.dart'; // Import Header widget
@@ -13,7 +14,13 @@ class MyPurchasesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<NavigationBloc, NavigationState>(
+      listener: (context, state) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToMessages) {
+          context.read<NavigationBloc>().executeNavigation(context);
+        }
+      },
+      child: Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column( // Removed SingleChildScrollView
@@ -93,6 +100,7 @@ class MyPurchasesScreen extends StatelessWidget {
         onItemSelected: (index) {
           context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
         },
+      ),
       ),
     );
   }

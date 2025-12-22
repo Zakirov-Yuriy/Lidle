@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/messages/messages_page.dart';
 
 class BottomNavigation extends StatelessWidget {
   final ValueChanged<int>? onItemSelected;
@@ -26,6 +27,8 @@ class BottomNavigation extends StatelessWidget {
           return 1;
         case MyPurchasesScreen.routeName:
           return 3;
+        case MessagesPage.routeName:
+          return 4;
         case '/profile-dashboard':
           return 5;
         default:

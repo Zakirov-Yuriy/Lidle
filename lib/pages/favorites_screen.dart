@@ -115,7 +115,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       listener: (context, state) {
         if (state is NavigationToProfile ||
             state is NavigationToHome ||
-            state is NavigationToFavorites) {
+            state is NavigationToFavorites ||
+            state is NavigationToMessages) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
