@@ -44,6 +44,7 @@ import 'pages/profile_dashboard/offers/price_offers_list_page.dart'; // Import t
 import 'pages/profile_dashboard/offers/incoming_price_offer_page.dart'; // Import the new page
 import 'pages/profile_dashboard/offers/user_account_page.dart'; // Import UserAccountPage
 import 'pages/profile_dashboard/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
+import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'models/offer_model.dart';
 
 // ============================================================
