@@ -17,7 +17,9 @@ import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
-import 'package:lidle/pages/offers/price_offers_empty_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart';
+import 'package:lidle/pages/profile_dashboard/user_messages/user_messages_list_screen.dart';
+import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -158,7 +160,7 @@ class ProfileDashboard extends StatelessWidget {
                               title: title,
                               subtitle: subtitle,
                               highlight: highlight,
-                              onTap: index == 3 ? () => Navigator.of(context).pushNamed(PriceOffersEmptyPage.routeName) : null,
+                              onTap: index == 0 ? () => Navigator.of(context).pushNamed(UserMessagesListScreen.routeName) : index == 1 ? () => Navigator.of(context).pushNamed(CompanyMessagesListScreen.routeName) : index == 3 ? () => Navigator.of(context).pushNamed(PriceOffersEmptyPage.routeName) : null,
                             );
                           },
                         ),

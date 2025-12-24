@@ -4,7 +4,7 @@ import 'navigation_event.dart';
 import 'navigation_state.dart';
 import '../../hive_service.dart';
 import '../../pages/auth/sign_in_screen.dart';
-import '../../pages/profile_dashboard.dart';
+import '../../pages/profile_dashboard/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
 import '../../pages/add_listing/add_listing_screen.dart';
 import '../../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen

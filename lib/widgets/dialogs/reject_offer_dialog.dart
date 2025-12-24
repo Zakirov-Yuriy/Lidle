@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lidle/pages/offers/incoming_price_offer_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/incoming_price_offer_page.dart';
 
 class RejectOfferDialog extends StatelessWidget {
   const RejectOfferDialog({super.key});

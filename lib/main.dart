@@ -10,6 +10,10 @@ import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
+import 'package:lidle/blocs/messages/messages_bloc.dart';
+import 'package:lidle/blocs/messages/messages_event.dart';
+import 'package:lidle/blocs/company_messages/company_messages_bloc.dart';
+import 'package:lidle/blocs/company_messages/company_messages_event.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
@@ -20,7 +24,7 @@ import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'pages/home_page.dart';
 import 'pages/auth/sign_in_screen.dart';
-import 'pages/profile_dashboard.dart';
+import 'pages/profile_dashboard/profile_dashboard.dart';
 import 'pages/profile_menu_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing/add_listing_screen.dart';
@@ -30,12 +34,16 @@ import 'pages/full_category_screen/map_screen.dart';
 import 'pages/my_purchases_screen.dart';
 import 'pages/messages/messages_page.dart'; // Corrected import
 import 'pages/messages/messages_archive_page.dart';
-import 'pages/offers/price_offers_empty_page.dart';
-import 'pages/offers/price_accepted_page.dart';
-import 'pages/offers/price_offers_list_page.dart'; // Import the new page
-import 'pages/offers/incoming_price_offer_page.dart'; // Import the new page
-import 'pages/offers/user_account_page.dart'; // Import UserAccountPage
-import 'pages/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
+import 'pages/profile_dashboard/user_messages/user_messages_list_screen.dart';
+import 'pages/profile_dashboard/user_messages/user_messages_archive_list_screen.dart';
+import 'pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
+import 'pages/profile_dashboard/company_messages/company_messages_archive_list_screen.dart';
+import 'pages/profile_dashboard/offers/price_offers_empty_page.dart';
+import 'pages/profile_dashboard/offers/price_accepted_page.dart';
+import 'pages/profile_dashboard/offers/price_offers_list_page.dart'; // Import the new page
+import 'pages/profile_dashboard/offers/incoming_price_offer_page.dart'; // Import the new page
+import 'pages/profile_dashboard/offers/user_account_page.dart'; // Import UserAccountPage
+import 'pages/profile_dashboard/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
 import 'models/offer_model.dart';
 
 // ============================================================
@@ -86,6 +94,8 @@ class LidleApp extends StatelessWidget {
         BlocProvider<PasswordRecoveryBloc>(
           create: (context) => PasswordRecoveryBloc(),
         ),
+        BlocProvider<MessagesBloc>(create: (context) => MessagesBloc()..add(LoadMessages())),
+        BlocProvider<CompanyMessagesBloc>(create: (context) => CompanyMessagesBloc()..add(LoadCompanyMessages())),
       ],
       child: MaterialApp(
         title: appTitle,
@@ -120,6 +130,10 @@ class LidleApp extends StatelessWidget {
           MyPurchasesScreen.routeName: (context) => const MyPurchasesScreen(), // Add the new route
           MessagesPage.routeName: (context) => const MessagesPage(), // Corrected route
           MessagesArchivePage.routeName: (context) => const MessagesArchivePage(),
+          UserMessagesListScreen.routeName: (context) => const UserMessagesListScreen(),
+          UserMessagesArchiveListScreen.routeName: (context) => const UserMessagesArchiveListScreen(),
+          CompanyMessagesListScreen.routeName: (context) => const CompanyMessagesListScreen(),
+          CompanyMessagesArchiveListScreen.routeName: (context) => const CompanyMessagesArchiveListScreen(),
           PriceOffersEmptyPage.routeName: (context) => const PriceOffersEmptyPage(),
           PriceAcceptedPage.routeName: (context) => PriceAcceptedPage(offer: ModalRoute.of(context)!.settings.arguments as Offer),
           PriceOffersListPage.routeName: (context) => PriceOffersListPage(offer: ModalRoute.of(context)!.settings.arguments as Offer), // Add new route

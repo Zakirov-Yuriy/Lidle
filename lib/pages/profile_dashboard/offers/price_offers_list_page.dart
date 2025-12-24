@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'package:lidle/pages/offers/incoming_price_offer_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/incoming_price_offer_page.dart';
+import 'package:lidle/widgets/navigation/bottom_navigation.dart';
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/navigation/navigation_event.dart';
 
 class PriceOffersListPage extends StatefulWidget {
   final Offer offer;
@@ -78,118 +83,134 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: PriceOffersListPage.backgroundColor,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ───── Header ─────
-            Padding(
-              padding: const EdgeInsets.only(bottom: 5, right: 23),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [const Header(), const Spacer()],
+    return BlocListener<NavigationBloc, NavigationState>(
+      listener: (context, state) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+          context.read<NavigationBloc>().executeNavigation(context);
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: PriceOffersListPage.backgroundColor,
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ───── Header ─────
+              Padding(
+                padding: const EdgeInsets.only(bottom: 5, right: 23),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [const Header(), const Spacer()],
+                ),
               ),
-            ),
 
-            // ───── Back / Cancel ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: Color.fromARGB(255, 255, 255, 255),
-                      size: 16,
-                    ),
-                  ),
-                  const Text(
-                    'Предложения цен',
-                    style: TextStyle(
-                      color: Color.fromARGB(255, 255, 255, 255),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Отмена',
-                      style: TextStyle(color: activeIconColor, fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ───── Select all / Delete ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Row(
-                children: [
-                  _Checkbox(
-                    isChecked: selectAllChecked,
-                    onTap: _toggleSelectAll,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Выбрать все',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: itemChecked.contains(true) ? _deleteSelected : null,
-                    child: Text(
-                      'Удалить',
-                      style: TextStyle(
-                        color: itemChecked.contains(true) ? PriceOffersListPage.dangerColor : Colors.white38,
-                        fontSize: 16,
+              // ───── Back / Cancel ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(
+                        Icons.arrow_back_ios,
+                        color: Color.fromARGB(255, 255, 255, 255),
+                        size: 16,
                       ),
                     ),
-                  ),
-                ],
+                    const Text(
+                      'Предложения цен',
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 255, 255, 255),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Отмена',
+                        style: TextStyle(color: activeIconColor, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 12),
-            const Divider(color: Colors.white24, height: 0),
+              const SizedBox(height: 16),
 
-            // ───── List ─────
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return Column(
-                    children: [
-                      _OfferItem(
-                        offerItem: item,
-                        isChecked: itemChecked[index],
-                        onChanged: () => _toggleItem(index),
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          IncomingPriceOfferPage.routeName,
-                          arguments: item,
+              // ───── Select all / Delete ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Row(
+                  children: [
+                    _Checkbox(
+                      isChecked: selectAllChecked,
+                      onTap: _toggleSelectAll,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Выбрать все',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: itemChecked.contains(true) ? _deleteSelected : null,
+                      child: Text(
+                        'Удалить',
+                        style: TextStyle(
+                          color: itemChecked.contains(true) ? PriceOffersListPage.dangerColor : Colors.white38,
+                          fontSize: 16,
                         ),
                       ),
-                      if (index < items.length - 1) const SizedBox(height: 12),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ),
               ),
-            ),
 
-            const SizedBox(height: 80), // под bottom nav
-          ],
+              const SizedBox(height: 12),
+              const Divider(color: Colors.white24, height: 0),
+
+              // ───── List ─────
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return Column(
+                      children: [
+                        _OfferItem(
+                          offerItem: item,
+                          isChecked: itemChecked[index],
+                          onChanged: () => _toggleItem(index),
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            IncomingPriceOfferPage.routeName,
+                            arguments: item,
+                          ),
+                        ),
+                        if (index < items.length - 1) const SizedBox(height: 12),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        bottomNavigationBar: BottomNavigation(
+          onItemSelected: (index) {
+            if (index == 3) { // Shopping cart icon
+              context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+            } else {
+              context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+            }
+          },
         ),
       ),
     );

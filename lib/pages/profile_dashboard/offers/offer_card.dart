@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
-import 'package:lidle/pages/offers/price_accepted_page.dart';
-import 'package:lidle/pages/offers/price_offers_list_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_accepted_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_offers_list_page.dart';
 
 class OfferCard extends StatelessWidget {
   final Offer offer;
