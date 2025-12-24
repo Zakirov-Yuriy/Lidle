@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/navigation/bottom_navigation.dart';
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/navigation/navigation_event.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
-  static const routeName = '/support';
+  static const String routeName = '/support';
 
   static const backgroundColor = Color(0xFF243241);
   static const cardColor = Color(0xFF1F2C3A);
@@ -11,89 +18,107 @@ class SupportScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ───── Header ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.close, color: Colors.white),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'LIDLE',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.more_horiz, color: Colors.white),
-                ],
-              ),
-            ),
-
-            // ───── Back ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: const [
-                  Text(
-                    '‹ Поддержка Lidle',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Spacer(),
-                  Text(
-                    'Назад',
-                    style: TextStyle(
-                      color: accentColor,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // ───── Cards ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+    return BlocListener<NavigationBloc, NavigationState>(
+      listener: (context, state) {
+        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+          context.read<NavigationBloc>().executeNavigation(context);
+        }
+      },
+      child: BlocBuilder<NavigationBloc, NavigationState>(
+        builder: (context, navigationState) {
+          return Scaffold(
+            extendBody: true,
+            backgroundColor: backgroundColor,
+            body: SafeArea(
               child: Column(
-                children: const [
-                  _SupportCard(
-                    icon: Icons.percent,
-                    iconBg: Color(0xFF3DBE8B),
-                    title: 'Скидки и акции',
-                    subtitle:
-                        'О всех скидках и акциях можно узнать здесь',
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ───── Header ─────
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 5, right: 25),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [const Header(), const Spacer()],
+                    ),
                   ),
-                  SizedBox(height: 12),
-                  _SupportCard(
-                    icon: Icons.headset_mic,
-                    iconBg: Color(0xFF4DA3FF),
-                    title: 'Поддержка',
-                    subtitle:
-                        'Все вопросы про Lidle можете задать тут',
+
+                  // ───── Back / Cancel ─────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.arrow_back_ios,
+                            color: Color.fromARGB(255, 255, 255, 255),
+                            size: 16,
+                          ),
+                        ),
+                        const Text(
+                          'Поддержка Lidle',
+                          style: TextStyle(
+                            color: Color.fromARGB(255, 255, 255, 255),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                          },
+                          child: const Text(
+                            'Назад',
+                            style: TextStyle(color: activeIconColor, fontSize: 16),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+
+                  const SizedBox(height: 10),
+
+                  // ───── Cards ─────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Column(
+                      children: [
+                        _SupportCard(
+                          imagePath: 'assets/support/sale.png',
+                          iconBg: Color(0xFF3DBE8B),
+                          title: 'Скидки и акции',
+                          subtitle: 'О всех скидках и акциях \nможно узнать здесь',
+                          onTap: () => Navigator.pushNamed(context, '/discounts-and-promotions'),
+                        ),
+                        SizedBox(height: 12),
+                        _SupportCard(
+                          imagePath: 'assets/support/support.png',
+                          iconBg: Color(0xFF4DA3FF),
+                          title: 'Поддержка',
+                          subtitle: 'Все вопросы про Lidle \nможете задать тут',
+                          onTap: () => Navigator.pushNamed(context, '/support-chat'),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Spacer(),
+                  const SizedBox(height: 80), // под bottom nav
                 ],
               ),
             ),
-
-            const Spacer(),
-            const SizedBox(height: 80), // под bottom nav
-          ],
-        ),
+            bottomNavigationBar: BottomNavigation(
+              onItemSelected: (index) {
+                if (index == 3) { // Shopping cart icon
+                  context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                } else {
+                  context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                }
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -104,42 +129,44 @@ class SupportScreen extends StatelessWidget {
 // ─────────────────────────────────────────────
 
 class _SupportCard extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final String? imagePath;
   final Color iconBg;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const _SupportCard({
-    required this.icon,
+    this.icon,
+    this.imagePath,
     required this.iconBg,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: SupportScreen.cardColor,
-        borderRadius: BorderRadius.circular(12),
+        color: formBackground,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
-          // icon
+          // icon or image
           Container(
-            width: 48,
-            height: 48,
+            width: 65,
+            height: 88,
             decoration: BoxDecoration(
-              color: iconBg,
+              color: imagePath != null ? null : iconBg,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 26,
-            ),
+            child: imagePath != null
+                ? Image.asset(imagePath!, fit: BoxFit.cover)
+                : Icon(icon, color: Colors.white, size: 26),
           ),
 
           const SizedBox(width: 12),
@@ -149,33 +176,40 @@ class _SupportCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.white),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(
                   subtitle,
                   style: const TextStyle(
                     color: Colors.white54,
-                    fontSize: 13,
+                    fontSize: 14,
                     height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
-
-          const Icon(
-            Icons.chevron_right,
-            color: Colors.white54,
-          ),
         ],
       ),
     );
+
+    return onTap != null
+        ? GestureDetector(
+            onTap: onTap,
+            child: card,
+          )
+        : card;
   }
 }

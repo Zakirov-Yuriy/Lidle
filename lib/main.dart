@@ -45,6 +45,8 @@ import 'pages/profile_dashboard/offers/incoming_price_offer_page.dart'; // Impor
 import 'pages/profile_dashboard/offers/user_account_page.dart'; // Import UserAccountPage
 import 'pages/profile_dashboard/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
+import 'package:lidle/pages/profile_dashboard/support/discounts_and_promotions_page.dart';
+import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
 import 'models/offer_model.dart';
 
 // ============================================================
@@ -141,6 +143,9 @@ class LidleApp extends StatelessWidget {
           IncomingPriceOfferPage.routeName: (context) => IncomingPriceOfferPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
           UserAccountPage.routeName: (context) => UserAccountPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
           UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
+          SupportScreen.routeName: (context) => const SupportScreen(),
+          DiscountsAndPromotionsPage.routeName: (context) => const DiscountsAndPromotionsPage(),
+          SupportChatPage.routeName: (context) => const SupportChatPage(),
         },
       ),
     );
