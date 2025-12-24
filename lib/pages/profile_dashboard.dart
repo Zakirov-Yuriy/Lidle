@@ -17,6 +17,7 @@ import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
+import 'package:lidle/pages/offers/price_offers_empty_page.dart';
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -157,6 +158,7 @@ class ProfileDashboard extends StatelessWidget {
                               title: title,
                               subtitle: subtitle,
                               highlight: highlight,
+                              onTap: index == 3 ? () => Navigator.of(context).pushNamed(PriceOffersEmptyPage.routeName) : null,
                             );
                           },
                         ),
@@ -407,11 +409,13 @@ class _MessageCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool highlight;
+  final VoidCallback? onTap;
 
   const _MessageCard({
     required this.title,
     required this.subtitle,
     this.highlight = false,
+    this.onTap,
   });
 
   @override
@@ -420,7 +424,7 @@ class _MessageCard extends StatelessWidget {
         ? Border.all(color: const Color(0xFFE3E335), width: 1)
         : Border.all(color: const Color(0xFF474747));
 
-    return Container(
+    final card = Container(
       // УДАЛЯЕМ: constraints: const BoxConstraints(minHeight: 86),
       decoration: BoxDecoration(
         color: primaryBackground,
@@ -457,5 +461,12 @@ class _MessageCard extends StatelessWidget {
         ),
       ),
     );
+
+    return onTap != null
+        ? GestureDetector(
+            onTap: onTap,
+            child: card,
+          )
+        : card;
   }
 }

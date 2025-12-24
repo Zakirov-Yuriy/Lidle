@@ -23,6 +23,7 @@ class MessagesPage extends StatefulWidget { // Renamed from MessagesEmptyPage
 
 class _MessagesPageState extends State<MessagesPage> {
   bool isInternalChatSelected = true; // true для внутреннего чата, false для внешнего
+  bool showCheckboxes = false; // Флаг для показа чекбоксов
   List<Message> messages = []; // Placeholder for messages
 
   // Dummy data for messages
@@ -200,7 +201,7 @@ class _MessagesPageState extends State<MessagesPage> {
                             color: isInternalChatSelected
                                 ? accentColor
                                 : Colors.white,
-                            fontSize: 14,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -217,7 +218,7 @@ class _MessagesPageState extends State<MessagesPage> {
                             color: isInternalChatSelected
                                 ? Colors.white
                                 : accentColor,
-                            fontSize: 14,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -235,10 +236,10 @@ class _MessagesPageState extends State<MessagesPage> {
                         duration: const Duration(milliseconds: 200),
                         left: isInternalChatSelected
                             ? 0
-                            : 125, // Примерная позиция для второй вкладки
+                            : 135, // Примерная позиция для второй вкладки
                         child: Container(
                           height: 2,
-                          width: 105, // Ширина подчеркивания
+                          width: 109, // Ширина подчеркивания
                           color: accentColor,
                         ),
                       ),
@@ -319,6 +320,11 @@ class _MessagesPageState extends State<MessagesPage> {
                                 onChanged: (bool newValue) {
                                   setState(() {
                                     selectedMessages.updateAll((key, value) => newValue); // Select/deselect all
+                                    if (showCheckboxes && selectedMessages.values.where((v) => v).isEmpty) {
+                                      showCheckboxes = false; // Скрыть чекбоксы если нет выбранных
+                                    } else {
+                                      showCheckboxes = true; // Показать чекбоксы
+                                    }
                                   });
                                 },
                               ),
@@ -330,6 +336,13 @@ class _MessagesPageState extends State<MessagesPage> {
                               const Spacer(),
                               TextButton(
                                 onPressed: () async {
+                                  setState(() {
+                                    if (showCheckboxes && selectedMessages.values.where((v) => v).isEmpty) {
+                                      showCheckboxes = false; // Скрыть чекбоксы если нет выбранных
+                                    } else {
+                                      showCheckboxes = true; // Показать чекбоксы
+                                    }
+                                  });
                                   final selectedIndices = selectedMessages.entries
                                       .where((entry) => entry.value)
                                       .map((entry) => entry.key)
@@ -410,6 +423,7 @@ class _MessagesPageState extends State<MessagesPage> {
                                         ),
                                       );
                                     },
+                                    showCheckboxes: showCheckboxes,
                                   );
                                 },
                               );

@@ -7,6 +7,7 @@ class MessageCard extends StatelessWidget {
   final bool isSelected;
   final ValueChanged<bool?> onCheckboxChanged;
   final VoidCallback? onTap;
+  final bool showCheckboxes;
 
   const MessageCard({
     super.key,
@@ -14,6 +15,7 @@ class MessageCard extends StatelessWidget {
     required this.isSelected,
     required this.onCheckboxChanged,
     this.onTap,
+    required this.showCheckboxes,
   });
 
   @override
@@ -22,11 +24,12 @@ class MessageCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
       child: Row(
         children: [
-          CustomCheckbox(
-            value: isSelected,
-            onChanged: (newValue) => onCheckboxChanged(newValue),
-          ),
-          const SizedBox(width: 8),
+          if (showCheckboxes)
+            CustomCheckbox(
+              value: isSelected,
+              onChanged: (newValue) => onCheckboxChanged(newValue),
+            ),
+          if (showCheckboxes) const SizedBox(width: 8),
           // Avatar
           CircleAvatar(
             radius: 24,

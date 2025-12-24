@@ -17,6 +17,7 @@ class MessagesArchivePage extends StatefulWidget {
 
 class _MessagesArchivePageState extends State<MessagesArchivePage> {
   bool isInternalChatSelected = true; // true для внутреннего чата, false для внешнего
+  bool showCheckboxes = false; // Флаг для показа чекбоксов
   List<Map<String, dynamic>> archivedMessages = [];
   Map<int, bool> selectedMessages = {};
 
@@ -215,6 +216,11 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                                 onChanged: (bool newValue) {
                                   setState(() {
                                     selectedMessages.updateAll((key, value) => newValue);
+                                    if (showCheckboxes && selectedMessages.values.where((v) => v).isEmpty) {
+                                      showCheckboxes = false; // Скрыть чекбоксы если нет выбранных
+                                    } else {
+                                      showCheckboxes = true; // Показать чекбоксы
+                                    }
                                   });
                                 },
                               ),
@@ -226,6 +232,13 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                               const Spacer(),
                               TextButton(
                                 onPressed: () async {
+                                  setState(() {
+                                    if (showCheckboxes && selectedMessages.values.where((v) => v).isEmpty) {
+                                      showCheckboxes = false; // Скрыть чекбоксы если нет выбранных
+                                    } else {
+                                      showCheckboxes = true; // Показать чекбоксы
+                                    }
+                                  });
                                   final selectedIndices = selectedMessages.entries
                                       .where((entry) => entry.value)
                                       .map((entry) => entry.key)
@@ -273,6 +286,7 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                                   });
                                 },
                                 onTap: () {},
+                                showCheckboxes: showCheckboxes,
                               );
                             },
                           ),

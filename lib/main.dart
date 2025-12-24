@@ -30,6 +30,13 @@ import 'pages/full_category_screen/map_screen.dart';
 import 'pages/my_purchases_screen.dart';
 import 'pages/messages/messages_page.dart'; // Corrected import
 import 'pages/messages/messages_archive_page.dart';
+import 'pages/offers/price_offers_empty_page.dart';
+import 'pages/offers/price_accepted_page.dart';
+import 'pages/offers/price_offers_list_page.dart'; // Import the new page
+import 'pages/offers/incoming_price_offer_page.dart'; // Import the new page
+import 'pages/offers/user_account_page.dart'; // Import UserAccountPage
+import 'pages/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
+import 'models/offer_model.dart';
 
 // ============================================================
 //  Главная функция
@@ -113,6 +120,12 @@ class LidleApp extends StatelessWidget {
           MyPurchasesScreen.routeName: (context) => const MyPurchasesScreen(), // Add the new route
           MessagesPage.routeName: (context) => const MessagesPage(), // Corrected route
           MessagesArchivePage.routeName: (context) => const MessagesArchivePage(),
+          PriceOffersEmptyPage.routeName: (context) => const PriceOffersEmptyPage(),
+          PriceAcceptedPage.routeName: (context) => PriceAcceptedPage(offer: ModalRoute.of(context)!.settings.arguments as Offer),
+          PriceOffersListPage.routeName: (context) => PriceOffersListPage(offer: ModalRoute.of(context)!.settings.arguments as Offer), // Add new route
+          IncomingPriceOfferPage.routeName: (context) => IncomingPriceOfferPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
+          UserAccountPage.routeName: (context) => UserAccountPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
+          UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
         },
       ),
     );
