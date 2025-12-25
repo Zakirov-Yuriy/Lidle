@@ -21,6 +21,7 @@ import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dar
 import 'package:lidle/pages/profile_dashboard/user_messages/user_messages_list_screen.dart';
 import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
+import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -126,7 +127,7 @@ class ProfileDashboard extends StatelessWidget {
                         const SizedBox(height: 10),
                         const _MenuItem(title: 'Активные / Неактивные', count: 4, trailingChevron: true),
                         const Divider(color: Color(0xFF474747), height: 8),
-                        const _MenuItem(title: 'Отклики', count: 4, trailingChevron: true),
+                        _MenuItem(title: 'Отклики', count: 4, trailingChevron: true, onTap: () => Navigator.of(context).pushNamed(ResponsesEmptyPage.routeName)),
                         const Divider(color: Color(0xFF474747), height: 8),
                         const _MenuItem(title: 'Архив', trailingChevron: true),
                         const Divider(color: Color(0xFF474747), height: 8),
@@ -357,18 +358,20 @@ class _MenuItem extends StatelessWidget {
   final String title;
   final int? count;
   final bool trailingChevron;
+  final VoidCallback? onTap;
 
   const _MenuItem({
     required this.title,
     this.count,
     this.trailingChevron = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(5),
-      onTap: () {},
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Row(

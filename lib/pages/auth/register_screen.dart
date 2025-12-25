@@ -8,7 +8,7 @@ import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
-import 'register_verify_screen.dart';
+
 
 // ============================================================
 // "Экран регистрации пользователя"
@@ -66,8 +66,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthRegistered) {
-          Navigator.of(context).pushNamed(RegisterVerifyScreen.routeName);
+        if (state is AuthAuthenticated) {
+          Navigator.of(context).pushReplacementNamed('/profile-dashboard'); // или ProfileDashboard.routeName, но проверим
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(

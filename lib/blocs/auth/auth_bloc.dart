@@ -46,7 +46,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onRegister(RegisterEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      await AuthService.register(
+      final response = await AuthService.register(
         name: event.name,
         lastName: event.lastName,
         email: event.email,
@@ -54,7 +54,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         passwordConfirmation: event.passwordConfirmation,
       );
-      emit(AuthRegistered());
+
+      if (response['access_token'] != null) {
+        await HiveService.saveUserData('token', response['access_token']);
+        emit(AuthAuthenticated(token: response['access_token']));
+      } else {
+        emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
+      }
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }

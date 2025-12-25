@@ -171,7 +171,7 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                 value: selectAll,
                                 onChanged: (value) {
                                   setState(() {
-                                    selectAll = value ?? false;
+                                    selectAll = value;
                                     for (int i = 0; i < selectedItems.length; i++) {
                                       selectedItems[i] = selectAll;
                                     }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
@@ -47,6 +48,7 @@ import 'pages/profile_dashboard/offers/user_account_only_page.dart'; // Import U
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/discounts_and_promotions_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
+import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'models/offer_model.dart';
 
 // ============================================================
@@ -57,6 +59,9 @@ import 'models/offer_model.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Загрузка переменных окружения
+  await dotenv.load(fileName: kReleaseMode ? ".env.production" : ".env");
 
   if (kIsWeb) {
     await Hive.initFlutter();
@@ -146,6 +151,7 @@ class LidleApp extends StatelessWidget {
           SupportScreen.routeName: (context) => const SupportScreen(),
           DiscountsAndPromotionsPage.routeName: (context) => const DiscountsAndPromotionsPage(),
           SupportChatPage.routeName: (context) => const SupportChatPage(),
+          ResponsesEmptyPage.routeName: (context) => const ResponsesEmptyPage(),
         },
       ),
     );

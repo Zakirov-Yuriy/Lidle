@@ -4,7 +4,7 @@ part 'filter_models.freezed.dart';
 part 'filter_models.g.dart';
 
 @freezed
-abstract class Attribute with _$Attribute {
+class Attribute with _$Attribute {
   const factory Attribute({
     required int id,
     required String title,
@@ -25,7 +25,7 @@ abstract class Attribute with _$Attribute {
 }
 
 @freezed
-abstract class Value with _$Value {
+class Value with _$Value {
   const factory Value({
     required int id,
     required String value,

@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 
 /// Базовый класс для работы с API.
 /// Обрабатывает общие заголовки и базовый URL.
 class ApiService {
-  static const String baseUrl = 'https://dev-api.lidle.io/v1';
+  static String get baseUrl => dotenv.get('BASE_URL', fallback: 'https://dev-api.lidle.io/v1');
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     'X-App-Client': 'mobile',

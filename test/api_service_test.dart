@@ -1,7 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/services/api_service.dart';
 
 void main() {
+  setUp(() {
+    // Инициализируем dotenv для тестов с dev URL
+    dotenv.testLoad(fileInput: 'BASE_URL=https://dev-api.lidle.io/v1');
+  });
+
   group('ApiService', () {
     test('should have correct base URL', () {
       expect(ApiService.baseUrl, 'https://dev-api.lidle.io/v1');

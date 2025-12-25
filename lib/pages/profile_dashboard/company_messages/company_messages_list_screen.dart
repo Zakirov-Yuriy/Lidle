@@ -171,7 +171,7 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                                 value: selectAll,
                                 onChanged: (value) {
                                   setState(() {
-                                    selectAll = value ?? false;
+                                    selectAll = value;
                                     for (int i = 0; i < selectedItems.length; i++) {
                                       selectedItems[i] = selectAll;
                                     }

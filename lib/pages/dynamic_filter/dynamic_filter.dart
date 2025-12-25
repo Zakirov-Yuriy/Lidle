@@ -75,21 +75,10 @@ class _DynamicFilterState
     }
   }
 
-  Set<String> _selectedHouseTypes = {};
-  Set<String> _selectedDealTypes = {};
-  Set<String> _selectedWallTypes = {};
-  Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {};
-  Set<String> _selectedCommunicationTypes =
-      {};
+
   Set<String> _selectedCity = {};
   Set<String> _selectedStreet = {};
-  Set<String> _selectedRoomCounts = {};
-  Set<String> _selectedLayoutTypes = {};
-  Set<String> _selectedBathroomTypes = {};
-  Set<String> _selectedRenovationTypes = {};
-  Set<String> _selectedAppliancesTypes = {};
-  Set<String> _selectedMultimediaTypes = {};
+
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -187,8 +176,7 @@ class _DynamicFilterState
   bool isClientPrice = false; 
   bool isAutoRenewal = false; 
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished =
-      true; 
+
 
 
   String _selectedAction = 'publish'; 
@@ -924,7 +912,7 @@ class _DynamicFilterState
               ),
               CustomCheckbox(
                 value: selected,
-                onChanged: (v) => setState(() => _selectedValues[attr.id] = v ?? false),
+                onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
               ),
             ],
           ),
