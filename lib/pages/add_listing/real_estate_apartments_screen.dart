@@ -14,7 +14,6 @@ import 'package:lidle/pages/add_listing/houses/add_house_rent_screen.dart';
 import 'package:lidle/pages/add_listing/houses/add_house_sell_screen.dart';
 import 'package:lidle/pages/add_listing/land/add_land_sell_screen.dart';
 import 'package:lidle/pages/add_listing/land/add_land_rent_screen.dart';
-import 'package:lidle/pages/add_listing/rooms/add_room_rent_screen.dart';
 import 'package:lidle/pages/add_listing/rooms/add_room_sell_screen.dart';
 import 'package:lidle/pages/add_listing/garages/add_garage_parking_sell_screen.dart';
 import 'package:lidle/pages/add_listing/garages/add_garage_parking_long_rent_screen.dart';

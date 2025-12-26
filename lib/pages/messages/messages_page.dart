@@ -102,7 +102,6 @@ class _MessagesPageState extends State<MessagesPage> {
     setState(() {});
   }
 
-  static const backgroundColor = Color(0xFF243241);
   static const accentColor = Color(0xFF00B7FF);
 
   @override
@@ -114,7 +113,7 @@ class _MessagesPageState extends State<MessagesPage> {
         }
       },
       child: Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: primaryBackground,
         body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

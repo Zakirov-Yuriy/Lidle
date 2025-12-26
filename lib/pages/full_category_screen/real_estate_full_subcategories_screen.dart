@@ -24,12 +24,12 @@ class RealEstateFullSubcategoriesScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1C2834),
+      backgroundColor: primaryBackground,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            color: const Color(0xFF1C2834),
+            color: primaryBackground,
             child: Column(
               children: [
                 Padding(

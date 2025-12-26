@@ -17,6 +17,7 @@ const Color inactiveIconColor = Color(0xFFE5EDF5);
 const Color textPrimary = Colors.white;
 const Color textSecondary = Color(0xFF9BA5B0);
 const Color textMuted = Color(0xFF6B7684);
+const Color accentColor = Color(0xFF00B7FF);
 
 // ============================================================
 //  Размеры и отступы

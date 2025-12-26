@@ -5,7 +5,6 @@ import 'package:lidle/widgets/components/header.dart';
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
 
-  static const backgroundColor = Color(0xFF243241);
   static const cardColor = Color(0xFF1F2C3A);
   static const accentColor = Color(0xFF00B7FF);
   static const inputColor = Color(0xFF1B2734);
@@ -13,7 +12,7 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
           children: [

@@ -12,7 +12,7 @@ class ChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF243241),
+      backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
           children: [

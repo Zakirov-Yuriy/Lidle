@@ -49,6 +49,7 @@ import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/discounts_and_promotions_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
+import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'models/offer_model.dart';
 
 // ============================================================
@@ -152,6 +153,7 @@ class LidleApp extends StatelessWidget {
           DiscountsAndPromotionsPage.routeName: (context) => const DiscountsAndPromotionsPage(),
           SupportChatPage.routeName: (context) => const SupportChatPage(),
           ResponsesEmptyPage.routeName: (context) => const ResponsesEmptyPage(),
+          ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
         },
       ),
     );

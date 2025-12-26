@@ -21,7 +21,6 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
   List<Map<String, dynamic>> archivedMessages = [];
   Map<int, bool> selectedMessages = {};
 
-  static const backgroundColor = Color(0xFF243241);
   static const accentColor = Color(0xFF00B7FF);
 
   @override
@@ -44,7 +43,7 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

@@ -22,6 +22,7 @@ import 'package:lidle/pages/profile_dashboard/user_messages/user_messages_list_s
 import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
+import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -117,6 +118,7 @@ class ProfileDashboard extends StatelessWidget {
                               iconPath: 'assets/profile_dashboard/eva_star-fill.svg',
                               title: 'Отзывы',
                               subtitle: '0 отзовов',
+                              onTap: () => Navigator.of(context).pushNamed(ReviewsEmptyPage.routeName),
                             ),
                           ],
                         ),
