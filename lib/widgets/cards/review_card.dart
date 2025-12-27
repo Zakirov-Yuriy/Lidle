@@ -165,48 +165,54 @@ class _ReviewCardState extends State<ReviewCard> {
                           ), // Placeholder for comment author avatar
                         ),
                         const SizedBox(width: 8),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  widget.review.commentAuthor!,
-                                  style: const TextStyle(
-                                    color: Color.fromARGB(
-                                      255,
-                                      255,
-                                      255,
-                                      255,
-                                    ), // Blue color
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  'в ответ Эмилия Л.',
-                                  style: const TextStyle(
-                                    color: Colors.white70, // Gray color
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                if (widget.review.commentDate != null)
-                                  Text(
-                                    widget.review.commentDate!,
-                                    style: const TextStyle(
-                                      color: Colors.white70, // Gray color
-                                      fontSize: 14,
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      widget.review.commentAuthor!,
+                                      style: const TextStyle(
+                                        color: Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        ), // Blue color
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ],
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      'в ответ Эмилия Л.',
+                                      style: const TextStyle(
+                                        color: Colors.white70, // Gray color
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  if (widget.review.commentDate != null)
+                                    Text(
+                                      widget.review.commentDate!,
+                                      style: const TextStyle(
+                                        color: Colors.white70, // Gray color
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),

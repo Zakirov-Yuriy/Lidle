@@ -44,7 +44,7 @@ class _SignInScreenState extends State<SignInScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                message: state.message,
                 onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
               backgroundColor: primaryBackground,

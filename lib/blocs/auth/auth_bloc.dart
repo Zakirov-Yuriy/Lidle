@@ -30,9 +30,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         remember: event.remember,
       );
 
-      if (response['access_token'] != null) {
-        await HiveService.saveUserData('token', response['access_token']);
-        emit(AuthAuthenticated(token: response['access_token']));
+      final token = response['data']?['access_token'] ?? response['data']?['token'] ?? response['access_token'] ?? response['token'];
+      if (token != null) {
+        await HiveService.saveUserData('token', token);
+        emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthError(message: 'Неверные учетные данные'));
       }
@@ -55,9 +56,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         passwordConfirmation: event.passwordConfirmation,
       );
 
-      if (response['access_token'] != null) {
-        await HiveService.saveUserData('token', response['access_token']);
-        emit(AuthAuthenticated(token: response['access_token']));
+      final token = response['data']?['access_token'] ?? response['data']?['token'] ?? response['access_token'] ?? response['token'];
+      if (token != null) {
+        await HiveService.saveUserData('token', token);
+        emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
       }

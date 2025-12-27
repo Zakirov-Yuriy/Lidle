@@ -30,13 +30,13 @@ dependencies:
   json_annotation: ^4.9.0 # Added
   shimmer: ^3.0.0
   flutter_dotenv: ^5.1.0 # Добавлен для переменных окружения
+  flutter_native_splash: ^2.4.7 # Moved from dev_dependencies for proper plugin registration
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
   flutter_lints: ^5.0.0
-  flutter_native_splash: ^2.4.7
   flutter_launcher_icons: ^0.14.4
   build_runner: ^2.4.11 # Added
   freezed: ^2.5.2 # Added
