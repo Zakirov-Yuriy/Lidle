@@ -54,9 +54,9 @@ class _ResponsesSortDialogState extends State<ResponsesSortDialog> {
             ),
           ),
           const SizedBox(height: 25),
-          _buildOption('По рейтингу'),
+          _buildOption('По цене'),
           const SizedBox(height: 20),
-          _buildOption('По сумме оплаты'),
+          _buildOption('По дате публикации'),
         ],
       ),
     );

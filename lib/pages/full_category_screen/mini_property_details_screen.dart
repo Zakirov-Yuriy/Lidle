@@ -9,6 +9,7 @@ import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/pages/full_category_screen/property_gallery_screen.dart';
 
 // ============================================================
 // "Мини-экран деталей недвижимости"
@@ -211,7 +212,20 @@ ${widget.listing.title}
             child: PageView(
               controller: _pageController,
               children: [
-                Image.asset(widget.listing.imagePath, fit: BoxFit.cover),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PropertyGalleryScreen(
+                          images: [widget.listing.imagePath],
+                          initialIndex: 0,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Image.asset(widget.listing.imagePath, fit: BoxFit.cover),
+                ),
               ],
             ),
           ),

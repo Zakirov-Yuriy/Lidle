@@ -23,6 +23,7 @@ import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -127,7 +128,7 @@ class ProfileDashboard extends StatelessWidget {
                         // Раздел «Ваши объявления»
                         const _SectionTitle('Ваши объявления'),
                         const SizedBox(height: 10),
-                        const _MenuItem(title: 'Активные / Неактивные', count: 4, trailingChevron: true),
+                        _MenuItem(title: 'Активные / Неактивные', count: 4, trailingChevron: true, onTap: () => Navigator.of(context).pushNamed(MyListingsScreen.routeName)),
                         const Divider(color: Color(0xFF474747), height: 8),
                         _MenuItem(title: 'Отклики', count: 4, trailingChevron: true, onTap: () => Navigator.of(context).pushNamed(ResponsesEmptyPage.routeName)),
                         const Divider(color: Color(0xFF474747), height: 8),
