@@ -146,13 +146,11 @@ class DiscountsAndPromotionsPage extends StatelessWidget {
 // ─────────────────────────────────────────────
 
 class _CategoryCard extends StatelessWidget {
-  final IconData? icon;
   final String? imagePath;
   final Color iconColor;
   final String title;
 
   const _CategoryCard({
-    this.icon,
     this.imagePath,
     required this.iconColor,
     required this.title,
@@ -170,9 +168,7 @@ class _CategoryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          imagePath != null
-              ? Image.asset(imagePath!, height: 88, width: 65)
-              : Icon(icon, color: iconColor, size: 40),
+          Image.asset(imagePath!, height: 88, width: 65),
           const Spacer(),
           Text(
             title,

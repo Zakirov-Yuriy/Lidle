@@ -15,21 +15,6 @@ import 'package:lidle/widgets/components/header.dart';
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
 // ============================================================
 
-// Функция для получения правильной формы слова для опций продажи/аренды
-String _getSubcategoryForOptions(String subcategory) {
-  const Map<String, String> forms = {
-    'Квартиры': 'квартир',
-    'Комнаты': 'комнат',
-    'Дома': 'домов',
-    'Коммерческая недвижимость': 'коммерческая недвижимости',
-    'Земля': 'земли',
-    'Посуточная аренда жилья': 'посуточной аренды жилья',
-    'Гаражи, парковки': 'гаражей, парковок',
-    'Недвижимость за рубежом': 'Недвижимости за рубежом',
-  };
-  return forms[subcategory] ?? subcategory;
-}
-
 // Функция для получения опций коммерческой недвижимости
 List<String> _getCommercialOptions(String type) {
   const List<String> sellOptions = [
@@ -76,7 +61,6 @@ class RealEstateCommercialPropertyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String subcategory = 'Коммерческая недвижимость';
     return Scaffold(
       backgroundColor: const Color(0xFF1E293B), 
       

@@ -127,6 +127,23 @@ lib/blocs/
     └── password_recovery_state.dart
 ```
 
+# Слой функций (Features)
+```
+lib/features/
+├── cart/                     # Корзина
+│   ├── data/                 # Слой данных
+│   │   ├── datasources/      # Источники данных
+│   │   ├── models/           # Модели данных
+│   │   └── repositories/     # Реализации репозиториев
+│   ├── domain/               # Доменный слой
+│   │   ├── entities/         # Сущности
+│   │   ├── repositories/     # Абстракции репозиториев
+│   │   └── usecases/         # Случаи использования
+│   └── presentation/         # Презентационный слой
+│       ├── bloc/             # BLoC для управления состоянием
+│       └── pages/            # Страницы UI
+```
+
 # Модели данных
 ```
 lib/models/

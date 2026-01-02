@@ -129,7 +129,6 @@ class SupportScreen extends StatelessWidget {
 // ─────────────────────────────────────────────
 
 class _SupportCard extends StatelessWidget {
-  final IconData? icon;
   final String? imagePath;
   final Color iconBg;
   final String title;
@@ -137,7 +136,6 @@ class _SupportCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const _SupportCard({
-    this.icon,
     this.imagePath,
     required this.iconBg,
     required this.title,
@@ -161,12 +159,10 @@ class _SupportCard extends StatelessWidget {
             width: 65,
             height: 88,
             decoration: BoxDecoration(
-              color: imagePath != null ? null : iconBg,
+              color: iconBg,
               shape: BoxShape.circle,
             ),
-            child: imagePath != null
-                ? Image.asset(imagePath!, fit: BoxFit.cover)
-                : Icon(icon, color: Colors.white, size: 26),
+            child: Image.asset(imagePath!, fit: BoxFit.cover),
           ),
 
           const SizedBox(width: 12),
