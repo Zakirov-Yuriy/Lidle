@@ -256,7 +256,16 @@ class _ProfileHeader extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 34),
+            const SizedBox(height: 4),
+            Text(
+              '@VladBorman',
+              style: const TextStyle(
+                color: Colors.blue,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 5),
             Text(
               userId,
               style: const TextStyle(color: textSecondary, fontSize: 12),

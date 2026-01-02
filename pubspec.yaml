@@ -31,6 +31,8 @@ dependencies:
   shimmer: ^3.0.0
   flutter_dotenv: ^5.1.0 # Добавлен для переменных окружения
   flutter_native_splash: ^2.4.7 # Moved from dev_dependencies for proper plugin registration
+  qr_flutter: ^4.1.0
+  equatable: ^2.0.5
 
 dev_dependencies:
   flutter_test:
@@ -53,6 +55,7 @@ flutter:
     - assets/home_page/settings.svg
     - assets/BottomNavigation/
     - assets/profile_dashboard/
+    - assets/profile_menu/
     - assets/categories/
     - assets/home_page/
     - assets/showImageSourceActionSheet/
@@ -68,6 +71,8 @@ flutter:
     - assets/support/
     - assets/responses/
     - assets/reviews/
+    - assets/profile_menu/settings/
+    - assets/product_card/
     - .env
     - .env.production
     

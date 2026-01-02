@@ -25,7 +25,7 @@ import '../blocs/auth/auth_state.dart';
 import '../pages/filters_screen.dart';
 import '../pages/full_category_screen/full_category_screen.dart';
 import '../pages/full_category_screen/real_estate_listings_screen.dart';
-import '../pages/profile_menu_screen.dart';
+import 'profile_menu/profile_menu_screen.dart';
 import '../pages/auth/sign_in_screen.dart';
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу

@@ -15,6 +15,7 @@ import 'package:lidle/blocs/messages/messages_bloc.dart';
 import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/blocs/company_messages/company_messages_bloc.dart';
 import 'package:lidle/blocs/company_messages/company_messages_event.dart';
+import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
@@ -26,7 +27,12 @@ import 'constants.dart';
 import 'pages/home_page.dart';
 import 'pages/auth/sign_in_screen.dart';
 import 'pages/profile_dashboard/profile_dashboard.dart';
-import 'pages/profile_menu_screen.dart';
+import 'pages/profile_menu/profile_menu_screen.dart';
+import 'pages/profile_menu/invite_friends/invite_friends_screen.dart';
+import 'pages/profile_menu/invite_friends/find_by_phone_screen.dart';
+import 'pages/profile_menu/invite_friends/connect_contacts_screen.dart';
+import 'pages/profile_menu/settings/settings_screen.dart';
+import 'pages/profile_menu/support_service_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing/add_listing_screen.dart';
 import 'pages/add_listing/category_selection_screen.dart';
@@ -51,6 +57,7 @@ import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+import 'package:lidle/features/cart/domain/entities/cart_screen.dart';
 import 'models/offer_model.dart';
 
 // ============================================================
@@ -106,6 +113,7 @@ class LidleApp extends StatelessWidget {
         ),
         BlocProvider<MessagesBloc>(create: (context) => MessagesBloc()..add(LoadMessages())),
         BlocProvider<CompanyMessagesBloc>(create: (context) => CompanyMessagesBloc()..add(LoadCompanyMessages())),
+        BlocProvider<CartBloc>(create: (context) => CartBloc()),
       ],
       child: MaterialApp(
         title: appTitle,
@@ -122,6 +130,11 @@ class LidleApp extends StatelessWidget {
         routes: {
           SignInScreen.routeName: (context) => const SignInScreen(),
           ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),
+          InviteFriendsScreen.routeName: (context) => const InviteFriendsScreen(),
+          FindByPhoneScreen.routeName: (context) => const FindByPhoneScreen(),
+          ConnectContactsScreen.routeName: (context) => const ConnectContactsScreen(),
+          SettingsScreen.routeName: (context) => const SettingsScreen(),
+          SupportServiceScreen.routeName: (context) => const SupportServiceScreen(),
           AccountRecovery.routeName: (context) => const AccountRecovery(),
           RegisterScreen.routeName: (context) => const RegisterScreen(),
           RegisterVerifyScreen.routeName: (context) =>
@@ -135,9 +148,10 @@ class LidleApp extends StatelessWidget {
           FavoritesScreen.routeName: (context) => const FavoritesScreen(),
           AddListingScreen.routeName: (context) => const AddListingScreen(),
           CategorySelectionScreen.routeName: (context) => const CategorySelectionScreen(),
+          CartScreen.routeName: (context) => const CartScreen(),
           FullCategoryScreen.routeName: (context) => const FullCategoryScreen(),
           MapScreen.routeName: (context) => const MapScreen(),
-          MyPurchasesScreen.routeName: (context) => const MyPurchasesScreen(), // Add the new route
+          MyPurchasesScreen.routeName: (context) =>  MyPurchasesScreen(), // Add the new route
           MessagesPage.routeName: (context) => const MessagesPage(), // Corrected route
           MessagesArchivePage.routeName: (context) => const MessagesArchivePage(),
           UserMessagesListScreen.routeName: (context) => const UserMessagesListScreen(),
