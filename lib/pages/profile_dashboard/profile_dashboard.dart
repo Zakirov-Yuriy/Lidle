@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -86,7 +87,8 @@ class ProfileDashboard extends StatelessWidget {
                         _ProfileHeader(
                           name: profileState is ProfileLoaded ? profileState.name : 'Загрузка...',
                           userId: profileState is ProfileLoaded ? profileState.userId : 'ID: ...',
-                          avatarUrl: 'assets/profile_dashboard/Ellipse.png',
+                          profileImage: profileState is ProfileLoaded ? profileState.profileImage : null,
+                          username: profileState is ProfileLoaded ? profileState.username : '@Name',
                         ),
                         const SizedBox(height: 29),
 
@@ -220,12 +222,14 @@ class ProfileDashboard extends StatelessWidget {
 class _ProfileHeader extends StatelessWidget {
   final String name;
   final String userId;
-  final String avatarUrl;
+  final String? profileImage;
+  final String username;
 
   const _ProfileHeader({
     required this.name,
     required this.userId,
-    required this.avatarUrl,
+    this.profileImage,
+    this.username = '@Name',
   });
 
   @override
@@ -234,14 +238,27 @@ class _ProfileHeader extends StatelessWidget {
       children: [
         // Аватар с синей окантовкой
         Container(
-          // padding: const EdgeInsets.all(0),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: activeIconColor, width: 3),
           ),
           child: CircleAvatar(
             radius: 54.5,
-            backgroundImage: AssetImage(avatarUrl),
+            backgroundColor: formBackground,
+            child: profileImage != null
+                ? ClipOval(
+                    child: Image.file(
+                      File(profileImage!),
+                      width: 109,
+                      height: 109,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : SvgPicture.asset(
+                    'assets/profile_dashboard/default-photo.svg',
+                    width: 50,
+                    height: 50,
+                  ),
           ),
         ),
         const SizedBox(width: 12),
@@ -258,7 +275,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              '@VladBorman',
+              username,
               style: const TextStyle(
                 color: Colors.blue,
                 fontSize: 16,

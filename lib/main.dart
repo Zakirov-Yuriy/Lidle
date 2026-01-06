@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/privacy_settings/privacy_settings_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/chat_settings/chat_settings_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/username/username_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/change_photo/change_photo_screen.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -32,6 +37,10 @@ import 'pages/profile_menu/invite_friends/invite_friends_screen.dart';
 import 'pages/profile_menu/invite_friends/find_by_phone_screen.dart';
 import 'pages/profile_menu/invite_friends/connect_contacts_screen.dart';
 import 'pages/profile_menu/settings/settings_screen.dart';
+import 'pages/profile_menu/settings/devices/devices_screen.dart';
+import 'pages/profile_menu/settings/delete_account/delete_account_screen.dart';
+import 'pages/profile_menu/settings/privacy_policy/privacy_policy_screen.dart';
+import 'pages/profile_menu/settings/faq/faq_screen.dart';
 import 'pages/profile_menu/support_service_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing/add_listing_screen.dart';
@@ -58,6 +67,10 @@ import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dar
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/features/cart/domain/entities/cart_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/devices/qr_scanner/qr_scanner_screen.dart';
+import 'package:lidle/pages/profile_menu/contacts/contacts_screen.dart';
+import 'package:lidle/pages/profile_menu/user_qr/user_qr_screen.dart';
+import 'package:lidle/pages/profile_menu/user_qr/qr_print_templates_screen.dart';
 import 'models/offer_model.dart';
 
 // ============================================================
@@ -125,7 +138,7 @@ class LidleApp extends StatelessWidget {
         ),
         home: const HomePage(),
         // home: const FiltersCoworkingScreenen(),
-       
+
 
         routes: {
           SignInScreen.routeName: (context) => const SignInScreen(),
@@ -134,6 +147,16 @@ class LidleApp extends StatelessWidget {
           FindByPhoneScreen.routeName: (context) => const FindByPhoneScreen(),
           ConnectContactsScreen.routeName: (context) => const ConnectContactsScreen(),
           SettingsScreen.routeName: (context) => const SettingsScreen(),
+          '/contact_data': (context) => ContactDataScreen(),
+          '/privacy_settings': (context) => const PrivacySettingsScreen(),
+          '/chat_settings': (context) => const ChatSettingsScreen(),
+          '/username': (context) => const UsernameScreen(),
+          '/change_photo': (context) => const ChangePhotoScreen(),
+          '/devices': (context) => const DevicesScreen(),
+          QrScannerScreen.routeName: (context) => const QrScannerScreen(),
+          DeleteAccountScreen.routeName: (context) => const DeleteAccountScreen(),
+          PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
+          FaqScreen.routeName: (context) => const FaqScreen(),
           SupportServiceScreen.routeName: (context) => const SupportServiceScreen(),
           AccountRecovery.routeName: (context) => const AccountRecovery(),
           RegisterScreen.routeName: (context) => const RegisterScreen(),
@@ -170,6 +193,9 @@ class LidleApp extends StatelessWidget {
           ResponsesEmptyPage.routeName: (context) => const ResponsesEmptyPage(),
           ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
           MyListingsScreen.routeName: (context) => const MyListingsScreen(),
+          '/contacts': (context) => const ContactsScreen(),
+          '/user_qr': (context) => const UserQrScreen(),
+          '/qr_print_templates': (context) => const QrPrintTemplatesScreen(),
         },
       ),
     );

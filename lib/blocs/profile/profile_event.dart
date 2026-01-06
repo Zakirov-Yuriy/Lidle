@@ -9,15 +9,21 @@ class LoadProfileEvent extends ProfileEvent {}
 /// [name] - новое имя пользователя.
 /// [email] - новый email пользователя.
 /// [phone] - новый номер телефона.
+/// [profileImage] - путь к новому изображению профиля.
+/// [username] - новое имя пользователя (ник).
 class UpdateProfileEvent extends ProfileEvent {
   final String name;
   final String email;
   final String phone;
+  final String? profileImage;
+  final String? username;
 
   UpdateProfileEvent({
     required this.name,
     required this.email,
     required this.phone,
+    this.profileImage,
+    this.username,
   });
 }
 

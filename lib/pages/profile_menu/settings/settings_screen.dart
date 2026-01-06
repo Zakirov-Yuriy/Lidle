@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -6,6 +7,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/constants.dart';
 
 class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
@@ -76,13 +78,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 child: Row(
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(45),
-                      child: Image.asset(
-                        'assets/profile_dashboard/Ellipse.png',
-                        width: 90,
-                        height: 90,
-                        fit: BoxFit.cover,
+                    GestureDetector(
+                      onTap: () {
+                        debugPrint('Photo tapped');
+                        Navigator.pushNamed(context, '/change_photo');
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(45),
+                        child: BlocBuilder<ProfileBloc, ProfileState>(
+                          builder: (context, state) {
+                            if (state is ProfileLoaded && state.profileImage != null) {
+                              return Image.file(
+                                File(state.profileImage!),
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                              );
+                            }
+                            return Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: formBackground,
+                                borderRadius: BorderRadius.circular(45),
+                              ),
+                              child: Center(
+                                child: SvgPicture.asset(
+                                  'assets/profile_dashboard/default-photo.svg',
+                                  width: 40,
+                                  height: 40,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -116,8 +146,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Аккаунт пользователя',
                 value: '+7 949 545 54 45',
                 hint: 'Нажмите, чтобы изменить номер телефона',
+                onTapHint: _showChangePhoneDialog,
               ),
-              _infoItem(title: '@Postroisam', value: 'Имя аккаунта'),
+              BlocBuilder<ProfileBloc, ProfileState>(
+                builder: (context, state) {
+                  return _infoItem(
+                    title: state is ProfileLoaded ? state.username : '@Name',
+                    value: 'Имя аккаунта',
+                    onTap: () => Navigator.pushNamed(context, '/username'),
+                  );
+                },
+              ),
               _infoItem(title: 'О себе', value: 'Напишите немного о себе'),
 
               const Divider(color: Colors.white24),
@@ -144,7 +183,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           qrData =
                               '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
                         }
-                        return _qrBox(qrData);
+                        return _qrBox(qrData); 
                       },
                     ),
                   ],
@@ -162,6 +201,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 21,
                 ),
                 'Настройка чатов',
+                onTap: () => Navigator.pushNamed(context, '/chat_settings'),
               ),
               _settingsItem(
                 SvgPicture.asset(
@@ -171,6 +211,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 21,
                 ),
                 'Конфиденциальность',
+                onTap: () => Navigator.pushNamed(context, '/privacy_settings'),
               ),
               _settingsItem(
                 SvgPicture.asset(
@@ -180,6 +221,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 21,
                 ),
                 'Контактные данные',
+                onTap: () => Navigator.pushNamed(context, '/contact_data'),
               ),
               _settingsItem(
                 SvgPicture.asset(
@@ -189,6 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 21,
                 ),
                 'Уведомления',
+                onTap: _showNotificationsDialog,
               ),
               _settingsItem(
                 SvgPicture.asset(
@@ -198,13 +241,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 21,
                 ),
                 'Устройства',
+                onTap: () => Navigator.pushNamed(context, '/devices'),
               ),
-              _settingsItem(SvgPicture.asset(
+              _settingsItem(
+                SvgPicture.asset(
                   'assets/profile_menu/settings/globe-01.svg',
                   color: Colors.white,
                   width: 21,
                   height: 21,
-                ),'Язык'),
+                ),
+                'Язык',
+                onTap: _showLanguageDialog,
+              ),
               _settingsItem(
                 SvgPicture.asset(
                   'assets/profile_menu/settings/help-circle.svg',
@@ -212,7 +260,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   width: 21,
                   height: 21,
                 ),
-                'Вопросы о VSETUT',
+                'Вопросы о LIDLE',
+                onTap: () => Navigator.pushNamed(context, '/faq'),
               ),
               _settingsItem(
                 SvgPicture.asset(
@@ -222,31 +271,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   height: 21,
                 ),
                 'Политика конфиденциальности',
+                onTap: () => Navigator.pushNamed(context, '/privacy_policy'),
               ),
 
               const SizedBox(height: 8),
 
               // ───── Delete account ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    SvgPicture.asset(
-                      'assets/profile_menu/settings/trash-02.svg',
-                      color: dangerColor,
-                      width: 21,
-                      height: 21,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Удалить аккаунт',
-                      style: TextStyle(
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/delete_account'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(
+                        'assets/profile_menu/settings/trash-02.svg',
                         color: dangerColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        width: 21,
+                        height: 21,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Удалить аккаунт',
+                        style: TextStyle(
+                          color: dangerColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -262,12 +315,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // INFO ITEM
   // ─────────────────────────────────────────────
 
-  static Widget _infoItem({
+  Widget _infoItem({
     required String title,
     required String value,
     String? hint,
+    VoidCallback? onTapHint,
+    VoidCallback? onTap,
   }) {
-    return Padding(
+    Widget item = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -279,15 +334,424 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(color: Colors.white54, fontSize: 16),
+            style: const TextStyle(color: Colors.white38, fontSize: 16),
           ),
           if (hint != null) ...[
             const SizedBox(height: 4),
-            Text(
-              hint,
-              style: const TextStyle(color: Colors.white38, fontSize: 16),
+            GestureDetector(
+              onTap: onTapHint,
+              child: Text(
+                hint,
+                style: const TextStyle(color: Colors.white38, fontSize: 16),
+              ),
             ),
           ],
+        ],
+      ),
+    );
+
+    if (onTap != null) {
+      item = GestureDetector(
+        onTap: onTap,
+        child: item,
+      );
+    }
+
+    return item;
+  }
+
+  void _showChangePhoneDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: const Color(0xFF1F2C3A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(Icons.close, color: Colors.white),
+                    ),
+                  ],
+                ),
+                const Center(
+                  child: Text(
+                    'Номер регистрации\nаккаунта',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                RichText(
+                  textAlign: TextAlign.start,
+                  text: const TextSpan(
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'Внимание: ',
+                        style: TextStyle(
+                          color: Colors.yellowAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            'для смены основного номера телефона введите новый номер и подтвердите',
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Новый номер',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16202A),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const TextField(
+                    style: TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: '+7 949 456 54 54',
+                      hintStyle: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        'Отмена',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        // Action for sending
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        side: const BorderSide(color: activeIconColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'Отправить',
+                        style: TextStyle(color: activeIconColor, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showLanguageDialog() {
+    String selectedLanguage = 'Русский';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Center(
+                      child: Text(
+                        'Выбрать язык',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _languageOption(
+                      'Русский',
+                      selectedLanguage == 'Русский',
+                      () => setDialogState(() => selectedLanguage = 'Русский'),
+                    ),
+                    const SizedBox(height: 16),
+                    _languageOption(
+                      'Английский',
+                      selectedLanguage == 'Английский',
+                      () =>
+                          setDialogState(() => selectedLanguage = 'Английский'),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: 193,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // TODO: Implement language change logic
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          side: const BorderSide(color: activeIconColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'Потвердить',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showNotificationsDialog() {
+    String selectedNotification = 'Включить уведомления';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: cardColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Center(
+                      child: Text(
+                        'Уведомления',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _notificationOption(
+                      'Включить уведомления',
+                      selectedNotification == 'Включить уведомления',
+                      () => setDialogState(() => selectedNotification = 'Включить уведомления'),
+                    ),
+                    const SizedBox(height: 16),
+                    _notificationOption(
+                      'Выключить уведомления',
+                      selectedNotification == 'Выключить уведомления',
+                      () =>
+                          setDialogState(() => selectedNotification = 'Выключить уведомления'),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: 193,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // TODO: Implement notification change logic
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          side: const BorderSide(color: activeIconColor),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text(
+                          'Потвердить',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _languageOption(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white54,
+                width: 1.5,
+              ),
+            ),
+            child: isSelected
+                ? Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: activeIconColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _notificationOption(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white54,
+                width: 1.5,
+              ),
+            ),
+            child: isSelected
+                ? Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: activeIconColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  )
+                : null,
+          ),
         ],
       ),
     );
@@ -297,8 +761,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // SETTINGS ITEM
   // ─────────────────────────────────────────────
 
-  static Widget _settingsItem(Widget icon, String title) {
-    return Padding(
+  Widget _settingsItem(Widget icon, String title, {VoidCallback? onTap}) {
+    Widget item = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
@@ -311,6 +775,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+
+    if (onTap != null) {
+      item = GestureDetector(
+        onTap: onTap,
+        child: item,
+      );
+    }
+
+    return item;
   }
 
   // ─────────────────────────────────────────────

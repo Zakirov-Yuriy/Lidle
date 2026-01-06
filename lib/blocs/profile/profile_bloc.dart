@@ -23,20 +23,21 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     emit(const ProfileLoading());
     try {
-      // В будущем здесь будет загрузка из API
-      // final profile = await ApiService.getProfile();
-
-      // Пока используем статические данные для демонстрации
-      const name = 'Влад Борман';
-      const userId = 'ID: 2342124342';
-      const email = 'user@example.com';
-      const phone = '+7 (999) 123-45-67';
+      // Загружаем данные из Hive
+      final name = HiveService.getUserData('name') ?? 'Влад Борман';
+      final userId = HiveService.getUserData('userId') ?? 'ID: 2342124342';
+      final email = HiveService.getUserData('email') ?? 'user@example.com';
+      final phone = HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
+      final profileImage = HiveService.getUserData('profileImage');
+      final username = HiveService.getUserData('username') ?? '@Name';
 
       emit(ProfileLoaded(
         name: name,
         email: email,
         userId: userId,
         phone: phone,
+        profileImage: profileImage,
+        username: username,
       ));
     } catch (e) {
       emit(ProfileError(e.toString()));
@@ -53,12 +54,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
     emit(const ProfileLoading());
     try {
-      // В будущем здесь будет вызов API для обновления профиля
-      // await ApiService.updateProfile(
-      //   name: event.name,
-      //   email: event.email,
-      //   phone: event.phone,
-      // );
+      // Сохраняем данные в Hive
+      await HiveService.saveUserData('name', event.name);
+      await HiveService.saveUserData('email', event.email);
+      await HiveService.saveUserData('phone', event.phone);
+      await HiveService.saveUserData('profileImage', event.profileImage);
+      if (event.username != null) {
+        await HiveService.saveUserData('username', event.username);
+      }
 
       // Имитация успешного обновления
       await Future.delayed(const Duration(milliseconds: 500));
@@ -68,6 +71,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         email: event.email,
         userId: (state as ProfileLoaded).userId,
         phone: event.phone,
+        profileImage: event.profileImage ?? (state as ProfileLoaded).profileImage,
+        username: event.username ?? (state as ProfileLoaded).username,
       ));
 
       // Через некоторое время возвращаем состояние успешного обновления

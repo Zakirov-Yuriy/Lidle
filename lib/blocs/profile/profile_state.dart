@@ -19,17 +19,23 @@ class ProfileLoading extends ProfileState {
 /// [email] - email пользователя.
 /// [userId] - ID пользователя.
 /// [phone] - номер телефона пользователя.
+/// [profileImage] - путь к изображению профиля пользователя.
+/// [username] - имя пользователя (ник).
 class ProfileLoaded extends ProfileState {
   final String name;
   final String email;
   final String userId;
   final String phone;
+  final String? profileImage;
+  final String username;
 
   const ProfileLoaded({
     required this.name,
     required this.email,
     required this.userId,
     required this.phone,
+    this.profileImage,
+    this.username = '@Name',
   });
 }
 

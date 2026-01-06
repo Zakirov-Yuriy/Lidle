@@ -1,17 +1,34 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/blocs/profile/profile_bloc.dart';
+import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/pages/profile_menu/invite_friends/invite_friends_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/settings_screen.dart';
 import 'package:lidle/pages/profile_menu/support_service_screen.dart';
 
-class ProfileMenuScreen extends StatelessWidget {
+class ProfileMenuScreen extends StatefulWidget {
   static const routeName = '/profile-menu';
 
   const ProfileMenuScreen({super.key});
+
+  @override
+  State<ProfileMenuScreen> createState() => _ProfileMenuScreenState();
+}
+
+class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Загружаем профиль пользователя
+    BlocProvider.of<ProfileBloc>(context).add(LoadProfileEvent());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,9 +68,9 @@ class ProfileMenuScreen extends StatelessWidget {
               const Divider(color: Color(0x33FFFFFF)),
               const SizedBox(height: 20),
 
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon1.png', width: 22, height: 22), 'QR код'),
+              _buildMenuItem(Image.asset('assets/profile_menu/Icon1.png', width: 22, height: 22), 'QR код', onTap: () => Navigator.pushNamed(context, '/user_qr')),
               _buildMenuItem(Image.asset('assets/profile_menu/Icon2.png', width: 22, height: 22), 'Ваши карты'),
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon3.png', width: 22, height: 22), 'Контакты'),
+              _buildMenuItem(Image.asset('assets/profile_menu/Icon3.png', width: 22, height: 22), 'Контакты', onTap: () => Navigator.pushNamed(context, '/contacts')),
               const SizedBox(height: 23),
 
               const Divider(color: Color(0x33FFFFFF)),
@@ -81,68 +98,88 @@ class ProfileMenuScreen extends StatelessWidget {
 
   
   Widget _buildMainProfile(BuildContext context) {
-    return InkWell(
-      onTap: () => Navigator.pushNamed(context, SettingsScreen.routeName),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Аватар
-          ClipRRect(
-            borderRadius: BorderRadius.circular(60),
-            child: Image.asset(
-              'assets/profile_dashboard/Ellipse.png',
-              width: 102,
-              height: 102,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 23),
-
-          // ИМЯ + ТЕЛЕФОН + НИК
-          Row(
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      builder: (context, state) {
+        return InkWell(
+          onTap: () => Navigator.pushNamed(context, SettingsScreen.routeName),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Аватар
+              ClipRRect(
+                borderRadius: BorderRadius.circular(60),
+                child: state is ProfileLoaded && state.profileImage != null
+                    ? Image.file(
+                        File(state.profileImage!),
+                        width: 102,
+                        height: 102,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 102,
+                        height: 102,
+                        decoration: BoxDecoration(
+                          color: formBackground,
+                          borderRadius: BorderRadius.circular(60),
+                        ),
+                        child: Center(
+                          child: SvgPicture.asset(
+                            'assets/profile_dashboard/default-photo.svg',
+                            width: 50,
+                            height: 50,
+                          ),
+                        ),
+                      ),
+              ),
+              const SizedBox(width: 23),
+
+              // ИМЯ + ТЕЛЕФОН + НИК
+              Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        state is ProfileLoaded ? state.name : 'Vlad',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        state is ProfileLoaded ? state.phone : '+7 949 609 59 28',
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        state is ProfileLoaded ? state.username : '@Name',
+                        style: const TextStyle(color: Color(0xFF009EE2), fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const Spacer(),
+
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'Vlad',
+                children: [
+                  const Text(
+                    'Покупатель',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
+                      color: Color(0xFFEAEF00),
                       fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                  ),
-                  SizedBox(height: 7),
-                  Text(
-                    '+7 949 609 59 28',
-                    style: TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                  SizedBox(height: 7),
-                  Text(
-                    '@Namename',
-                    style: TextStyle(color: Color(0xFF009EE2), fontSize: 14),
                   ),
                 ],
               ),
             ],
           ),
-
-          const Spacer(),
-
-          Column(
-            children: [
-              const Text(
-                'Покупатель',
-                style: TextStyle(
-                  color: Color(0xFFEAEF00),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -177,15 +214,18 @@ class ProfileMenuScreen extends StatelessWidget {
         const SizedBox(height: 23),
 
         // Добавить аккаунт
-        Row(
-          children: const [
-            Icon(Icons.add, color: Colors.white, size: 22),
-            SizedBox(width: 10),
-            Text(
-              'Добавить аккаунт',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-          ],
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, SignInScreen.routeName),
+          child: Row(
+            children: const [
+              Icon(Icons.add, color: Colors.white, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Добавить аккаунт',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+            ],
+          ),
         ),
       ],
     );
