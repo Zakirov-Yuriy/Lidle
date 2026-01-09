@@ -1,3 +1,7 @@
+// ============================================================
+// "Виджет: Экран изменения имени пользователя"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';

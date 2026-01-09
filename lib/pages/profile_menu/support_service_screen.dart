@@ -1,3 +1,7 @@
+// ============================================================
+// "Виджет: Экран службы поддержки"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';

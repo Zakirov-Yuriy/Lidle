@@ -1,3 +1,7 @@
+// ============================================================
+// "Виджет: Экран печатных форм для QR-кода"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';

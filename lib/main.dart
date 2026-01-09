@@ -1,3 +1,7 @@
+// ============================================================
+// "Главная функция и корневой виджет приложения"
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';

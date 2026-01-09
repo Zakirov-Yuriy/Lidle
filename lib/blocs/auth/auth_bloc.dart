@@ -1,11 +1,13 @@
+// ============================================================
+// "Bloc: Управление состоянием аутентификации"
+// ============================================================
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../services/auth_service.dart';
 import '../../hive_service.dart';
 
-/// Bloc для управления состоянием аутентификации.
-/// Обрабатывает события аутентификации и управляет переходами между состояниями.
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Конструктор AuthBloc.
   /// Инициализирует Bloc с начальным состоянием AuthInitial.
