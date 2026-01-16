@@ -52,3 +52,16 @@ Map<String, dynamic> _$$ValueImplToJson(_$ValueImpl instance) =>
       'value': instance.value,
       'order': instance.order,
     };
+
+_$MetaFiltersResponseImpl _$$MetaFiltersResponseImplFromJson(
+  Map<String, dynamic> json,
+) => _$MetaFiltersResponseImpl(
+  sort: Map<String, String>.from(json['sort'] as Map),
+  filters: (json['filters'] as List<dynamic>)
+      .map((e) => Attribute.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$$MetaFiltersResponseImplToJson(
+  _$MetaFiltersResponseImpl instance,
+) => <String, dynamic>{'sort': instance.sort, 'filters': instance.filters};

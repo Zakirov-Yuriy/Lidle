@@ -2,26 +2,68 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/add_listing/real_estate_apartments_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/models/catalog_model.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/hive_service.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости"
 // ============================================================
-class RealEstateSubcategoriesScreen extends StatelessWidget {
+class RealEstateSubcategoriesScreen extends StatefulWidget {
   const RealEstateSubcategoriesScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final subcategories = [
-      'Квартиры',
-      'Комнаты',
-      'Дома',
-      'Коммерческая недвижимость',
-      'Земля',
-      'Посуточная аренда жилья',
-      'Гаражи, парковки',
-      'Недвижимость за рубежом',
-    ];
+  State<RealEstateSubcategoriesScreen> createState() =>
+      _RealEstateSubcategoriesScreenState();
+}
 
+// ============================================================
+// "Класс состояния: Управление состоянием экрана подкатегорий недвижимости"
+// ============================================================
+class _RealEstateSubcategoriesScreenState
+    extends State<RealEstateSubcategoriesScreen> {
+  List<Category> _categories = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final token = await HiveService.getUserData('token');
+      final catalogWithCategories = await ApiService.getCatalog(
+        1,
+        token: token,
+      );
+
+      print('Loaded categories: ${catalogWithCategories.categories.length}');
+      catalogWithCategories.categories.forEach(
+        (category) => print('Category: ${category.name}'),
+      );
+
+      setState(() {
+        _categories = catalogWithCategories.categories;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1C2834),
       body: Column(
@@ -94,45 +136,79 @@ class RealEstateSubcategoriesScreen extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25.0),
-              child: ListView.builder(
-                itemCount: subcategories.length + 1,
-                itemBuilder: (context, index) {
-                  if (index < subcategories.length) {
-                    return Column(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(color: activeIconColor),
+                  )
+                : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ListTile(
-                          title: Text(
-                            subcategories[index],
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: Colors.white70,
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    RealEstateApartmentsScreen(
-                                      subcategory: subcategories[index],
-                                    ),
-                              ),
-                            );
-                          },
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 48,
                         ),
-                        if (index < subcategories.length - 1)
-                          const Divider(color: Colors.white24, height: 1),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Ошибка загрузки: $_error',
+                          style: const TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadCategories,
+                          child: const Text('Повторить'),
+                        ),
                       ],
-                    );
-                  } else {
-                    return const Divider(color: Colors.white24, height: 1);
-                  }
-                },
-              ),
-            ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                    child: ListView.builder(
+                      itemCount: _categories.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index < _categories.length) {
+                          final category = _categories[index];
+                          return Column(
+                            children: [
+                              ListTile(
+                                title: Text(
+                                  category.name,
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                trailing: const Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.white70,
+                                ),
+                                onTap: () {
+                                  // Всегда переходим к экрану выбора типа объявления
+                                  // API сам разберется с подкатегориями
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          RealEstateApartmentsScreen(
+                                            subcategory: category.name,
+                                          ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              if (index < _categories.length - 1)
+                                const Divider(color: Colors.white24, height: 1),
+                            ],
+                          );
+                        } else {
+                          return const Divider(
+                            color: Colors.white24,
+                            height: 1,
+                          );
+                        }
+                      },
+                    ),
+                  ),
           ),
         ],
       ),

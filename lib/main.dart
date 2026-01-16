@@ -49,6 +49,7 @@ import 'pages/profile_menu/support_service_screen.dart';
 import 'pages/favorites_screen.dart';
 import 'pages/add_listing/add_listing_screen.dart';
 import 'pages/add_listing/category_selection_screen.dart';
+import 'pages/add_listing/payment_screen.dart';
 import 'pages/full_category_screen/full_category_screen.dart';
 import 'pages/full_category_screen/map_screen.dart';
 import 'pages/my_purchases_screen.dart';
@@ -82,7 +83,6 @@ import 'models/offer_model.dart';
 // Выполняет асинхронную инициализацию необходимых сервисов.
 // ============================================================
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -112,7 +112,6 @@ void main() async {
 //  Корневой виджет приложения
 // ============================================================
 
-
 class LidleApp extends StatelessWidget {
   /// Конструктор для LidleApp.
   const LidleApp({super.key});
@@ -121,15 +120,22 @@ class LidleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthBloc>(create: (context) => AuthBloc()..add(const CheckAuthStatusEvent())),
+        BlocProvider<AuthBloc>(
+          create: (context) => AuthBloc()..add(const CheckAuthStatusEvent()),
+        ),
         BlocProvider<ListingsBloc>(create: (context) => ListingsBloc()),
         BlocProvider<NavigationBloc>(create: (context) => NavigationBloc()),
         BlocProvider<ProfileBloc>(create: (context) => ProfileBloc()),
         BlocProvider<PasswordRecoveryBloc>(
           create: (context) => PasswordRecoveryBloc(),
         ),
-        BlocProvider<MessagesBloc>(create: (context) => MessagesBloc()..add(LoadMessages())),
-        BlocProvider<CompanyMessagesBloc>(create: (context) => CompanyMessagesBloc()..add(LoadCompanyMessages())),
+        BlocProvider<MessagesBloc>(
+          create: (context) => MessagesBloc()..add(LoadMessages()),
+        ),
+        BlocProvider<CompanyMessagesBloc>(
+          create: (context) =>
+              CompanyMessagesBloc()..add(LoadCompanyMessages()),
+        ),
         BlocProvider<CartBloc>(create: (context) => CartBloc()),
       ],
       child: MaterialApp(
@@ -141,15 +147,15 @@ class LidleApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
         home: const HomePage(),
-        // home: const FiltersCoworkingScreenen(),
-
 
         routes: {
           SignInScreen.routeName: (context) => const SignInScreen(),
           ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),
-          InviteFriendsScreen.routeName: (context) => const InviteFriendsScreen(),
+          InviteFriendsScreen.routeName: (context) =>
+              const InviteFriendsScreen(),
           FindByPhoneScreen.routeName: (context) => const FindByPhoneScreen(),
-          ConnectContactsScreen.routeName: (context) => const ConnectContactsScreen(),
+          ConnectContactsScreen.routeName: (context) =>
+              const ConnectContactsScreen(),
           SettingsScreen.routeName: (context) => const SettingsScreen(),
           '/contact_data': (context) => ContactDataScreen(),
           '/privacy_settings': (context) => const PrivacySettingsScreen(),
@@ -158,10 +164,13 @@ class LidleApp extends StatelessWidget {
           '/change_photo': (context) => const ChangePhotoScreen(),
           '/devices': (context) => const DevicesScreen(),
           QrScannerScreen.routeName: (context) => const QrScannerScreen(),
-          DeleteAccountScreen.routeName: (context) => const DeleteAccountScreen(),
-          PrivacyPolicyScreen.routeName: (context) => const PrivacyPolicyScreen(),
+          DeleteAccountScreen.routeName: (context) =>
+              const DeleteAccountScreen(),
+          PrivacyPolicyScreen.routeName: (context) =>
+              const PrivacyPolicyScreen(),
           FaqScreen.routeName: (context) => const FaqScreen(),
-          SupportServiceScreen.routeName: (context) => const SupportServiceScreen(),
+          SupportServiceScreen.routeName: (context) =>
+              const SupportServiceScreen(),
           AccountRecovery.routeName: (context) => const AccountRecovery(),
           RegisterScreen.routeName: (context) => const RegisterScreen(),
           RegisterVerifyScreen.routeName: (context) =>
@@ -174,25 +183,58 @@ class LidleApp extends StatelessWidget {
           FiltersScreen.routeName: (context) => const FiltersScreen(),
           FavoritesScreen.routeName: (context) => const FavoritesScreen(),
           AddListingScreen.routeName: (context) => const AddListingScreen(),
-          CategorySelectionScreen.routeName: (context) => const CategorySelectionScreen(),
+          CategorySelectionScreen.routeName: (context) =>
+              const CategorySelectionScreen(),
+          PaymentScreen.routeName: (context) => PaymentScreen(
+            tariffName:
+                (ModalRoute.of(context)!.settings.arguments
+                    as Map<String, String>?)?['tariffName'] ??
+                'Неизвестный тариф',
+            price:
+                (ModalRoute.of(context)!.settings.arguments
+                    as Map<String, String>?)?['price'] ??
+                '0р',
+          ),
           CartScreen.routeName: (context) => const CartScreen(),
           FullCategoryScreen.routeName: (context) => const FullCategoryScreen(),
           MapScreen.routeName: (context) => const MapScreen(),
-          MyPurchasesScreen.routeName: (context) =>  MyPurchasesScreen(), // Add the new route
-          MessagesPage.routeName: (context) => const MessagesPage(), // Corrected route
-          MessagesArchivePage.routeName: (context) => const MessagesArchivePage(),
-          UserMessagesListScreen.routeName: (context) => const UserMessagesListScreen(),
-          UserMessagesArchiveListScreen.routeName: (context) => const UserMessagesArchiveListScreen(),
-          CompanyMessagesListScreen.routeName: (context) => const CompanyMessagesListScreen(),
-          CompanyMessagesArchiveListScreen.routeName: (context) => const CompanyMessagesArchiveListScreen(),
-          PriceOffersEmptyPage.routeName: (context) => const PriceOffersEmptyPage(),
-          PriceAcceptedPage.routeName: (context) => PriceAcceptedPage(offer: ModalRoute.of(context)!.settings.arguments as Offer),
-          PriceOffersListPage.routeName: (context) => PriceOffersListPage(offer: ModalRoute.of(context)!.settings.arguments as Offer), // Add new route
-          IncomingPriceOfferPage.routeName: (context) => IncomingPriceOfferPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
-          UserAccountPage.routeName: (context) => UserAccountPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
-          UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(offerItem: ModalRoute.of(context)!.settings.arguments as PriceOfferItem),
+          MyPurchasesScreen.routeName: (context) =>
+              MyPurchasesScreen(), // Add the new route
+          MessagesPage.routeName: (context) =>
+              const MessagesPage(), // Corrected route
+          MessagesArchivePage.routeName: (context) =>
+              const MessagesArchivePage(),
+          UserMessagesListScreen.routeName: (context) =>
+              const UserMessagesListScreen(),
+          UserMessagesArchiveListScreen.routeName: (context) =>
+              const UserMessagesArchiveListScreen(),
+          CompanyMessagesListScreen.routeName: (context) =>
+              const CompanyMessagesListScreen(),
+          CompanyMessagesArchiveListScreen.routeName: (context) =>
+              const CompanyMessagesArchiveListScreen(),
+          PriceOffersEmptyPage.routeName: (context) =>
+              const PriceOffersEmptyPage(),
+          PriceAcceptedPage.routeName: (context) => PriceAcceptedPage(
+            offer: ModalRoute.of(context)!.settings.arguments as Offer,
+          ),
+          PriceOffersListPage.routeName: (context) => PriceOffersListPage(
+            offer: ModalRoute.of(context)!.settings.arguments as Offer,
+          ), // Add new route
+          IncomingPriceOfferPage.routeName: (context) => IncomingPriceOfferPage(
+            offerItem:
+                ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
+          ),
+          UserAccountPage.routeName: (context) => UserAccountPage(
+            offerItem:
+                ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
+          ),
+          UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(
+            offerItem:
+                ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
+          ),
           SupportScreen.routeName: (context) => const SupportScreen(),
-          DiscountsAndPromotionsPage.routeName: (context) => const DiscountsAndPromotionsPage(),
+          DiscountsAndPromotionsPage.routeName: (context) =>
+              const DiscountsAndPromotionsPage(),
           SupportChatPage.routeName: (context) => const SupportChatPage(),
           ResponsesEmptyPage.routeName: (context) => const ResponsesEmptyPage(),
           ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),

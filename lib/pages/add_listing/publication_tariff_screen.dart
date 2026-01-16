@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart'; 
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../constants.dart';
 import '../../widgets/components/header.dart';
-import 'publication_success_screen.dart';
+import '../../widgets/dialogs/moderation_dialog.dart'; // Added import
 
 // ============================================================
 // "Виджет: Экран выбора тарифа публикации"
@@ -21,7 +21,7 @@ class PublicationTariffScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Header(), 
+              const Header(),
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
@@ -31,9 +31,13 @@ class PublicationTariffScreen extends StatelessWidget {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.arrow_back_ios, color: textPrimary, size: 16,),
+                      child: const Icon(
+                        Icons.arrow_back_ios,
+                        color: textPrimary,
+                        size: 16,
+                      ),
                     ),
-                    
+
                     const Text(
                       'Тариф публикации',
                       style: TextStyle(
@@ -47,7 +51,11 @@ class PublicationTariffScreen extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(),
                       child: const Text(
                         'Отмена',
-                        style: TextStyle(color: activeIconColor, fontSize: 16, fontWeight: FontWeight.w400,),
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ),
                   ],
@@ -96,9 +104,9 @@ class PublicationTariffScreen extends StatelessWidget {
     );
   }
 
-// ============================================================
-// "Виджет: Построение карточки тарифа публикации"
-// ============================================================
+  // ============================================================
+  // "Виджет: Построение карточки тарифа публикации"
+  // ============================================================
   Widget _buildTariffCard(
     BuildContext context, {
     required String tariffName,
@@ -117,10 +125,7 @@ class PublicationTariffScreen extends StatelessWidget {
         children: [
           RichText(
             text: TextSpan(
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               children: [
                 const TextSpan(
                   text: 'Тариф: ',
@@ -134,23 +139,30 @@ class PublicationTariffScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          ...features.map((feature) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5.0),
-            child: Row(
-              children: [
-                SvgPicture.asset(
-                  'assets/publication_tariff/check.svg',
-                  width: 20, 
-                  height: 20, 
+          ...features
+              .map(
+                (feature) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5.0),
+                  child: Row(
+                    children: [
+                      SvgPicture.asset(
+                        'assets/publication_tariff/check.svg',
+                        width: 20,
+                        height: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        feature,
+                        style: const TextStyle(
+                          color: textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  feature,
-                  style: const TextStyle(color: textPrimary, fontSize: 14),
-                ),
-              ],
-            ),
-          )).toList(),
+              )
+              .toList(),
           const SizedBox(height: 15),
           const Divider(color: textMuted),
           const SizedBox(height: 4),
@@ -184,18 +196,26 @@ class PublicationTariffScreen extends StatelessWidget {
                 backgroundColor: formBackground,
                 side: const BorderSide(color: Color(0xFF009EE2)),
                 minimumSize: const Size.fromHeight(43),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () {
                 if (isPrimary) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const PublicationSuccessScreen(),
-                    ),
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) => const ModerationDialog(),
                   );
                 } else {
-                  print('Selected $tariffName tariff');
+                  // Переход к оплате через Юкасса (заглушка)
+                  Navigator.pushNamed(
+                    context,
+                    '/payment',
+                    arguments: <String, String>{
+                      'tariffName': tariffName,
+                      'price': price,
+                    },
+                  );
                 }
               },
               child: Text(
@@ -204,10 +224,8 @@ class PublicationTariffScreen extends StatelessWidget {
               ),
             ),
           ),
-          
         ],
       ),
     );
-    
   }
 }

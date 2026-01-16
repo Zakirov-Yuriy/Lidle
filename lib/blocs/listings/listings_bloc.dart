@@ -3,6 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'listings_event.dart';
 import 'listings_state.dart';
 import '../../models/home_models.dart';
+import '../../models/advert_model.dart';
+import '../../services/api_service.dart';
+import '../../hive_service.dart';
 
 /// Bloc для управления состоянием данных объявлений.
 /// Обрабатывает события загрузки, поиска и фильтрации объявлений.
@@ -65,7 +68,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '11.05.2024',
       isFavorited: false,
     ),
-     Listing(
+    Listing(
       id: 'listing_5',
       imagePath: 'assets/home_page/image.png',
       title: 'Студия, 35,7 м², 2/6 эт...',
@@ -116,29 +119,41 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   ];
 
   /// Обработчик события загрузки объявлений.
-  /// Загружает статические данные объявлений и категорий.
-  Future<void> _onLoadListings(LoadListingsEvent event, Emitter<ListingsState> emit) async {
+  /// Загружает данные объявлений из API.
+  Future<void> _onLoadListings(
+    LoadListingsEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
     emit(ListingsLoading());
     try {
-      // Имитация задержки загрузки данных
-      await Future.delayed(const Duration(milliseconds: _loadingDelayMs));
+      // Получаем токен для аутентификации
+      final token = await HiveService.getUserData('token');
 
-      // В будущем здесь будет вызов API
-      // final listings = await ApiService.getListings();
-      // final categories = await ApiService.getCategories();
+      // Загружаем объявления из API для категории недвижимости (categoryId=2)
+      // Без sort - backend вернет по умолчанию новые объявления
+      final advertsResponse = await ApiService.getAdverts(
+        categoryId: 2, // Недвижимость
+        token: token,
+      );
 
-      emit(ListingsLoaded(
-        listings: staticListings,
-        categories: _staticCategories,
-      ));
+      // Преобразуем Advert в Listing для совместимости с UI
+      final listings = advertsResponse.data
+          .map((advert) => advert.toListing())
+          .toList();
+
+      emit(ListingsLoaded(listings: listings, categories: _staticCategories));
     } catch (e) {
+      // При ошибке API показываем ошибку вместо статических данных
       emit(ListingsError(message: e.toString()));
     }
   }
 
   /// Обработчик события загрузки категорий.
   /// Загружает статические данные категорий.
-  Future<void> _onLoadCategories(LoadCategoriesEvent event, Emitter<ListingsState> emit) async {
+  Future<void> _onLoadCategories(
+    LoadCategoriesEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
     emit(ListingsLoading());
     try {
       // Имитация задержки загрузки данных
@@ -147,10 +162,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // В будущем здесь будет вызов API
       // final categories = await ApiService.getCategories();
 
-      emit(ListingsLoaded(
-        listings: staticListings,
-        categories: _staticCategories,
-      ));
+      emit(
+        ListingsLoaded(listings: staticListings, categories: _staticCategories),
+      );
     } catch (e) {
       emit(ListingsError(message: e.toString()));
     }
@@ -158,7 +172,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Обработчик события поиска объявлений.
   /// Выполняет поиск по заголовку и описанию объявлений.
-  Future<void> _onSearchListings(SearchListingsEvent event, Emitter<ListingsState> emit) async {
+  Future<void> _onSearchListings(
+    SearchListingsEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
     if (state is! ListingsLoaded) return;
 
     final currentState = state as ListingsLoaded;
@@ -171,13 +188,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final query = event.query.toLowerCase();
       final searchResults = currentState.listings.where((listing) {
         return listing.title.toLowerCase().contains(query) ||
-               listing.location.toLowerCase().contains(query);
+            listing.location.toLowerCase().contains(query);
       }).toList();
 
-      emit(ListingsSearchResults(
-        searchResults: searchResults,
-        query: event.query,
-      ));
+      emit(
+        ListingsSearchResults(searchResults: searchResults, query: event.query),
+      );
     } catch (e) {
       emit(ListingsError(message: e.toString()));
     }
@@ -185,7 +201,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Обработчик события фильтрации объявлений по категории.
   /// Фильтрует объявления на основе выбранной категории.
-  Future<void> _onFilterListingsByCategory(FilterListingsByCategoryEvent event, Emitter<ListingsState> emit) async {
+  Future<void> _onFilterListingsByCategory(
+    FilterListingsByCategoryEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
     if (state is! ListingsLoaded) return;
 
     final currentState = state as ListingsLoaded;
@@ -200,27 +219,35 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       List<Listing> filteredListings;
       switch (event.categoryId) {
         case 'real-estate':
-          filteredListings = currentState.listings.where((listing) =>
-            listing.title.contains('квартира') ||
-            listing.title.contains('студия') ||
-            listing.imagePath.contains('apartment') ||
-            listing.imagePath.contains('studio')
-          ).toList();
+          filteredListings = currentState.listings
+              .where(
+                (listing) =>
+                    listing.title.contains('квартира') ||
+                    listing.title.contains('студия') ||
+                    listing.imagePath.contains('apartment') ||
+                    listing.imagePath.contains('studio'),
+              )
+              .toList();
           break;
         case 'auto':
-          filteredListings = currentState.listings.where((listing) =>
-            listing.title.contains('Acura') ||
-            listing.imagePath.contains('acura')
-          ).toList();
+          filteredListings = currentState.listings
+              .where(
+                (listing) =>
+                    listing.title.contains('Acura') ||
+                    listing.imagePath.contains('acura'),
+              )
+              .toList();
           break;
         default:
           filteredListings = currentState.listings;
       }
 
-      emit(ListingsFiltered(
-        filteredListings: filteredListings,
-        categoryId: event.categoryId,
-      ));
+      emit(
+        ListingsFiltered(
+          filteredListings: filteredListings,
+          categoryId: event.categoryId,
+        ),
+      );
     } catch (e) {
       emit(ListingsError(message: e.toString()));
     }
@@ -228,7 +255,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Обработчик события сброса фильтров.
   /// Возвращает полный список объявлений без фильтрации.
-  Future<void> _onResetFilters(ResetFiltersEvent event, Emitter<ListingsState> emit) async {
+  Future<void> _onResetFilters(
+    ResetFiltersEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
     if (state is! ListingsLoaded) return;
 
     final currentState = state as ListingsLoaded;
@@ -238,10 +268,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Имитация задержки сброса фильтров
       await Future.delayed(const Duration(milliseconds: _filterDelayMs));
 
-      emit(ListingsLoaded(
-        listings: currentState.listings,
-        categories: currentState.categories,
-      ));
+      emit(
+        ListingsLoaded(
+          listings: currentState.listings,
+          categories: currentState.categories,
+        ),
+      );
     } catch (e) {
       emit(ListingsError(message: e.toString()));
     }

@@ -631,3 +631,193 @@ abstract class _Value implements Value {
   _$$ValueImplCopyWith<_$ValueImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
+
+MetaFiltersResponse _$MetaFiltersResponseFromJson(Map<String, dynamic> json) {
+  return _MetaFiltersResponse.fromJson(json);
+}
+
+/// @nodoc
+mixin _$MetaFiltersResponse {
+  Map<String, String> get sort => throw _privateConstructorUsedError;
+  List<Attribute> get filters => throw _privateConstructorUsedError;
+
+  /// Serializes this MetaFiltersResponse to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
+
+  /// Create a copy of MetaFiltersResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  $MetaFiltersResponseCopyWith<MetaFiltersResponse> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class $MetaFiltersResponseCopyWith<$Res> {
+  factory $MetaFiltersResponseCopyWith(
+    MetaFiltersResponse value,
+    $Res Function(MetaFiltersResponse) then,
+  ) = _$MetaFiltersResponseCopyWithImpl<$Res, MetaFiltersResponse>;
+  @useResult
+  $Res call({Map<String, String> sort, List<Attribute> filters});
+}
+
+/// @nodoc
+class _$MetaFiltersResponseCopyWithImpl<$Res, $Val extends MetaFiltersResponse>
+    implements $MetaFiltersResponseCopyWith<$Res> {
+  _$MetaFiltersResponseCopyWithImpl(this._value, this._then);
+
+  // ignore: unused_field
+  final $Val _value;
+  // ignore: unused_field
+  final $Res Function($Val) _then;
+
+  /// Create a copy of MetaFiltersResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? sort = null, Object? filters = null}) {
+    return _then(
+      _value.copyWith(
+            sort: null == sort
+                ? _value.sort
+                : sort // ignore: cast_nullable_to_non_nullable
+                      as Map<String, String>,
+            filters: null == filters
+                ? _value.filters
+                : filters // ignore: cast_nullable_to_non_nullable
+                      as List<Attribute>,
+          )
+          as $Val,
+    );
+  }
+}
+
+/// @nodoc
+abstract class _$$MetaFiltersResponseImplCopyWith<$Res>
+    implements $MetaFiltersResponseCopyWith<$Res> {
+  factory _$$MetaFiltersResponseImplCopyWith(
+    _$MetaFiltersResponseImpl value,
+    $Res Function(_$MetaFiltersResponseImpl) then,
+  ) = __$$MetaFiltersResponseImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({Map<String, String> sort, List<Attribute> filters});
+}
+
+/// @nodoc
+class __$$MetaFiltersResponseImplCopyWithImpl<$Res>
+    extends _$MetaFiltersResponseCopyWithImpl<$Res, _$MetaFiltersResponseImpl>
+    implements _$$MetaFiltersResponseImplCopyWith<$Res> {
+  __$$MetaFiltersResponseImplCopyWithImpl(
+    _$MetaFiltersResponseImpl _value,
+    $Res Function(_$MetaFiltersResponseImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of MetaFiltersResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? sort = null, Object? filters = null}) {
+    return _then(
+      _$MetaFiltersResponseImpl(
+        sort: null == sort
+            ? _value._sort
+            : sort // ignore: cast_nullable_to_non_nullable
+                  as Map<String, String>,
+        filters: null == filters
+            ? _value._filters
+            : filters // ignore: cast_nullable_to_non_nullable
+                  as List<Attribute>,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
+  const _$MetaFiltersResponseImpl({
+    required final Map<String, String> sort,
+    required final List<Attribute> filters,
+  }) : _sort = sort,
+       _filters = filters;
+
+  factory _$MetaFiltersResponseImpl.fromJson(Map<String, dynamic> json) =>
+      _$$MetaFiltersResponseImplFromJson(json);
+
+  final Map<String, String> _sort;
+  @override
+  Map<String, String> get sort {
+    if (_sort is EqualUnmodifiableMapView) return _sort;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_sort);
+  }
+
+  final List<Attribute> _filters;
+  @override
+  List<Attribute> get filters {
+    if (_filters is EqualUnmodifiableListView) return _filters;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_filters);
+  }
+
+  @override
+  String toString() {
+    return 'MetaFiltersResponse(sort: $sort, filters: $filters)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$MetaFiltersResponseImpl &&
+            const DeepCollectionEquality().equals(other._sort, _sort) &&
+            const DeepCollectionEquality().equals(other._filters, _filters));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    const DeepCollectionEquality().hash(_sort),
+    const DeepCollectionEquality().hash(_filters),
+  );
+
+  /// Create a copy of MetaFiltersResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$MetaFiltersResponseImplCopyWith<_$MetaFiltersResponseImpl> get copyWith =>
+      __$$MetaFiltersResponseImplCopyWithImpl<_$MetaFiltersResponseImpl>(
+        this,
+        _$identity,
+      );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$MetaFiltersResponseImplToJson(this);
+  }
+}
+
+abstract class _MetaFiltersResponse implements MetaFiltersResponse {
+  const factory _MetaFiltersResponse({
+    required final Map<String, String> sort,
+    required final List<Attribute> filters,
+  }) = _$MetaFiltersResponseImpl;
+
+  factory _MetaFiltersResponse.fromJson(Map<String, dynamic> json) =
+      _$MetaFiltersResponseImpl.fromJson;
+
+  @override
+  Map<String, String> get sort;
+  @override
+  List<Attribute> get filters;
+
+  /// Create a copy of MetaFiltersResponse
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$MetaFiltersResponseImplCopyWith<_$MetaFiltersResponseImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}

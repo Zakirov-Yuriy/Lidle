@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/blocs/listings/listings_state.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
@@ -30,21 +31,20 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
     _selectedSortOptions.add('Сначала новые'); // Default sort option
   }
 
-  void _loadFavorites() {
+  List<Listing> _getFavoritedListings(List<Listing> allListings) {
     final favoriteIds = HiveService.getFavorites();
-    final allListings = ListingsBloc.staticListings;
-    setState(() {
-      _favoritedListings = allListings
-          .where((listing) => favoriteIds.contains(listing.id))
-          .toList();
-    });
+    return allListings
+        .where((listing) => favoriteIds.contains(listing.id))
+        .toList();
   }
 
-  void _sortListings(Set<String> selectedOptions) {
+  List<Listing> _sortListingsFunc(
+    Set<String> selectedOptions,
+    List<Listing> listings,
+  ) {
     // Вспомогательная функция для парсинга цены из строки.
     double _parsePrice(String price) {
       try {
@@ -55,22 +55,16 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       }
     }
 
-    // Вспомогательная функция для парсинга даты. Предполагается формат "ДД.ММ.ГГГГ".
+    // Вспомогательная функция для парсинга даты. API возвращает формат "DD.MM.YYYY".
     DateTime _parseDate(String date) {
       try {
-        final now = DateTime.now();
-        if (date.contains('Сегодня')) {
-          return now;
-        } else if (date.contains('Вчера')) {
-          return now.subtract(const Duration(days: 1));
-        } else if (date.contains('дня назад')) {
-          final days = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
-          return now.subtract(Duration(days: days));
-        } else if (date.contains('Неделя назад')) {
-          return now.subtract(const Duration(days: 7));
-        } else if (date.contains('недели назад')) {
-          final weeks = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
-          return now.subtract(Duration(days: weeks * 7));
+        // Разбираем формат "DD.MM.YYYY"
+        final parts = date.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
         }
       } catch (e) {
         // Error parsing, return a very old date
@@ -90,36 +84,56 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
 
     if (chosenSortOption != null) {
-      setState(() {
-        switch (chosenSortOption!) {
-          case SortOption.newest:
-            _favoritedListings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
-            break;
-          case SortOption.oldest:
-            _favoritedListings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
-            break;
-          case SortOption.mostExpensive:
-            _favoritedListings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
-            break;
-          case SortOption.cheapest:
-            _favoritedListings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
-            break;
-        }
-      });
+      switch (chosenSortOption!) {
+        case SortOption.newest:
+          listings.sort(
+            (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
+          );
+          break;
+        case SortOption.oldest:
+          listings.sort(
+            (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
+          );
+          break;
+        case SortOption.mostExpensive:
+          listings.sort(
+            (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
+          );
+          break;
+        case SortOption.cheapest:
+          listings.sort(
+            (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
+          );
+          break;
+      }
     }
+
+    return listings;
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<NavigationBloc, NavigationState>(
-      listener: (context, state) {
-        if (state is NavigationToProfile ||
-            state is NavigationToHome ||
-            state is NavigationToFavorites ||
-            state is NavigationToMessages) {
-          context.read<NavigationBloc>().executeNavigation(context);
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<NavigationBloc, NavigationState>(
+          listener: (context, state) {
+            if (state is NavigationToProfile ||
+                state is NavigationToHome ||
+                state is NavigationToFavorites ||
+                state is NavigationToMessages) {
+              context.read<NavigationBloc>().executeNavigation(context);
+            }
+          },
+        ),
+        BlocListener<ListingsBloc, ListingsState>(
+          listener: (context, state) {
+            if (state is ListingsLoaded) {
+              // Обновляем favorites при изменении listings
+              setState(() {});
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         extendBody: true,
         backgroundColor: primaryBackground,
@@ -165,7 +179,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         if (Navigator.of(context).canPop()) {
                           Navigator.of(context).pop();
                         } else {
-                          Navigator.of(context).pushReplacementNamed(HomePage.routeName);
+                          Navigator.of(
+                            context,
+                          ).pushReplacementNamed(HomePage.routeName);
                         }
                       },
                       child: const Icon(
@@ -204,10 +220,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               onSelectionChanged: (Set<String> selected) {
                                 setState(() {
                                   _selectedSortOptions = selected;
-                                  _sortListings(_selectedSortOptions); // Apply sorting immediately
+                                  // Sorting will be applied in BlocBuilder
                                 });
                               },
-                              allowMultipleSelection: false, // Only one sort option at a time
+                              allowMultipleSelection:
+                                  false, // Only one sort option at a time
                             );
                           },
                         );
@@ -218,36 +235,73 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: _favoritedListings.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        child: Center(
-                          child: Text(
-                            'Пока что здесь пусто',
-                            style: TextStyle(color: textMuted, fontSize: 16),
-                          ),
-                        ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                        ),
-                        child: GridView.builder(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 9,
-                                mainAxisSpacing: 0,
-                                mainAxisExtent: 263,
-                              ),
-                          itemCount: _favoritedListings.length,
-                          itemBuilder: (context, index) {
-                            return ListingCard(
-                              listing: _favoritedListings[index],
+                child: StreamBuilder(
+                  stream: HiveService.settingsBox.watch(key: 'favorites'),
+                  builder: (context, snapshot) {
+                    return BlocBuilder<ListingsBloc, ListingsState>(
+                      builder: (context, state) {
+                        if (state is ListingsLoaded) {
+                          List<Listing> favoritedListings =
+                              _getFavoritedListings(state.listings);
+
+                          // Применяем сортировку если выбрана
+                          if (_selectedSortOptions.isNotEmpty) {
+                            favoritedListings = _sortListingsFunc(
+                              _selectedSortOptions,
+                              List.from(favoritedListings), // Копируем список
                             );
-                          },
-                        ),
-                      ),
+                          }
+
+                          if (favoritedListings.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Center(
+                                child: Text(
+                                  'Пока что здесь пусто',
+                                  style: TextStyle(
+                                    color: textMuted,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: GridView.builder(
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 2,
+                                    crossAxisSpacing: 9,
+                                    mainAxisSpacing: 0,
+                                    mainAxisExtent: 263,
+                                  ),
+                              itemCount: favoritedListings.length,
+                              itemBuilder: (context, index) {
+                                return ListingCard(
+                                  listing: favoritedListings[index],
+                                );
+                              },
+                            ),
+                          );
+                        } else {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Center(
+                              child: Text(
+                                'Загрузка...',
+                                style: TextStyle(
+                                  color: textMuted,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                      },
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -264,21 +318,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   // Helper widget for building dropdowns, similar to real_estate_listings_screen.dart
-  Widget _buildFilterDropdown({
-    required String label,
-    VoidCallback? onTap,
-  }) {
-    return  GestureDetector(
+  Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
+    return GestureDetector(
       onTap: onTap,
-      child: 
-             Icon(
-              Icons.import_export,
-              color: Colors.white,
-              size: 25,
-            ),
-        
-        
-      
+      child: Icon(Icons.import_export, color: Colors.white, size: 25),
     );
   }
 }

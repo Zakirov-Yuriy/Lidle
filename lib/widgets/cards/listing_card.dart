@@ -11,10 +11,7 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 class ListingCard extends StatefulWidget {
   final Listing listing;
 
-  const ListingCard({
-    super.key,
-    required this.listing,
-  });
+  const ListingCard({super.key, required this.listing});
 
   @override
   State<ListingCard> createState() => _ListingCardState();
@@ -57,7 +54,8 @@ class _ListingCardState extends State<ListingCard> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => MiniPropertyDetailsScreen(listing: widget.listing),
+                builder: (context) =>
+                    MiniPropertyDetailsScreen(listing: widget.listing),
               ),
             );
           },
@@ -66,96 +64,111 @@ class _ListingCardState extends State<ListingCard> {
             children: [
               SizedBox(
                 width: double.infinity,
-              height: imageHeight,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(5 * scale),
-                child: Image.asset(
-                  widget.listing.imagePath,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: const Color(0xFF374B5C),
-                      child: Icon(
-                        Icons.image,
-                        color: textMuted,
-                        size: 50 * scale,
-                      ),
-                    );
-                  },
+                height: imageHeight,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5 * scale),
+                  child: widget.listing.imagePath.startsWith('http')
+                      ? Image.network(
+                          widget.listing.imagePath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: const Color(0xFF374B5C),
+                              child: Icon(
+                                Icons.image,
+                                color: textMuted,
+                                size: 50 * scale,
+                              ),
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          widget.listing.imagePath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: const Color(0xFF374B5C),
+                              child: Icon(
+                                Icons.image,
+                                color: textMuted,
+                                size: 50 * scale,
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
-            ),
 
-            SizedBox(height: 18),
+              SizedBox(height: 18),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          widget.listing.title,
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: titleFontSize,
-                            fontWeight: FontWeight.w400,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            widget.listing.title,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: titleFontSize,
+                              fontWeight: FontWeight.w400,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      SizedBox(width: 4 * scale),
-                      GestureDetector(
-                        onTap: _toggleFavorite,
-                        child: Icon(
-                          _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          color: _isFavorite ? Colors.red : textPrimary,
-                          // size: iconSize,
+                        SizedBox(width: 4 * scale),
+                        GestureDetector(
+                          onTap: _toggleFavorite,
+                          child: Icon(
+                            _isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: _isFavorite ? Colors.red : textPrimary,
+                            // size: iconSize,
+                          ),
                         ),
+                      ],
+                    ),
+
+                    // SizedBox(height: 3 * scale),
+                    Text(
+                      widget.listing.price,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: priceFontSize,
+                        fontWeight: FontWeight.w400,
                       ),
-                    ],
-                  ),
-                  
-
-                  // SizedBox(height: 3 * scale),
-                  Text(
-                    widget.listing.price,
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: priceFontSize,
-                      fontWeight: FontWeight.w400,
                     ),
-                  ),
 
-                  SizedBox(height: 3 * scale),
-                  Text(
-                    widget.listing.location,
-                    style: TextStyle(
-                      color: textSecondary,
-                      fontSize: locationFontSize,
+                    SizedBox(height: 3 * scale),
+                    Text(
+                      widget.listing.location,
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: locationFontSize,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
 
-                  SizedBox(height: 1 * scale),
+                    SizedBox(height: 1 * scale),
 
-                  Text(
-                    widget.listing.date,
-                    style: TextStyle(
-                      color: textMuted,
-                      fontSize: dateFontSize,
+                    Text(
+                      widget.listing.date,
+                      style: TextStyle(
+                        color: textMuted,
+                        fontSize: dateFontSize,
+                      ),
                     ),
-                  ),
-                  
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         );
       },
     );

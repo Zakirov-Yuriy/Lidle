@@ -26,11 +26,19 @@ class Attribute with _$Attribute {
 
 @freezed
 class Value with _$Value {
-  const factory Value({
-    required int id,
-    required String value,
-    int? order,
-  }) = _Value;
+  const factory Value({required int id, required String value, int? order}) =
+      _Value;
 
   factory Value.fromJson(Map<String, dynamic> json) => _$ValueFromJson(json);
+}
+
+@freezed
+class MetaFiltersResponse with _$MetaFiltersResponse {
+  const factory MetaFiltersResponse({
+    required Map<String, String> sort,
+    required List<Attribute> filters,
+  }) = _MetaFiltersResponse;
+
+  factory MetaFiltersResponse.fromJson(Map<String, dynamic> json) =>
+      _$MetaFiltersResponseFromJson(json['data']);
 }

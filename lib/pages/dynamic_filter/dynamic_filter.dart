@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' as rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
@@ -13,7 +11,10 @@ import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import '../../../constants.dart';
 import '../../../services/api_service.dart';
 import '../../../models/filter_models.dart';
+import '../../../models/catalog_model.dart';
 import '../../../hive_service.dart';
+import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
+import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
@@ -21,21 +22,22 @@ import '../../../hive_service.dart';
 class DynamicFilter extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
-  const DynamicFilter({super.key});
+  final Category? category;
+
+  const DynamicFilter({super.key, this.category});
 
   @override
-  State<DynamicFilter> createState() =>
-      _DynamicFilterState();
+  State<DynamicFilter> createState() => _DynamicFilterState();
 }
 
 // ============================================================
 // "Класс состояния: Управление состоянием экрана аренды квартиры"
 // ============================================================
-class _DynamicFilterState
-    extends State<DynamicFilter> {
+class _DynamicFilterState extends State<DynamicFilter> {
   List<Attribute> _attributes = [];
   Map<int, dynamic> _selectedValues = {};
   bool _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -45,40 +47,26 @@ class _DynamicFilterState
 
   Future<void> _loadAttributes() async {
     try {
-      final token = HiveService.getUserData('token') as String?;
-      print('Loading attributes with token: ${token != null ? 'present' : 'null'}');
-      final attributes = await ApiService.getAdvertCreationAttributes(categoryId: 2, token: token);
-      print('Loaded ${attributes.length} attributes');
+      print('Loading filters for category: ${widget.category?.id ?? 2}');
+      final response = await ApiService.getMetaFilters(
+        categoryId: widget.category?.id ?? 2,
+      );
+      print('Loaded ${response.filters.length} filters');
       setState(() {
-        _attributes = attributes;
+        _attributes = response.filters;
         _isLoading = false;
       });
     } catch (e) {
-      print('Error loading attributes from API: $e');
-      // Fallback to local file
-      try {
-        final jsonString = await rootBundle.rootBundle.loadString('assets/test_data.json');
-        final data = jsonDecode(jsonString) as Map<String, dynamic>;
-        final List<dynamic> attributesJson = data['data']['attributes'];
-        final attributes = attributesJson.map((json) => Attribute.fromJson(json as Map<String, dynamic>)).toList();
-        print('Loaded ${attributes.length} attributes from local file');
-        setState(() {
-          _attributes = attributes;
-          _isLoading = false;
-        });
-      } catch (fallbackError) {
-        print('Error loading local data: $fallbackError');
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      print('Error loading filters from API: $e');
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
     }
   }
 
-
   Set<String> _selectedCity = {};
   Set<String> _selectedStreet = {};
-
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -162,24 +150,22 @@ class _DynamicFilterState
     });
   }
 
-  bool isIndividualSelected = true; 
-  bool isSecondarySelected = true; 
-  bool isMortgageYes = true; 
+  bool isIndividualSelected = true;
+  bool isSecondarySelected = true;
+  bool isMortgageYes = true;
 
-  bool isBargain = false; 
-  bool isNoCommission = false; 
-  bool isExchange = false; 
-  bool isPledge = false; 
-  bool isUrgent = false; 
-  bool isInstallment = false; 
-  bool isRemoteDeal = false; 
-  bool isClientPrice = false; 
-  bool isAutoRenewal = false; 
+  bool isBargain = false;
+  bool isNoCommission = false;
+  bool isExchange = false;
+  bool isPledge = false;
+  bool isUrgent = false;
+  bool isInstallment = false;
+  bool isRemoteDeal = false;
+  bool isClientPrice = false;
+  bool isAutoRenewal = false;
   bool isAutoRenewal1 = false;
 
-
-
-  String _selectedAction = 'publish'; 
+  String _selectedAction = 'publish';
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -202,7 +188,10 @@ class _DynamicFilterState
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close, color: Color.fromARGB(255, 221, 27, 27)),
+                    child: const Icon(
+                      Icons.close,
+                      color: Color.fromARGB(255, 221, 27, 27),
+                    ),
                   ),
                   const SizedBox(width: 13),
                   const Text(
@@ -229,7 +218,9 @@ class _DynamicFilterState
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground,
+                    color: _images.isEmpty
+                        ? secondaryBackground
+                        : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -273,7 +264,8 @@ class _DynamicFilterState
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
-                                onTap: () => _showImageSourceActionSheet(context),
+                                onTap: () =>
+                                    _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
@@ -315,7 +307,9 @@ class _DynamicFilterState
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(5),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -347,16 +341,16 @@ class _DynamicFilterState
 
               _buildDropdown(
                 label: 'Категория',
-                hint: 'Долгосрочная аренда комнат',
+                hint: widget.category?.name ?? 'Долгосрочная аренда комнат',
                 subtitle: 'Недвижимость',
                 onTap: () {
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute(
-                  //     builder: (context) =>
-                  //         const RealEstateSubcategoriesScreen(),
-                  //   ),
-                  // );
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          const RealEstateSubcategoriesScreen(),
+                    ),
+                  );
                 },
                 showChangeText: true,
               ),
@@ -425,21 +419,60 @@ class _DynamicFilterState
               ),
               const SizedBox(height: 15),
 
-              
-
-              
-
-            
-
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
+              else if (_error != null)
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.redAccent,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Ошибка загрузки атрибутов',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _loadAttributes,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B5CF6),
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
+                )
               else
-                ...(_attributes.where((attr) => attr.isFilter).toList()..sort((a, b) => a.order.compareTo(b.order))).map((attr) => Column(
-                  children: [
-                    _buildDynamicFilter(attr),
-                    const SizedBox(height: 9),
-                  ],
-                )).toList(),
+                ...(_attributes.where((attr) => attr.isFilter).toList()
+                      ..sort((a, b) => a.order.compareTo(b.order)))
+                    .map(
+                      (attr) => Column(
+                        children: [
+                          _buildDynamicFilter(attr),
+                          const SizedBox(height: 9),
+                        ],
+                      ),
+                    )
+                    .toList(),
 
               const SizedBox(height: 12),
 
@@ -526,7 +559,6 @@ class _DynamicFilterState
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-
                         ],
                         selectedOptions: _selectedCity,
                         onSelectionChanged: (Set<String> selected) {
@@ -659,9 +691,12 @@ class _DynamicFilterState
               _buildButton(
                 'Предпросмотр',
                 onPressed: () {
-                  setState(() {
-                    _selectedAction = 'preview';
-                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PublicationTariffScreen(),
+                    ),
+                  );
                 },
                 isPrimary: _selectedAction == 'preview',
               ),
@@ -688,7 +723,6 @@ class _DynamicFilterState
       ),
     );
   }
-
 
   Widget _buildTextField({
     required String label,
@@ -743,14 +777,17 @@ class _DynamicFilterState
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
-    bool showChangeText = false, 
+    bool showChangeText = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 9),
         GestureDetector(
@@ -799,13 +836,10 @@ class _DynamicFilterState
                           ),
                         ),
                 ),
-                if (showChangeText) 
+                if (showChangeText)
                   Text(
                     'Изменить',
-                    style: TextStyle(
-                      color: Colors.blue, 
-                      fontSize: 14, 
-                    ),
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
                   ),
                 if (icon != null) icon,
               ],
@@ -868,7 +902,8 @@ class _DynamicFilterState
     if (attr.isSpecialDesign) {
       if (attr.values.length == 2) {
         // Buttons for Yes/No like "Меблированная" - one always selected
-        _selectedValues[attr.id] = _selectedValues[attr.id] ?? attr.values[0].value;
+        _selectedValues[attr.id] =
+            _selectedValues[attr.id] ?? attr.values[0].value;
         String selected = _selectedValues[attr.id];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,13 +919,17 @@ class _DynamicFilterState
                 _buildChoiceButton(
                   attr.values[0].value,
                   selected == attr.values[0].value,
-                  () => setState(() => _selectedValues[attr.id] = attr.values[0].value),
+                  () => setState(
+                    () => _selectedValues[attr.id] = attr.values[0].value,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 _buildChoiceButton(
                   attr.values[1].value,
                   selected == attr.values[1].value,
-                  () => setState(() => _selectedValues[attr.id] = attr.values[1].value),
+                  () => setState(
+                    () => _selectedValues[attr.id] = attr.values[1].value,
+                  ),
                 ),
               ],
             ),
@@ -923,7 +962,9 @@ class _DynamicFilterState
         _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
         Set<String> selected = _selectedValues[attr.id];
         return _buildDropdown(
-          label: attr.isTitleHidden ? '' : attr.title + (attr.isRequired ? '*' : ''),
+          label: attr.isTitleHidden
+              ? ''
+              : attr.title + (attr.isRequired ? '*' : ''),
           hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
@@ -952,7 +993,9 @@ class _DynamicFilterState
         _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
         String selected = _selectedValues[attr.id];
         return _buildDropdown(
-          label: attr.isTitleHidden ? '' : attr.title + (attr.isRequired ? '*' : ''),
+          label: attr.isTitleHidden
+              ? ''
+              : attr.title + (attr.isRequired ? '*' : ''),
           hint: selected.isEmpty ? 'Выбрать' : selected,
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
@@ -968,7 +1011,9 @@ class _DynamicFilterState
                   selectedOptions: {selected},
                   onSelectionChanged: (Set<String> newSelected) {
                     setState(() {
-                      _selectedValues[attr.id] = newSelected.isNotEmpty ? newSelected.first : '';
+                      _selectedValues[attr.id] = newSelected.isNotEmpty
+                          ? newSelected.first
+                          : '';
                     });
                   },
                   allowMultipleSelection: false,
@@ -980,13 +1025,18 @@ class _DynamicFilterState
       }
     } else {
       if (attr.isRange) {
-        _selectedValues[attr.id] = _selectedValues[attr.id] ?? {'min': '', 'max': ''};
-        Map<String, String> range = Map<String, String>.from(_selectedValues[attr.id]);
+        _selectedValues[attr.id] =
+            _selectedValues[attr.id] ?? {'min': '', 'max': ''};
+        Map<String, String> range = Map<String, String>.from(
+          _selectedValues[attr.id],
+        );
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              attr.isTitleHidden ? '' : attr.title + (attr.isRequired ? '*' : ''),
+              attr.isTitleHidden
+                  ? ''
+                  : attr.title + (attr.isRequired ? '*' : ''),
               style: const TextStyle(color: textPrimary, fontSize: 16),
             ),
             const SizedBox(height: 9),
@@ -1000,7 +1050,9 @@ class _DynamicFilterState
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: TextField(
-                      keyboardType: attr.dataType == 'integer' ? TextInputType.number : TextInputType.text,
+                      keyboardType: attr.dataType == 'integer'
+                          ? TextInputType.number
+                          : TextInputType.text,
                       style: const TextStyle(color: textPrimary),
                       decoration: const InputDecoration(
                         hintText: 'От',
@@ -1026,7 +1078,9 @@ class _DynamicFilterState
                     ),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: TextField(
-                      keyboardType: attr.dataType == 'integer' ? TextInputType.number : TextInputType.text,
+                      keyboardType: attr.dataType == 'integer'
+                          ? TextInputType.number
+                          : TextInputType.text,
                       style: const TextStyle(color: textPrimary),
                       decoration: const InputDecoration(
                         hintText: 'До',
@@ -1050,9 +1104,13 @@ class _DynamicFilterState
       } else {
         _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
         return _buildTextField(
-          label: attr.isTitleHidden ? '' : attr.title + (attr.isRequired ? '*' : ''),
+          label: attr.isTitleHidden
+              ? ''
+              : attr.title + (attr.isRequired ? '*' : ''),
           hint: attr.dataType == 'integer' ? 'Цифрами' : 'Текст',
-          keyboardType: attr.dataType == 'integer' ? TextInputType.number : TextInputType.text,
+          keyboardType: attr.dataType == 'integer'
+              ? TextInputType.number
+              : TextInputType.text,
         );
       }
     }

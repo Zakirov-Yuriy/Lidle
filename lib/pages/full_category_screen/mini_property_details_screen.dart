@@ -224,7 +224,35 @@ ${widget.listing.title}
                       ),
                     );
                   },
-                  child: Image.asset(widget.listing.imagePath, fit: BoxFit.cover),
+                  child: widget.listing.imagePath.startsWith('http')
+                      ? Image.network(
+                          widget.listing.imagePath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: const Color(0xFF374B5C),
+                              child: Icon(
+                                Icons.image,
+                                color: textMuted,
+                                size: 50,
+                              ),
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          widget.listing.imagePath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: const Color(0xFF374B5C),
+                              child: Icon(
+                                Icons.image,
+                                color: textMuted,
+                                size: 50,
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -736,11 +764,29 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
-            child: Image.asset(
-              widget.listing.imagePath,
-              height: 159,
-              fit: BoxFit.cover,
-            ),
+            child: widget.listing.imagePath.startsWith('http')
+                ? Image.network(
+                    widget.listing.imagePath,
+                    height: 159,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: const Color(0xFF374B5C),
+                        child: Icon(Icons.image, color: textMuted, size: 40),
+                      );
+                    },
+                  )
+                : Image.asset(
+                    widget.listing.imagePath,
+                    height: 159,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: const Color(0xFF374B5C),
+                        child: Icon(Icons.image, color: textMuted, size: 40),
+                      );
+                    },
+                  ),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 14.0),
