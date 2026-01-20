@@ -167,6 +167,7 @@ class _RealEstateSubcategoriesScreenState
                 : Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 25.0),
                     child: ListView.builder(
+                      padding: EdgeInsets.zero,
                       itemCount: _categories.length + 1,
                       itemBuilder: (context, index) {
                         if (index < _categories.length) {
@@ -183,14 +184,13 @@ class _RealEstateSubcategoriesScreenState
                                   color: Colors.white70,
                                 ),
                                 onTap: () {
-                                  // Всегда переходим к экрану выбора типа объявления
-                                  // API сам разберется с подкатегориями
+                                  // Передаем ID категории для получения её детей через API
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           RealEstateApartmentsScreen(
-                                            subcategory: category.name,
+                                            categoryId: category.id,
                                           ),
                                     ),
                                   );

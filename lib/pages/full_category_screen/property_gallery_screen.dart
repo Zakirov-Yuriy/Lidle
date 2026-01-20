@@ -61,52 +61,49 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
 
             // ───── Main image ─────
             Expanded(
-              child: PageView.builder(
-                controller: _controller,
-                onPageChanged: (index) {
-                  setState(() => _currentIndex = index);
-                },
-                itemCount: widget.images.length,
-                itemBuilder: (_, index) {
-                  return SizedBox(
-                    height: 584,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: widget.images[index].startsWith('http')
-                            ? Image.network(
-                                widget.images[index],
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: const Color(0xFF374B5C),
-                                    child: Icon(
-                                      Icons.image,
-                                      color: textMuted,
-                                      size: 50,
-                                    ),
-                                  );
-                                },
-                              )
-                            : Image.asset(
-                                widget.images[index],
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: const Color(0xFF374B5C),
-                                    child: Icon(
-                                      Icons.image,
-                                      color: textMuted,
-                                      size: 50,
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                  );
-                },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: PageView.builder(
+                  controller: _controller,
+                  onPageChanged: (index) {
+                    setState(() => _currentIndex = index);
+                  },
+                  itemCount: widget.images.length,
+                  itemBuilder: (_, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
+                      child: widget.images[index].startsWith('http')
+                          ? Image.network(
+                              widget.images[index],
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: const Color(0xFF374B5C),
+                                  child: Icon(
+                                    Icons.image,
+                                    color: textMuted,
+                                    size: 50,
+                                  ),
+                                );
+                              },
+                            )
+                          : Image.asset(
+                              widget.images[index],
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: const Color(0xFF374B5C),
+                                  child: Icon(
+                                    Icons.image,
+                                    color: textMuted,
+                                    size: 50,
+                                  ),
+                                );
+                              },
+                            ),
+                    );
+                  },
+                ),
               ),
             ),
 

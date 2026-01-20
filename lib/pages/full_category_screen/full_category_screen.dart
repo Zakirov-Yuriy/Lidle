@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/blocs/catalog/catalog_bloc.dart';
+import 'package:lidle/blocs/catalog/catalog_event.dart';
+import 'package:lidle/blocs/catalog/catalog_state.dart';
+import 'package:lidle/main.dart';
 import 'full_real_estate_subcategories_screen.dart';
 
 // ============================================================
@@ -13,27 +18,43 @@ class FullCategoryScreen extends StatefulWidget {
   const FullCategoryScreen({super.key});
 
   @override
-  State<FullCategoryScreen> createState() =>
-      _FullCategoryScreenState();
+  State<FullCategoryScreen> createState() => _FullCategoryScreenState();
 }
 
-class _FullCategoryScreenState extends State<FullCategoryScreen> {
-  final Set<String> _activeCategories = {
-    'Недвижимость',
-    'Авто и мото',
-    'Работа',
-    'Подработка',
-  };
+class _FullCategoryScreenState extends State<FullCategoryScreen>
+    with RouteAware {
+  @override
+  void initState() {
+    super.initState();
+    context.read<CatalogBloc>().add(LoadCatalogs());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    super.didPopNext();
+    // Перезагружаем список каталогов при возврате на экран
+    context.read<CatalogBloc>().add(LoadCatalogs());
+  }
 
   @override
   Widget build(BuildContext context) {
-    final categories = [
-      {'title': 'Недвижимость', 'image': 'assets/categories/real_estate.png'},
-      {'title': 'Авто и мото', 'image': 'assets/categories/auto.png'},
-      {'title': 'Работа', 'image': 'assets/categories/job.png'},
-      {'title': 'Подработка', 'image': 'assets/categories/part_time.png'},
-    ];
-
+    // Перезагружаем список каталогов, если состояние CatalogLoaded (от другого экрана)
+    final state = context.read<CatalogBloc>().state;
+    if (state is CatalogLoaded) {
+      context.read<CatalogBloc>().add(LoadCatalogs());
+    }
     return Scaffold(
       backgroundColor: const Color(0xFF1D2835),
       body: Column(
@@ -43,34 +64,41 @@ class _FullCategoryScreenState extends State<FullCategoryScreen> {
             padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
-              children: [const Header(),],
+              children: [const Header()],
             ),
           ),
 
           Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          color: activeIconColor,
-                          size: 16,
-                        ),
-                      ),
-                      const Text(
-                        'Назад',
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      
-                    ],
+            padding: const EdgeInsets.symmetric(horizontal: 25),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(
+                    Icons.arrow_back_ios,
+                    color: activeIconColor,
+                    size: 16,
                   ),
                 ),
+                const Text(
+                  'Назад',
+                  style: TextStyle(
+                    color: activeIconColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(color: activeIconColor, fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const Padding(
             padding: EdgeInsets.only(bottom: 10, left: 25, top: 7),
             child: Text(
@@ -83,65 +111,78 @@ class _FullCategoryScreenState extends State<FullCategoryScreen> {
             ),
           ),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(left: 25, bottom: 106),
-
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final item = categories[index];
-                return GestureDetector(
-                  onTap: () {
-                    if (item['title'] == 'Недвижимость') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const FullRealEstateSubcategoriesScreen(),
-                        ),
-                      );
-                    } else {
-                      setState(() {
-                        if (_activeCategories.contains(item['title']!)) {
-                          _activeCategories.remove(item['title']!);
-                        } else {
-                          _activeCategories.add(item['title']!);
-                        }
-                      });
-                    }
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10, right: 25),
-
-                    child: Stack(
-                      children: [
-                        Image.asset(
-                          item['image']!,
-                          height: 93,
-                          width: 366,
-                          fit: BoxFit.cover,
-                        ),
-                        Positioned(
-                          top: 39,
-                          left: 30,
-                          child: Text(
-                            item['title']!,
-                            style: const TextStyle(
-                              color: Color.fromARGB(255, 0, 0, 0),
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
+            child: BlocBuilder<CatalogBloc, CatalogState>(
+              builder: (context, state) {
+                if (state is CatalogLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (state is CatalogsLoaded) {
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(left: 25, bottom: 106),
+                    itemCount: state.catalogs.length,
+                    itemBuilder: (context, index) {
+                      final catalog = state.catalogs[index];
+                      return GestureDetector(
+                        onTap: () {
+                          if (catalog.name == 'Недвижимость') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const FullRealEstateSubcategoriesScreen(),
+                              ),
+                            );
+                          } else {
+                            // Handle other catalogs if needed
+                          }
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10, right: 25),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(5),
+                            child: Stack(
+                              children: [
+                                catalog.thumbnail != null
+                                    ? Image.network(
+                                        catalog.thumbnail!,
+                                        height: 93,
+                                        width: 366,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                height: 93,
+                                                width: 366,
+                                                color: Colors.grey,
+                                                child: const Icon(
+                                                  Icons.image_not_supported,
+                                                ),
+                                              );
+                                            },
+                                      )
+                                    : Container(
+                                        height: 93,
+                                        width: 366,
+                                        color: Colors.grey,
+                                        child: const Icon(
+                                          Icons.image_not_supported,
+                                        ),
+                                      ),
+                              ],
                             ),
                           ),
                         ),
-                        if (!_activeCategories.contains(item['title']!))
-                          Container(
-                            height: 93,
-                            width: 366,
-                            color: const Color(0xFF323C49).withOpacity(0.8),
-                          ),
-                      ],
+                      );
+                    },
+                  );
+                } else if (state is CatalogError) {
+                  return Center(
+                    child: Text(
+                      'Ошибка: ${state.message}',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                  ),
-                );
+                  );
+                }
+                return const SizedBox.shrink();
               },
             ),
           ),

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/blocs/listings/listings_event.dart';
+import 'package:lidle/blocs/listings/listings_state.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
@@ -28,11 +33,26 @@ class MiniPropertyDetailsScreen extends StatefulWidget {
 class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _isAdvertLoaded = false;
+  bool _imagesPrecached = false;
+  Listing _listing = Listing(
+    id: '',
+    imagePath: '',
+    title: '',
+    price: '',
+    location: '',
+    date: '',
+  );
 
   final List<Listing> _similarListings = [
     Listing(
       id: '1',
       imagePath: "assets/property_details_screen/image2.png",
+      images: [
+        "assets/property_details_screen/image2.png",
+        "assets/property_details_screen/image3.png",
+        "assets/property_details_screen/image4.png",
+      ],
       title: "1-к. квартира, 33 м²",
       price: "44 500 000 ₽",
       location: "Москва, Истринская ул, 8к3",
@@ -42,6 +62,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Listing(
       id: '2',
       imagePath: "assets/property_details_screen/image3.png",
+      images: [
+        "assets/property_details_screen/image3.png",
+        "assets/property_details_screen/image5.png",
+      ],
       title: "2-к. квартира, 65,5 м² ",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
@@ -51,6 +75,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Listing(
       id: '3',
       imagePath: "assets/property_details_screen/image4.png",
+      images: ["assets/property_details_screen/image4.png"],
       title: "5-к. квартира, 111 м²",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
@@ -60,6 +85,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Listing(
       id: '4',
       imagePath: "assets/property_details_screen/image5.png",
+      images: [
+        "assets/property_details_screen/image5.png",
+        "assets/property_details_screen/image7.png",
+      ],
       title: "1-к. квартира, 30 м² ...",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
@@ -69,6 +98,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Listing(
       id: '5',
       imagePath: "assets/property_details_screen/image4.png",
+      images: [
+        "assets/property_details_screen/image4.png",
+        "assets/property_details_screen/image8.png",
+      ],
       title: "5-к. квартира, 111 м²",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
@@ -78,6 +111,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Listing(
       id: '6',
       imagePath: "assets/property_details_screen/image5.png",
+      images: ["assets/property_details_screen/image5.png"],
       title: "1-к. квартира, 30 м² ...",
       price: "21 000 000 ₽",
       location: "Москва, ул. Коминтерна, 4",
@@ -89,6 +123,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    _listing = widget.listing;
+    _isAdvertLoaded = false;
+    _imagesPrecached = false;
+    print(
+      'MiniPropertyDetailsScreen init: listing id ${_listing.id}, images ${_listing.images.length}',
+    );
+    // Always load the full advert to ensure we have complete data including all images
+    context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
     _pageController.addListener(() {
       int next = _pageController.page!.round();
       if (_currentPage != next) {
@@ -105,129 +147,242 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.dispose();
   }
 
+  // Precache all images to ensure smooth scrolling
+  Future<void> _precacheImages() async {
+    if (_imagesPrecached || !mounted) return;
+
+    final images = _listing.images.isNotEmpty
+        ? _listing.images
+        : [_listing.imagePath];
+    final precacheFutures = <Future<void>>[];
+
+    for (final imageUrl in images) {
+      if (imageUrl.startsWith('http')) {
+        // Precache network images
+        precacheFutures.add(
+          precacheImage(
+            NetworkImage(imageUrl),
+            context,
+            size: const Size(400, 260),
+          ),
+        );
+      } else {
+        // Precache asset images
+        precacheFutures.add(
+          precacheImage(
+            AssetImage(imageUrl),
+            context,
+            size: const Size(400, 260),
+          ),
+        );
+      }
+    }
+
+    try {
+      await Future.wait(precacheFutures);
+      print('Successfully precached ${images.length} images');
+    } catch (e) {
+      print('Error precaching images: $e');
+    }
+
+    if (mounted) {
+      setState(() {
+        _imagesPrecached = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20.0),
-                  child: const Header(),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          color: activeIconColor,
-                          size: 16,
+    return BlocListener<ListingsBloc, ListingsState>(
+      listener: (context, state) {
+        print('BlocListener in MiniPropertyDetailsScreen: $state');
+        if (state is AdvertLoaded) {
+          print(
+            'Updating _listing to ${state.listing.id} with ${state.listing.images.length} images',
+          );
+          setState(() {
+            _isAdvertLoaded = true;
+            if (state.listing.images.isNotEmpty) {
+              // Use the new images from API
+              _listing = state.listing;
+            } else {
+              // API returned empty images, keep the initial images but update other data
+              _listing = Listing(
+                id: state.listing.id,
+                imagePath: state.listing.imagePath,
+                images: _listing.images, // Keep initial images
+                title: state.listing.title,
+                price: state.listing.price,
+                location: state.listing.location,
+                date: state.listing.date,
+                isFavorited: state.listing.isFavorited,
+              );
+            }
+          });
+          // Precache images after loading the advert
+          _precacheImages();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: primaryBackground,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20.0),
+                    child: const Header(),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.arrow_back_ios,
+                            color: activeIconColor,
+                            size: 16,
+                          ),
                         ),
-                      ),
-                      const Text(
-                        'Назад',
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                        const Text(
+                          'Назад',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.share_outlined,
-                          color: textPrimary,
-                        ),
-                        onPressed: () {
-                          final textToShare =
-                              '''
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.share_outlined,
+                            color: textPrimary,
+                          ),
+                          onPressed: () {
+                            final textToShare =
+                                '''
 ${widget.listing.title}
 Цена: ${widget.listing.price}
 Адрес: ${widget.listing.location}
 Дата: ${widget.listing.date}
-                          ''';
+                            ''';
 
-                          Share.share(textToShare);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.only(
-                      right: 25,
-                      left: 25,
-                      top: 20,
+                            Share.share(textToShare);
+                          },
+                        ),
+                      ],
                     ),
-                    children: [
-                      _buildImageCarousel(),
-                      const SizedBox(height: 16),
-                      _buildMainInfoCard(),
-                      const SizedBox(height: 16),
-                      const _OfferPriceButton(),
-                      const SizedBox(height: 19),
-                      _buildLocationCard(),
-                      const SizedBox(height: 10),
-                      _buildAboutApartmentCard(),
-                      const SizedBox(height: 10),
-                      _buildDescriptionCard(),
-                      const SizedBox(height: 24),
-                      _buildSellerCard(),
-                      const SizedBox(height: 19),
-                      _buildComplaintButton(),
-                      const SizedBox(height: 55),
-                    ],
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.only(
+                        right: 25,
+                        left: 25,
+                        top: 20,
+                      ),
+                      children: [
+                        _buildImageCarousel(),
+                        const SizedBox(height: 16),
+                        _buildMainInfoCard(),
+                        const SizedBox(height: 16),
+                        const _OfferPriceButton(),
+                        const SizedBox(height: 19),
+                        _buildLocationCard(),
+                        const SizedBox(height: 10),
+                        _buildAboutApartmentCard(),
+                        const SizedBox(height: 10),
+                        _buildDescriptionCard(),
+                        const SizedBox(height: 24),
+                        _buildSellerCard(),
+                        const SizedBox(height: 19),
+                        _buildComplaintButton(),
+                        const SizedBox(height: 55),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomActionButtons(),
-          ),
-        ],
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBottomActionButtons(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildImageCarousel() {
+    if (!_isAdvertLoaded) {
+      return Shimmer.fromColors(
+        baseColor: const Color(0xFF374B5C),
+        highlightColor: const Color(0xFF4A5C6A),
+        child: Container(height: 260, color: const Color(0xFF374B5C)),
+      );
+    }
+
+    print('Listing ${_listing.id} has ${_listing.images.length} images');
+    final images = _listing.images.isNotEmpty
+        ? _listing.images
+        : [_listing.imagePath];
+
     return Column(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: Container(
             height: 260,
-            color: Colors.grey[300],
+            color: const Color(0xFF374B5C),
             child: PageView(
               controller: _pageController,
-              children: [
-                GestureDetector(
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              children: List.generate(
+                images.length,
+                (index) => GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => PropertyGalleryScreen(
-                          images: [widget.listing.imagePath],
-                          initialIndex: 0,
+                          images: images,
+                          initialIndex: _currentPage,
                         ),
                       ),
                     );
                   },
-                  child: widget.listing.imagePath.startsWith('http')
+                  child: images[index].startsWith('http')
                       ? Image.network(
-                          widget.listing.imagePath,
+                          images[index],
                           fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: const Color(0xFF374B5C),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white70,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
                               color: const Color(0xFF374B5C),
@@ -240,7 +395,7 @@ ${widget.listing.title}
                           },
                         )
                       : Image.asset(
-                          widget.listing.imagePath,
+                          images[index],
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) {
                             return Container(
@@ -254,7 +409,7 @@ ${widget.listing.title}
                           },
                         ),
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -262,7 +417,7 @@ ${widget.listing.title}
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            1,
+            images.length,
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),

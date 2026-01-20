@@ -40,10 +40,7 @@ class ListingsSearchResults extends ListingsState {
   final List<Listing> searchResults;
   final String query;
 
-  ListingsSearchResults({
-    required this.searchResults,
-    required this.query,
-  });
+  ListingsSearchResults({required this.searchResults, required this.query});
 }
 
 /// Состояние фильтрации объявлений по категории.
@@ -52,8 +49,13 @@ class ListingsFiltered extends ListingsState {
   final List<Listing> filteredListings;
   final String categoryId;
 
-  ListingsFiltered({
-    required this.filteredListings,
-    required this.categoryId,
-  });
+  ListingsFiltered({required this.filteredListings, required this.categoryId});
+}
+
+/// Состояние успешной загрузки одного объявления.
+/// Содержит полные данные объявления.
+class AdvertLoaded extends ListingsState {
+  final Listing listing;
+
+  AdvertLoaded({required this.listing});
 }

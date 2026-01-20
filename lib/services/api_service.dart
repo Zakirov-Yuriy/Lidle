@@ -194,6 +194,21 @@ class ApiService {
     }
   }
 
+  /// Получить одно объявление по ID.
+  static Future<Advert> getAdvert(int id, {String? token}) async {
+    try {
+      final response = await get('/adverts/$id', token: token);
+      final data = response['data'];
+      if (data is List) {
+        return Advert.fromJson(data[0] as Map<String, dynamic>);
+      } else {
+        return Advert.fromJson(data as Map<String, dynamic>);
+      }
+    } catch (e) {
+      throw Exception('Failed to load advert: $e');
+    }
+  }
+
   /// Получить все каталоги.
   static Future<CatalogsResponse> getCatalogs({String? token}) async {
     try {

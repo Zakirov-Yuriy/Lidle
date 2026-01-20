@@ -11,9 +11,9 @@ import 'package:lidle/hive_service.dart';
 // ============================================================
 
 class RealEstateApartmentsScreen extends StatefulWidget {
-  final String subcategory;
+  final int categoryId;
 
-  const RealEstateApartmentsScreen({super.key, required this.subcategory});
+  const RealEstateApartmentsScreen({super.key, required this.categoryId});
 
   @override
   State<RealEstateApartmentsScreen> createState() =>
@@ -22,6 +22,7 @@ class RealEstateApartmentsScreen extends StatefulWidget {
 
 class _RealEstateApartmentsScreenState
     extends State<RealEstateApartmentsScreen> {
+  Category? _category;
   List<Category> _advertTypes = [];
   bool _isLoading = true;
   String? _error;
@@ -41,21 +42,21 @@ class _RealEstateApartmentsScreenState
 
       final token = await HiveService.getUserData('token');
 
-      // Ищем конечные категории для данной подкатегории
-      // Используем subcategory как поисковый запрос
-      final searchResult = await ApiService.searchCategories(
-        catalogId: 1, // Недвижимость
-        query: widget.subcategory,
+      // Получаем категорию по ID для получения её детей
+      final category = await ApiService.getCategory(
+        widget.categoryId,
         token: token,
       );
 
-      print('Found advert types: ${searchResult.data.length}');
-      searchResult.data.forEach(
-        (category) => print('Advert type: ${category.name}'),
+      print('Loaded category: ${category.name}');
+      print('Found advert types: ${category.children?.length ?? 0}');
+      category.children?.forEach(
+        (child) => print('Advert type: ${child.name}'),
       );
 
       setState(() {
-        _advertTypes = searchResult.data;
+        _category = category;
+        _advertTypes = category.children ?? [];
         _isLoading = false;
       });
     } catch (e) {
@@ -153,7 +154,7 @@ class _RealEstateApartmentsScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Недвижимость: ${widget.subcategory == 'Недвижимость за рубежом' ? 'За рубежом' : widget.subcategory}',
+                          'Недвижимость: ${_category?.name ?? 'Загрузка...'}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 17,
@@ -163,6 +164,7 @@ class _RealEstateApartmentsScreenState
                         const SizedBox(height: 10),
                         Expanded(
                           child: ListView.builder(
+                            padding: EdgeInsets.zero,
                             itemCount: _advertTypes.length + 1,
                             itemBuilder: (context, index) {
                               if (index < _advertTypes.length) {

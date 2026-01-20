@@ -6,6 +6,7 @@ class Advert {
   final String name;
   final String price;
   final String? thumbnail;
+  final List<String> images;
   final AdvertStatus status;
   final String address;
   final int viewsCount;
@@ -19,6 +20,7 @@ class Advert {
     required this.name,
     required this.price,
     this.thumbnail,
+    this.images = const [],
     required this.status,
     required this.address,
     required this.viewsCount,
@@ -28,18 +30,24 @@ class Advert {
   });
 
   factory Advert.fromJson(Map<String, dynamic> json) {
+    print('Advert ${json['id']} images in JSON: ${json['images']}');
     return Advert(
-      id: json['id'],
-      date: json['date'],
-      name: json['name'],
-      price: json['price'],
+      id: json['id'] ?? 0,
+      date: json['date'] ?? '',
+      name: json['name'] ?? '',
+      price: json['price'] ?? '',
       thumbnail: json['thumbnail'],
-      status: AdvertStatus.fromJson(json['status']),
-      address: json['address'],
-      viewsCount: json['views_count'],
-      clickCount: json['click_count'],
-      shareCount: json['share_count'],
-      type: AdvertType.fromJson(json['type']),
+      images: List<String>.from(json['images'] ?? []),
+      status: json['status'] != null
+          ? AdvertStatus.fromJson(json['status'])
+          : AdvertStatus(id: 1, title: 'Active'),
+      address: json['address'] ?? '',
+      viewsCount: json['views_count'] ?? 0,
+      clickCount: json['click_count'] ?? 0,
+      shareCount: json['share_count'] ?? 0,
+      type: json['type'] != null
+          ? AdvertType.fromJson(json['type'])
+          : AdvertType(id: 1, slug: 'adverts'),
     );
   }
 }
@@ -183,6 +191,7 @@ extension AdvertToListingExtension on Advert {
       id: id.toString(),
       imagePath:
           thumbnail ?? 'assets/home_page/image.png', // Fallback if no thumbnail
+      images: images,
       title: name,
       price: price,
       location: address,

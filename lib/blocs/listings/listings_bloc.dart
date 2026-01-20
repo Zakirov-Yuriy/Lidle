@@ -27,6 +27,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     on<SearchListingsEvent>(_onSearchListings);
     on<FilterListingsByCategoryEvent>(_onFilterListingsByCategory);
     on<ResetFiltersEvent>(_onResetFilters);
+    on<LoadAdvertEvent>(_onLoadAdvert);
   }
 
   /// Статические данные объявлений.
@@ -35,6 +36,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Listing(
       id: 'listing_1',
       imagePath: 'assets/home_page/apartment1.png',
+      images: ['assets/home_page/apartment1.png', 'assets/home_page/image.png'],
       title: '4-к. квартира, 169,5 м²...',
       price: '78 970 000 ₽',
       location: 'Москва, ул. Кусинена, 21А',
@@ -44,6 +46,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Listing(
       id: 'listing_2',
       imagePath: 'assets/home_page/acura_mdx.png',
+      images: ['assets/home_page/acura_mdx.png'],
       title: 'Acura MDX 3.5 AT, 20...',
       price: '2 399 999 ₽',
       location: 'Брянск, Авиационная ул., 34',
@@ -53,6 +56,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Listing(
       id: 'listing_3',
       imagePath: 'assets/home_page/acura_rdx.png',
+      images: ['assets/home_page/acura_rdx.png'],
       title: 'Acura RDX 2.3 AT, 2007...',
       price: '2 780 000 ₽',
       location: 'Москва, Отрадная ул., 11',
@@ -62,6 +66,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Listing(
       id: 'listing_4',
       imagePath: 'assets/home_page/studio.png',
+      images: ['assets/home_page/studio.png', 'assets/home_page/image2.png'],
       title: 'Студия, 35,7 м², 2/6 эт...',
       price: '6 500 000 ₽',
       location: 'Москва, Варшавское ш., 125',
@@ -71,6 +76,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Listing(
       id: 'listing_5',
       imagePath: 'assets/home_page/image.png',
+      images: ['assets/home_page/image.png'],
       title: 'Студия, 35,7 м², 2/6 эт...',
       price: '6 500 000 ₽',
       location: 'Москва, Варшавское ш., 125',
@@ -80,6 +86,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Listing(
       id: 'listing_6',
       imagePath: 'assets/home_page/image2.png',
+      images: [
+        'assets/home_page/image2.png',
+        'assets/home_page/apartment1.png',
+      ],
       title: '3-к. квартира, 125,5 м²...',
       price: '44 500 000 ₽ ',
       location: 'Москва, Истринская ул., 8к3',
@@ -137,9 +147,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       );
 
       // Преобразуем Advert в Listing для совместимости с UI
-      final listings = advertsResponse.data
-          .map((advert) => advert.toListing())
-          .toList();
+      final listings = advertsResponse.data.map((advert) {
+        print('Advert ${advert.id} has ${advert.images.length} images');
+        return advert.toListing();
+      }).toList();
 
       emit(ListingsLoaded(listings: listings, categories: _staticCategories));
     } catch (e) {
@@ -275,6 +286,38 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
     } catch (e) {
+      emit(ListingsError(message: e.toString()));
+    }
+  }
+
+  /// Обработчик события загрузки одного объявления по ID.
+  /// Загружает полные данные объявления из API.
+  Future<void> _onLoadAdvert(
+    LoadAdvertEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
+    print('Loading single advert for id ${event.advertId}');
+    emit(ListingsLoading());
+    try {
+      // Получаем токен для аутентификации
+      final token = await HiveService.getUserData('token');
+
+      // Загружаем полные данные объявления из API
+      final advert = await ApiService.getAdvert(
+        int.parse(event.advertId),
+        token: token,
+      );
+
+      print('Loaded advert ${advert.id} with ${advert.images.length} images');
+
+      // Преобразуем Advert в Listing
+      final listing = advert.toListing();
+
+      print('Converted to listing with ${listing.images.length} images');
+
+      emit(AdvertLoaded(listing: listing));
+    } catch (e) {
+      print('Failed to load advert: $e');
       emit(ListingsError(message: e.toString()));
     }
   }

@@ -8,7 +8,6 @@ import 'package:lidle/pages/add_listing/rooms/add_room_sell_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_rent_listings_screen.dart';
 
-
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
 // ============================================================
@@ -40,10 +39,9 @@ List<String> _getCommercialOptions(String type) {
     "Аренда производственных помещений",
     "Аренда помещений свободного назначения",
     "Аренда других помещений",
-    
   ];
 
-  if (type == "Продажа коммерческая недвижимости") {
+  if (type == "Продажа коммерческой недвижимости") {
     return sellOptions;
   } else if (type == "Аренда коммерческая недвижимости") {
     return rentOptions;
@@ -60,27 +58,30 @@ class FullRealEstateCommercialPropertyScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1E293B), 
-      
+      backgroundColor: const Color(0xFF1E293B),
+
       body: Column(
-         crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
           Column(
             children: [
               Padding(
-            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [const Header()],
-            ),
-          ),
+                padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [const Header()],
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.only(left: 10.0, right: 10),
                 child: Row(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.arrow_back_ios, color: Colors.lightBlueAccent, size: 18),
+                      icon: const Icon(
+                        Icons.arrow_back_ios,
+                        color: Colors.lightBlueAccent,
+                        size: 18,
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Text(
@@ -93,7 +94,7 @@ class FullRealEstateCommercialPropertyScreen extends StatelessWidget {
                     const Spacer(),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context); 
+                        Navigator.pop(context);
                       },
                       child: const Text(
                         'Отмена',
@@ -122,7 +123,9 @@ class FullRealEstateCommercialPropertyScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                ..._getCommercialOptions(type).map((option) => _buildOptionTile(context, option)),
+                ..._getCommercialOptions(
+                  type,
+                ).map((option) => _buildOptionTile(context, option)),
               ],
             ),
           ),
@@ -131,9 +134,9 @@ class FullRealEstateCommercialPropertyScreen extends StatelessWidget {
     );
   }
 
-// ============================================================
-// "Виджет: Построение плитки опции (продажа/аренда квартир)"
-// ============================================================
+  // ============================================================
+  // "Виджет: Построение плитки опции (продажа/аренда квартир)"
+  // ============================================================
   Widget _buildOptionTile(BuildContext context, String title) {
     return Column(
       children: [
@@ -147,47 +150,73 @@ class FullRealEstateCommercialPropertyScreen extends StatelessWidget {
             if (title == "Аренда офисов") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => RealEstateRentListingsScreen(title: title)),
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RealEstateRentListingsScreen(title: title),
+                ),
               );
-            } else if (_getCommercialOptions("Продажа коммерческая недвижимости").contains(title)) {
+            } else if (_getCommercialOptions(
+              "Продажа коммерческой недвижимости",
+            ).contains(title)) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => RealEstateRentListingsScreen(title: title)),
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RealEstateRentListingsScreen(title: title),
+                ),
               );
-            } else if (_getCommercialOptions("Аренда коммерческая недвижимости").contains(title)) {
+            } else if (_getCommercialOptions(
+              "Аренда коммерческая недвижимости",
+            ).contains(title)) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => RealEstateRentListingsScreen(title: title)),
+                MaterialPageRoute(
+                  builder: (context) =>
+                      RealEstateRentListingsScreen(title: title),
+                ),
               );
             } else if (title == "Продажа комнат") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddRoomSellScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddRoomSellScreen(),
+                ),
               );
             } else if (title == "Продажа домов") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddHouseSellScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddHouseSellScreen(),
+                ),
               );
             } else if (title.startsWith("Продажа")) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddApartmentSellScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddApartmentSellScreen(),
+                ),
               );
             } else if (title == "Долгосрочная аренда домов") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddHouseRentScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddHouseRentScreen(),
+                ),
               );
             } else if (title == "Долгосрочная аренда комнат") {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddRoomRentScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddRoomRentScreen(),
+                ),
               );
-            } else if (title.startsWith("Аренда") || title.startsWith("Долгосрочная аренда")) {
+            } else if (title.startsWith("Аренда") ||
+                title.startsWith("Долгосрочная аренда")) {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const AddApartmentRentScreen()),
+                MaterialPageRoute(
+                  builder: (context) => const AddApartmentRentScreen(),
+                ),
               );
             }
           },

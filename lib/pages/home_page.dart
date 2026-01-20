@@ -56,7 +56,13 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -101,28 +107,41 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.only( left: 7.0, right: 11.0),
+                        padding: const EdgeInsets.only(left: 7.0, right: 11.0),
                         child: BlocBuilder<AuthBloc, AuthState>(
                           builder: (context, authState) {
                             return custom_widgets.SearchBarWidget(
                               onSearchChanged: (query) {
                                 if (query.isNotEmpty) {
-                                  context.read<ListingsBloc>().add(SearchListingsEvent(query: query));
+                                  context.read<ListingsBloc>().add(
+                                    SearchListingsEvent(query: query),
+                                  );
                                 } else {
-                                  context.read<ListingsBloc>().add(ResetFiltersEvent());
+                                  context.read<ListingsBloc>().add(
+                                    ResetFiltersEvent(),
+                                  );
                                 }
                               },
                               onSettingsPressed: () async {
-                                await Navigator.pushNamed(context, FiltersScreen.routeName);
+                                await Navigator.pushNamed(
+                                  context,
+                                  FiltersScreen.routeName,
+                                );
                                 setState(() {
                                   _selectedCity = HiveService.getSelectedCity();
                                 });
                               },
                               onMenuPressed: () {
                                 if (authState is AuthAuthenticated) {
-                                  Navigator.pushNamed(context, ProfileMenuScreen.routeName);
+                                  Navigator.pushNamed(
+                                    context,
+                                    ProfileMenuScreen.routeName,
+                                  );
                                 } else {
-                                  Navigator.pushNamed(context, SignInScreen.routeName);
+                                  Navigator.pushNamed(
+                                    context,
+                                    SignInScreen.routeName,
+                                  );
                                 }
                               },
                             );
@@ -146,10 +165,15 @@ class _HomePageState extends State<HomePage> {
                 ),
                 bottomNavigationBar: BottomNavigation(
                   onItemSelected: (index) {
-                    if (index == 3) { // Shopping cart icon
-                      context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                    if (index == 3) {
+                      // Shopping cart icon
+                      context.read<NavigationBloc>().add(
+                        NavigateToMyPurchasesEvent(),
+                      );
                     } else {
-                      context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                      context.read<NavigationBloc>().add(
+                        SelectNavigationIndexEvent(index),
+                      );
                     }
                   },
                 ),
@@ -246,15 +270,13 @@ class _HomePageState extends State<HomePage> {
                 const SizedBox(height: 8),
                 Text(
                   state.message,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => context.read<ListingsBloc>().add(LoadListingsEvent()),
+                  onPressed: () =>
+                      context.read<ListingsBloc>().add(LoadListingsEvent()),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF8B5CF6),
                     foregroundColor: Colors.white,
@@ -269,12 +291,19 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final categories = (state is ListingsLoaded) ? state.categories : <Category>[];
+    final categories = (state is ListingsLoaded)
+        ? state.categories
+        : <Category>[];
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 12, right: 25, top: 15, bottom: 10),
+          padding: const EdgeInsets.only(
+            left: 12,
+            right: 25,
+            top: 15,
+            bottom: 10,
+          ),
           child: Row(
             children: [
               Expanded(
@@ -289,7 +318,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               TextButton(
-                onPressed: () => Navigator.pushNamed(context, FullCategoryScreen.routeName),
+                onPressed: () =>
+                    Navigator.pushNamed(context, FullCategoryScreen.routeName),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -325,11 +355,15 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const RealEstateListingsScreen(),
+                          builder: (context) =>
+                              const RealEstateListingsScreen(),
                         ),
                       );
                     } else if (category.title == 'Смотреть\nвсе') {
-                      Navigator.pushNamed(context, FullCategoryScreen.routeName);
+                      Navigator.pushNamed(
+                        context,
+                        FullCategoryScreen.routeName,
+                      );
                     }
                     // Для других категорий можно добавить логику позже
                   },
@@ -338,7 +372,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-
       ],
     );
   }
@@ -346,6 +379,40 @@ class _HomePageState extends State<HomePage> {
   /// Приватный метод для построения секции последних объявлений.
   /// Включает заголовок "Самое новое" и адаптивную сетку карточек объявлений.
   Widget _buildLatestSection(ListingsState state) {
+    if (state is AdvertLoaded) {
+      // Если состояние AdvertLoaded (после возврата с деталей), перезагружаем объявления
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ListingsBloc>().add(LoadListingsEvent());
+      });
+      // Показываем индикатор загрузки
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 110.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                latestTitle,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 50),
+                child: const CircularProgressIndicator(),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (state is ListingsLoading) {
       return Padding(
         padding: const EdgeInsets.only(bottom: 110.0),
@@ -366,21 +433,13 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 10),
             LayoutBuilder(
               builder: (context, constraints) {
-                final itemWidth =
-                    (constraints.maxWidth -
-                        12 -
-                        12 -
-                        9) /
-                    2;
+                final itemWidth = (constraints.maxWidth - 12 - 12 - 9) / 2;
                 double tileHeight = 263;
                 if (itemWidth < 170) tileHeight = 275;
                 if (itemWidth < 140) tileHeight = 300;
 
                 return GridView.builder(
-                  padding: const EdgeInsets.only(
-                    left: 12,
-                    right: 12,
-                  ),
+                  padding: const EdgeInsets.only(left: 12, right: 12),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 9,
@@ -440,15 +499,13 @@ class _HomePageState extends State<HomePage> {
                   const SizedBox(height: 8),
                   Text(
                     state.message,
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 14),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => context.read<ListingsBloc>().add(LoadListingsEvent()),
+                    onPressed: () =>
+                        context.read<ListingsBloc>().add(LoadListingsEvent()),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF8B5CF6),
                       foregroundColor: Colors.white,
@@ -466,10 +523,10 @@ class _HomePageState extends State<HomePage> {
     final listings = (state is ListingsLoaded)
         ? state.filteredListings
         : (state is ListingsSearchResults)
-            ? state.searchResults
-            : (state is ListingsFiltered)
-                ? state.filteredListings
-            : <Listing>[];
+        ? state.searchResults
+        : (state is ListingsFiltered)
+        ? state.filteredListings
+        : <Listing>[];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 110.0),
@@ -490,21 +547,13 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
-              final itemWidth =
-                  (constraints.maxWidth -
-                      12 -
-                      12 -
-                      9) /
-                  2;
+              final itemWidth = (constraints.maxWidth - 12 - 12 - 9) / 2;
               double tileHeight = 263;
               if (itemWidth < 170) tileHeight = 275;
               if (itemWidth < 140) tileHeight = 300;
-      
+
               return GridView.builder(
-                padding: const EdgeInsets.only(
-                  left: 12,
-                  right: 12,
-                ),
+                padding: const EdgeInsets.only(left: 12, right: 12),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   crossAxisSpacing: 9,
@@ -520,7 +569,6 @@ class _HomePageState extends State<HomePage> {
               );
             },
           ),
-      
         ],
       ),
     );

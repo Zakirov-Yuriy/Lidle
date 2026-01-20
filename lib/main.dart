@@ -25,6 +25,7 @@ import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/blocs/company_messages/company_messages_bloc.dart';
 import 'package:lidle/blocs/company_messages/company_messages_event.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:lidle/blocs/catalog/catalog_bloc.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
@@ -77,6 +78,10 @@ import 'package:lidle/pages/profile_menu/contacts/contacts_screen.dart';
 import 'package:lidle/pages/profile_menu/user_qr/user_qr_screen.dart';
 import 'package:lidle/pages/profile_menu/user_qr/qr_print_templates_screen.dart';
 import 'models/offer_model.dart';
+
+// RouteObserver для отслеживания навигации
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 // ============================================================
 //  Главная функция
@@ -137,6 +142,7 @@ class LidleApp extends StatelessWidget {
               CompanyMessagesBloc()..add(LoadCompanyMessages()),
         ),
         BlocProvider<CartBloc>(create: (context) => CartBloc()),
+        BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
       ],
       child: MaterialApp(
         title: appTitle,
@@ -146,6 +152,7 @@ class LidleApp extends StatelessWidget {
           fontFamily: 'Roboto',
           brightness: Brightness.dark,
         ),
+        navigatorObservers: [routeObserver],
         home: const HomePage(),
 
         routes: {

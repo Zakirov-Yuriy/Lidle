@@ -35,3 +35,11 @@ class FilterListingsByCategoryEvent extends ListingsEvent {
 /// Событие сброса фильтров.
 /// Возвращает полный список объявлений без фильтрации.
 class ResetFiltersEvent extends ListingsEvent {}
+
+/// Событие загрузки одного объявления по ID.
+/// Содержит ID объявления для загрузки полных данных.
+class LoadAdvertEvent extends ListingsEvent {
+  final String advertId;
+
+  LoadAdvertEvent({required this.advertId});
+}
