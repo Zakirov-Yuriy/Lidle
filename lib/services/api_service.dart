@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/catalog_model.dart';
+import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
 
 /// Базовый класс для работы с API.
@@ -266,16 +267,52 @@ class ApiService {
   static Future<MetaFiltersResponse> getMetaFilters({
     int? categoryId,
     int? catalogId,
+    String? token,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
       if (categoryId != null) queryParams['category_id'] = categoryId;
       if (catalogId != null) queryParams['catalog_id'] = catalogId;
 
-      final response = await getWithQuery('/meta/filters', queryParams);
+      final response = await getWithQuery(
+        '/meta/filters',
+        queryParams,
+        token: token,
+      );
       return MetaFiltersResponse.fromJson(response);
     } catch (e) {
+      if (e.toString().contains('Token expired') && token != null) {
+        // Попытка обновить токен и повторить запрос
+        final newToken = await refreshToken(token);
+        if (newToken != null) {
+          return getMetaFilters(
+            categoryId: categoryId,
+            catalogId: catalogId,
+            token: newToken,
+          );
+        }
+      }
       throw Exception('Failed to load meta filters: $e');
+    }
+  }
+
+  /// Создать объявление.
+  static Future<Map<String, dynamic>> createAdvert(
+    CreateAdvertRequest request, {
+    String? token,
+  }) async {
+    try {
+      final response = await post('/adverts', request.toJson(), token: token);
+      return response;
+    } catch (e) {
+      if (e.toString().contains('Token expired') && token != null) {
+        // Попытка обновить токен и повторить запрос
+        final newToken = await refreshToken(token);
+        if (newToken != null) {
+          return createAdvert(request, token: newToken);
+        }
+      }
+      throw Exception('Failed to create advert: $e');
     }
   }
 

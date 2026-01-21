@@ -52,6 +52,14 @@ class _HomePageState extends State<HomePage> {
     _selectedCity = HiveService.getSelectedCity();
   }
 
+  /// Метод для обработки pull-to-refresh.
+  /// Перезагружает данные объявлений и категорий.
+  Future<void> _onRefresh() async {
+    context.read<ListingsBloc>().add(LoadListingsEvent());
+    // Небольшая задержка для имитации загрузки и показа индикатора
+    await Future.delayed(const Duration(seconds: 1));
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
@@ -149,14 +157,20 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildCategoriesSection(listingsState),
-                              _buildLatestSection(listingsState),
-                              SizedBox(height: 10),
-                            ],
+                        child: RefreshIndicator(
+                          onRefresh: _onRefresh,
+                          color: accentColor, // Цвет стрелки и индикатора
+                          backgroundColor:
+                              formBackground, // Цвет фона индикатора
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildCategoriesSection(listingsState),
+                                _buildLatestSection(listingsState),
+                                SizedBox(height: 10),
+                              ],
+                            ),
                           ),
                         ),
                       ),

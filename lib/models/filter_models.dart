@@ -7,17 +7,20 @@ part 'filter_models.g.dart';
 class Attribute with _$Attribute {
   const factory Attribute({
     required int id,
-    required String title,
-    @JsonKey(name: 'is_filter') required bool isFilter,
-    @JsonKey(name: 'is_range') required bool isRange,
-    @JsonKey(name: 'is_multiple') required bool isMultiple,
-    @JsonKey(name: 'is_hidden') required bool isHidden,
-    @JsonKey(name: 'is_required') required bool isRequired,
-    @JsonKey(name: 'is_title_hidden') required bool isTitleHidden,
-    @JsonKey(name: 'is_special_design') required bool isSpecialDesign,
-    @JsonKey(name: 'data_type') String? dataType,
+    @JsonKey(defaultValue: '') @Default('') String title,
+    @JsonKey(defaultValue: false) @Default(false) bool isFilter,
+    @JsonKey(defaultValue: false) @Default(false) bool isRange,
+    @JsonKey(defaultValue: false) @Default(false) bool isMultiple,
+    @JsonKey(defaultValue: false) @Default(false) bool isHidden,
+    @JsonKey(defaultValue: false) @Default(false) bool isRequired,
+    @JsonKey(defaultValue: false) @Default(false) bool isTitleHidden,
+    @JsonKey(defaultValue: false) @Default(false) bool isSpecialDesign,
+    @JsonKey(defaultValue: false) @Default(false) bool isMaxValue,
+    dynamic maxValue,
+    String? vmText,
+    String? dataType,
     required int order,
-    required List<Value> values,
+    @Default([]) List<Value> values,
   }) = _Attribute;
 
   factory Attribute.fromJson(Map<String, dynamic> json) =>
@@ -26,8 +29,12 @@ class Attribute with _$Attribute {
 
 @freezed
 class Value with _$Value {
-  const factory Value({required int id, required String value, int? order}) =
-      _Value;
+  const factory Value({
+    required int id,
+    @JsonKey(defaultValue: '') @Default('') String value,
+    int? order,
+    int? maxValue,
+  }) = _Value;
 
   factory Value.fromJson(Map<String, dynamic> json) => _$ValueFromJson(json);
 }

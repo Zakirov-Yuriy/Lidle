@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/privacy_settings/privacy_settings_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/chat_settings/chat_settings_screen.dart';
@@ -152,6 +153,8 @@ class LidleApp extends StatelessWidget {
           fontFamily: 'Roboto',
           brightness: Brightness.dark,
         ),
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        supportedLocales: const [Locale('en', ''), Locale('ru', '')],
         navigatorObservers: [routeObserver],
         home: const HomePage(),
 

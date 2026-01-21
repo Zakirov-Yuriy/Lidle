@@ -9,41 +9,50 @@ part of 'filter_models.dart';
 _$AttributeImpl _$$AttributeImplFromJson(Map<String, dynamic> json) =>
     _$AttributeImpl(
       id: (json['id'] as num).toInt(),
-      title: json['title'] as String,
-      isFilter: json['is_filter'] as bool,
-      isRange: json['is_range'] as bool,
-      isMultiple: json['is_multiple'] as bool,
-      isHidden: json['is_hidden'] as bool,
-      isRequired: json['is_required'] as bool,
-      isTitleHidden: json['is_title_hidden'] as bool,
-      isSpecialDesign: json['is_special_design'] as bool,
-      dataType: json['data_type'] as String?,
+      title: json['title'] as String? ?? '',
+      isFilter: json['isFilter'] as bool? ?? false,
+      isRange: json['isRange'] as bool? ?? false,
+      isMultiple: json['isMultiple'] as bool? ?? false,
+      isHidden: json['isHidden'] as bool? ?? false,
+      isRequired: json['isRequired'] as bool? ?? false,
+      isTitleHidden: json['isTitleHidden'] as bool? ?? false,
+      isSpecialDesign: json['isSpecialDesign'] as bool? ?? false,
+      isMaxValue: json['isMaxValue'] as bool? ?? false,
+      maxValue: json['maxValue'],
+      vmText: json['vmText'] as String?,
+      dataType: json['dataType'] as String?,
       order: (json['order'] as num).toInt(),
-      values: (json['values'] as List<dynamic>)
-          .map((e) => Value.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      values:
+          (json['values'] as List<dynamic>?)
+              ?.map((e) => Value.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
 
 Map<String, dynamic> _$$AttributeImplToJson(_$AttributeImpl instance) =>
     <String, dynamic>{
       'id': instance.id,
       'title': instance.title,
-      'is_filter': instance.isFilter,
-      'is_range': instance.isRange,
-      'is_multiple': instance.isMultiple,
-      'is_hidden': instance.isHidden,
-      'is_required': instance.isRequired,
-      'is_title_hidden': instance.isTitleHidden,
-      'is_special_design': instance.isSpecialDesign,
-      'data_type': instance.dataType,
+      'isFilter': instance.isFilter,
+      'isRange': instance.isRange,
+      'isMultiple': instance.isMultiple,
+      'isHidden': instance.isHidden,
+      'isRequired': instance.isRequired,
+      'isTitleHidden': instance.isTitleHidden,
+      'isSpecialDesign': instance.isSpecialDesign,
+      'isMaxValue': instance.isMaxValue,
+      'maxValue': instance.maxValue,
+      'vmText': instance.vmText,
+      'dataType': instance.dataType,
       'order': instance.order,
       'values': instance.values,
     };
 
 _$ValueImpl _$$ValueImplFromJson(Map<String, dynamic> json) => _$ValueImpl(
   id: (json['id'] as num).toInt(),
-  value: json['value'] as String,
+  value: json['value'] as String? ?? '',
   order: (json['order'] as num?)?.toInt(),
+  maxValue: (json['maxValue'] as num?)?.toInt(),
 );
 
 Map<String, dynamic> _$$ValueImplToJson(_$ValueImpl instance) =>
@@ -51,6 +60,7 @@ Map<String, dynamic> _$$ValueImplToJson(_$ValueImpl instance) =>
       'id': instance.id,
       'value': instance.value,
       'order': instance.order,
+      'maxValue': instance.maxValue,
     };
 
 _$MetaFiltersResponseImpl _$$MetaFiltersResponseImplFromJson(
