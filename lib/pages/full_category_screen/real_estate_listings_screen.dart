@@ -6,6 +6,9 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/models/advert_model.dart';
+import 'package:lidle/hive_service.dart';
 
 // ============================================================
 // "Экран объявлений недвижимости"
@@ -26,136 +29,53 @@ class RealEstateListingsScreen extends StatefulWidget {
 
 class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   int _selectedIndex = 0;
-  late List<Listing> _listings;
+  List<Listing> _listings = [];
   Set<String> _selectedSortOptions = {};
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _listings = _generateSampleListings();
     _selectedSortOptions.add('Сначала новые');
+    _loadAdverts();
   }
 
-  // ---------- SAMPLE LISTINGS ----------
-  List<Listing> _generateSampleListings() {
-    return [
-      Listing(
-        id: '1',
-        imagePath: 'assets/home_page/apartment1.png',
-        title: '4-к. квартира, 169,5 м²',
-        price: '78 970 000 ₽',
-        location: 'Москва, ул. Кусищева, 21А',
-        date: 'Сегодня',
-        isFavorited: false,
-      ),
-      Listing(
-        id: '2',
-        imagePath: 'assets/property_details_screen/image7.png',
-        title: '4-к. квартира, 169,5 м².',
-        price: '80 000 000 ₽',
-        location: 'Москва, ул. Казакова, 7',
-        date: 'Вчера',
-        isFavorited: false,
-      ),
-      Listing(
-        id: '3',
-        imagePath: 'assets/property_details_screen/image8.png',
-        title: '3-к. квартира, 120 м²',
-        price: '65 200 000 ₽',
-        location: 'Москва, ул. Тверская, 8',
-        date: '2 дня назад',
-        isFavorited: false,
-      ),
-      Listing(
-        id: '4',
-        imagePath: 'assets/home_page/image.png',
-        title: '2-к. квартира, 85 м²',
-        price: '42 800 000 ₽',
-        location: 'Москва, ул. Арбат, 5',
-        date: '3 дня назад',
-        isFavorited: false,
-      ),
-      Listing(
-        id: '5',
-        imagePath: 'assets/home_page/image2.png',
-        title: '5-к. квартира, 200 м²',
-        price: '120 000 000 ₽',
-        location: 'Москва, ул. Ленинский пр., 10',
-        date: 'Неделя назад',
-        isFavorited: false,
-      ),
-      Listing(
-        id: '6',
-        imagePath: 'assets/home_page/studio.png',
-        title: '1-к. квартира, 55 м²',
-        price: '35 600 000 ₽',
-        location: 'Москва, ул. Пушкинская, 3',
-        date: '2 недели назад',
-        isFavorited: false,
-      ),
-    ];
-  }
-
-  double _parsePrice(String price) {
-    return double.tryParse(price.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0.0;
-  }
-
-  DateTime _parseDate(String date) {
-    final now = DateTime.now();
+  Future<void> _loadAdverts({String? sort}) async {
     try {
-      if (date.contains('Сегодня')) return now;
-      if (date.contains('Вчера')) return now.subtract(const Duration(days: 1));
-      if (date.contains('дня назад')) {
-        final days = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
-        return now.subtract(Duration(days: days));
-      }
-      if (date.contains('Неделя назад'))
-        return now.subtract(const Duration(days: 7));
-      if (date.contains('недели назад')) {
-        final weeks = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
-        return now.subtract(Duration(days: weeks * 7));
-      }
-    } catch (_) {}
-    return DateTime(1970);
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final token = await HiveService.getUserData('token');
+      final response = await ApiService.getAdverts(
+        categoryId: 2, // Продажа квартир
+        sort: sort,
+        token: token,
+      );
+
+      setState(() {
+        _listings = response.data.map((advert) => advert.toListing()).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   void _sortListings(Set<String> selectedOptions) {
-    SortOption? chosenSortOption;
+    String? sort;
+    if (selectedOptions.contains('Сначала новые')) sort = 'new';
+    if (selectedOptions.contains('Сначала старые')) sort = 'old';
+    if (selectedOptions.contains('Сначала дорогие')) sort = 'expensive';
+    if (selectedOptions.contains('Сначала дешевые')) sort = 'cheap';
 
-    if (selectedOptions.contains('Сначала новые'))
-      chosenSortOption = SortOption.newest;
-    if (selectedOptions.contains('Сначала старые'))
-      chosenSortOption = SortOption.oldest;
-    if (selectedOptions.contains('Сначала дорогие'))
-      chosenSortOption = SortOption.mostExpensive;
-    if (selectedOptions.contains('Сначала дешевые'))
-      chosenSortOption = SortOption.cheapest;
-
-    if (chosenSortOption != null) {
-      setState(() {
-        switch (chosenSortOption!) {
-          case SortOption.newest:
-            _listings.sort(
-              (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
-            );
-            break;
-          case SortOption.oldest:
-            _listings.sort(
-              (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
-            );
-            break;
-          case SortOption.mostExpensive:
-            _listings.sort(
-              (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
-            );
-            break;
-          case SortOption.cheapest:
-            _listings.sort(
-              (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
-            );
-            break;
-        }
-      });
+    if (sort != null) {
+      _loadAdverts(sort: sort);
     }
   }
 
@@ -192,23 +112,37 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                   SliverToBoxAdapter(child: _buildSectionHeader()),
                   SliverToBoxAdapter(child: SizedBox(height: 13)),
 
-                  // ------------ GRID VIEW ------------
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 15,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 0.70,
-                          ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, i) => ListingCard(listing: _listings[i]),
-                        childCount: _listings.length,
+                  // ------------ CONTENT ------------
+                  if (_isLoading)
+                    SliverToBoxAdapter(
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_errorMessage != null)
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: Text(
+                          'Ошибка: $_errorMessage',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 15,
+                              crossAxisSpacing: 8,
+                              childAspectRatio: 0.70,
+                            ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, i) => ListingCard(listing: _listings[i]),
+                          childCount: _listings.length,
+                        ),
                       ),
                     ),
-                  ),
 
                   SliverToBoxAdapter(child: SizedBox(height: 16)),
                 ],
@@ -218,7 +152,6 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
-      
     );
   }
 
@@ -396,7 +329,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
   Widget _buildBottomNavigation() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB( 25, 0, 25,  48),
+      padding: const EdgeInsets.fromLTRB(25, 0, 25, 48),
       child: Container(
         height: bottomNavHeight,
         decoration: BoxDecoration(
