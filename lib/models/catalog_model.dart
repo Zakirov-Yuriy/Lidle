@@ -6,7 +6,7 @@ class Catalog {
   final String? thumbnail;
   final String slug;
   final CatalogType type;
-  final String order;
+  final int? order;
 
   Catalog({
     required this.id,
@@ -14,7 +14,7 @@ class Catalog {
     this.thumbnail,
     required this.slug,
     required this.type,
-    required this.order,
+    this.order,
   });
 
   factory Catalog.fromJson(Map<String, dynamic> json) {
@@ -24,7 +24,7 @@ class Catalog {
       thumbnail: json['thumbnail'],
       slug: json['slug'],
       type: CatalogType.fromJson(json['type']),
-      order: json['order'],
+      order: json['order'] as int?,
     );
   }
 }
@@ -102,7 +102,7 @@ class CatalogWithCategories {
   final String? thumbnail;
   final String slug;
   final CatalogType type;
-  final String order;
+  final int? order;
   final List<Category> categories;
 
   CatalogWithCategories({
@@ -111,7 +111,7 @@ class CatalogWithCategories {
     this.thumbnail,
     required this.slug,
     required this.type,
-    required this.order,
+    this.order,
     required this.categories,
   });
 
@@ -122,7 +122,7 @@ class CatalogWithCategories {
       thumbnail: json['thumbnail'],
       slug: json['slug'],
       type: CatalogType.fromJson(json['type']),
-      order: json['order'],
+      order: json['order'] as int?,
       categories: (json['categories'] as List<dynamic>)
           .map((item) => Category.fromJson(item as Map<String, dynamic>))
           .toList(),

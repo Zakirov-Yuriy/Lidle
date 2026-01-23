@@ -6,9 +6,21 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
 import 'real_estate_subcategories_screen.dart';
 
-// ============================================================
-// "Виджет: Экран выбора категории объявления"
-// ============================================================
+/// ============================================================
+/// Виджет: Экран выбора категории объявления
+/// ============================================================
+///
+/// Этот экран позволяет пользователю выбрать категорию для создания объявления.
+/// Загружает список каталогов из API и отображает их в виде списка.
+///
+/// API документация:
+/// - GET /v1/content/catalogs: Получить все каталоги
+///   - Headers: Accept-Language, Accept, X-App-Client
+///   - Response: {"data": [{"id": int, "name": string, "thumbnail": string, "slug": string, "type": {"id": int, "slug": string}, "order": int}, ...]}
+///   - Пример: [{"id": 1, "name": "Недвижимость", ...}, {"id": 8, "name": "Работа", ...}]
+///
+/// Использует ApiService.getCatalogs() для загрузки данных.
+/// При выборе "Недвижимость" переходит к RealEstateSubcategoriesScreen.
 class CategorySelectionScreen extends StatefulWidget {
   static const String routeName = '/category-selection';
 
@@ -19,9 +31,12 @@ class CategorySelectionScreen extends StatefulWidget {
       _CategorySelectionScreenState();
 }
 
-// ============================================================
-// "Класс состояния: Управление состоянием экрана выбора категории"
-// ============================================================
+/// ============================================================
+/// Класс состояния: Управление состоянием экрана выбора категории
+/// ============================================================
+///
+/// Управляет загрузкой каталогов из API, обработкой ошибок и отображением UI.
+/// Использует состояние для загрузки (_isLoading), ошибки (_error) и списка каталогов (_catalogs).
 class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   List<Catalog> _catalogs = [];
   bool _isLoading = true;
@@ -33,6 +48,11 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     _loadCatalogs();
   }
 
+  /// Загружает список каталогов из API.
+  ///
+  /// Выполняет GET /v1/content/catalogs (публичный эндпоинт, токен не требуется).
+  /// В случае успеха обновляет _catalogs, в случае ошибки - _error.
+  /// Использует ApiService.getCatalogs() для вызова API.
   Future<void> _loadCatalogs() async {
     try {
       setState(() {
@@ -40,8 +60,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         _error = null;
       });
 
-      final token = await HiveService.getUserData('token');
-      final catalogsResponse = await ApiService.getCatalogs(token: token);
+      final catalogsResponse = await ApiService.getCatalogs();
 
       print('Loaded catalogs: ${catalogsResponse.data.length}');
       catalogsResponse.data.forEach(
