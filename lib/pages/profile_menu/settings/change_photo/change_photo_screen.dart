@@ -2,7 +2,6 @@
 // "Виджет: Экран изменения фотографии профиля"
 // ============================================================
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,6 +11,8 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/user_service.dart';
 
 class ChangePhotoScreen extends StatefulWidget {
   static const routeName = '/change_photo';
@@ -23,7 +24,6 @@ class ChangePhotoScreen extends StatefulWidget {
 }
 
 class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
-
   static const bgColor = Color(0xFF243241);
   static const accentColor = Color(0xFF00B7FF);
   static const dangerColor = Color(0xFFFF3B30);
@@ -40,9 +40,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
             // ───── Header ─────
             Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 23),
-              child: Row(
-                children: const [Header()],
-              ),
+              child: Row(children: const [Header()]),
             ),
 
             // ───── Back row ─────
@@ -96,16 +94,17 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                   aspectRatio: 4 / 3,
                   child: BlocBuilder<ProfileBloc, ProfileState>(
                     builder: (context, state) {
-                      if (state is ProfileLoaded && state.profileImage != null) {
-                        return Image.file(
-                          File(state.profileImage!),
+                      if (state is ProfileLoaded &&
+                          state.profileImage != null) {
+                        return buildProfileImage(
+                          state.profileImage,
+                          width: double.infinity,
+                          height: double.infinity,
                           fit: BoxFit.cover,
                         );
                       }
                       return Container(
-                        decoration: BoxDecoration(
-                          color: formBackground,
-                        ),
+                        decoration: BoxDecoration(color: formBackground),
                         child: Center(
                           child: SvgPicture.asset(
                             'assets/profile_dashboard/default-photo.svg',
@@ -133,10 +132,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                   height: 11,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.grey,
-                      width: 1,
-                    ),
+                    border: Border.all(color: Colors.grey, width: 1),
                   ),
                   child: index == 0
                       ? Center(
@@ -320,15 +316,72 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
     final XFile? image = await picker.pickImage(source: source);
 
     if (image != null) {
-      // Обновляем профиль с новым изображением
-      final currentState = context.read<ProfileBloc>().state;
-      if (currentState is ProfileLoaded) {
-        context.read<ProfileBloc>().add(UpdateProfileEvent(
-          name: currentState.name,
-          email: currentState.email,
-          phone: currentState.phone,
-          profileImage: image.path,
-        ));
+      // Показываем loading
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(color: const Color(0xFF00B7FF)),
+        ),
+      );
+
+      try {
+        // Получаем токен из Hive
+        final token = HiveService.getUserData('token') as String?;
+        if (token == null) {
+          if (mounted) Navigator.pop(context); // Закрываем loading
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  '❌ Токен не найден. Пожалуйста, авторизуйтесь заново.',
+                ),
+              ),
+            );
+          }
+          return;
+        }
+
+        print('📸 change_photo_screen: Загружаем аватарку...');
+        print('📍 Файл: ${image.path}');
+
+        // Загружаем аватарку на сервер через API
+        await UserService.uploadAvatar(filePath: image.path, token: token);
+
+        if (mounted) Navigator.pop(context); // Закрываем loading
+
+        print('✅ change_photo_screen: Аватарка успешно загружена на сервер');
+
+        // Перезагружаем профиль с сервера
+        print('🔄 change_photo_screen: Перезагружаем профиль...');
+        if (mounted) {
+          context.read<ProfileBloc>().add(LoadProfileEvent());
+        }
+
+        // Показываем успешное сообщение
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Аватарка успешно обновлена!'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) Navigator.pop(context); // Закрываем loading
+
+        print('❌ change_photo_screen: Ошибка при загрузке: $e');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ Ошибка: $e'),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
       }
     }
   }
@@ -385,7 +438,8 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                         ),
                       ),
                       TextSpan(
-                        text: 'Если вы хотите \nудалить фото профеля по-\nтвердите действие',
+                        text:
+                            'Если вы хотите \nудалить фото профеля по-\nтвердите действие',
                       ),
                     ],
                   ),
@@ -407,18 +461,84 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                     ),
                     const SizedBox(width: 16),
                     ElevatedButton(
-                      onPressed: () {
-                        // Action for deleting photo
-                        final currentState = context.read<ProfileBloc>().state;
-                        if (currentState is ProfileLoaded) {
-                          context.read<ProfileBloc>().add(UpdateProfileEvent(
-                            name: currentState.name,
-                            email: currentState.email,
-                            phone: currentState.phone,
-                            profileImage: null, // Remove the image
-                          ));
+                      onPressed: () async {
+                        try {
+                          // Получаем токен из Hive
+                          final token =
+                              HiveService.getUserData('token') as String?;
+                          if (token == null) {
+                            if (mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '❌ Токен не найден. Пожалуйста, авторизуйтесь заново.',
+                                  ),
+                                ),
+                              );
+                            }
+                            return;
+                          }
+
+                          print('🗑️ change_photo_screen: Удаляем аватарку...');
+
+                          // Закрываем диалог
+                          if (mounted) Navigator.pop(context);
+
+                          // Показываем loading
+                          if (mounted) {
+                            showDialog(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => Center(
+                                child: CircularProgressIndicator(
+                                  color: const Color(0xFF00B7FF),
+                                ),
+                              ),
+                            );
+                          }
+
+                          // Удаляем аватарку через API
+                          await UserService.deleteAvatar(token: token);
+
+                          if (mounted)
+                            Navigator.pop(context); // Закрываем loading
+
+                          print(
+                            '✅ change_photo_screen: Аватарка успешно удалена',
+                          );
+
+                          // Перезагружаем профиль с сервера
+                          if (mounted) {
+                            context.read<ProfileBloc>().add(LoadProfileEvent());
+                          }
+
+                          // Показываем успешное сообщение
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('✅ Аватарка удалена!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted)
+                            Navigator.pop(context); // Закрываем loading
+
+                          print(
+                            '❌ change_photo_screen: Ошибка при удалении: $e',
+                          );
+
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('❌ Ошибка: $e'),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
                         }
-                        Navigator.pop(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.transparent,

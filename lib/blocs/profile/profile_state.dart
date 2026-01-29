@@ -16,6 +16,7 @@ class ProfileLoading extends ProfileState {
 
 /// Состояние успешной загрузки профиля.
 /// [name] - имя пользователя.
+/// [lastName] - фамилия пользователя.
 /// [email] - email пользователя.
 /// [userId] - ID пользователя.
 /// [phone] - номер телефона пользователя.
@@ -23,6 +24,7 @@ class ProfileLoading extends ProfileState {
 /// [username] - имя пользователя (ник).
 class ProfileLoaded extends ProfileState {
   final String name;
+  final String lastName;
   final String email;
   final String userId;
   final String phone;
@@ -31,6 +33,7 @@ class ProfileLoaded extends ProfileState {
 
   const ProfileLoaded({
     required this.name,
+    required this.lastName,
     required this.email,
     required this.userId,
     required this.phone,

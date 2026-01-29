@@ -11,8 +11,10 @@ import 'package:lidle/hive_service.dart';
 /// Базовый класс для работы с API.
 /// Обрабатывает общие заголовки и базовый URL.
 class ApiService {
-  static String get baseUrl =>
-      dotenv.get('API_BASE_URL', fallback: 'https://dev-api.lidle.io/v1');
+  static String get baseUrl => (dotenv.get(
+    'API_BASE_URL',
+    fallback: 'https://dev-api.lidle.io/v1',
+  )).replaceAll(RegExp(r'/$'), '');
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     // Заголовки согласно официальной документации API Lidle
@@ -507,7 +509,51 @@ class ApiService {
       await post('/adverts/$advertId/share', {}, token: token);
     } catch (e) {
       print('Failed to share advert: $e');
-      // Не пробрасываем ошибку
+      // Не пробрасываем ошибка
+    }
+  }
+
+  /// Загрузить файл через multipart/form-data
+  static Future<Map<String, dynamic>> uploadFile(
+    String endpoint, {
+    required String filePath,
+    required String fieldName,
+    String? token,
+  }) async {
+    try {
+      final headers = {'X-App-Client': 'mobile'};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      print('═══════════════════════════════════════════════════════');
+      print('📤 MULTIPART UPLOAD REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Field name: $fieldName');
+      print('File: $filePath');
+      print('Token provided: ${token != null}');
+      print('═══════════════════════════════════════════════════════');
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl$endpoint'),
+      );
+
+      request.headers.addAll(headers);
+      request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    } catch (e) {
+      throw Exception('Ошибка загрузки файла: $e');
     }
   }
 }

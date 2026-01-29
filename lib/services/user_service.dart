@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:lidle/models/user_profile_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
@@ -6,11 +8,32 @@ class UserService {
   /// Получить профиль текущего пользователя
   static Future<UserProfile> getProfile({required String token}) async {
     try {
+      print('🔐 UserService: Запрашиваем профиль с токеном...');
       final response = await ApiService.get('/me', token: token);
 
+      print('📦 UserService: Ответ от API получен');
+      print('📦 UserService: Тип response: ${response.runtimeType}');
+      print('📦 UserService: Ключи response: ${response.keys.toList()}');
+      print('📦 UserService: Полный ответ: ${jsonEncode(response)}');
+
       final profileResponse = UserProfileResponse.fromJson(response);
-      return profileResponse.data;
+      print('✅ UserService: Профиль распарсен');
+      print(
+        '✅ UserService: profileResponse.data.length = ${profileResponse.data.length}',
+      );
+
+      if (profileResponse.data.isEmpty) {
+        throw Exception('Список профилей пуст');
+      }
+
+      final profile = profileResponse.data[0];
+      print(
+        '👤 UserService: Возвращаем профиль: ${profile.name} ${profile.lastName}',
+      );
+      return profile;
     } catch (e) {
+      print('❌ UserService: Ошибка при загрузке профиля: $e');
+      print('❌ UserService: Type: ${e.runtimeType}');
       throw Exception('Ошибка при загрузке профиля: $e');
     }
   }
@@ -40,7 +63,7 @@ class UserService {
       );
 
       final profileResponse = UserProfileResponse.fromJson(response);
-      return profileResponse.data;
+      return profileResponse.data[0];
     } catch (e) {
       throw Exception('Ошибка при обновлении профиля: $e');
     }
@@ -120,6 +143,86 @@ class UserService {
       await performClearAll();
     } catch (e) {
       throw Exception('Ошибка при удалении аккаунта: $e');
+    }
+  }
+
+  /// Загрузить аватарку профиля
+  static Future<bool> uploadAvatar({
+    required String filePath,
+    required String token,
+  }) async {
+    try {
+      print('🖼️ UserService: Загружаем аватарку...');
+      print('📍 Путь файла: $filePath');
+
+      final response = await ApiService.uploadFile(
+        '/me/settings/avatar',
+        filePath: filePath,
+        fieldName: 'image',
+        token: token,
+      );
+
+      print('✅ UserService: Аватарка успешно загружена');
+      print('📦 Ответ: $response');
+
+      if (response['success'] == true) {
+        print('✅ UserService: success = true');
+        return true;
+      } else {
+        print('❌ UserService: success = false');
+        throw Exception('API вернул success: false');
+      }
+    } catch (e) {
+      print('❌ UserService: Ошибка при загрузке аватарки: $e');
+      throw Exception('Ошибка при загрузке аватарки: $e');
+    }
+  }
+
+  /// Удалить аватарку профиля
+  static Future<bool> deleteAvatar({required String token}) async {
+    try {
+      print('🖼️ UserService: Удаляем аватарку...');
+
+      // API требует отправку как multipart с delete_image=true
+      final headers = {'X-App-Client': 'mobile'};
+      if (token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      print('═══════════════════════════════════════════════════════');
+      print('📤 DELETE AVATAR REQUEST');
+      print('URL: ${ApiService.baseUrl}/me/settings/avatar');
+      print('Token provided: true');
+      print('═══════════════════════════════════════════════════════');
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/me/settings/avatar'),
+      );
+
+      request.headers.addAll(headers);
+      request.fields['delete_image'] = 'true';
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+      final httpResponse = await http.Response.fromStream(streamedResponse);
+
+      print('✅ Response status: ${httpResponse.statusCode}');
+      print('📋 Response: ${httpResponse.body}');
+
+      if (httpResponse.statusCode == 200) {
+        final response = jsonDecode(httpResponse.body) as Map<String, dynamic>;
+        if (response['success'] == true) {
+          print('✅ UserService: Аватарка успешно удалена');
+          return true;
+        }
+      }
+
+      throw Exception('Failed to delete avatar');
+    } catch (e) {
+      print('❌ UserService: Ошибка при удалении аватарки: $e');
+      throw Exception('Ошибка при удалении аватарки: $e');
     }
   }
 }

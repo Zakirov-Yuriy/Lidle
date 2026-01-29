@@ -3,6 +3,7 @@ import 'profile_event.dart';
 import 'profile_state.dart';
 import '../../hive_service.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_service.dart';
 
 /// Bloc для управления состоянием профиля пользователя.
 /// Обрабатывает события загрузки, обновления и выхода из профиля.
@@ -16,24 +17,72 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   }
 
   /// Обработчик события загрузки профиля.
-  /// Загружает данные пользователя из локального хранилища.
+  /// Загружает данные пользователя из API и сохраняет в локальное хранилище.
   Future<void> _onLoadProfile(
     LoadProfileEvent event,
     Emitter<ProfileState> emit,
   ) async {
     emit(const ProfileLoading());
     try {
-      // Загружаем данные из Hive
-      final name = HiveService.getUserData('name') ?? 'Влад Борман';
-      final userId = HiveService.getUserData('userId') ?? 'ID: 2342124342';
-      final email = HiveService.getUserData('email') ?? 'user@example.com';
-      final phone = HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
-      final profileImage = HiveService.getUserData('profileImage');
-      final username = HiveService.getUserData('username') ?? '@Name';
+      final token = HiveService.getUserData('token');
+      print('🔑 Token from Hive: $token');
+      if (token == null) {
+        print('❌ Токен не найден!');
+        emit(const ProfileError('Токен не найден'));
+        return;
+      }
+
+      if (token.isEmpty) {
+        print('❌ Токен пуст!');
+        emit(const ProfileError('Токен пуст'));
+        return;
+      }
+
+      print('📡 Загружаем профиль с API...');
+      final profile = await UserService.getProfile(token: token);
+      print('✅ Профиль загружен: ${profile.name} ${profile.lastName}');
+
+      // Сохраняем данные в Hive
+      await HiveService.saveUserData('name', profile.name);
+      await HiveService.saveUserData('lastName', profile.lastName);
+      await HiveService.saveUserData('email', profile.email);
+      await HiveService.saveUserData('phone', profile.phone ?? '');
+      await HiveService.saveUserData('userId', profile.id.toString());
+      await HiveService.saveUserData('profileImage', profile.avatar);
+      await HiveService.saveUserData('username', profile.name);
+
+      print('💾 Данные сохранены в Hive');
 
       emit(
         ProfileLoaded(
-          name: name,
+          name: '${profile.name} ${profile.lastName}',
+          lastName: profile.lastName,
+          email: profile.email,
+          userId: 'ID: ${profile.id}',
+          phone: profile.phone ?? '+7 (999) 123-45-67',
+          profileImage: profile.avatar,
+          username: '@${profile.name}',
+        ),
+      );
+    } catch (e) {
+      print('❌ Ошибка загрузки профиля: $e');
+      print('📍 Stack trace: ${StackTrace.current}');
+
+      // Fallback to Hive data if API fails
+      final name = HiveService.getUserData('name') ?? 'Влад Борман';
+      final lastName = HiveService.getUserData('lastName') ?? '';
+      final email = HiveService.getUserData('email') ?? 'user@example.com';
+      final phone = HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
+      final userId = HiveService.getUserData('userId') ?? 'ID: 2342124342';
+      final profileImage = HiveService.getUserData('profileImage');
+      final username = HiveService.getUserData('username') ?? '@Name';
+
+      print('📖 Fallback: Используем данные из Hive: $name $lastName');
+
+      emit(
+        ProfileLoaded(
+          name: lastName.isNotEmpty ? '$name $lastName' : name,
+          lastName: lastName,
           email: email,
           userId: userId,
           phone: phone,
@@ -41,8 +90,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           username: username,
         ),
       );
-    } catch (e) {
-      emit(ProfileError(e.toString()));
     }
   }
 
@@ -58,6 +105,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     try {
       // Сохраняем данные в Hive
       await HiveService.saveUserData('name', event.name);
+      await HiveService.saveUserData('lastName', event.lastName);
       await HiveService.saveUserData('email', event.email);
       await HiveService.saveUserData('phone', event.phone);
       await HiveService.saveUserData('profileImage', event.profileImage);
@@ -70,7 +118,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       emit(
         ProfileLoaded(
-          name: event.name,
+          name: '${event.name} ${event.lastName}',
+          lastName: event.lastName,
           email: event.email,
           userId: (state as ProfileLoaded).userId,
           phone: event.phone,

@@ -2,7 +2,6 @@
 // "Виджет: Экран меню профиля"
 // ============================================================
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -199,8 +198,8 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(60),
                 child: state is ProfileLoaded && state.profileImage != null
-                    ? Image.file(
-                        File(state.profileImage!),
+                    ? buildProfileImage(
+                        state.profileImage,
                         width: 102,
                         height: 102,
                         fit: BoxFit.cover,

@@ -9,6 +9,7 @@ import 'package:hive/hive.dart';
 class HiveService {
   /// Приватная константа для имени бокса, хранящего пользовательские данные.
   static const String _userBox = 'userBox';
+
   /// Приватная константа для имени бокса, хранящего настройки приложения.
   static const String _settingsBox = 'settingsBox';
 
@@ -26,6 +27,7 @@ class HiveService {
   /// [key] - уникальный идентификатор для сохранения данных.
   /// [value] - данные, которые нужно сохранить.
   static Future<void> saveUserData(String key, dynamic value) async {
+    print('💾 HiveService: Сохраняем $key = $value');
     await userBox.put(key, value);
   }
 
@@ -33,7 +35,9 @@ class HiveService {
   /// [key] - ключ, по которому нужно получить данные.
   /// Возвращает данные, связанные с ключом, или `null`, если ключ не найден.
   static dynamic getUserData(String key) {
-    return userBox.get(key);
+    final data = userBox.get(key);
+    print('📖 HiveService: Получили $key = $data');
+    return data;
   }
 
   /// Удаляет данные из бокса пользовательских данных по указанному ключу.
@@ -111,7 +115,9 @@ class HiveService {
   }
 
   /// Сохраняет архивные сообщения.
-  static Future<void> saveArchivedMessages(List<Map<String, dynamic>> messages) async {
+  static Future<void> saveArchivedMessages(
+    List<Map<String, dynamic>> messages,
+  ) async {
     await settingsBox.put('archivedMessages', messages);
   }
 
@@ -147,7 +153,9 @@ class HiveService {
   }
 
   /// Сохраняет текущие сообщения.
-  static Future<void> saveCurrentMessages(List<Map<String, dynamic>> messages) async {
+  static Future<void> saveCurrentMessages(
+    List<Map<String, dynamic>> messages,
+  ) async {
     await settingsBox.put('currentMessages', messages);
   }
 
@@ -173,7 +181,11 @@ class HiveService {
       final message = archived[archiveIndex];
       final current = getCurrentMessages();
       // Check if message already exists (by senderName and isInternal)
-      final exists = current.any((m) => m['senderName'] == message['senderName'] && m['isInternal'] == message['isInternal']);
+      final exists = current.any(
+        (m) =>
+            m['senderName'] == message['senderName'] &&
+            m['isInternal'] == message['isInternal'],
+      );
       if (!exists) {
         current.add(message);
         await saveCurrentMessages(current);

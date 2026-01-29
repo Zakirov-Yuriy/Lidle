@@ -37,13 +37,16 @@ class _UsernameScreenState extends State<UsernameScreen> {
     if (username.isNotEmpty) {
       final currentState = context.read<ProfileBloc>().state;
       if (currentState is ProfileLoaded) {
-        context.read<ProfileBloc>().add(UpdateProfileEvent(
-          name: currentState.name,
-          email: currentState.email,
-          phone: currentState.phone,
-          profileImage: currentState.profileImage,
-          username: username,
-        ));
+        context.read<ProfileBloc>().add(
+          UpdateProfileEvent(
+            name: currentState.name,
+            lastName: currentState.lastName,
+            email: currentState.email,
+            phone: currentState.phone,
+            profileImage: currentState.profileImage,
+            username: username,
+          ),
+        );
         Navigator.pop(context);
       }
     }
@@ -66,9 +69,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
             // ───── Header ─────
             Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 23),
-              child: Row(
-                children: const [Header()],
-              ),
+              child: Row(children: const [Header()]),
             ),
 
             // ───── Back row ─────
@@ -120,7 +121,8 @@ class _UsernameScreenState extends State<UsernameScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, state) {
-                  if (state is ProfileLoaded && _usernameController.text.isEmpty) {
+                  if (state is ProfileLoaded &&
+                      _usernameController.text.isEmpty) {
                     _usernameController.text = state.username;
                   }
                   return Container(

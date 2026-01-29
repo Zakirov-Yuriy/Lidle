@@ -121,8 +121,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           builder: (context, state) {
                             if (state is ProfileLoaded &&
                                 state.profileImage != null) {
-                              return Image.file(
-                                File(state.profileImage!),
+                              return buildProfileImage(
+                                state.profileImage,
                                 width: 90,
                                 height: 90,
                                 fit: BoxFit.cover,

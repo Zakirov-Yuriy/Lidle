@@ -2,7 +2,6 @@
 // "Виджет: Панель управления профилем пользователя"
 // ============================================================
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,6 +38,7 @@ class ProfileDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     // Загружаем профиль при первом построении
     context.read<ProfileBloc>().add(LoadProfileEvent());
+    print('🔄 ProfileDashboard: LoadProfileEvent добавлено');
 
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
@@ -65,6 +65,12 @@ class ProfileDashboard extends StatelessWidget {
             builder: (context, navigationState) {
               return BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, profileState) {
+                  print(
+                    '📱 ProfileDashboard BlocBuilder: profileState = ${profileState.runtimeType}',
+                  );
+                  if (profileState is ProfileLoaded) {
+                    print('✅ ProfileLoaded: ${profileState.name}');
+                  }
                   return Scaffold(
                     extendBody: true,
                     backgroundColor: primaryBackground,
@@ -336,8 +342,8 @@ class _ProfileHeader extends StatelessWidget {
             backgroundColor: formBackground,
             child: profileImage != null
                 ? ClipOval(
-                    child: Image.file(
-                      File(profileImage!),
+                    child: buildProfileImage(
+                      profileImage,
                       width: 109,
                       height: 109,
                       fit: BoxFit.cover,
