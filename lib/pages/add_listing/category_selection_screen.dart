@@ -3,7 +3,6 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
-import 'package:lidle/hive_service.dart';
 import 'real_estate_subcategories_screen.dart';
 
 /// ============================================================

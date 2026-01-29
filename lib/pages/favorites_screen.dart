@@ -25,7 +25,6 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  List<Listing> _favoritedListings = [];
   Set<String> _selectedSortOptions = {}; // New state for selected sort options
 
   @override
@@ -84,7 +83,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     }
 
     if (chosenSortOption != null) {
-      switch (chosenSortOption!) {
+      switch (chosenSortOption) {
         case SortOption.newest:
           listings.sort(
             (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),

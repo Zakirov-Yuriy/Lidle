@@ -22,23 +22,14 @@ Attribute _$AttributeFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$Attribute {
   int get id => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: '')
   String get title => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isFilter => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isRange => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isMultiple => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isHidden => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isRequired => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isTitleHidden => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isSpecialDesign => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: false)
   bool get isMaxValue => throw _privateConstructorUsedError;
   dynamic get maxValue => throw _privateConstructorUsedError;
   String? get vmText => throw _privateConstructorUsedError;
@@ -63,15 +54,15 @@ abstract class $AttributeCopyWith<$Res> {
   @useResult
   $Res call({
     int id,
-    @JsonKey(defaultValue: '') String title,
-    @JsonKey(defaultValue: false) bool isFilter,
-    @JsonKey(defaultValue: false) bool isRange,
-    @JsonKey(defaultValue: false) bool isMultiple,
-    @JsonKey(defaultValue: false) bool isHidden,
-    @JsonKey(defaultValue: false) bool isRequired,
-    @JsonKey(defaultValue: false) bool isTitleHidden,
-    @JsonKey(defaultValue: false) bool isSpecialDesign,
-    @JsonKey(defaultValue: false) bool isMaxValue,
+    String title,
+    bool isFilter,
+    bool isRange,
+    bool isMultiple,
+    bool isHidden,
+    bool isRequired,
+    bool isTitleHidden,
+    bool isSpecialDesign,
+    bool isMaxValue,
     dynamic maxValue,
     String? vmText,
     String? dataType,
@@ -190,15 +181,15 @@ abstract class _$$AttributeImplCopyWith<$Res>
   @useResult
   $Res call({
     int id,
-    @JsonKey(defaultValue: '') String title,
-    @JsonKey(defaultValue: false) bool isFilter,
-    @JsonKey(defaultValue: false) bool isRange,
-    @JsonKey(defaultValue: false) bool isMultiple,
-    @JsonKey(defaultValue: false) bool isHidden,
-    @JsonKey(defaultValue: false) bool isRequired,
-    @JsonKey(defaultValue: false) bool isTitleHidden,
-    @JsonKey(defaultValue: false) bool isSpecialDesign,
-    @JsonKey(defaultValue: false) bool isMaxValue,
+    String title,
+    bool isFilter,
+    bool isRange,
+    bool isMultiple,
+    bool isHidden,
+    bool isRequired,
+    bool isTitleHidden,
+    bool isSpecialDesign,
+    bool isMaxValue,
     dynamic maxValue,
     String? vmText,
     String? dataType,
@@ -309,15 +300,15 @@ class __$$AttributeImplCopyWithImpl<$Res>
 class _$AttributeImpl implements _Attribute {
   const _$AttributeImpl({
     required this.id,
-    @JsonKey(defaultValue: '') this.title = '',
-    @JsonKey(defaultValue: false) this.isFilter = false,
-    @JsonKey(defaultValue: false) this.isRange = false,
-    @JsonKey(defaultValue: false) this.isMultiple = false,
-    @JsonKey(defaultValue: false) this.isHidden = false,
-    @JsonKey(defaultValue: false) this.isRequired = false,
-    @JsonKey(defaultValue: false) this.isTitleHidden = false,
-    @JsonKey(defaultValue: false) this.isSpecialDesign = false,
-    @JsonKey(defaultValue: false) this.isMaxValue = false,
+    this.title = '',
+    this.isFilter = false,
+    this.isRange = false,
+    this.isMultiple = false,
+    this.isHidden = false,
+    this.isRequired = false,
+    this.isTitleHidden = false,
+    this.isSpecialDesign = false,
+    this.isMaxValue = false,
     this.maxValue,
     this.vmText,
     this.dataType,
@@ -331,31 +322,31 @@ class _$AttributeImpl implements _Attribute {
   @override
   final int id;
   @override
-  @JsonKey(defaultValue: '')
+  @JsonKey()
   final String title;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isFilter;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isRange;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isMultiple;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isHidden;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isRequired;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isTitleHidden;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isSpecialDesign;
   @override
-  @JsonKey(defaultValue: false)
+  @JsonKey()
   final bool isMaxValue;
   @override
   final dynamic maxValue;
@@ -447,15 +438,15 @@ class _$AttributeImpl implements _Attribute {
 abstract class _Attribute implements Attribute {
   const factory _Attribute({
     required final int id,
-    @JsonKey(defaultValue: '') final String title,
-    @JsonKey(defaultValue: false) final bool isFilter,
-    @JsonKey(defaultValue: false) final bool isRange,
-    @JsonKey(defaultValue: false) final bool isMultiple,
-    @JsonKey(defaultValue: false) final bool isHidden,
-    @JsonKey(defaultValue: false) final bool isRequired,
-    @JsonKey(defaultValue: false) final bool isTitleHidden,
-    @JsonKey(defaultValue: false) final bool isSpecialDesign,
-    @JsonKey(defaultValue: false) final bool isMaxValue,
+    final String title,
+    final bool isFilter,
+    final bool isRange,
+    final bool isMultiple,
+    final bool isHidden,
+    final bool isRequired,
+    final bool isTitleHidden,
+    final bool isSpecialDesign,
+    final bool isMaxValue,
     final dynamic maxValue,
     final String? vmText,
     final String? dataType,
@@ -469,31 +460,22 @@ abstract class _Attribute implements Attribute {
   @override
   int get id;
   @override
-  @JsonKey(defaultValue: '')
   String get title;
   @override
-  @JsonKey(defaultValue: false)
   bool get isFilter;
   @override
-  @JsonKey(defaultValue: false)
   bool get isRange;
   @override
-  @JsonKey(defaultValue: false)
   bool get isMultiple;
   @override
-  @JsonKey(defaultValue: false)
   bool get isHidden;
   @override
-  @JsonKey(defaultValue: false)
   bool get isRequired;
   @override
-  @JsonKey(defaultValue: false)
   bool get isTitleHidden;
   @override
-  @JsonKey(defaultValue: false)
   bool get isSpecialDesign;
   @override
-  @JsonKey(defaultValue: false)
   bool get isMaxValue;
   @override
   dynamic get maxValue;
@@ -521,7 +503,6 @@ Value _$ValueFromJson(Map<String, dynamic> json) {
 /// @nodoc
 mixin _$Value {
   int get id => throw _privateConstructorUsedError;
-  @JsonKey(defaultValue: '')
   String get value => throw _privateConstructorUsedError;
   int? get order => throw _privateConstructorUsedError;
   int? get maxValue => throw _privateConstructorUsedError;
@@ -540,12 +521,7 @@ abstract class $ValueCopyWith<$Res> {
   factory $ValueCopyWith(Value value, $Res Function(Value) then) =
       _$ValueCopyWithImpl<$Res, Value>;
   @useResult
-  $Res call({
-    int id,
-    @JsonKey(defaultValue: '') String value,
-    int? order,
-    int? maxValue,
-  });
+  $Res call({int id, String value, int? order, int? maxValue});
 }
 
 /// @nodoc
@@ -600,12 +576,7 @@ abstract class _$$ValueImplCopyWith<$Res> implements $ValueCopyWith<$Res> {
   ) = __$$ValueImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({
-    int id,
-    @JsonKey(defaultValue: '') String value,
-    int? order,
-    int? maxValue,
-  });
+  $Res call({int id, String value, int? order, int? maxValue});
 }
 
 /// @nodoc
@@ -655,7 +626,7 @@ class __$$ValueImplCopyWithImpl<$Res>
 class _$ValueImpl implements _Value {
   const _$ValueImpl({
     required this.id,
-    @JsonKey(defaultValue: '') this.value = '',
+    this.value = '',
     this.order,
     this.maxValue,
   });
@@ -666,7 +637,7 @@ class _$ValueImpl implements _Value {
   @override
   final int id;
   @override
-  @JsonKey(defaultValue: '')
+  @JsonKey()
   final String value;
   @override
   final int? order;
@@ -711,7 +682,7 @@ class _$ValueImpl implements _Value {
 abstract class _Value implements Value {
   const factory _Value({
     required final int id,
-    @JsonKey(defaultValue: '') final String value,
+    final String value,
     final int? order,
     final int? maxValue,
   }) = _$ValueImpl;
@@ -721,7 +692,6 @@ abstract class _Value implements Value {
   @override
   int get id;
   @override
-  @JsonKey(defaultValue: '')
   String get value;
   @override
   int? get order;

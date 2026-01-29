@@ -10,9 +10,6 @@ import '../../hive_service.dart';
 /// Bloc для управления состоянием данных объявлений.
 /// Обрабатывает события загрузки, поиска и фильтрации объявлений.
 class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
-  /// Задержка имитации загрузки данных (в миллисекундах).
-  static const int _loadingDelayMs = 500;
-
   /// Задержка имитации поиска (в миллисекундах).
   static const int _searchDelayMs = 300;
 

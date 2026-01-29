@@ -16,10 +16,12 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
+import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/blocs/messages/messages_bloc.dart';
 import 'package:lidle/blocs/messages/messages_event.dart';
@@ -145,114 +147,127 @@ class LidleApp extends StatelessWidget {
         BlocProvider<CartBloc>(create: (context) => CartBloc()),
         BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
       ],
-      child: MaterialApp(
-        title: appTitle,
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          // scaffoldBackgroundColor: primaryBackground,
-          fontFamily: 'Roboto',
-          brightness: Brightness.dark,
-        ),
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        supportedLocales: const [Locale('en', ''), Locale('ru', '')],
-        navigatorObservers: [routeObserver],
-        home: const HomePage(),
-
-        routes: {
-          SignInScreen.routeName: (context) => const SignInScreen(),
-          ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),
-          InviteFriendsScreen.routeName: (context) =>
-              const InviteFriendsScreen(),
-          FindByPhoneScreen.routeName: (context) => const FindByPhoneScreen(),
-          ConnectContactsScreen.routeName: (context) =>
-              const ConnectContactsScreen(),
-          SettingsScreen.routeName: (context) => const SettingsScreen(),
-          '/contact_data': (context) => ContactDataScreen(),
-          '/privacy_settings': (context) => const PrivacySettingsScreen(),
-          '/chat_settings': (context) => const ChatSettingsScreen(),
-          '/username': (context) => const UsernameScreen(),
-          '/change_photo': (context) => const ChangePhotoScreen(),
-          '/devices': (context) => const DevicesScreen(),
-          QrScannerScreen.routeName: (context) => const QrScannerScreen(),
-          DeleteAccountScreen.routeName: (context) =>
-              const DeleteAccountScreen(),
-          PrivacyPolicyScreen.routeName: (context) =>
-              const PrivacyPolicyScreen(),
-          FaqScreen.routeName: (context) => const FaqScreen(),
-          SupportServiceScreen.routeName: (context) =>
-              const SupportServiceScreen(),
-          AccountRecovery.routeName: (context) => const AccountRecovery(),
-          RegisterScreen.routeName: (context) => const RegisterScreen(),
-          RegisterVerifyScreen.routeName: (context) =>
-              const RegisterVerifyScreen(),
-          AccountRecoveryCode.routeName: (context) =>
-              const AccountRecoveryCode(),
-          AccountRecoveryNewPassword.routeName: (context) =>
-              const AccountRecoveryNewPassword(),
-          ProfileDashboard.routeName: (context) => const ProfileDashboard(),
-          FiltersScreen.routeName: (context) => const FiltersScreen(),
-          FavoritesScreen.routeName: (context) => const FavoritesScreen(),
-          AddListingScreen.routeName: (context) => const AddListingScreen(),
-          CategorySelectionScreen.routeName: (context) =>
-              const CategorySelectionScreen(),
-          PaymentScreen.routeName: (context) => PaymentScreen(
-            tariffName:
-                (ModalRoute.of(context)!.settings.arguments
-                    as Map<String, String>?)?['tariffName'] ??
-                'Неизвестный тариф',
-            price:
-                (ModalRoute.of(context)!.settings.arguments
-                    as Map<String, String>?)?['price'] ??
-                '0р',
-          ),
-          CartScreen.routeName: (context) => const CartScreen(),
-          FullCategoryScreen.routeName: (context) => const FullCategoryScreen(),
-          MapScreen.routeName: (context) => const MapScreen(),
-          MyPurchasesScreen.routeName: (context) =>
-              MyPurchasesScreen(), // Add the new route
-          MessagesPage.routeName: (context) =>
-              const MessagesPage(), // Corrected route
-          MessagesArchivePage.routeName: (context) =>
-              const MessagesArchivePage(),
-          UserMessagesListScreen.routeName: (context) =>
-              const UserMessagesListScreen(),
-          UserMessagesArchiveListScreen.routeName: (context) =>
-              const UserMessagesArchiveListScreen(),
-          CompanyMessagesListScreen.routeName: (context) =>
-              const CompanyMessagesListScreen(),
-          CompanyMessagesArchiveListScreen.routeName: (context) =>
-              const CompanyMessagesArchiveListScreen(),
-          PriceOffersEmptyPage.routeName: (context) =>
-              const PriceOffersEmptyPage(),
-          PriceAcceptedPage.routeName: (context) => PriceAcceptedPage(
-            offer: ModalRoute.of(context)!.settings.arguments as Offer,
-          ),
-          PriceOffersListPage.routeName: (context) => PriceOffersListPage(
-            offer: ModalRoute.of(context)!.settings.arguments as Offer,
-          ), // Add new route
-          IncomingPriceOfferPage.routeName: (context) => IncomingPriceOfferPage(
-            offerItem:
-                ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
-          ),
-          UserAccountPage.routeName: (context) => UserAccountPage(
-            offerItem:
-                ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
-          ),
-          UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(
-            offerItem:
-                ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
-          ),
-          SupportScreen.routeName: (context) => const SupportScreen(),
-          DiscountsAndPromotionsPage.routeName: (context) =>
-              const DiscountsAndPromotionsPage(),
-          SupportChatPage.routeName: (context) => const SupportChatPage(),
-          ResponsesEmptyPage.routeName: (context) => const ResponsesEmptyPage(),
-          ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
-          MyListingsScreen.routeName: (context) => const MyListingsScreen(),
-          '/contacts': (context) => const ContactsScreen(),
-          '/user_qr': (context) => const UserQrScreen(),
-          '/qr_print_templates': (context) => const QrPrintTemplatesScreen(),
+      child: BlocListener<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthAuthenticated) {
+            // При успешной аутентификации — загрузим профиль автоматически
+            context.read<ProfileBloc>().add(LoadProfileEvent());
+          }
         },
+        child: MaterialApp(
+          title: appTitle,
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            // scaffoldBackgroundColor: primaryBackground,
+            fontFamily: 'Roboto',
+            brightness: Brightness.dark,
+          ),
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          supportedLocales: const [Locale('en', ''), Locale('ru', '')],
+          navigatorObservers: [routeObserver],
+          // Production home
+          home: const HomePage(),
+
+          routes: {
+            SignInScreen.routeName: (context) => const SignInScreen(),
+            ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),
+            InviteFriendsScreen.routeName: (context) =>
+                const InviteFriendsScreen(),
+            FindByPhoneScreen.routeName: (context) => const FindByPhoneScreen(),
+            ConnectContactsScreen.routeName: (context) =>
+                const ConnectContactsScreen(),
+            SettingsScreen.routeName: (context) => const SettingsScreen(),
+            '/contact_data': (context) => ContactDataScreen(),
+            '/privacy_settings': (context) => const PrivacySettingsScreen(),
+            '/chat_settings': (context) => const ChatSettingsScreen(),
+            '/username': (context) => const UsernameScreen(),
+            '/change_photo': (context) => const ChangePhotoScreen(),
+            '/devices': (context) => const DevicesScreen(),
+            QrScannerScreen.routeName: (context) => const QrScannerScreen(),
+            DeleteAccountScreen.routeName: (context) =>
+                const DeleteAccountScreen(),
+            PrivacyPolicyScreen.routeName: (context) =>
+                const PrivacyPolicyScreen(),
+            FaqScreen.routeName: (context) => const FaqScreen(),
+            SupportServiceScreen.routeName: (context) =>
+                const SupportServiceScreen(),
+            AccountRecovery.routeName: (context) => const AccountRecovery(),
+            RegisterScreen.routeName: (context) => const RegisterScreen(),
+            RegisterVerifyScreen.routeName: (context) =>
+                const RegisterVerifyScreen(),
+            AccountRecoveryCode.routeName: (context) =>
+                const AccountRecoveryCode(),
+            AccountRecoveryNewPassword.routeName: (context) =>
+                const AccountRecoveryNewPassword(),
+            ProfileDashboard.routeName: (context) => const ProfileDashboard(),
+            FiltersScreen.routeName: (context) => const FiltersScreen(),
+            FavoritesScreen.routeName: (context) => const FavoritesScreen(),
+            AddListingScreen.routeName: (context) => const AddListingScreen(),
+            CategorySelectionScreen.routeName: (context) =>
+                const CategorySelectionScreen(),
+            PaymentScreen.routeName: (context) => PaymentScreen(
+              tariffName:
+                  (ModalRoute.of(context)!.settings.arguments
+                      as Map<String, String>?)?['tariffName'] ??
+                  'Неизвестный тариф',
+              price:
+                  (ModalRoute.of(context)!.settings.arguments
+                      as Map<String, String>?)?['price'] ??
+                  '0р',
+            ),
+            CartScreen.routeName: (context) => const CartScreen(),
+            FullCategoryScreen.routeName: (context) =>
+                const FullCategoryScreen(),
+            MapScreen.routeName: (context) => const MapScreen(),
+            MyPurchasesScreen.routeName: (context) =>
+                MyPurchasesScreen(), // Add the new route
+            MessagesPage.routeName: (context) =>
+                const MessagesPage(), // Corrected route
+            MessagesArchivePage.routeName: (context) =>
+                const MessagesArchivePage(),
+            UserMessagesListScreen.routeName: (context) =>
+                const UserMessagesListScreen(),
+            UserMessagesArchiveListScreen.routeName: (context) =>
+                const UserMessagesArchiveListScreen(),
+            CompanyMessagesListScreen.routeName: (context) =>
+                const CompanyMessagesListScreen(),
+            CompanyMessagesArchiveListScreen.routeName: (context) =>
+                const CompanyMessagesArchiveListScreen(),
+            PriceOffersEmptyPage.routeName: (context) =>
+                const PriceOffersEmptyPage(),
+            PriceAcceptedPage.routeName: (context) => PriceAcceptedPage(
+              offer: ModalRoute.of(context)!.settings.arguments as Offer,
+            ),
+            PriceOffersListPage.routeName: (context) => PriceOffersListPage(
+              offer: ModalRoute.of(context)!.settings.arguments as Offer,
+            ), // Add new route
+            IncomingPriceOfferPage.routeName: (context) =>
+                IncomingPriceOfferPage(
+                  offerItem:
+                      ModalRoute.of(context)!.settings.arguments
+                          as PriceOfferItem,
+                ),
+            UserAccountPage.routeName: (context) => UserAccountPage(
+              offerItem:
+                  ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
+            ),
+            UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(
+              offerItem:
+                  ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
+            ),
+            SupportScreen.routeName: (context) => const SupportScreen(),
+            DiscountsAndPromotionsPage.routeName: (context) =>
+                const DiscountsAndPromotionsPage(),
+            SupportChatPage.routeName: (context) => const SupportChatPage(),
+            ResponsesEmptyPage.routeName: (context) =>
+                const ResponsesEmptyPage(),
+            ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
+            MyListingsScreen.routeName: (context) => const MyListingsScreen(),
+            '/contacts': (context) => const ContactsScreen(),
+            '/user_qr': (context) => const UserQrScreen(),
+            '/qr_print_templates': (context) => const QrPrintTemplatesScreen(),
+          },
+        ),
       ),
     );
   }

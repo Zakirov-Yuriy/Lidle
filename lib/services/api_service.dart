@@ -12,13 +12,19 @@ import 'package:lidle/hive_service.dart';
 /// Обрабатывает общие заголовки и базовый URL.
 class ApiService {
   static String get baseUrl =>
-      dotenv.get('BASE_URL', fallback: 'https://dev-api.lidle.io/v1');
+      dotenv.get('API_BASE_URL', fallback: 'https://dev-api.lidle.io/v1');
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
+    // Заголовки согласно официальной документации API Lidle
     'X-App-Client': 'mobile',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'Content-Type': 'application/json',
   };
+
+  //   Accept: application/json
+  // X-App-Client: mobile
+  // X-Client-Platform: web
+  // Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7
 
   /// Выполняет GET запрос.
   static Future<Map<String, dynamic>> get(
@@ -31,6 +37,24 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
+      print('═══════════════════════════════════════════════════════');
+      print('📥 GET REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Token provided: ${token != null}');
+      if (token != null) {
+        print('Token preview: ${token.substring(0, 30)}...');
+        print('Token type: JWT');
+      }
+      print('Headers:');
+      headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          print('  $key: Bearer [HIDDEN]');
+        } else {
+          print('  $key: $value');
+        }
+      });
+      print('═══════════════════════════════════════════════════════');
+
       final response = await http
           .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
           .timeout(const Duration(seconds: 30));
@@ -38,7 +62,7 @@ class ApiService {
       return _handleResponse(response);
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
-    } on TimeoutException catch (e) {
+    } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
       throw Exception('Неизвестная ошибка');
@@ -57,6 +81,25 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
+      print('═══════════════════════════════════════════════════════');
+      print('📤 POST REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Token provided: ${token != null}');
+      if (token != null) {
+        print('Token preview: ${token.substring(0, 30)}...');
+        print('Token type: JWT');
+      }
+      print('Headers:');
+      headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          print('  $key: Bearer [HIDDEN]');
+        } else {
+          print('  $key: $value');
+        }
+      });
+      print('Body: $body');
+      print('═══════════════════════════════════════════════════════');
+
       final response = await http
           .post(
             Uri.parse('$baseUrl$endpoint'),
@@ -68,7 +111,7 @@ class ApiService {
       return _handleResponse(response);
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
-    } on TimeoutException catch (e) {
+    } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
       throw Exception('Неизвестная ошибка');
@@ -98,7 +141,7 @@ class ApiService {
       return _handleResponse(response);
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
-    } on TimeoutException catch (e) {
+    } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
       if (e.toString().contains('Token expired')) {
@@ -108,21 +151,125 @@ class ApiService {
     }
   }
 
+  /// Выполняет PUT запрос.
+  static Future<Map<String, dynamic>> put(
+    String endpoint,
+    Map<String, dynamic> body, {
+    String? token,
+  }) async {
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      print('═══════════════════════════════════════════════════════');
+      print('📤 PUT REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Token provided: ${token != null}');
+      if (token != null) {
+        print('Token preview: ${token.substring(0, 30)}...');
+        print('Token type: JWT');
+      }
+      print('Headers:');
+      headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          print('  $key: Bearer [HIDDEN]');
+        } else {
+          print('  $key: $value');
+        }
+      });
+      print('Body: $body');
+      print('═══════════════════════════════════════════════════════');
+
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      return _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    } catch (e) {
+      throw Exception('Неизвестная ошибка');
+    }
+  }
+
+  /// Выполняет DELETE запрос (поддерживает тело запроса).
+  static Future<Map<String, dynamic>> delete(
+    String endpoint, {
+    String? token,
+    Map<String, dynamic>? body,
+  }) async {
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      print('═══════════════════════════════════════════════════════');
+      print('🗑️ DELETE REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Token provided: ${token != null}');
+      if (token != null) {
+        print('Token preview: ${token.substring(0, 30)}...');
+        print('Token type: JWT');
+      }
+      print('Headers:');
+      headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          print('  $key: Bearer [HIDDEN]');
+        } else {
+          print('  $key: $value');
+        }
+      });
+      if (body != null) {
+        print('Body: $body');
+      }
+      print('═══════════════════════════════════════════════════════');
+
+      final response = await http
+          .delete(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(const Duration(seconds: 30));
+
+      return _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    } catch (e) {
+      throw Exception('Неизвестная ошибка');
+    }
+  }
+
   /// Обрабатывает ответ от сервера.
   static Map<String, dynamic> _handleResponse(http.Response response) {
-    print('API Response status: ${response.statusCode}');
-    // Оптимизированное логирование: не логируем весь body для производительности
-    // print('API Response body: ${response.body}'); // Закомментировано для производительности
+    print('✅ API Response status: ${response.statusCode}');
+    print('📋 Response body: ${response.body}');
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    // print('API Response parsed: $data'); // Закомментировано для производительности
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
+      print('✅ Request successful!');
       return data;
     } else if (response.statusCode == 401) {
-      // Попытка обновить токен при 401
+      print('❌ 401 Unauthorized - Token might be expired or invalid');
       print('Error response: ${data['message'] ?? 'Token expired'}');
       throw Exception('Token expired');
+    } else if (response.statusCode == 500) {
+      print('❌ 500 Server Error');
+      print('Error message: ${data['message'] ?? 'Server error'}');
+      throw Exception(data['message'] ?? 'Ошибка сервера');
     } else {
+      print('❌ Error with status ${response.statusCode}');
       print('Error response: ${data['message'] ?? 'Ошибка сервера'}');
       throw Exception(data['message'] ?? 'Ошибка сервера');
     }
@@ -332,6 +479,35 @@ class ApiService {
     } catch (e) {
       // Если refresh не удался, вернуть null
       return null;
+    }
+  }
+
+  /// Получить главную страницу с каталогами и объявлениями
+  static Future<Map<String, dynamic>> getMainContent({String? token}) async {
+    try {
+      return await get('/content/main', token: token);
+    } catch (e) {
+      throw Exception('Failed to load main content: $e');
+    }
+  }
+
+  /// Сохранить просмотр объявления
+  static Future<void> saveAdvertView(int advertId, {String? token}) async {
+    try {
+      await post('/adverts/$advertId/view', {}, token: token);
+    } catch (e) {
+      print('Failed to save advert view: $e');
+      // Не пробрасываем ошибку, так как это некритично
+    }
+  }
+
+  /// Сохранить поделиться объявлением
+  static Future<void> shareAdvert(int advertId, {String? token}) async {
+    try {
+      await post('/adverts/$advertId/share', {}, token: token);
+    } catch (e) {
+      print('Failed to share advert: $e');
+      // Не пробрасываем ошибку
     }
   }
 }

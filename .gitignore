@@ -99,3 +99,11 @@ Desktop.ini
 
 # Project specific
 ВОПРОСЫ.md
+
+# Private integration/docs - ignore generated or sensitive integration documents
+/docs/integration/
+
+# Ignore local documentation, logs and GitHub workflows folder
+/docs/
+/logs/
+/.github/

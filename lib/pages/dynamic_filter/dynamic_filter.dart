@@ -117,7 +117,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Load phones
       final phonesResponse = await ApiService.get(
-        '/v1/me/settings/phones',
+        '/me/settings/phones',
         token: token,
       );
       if (phonesResponse['success'] == true) {
@@ -126,7 +126,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Load emails
       final emailsResponse = await ApiService.get(
-        '/v1/me/settings/emails',
+        '/me/settings/emails',
         token: token,
       );
       if (emailsResponse['success'] == true) {
@@ -135,7 +135,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Load telegrams
       final telegramsResponse = await ApiService.get(
-        '/v1/me/settings/telegrams',
+        '/me/settings/telegrams',
         token: token,
       );
       if (telegramsResponse['success'] == true) {
@@ -146,7 +146,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Load whatsapps
       final whatsappsResponse = await ApiService.get(
-        '/v1/me/settings/whatsapps',
+        '/me/settings/whatsapps',
         token: token,
       );
       if (whatsappsResponse['success'] == true) {

@@ -7,15 +7,15 @@ part 'filter_models.g.dart';
 class Attribute with _$Attribute {
   const factory Attribute({
     required int id,
-    @JsonKey(defaultValue: '') @Default('') String title,
-    @JsonKey(defaultValue: false) @Default(false) bool isFilter,
-    @JsonKey(defaultValue: false) @Default(false) bool isRange,
-    @JsonKey(defaultValue: false) @Default(false) bool isMultiple,
-    @JsonKey(defaultValue: false) @Default(false) bool isHidden,
-    @JsonKey(defaultValue: false) @Default(false) bool isRequired,
-    @JsonKey(defaultValue: false) @Default(false) bool isTitleHidden,
-    @JsonKey(defaultValue: false) @Default(false) bool isSpecialDesign,
-    @JsonKey(defaultValue: false) @Default(false) bool isMaxValue,
+    @Default('') String title,
+    @Default(false) bool isFilter,
+    @Default(false) bool isRange,
+    @Default(false) bool isMultiple,
+    @Default(false) bool isHidden,
+    @Default(false) bool isRequired,
+    @Default(false) bool isTitleHidden,
+    @Default(false) bool isSpecialDesign,
+    @Default(false) bool isMaxValue,
     dynamic maxValue,
     String? vmText,
     String? dataType,
@@ -31,7 +31,7 @@ class Attribute with _$Attribute {
 class Value with _$Value {
   const factory Value({
     required int id,
-    @JsonKey(defaultValue: '') @Default('') String value,
+    @Default('') String value,
     int? order,
     int? maxValue,
   }) = _Value;

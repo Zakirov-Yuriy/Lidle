@@ -4,16 +4,264 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/services/contact_service.dart';
+import 'package:lidle/hive_service.dart';
 
-class ContactDataScreen extends StatelessWidget {
+class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
 
-  ContactDataScreen({super.key});
+  const ContactDataScreen({super.key});
+
+  @override
+  State<ContactDataScreen> createState() => _ContactDataScreenState();
+}
+
+class _ContactDataScreenState extends State<ContactDataScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _phone1Controller;
+  late TextEditingController _phone2Controller;
+  late TextEditingController _telegramController;
+  late TextEditingController _whatsappController;
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  // Храним ID контактов для обновления
+  int? _phone1Id;
+  int? _phone2Id;
+  int? _emailId;
 
   static const bgColor = Color(0xFF243241);
   static const fieldColor = Color(0xFF1F2C3A);
   static const accentColor = Color(0xFF00B7FF);
   static const hintColor = Colors.white54;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phone1Controller = TextEditingController();
+    _phone2Controller = TextEditingController();
+    _telegramController = TextEditingController();
+    _whatsappController = TextEditingController();
+    _loadContactData();
+  }
+
+  Future<void> _loadContactData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        setState(() {
+          _errorMessage = 'Токен не найден';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('🔐 Token from Hive: ${token.substring(0, 20)}...');
+      print('🔐 Token length: ${token.length}');
+      print(
+        '🔐 Token starts with: ${token.startsWith('eyJ') ? 'JWT (valid format)' : 'Unknown format'}',
+      );
+
+      // Загружаем телефоны и почты
+      final phonesResponse = await ContactService.getPhones(token: token);
+      final emailsResponse = await ContactService.getEmails(token: token);
+
+      print(
+        '✅ Loaded ${phonesResponse.data.length} phones and ${emailsResponse.data.length} emails',
+      );
+
+      // Загружаем сохраненные данные
+      final name = HiveService.getUserData('name') as String? ?? '';
+      final telegram = HiveService.getUserData('telegram') as String? ?? '';
+      final whatsapp = HiveService.getUserData('whatsapp') as String? ?? '';
+
+      // Извлекаем ID и значения контактов
+      String email = '';
+      if (emailsResponse.data.isNotEmpty) {
+        _emailId = emailsResponse.data.first.id;
+        email = emailsResponse.data.first.email;
+      }
+
+      String phone1 = '';
+      if (phonesResponse.data.isNotEmpty) {
+        _phone1Id = phonesResponse.data.first.id;
+        phone1 = phonesResponse.data.first.phone;
+      }
+
+      String phone2 = '';
+      if (phonesResponse.data.length > 1) {
+        _phone2Id = phonesResponse.data[1].id;
+        phone2 = phonesResponse.data[1].phone;
+      }
+
+      setState(() {
+        _nameController.text = name;
+        _emailController.text = email;
+        _phone1Controller.text = phone1;
+        _phone2Controller.text = phone2;
+        _telegramController.text = telegram;
+        _whatsappController.text = whatsapp;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Ошибка загрузки: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _saveContactData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        setState(() {
+          _errorMessage = 'Токен не найден';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('💾 Saving contact data...');
+      print('Token: ${token.substring(0, 20)}...');
+      print(
+        'Email ID: $_emailId, Phone1 ID: $_phone1Id, Phone2 ID: $_phone2Id',
+      );
+
+      // Сохраняем в локальное хранилище
+      await HiveService.saveUserData('name', _nameController.text);
+      await HiveService.saveUserData('telegram', _telegramController.text);
+      await HiveService.saveUserData('whatsapp', _whatsappController.text);
+
+      // Обновляем или добавляем email
+      if (_emailController.text.isNotEmpty) {
+        try {
+          if (_emailId != null) {
+            print('📧 Updating email (ID: $_emailId)');
+            // Обновляем существующий email
+            await ContactService.updateEmail(
+              id: _emailId!,
+              email: _emailController.text,
+              token: token,
+            );
+            print('✅ Email updated successfully');
+          } else {
+            print('📧 Adding new email');
+            // Добавляем новый email
+            await ContactService.addEmail(
+              email: _emailController.text,
+              token: token,
+            );
+            print('✅ Email added successfully');
+          }
+        } catch (e) {
+          print('❌ Email update error: $e');
+        }
+      }
+
+      // Обновляем или добавляем первый телефон
+      if (_phone1Controller.text.isNotEmpty) {
+        try {
+          if (_phone1Id != null) {
+            print('☎️ Updating phone1 (ID: $_phone1Id)');
+            // Обновляем существующий телефон
+            await ContactService.updatePhone(
+              id: _phone1Id!,
+              phone: _phone1Controller.text,
+              token: token,
+            );
+            print('✅ Phone1 updated successfully');
+          } else {
+            print('☎️ Adding new phone1');
+            // Добавляем новый телефон
+            await ContactService.addPhone(
+              phone: _phone1Controller.text,
+              token: token,
+            );
+            print('✅ Phone1 added successfully');
+          }
+        } catch (e) {
+          print('❌ Phone 1 update error: $e');
+        }
+      }
+
+      // Обновляем или добавляем второй телефон
+      if (_phone2Controller.text.isNotEmpty) {
+        try {
+          if (_phone2Id != null) {
+            print('☎️ Updating phone2 (ID: $_phone2Id)');
+            // Обновляем существующий телефон
+            await ContactService.updatePhone(
+              id: _phone2Id!,
+              phone: _phone2Controller.text,
+              token: token,
+            );
+            print('✅ Phone2 updated successfully');
+          } else {
+            print('☎️ Adding new phone2');
+            // Добавляем новый телефон
+            await ContactService.addPhone(
+              phone: _phone2Controller.text,
+              token: token,
+            );
+            print('✅ Phone2 added successfully');
+          }
+        } catch (e) {
+          print('Phone 2 update error: $e');
+        }
+      }
+
+      // После успешных изменений — проверяем данные на сервере
+      print('🔎 Verifying saved contact data by fetching from server...');
+      try {
+        await _loadContactData();
+        print('✅ Verification GET complete');
+      } catch (e) {
+        print('❗ Reload after save failed: $e');
+      }
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = null;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Контактные данные сохранены')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Ошибка сохранения: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phone1Controller.dispose();
+    _phone2Controller.dispose();
+    _telegramController.dispose();
+    _whatsappController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +275,7 @@ class ContactDataScreen extends StatelessWidget {
               // ───── Header ─────
               Padding(
                 padding: const EdgeInsets.only(bottom: 20, right: 23),
-                child: Row(
-                  children: const [Header()],
-                ),
+                child: Row(children: const [Header()]),
               ),
 
               // ───── Back row ─────
@@ -84,52 +330,80 @@ class ContactDataScreen extends StatelessWidget {
 
               const SizedBox(height: 10),
 
-              // ───── Fields ─────
-              _label('Контактное лицо'),
-              _field(initialValue: 'Александр'),
-
-              _label('Электронная почта'),
-              _field(initialValue: 'AlexAlex@mail.ru'),
-
-              _label('Номер телефона 1'),
-              _field(initialValue: '+7 949 456 65 56'),
-
-              _label('Номер телефона 2'),
-              _field(hint: 'Введите'),
-
-              _label('Ссылка на ваш чат в телеграм'),
-              _field(initialValue: 'https://t.me/Namename'),
-
-              _label('Ссылка на ваш whatsapp'),
-              _field(initialValue: 'https://whatsapp/Namename'),
-
-              const SizedBox(height: 24),
-
-              // ───── Save button ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 47,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    onPressed: () {},
-                    child: const Text(
-                      'Сохранить',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.red, fontSize: 14),
+                    ),
+                  ),
+                ),
+
+              if (_isLoading)
+                Padding(
+                  padding: const EdgeInsets.all(25),
+                  child: SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: CircularProgressIndicator(color: accentColor),
+                    ),
+                  ),
+                )
+              else ...[
+                // ───── Fields ─────
+                _label('Контактное лицо'),
+                _field(_nameController, ''),
+
+                _label('Электронная почта'),
+                _field(_emailController, ''),
+
+                _label('Номер телефона 1'),
+                _field(_phone1Controller, ''),
+
+                _label('Номер телефона 2'),
+                _field(_phone2Controller, 'Введите'),
+
+                _label('Ссылка на ваш чат в телеграм'),
+                _field(_telegramController, ''),
+
+                _label('Ссылка на ваш whatsapp'),
+                _field(_whatsappController, ''),
+
+                const SizedBox(height: 24),
+
+                // ───── Save button ─────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 47,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: accentColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                      ),
+                      onPressed: _isLoading ? null : _saveContactData,
+                      child: const Text(
+                        'Сохранить',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
 
               const SizedBox(height: 32),
             ],
@@ -143,7 +417,7 @@ class ContactDataScreen extends StatelessWidget {
   // HELPERS
   // ─────────────────────────────────────────────
 
-  static Widget _label(String text) {
+  Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(25, 14, 25, 6),
       child: Text(
@@ -157,7 +431,7 @@ class ContactDataScreen extends StatelessWidget {
     );
   }
 
-  static Widget _field({String? initialValue, String? hint}) {
+  Widget _field(TextEditingController controller, String hint) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Container(
@@ -169,12 +443,11 @@ class ContactDataScreen extends StatelessWidget {
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: TextField(
-          controller:
-              initialValue != null ? TextEditingController(text: initialValue) : null,
+          controller: controller,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
             border: InputBorder.none,
-            hintText: hint,
+            hintText: hint.isEmpty ? null : hint,
             hintStyle: const TextStyle(color: hintColor),
           ),
         ),
