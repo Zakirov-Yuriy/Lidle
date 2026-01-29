@@ -39,13 +39,16 @@ class _SignInScreenState extends State<SignInScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          Navigator.of(context).pushReplacementNamed(ProfileDashboard.routeName);
+          Navigator.of(
+            context,
+          ).pushReplacementNamed(ProfileDashboard.routeName);
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
                 message: state.message,
-                onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                onClose: () =>
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
               backgroundColor: primaryBackground,
             ),
@@ -85,7 +88,6 @@ class _SignInScreenState extends State<SignInScreen> {
                               ),
                               children: const [
                                 TextSpan(text: 'Вы уже почти с нами'),
-                                
                               ],
                             ),
                           ),
@@ -114,8 +116,12 @@ class _SignInScreenState extends State<SignInScreen> {
                             ),
                             decoration: _inputDecoration('Введите'),
                             validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(errorText: 'Введите почту'),
-                              FormBuilderValidators.email(errorText: 'Неверный формат почты'),
+                              FormBuilderValidators.required(
+                                errorText: 'Введите почту',
+                              ),
+                              FormBuilderValidators.email(
+                                errorText: 'Неверный формат почты',
+                              ),
                             ]),
                           ),
                           const SizedBox(height: 9),
@@ -145,8 +151,13 @@ class _SignInScreenState extends State<SignInScreen> {
                               ),
                             ),
                             validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(errorText: 'Введите пароль'),
-                              FormBuilderValidators.minLength(6, errorText: 'Минимум 6 символов'),
+                              FormBuilderValidators.required(
+                                errorText: 'Введите пароль',
+                              ),
+                              FormBuilderValidators.minLength(
+                                6,
+                                errorText: 'Минимум 6 символов',
+                              ),
                             ]),
                           ),
 
@@ -177,9 +188,13 @@ class _SignInScreenState extends State<SignInScreen> {
                             width: double.infinity,
                             height: 53,
                             child: ElevatedButton(
-                              onPressed: state is AuthLoading ? null : _onSubmit,
+                              onPressed: state is AuthLoading
+                                  ? null
+                                  : _onSubmit,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: state is AuthLoading ? Colors.grey : activeIconColor,
+                                backgroundColor: state is AuthLoading
+                                    ? Colors.grey
+                                    : activeIconColor,
                                 foregroundColor: textPrimary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(5),
@@ -192,7 +207,10 @@ class _SignInScreenState extends State<SignInScreen> {
                                       width: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
                                       ),
                                     )
                                   : const Text(
@@ -236,11 +254,13 @@ class _SignInScreenState extends State<SignInScreen> {
     formState?.save();
     final formData = formState?.value ?? {};
 
-    context.read<AuthBloc>().add(LoginEvent(
-      email: (formData['email'] as String?)?.trim() ?? '',
-      password: (formData['password'] as String?)?.trim() ?? '',
-      remember: true,
-    ));
+    context.read<AuthBloc>().add(
+      LoginEvent(
+        email: (formData['email'] as String?)?.trim() ?? '',
+        password: (formData['password'] as String?)?.trim() ?? '',
+        remember: true,
+      ),
+    );
   }
 
   // ============================================================

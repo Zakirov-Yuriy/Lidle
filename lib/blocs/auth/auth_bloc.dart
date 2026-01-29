@@ -32,9 +32,53 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         remember: event.remember,
       );
 
-      final token = response['data']?['access_token'] ?? response['data']?['token'] ?? response['access_token'] ?? response['token'];
+      final token =
+          response['data']?['access_token'] ??
+          response['data']?['token'] ??
+          response['access_token'] ??
+          response['token'];
       if (token != null) {
         await HiveService.saveUserData('token', token);
+
+        // Сохраняем возможные данные пользователя из ответа сразу в Hive
+        final data = response['data'] ?? response;
+        Map<String, dynamic>? userData;
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('user') &&
+              data['user'] is Map<String, dynamic>) {
+            userData = Map<String, dynamic>.from(data['user']);
+          } else {
+            userData = Map<String, dynamic>.from(data);
+          }
+        }
+
+        if (userData != null) {
+          if (userData.containsKey('name')) {
+            await HiveService.saveUserData('name', userData['name'] ?? '');
+          }
+          if (userData.containsKey('email')) {
+            await HiveService.saveUserData('email', userData['email'] ?? '');
+          }
+          if (userData.containsKey('phone')) {
+            await HiveService.saveUserData('phone', userData['phone'] ?? '');
+          }
+          if (userData.containsKey('id')) {
+            await HiveService.saveUserData('userId', '${userData['id']}');
+          }
+          if (userData.containsKey('username')) {
+            await HiveService.saveUserData(
+              'username',
+              userData['username'] ?? '',
+            );
+          }
+          if (userData.containsKey('avatar')) {
+            await HiveService.saveUserData(
+              'profileImage',
+              userData['avatar'] ?? '',
+            );
+          }
+        }
+
         emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthError(message: 'Неверные учетные данные'));
@@ -58,9 +102,53 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         passwordConfirmation: event.passwordConfirmation,
       );
 
-      final token = response['data']?['access_token'] ?? response['data']?['token'] ?? response['access_token'] ?? response['token'];
+      final token =
+          response['data']?['access_token'] ??
+          response['data']?['token'] ??
+          response['access_token'] ??
+          response['token'];
       if (token != null) {
         await HiveService.saveUserData('token', token);
+
+        // Сохраняем возможные данные пользователя из ответа сразу в Hive
+        final data = response['data'] ?? response;
+        Map<String, dynamic>? userData;
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('user') &&
+              data['user'] is Map<String, dynamic>) {
+            userData = Map<String, dynamic>.from(data['user']);
+          } else {
+            userData = Map<String, dynamic>.from(data);
+          }
+        }
+
+        if (userData != null) {
+          if (userData.containsKey('name')) {
+            await HiveService.saveUserData('name', userData['name'] ?? '');
+          }
+          if (userData.containsKey('email')) {
+            await HiveService.saveUserData('email', userData['email'] ?? '');
+          }
+          if (userData.containsKey('phone')) {
+            await HiveService.saveUserData('phone', userData['phone'] ?? '');
+          }
+          if (userData.containsKey('id')) {
+            await HiveService.saveUserData('userId', '${userData['id']}');
+          }
+          if (userData.containsKey('username')) {
+            await HiveService.saveUserData(
+              'username',
+              userData['username'] ?? '',
+            );
+          }
+          if (userData.containsKey('avatar')) {
+            await HiveService.saveUserData(
+              'profileImage',
+              userData['avatar'] ?? '',
+            );
+          }
+        }
+
         emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
@@ -72,13 +160,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   /// Обработчик события верификации email.
   /// Верифицирует email пользователя с помощью кода.
-  Future<void> _onVerifyEmail(VerifyEmailEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onVerifyEmail(
+    VerifyEmailEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
-      await AuthService.verify(
-        email: event.email,
-        code: event.code,
-      );
+      await AuthService.verify(email: event.email, code: event.code);
       emit(AuthEmailVerified());
     } catch (e) {
       emit(AuthError(message: e.toString()));
@@ -99,7 +187,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   /// Обработчик события сброса пароля.
   /// Сбрасывает пароль пользователя.
-  Future<void> _onResetPassword(ResetPasswordEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onResetPassword(
+    ResetPasswordEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       await AuthService.resetPassword(
@@ -131,7 +222,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   /// Обработчик события проверки статуса аутентификации.
   /// Проверяет, сохранен ли токен пользователя.
-  Future<void> _onCheckAuthStatus(CheckAuthStatusEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onCheckAuthStatus(
+    CheckAuthStatusEvent event,
+    Emitter<AuthState> emit,
+  ) async {
     emit(AuthLoading());
     try {
       final token = await HiveService.getUserData('token');

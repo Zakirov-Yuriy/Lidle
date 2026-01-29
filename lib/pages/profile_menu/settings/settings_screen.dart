@@ -12,6 +12,8 @@ import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/contact_service.dart';
+import 'package:lidle/hive_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
@@ -27,11 +29,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const cardColor = Color(0xFF1F2C3A);
   static const dangerColor = Color(0xFFFF3B30);
 
+  int? _mainPhoneId; // ID основного номера телефона для обновления
+  String? _mainPhoneValue; // Значение основного телефона
+
   @override
   void initState() {
     super.initState();
     // Загружаем профиль пользователя
     context.read<ProfileBloc>().add(LoadProfileEvent());
+    _loadMainPhoneId();
+  }
+
+  Future<void> _loadMainPhoneId() async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token != null) {
+        final phonesResponse = await ContactService.getPhones(token: token);
+        if (phonesResponse.data.isNotEmpty) {
+          setState(() {
+            _mainPhoneId = phonesResponse.data.first.id;
+            _mainPhoneValue = phonesResponse.data.first.phone; // save value
+          });
+        } else {
+          setState(() {
+            _mainPhoneValue = null;
+          });
+        }
+      }
+    } catch (e) {
+      print('Error loading main phone ID: $e');
+    }
   }
 
   @override
@@ -92,7 +119,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         borderRadius: BorderRadius.circular(45),
                         child: BlocBuilder<ProfileBloc, ProfileState>(
                           builder: (context, state) {
-                            if (state is ProfileLoaded && state.profileImage != null) {
+                            if (state is ProfileLoaded &&
+                                state.profileImage != null) {
                               return Image.file(
                                 File(state.profileImage!),
                                 width: 90,
@@ -122,17 +150,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
-                          'Vlad',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      children: [
+                        BlocBuilder<ProfileBloc, ProfileState>(
+                          builder: (context, state) {
+                            final displayName = state is ProfileLoaded
+                                ? state.name
+                                : 'Vlad';
+                            return Text(
+                              displayName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
                         ),
-                        SizedBox(height: 4),
-                        Text(
+                        const SizedBox(height: 4),
+                        const Text(
                           'В сети',
                           style: TextStyle(color: Colors.white54, fontSize: 16),
                         ),
@@ -146,11 +181,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Divider(color: Colors.white24),
 
               // ───── Account info ─────
-              _infoItem(
-                title: 'Аккаунт пользователя',
-                value: '+7 949 545 54 45',
-                hint: 'Нажмите, чтобы изменить номер телефона',
-                onTapHint: _showChangePhoneDialog,
+              BlocBuilder<ProfileBloc, ProfileState>(
+                builder: (context, state) {
+                  // Сначала используем значение, полученное из ContactService
+                  final phoneValue =
+                      _mainPhoneValue != null && _mainPhoneValue!.isNotEmpty
+                      ? _mainPhoneValue!
+                      : (state is ProfileLoaded && state.phone.isNotEmpty
+                            ? state.phone
+                            : '+7 949 545 54 45');
+                  return _infoItem(
+                    title: 'Аккаунт пользователя',
+                    value: phoneValue,
+                    valueColor: Colors.white,
+                    hint: 'Нажмите, чтобы изменить номер телефона',
+                    onTapHint: _showChangePhoneDialog,
+                  );
+                },
               ),
               BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, state) {
@@ -187,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           qrData =
                               '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
                         }
-                        return _qrBox(qrData); 
+                        return _qrBox(qrData);
                       },
                     ),
                   ],
@@ -322,6 +369,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _infoItem({
     required String title,
     required String value,
+    Color? valueColor,
     String? hint,
     VoidCallback? onTapHint,
     VoidCallback? onTap,
@@ -338,7 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(color: Colors.white38, fontSize: 16),
+            style: TextStyle(color: valueColor ?? Colors.white38, fontSize: 16),
           ),
           if (hint != null) ...[
             const SizedBox(height: 4),
@@ -355,141 +403,234 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (onTap != null) {
-      item = GestureDetector(
-        onTap: onTap,
-        child: item,
-      );
+      item = GestureDetector(onTap: onTap, child: item);
     }
 
     return item;
   }
 
   void _showChangePhoneDialog() {
+    final phoneController = TextEditingController();
+    bool isLoading = false;
+    // Предзаполняем контроллер текущим основным телефоном если есть
+    if (_mainPhoneValue != null) phoneController.text = _mainPhoneValue!;
+
     showDialog(
       context: context,
       builder: (context) {
-        return Dialog(
-          backgroundColor: const Color(0xFF1F2C3A),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: const Color(0xFF1F2C3A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.close, color: Colors.white),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(Icons.close, color: Colors.white),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const Center(
-                  child: Text(
-                    'Номер регистрации\nаккаунта',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                RichText(
-                  textAlign: TextAlign.start,
-                  text: const TextSpan(
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      height: 1.4,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: 'Внимание: ',
+                    const Center(
+                      child: Text(
+                        'Номер регистрации\nаккаунта',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.yellowAccent,
+                          color: Colors.white,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      TextSpan(
-                        text:
-                            'для смены основного номера телефона введите новый номер и подтвердите',
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Новый номер',
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF16202A),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const TextField(
-                    style: TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: '+7 949 456 54 54',
-                      hintStyle: TextStyle(color: Colors.white),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Отмена',
+                    const SizedBox(height: 20),
+                    RichText(
+                      textAlign: TextAlign.start,
+                      text: const TextSpan(
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
-                          decoration: TextDecoration.underline,
+                          height: 1.4,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: 'Внимание: ',
+                            style: TextStyle(
+                              color: Colors.yellowAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                'для смены основного номера телефона введите новый номер и подтвердите',
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Новый номер',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16202A),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: phoneController,
+                        style: const TextStyle(color: Colors.white),
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: '+7 949 456 54 54',
+                          hintStyle: TextStyle(color: Colors.white),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Action for sending
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        side: const BorderSide(color: activeIconColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: isLoading
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: const Text(
+                            'Отмена',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (phoneController.text.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Введите номер телефона'),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setDialogState(() {
+                                    isLoading = true;
+                                  });
+
+                                  try {
+                                    final token =
+                                        HiveService.getUserData('token')
+                                            as String?;
+                                    if (token == null) {
+                                      throw Exception('Токен не найден');
+                                    }
+
+                                    if (_mainPhoneId != null) {
+                                      // Обновляем существующий номер
+                                      await ContactService.updatePhone(
+                                        id: _mainPhoneId!,
+                                        phone: phoneController.text,
+                                        token: token,
+                                      );
+                                    } else {
+                                      // Добавляем новый номер
+                                      await ContactService.addPhone(
+                                        phone: phoneController.text,
+                                        token: token,
+                                      );
+                                    }
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Номер телефона успешно обновлен',
+                                          ),
+                                        ),
+                                      );
+                                      Navigator.pop(context);
+                                      // Перезагружаем ID
+                                      _loadMainPhoneId();
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Ошибка: ${e.toString()}',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    setDialogState(() {
+                                      isLoading = false;
+                                    });
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            side: const BorderSide(color: activeIconColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      activeIconColor,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Отправить',
+                                  style: TextStyle(
+                                    color: activeIconColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
                         ),
-                      ),
-                      child: const Text(
-                        'Отправить',
-                        style: TextStyle(color: activeIconColor, fontSize: 16),
-                      ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -637,14 +778,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _notificationOption(
                       'Включить уведомления',
                       selectedNotification == 'Включить уведомления',
-                      () => setDialogState(() => selectedNotification = 'Включить уведомления'),
+                      () => setDialogState(
+                        () => selectedNotification = 'Включить уведомления',
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _notificationOption(
                       'Выключить уведомления',
                       selectedNotification == 'Выключить уведомления',
-                      () =>
-                          setDialogState(() => selectedNotification = 'Выключить уведомления'),
+                      () => setDialogState(
+                        () => selectedNotification = 'Выключить уведомления',
+                      ),
                     ),
                     const SizedBox(height: 32),
                     SizedBox(
@@ -699,10 +843,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white54,
-                width: 1.5,
-              ),
+              border: Border.all(color: Colors.white54, width: 1.5),
             ),
             child: isSelected
                 ? Center(
@@ -722,7 +863,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _notificationOption(String label, bool isSelected, VoidCallback onTap) {
+  Widget _notificationOption(
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -738,10 +883,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             height: 20,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white54,
-                width: 1.5,
-              ),
+              border: Border.all(color: Colors.white54, width: 1.5),
             ),
             child: isSelected
                 ? Center(
@@ -781,10 +923,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (onTap != null) {
-      item = GestureDetector(
-        onTap: onTap,
-        child: item,
-      );
+      item = GestureDetector(onTap: onTap, child: item);
     }
 
     return item;

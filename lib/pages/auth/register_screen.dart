@@ -9,7 +9,6 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 
-
 // ============================================================
 // "Экран регистрации пользователя"
 // ============================================================
@@ -47,14 +46,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     formState?.save();
     final formData = formState?.value ?? {};
 
-    context.read<AuthBloc>().add(RegisterEvent(
-      name: (formData['name'] as String?)?.trim() ?? '',
-      lastName: (formData['lastName'] as String?)?.trim() ?? '',
-      email: (formData['email'] as String?)?.trim() ?? '',
-      phone: (formData['phone'] as String?)?.trim() ?? '',
-      password: (formData['password'] as String?)?.trim() ?? '',
-      passwordConfirmation: (formData['passwordConfirmation'] as String?)?.trim() ?? '',
-    ));
+    context.read<AuthBloc>().add(
+      RegisterEvent(
+        name: (formData['name'] as String?)?.trim() ?? '',
+        lastName: (formData['lastName'] as String?)?.trim() ?? '',
+        email: (formData['email'] as String?)?.trim() ?? '',
+        phone: (formData['phone'] as String?)?.trim() ?? '',
+        password: (formData['password'] as String?)?.trim() ?? '',
+        passwordConfirmation:
+            (formData['passwordConfirmation'] as String?)?.trim() ?? '',
+      ),
+    );
   }
 
   // ============================================================
@@ -67,13 +69,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
-          Navigator.of(context).pushReplacementNamed('/profile-dashboard'); // или ProfileDashboard.routeName, но проверим
+          Navigator.of(context).pushReplacementNamed(
+            '/profile-dashboard',
+          ); // или ProfileDashboard.routeName, но проверим
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
-                onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                message:
+                    'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                onClose: () =>
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
               backgroundColor: primaryBackground,
             ),
@@ -86,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           body: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 25),
-            child: FormBuilder(
+              child: FormBuilder(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +105,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           borderRadius: BorderRadius.circular(24),
                           child: const Row(
                             children: [
-                              Icon(Icons.chevron_left_rounded, color: Color(0xFF60A5FA)),
+                              Icon(
+                                Icons.chevron_left_rounded,
+                                color: Color(0xFF60A5FA),
+                              ),
                               Text(
                                 'Назад',
                                 style: TextStyle(
@@ -135,7 +144,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Ваше имя',
                       'Введите',
                       validators: [
-                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите ваше имя'),
+                        FormBuilderValidators.required(
+                          errorText: 'Пожалуйста, введите ваше имя',
+                        ),
                       ],
                     ),
                     _buildTextField(
@@ -143,7 +154,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Ваша фамилия',
                       'Введите',
                       validators: [
-                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите вашу фамилию'),
+                        FormBuilderValidators.required(
+                          errorText: 'Пожалуйста, введите вашу фамилию',
+                        ),
                       ],
                     ),
                     _buildTextField(
@@ -152,8 +165,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Введите',
                       keyboard: TextInputType.emailAddress,
                       validators: [
-                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите email'),
-                        FormBuilderValidators.email(errorText: 'Пожалуйста, введите корректный email'),
+                        FormBuilderValidators.required(
+                          errorText: 'Пожалуйста, введите email',
+                        ),
+                        FormBuilderValidators.email(
+                          errorText: 'Пожалуйста, введите корректный email',
+                        ),
                       ],
                     ),
                     _buildTextField(
@@ -162,13 +179,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       'Введите',
                       keyboard: TextInputType.phone,
                       validators: [
-                        FormBuilderValidators.required(errorText: 'Пожалуйста, введите номер телефона'),
-                        FormBuilderValidators.minLength(10, errorText: 'Пожалуйста, введите корректный номер телефона'),
-                      ],                 
+                        FormBuilderValidators.required(
+                          errorText: 'Пожалуйста, введите номер телефона',
+                        ),
+                        FormBuilderValidators.minLength(
+                          10,
+                          errorText:
+                              'Пожалуйста, введите корректный номер телефона',
+                        ),
+                      ],
                     ),
                     _buildPasswordField('password', 'Пароль', 'Введите', true),
-                    _buildPasswordField('passwordConfirmation', 'Повторите пароль', 'Введите', false),
-                    const SizedBox(height:10),
+                    _buildPasswordField(
+                      'passwordConfirmation',
+                      'Повторите пароль',
+                      'Введите',
+                      false,
+                    ),
+                    const SizedBox(height: 10),
                     _buildCheckBox(
                       value: agreeTerms,
                       text: RichText(
@@ -228,16 +256,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ],
                         ),
                       ),
-                      onChanged: (v) => setState(() => agreeMarketing = v ?? false),
+                      onChanged: (v) =>
+                          setState(() => agreeMarketing = v ?? false),
                     ),
                     const SizedBox(height: 25),
                     SizedBox(
-                      width: double.infinity,   
+                      width: double.infinity,
                       height: 53,
                       child: ElevatedButton(
-                        onPressed: (agreeTerms && state is! AuthLoading) ? _trySubmit : null,
+                        onPressed: (agreeTerms && state is! AuthLoading)
+                            ? _trySubmit
+                            : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: state is AuthLoading ? primaryBlue : primaryBlue,
+                          backgroundColor: state is AuthLoading
+                              ? primaryBlue
+                              : primaryBlue,
                           disabledBackgroundColor: primaryBlue,
                           foregroundColor: Colors.white,
                           elevation: 0,
@@ -251,7 +284,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               )
                             : const Text(
@@ -259,7 +294,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w400,
-                                  color: Colors.white
+                                  color: Colors.white,
                                 ),
                               ),
                       ),
@@ -324,7 +359,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ============================================================
   // "Виджет поля пароля с показом/скрытием"
   // ============================================================
-  Widget _buildPasswordField(String name, String label, String hint, bool isFirst) {
+  Widget _buildPasswordField(
+    String name,
+    String label,
+    String hint,
+    bool isFirst,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -341,8 +381,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             style: const TextStyle(color: Colors.white, fontSize: 14),
             autovalidateMode: AutovalidateMode.onUserInteraction,
             validator: FormBuilderValidators.compose([
-              FormBuilderValidators.required(errorText: 'Пожалуйста, введите пароль'),
-              FormBuilderValidators.minLength(6, errorText: 'Пароль должен быть не менее 6 символов'),
+              FormBuilderValidators.required(
+                errorText: 'Пожалуйста, введите пароль',
+              ),
+              FormBuilderValidators.minLength(
+                6,
+                errorText: 'Пароль должен быть не менее 6 символов',
+              ),
               if (!isFirst)
                 (val) {
                   if (val != _formKey.currentState?.fields['password']?.value) {

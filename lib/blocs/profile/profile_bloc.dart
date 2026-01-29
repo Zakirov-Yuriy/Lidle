@@ -31,14 +31,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final profileImage = HiveService.getUserData('profileImage');
       final username = HiveService.getUserData('username') ?? '@Name';
 
-      emit(ProfileLoaded(
-        name: name,
-        email: email,
-        userId: userId,
-        phone: phone,
-        profileImage: profileImage,
-        username: username,
-      ));
+      emit(
+        ProfileLoaded(
+          name: name,
+          email: email,
+          userId: userId,
+          phone: phone,
+          profileImage: profileImage,
+          username: username,
+        ),
+      );
     } catch (e) {
       emit(ProfileError(e.toString()));
     }
@@ -66,14 +68,17 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       // Имитация успешного обновления
       await Future.delayed(const Duration(milliseconds: 500));
 
-      emit(ProfileLoaded(
-        name: event.name,
-        email: event.email,
-        userId: (state as ProfileLoaded).userId,
-        phone: event.phone,
-        profileImage: event.profileImage ?? (state as ProfileLoaded).profileImage,
-        username: event.username ?? (state as ProfileLoaded).username,
-      ));
+      emit(
+        ProfileLoaded(
+          name: event.name,
+          email: event.email,
+          userId: (state as ProfileLoaded).userId,
+          phone: event.phone,
+          profileImage:
+              event.profileImage ?? (state as ProfileLoaded).profileImage,
+          username: event.username ?? (state as ProfileLoaded).username,
+        ),
+      );
 
       // Через некоторое время возвращаем состояние успешного обновления
       await Future.delayed(const Duration(seconds: 2));

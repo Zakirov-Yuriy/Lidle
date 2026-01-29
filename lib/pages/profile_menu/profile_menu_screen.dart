@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/contact_service.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
@@ -27,80 +29,164 @@ class ProfileMenuScreen extends StatefulWidget {
 }
 
 class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
+  String? _mainPhoneValue;
+  int? _mainPhoneId;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Загружаем профиль пользователя
     BlocProvider.of<ProfileBloc>(context).add(LoadProfileEvent());
+    // Загружаем основной телефон пользователя из API
+    _loadMainPhoneValue();
+  }
+
+  Future<void> _loadMainPhoneValue() async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token != null) {
+        final phonesResponse = await ContactService.getPhones(token: token);
+        if (phonesResponse.data.isNotEmpty) {
+          setState(() {
+            _mainPhoneId = phonesResponse.data.first.id;
+            _mainPhoneValue = phonesResponse.data.first.phone;
+          });
+        } else {
+          setState(() {
+            _mainPhoneValue = null;
+            _mainPhoneId = null;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading main phone: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthInitial || (state is AuthError && !(state is AuthAuthenticated))) {
+        if (state is AuthInitial ||
+            (state is AuthError && !(state is AuthAuthenticated))) {
           Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
         }
       },
       child: Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 23, vertical: 15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              
-              const Text(
-                'Личная информация',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+        backgroundColor: primaryBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 23, vertical: 15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Личная информация',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              _buildMainProfile(context),
-              const SizedBox(height: 22),
-              const Divider(color: Color(0x33FFFFFF)),
-              const SizedBox(height: 18),
+                _buildMainProfile(context),
+                const SizedBox(height: 22),
+                const Divider(color: Color(0x33FFFFFF)),
+                const SizedBox(height: 18),
 
-              _buildAccountsBlock(),
-              const SizedBox(height: 16),
+                _buildAccountsBlock(),
+                const SizedBox(height: 16),
 
-              const Divider(color: Color(0x33FFFFFF)),
-              const SizedBox(height: 20),
+                const Divider(color: Color(0x33FFFFFF)),
+                const SizedBox(height: 20),
 
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon1.png', width: 22, height: 22), 'QR код', onTap: () => Navigator.pushNamed(context, '/user_qr')),
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon2.png', width: 22, height: 22), 'Ваши карты'),
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon3.png', width: 22, height: 22), 'Контакты', onTap: () => Navigator.pushNamed(context, '/contacts')),
-              const SizedBox(height: 23),
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon1.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'QR код',
+                  onTap: () => Navigator.pushNamed(context, '/user_qr'),
+                ),
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon2.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'Ваши карты',
+                ),
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon3.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'Контакты',
+                  onTap: () => Navigator.pushNamed(context, '/contacts'),
+                ),
+                const SizedBox(height: 23),
 
-              const Divider(color: Color(0x33FFFFFF)),
+                const Divider(color: Color(0x33FFFFFF)),
 
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon4.png', width: 22, height: 22), 'Настройки', onTap: () => Navigator.pushNamed(context, SettingsScreen.routeName)),
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon4.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'Настройки',
+                  onTap: () =>
+                      Navigator.pushNamed(context, SettingsScreen.routeName),
+                ),
 
-              const Divider(color: Color(0x33FFFFFF)),
-              const SizedBox(height: 13),
+                const Divider(color: Color(0x33FFFFFF)),
+                const SizedBox(height: 13),
 
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon5.png', width: 22, height: 22), 'Служба поддержки', onTap: () => Navigator.pushNamed(context, SupportServiceScreen.routeName)),
-              _buildMenuItem(Image.asset('assets/profile_menu/Icon6.png', width: 22, height: 22), 'Пригласить друзей', onTap: () => Navigator.pushNamed(context, InviteFriendsScreen.routeName)),
-              _buildMenuItem(
-                Image.asset('assets/profile_menu/Icon7.png', width: 22, height: 22),
-                'Возможности LIDLE',
-              ),
-            ],
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon5.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'Служба поддержки',
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    SupportServiceScreen.routeName,
+                  ),
+                ),
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon6.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'Пригласить друзей',
+                  onTap: () => Navigator.pushNamed(
+                    context,
+                    InviteFriendsScreen.routeName,
+                  ),
+                ),
+                _buildMenuItem(
+                  Image.asset(
+                    'assets/profile_menu/Icon7.png',
+                    width: 22,
+                    height: 22,
+                  ),
+                  'Возможности LIDLE',
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
 
   /* ------------------------ UI COMPONENTS ------------------------ */
 
-  
   Widget _buildMainProfile(BuildContext context) {
     return BlocBuilder<ProfileBloc, ProfileState>(
       builder: (context, state) {
@@ -153,13 +239,24 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        state is ProfileLoaded ? state.phone : '+7 949 609 59 28',
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        state is ProfileLoaded
+                            ? (_mainPhoneValue != null &&
+                                      _mainPhoneValue!.isNotEmpty
+                                  ? _mainPhoneValue!
+                                  : state.phone)
+                            : '+7 949 609 59 28',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 7),
                       Text(
                         state is ProfileLoaded ? state.username : '@Name',
-                        style: const TextStyle(color: Color(0xFF009EE2), fontSize: 14),
+                        style: const TextStyle(
+                          color: Color(0xFF009EE2),
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
@@ -244,7 +341,10 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
           children: [
             leading,
             const SizedBox(width: 14),
-            Text(text, style: const TextStyle(color: Colors.white, fontSize: 16)),
+            Text(
+              text,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
           ],
         ),
       ),

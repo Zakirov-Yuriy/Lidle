@@ -5,7 +5,7 @@ import 'package:lidle/services/api_service.dart';
 void main() {
   setUp(() {
     // Инициализируем dotenv для тестов с dev URL
-    dotenv.testLoad(fileInput: 'BASE_URL=https://dev-api.lidle.io/v1');
+    dotenv.testLoad(fileInput: 'API_BASE_URL=https://dev-api.lidle.io/v1');
   });
 
   group('ApiService', () {
@@ -16,7 +16,10 @@ void main() {
     test('should have correct default headers', () {
       expect(ApiService.defaultHeaders['Accept'], 'application/json');
       expect(ApiService.defaultHeaders['X-App-Client'], 'mobile');
-      expect(ApiService.defaultHeaders['Accept-Language'], 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7');
+      expect(
+        ApiService.defaultHeaders['Accept-Language'],
+        'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+      );
       expect(ApiService.defaultHeaders['Content-Type'], 'application/json');
     });
 

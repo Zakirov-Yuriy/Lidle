@@ -40,9 +40,7 @@ class _UserQrScreenState extends State<UserQrScreen> {
             // ───── Header ─────
             Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 23),
-              child: Row(
-                children: const [Header()],
-              ),
+              child: Row(children: const [Header()]),
             ),
 
             // ───── Back row ─────
@@ -77,7 +75,9 @@ class _UserQrScreenState extends State<UserQrScreen> {
             Center(
               child: BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, state) {
-                  final username = state is ProfileLoaded ? state.username : '@VladBorman';
+                  final username = state is ProfileLoaded
+                      ? state.username
+                      : '@Name';
                   return RichText(
                     text: TextSpan(
                       children: [
@@ -110,7 +110,8 @@ class _UserQrScreenState extends State<UserQrScreen> {
                 builder: (context, state) {
                   String qrData = 'https://vsetut.app/user/default';
                   if (state is ProfileLoaded) {
-                    qrData = '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
+                    qrData =
+                        '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
                   }
                   return Container(
                     padding: const EdgeInsets.all(16),
@@ -143,8 +144,13 @@ class _UserQrScreenState extends State<UserQrScreen> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  onPressed: () => Navigator.pushNamed(context, '/qr_print_templates'),
-                  icon: SvgPicture.asset('assets/user_qr/download-01.svg', width: 20, height: 20),
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/qr_print_templates'),
+                  icon: SvgPicture.asset(
+                    'assets/user_qr/download-01.svg',
+                    width: 20,
+                    height: 20,
+                  ),
                   label: const Text(
                     'Сохранения qr-код на телефон',
                     style: TextStyle(
@@ -173,7 +179,12 @@ class _UserQrScreenState extends State<UserQrScreen> {
                     ),
                   ),
                   onPressed: () {},
-                  icon: SvgPicture.asset('assets/user_qr/share-01.svg', width: 20, height: 20, color: accentColor),
+                  icon: SvgPicture.asset(
+                    'assets/user_qr/share-01.svg',
+                    width: 20,
+                    height: 20,
+                    color: accentColor,
+                  ),
                   label: const Text(
                     'Поделится qr-код',
                     style: TextStyle(
