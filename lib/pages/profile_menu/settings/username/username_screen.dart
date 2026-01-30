@@ -47,6 +47,8 @@ class _UsernameScreenState extends State<UsernameScreen> {
             username: username,
           ),
         );
+        // Принудительно перезагружаем профиль с API при возврате
+        context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
         Navigator.pop(context);
       }
     }
@@ -161,7 +163,7 @@ class _UsernameScreenState extends State<UsernameScreen> {
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
-                  onPressed: _confirmUsername,
+                  onPressed: () => Navigator.pop(context),
                   child: const Text(
                     'Подтвердить',
                     style: TextStyle(

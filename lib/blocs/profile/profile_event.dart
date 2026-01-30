@@ -3,7 +3,12 @@ abstract class ProfileEvent {}
 
 /// Событие загрузки данных профиля.
 /// Загружает информацию о пользователе из хранилища или API.
-class LoadProfileEvent extends ProfileEvent {}
+/// [forceRefresh] - если true, показывает загрузку и не использует кэш
+class LoadProfileEvent extends ProfileEvent {
+  final bool forceRefresh;
+
+  LoadProfileEvent({this.forceRefresh = false});
+}
 
 /// Событие обновления данных профиля.
 /// [name] - новое имя пользователя.
@@ -12,6 +17,7 @@ class LoadProfileEvent extends ProfileEvent {}
 /// [phone] - новый номер телефона.
 /// [profileImage] - путь к новому изображению профиля.
 /// [username] - новое имя пользователя (ник).
+/// [about] - новая информация о себе.
 class UpdateProfileEvent extends ProfileEvent {
   final String name;
   final String lastName;
@@ -19,6 +25,7 @@ class UpdateProfileEvent extends ProfileEvent {
   final String phone;
   final String? profileImage;
   final String? username;
+  final String? about;
 
   UpdateProfileEvent({
     required this.name,
@@ -27,6 +34,7 @@ class UpdateProfileEvent extends ProfileEvent {
     required this.phone,
     this.profileImage,
     this.username,
+    this.about,
   });
 }
 

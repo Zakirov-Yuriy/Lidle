@@ -2,7 +2,6 @@
 // "Виджет: Экран настроек"
 // ============================================================
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -16,6 +15,7 @@ import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/contact_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 
@@ -37,10 +37,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _mainPhoneValue; // Значение основного телефона
 
   @override
-  void initState() {
-    super.initState();
-    // Загружаем профиль пользователя
-    context.read<ProfileBloc>().add(LoadProfileEvent());
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Загружаем профиль пользователя с принудительным обновлением
+    // чтобы всегда показывались актуальные данные с API
+    context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
     _loadMainPhoneId();
   }
 
@@ -224,7 +225,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                 ),
-                _infoItem(title: 'О себе', value: 'Напишите немного о себе'),
+                BlocBuilder<ProfileBloc, ProfileState>(
+                  builder: (context, state) {
+                    final aboutValue =
+                        state is ProfileLoaded &&
+                            state.about != null &&
+                            state.about!.isNotEmpty
+                        ? state.about!
+                        : 'Напишите немного о себе';
+                    return _infoItem(
+                      title: 'О себе',
+                      value: aboutValue,
+                      valueColor:
+                          (state is ProfileLoaded &&
+                              state.about != null &&
+                              state.about!.isNotEmpty)
+                          ? Colors.white
+                          : Colors.white38,
+                      onTap: () => _showAboutDialog(
+                        currentAbout: state is ProfileLoaded
+                            ? state.about
+                            : null,
+                      ),
+                    );
+                  },
+                ),
 
                 const Divider(color: Colors.white24),
 
@@ -622,6 +647,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           ),
                                         ),
                                       );
+                                      // Перезагружаем профиль для обновления на всех экранах
+                                      context.read<ProfileBloc>().add(
+                                        LoadProfileEvent(),
+                                      );
                                       Navigator.pop(context);
                                       // Перезагружаем ID
                                       _loadMainPhoneId();
@@ -689,6 +718,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showLanguageDialog() {
     String selectedLanguage = 'Русский';
+    bool isLoading = false;
 
     showDialog(
       context: context,
@@ -748,10 +778,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     SizedBox(
                       width: 193,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // TODO: Implement language change logic
-                          Navigator.pop(context);
-                        },
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                setDialogState(() => isLoading = true);
+
+                                try {
+                                  final token =
+                                      HiveService.getUserData('token')
+                                          as String?;
+                                  if (token == null) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Токен не найден. Пожалуйста, переautoritize.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  // Преобразуем выбранный язык в код локали
+                                  final localeCode =
+                                      selectedLanguage == 'Русский'
+                                      ? 'ru'
+                                      : 'en';
+
+                                  // Вызываем API для изменения языка
+                                  await UserService.changeLocale(
+                                    locale: localeCode,
+                                    token: token,
+                                  );
+
+                                  if (!mounted) return;
+
+                                  // Показываем успешное сообщение
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Язык успешно изменен на $selectedLanguage',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+
+                                  Navigator.pop(context);
+                                } catch (e) {
+                                  if (!mounted) return;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Ошибка при изменении языка: $e',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+
+                                  setDialogState(() => isLoading = false);
+                                }
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
@@ -761,14 +848,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text(
-                          'Потвердить',
-                          style: TextStyle(
-                            color: activeIconColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    activeIconColor,
+                                  ),
+                                ),
+                              )
+                            : const Text(
+                                'Потвердить',
+                                style: TextStyle(
+                                  color: activeIconColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -1000,6 +1098,232 @@ class _SettingsScreenState extends State<SettingsScreen> {
               gapless: false,
             )
           : const Icon(Icons.qr_code, color: Colors.white54),
+    );
+  }
+
+  void _showAboutDialog({String? currentAbout}) {
+    final aboutController = TextEditingController();
+    bool isLoading = false;
+
+    // Предзаполняем контроллер текущим значением "О себе" если есть
+    if (currentAbout != null && currentAbout.isNotEmpty) {
+      aboutController.text = currentAbout;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: const Color(0xFF1F2C3A),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header с крестиком
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'О себе',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(Icons.close, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Text field для ввода текста
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF16202A),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: aboutController,
+                        maxLines: 4,
+                        maxLength: 250,
+                        style: const TextStyle(color: Colors.white),
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Напишите немного о себе...',
+                          hintStyle: TextStyle(color: Colors.white54),
+                          counterText: '',
+                        ),
+                      ),
+                    ),
+
+                    // Счетчик символов
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: aboutController,
+                          builder: (context, value, child) {
+                            return Text(
+                              '${value.text.length}/250',
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 12,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: isLoading
+                              ? null
+                              : () => Navigator.pop(context),
+                          child: const Text(
+                            'Отмена',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        ElevatedButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  if (aboutController.text.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Введите информацию о себе',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (aboutController.text.length > 250) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Максимум 250 символов'),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setDialogState(() {
+                                    isLoading = true;
+                                  });
+
+                                  try {
+                                    final token =
+                                        HiveService.getUserData('token')
+                                            as String?;
+                                    if (token == null) {
+                                      throw Exception('Токен не найден');
+                                    }
+
+                                    await UserService.updateAbout(
+                                      about: aboutController.text,
+                                      token: token,
+                                    );
+
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Информация о себе успешно обновлена',
+                                          ),
+                                        ),
+                                      );
+                                      Navigator.pop(context);
+                                      // Перезагружаем профиль
+                                      context.read<ProfileBloc>().add(
+                                        LoadProfileEvent(),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Ошибка: ${e.toString()}',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    setDialogState(() {
+                                      isLoading = false;
+                                    });
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            side: const BorderSide(color: activeIconColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                          ),
+                          child: isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      activeIconColor,
+                                    ),
+                                  ),
+                                )
+                              : const Text(
+                                  'Сохранить',
+                                  style: TextStyle(
+                                    color: activeIconColor,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

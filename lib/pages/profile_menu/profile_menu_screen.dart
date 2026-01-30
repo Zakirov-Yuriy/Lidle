@@ -34,8 +34,11 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Загружаем профиль пользователя
-    BlocProvider.of<ProfileBloc>(context).add(LoadProfileEvent());
+    // Загружаем профиль пользователя с принудительным обновлением
+    // чтобы всегда показывались актуальные данные с API
+    BlocProvider.of<ProfileBloc>(
+      context,
+    ).add(LoadProfileEvent(forceRefresh: true));
     // Загружаем основной телефон пользователя из API
     _loadMainPhoneValue();
   }

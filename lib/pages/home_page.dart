@@ -163,6 +163,7 @@ class _HomePageState extends State<HomePage> {
                           backgroundColor:
                               formBackground, // Цвет фона индикатора
                           child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [

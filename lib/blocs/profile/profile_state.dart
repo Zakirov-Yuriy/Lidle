@@ -22,6 +22,7 @@ class ProfileLoading extends ProfileState {
 /// [phone] - номер телефона пользователя.
 /// [profileImage] - путь к изображению профиля пользователя.
 /// [username] - имя пользователя (ник).
+/// [about] - информация о себе.
 class ProfileLoaded extends ProfileState {
   final String name;
   final String lastName;
@@ -30,6 +31,7 @@ class ProfileLoaded extends ProfileState {
   final String phone;
   final String? profileImage;
   final String username;
+  final String? about;
 
   const ProfileLoaded({
     required this.name,
@@ -39,6 +41,7 @@ class ProfileLoaded extends ProfileState {
     required this.phone,
     this.profileImage,
     this.username = '@Name',
+    this.about,
   });
 }
 

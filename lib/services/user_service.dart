@@ -225,4 +225,93 @@ class UserService {
       throw Exception('Ошибка при удалении аватарки: $e');
     }
   }
+
+  /// Обновить информацию "О себе"
+  static Future<Map<String, dynamic>> updateAbout({
+    required String about,
+    required String token,
+  }) async {
+    try {
+      print('📝 UserService: Обновляем информацию "О себе"...');
+
+      final data = {'about': about};
+
+      final response = await ApiService.put(
+        '/me/settings/about',
+        data,
+        token: token,
+      );
+
+      print('✅ UserService: Информация "О себе" успешно обновлена');
+      print('📦 Ответ: $response');
+
+      return response;
+    } catch (e) {
+      print('❌ UserService: Ошибка при обновлении "О себе": $e');
+      throw Exception('Ошибка при обновлении информации о себе: $e');
+    }
+  }
+
+  /// Изменить язык системы (локаль)
+  static Future<Map<String, dynamic>> changeLocale({
+    required String locale,
+    required String token,
+  }) async {
+    try {
+      print('🌐 UserService: Меняем язык на "$locale"...');
+
+      final data = {'locale': locale};
+
+      final response = await ApiService.put(
+        '/me/settings/locale',
+        data,
+        token: token,
+      );
+
+      print('✅ UserService: Язык успешно изменен на "$locale"');
+      print('📦 Ответ: $response');
+
+      // Сохраняем текущий язык локально
+      await HiveService.saveUserData('currentLocale', locale);
+
+      return response;
+    } catch (e) {
+      print('❌ UserService: Ошибка при изменении языка: $e');
+      throw Exception('Ошибка при изменении языка: $e');
+    }
+  }
+
+  /// Обновить имя и фамилию пользователя
+  static Future<Map<String, dynamic>> updateName({
+    required String name,
+    required String lastName,
+    String? nickname,
+    required String token,
+  }) async {
+    try {
+      print(
+        '👤 UserService: Обновляем имя на "$name" и фамилию на "$lastName"...',
+      );
+
+      final data = {
+        'name': name,
+        'last_name': lastName,
+        if (nickname != null) 'nickname': nickname,
+      };
+
+      final response = await ApiService.put(
+        '/me/settings/name',
+        data,
+        token: token,
+      );
+
+      print('✅ UserService: Имя успешно обновлено');
+      print('📦 Ответ: $response');
+
+      return response;
+    } catch (e) {
+      print('❌ UserService: Ошибка при обновлении имени: $e');
+      throw Exception('Ошибка при обновлении имени: $e');
+    }
+  }
 }

@@ -3,9 +3,13 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/contact_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/blocs/profile/profile_bloc.dart';
+import 'package:lidle/blocs/profile/profile_event.dart';
 
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
@@ -142,6 +146,23 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         'Email ID: $_emailId, Phone1 ID: $_phone1Id, Phone2 ID: $_phone2Id',
       );
 
+      // Обновляем имя на API (если оно изменилось)
+      if (_nameController.text.isNotEmpty) {
+        try {
+          print('👤 Updating user name: ${_nameController.text}');
+          // Получаем фамилию из Hive или используем пустую строку
+          final lastName = HiveService.getUserData('lastName') as String? ?? '';
+          await UserService.updateName(
+            name: _nameController.text,
+            lastName: lastName,
+            token: token,
+          );
+          print('✅ User name updated successfully');
+        } catch (e) {
+          print('❌ Name update error: $e');
+        }
+      }
+
       // Сохраняем в локальное хранилище
       await HiveService.saveUserData('name', _nameController.text);
       await HiveService.saveUserData('telegram', _telegramController.text);
@@ -239,7 +260,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _errorMessage = null;
       });
 
+      // Перезагружаем профиль для обновления на других экранах
       if (mounted) {
+        context.read<ProfileBloc>().add(LoadProfileEvent());
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Контактные данные сохранены')),
         );

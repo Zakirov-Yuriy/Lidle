@@ -22,7 +22,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     LoadProfileEvent event,
     Emitter<ProfileState> emit,
   ) async {
-    emit(const ProfileLoading());
     try {
       final token = HiveService.getUserData('token');
       print('🔑 Token from Hive: $token');
@@ -38,6 +37,47 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         return;
       }
 
+      // Если forceRefresh = true, сразу показываем загрузку
+      if (event.forceRefresh) {
+        print('🔄 Принудительное обновление профиля (forceRefresh=true)');
+        emit(const ProfileLoading());
+      } else {
+        // Иначе показываем данные из Hive (если есть)
+        final cachedName = HiveService.getUserData('name') ?? 'Пользователь';
+        final cachedLastName = HiveService.getUserData('lastName') ?? '';
+        final cachedEmail =
+            HiveService.getUserData('email') ?? 'user@example.com';
+        final cachedPhone =
+            HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
+        final cachedUserId = HiveService.getUserData('userId') ?? 'ID: 0';
+        final cachedProfileImage = HiveService.getUserData('profileImage');
+        final cachedUsername = HiveService.getUserData('username') ?? '@User';
+        final cachedAbout = HiveService.getUserData('about');
+
+        // Если есть кэшированные данные - показываем их сразу
+        if (cachedName.isNotEmpty && cachedName != 'Пользователь') {
+          print('📖 Показываем кэшированные данные из Hive: $cachedName');
+          emit(
+            ProfileLoaded(
+              name: cachedLastName.isNotEmpty
+                  ? '$cachedName $cachedLastName'
+                  : cachedName,
+              lastName: cachedLastName,
+              email: cachedEmail,
+              userId: cachedUserId,
+              phone: cachedPhone,
+              profileImage: cachedProfileImage,
+              username: cachedUsername,
+              about: cachedAbout,
+            ),
+          );
+        } else {
+          // Если нет кэша - показываем загрузку
+          emit(const ProfileLoading());
+        }
+      }
+
+      // Загружаем свежие данные с API
       print('📡 Загружаем профиль с API...');
       final profile = await UserService.getProfile(token: token);
       print('✅ Профиль загружен: ${profile.name} ${profile.lastName}');
@@ -50,9 +90,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await HiveService.saveUserData('userId', profile.id.toString());
       await HiveService.saveUserData('profileImage', profile.avatar);
       await HiveService.saveUserData('username', profile.name);
+      await HiveService.saveUserData('about', profile.about ?? '');
 
       print('💾 Данные сохранены в Hive');
 
+      // Показываем свежие данные
       emit(
         ProfileLoaded(
           name: '${profile.name} ${profile.lastName}',
@@ -62,6 +104,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           phone: profile.phone ?? '+7 (999) 123-45-67',
           profileImage: profile.avatar,
           username: '@${profile.name}',
+          about: profile.about,
         ),
       );
     } catch (e) {
@@ -69,13 +112,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       print('📍 Stack trace: ${StackTrace.current}');
 
       // Fallback to Hive data if API fails
-      final name = HiveService.getUserData('name') ?? 'Влад Борман';
+      final name = HiveService.getUserData('name') ?? 'Пользователь';
       final lastName = HiveService.getUserData('lastName') ?? '';
       final email = HiveService.getUserData('email') ?? 'user@example.com';
       final phone = HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
-      final userId = HiveService.getUserData('userId') ?? 'ID: 2342124342';
+      final userId = HiveService.getUserData('userId') ?? 'ID: 0';
       final profileImage = HiveService.getUserData('profileImage');
-      final username = HiveService.getUserData('username') ?? '@Name';
+      final username = HiveService.getUserData('username') ?? '@User';
+      final about = HiveService.getUserData('about');
 
       print('📖 Fallback: Используем данные из Hive: $name $lastName');
 
@@ -88,6 +132,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           phone: phone,
           profileImage: profileImage,
           username: username,
+          about: about,
         ),
       );
     }
@@ -112,6 +157,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       if (event.username != null) {
         await HiveService.saveUserData('username', event.username);
       }
+      if (event.about != null) {
+        await HiveService.saveUserData('about', event.about);
+      }
 
       // Имитация успешного обновления
       await Future.delayed(const Duration(milliseconds: 500));
@@ -126,6 +174,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           profileImage:
               event.profileImage ?? (state as ProfileLoaded).profileImage,
           username: event.username ?? (state as ProfileLoaded).username,
+          about: event.about ?? (state as ProfileLoaded).about,
         ),
       );
 
