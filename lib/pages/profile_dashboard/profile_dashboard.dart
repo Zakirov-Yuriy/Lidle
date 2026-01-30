@@ -257,36 +257,36 @@ class ProfileDashboard extends StatelessWidget {
                             ),
                             const SizedBox(height: 24),
 
-                            // Кнопка выхода нужна для тестов
-                            SizedBox(
-                              width: double.infinity,
-                              // height: 53,
-                              child: ElevatedButton(
-                                onPressed: () => context.read<AuthBloc>().add(
-                                  const LogoutEvent(),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  elevation: 0,
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size(
-                                    double.infinity,
-                                    44,
-                                  ), // Fixed height
-                                ),
-                                child: const Text(
-                                  'Выйти',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ),
-                            ),
+                            // // Кнопка выхода нужна для тестов
+                            // SizedBox(
+                            //   width: double.infinity,
+                            //   // height: 53,
+                            //   child: ElevatedButton(
+                            //     onPressed: () => context.read<AuthBloc>().add(
+                            //       const LogoutEvent(),
+                            //     ),
+                            //     style: ElevatedButton.styleFrom(
+                            //       backgroundColor: Colors.redAccent,
+                            //       foregroundColor: Colors.white,
+                            //       shape: RoundedRectangleBorder(
+                            //         borderRadius: BorderRadius.circular(5),
+                            //       ),
+                            //       elevation: 0,
+                            //       padding: EdgeInsets.zero,
+                            //       minimumSize: Size(
+                            //         double.infinity,
+                            //         44,
+                            //       ), // Fixed height
+                            //     ),
+                            //     child: const Text(
+                            //       'Выйти',
+                            //       style: TextStyle(
+                            //         fontSize: 16,
+                            //         fontWeight: FontWeight.w400,
+                            //       ),
+                            //     ),
+                            //   ),
+                            // ),
                             const SizedBox(height: 22),
                           ],
                         ),

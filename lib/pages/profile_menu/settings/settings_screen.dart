@@ -11,9 +11,13 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/blocs/auth/auth_bloc.dart';
+import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/auth/sign_in_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
@@ -63,299 +67,346 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ───── Header ─────
-              Padding(
-                padding: const EdgeInsets.only(bottom: 30, right: 23),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [const Header()],
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is AuthLoggedOut) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            SignInScreen.routeName,
+            (Route<dynamic> route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ───── Header ─────
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 30, right: 23),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [const Header()],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(
-                        Icons.arrow_back_ios,
-                        color: Color.fromARGB(255, 255, 255, 255),
-                        size: 16,
-                      ),
-                    ),
-                    const Text(
-                      'Настройки',
-                      style: TextStyle(
-                        color: Color.fromARGB(255, 255, 255, 255),
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // ───── Profile ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        debugPrint('Photo tapped');
-                        Navigator.pushNamed(context, '/change_photo');
-                      },
-                      behavior: HitTestBehavior.opaque,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(45),
-                        child: BlocBuilder<ProfileBloc, ProfileState>(
-                          builder: (context, state) {
-                            if (state is ProfileLoaded &&
-                                state.profileImage != null) {
-                              return buildProfileImage(
-                                state.profileImage,
-                                width: 90,
-                                height: 90,
-                                fit: BoxFit.cover,
-                              );
-                            }
-                            return Container(
-                              width: 90,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                color: formBackground,
-                                borderRadius: BorderRadius.circular(45),
-                              ),
-                              child: Center(
-                                child: SvgPicture.asset(
-                                  'assets/profile_dashboard/default-photo.svg',
-                                  width: 40,
-                                  height: 40,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        BlocBuilder<ProfileBloc, ProfileState>(
-                          builder: (context, state) {
-                            final displayName = state is ProfileLoaded
-                                ? state.name
-                                : 'Vlad';
-                            return Text(
-                              displayName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'В сети',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-              const Divider(color: Colors.white24),
-
-              // ───── Account info ─────
-              BlocBuilder<ProfileBloc, ProfileState>(
-                builder: (context, state) {
-                  // Сначала используем значение, полученное из ContactService
-                  final phoneValue =
-                      _mainPhoneValue != null && _mainPhoneValue!.isNotEmpty
-                      ? _mainPhoneValue!
-                      : (state is ProfileLoaded && state.phone.isNotEmpty
-                            ? state.phone
-                            : '+7 949 545 54 45');
-                  return _infoItem(
-                    title: 'Аккаунт пользователя',
-                    value: phoneValue,
-                    valueColor: Colors.white,
-                    hint: 'Нажмите, чтобы изменить номер телефона',
-                    onTapHint: _showChangePhoneDialog,
-                  );
-                },
-              ),
-              BlocBuilder<ProfileBloc, ProfileState>(
-                builder: (context, state) {
-                  return _infoItem(
-                    title: state is ProfileLoaded ? state.username : '@Name',
-                    value: 'Имя аккаунта',
-                    onTap: () => Navigator.pushNamed(context, '/username'),
-                  );
-                },
-              ),
-              _infoItem(title: 'О себе', value: 'Напишите немного о себе'),
-
-              const Divider(color: Colors.white24),
-
-              // ───── QR block ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Ваш qr-код',
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
-                    ),
-                    const SizedBox(height: 12),
-                    BlocBuilder<ProfileBloc, ProfileState>(
-                      builder: (context, state) {
-                        String? qrData;
-                        if (state is ProfileLoaded) {
-                          // Кодируем данные профиля в JSON для QR-кода
-                          qrData =
-                              '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
-                        }
-                        return _qrBox(qrData);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(color: Colors.white24),
-
-              // ───── Settings list ─────
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/message-text-square-02.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Настройка чатов',
-                onTap: () => Navigator.pushNamed(context, '/chat_settings'),
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/layout-alt-02.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Конфиденциальность',
-                onTap: () => Navigator.pushNamed(context, '/privacy_settings'),
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/image-user.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Контактные данные',
-                onTap: () => Navigator.pushNamed(context, '/contact_data'),
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/volume-max.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Уведомления',
-                onTap: _showNotificationsDialog,
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/monitor-03.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Устройства',
-                onTap: () => Navigator.pushNamed(context, '/devices'),
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/globe-01.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Язык',
-                onTap: _showLanguageDialog,
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/help-circle.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Вопросы о LIDLE',
-                onTap: () => Navigator.pushNamed(context, '/faq'),
-              ),
-              _settingsItem(
-                SvgPicture.asset(
-                  'assets/profile_menu/settings/file-search-02.svg',
-                  color: Colors.white,
-                  width: 21,
-                  height: 21,
-                ),
-                'Политика конфиденциальности',
-                onTap: () => Navigator.pushNamed(context, '/privacy_policy'),
-              ),
-
-              const SizedBox(height: 8),
-
-              // ───── Delete account ─────
-              GestureDetector(
-                onTap: () => Navigator.pushNamed(context, '/delete_account'),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     children: [
-                      SvgPicture.asset(
-                        'assets/profile_menu/settings/trash-02.svg',
-                        color: dangerColor,
-                        width: 21,
-                        height: 21,
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: Color.fromARGB(255, 255, 255, 255),
+                          size: 16,
+                        ),
                       ),
-                      const SizedBox(width: 8),
                       const Text(
-                        'Удалить аккаунт',
+                        'Настройки',
                         style: TextStyle(
-                          color: dangerColor,
-                          fontSize: 14,
+                          color: Color.fromARGB(255, 255, 255, 255),
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
 
-              const SizedBox(height: 111),
-            ],
+                const SizedBox(height: 20),
+
+                // ───── Profile ─────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          debugPrint('Photo tapped');
+                          Navigator.pushNamed(context, '/change_photo');
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(45),
+                          child: BlocBuilder<ProfileBloc, ProfileState>(
+                            builder: (context, state) {
+                              if (state is ProfileLoaded &&
+                                  state.profileImage != null) {
+                                return buildProfileImage(
+                                  state.profileImage,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                );
+                              }
+                              return Container(
+                                width: 90,
+                                height: 90,
+                                decoration: BoxDecoration(
+                                  color: formBackground,
+                                  borderRadius: BorderRadius.circular(45),
+                                ),
+                                child: Center(
+                                  child: SvgPicture.asset(
+                                    'assets/profile_dashboard/default-photo.svg',
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          BlocBuilder<ProfileBloc, ProfileState>(
+                            builder: (context, state) {
+                              final displayName = state is ProfileLoaded
+                                  ? state.name
+                                  : 'Vlad';
+                              return Text(
+                                displayName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'В сети',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+                const Divider(color: Colors.white24),
+
+                // ───── Account info ─────
+                BlocBuilder<ProfileBloc, ProfileState>(
+                  builder: (context, state) {
+                    // Сначала используем значение, полученное из ContactService
+                    final phoneValue =
+                        _mainPhoneValue != null && _mainPhoneValue!.isNotEmpty
+                        ? _mainPhoneValue!
+                        : (state is ProfileLoaded && state.phone.isNotEmpty
+                              ? state.phone
+                              : '+7 949 545 54 45');
+                    return _infoItem(
+                      title: 'Аккаунт пользователя',
+                      value: phoneValue,
+                      valueColor: Colors.white,
+                      hint: 'Нажмите, чтобы изменить номер телефона',
+                      onTapHint: _showChangePhoneDialog,
+                    );
+                  },
+                ),
+                BlocBuilder<ProfileBloc, ProfileState>(
+                  builder: (context, state) {
+                    return _infoItem(
+                      title: state is ProfileLoaded ? state.username : '@Name',
+                      value: 'Имя аккаунта',
+                      onTap: () => Navigator.pushNamed(context, '/username'),
+                    );
+                  },
+                ),
+                _infoItem(title: 'О себе', value: 'Напишите немного о себе'),
+
+                const Divider(color: Colors.white24),
+
+                // ───── QR block ─────
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Ваш qr-код',
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                      const SizedBox(height: 12),
+                      BlocBuilder<ProfileBloc, ProfileState>(
+                        builder: (context, state) {
+                          String? qrData;
+                          if (state is ProfileLoaded) {
+                            // Кодируем данные профиля в JSON для QR-кода
+                            qrData =
+                                '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
+                          }
+                          return _qrBox(qrData);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Divider(color: Colors.white24),
+
+                // ───── Settings list ─────
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/message-text-square-02.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Настройка чатов',
+                  onTap: () => Navigator.pushNamed(context, '/chat_settings'),
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/layout-alt-02.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Конфиденциальность',
+                  onTap: () =>
+                      Navigator.pushNamed(context, '/privacy_settings'),
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/image-user.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Контактные данные',
+                  onTap: () => Navigator.pushNamed(context, '/contact_data'),
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/volume-max.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Уведомления',
+                  onTap: _showNotificationsDialog,
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/monitor-03.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Устройства',
+                  onTap: () => Navigator.pushNamed(context, '/devices'),
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/globe-01.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Язык',
+                  onTap: _showLanguageDialog,
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/help-circle.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Вопросы о LIDLE',
+                  onTap: () => Navigator.pushNamed(context, '/faq'),
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/file-search-02.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Политика конфиденциальности',
+                  onTap: () => Navigator.pushNamed(context, '/privacy_policy'),
+                ),
+
+                const SizedBox(height: 8),
+
+                // ───── Delete account ─────
+                GestureDetector(
+                  onTap: () => Navigator.pushNamed(context, '/delete_account'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/profile_menu/settings/trash-02.svg',
+                          color: dangerColor,
+                          width: 21,
+                          height: 21,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Удалить аккаунт',
+                          style: TextStyle(
+                            color: dangerColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // ───── Logout ─────
+                GestureDetector(
+                  onTap: () =>
+                      context.read<AuthBloc>().add(const LogoutEvent()),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        SvgPicture.asset(
+                          'assets/profile_menu/settings/exit.svg',
+                          color: dangerColor,
+                          width: 20,
+                          height: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Выйти из аккаунта',
+                          style: TextStyle(
+                            color: dangerColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 111),
+              ],
+            ),
           ),
         ),
       ),
