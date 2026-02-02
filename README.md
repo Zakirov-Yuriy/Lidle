@@ -34,6 +34,16 @@ flutter run
 
 # Последние изменения
 
+# v1.3.0 (2026-02-02) - PAGINATION FEATURE ✨
+- ✨ **Пагинация объявлений**: На главной странице реализована постепенная загрузка объявлений
+- ✨ **Кнопка "Загрузить еще"**: Удобная загрузка дополнительных объявлений
+- ✨ **Метаданные пагинации**: currentPage, totalPages, itemsPerPage
+- ✨ **BLoC события**: LoadNextPageEvent, LoadSpecificPageEvent
+- ✨ **Clean Architecture**: Полное соответствие SOLID принципам
+- 📚 **3 документа**: PAGINATION_IMPLEMENTATION.md, PAGINATION_EXAMPLE.md, PAGINATION_SUMMARY.md
+
+**Начните отсюда:** [PAGINATION_SUMMARY.md](docs/PAGINATION_SUMMARY.md)
+
 # v1.2.0 (2026-01-28) - API INTEGRATION COMPLETE ✅
 - ✅ **39 API Endpoints**: Все endpoints Lidle API интегрировано
 - ✅ **9 Сервисов**: CatalogService, AdvertsService, UserService и более

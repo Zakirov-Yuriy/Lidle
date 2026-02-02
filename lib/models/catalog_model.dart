@@ -48,7 +48,7 @@ class Category {
   final String? thumbnail;
   final String slug;
   final CategoryType type;
-  final String? order;
+  final int? order;
   final bool isEndpoint;
   final List<Category>? children;
 
@@ -74,7 +74,7 @@ class Category {
       thumbnail: json['thumbnail'],
       slug: json['slug'],
       type: CategoryType.fromJson(json['type']),
-      order: json['order'],
+      order: json['order'] as int?,
       isEndpoint: json['is_endpoint'] ?? false,
       children: json['children'] != null
           ? (json['children'] as List<dynamic>)

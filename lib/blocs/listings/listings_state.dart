@@ -19,10 +19,22 @@ class ListingsLoaded extends ListingsState {
   final List<Category> categories;
   final List<Listing> filteredListings;
 
+  /// Текущая номер страницы (начинается с 1)
+  final int currentPage;
+
+  /// Общее количество страниц доступных на сервере
+  final int totalPages;
+
+  /// Количество объявлений на одной странице
+  final int itemsPerPage;
+
   ListingsLoaded({
     required this.listings,
     required this.categories,
     List<Listing>? filteredListings,
+    this.currentPage = 1,
+    this.totalPages = 1,
+    this.itemsPerPage = 10,
   }) : filteredListings = filteredListings ?? listings;
 }
 

@@ -94,15 +94,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
         token: token,
       );
       print('Loaded ${response.filters.length} filters');
-      setState(() {
-        _attributes = response.filters;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _attributes = response.filters;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error loading filters from API: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
       // Retry after 5 seconds
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) _loadAttributes();
@@ -155,7 +159,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
         );
       }
 
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     } catch (e) {
       print('Error loading user contacts: $e');
     }

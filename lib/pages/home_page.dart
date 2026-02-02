@@ -536,12 +536,19 @@ class _HomePageState extends State<HomePage> {
     }
 
     final listings = (state is ListingsLoaded)
-        ? state.filteredListings
+        ? state.listings
         : (state is ListingsSearchResults)
         ? state.searchResults
         : (state is ListingsFiltered)
         ? state.filteredListings
         : <Listing>[];
+
+    print('🔍 DEBUG: _buildLatestSection listings.length = ${listings.length}');
+    if (state is ListingsLoaded) {
+      print(
+        '🔍 DEBUG: ListingsLoaded - currentPage=${state.currentPage}, totalPages=${state.totalPages}',
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 110.0),
@@ -567,20 +574,57 @@ class _HomePageState extends State<HomePage> {
               if (itemWidth < 170) tileHeight = 275;
               if (itemWidth < 140) tileHeight = 300;
 
-              return GridView.builder(
-                padding: const EdgeInsets.only(left: 12, right: 12),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 9,
-                  mainAxisSpacing: 0,
-                  mainAxisExtent: tileHeight,
-                ),
-                itemCount: listings.length,
-                itemBuilder: (context, index) {
-                  return ListingCard(listing: listings[index]);
-                },
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+              return Column(
+                children: [
+                  GridView.builder(
+                    padding: const EdgeInsets.only(left: 12, right: 12),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 9,
+                      mainAxisSpacing: 0,
+                      mainAxisExtent: tileHeight,
+                    ),
+                    itemCount: listings.length,
+                    itemBuilder: (context, index) {
+                      return ListingCard(listing: listings[index]);
+                    },
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                  ),
+                  // Кнопка для загрузки следующей страницы
+                  // Показывается только если есть еще страницы для загрузки
+                  if (state is ListingsLoaded &&
+                      state.currentPage < state.totalPages)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16.0,
+                        horizontal: 12.0,
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            // Отправляем событие для загрузки следующей страницы
+                            context.read<ListingsBloc>().add(
+                              LoadNextPageEvent(),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B5CF6),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text(
+                            'Загрузить еще',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               );
             },
           ),

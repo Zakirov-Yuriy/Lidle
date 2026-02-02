@@ -23,6 +23,7 @@ class ProfileLoading extends ProfileState {
 /// [profileImage] - путь к изображению профиля пользователя.
 /// [username] - имя пользователя (ник).
 /// [about] - информация о себе.
+/// [qrCode] - QR код пользователя в формате base64.
 class ProfileLoaded extends ProfileState {
   final String name;
   final String lastName;
@@ -32,6 +33,7 @@ class ProfileLoaded extends ProfileState {
   final String? profileImage;
   final String username;
   final String? about;
+  final String? qrCode;
 
   const ProfileLoaded({
     required this.name,
@@ -42,6 +44,7 @@ class ProfileLoaded extends ProfileState {
     this.profileImage,
     this.username = '@Name',
     this.about,
+    this.qrCode,
   });
 }
 

@@ -99,6 +99,7 @@ Desktop.ini
 
 # Project specific
 ВОПРОСЫ.md
+workspace.code-workspace
 
 # Private integration/docs - ignore generated or sensitive integration documents
 /docs/integration/

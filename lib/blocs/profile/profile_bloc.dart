@@ -49,7 +49,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
             HiveService.getUserData('email') ?? 'user@example.com';
         final cachedPhone =
             HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
-        final cachedUserId = HiveService.getUserData('userId') ?? 'ID: 0';
+        // Получаем userId из Hive с дефолтом ID: 0
+        final cachedUserIdRaw = HiveService.getUserData('userId');
+        final cachedUserId =
+            cachedUserIdRaw != null && cachedUserIdRaw.isNotEmpty
+            ? 'ID: $cachedUserIdRaw'
+            : 'ID: 0';
         final cachedProfileImage = HiveService.getUserData('profileImage');
         final cachedUsername = HiveService.getUserData('username') ?? '@User';
         final cachedAbout = HiveService.getUserData('about');
@@ -87,24 +92,38 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await HiveService.saveUserData('lastName', profile.lastName);
       await HiveService.saveUserData('email', profile.email);
       await HiveService.saveUserData('phone', profile.phone ?? '');
-      await HiveService.saveUserData('userId', profile.id.toString());
+      // Извлекаем userId из JWT токена (из claim 'sub')
+      final userIdString = AuthService.extractUserIdFromToken(token);
+      await HiveService.saveUserData('userId', userIdString);
       await HiveService.saveUserData('profileImage', profile.avatar);
       await HiveService.saveUserData('username', profile.name);
       await HiveService.saveUserData('about', profile.about ?? '');
 
+      // Извлекаем base64 QR код из ответа API
+      String? qrCodeBase64;
+      if (profile.qrCode != null && profile.qrCode is Map<String, dynamic>) {
+        qrCodeBase64 = profile.qrCode!['value'] as String?;
+        if (qrCodeBase64 != null) {
+          await HiveService.saveUserData('qrCode', qrCodeBase64);
+          print('✅ QR код сохранен в Hive');
+        }
+      }
+
       print('💾 Данные сохранены в Hive');
 
       // Показываем свежие данные
+      final userIdDisplay = 'ID: $userIdString';
       emit(
         ProfileLoaded(
           name: '${profile.name} ${profile.lastName}',
           lastName: profile.lastName,
           email: profile.email,
-          userId: 'ID: ${profile.id}',
+          userId: userIdDisplay,
           phone: profile.phone ?? '+7 (999) 123-45-67',
           profileImage: profile.avatar,
           username: '@${profile.name}',
           about: profile.about,
+          qrCode: qrCodeBase64,
         ),
       );
     } catch (e) {
@@ -120,6 +139,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final profileImage = HiveService.getUserData('profileImage');
       final username = HiveService.getUserData('username') ?? '@User';
       final about = HiveService.getUserData('about');
+      final qrCode = HiveService.getUserData('qrCode');
 
       print('📖 Fallback: Используем данные из Hive: $name $lastName');
 
@@ -133,6 +153,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           profileImage: profileImage,
           username: username,
           about: about,
+          qrCode: qrCode,
         ),
       );
     }

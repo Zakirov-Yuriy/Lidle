@@ -5,7 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
@@ -269,13 +269,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
                       BlocBuilder<ProfileBloc, ProfileState>(
                         builder: (context, state) {
-                          String? qrData;
-                          if (state is ProfileLoaded) {
-                            // Кодируем данные профиля в JSON для QR-кода
-                            qrData =
-                                '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
-                          }
-                          return _qrBox(qrData);
+                          final qrCodeBase64 = state is ProfileLoaded
+                              ? state.qrCode
+                              : null;
+                          return _qrBox(qrCodeBase64);
                         },
                       ),
                     ],
@@ -1082,20 +1079,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // QR PLACEHOLDER
   // ─────────────────────────────────────────────
 
-  Widget _qrBox(String? qrData) {
+  Widget _qrBox(String? qrCodeBase64) {
     return Container(
       width: 120,
       height: 120,
       decoration: BoxDecoration(
-        color: qrData != null ? Colors.white : cardColor,
+        color: qrCodeBase64 != null ? Colors.white : cardColor,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: qrData != null
-          ? QrImageView(
-              data: qrData,
-              version: QrVersions.auto,
-              size: 100.0,
-              gapless: false,
+      child: qrCodeBase64 != null && qrCodeBase64.isNotEmpty
+          ? Image.memory(
+              base64Decode(qrCodeBase64),
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
             )
           : const Icon(Icons.qr_code, color: Colors.white54),
     );

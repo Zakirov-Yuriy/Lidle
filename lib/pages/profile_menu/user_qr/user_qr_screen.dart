@@ -3,9 +3,12 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -27,6 +30,39 @@ class _UserQrScreenState extends State<UserQrScreen> {
   void initState() {
     super.initState();
     context.read<ProfileBloc>().add(LoadProfileEvent());
+  }
+
+  /// Функция для поделиться QR кодом
+  Future<void> _shareQrCode(String qrCodeBase64, String username) async {
+    try {
+      // Декодируем base64 в байты
+      final bytes = base64Decode(qrCodeBase64);
+
+      // Получаем временную директорию
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/qr_code_$username.png');
+
+      // Сохраняем файл
+      await file.writeAsBytes(bytes);
+      print('✅ QR код сохранен: ${file.path}');
+
+      // Делимся файлом
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'Мой QR код в LIDLE - $username',
+        subject: 'QR код пользователя LIDLE',
+      );
+    } catch (e) {
+      print('❌ Ошибка при шаринге QR кода: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка при шаринге: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -108,21 +144,33 @@ class _UserQrScreenState extends State<UserQrScreen> {
             Center(
               child: BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, state) {
-                  String qrData = 'https://vsetut.app/user/default';
-                  if (state is ProfileLoaded) {
-                    qrData =
-                        '{"name":"${state.name}","email":"${state.email}","userId":"${state.userId}","phone":"${state.phone}"}';
+                  if (state is ProfileLoaded && state.qrCode != null) {
+                    // Используем готовый QR код от API (base64)
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Image.memory(
+                        base64Decode(state.qrCode!),
+                        width: 340,
+                        height: 340,
+                        fit: BoxFit.contain,
+                      ),
+                    );
                   }
+                  // Fallback если QR код не загружен
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: QrImageView(
-                      data: qrData,
-                      size: 340,
-                      backgroundColor: Colors.white,
+                    child: const SizedBox(
+                      width: 340,
+                      height: 340,
+                      child: Center(child: CircularProgressIndicator()),
                     ),
                   );
                 },
@@ -171,28 +219,35 @@ class _UserQrScreenState extends State<UserQrScreen> {
               child: SizedBox(
                 width: double.infinity,
                 height: 47,
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: accentColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                  onPressed: () {},
-                  icon: SvgPicture.asset(
-                    'assets/user_qr/share-01.svg',
-                    width: 20,
-                    height: 20,
-                    color: accentColor,
-                  ),
-                  label: const Text(
-                    'Поделится qr-код',
-                    style: TextStyle(
-                      color: accentColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                child: BlocBuilder<ProfileBloc, ProfileState>(
+                  builder: (context, state) {
+                    return OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: accentColor),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      onPressed:
+                          (state is ProfileLoaded && state.qrCode != null)
+                          ? () => _shareQrCode(state.qrCode!, state.username)
+                          : null,
+                      icon: SvgPicture.asset(
+                        'assets/user_qr/share-01.svg',
+                        width: 20,
+                        height: 20,
+                        color: accentColor,
+                      ),
+                      label: const Text(
+                        'Поделится qr-код',
+                        style: TextStyle(
+                          color: accentColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),

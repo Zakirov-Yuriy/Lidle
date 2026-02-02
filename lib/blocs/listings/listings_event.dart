@@ -43,3 +43,17 @@ class LoadAdvertEvent extends ListingsEvent {
 
   LoadAdvertEvent({required this.advertId});
 }
+
+/// Событие загрузки следующей страницы объявлений.
+/// Используется для пагинации - загружает следующую страницу результатов.
+class LoadNextPageEvent extends ListingsEvent {
+  const LoadNextPageEvent();
+}
+
+/// Событие загрузки конкретной страницы объявлений.
+/// Содержит номер страницы для загрузки.
+class LoadSpecificPageEvent extends ListingsEvent {
+  final int pageNumber;
+
+  LoadSpecificPageEvent({required this.pageNumber});
+}

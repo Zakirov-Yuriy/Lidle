@@ -40,14 +40,19 @@ class _RealEstateSubcategoriesScreenState
       });
 
       final token = await HiveService.getUserData('token');
+      print(
+        '🔍 RealEstateSubcategoriesScreen - Токен: ${token != null ? "получен" : "null"}',
+      );
+
       final catalogWithCategories = await ApiService.getCatalog(
         1,
         token: token,
       );
 
-      print('Loaded categories: ${catalogWithCategories.categories.length}');
+      print('✅ Loaded categories: ${catalogWithCategories.categories.length}');
       catalogWithCategories.categories.forEach(
-        (category) => print('Category: ${category.name}'),
+        (category) =>
+            print('📋 Category: ${category.name} (ID: ${category.id})'),
       );
 
       setState(() {
@@ -55,6 +60,7 @@ class _RealEstateSubcategoriesScreenState
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading categories: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;

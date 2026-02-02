@@ -25,6 +25,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     on<FilterListingsByCategoryEvent>(_onFilterListingsByCategory);
     on<ResetFiltersEvent>(_onResetFilters);
     on<LoadAdvertEvent>(_onLoadAdvert);
+    on<LoadNextPageEvent>(_onLoadNextPage);
+    on<LoadSpecificPageEvent>(_onLoadSpecificPage);
   }
 
   /// Статические данные объявлений.
@@ -136,11 +138,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Получаем токен для аутентификации
       final token = await HiveService.getUserData('token');
 
-      // Загружаем объявления из API для категории недвижимости (categoryId=2)
-      // Без sort - backend вернет по умолчанию новые объявления
+      // Загружаем объявления из API
+      // Первая страница (page=1) с лимитом 20 объявлений
       final advertsResponse = await ApiService.getAdverts(
-        categoryId: 2, // Недвижимость
+        catalogId: 1, // Каталог 1 = все категории
         token: token,
+        page: 1, // Начинаем с первой страницы
+        limit: 20, // Загружаем 20 объявлений за раз
       );
 
       // Преобразуем Advert в Listing для совместимости с UI
@@ -149,9 +153,28 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         return advert.toListing();
       }).toList();
 
-      emit(ListingsLoaded(listings: listings, categories: _staticCategories));
+      // Извлекаем информацию о пагинации из meta (если доступно)
+      final currentPage = advertsResponse.meta?.currentPage ?? 1;
+      final totalPages = advertsResponse.meta?.lastPage ?? 1;
+      final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
+
+      print('📊 API Response: ${listings.length} объявлений загружено');
+      print(
+        '📊 Meta: currentPage=$currentPage, totalPages=$totalPages, itemsPerPage=$itemsPerPage',
+      );
+
+      emit(
+        ListingsLoaded(
+          listings: listings,
+          categories: _staticCategories,
+          currentPage: currentPage,
+          totalPages: totalPages,
+          itemsPerPage: itemsPerPage,
+        ),
+      );
     } catch (e) {
       // При ошибке API показываем ошибку вместо статических данных
+      print('❌ Error loading listings: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -316,6 +339,120 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     } catch (e) {
       print('Failed to load advert: $e');
       emit(ListingsError(message: e.toString()));
+    }
+  }
+
+  /// Обработчик события загрузки следующей страницы.
+  /// Добавляет объявления из следующей страницы к существующим.
+  Future<void> _onLoadNextPage(
+    LoadNextPageEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
+    // Проверяем, что текущее состояние - ListingsLoaded
+    if (state is! ListingsLoaded) return;
+
+    final currentState = state as ListingsLoaded;
+
+    // Проверяем, не на последней ли мы странице
+    if (currentState.currentPage >= currentState.totalPages) {
+      return; // Не загружаем, если это последняя страница
+    }
+
+    // Начинаем загрузку следующей страницы
+    final nextPage = currentState.currentPage + 1;
+
+    try {
+      // Получаем токен для аутентификации
+      final token = await HiveService.getUserData('token');
+
+      // Загружаем объявления следующей страницы
+      final advertsResponse = await ApiService.getAdverts(
+        catalogId: 1, // Каталог 1 = все категории
+        token: token,
+        page: nextPage,
+        limit: 20, // Загружаем 20 объявлений за раз
+      );
+
+      // Преобразуем Advert в Listing
+      final newListings = advertsResponse.data.map((advert) {
+        return advert.toListing();
+      }).toList();
+
+      // Объединяем существующие объявления с новыми
+      final allListings = [...currentState.listings, ...newListings];
+
+      // Извлекаем информацию о пагинации
+      final totalPages = advertsResponse.meta?.lastPage ?? 1;
+      final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
+
+      // Испускаем новое состояние с объединенными объявлениями
+      emit(
+        ListingsLoaded(
+          listings: allListings,
+          categories: currentState.categories,
+          currentPage: nextPage,
+          totalPages: totalPages,
+          itemsPerPage: itemsPerPage,
+        ),
+      );
+    } catch (e) {
+      // При ошибке испускаем состояние ошибки
+      emit(
+        ListingsError(message: 'Ошибка при загрузке следующей страницы: $e'),
+      );
+    }
+  }
+
+  /// Обработчик события загрузки конкретной страницы.
+  /// Заменяет текущие объявления объявлениями указанной страницы.
+  Future<void> _onLoadSpecificPage(
+    LoadSpecificPageEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
+    // Проверяем, что текущее состояние - ListingsLoaded
+    if (state is! ListingsLoaded) return;
+
+    final currentState = state as ListingsLoaded;
+
+    // Проверяем валидность номера страницы
+    if (event.pageNumber < 1 || event.pageNumber > currentState.totalPages) {
+      return;
+    }
+
+    try {
+      // Получаем токен для аутентификации
+      final token = await HiveService.getUserData('token');
+
+      // Загружаем объявления конкретной страницы
+      final advertsResponse = await ApiService.getAdverts(
+        catalogId: 1, // Каталог 1 = все категории
+        token: token,
+        page: event.pageNumber,
+        limit: 20, // Загружаем 20 объявлений за раз
+      );
+
+      // Преобразуем Advert в Listing
+      final listings = advertsResponse.data.map((advert) {
+        return advert.toListing();
+      }).toList();
+
+      // Извлекаем информацию о пагинации
+      final totalPages = advertsResponse.meta?.lastPage ?? 1;
+      final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
+
+      // Испускаем новое состояние с объявлениями указанной страницы
+      emit(
+        ListingsLoaded(
+          listings: listings,
+          categories: currentState.categories,
+          currentPage: event.pageNumber,
+          totalPages: totalPages,
+          itemsPerPage: itemsPerPage,
+        ),
+      );
+    } catch (e) {
+      // При ошибке испускаем состояние ошибки
+      emit(ListingsError(message: 'Ошибка при загрузке страницы: $e'));
     }
   }
 }

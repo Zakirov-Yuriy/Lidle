@@ -311,6 +311,7 @@ class ApiService {
     String? sort,
     Map<String, dynamic>? filters,
     int? page,
+    int? limit,
     String? token,
   }) async {
     try {
@@ -319,6 +320,7 @@ class ApiService {
       if (catalogId != null) queryParams['catalog_id'] = catalogId;
       if (sort != null) queryParams['sort'] = sort;
       if (page != null) queryParams['page'] = page;
+      if (limit != null) queryParams['limit'] = limit;
 
       // Добавляем фильтры
       if (filters != null) {
