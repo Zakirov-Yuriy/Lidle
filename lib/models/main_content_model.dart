@@ -97,9 +97,10 @@ class AdvertStatus {
 @JsonSerializable()
 class ContentType {
   final int id;
-  final String slug;
+  final String type;
+  final String path;
 
-  ContentType({required this.id, required this.slug});
+  ContentType({required this.id, required this.type, required this.path});
 
   factory ContentType.fromJson(Map<String, dynamic> json) =>
       _$ContentTypeFromJson(json);

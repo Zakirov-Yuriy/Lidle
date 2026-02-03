@@ -28,11 +28,18 @@ Map<String, dynamic> _$CatalogToJson(Catalog instance) => <String, dynamic>{
   'categories': instance.categories,
 };
 
-CatalogType _$CatalogTypeFromJson(Map<String, dynamic> json) =>
-    CatalogType(id: (json['id'] as num).toInt(), slug: json['slug'] as String);
+CatalogType _$CatalogTypeFromJson(Map<String, dynamic> json) => CatalogType(
+  id: (json['id'] as num).toInt(),
+  type: json['type'] as String,
+  path: json['path'] as String,
+);
 
 Map<String, dynamic> _$CatalogTypeToJson(CatalogType instance) =>
-    <String, dynamic>{'id': instance.id, 'slug': instance.slug};
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'path': instance.path,
+    };
 
 Category _$CategoryFromJson(Map<String, dynamic> json) => Category(
   id: (json['id'] as num).toInt(),

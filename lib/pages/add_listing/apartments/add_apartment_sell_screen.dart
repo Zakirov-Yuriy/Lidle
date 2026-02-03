@@ -7,14 +7,29 @@ import '../real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
-import '../publication_tariff_screen.dart'; 
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
+import '../publication_tariff_screen.dart';
 
 import '../../../constants.dart';
 
 // ============================================================
 // "Виджет: Экран добавления квартиры в недвижимость"
+// ============================================================
+//
+// ВАЖНО: ИСПОЛЬЗОВАНИЕ ПЕРЕВОДОВ
+// ============================================================
+// При создании объявления используйте переводы следующих ключей:
+// - Название: translations['adverts']['title']
+// - Описание: translations['adverts']['description']
+// - Цена: translations['adverts']['price']
+// - Авто продление: translations['adverts']['auto_renew']
+// - Сделать фотографию: translations['ads']['take_photo']
+// - Загрузить фотографию: translations['ads']['upload_photo']
+//
+// Получить переводы можно из META API (/meta endpoint)
+// где ключ type.type используется как категория переводов
+// Например для "adverts" берем translations['adverts']
 // ============================================================
 class AddApartmentSellScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
@@ -29,28 +44,26 @@ class AddApartmentSellScreen extends StatefulWidget {
 // "Класс состояния: Управление состоянием экрана добавления квартиры"
 // ============================================================
 class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
-// ============================================================
-// "Переменные состояния: Хранение выбранных опций для формы квартиры"
-// ============================================================
+  // ============================================================
+  // "Переменные состояния: Хранение выбранных опций для формы квартиры"
+  // ============================================================
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; 
-  Set<String> _selectedCommunicationTypes =
-      {}; 
-  Set<String> _selectedCity = {}; 
-  Set<String> _selectedStreet = {}; 
-  Set<String> _selectedRoomCounts = {}; 
-  Set<String> _selectedLayoutTypes = {}; 
-  Set<String> _selectedBathroomTypes = {}; 
-  Set<String> _selectedRenovationTypes = {}; 
-  Set<String> _selectedAppliancesTypes = {}; 
-  Set<String> _selectedMultimediaTypes = {}; 
-  Set<String> _selectedComfortTypes = {}; 
-  Set<String> _selectedInfrastructureTypes =
-      {}; 
-  Set<String> _selectedLandscapeTypes = {}; 
+  Set<String> _selectedHeatingTypes = {};
+  Set<String> _selectedCommunicationTypes = {};
+  Set<String> _selectedCity = {};
+  Set<String> _selectedStreet = {};
+  Set<String> _selectedRoomCounts = {};
+  Set<String> _selectedLayoutTypes = {};
+  Set<String> _selectedBathroomTypes = {};
+  Set<String> _selectedRenovationTypes = {};
+  Set<String> _selectedAppliancesTypes = {};
+  Set<String> _selectedMultimediaTypes = {};
+  Set<String> _selectedComfortTypes = {};
+  Set<String> _selectedInfrastructureTypes = {};
+  Set<String> _selectedLandscapeTypes = {};
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -133,26 +146,23 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
     });
   }
 
-  bool isIndividualSelected = true; 
-  bool isSecondarySelected = true; 
-  bool isMortgageYes = true; 
+  bool isIndividualSelected = true;
+  bool isSecondarySelected = true;
+  bool isMortgageYes = true;
 
-  bool isBargain = false; 
-  bool isNoCommission = false; 
-  bool isExchange = false; 
-  bool isPledge = false; 
-  bool isUrgent = false; 
-  bool isInstallment = false; 
-  bool isRemoteDeal = false; 
-  bool isClientPrice = false; 
-  bool isAutoRenewal = false; 
+  bool isBargain = false;
+  bool isNoCommission = false;
+  bool isExchange = false;
+  bool isPledge = false;
+  bool isUrgent = false;
+  bool isInstallment = false;
+  bool isRemoteDeal = false;
+  bool isClientPrice = false;
+  bool isAutoRenewal = false;
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished =
-      true; 
+  bool? _selectedFurnished = true;
 
- 
-
-  String _selectedAction = 'publish'; 
+  String _selectedAction = 'publish';
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -210,7 +220,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground, 
+                    color: _images.isEmpty
+                        ? secondaryBackground
+                        : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -243,23 +255,24 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                       : GridView.builder(
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3, 
+                                crossAxisCount: 3,
                                 crossAxisSpacing: 10,
                                 mainAxisSpacing: 10,
-                                childAspectRatio: 115 / 89, 
+                                childAspectRatio: 115 / 89,
                               ),
-                          shrinkWrap: true, 
-                          physics: const NeverScrollableScrollPhysics(), 
-                          itemCount: _images.length + 1, 
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: _images.length + 1,
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
-                                onTap: () => _showImageSourceActionSheet(context),
+                                onTap: () =>
+                                    _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
                                   decoration: BoxDecoration(
-                                    color: formBackground, 
+                                    color: formBackground,
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: const Center(
@@ -274,11 +287,11 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                             }
                             return Container(
                               width: 115,
-                              height: 89, 
+                              height: 89,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(5),
                               ),
-                              clipBehavior: Clip.antiAlias, 
+                              clipBehavior: Clip.antiAlias,
                               child: Stack(
                                 children: [
                                   Positioned.fill(
@@ -296,7 +309,9 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(5),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -428,7 +443,8 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isNoCommission = !isNoCommission),
+                      onTap: () =>
+                          setState(() => isNoCommission = !isNoCommission),
                       child: const Text(
                         'Без комиссии',
                         style: TextStyle(color: textPrimary, fontSize: 14),
@@ -500,7 +516,8 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isInstallment = !isInstallment),
+                      onTap: () =>
+                          setState(() => isInstallment = !isInstallment),
                       child: const Text(
                         'Рассрочка',
                         style: TextStyle(color: textPrimary, fontSize: 14),
@@ -536,7 +553,8 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isClientPrice = !isClientPrice),
+                      onTap: () =>
+                          setState(() => isClientPrice = !isClientPrice),
                       child: const Text(
                         'Клиент может предложить свою цену',
                         style: TextStyle(color: textPrimary, fontSize: 14),
@@ -574,10 +592,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
 
               const SizedBox(height: 13),
-              
-                  
-
-    
 
               _buildDropdown(
                 label: 'Тип дома',
@@ -1125,8 +1139,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -1344,7 +1357,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-
                         ],
                         selectedOptions: _selectedCity,
                         onSelectionChanged: (Set<String> selected) {
@@ -1467,10 +1479,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Ссылка на ваш whatsapp',
-                hint: 'https:',
-              ),
+              _buildTextField(label: 'Ссылка на ваш whatsapp', hint: 'https:'),
 
               const SizedBox(height: 22),
 
@@ -1506,7 +1515,6 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
       ),
     );
   }
-
 
   Widget _buildTextField({
     required String label,
@@ -1568,7 +1576,10 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 9),
         GestureDetector(
@@ -1620,10 +1631,7 @@ class _AddApartmentSellScreenState extends State<AddApartmentSellScreen> {
                 if (showChangeText)
                   Text(
                     'Изменить',
-                    style: TextStyle(
-                      color: Colors.blue, 
-                      fontSize: 14, 
-                    ),
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
                   ),
                 if (icon != null) icon,
               ],

@@ -32,9 +32,10 @@ class Catalog {
 @JsonSerializable()
 class CatalogType {
   final int id;
-  final String slug;
+  final String type;
+  final String path;
 
-  CatalogType({required this.id, required this.slug});
+  CatalogType({required this.id, required this.type, required this.path});
 
   factory CatalogType.fromJson(Map<String, dynamic> json) =>
       _$CatalogTypeFromJson(json);

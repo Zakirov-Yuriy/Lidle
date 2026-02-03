@@ -7,14 +7,29 @@ import '../real_estate_subcategories_screen.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart'; 
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart'; 
-import '../publication_tariff_screen.dart'; 
+import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
+import '../publication_tariff_screen.dart';
 
 import '../../../constants.dart';
 
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
+// ============================================================
+//
+// ВАЖНО: ИСПОЛЬЗОВАНИЕ ПЕРЕВОДОВ
+// ============================================================
+// При создании объявления используйте переводы следующих ключей:
+// - Название: translations['ads']['title']
+// - Описание: translations['ads']['description']
+// - Цена: translations['ads']['price']
+// - Авто продление: translations['ads']['auto_renew']
+// - Сделать фотографию: translations['ads']['take_photo']
+// - Загрузить фотографию: translations['ads']['upload_photo']
+//
+// Получить переводы можно из META API (/meta endpoint)
+// где ключ type.type используется как категория переводов
+// Например для "adverts" берем translations['adverts']
 // ============================================================
 class AddApartmentRentScreen extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
@@ -22,31 +37,28 @@ class AddApartmentRentScreen extends StatefulWidget {
   const AddApartmentRentScreen({super.key});
 
   @override
-  State<AddApartmentRentScreen> createState() =>
-      _AddApartmentRentScreenState();
+  State<AddApartmentRentScreen> createState() => _AddApartmentRentScreenState();
 }
 
 // ============================================================
 // "Класс состояния: Управление состоянием экрана аренды квартиры"
 // ============================================================
-class _AddApartmentRentScreenState
-    extends State<AddApartmentRentScreen> {
+class _AddApartmentRentScreenState extends State<AddApartmentRentScreen> {
   Set<String> _selectedHouseTypes = {};
   Set<String> _selectedDealTypes = {};
   Set<String> _selectedWallTypes = {};
   Set<String> _selectedHousingClassTypes = {};
-  Set<String> _selectedHeatingTypes = {}; 
-  Set<String> _selectedCommunicationTypes =
-      {}; 
-  Set<String> _selectedCity = {}; 
-  Set<String> _selectedStreet = {}; 
-  Set<String> _selectedRoomCounts = {}; 
-  Set<String> _selectedLayoutTypes = {}; 
-  Set<String> _selectedBathroomTypes = {}; 
-  Set<String> _selectedRenovationTypes = {}; 
-  Set<String> _selectedAppliancesTypes = {}; 
-  Set<String> _selectedMultimediaTypes = {}; 
-  Set<String> _selectedComfortTypes = {}; 
+  Set<String> _selectedHeatingTypes = {};
+  Set<String> _selectedCommunicationTypes = {};
+  Set<String> _selectedCity = {};
+  Set<String> _selectedStreet = {};
+  Set<String> _selectedRoomCounts = {};
+  Set<String> _selectedLayoutTypes = {};
+  Set<String> _selectedBathroomTypes = {};
+  Set<String> _selectedRenovationTypes = {};
+  Set<String> _selectedAppliancesTypes = {};
+  Set<String> _selectedMultimediaTypes = {};
+  Set<String> _selectedComfortTypes = {};
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -130,25 +142,23 @@ class _AddApartmentRentScreenState
     });
   }
 
-  bool isIndividualSelected = true; 
-  bool isSecondarySelected = true; 
-  bool isMortgageYes = true; 
+  bool isIndividualSelected = true;
+  bool isSecondarySelected = true;
+  bool isMortgageYes = true;
 
-  bool isBargain = false; 
-  bool isNoCommission = false; 
-  bool isExchange = false; 
-  bool isPledge = false; 
-  bool isUrgent = false; 
-  bool isInstallment = false; 
-  bool isRemoteDeal = false; 
-  bool isClientPrice = false; 
-  bool isAutoRenewal = false; 
+  bool isBargain = false;
+  bool isNoCommission = false;
+  bool isExchange = false;
+  bool isPledge = false;
+  bool isUrgent = false;
+  bool isInstallment = false;
+  bool isRemoteDeal = false;
+  bool isClientPrice = false;
+  bool isAutoRenewal = false;
   bool isAutoRenewal1 = false;
-  bool? _selectedFurnished =
-      true; 
+  bool? _selectedFurnished = true;
 
-
-  String _selectedAction = 'publish'; 
+  String _selectedAction = 'publish';
 
   void _togglePersonType(bool isIndividual) {
     setState(() => isIndividualSelected = isIndividual);
@@ -198,7 +208,9 @@ class _AddApartmentRentScreenState
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _images.isEmpty ? secondaryBackground : primaryBackground,
+                    color: _images.isEmpty
+                        ? secondaryBackground
+                        : primaryBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: _images.isEmpty
@@ -242,7 +254,8 @@ class _AddApartmentRentScreenState
                           itemBuilder: (context, index) {
                             if (index == _images.length) {
                               return GestureDetector(
-                                onTap: () => _showImageSourceActionSheet(context),
+                                onTap: () =>
+                                    _showImageSourceActionSheet(context),
                                 child: Container(
                                   width: 115,
                                   height: 89,
@@ -284,7 +297,9 @@ class _AddApartmentRentScreenState
                                         padding: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.5),
-                                          borderRadius: BorderRadius.circular(5),
+                                          borderRadius: BorderRadius.circular(
+                                            5,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.close,
@@ -416,7 +431,8 @@ class _AddApartmentRentScreenState
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => isNoCommission = !isNoCommission),
+                      onTap: () =>
+                          setState(() => isNoCommission = !isNoCommission),
                       child: const Text(
                         'Без комиссии',
                         style: TextStyle(color: textPrimary, fontSize: 14),
@@ -1131,8 +1147,7 @@ class _AddApartmentRentScreenState
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -1176,8 +1191,7 @@ class _AddApartmentRentScreenState
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -1222,8 +1236,7 @@ class _AddApartmentRentScreenState
                             _selectedCommunicationTypes = selected;
                           });
                         },
-                        allowMultipleSelection:
-                            true, 
+                        allowMultipleSelection: true,
                       );
                     },
                   );
@@ -1315,7 +1328,6 @@ class _AddApartmentRentScreenState
                           'Бабаево',
                           'Бабушкин Бавлы',
                           'Багратионовск',
-
                         ],
                         selectedOptions: _selectedCity,
                         onSelectionChanged: (Set<String> selected) {
@@ -1438,10 +1450,7 @@ class _AddApartmentRentScreenState
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Ссылка на ваш whatsapp',
-                hint: 'https:',
-              ),
+              _buildTextField(label: 'Ссылка на ваш whatsapp', hint: 'https:'),
 
               const SizedBox(height: 22),
 
@@ -1477,7 +1486,6 @@ class _AddApartmentRentScreenState
       ),
     );
   }
-
 
   Widget _buildTextField({
     required String label,
@@ -1532,14 +1540,17 @@ class _AddApartmentRentScreenState
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
-    bool showChangeText = false, 
+    bool showChangeText = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+          child: Text(
+            label,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
         ),
         const SizedBox(height: 9),
         GestureDetector(
@@ -1588,13 +1599,10 @@ class _AddApartmentRentScreenState
                           ),
                         ),
                 ),
-                if (showChangeText) 
+                if (showChangeText)
                   Text(
                     'Изменить',
-                    style: TextStyle(
-                      color: Colors.blue, 
-                      fontSize: 14, 
-                    ),
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
                   ),
                 if (icon != null) icon,
               ],

@@ -15,7 +15,7 @@ import 'real_estate_subcategories_screen.dart';
 /// API документация:
 /// - GET /v1/content/catalogs: Получить все каталоги
 ///   - Headers: Accept-Language, Accept, X-App-Client
-///   - Response: {"data": [{"id": int, "name": string, "thumbnail": string, "slug": string, "type": {"id": int, "slug": string}, "order": int}, ...]}
+///   - Response: {"data": [{"id": int, "name": string, "thumbnail": string, "slug": string, "type": {"id": int, "type": string, "path": string}, "order": int}, ...]}
 ///   - Пример: [{"id": 1, "name": "Недвижимость", ...}, {"id": 8, "name": "Работа", ...}]
 ///
 /// Использует ApiService.getCatalogs() для загрузки данных.

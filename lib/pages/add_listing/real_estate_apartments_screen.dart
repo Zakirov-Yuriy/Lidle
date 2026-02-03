@@ -9,7 +9,25 @@ import 'package:lidle/hive_service.dart';
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
 // ============================================================
-
+//
+// ВАЖНО: ИСПОЛЬЗОВАНИЕ ПЕРЕВОДОВ И ТИПОВ
+// ============================================================
+// Категория имеет поле type с следующей структурой:
+// {
+//   "id": 2,
+//   "type": "adverts",      // используйте для получения переводов
+//   "path": "adverts"       // используйте для формирования URL
+// }
+//
+// Получайте переводы из META API (/meta endpoint):
+// final translations = await apiService.getMeta();
+// final categoryTranslations = translations[category.type.type];
+//
+// Для стандартных полей используйте:
+// - title: translations['ads']['title']
+// - description: translations['ads']['description']
+// - price: translations['ads']['price']
+// ============================================================
 class RealEstateApartmentsScreen extends StatefulWidget {
   final int categoryId;
 

@@ -31,12 +31,13 @@ class Catalog {
 
 class CatalogType {
   final int id;
-  final String slug;
+  final String type;
+  final String path;
 
-  CatalogType({required this.id, required this.slug});
+  CatalogType({required this.id, required this.type, required this.path});
 
   factory CatalogType.fromJson(Map<String, dynamic> json) {
-    return CatalogType(id: json['id'], slug: json['slug']);
+    return CatalogType(id: json['id'], type: json['type'], path: json['path']);
   }
 }
 
@@ -87,12 +88,13 @@ class Category {
 
 class CategoryType {
   final int id;
-  final String slug;
+  final String type;
+  final String path;
 
-  CategoryType({required this.id, required this.slug});
+  CategoryType({required this.id, required this.type, required this.path});
 
   factory CategoryType.fromJson(Map<String, dynamic> json) {
-    return CategoryType(id: json['id'], slug: json['slug']);
+    return CategoryType(id: json['id'], type: json['type'], path: json['path']);
   }
 }
 

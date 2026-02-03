@@ -47,7 +47,7 @@ class Advert {
       shareCount: json['share_count'] ?? 0,
       type: json['type'] != null
           ? AdvertType.fromJson(json['type'])
-          : AdvertType(id: 1, slug: 'adverts'),
+          : AdvertType(id: 1, type: 'adverts', path: 'adverts'),
     );
   }
 }
@@ -65,12 +65,13 @@ class AdvertStatus {
 
 class AdvertType {
   final int id;
-  final String slug;
+  final String type;
+  final String path;
 
-  AdvertType({required this.id, required this.slug});
+  AdvertType({required this.id, required this.type, required this.path});
 
   factory AdvertType.fromJson(Map<String, dynamic> json) {
-    return AdvertType(id: json['id'], slug: json['slug']);
+    return AdvertType(id: json['id'], type: json['type'], path: json['path']);
   }
 }
 

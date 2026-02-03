@@ -85,8 +85,15 @@ AdvertStatus _$AdvertStatusFromJson(Map<String, dynamic> json) => AdvertStatus(
 Map<String, dynamic> _$AdvertStatusToJson(AdvertStatus instance) =>
     <String, dynamic>{'id': instance.id, 'title': instance.title};
 
-ContentType _$ContentTypeFromJson(Map<String, dynamic> json) =>
-    ContentType(id: (json['id'] as num).toInt(), slug: json['slug'] as String);
+ContentType _$ContentTypeFromJson(Map<String, dynamic> json) => ContentType(
+  id: (json['id'] as num).toInt(),
+  type: json['type'] as String,
+  path: json['path'] as String,
+);
 
 Map<String, dynamic> _$ContentTypeToJson(ContentType instance) =>
-    <String, dynamic>{'id': instance.id, 'slug': instance.slug};
+    <String, dynamic>{
+      'id': instance.id,
+      'type': instance.type,
+      'path': instance.path,
+    };
