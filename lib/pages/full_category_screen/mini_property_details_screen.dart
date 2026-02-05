@@ -217,6 +217,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 location: state.listing.location,
                 date: state.listing.date,
                 isFavorited: state.listing.isFavorited,
+                sellerName: state.listing.sellerName,
+                sellerAvatar: state.listing.sellerAvatar,
+                sellerRegistrationDate: state.listing.sellerRegistrationDate,
               );
             }
           });
@@ -612,6 +615,11 @@ ${widget.listing.title}
   }
 
   Widget _buildSellerCard() {
+    final sellerName = _listing.sellerName ?? "Имя не указано";
+    final sellerAvatar =
+        _listing.sellerAvatar ?? "assets/property_details_screen/Andrey.png";
+    final sellerRegDate = _listing.sellerRegistrationDate ?? "2024г.";
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,20 +636,26 @@ ${widget.listing.title}
           SizedBox(height: 15),
           Row(
             children: [
-              const CircleAvatar(
-                radius: 35.5,
-                backgroundImage: AssetImage(
-                  "assets/property_details_screen/Andrey.png",
-                ),
-              ),
+              sellerAvatar.startsWith('http')
+                  ? CircleAvatar(
+                      radius: 35.5,
+                      backgroundImage: NetworkImage(sellerAvatar),
+                      onBackgroundImageError: (exception, stackTrace) {
+                        // Fallback to asset image on error
+                      },
+                    )
+                  : CircleAvatar(
+                      radius: 35.5,
+                      backgroundImage: AssetImage(sellerAvatar),
+                    ),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      "Андрей Коломойский",
-                      style: TextStyle(
+                      sellerName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -649,7 +663,7 @@ ${widget.listing.title}
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "На LIDLE с 2024г.",
+                      "На LIDLE с $sellerRegDate",
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                     Row(
@@ -670,7 +684,11 @@ ${widget.listing.title}
             ],
           ),
           const SizedBox(height: 27),
-          _AllListingsButton(similarListings: _similarListings),
+          _AllListingsButton(
+            similarListings: _similarListings,
+            sellerName: sellerName,
+            sellerAvatar: sellerAvatar,
+          ),
           const SizedBox(height: 18),
         ],
       ),
@@ -832,21 +850,33 @@ class _OfferPriceButton extends StatelessWidget {
 
 class _AllListingsButton extends StatelessWidget {
   final List<Listing> similarListings;
+  final String sellerName;
+  final String sellerAvatar;
 
-  const _AllListingsButton({required this.similarListings});
+  const _AllListingsButton({
+    required this.similarListings,
+    required this.sellerName,
+    required this.sellerAvatar,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Создаем ImageProvider в зависимости от типа URL
+        ImageProvider avatarProvider;
+        if (sellerAvatar.startsWith('http')) {
+          avatarProvider = NetworkImage(sellerAvatar);
+        } else {
+          avatarProvider = AssetImage(sellerAvatar);
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => SellerProfileScreen(
-              sellerName: "Андрей Коломойский",
-              sellerAvatar: const AssetImage(
-                "assets/property_details_screen/Andrey.png",
-              ),
+              sellerName: sellerName,
+              sellerAvatar: avatarProvider,
               sellerListings: similarListings
                   .map(
                     (listing) => {

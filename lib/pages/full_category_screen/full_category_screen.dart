@@ -89,20 +89,13 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                   ),
                 ),
                 const Spacer(),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    'Отмена',
-                    style: TextStyle(color: activeIconColor, fontSize: 16),
-                  ),
-                ),
               ],
             ),
           ),
           const Padding(
-            padding: EdgeInsets.only(bottom: 10, left: 25, top: 7),
+            padding: EdgeInsets.only(bottom: 12, left: 25, top: 7),
             child: Text(
-              'Все предложения на LIDLE',
+              'Выберите категории публикации',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -116,27 +109,39 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                 if (state is CatalogLoading) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is CatalogsLoaded) {
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(left: 25, bottom: 106),
-                    itemCount: state.catalogs.length,
-                    itemBuilder: (context, index) {
-                      final catalog = state.catalogs[index];
-                      return GestureDetector(
-                        onTap: () {
-                          if (catalog.name == 'Недвижимость') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const FullRealEstateSubcategoriesScreen(),
-                              ),
-                            );
-                          } else {
-                            // Handle other catalogs if needed
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10, right: 25),
+                  return Padding(
+                    padding: const EdgeInsets.only(
+                      left: 25,
+                      right: 25,
+                      bottom: 106,
+                      top: 0,
+                    ),
+                    child: GridView.builder(
+                      padding: EdgeInsets.zero,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 120 / 83,
+                          ),
+                      itemCount: state.catalogs.length,
+                      itemBuilder: (context, index) {
+                        final catalog = state.catalogs[index];
+                        return GestureDetector(
+                          onTap: () {
+                            if (catalog.name == 'Недвижимость') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const FullRealEstateSubcategoriesScreen(),
+                                ),
+                              );
+                            } else {
+                              // Handle other catalogs if needed
+                            }
+                          },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5),
                             child: Stack(
@@ -144,14 +149,14 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                                 catalog.thumbnail != null
                                     ? Image.network(
                                         catalog.thumbnail!,
-                                        height: 93,
-                                        width: 366,
+                                        height: 83,
+                                        width: 120,
                                         fit: BoxFit.cover,
                                         errorBuilder:
                                             (context, error, stackTrace) {
                                               return Container(
-                                                height: 93,
-                                                width: 366,
+                                                height: 83,
+                                                width: 120,
                                                 color: Colors.grey,
                                                 child: const Icon(
                                                   Icons.image_not_supported,
@@ -160,8 +165,8 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                                             },
                                       )
                                     : Container(
-                                        height: 93,
-                                        width: 366,
+                                        height: 83,
+                                        width: 120,
                                         color: Colors.grey,
                                         child: const Icon(
                                           Icons.image_not_supported,
@@ -170,9 +175,9 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                               ],
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   );
                 } else if (state is CatalogError) {
                   return Center(

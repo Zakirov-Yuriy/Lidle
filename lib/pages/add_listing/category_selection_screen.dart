@@ -129,9 +129,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
             ),
           ),
           const Padding(
-            padding: EdgeInsets.only(bottom: 10, left: 25, right: 25, top: 7),
+            padding: EdgeInsets.only(left: 25, right: 25, top: 7),
             child: Text(
-              'Все предложения на LIDLE',
+              'Выберите категории публикации',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -160,7 +160,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                           style: const TextStyle(color: Colors.white),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
+                        // const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _loadCatalogs,
                           child: const Text('Повторить'),
@@ -168,26 +168,38 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(left: 25, bottom: 106),
-                    itemCount: _catalogs.length,
-                    itemBuilder: (context, index) {
-                      final catalog = _catalogs[index];
-                      return GestureDetector(
-                        onTap: () {
-                          if (catalog.name == 'Недвижимость') {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const RealEstateSubcategoriesScreen(),
-                              ),
-                            );
-                          }
-                          // Для других каталогов можно добавить логику позже
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10, right: 25),
+                : Padding(
+                    padding: const EdgeInsets.only(
+                      left: 25,
+                      right: 25,
+                      bottom: 0,
+                      top: 12,
+                    ),
+                    child: GridView.builder(
+                      padding: EdgeInsets.zero,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 120 / 83,
+                          ),
+                      itemCount: _catalogs.length,
+                      itemBuilder: (context, index) {
+                        final catalog = _catalogs[index];
+                        return GestureDetector(
+                          onTap: () {
+                            if (catalog.name == 'Недвижимость') {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const RealEstateSubcategoriesScreen(),
+                                ),
+                              );
+                            }
+                            // Для других каталогов можно добавить логику позже
+                          },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5),
                             child: Stack(
@@ -196,44 +208,31 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                         catalog.thumbnail!.startsWith('http')
                                     ? Image.network(
                                         catalog.thumbnail!,
-                                        height: 93,
-                                        width: 366,
+                                        height: 83,
+                                        width: 120,
                                         fit: BoxFit.cover,
                                         errorBuilder:
                                             (context, error, stackTrace) {
                                               return Image.asset(
                                                 _getCategoryImage(catalog.name),
-                                                height: 93,
-                                                width: 366,
+                                                height: 83,
+                                                width: 120,
                                                 fit: BoxFit.cover,
                                               );
                                             },
                                       )
                                     : Image.asset(
                                         _getCategoryImage(catalog.name),
-                                        height: 93,
-                                        width: 366,
+                                        height: 83,
+                                        width: 120,
                                         fit: BoxFit.cover,
                                       ),
-                                // Временно убрал текст для диагностики дублирования
-                                // Positioned(
-                                //   top: 39,
-                                //   left: 30,
-                                //   child: Text(
-                                //     catalog.name,
-                                //     style: const TextStyle(
-                                //       color: Colors.black,
-                                //       fontSize: 18,
-                                //       fontWeight: FontWeight.w500,
-                                //     ),
-                                //   ),
-                                // ),
                               ],
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],

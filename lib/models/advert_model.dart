@@ -13,6 +13,9 @@ class Advert {
   final int clickCount;
   final int shareCount;
   final AdvertType type;
+  final String? sellerName;
+  final String? sellerAvatar;
+  final String? sellerRegistrationDate;
 
   Advert({
     required this.id,
@@ -27,10 +30,26 @@ class Advert {
     required this.clickCount,
     required this.shareCount,
     required this.type,
+    this.sellerName,
+    this.sellerAvatar,
+    this.sellerRegistrationDate,
   });
 
   factory Advert.fromJson(Map<String, dynamic> json) {
     print('Advert ${json['id']} images in JSON: ${json['images']}');
+
+    // Парсим информацию о продавце из поля 'user' или 'seller'
+    String? sellerName;
+    String? sellerAvatar;
+    String? sellerRegistrationDate;
+
+    if (json['user'] != null) {
+      final user = json['user'] as Map<String, dynamic>;
+      sellerName = user['name'] as String?;
+      sellerAvatar = user['avatar'] as String?;
+      sellerRegistrationDate = user['created_at'] as String?;
+    }
+
     return Advert(
       id: json['id'] ?? 0,
       date: json['date'] ?? '',
@@ -48,6 +67,9 @@ class Advert {
       type: json['type'] != null
           ? AdvertType.fromJson(json['type'])
           : AdvertType(id: 1, type: 'adverts', path: 'adverts'),
+      sellerName: sellerName,
+      sellerAvatar: sellerAvatar,
+      sellerRegistrationDate: sellerRegistrationDate,
     );
   }
 }
@@ -198,6 +220,9 @@ extension AdvertToListingExtension on Advert {
       location: address,
       date: date,
       isFavorited: false, // Default, can be updated later
+      sellerName: sellerName,
+      sellerAvatar: sellerAvatar,
+      sellerRegistrationDate: sellerRegistrationDate,
     );
   }
 }

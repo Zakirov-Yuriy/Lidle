@@ -37,6 +37,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       location: "Москва, Истринская ул, 8к3",
       date: "09.08.2024",
       isFavorited: false,
+      sellerName: "Андрей Коломойский",
+      sellerAvatar: "assets/property_details_screen/Andrey.png",
+      sellerRegistrationDate: "2024г.",
     ),
     Listing(
       id: '2',
@@ -46,6 +49,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      sellerName: "Андрей Коломойский",
+      sellerAvatar: "assets/property_details_screen/Andrey.png",
+      sellerRegistrationDate: "2024г.",
     ),
     Listing(
       id: '3',
@@ -55,6 +61,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "11.08.2024",
       isFavorited: false,
+      sellerName: "Андрей Коломойский",
+      sellerAvatar: "assets/property_details_screen/Andrey.png",
+      sellerRegistrationDate: "2024г.",
     ),
     Listing(
       id: '4',
@@ -64,6 +73,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      sellerName: "Андрей Коломойский",
+      sellerAvatar: "assets/property_details_screen/Andrey.png",
+      sellerRegistrationDate: "2024г.",
     ),
   ];
 
@@ -122,7 +134,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.share_outlined, color: textPrimary),
+                        icon: const Icon(
+                          Icons.share_outlined,
+                          color: textPrimary,
+                        ),
                         onPressed: () {},
                       ),
                     ],
@@ -130,7 +145,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
+                    padding: const EdgeInsets.only(
+                      right: 25,
+                      left: 25,
+                      top: 20,
+                    ),
                     children: [
                       _buildImageCarousel(),
                       const SizedBox(height: 16),
@@ -148,8 +167,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       const SizedBox(height: 19),
                       _buildComplaintButton(),
                       const SizedBox(height: 29),
-                  _buildSimilarOffersSection(),
-                  const SizedBox(height: 55),
+                      _buildSimilarOffersSection(),
+                      const SizedBox(height: 55),
                     ],
                   ),
                 ),
@@ -314,7 +333,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
           _InfoRow(title: "Тип комнат: ", value: "изолированные"),
           SizedBox(height: 8),
-Row(
+          Row(
             children: [
               Text(
                 "Все характеристики",
@@ -378,6 +397,16 @@ Row(
   }
 
   Widget _buildSellerCard() {
+    // Используем данные из первого объявления похожих
+    final firstListing = _similarListings.isNotEmpty
+        ? _similarListings[0]
+        : null;
+    final sellerName = firstListing?.sellerName ?? "Имя не указано";
+    final sellerAvatar =
+        firstListing?.sellerAvatar ??
+        "assets/property_details_screen/Andrey.png";
+    final sellerRegDate = firstListing?.sellerRegistrationDate ?? "2024г.";
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,20 +423,26 @@ Row(
           SizedBox(height: 15),
           Row(
             children: [
-              const CircleAvatar(
-                radius: 35.5,
-                backgroundImage: AssetImage(
-                  "assets/property_details_screen/Andrey.png",
-                ),
-              ),
+              sellerAvatar.startsWith('http')
+                  ? CircleAvatar(
+                      radius: 35.5,
+                      backgroundImage: NetworkImage(sellerAvatar),
+                      onBackgroundImageError: (exception, stackTrace) {
+                        // Fallback to asset image on error
+                      },
+                    )
+                  : CircleAvatar(
+                      radius: 35.5,
+                      backgroundImage: AssetImage(sellerAvatar),
+                    ),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      "Андрей Коломойский",
-                      style: TextStyle(
+                      sellerName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -415,7 +450,7 @@ Row(
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "На LIDLE с 2024г.",
+                      "На LIDLE с $sellerRegDate",
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                     Row(

@@ -13,12 +13,9 @@ import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 // ============================================================
 
 class MiniPropertyDetailsScreen extends StatefulWidget {
-  final Listing listing; 
+  final Listing listing;
 
-  const MiniPropertyDetailsScreen({
-    super.key,
-    required this.listing,
-  }); 
+  const MiniPropertyDetailsScreen({super.key, required this.listing});
 
   @override
   State<MiniPropertyDetailsScreen> createState() =>
@@ -120,10 +117,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                   child: const Header(),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 25,
-
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     children: [
                       GestureDetector(
@@ -144,7 +138,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(Icons.share_outlined, color: textPrimary),
+                        icon: const Icon(
+                          Icons.share_outlined,
+                          color: textPrimary,
+                        ),
                         onPressed: () => _showShareBottomSheet(context),
                       ),
                     ],
@@ -152,7 +149,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 ),
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.only(right: 25, left: 25, top: 20),
+                    padding: const EdgeInsets.only(
+                      right: 25,
+                      left: 25,
+                      top: 20,
+                    ),
                     children: [
                       _buildImageCarousel(),
                       const SizedBox(height: 16),
@@ -189,8 +190,6 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     );
   }
 
-  
-
   Widget _buildImageCarousel() {
     return Column(
       children: [
@@ -207,13 +206,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             ),
           ),
         ),
-        const SizedBox(
-          height: 10,
-        ), 
+        const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            1, 
+            1,
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),
@@ -224,18 +221,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget _buildPageIndicator(bool isActive) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 150),
-      margin: const EdgeInsets.symmetric(
-        horizontal: 5.0,
-      ), 
-      height: 11.0, 
-      width: 11.0, 
+      margin: const EdgeInsets.symmetric(horizontal: 5.0),
+      height: 11.0,
+      width: 11.0,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isActive ? Colors.blue : primaryBackground.withOpacity(0.5),
-        border: Border.all(
-          color: Colors.grey, 
-          width: 1.0, 
-        ),
+        border: Border.all(color: Colors.grey, width: 1.0),
       ),
     );
   }
@@ -253,7 +245,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
-                widget.listing.id, 
+                widget.listing.id,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
@@ -278,7 +270,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ),
           const SizedBox(height: 4),
           const Text(
-            "354 582 ₽ за м²", 
+            "354 582 ₽ за м²",
             style: TextStyle(
               color: Colors.white70,
               fontSize: 13,
@@ -348,7 +340,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
           _InfoRow(title: "Тип комнат: ", value: "изолированные"),
           SizedBox(height: 8),
-Row(
+          Row(
             children: [
               Text(
                 "Все характеристики",
@@ -412,6 +404,12 @@ Row(
   }
 
   Widget _buildSellerCard() {
+    final sellerName = widget.listing.sellerName ?? "Имя не указано";
+    final sellerAvatar =
+        widget.listing.sellerAvatar ??
+        "assets/property_details_screen/Andrey.png";
+    final sellerRegDate = widget.listing.sellerRegistrationDate ?? "2024г.";
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -428,20 +426,26 @@ Row(
           SizedBox(height: 15),
           Row(
             children: [
-              const CircleAvatar(
-                radius: 35.5,
-                backgroundImage: AssetImage(
-                  "assets/property_details_screen/Andrey.png",
-                ),
-              ),
+              sellerAvatar.startsWith('http')
+                  ? CircleAvatar(
+                      radius: 35.5,
+                      backgroundImage: NetworkImage(sellerAvatar),
+                      onBackgroundImageError: (exception, stackTrace) {
+                        // Fallback to asset image on error
+                      },
+                    )
+                  : CircleAvatar(
+                      radius: 35.5,
+                      backgroundImage: AssetImage(sellerAvatar),
+                    ),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
-                      "Андрей Коломойский",
-                      style: TextStyle(
+                      sellerName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -449,7 +453,7 @@ Row(
                     ),
                     SizedBox(height: 4),
                     Text(
-                      "На LIDLE с 2024г.",
+                      "На LIDLE с $sellerRegDate",
                       style: TextStyle(color: Colors.white70, fontSize: 13),
                     ),
                     Row(
@@ -470,7 +474,11 @@ Row(
             ],
           ),
           const SizedBox(height: 27),
-          _AllListingsButton(similarListings: _similarListings),
+          _AllListingsButton(
+            similarListings: _similarListings,
+            sellerName: sellerName,
+            sellerAvatar: sellerAvatar,
+          ),
           const SizedBox(height: 18),
         ],
       ),
@@ -525,7 +533,7 @@ Row(
             crossAxisSpacing: 8,
             childAspectRatio: 0.70,
           ),
-          itemCount: _similarListings.take(4).length, 
+          itemCount: _similarListings.take(4).length,
           itemBuilder: (context, index) {
             final listing = _similarListings[index];
             return GestureDetector(
@@ -533,7 +541,8 @@ Row(
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => MiniPropertyDetailsScreen(listing: listing),
+                    builder: (context) =>
+                        MiniPropertyDetailsScreen(listing: listing),
                   ),
                 );
               },
@@ -599,8 +608,6 @@ Row(
     );
   }
 
-  
-
   static Widget _card({required Widget child}) {
     return Container(
       padding: const EdgeInsets.only(left: 9, right: 9, top: 8, bottom: 14),
@@ -619,7 +626,7 @@ Row(
       builder: (BuildContext bc) {
         return Container(
           decoration: const BoxDecoration(
-            color: secondaryBackground, 
+            color: secondaryBackground,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
@@ -637,7 +644,10 @@ Row(
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
                 child: GridView.count(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -645,14 +655,42 @@ Row(
                   mainAxisSpacing: 10,
                   crossAxisSpacing: 10,
                   children: <Widget>[
-                    _buildShareItem("Быстрая отправка", Icons.send, "assets/publication_success/email_10401109.png"),
-                    _buildShareItem("Chats", Icons.chat, "assets/publication_success/icons8-чат-100.png"),
-                    _buildShareItem("Telegram", Icons.send, "assets/publication_success/icons8-telegram-100.png"),
-                    _buildShareItem("Открыть в Браузере", Icons.open_in_browser, "assets/publication_success/free-icon-yandex-6124986.png"),
-                    _buildShareItem("Читалка", Icons.menu_book, null), 
-                    _buildShareItem("WhatsApp", Icons.message, "assets/publication_success/icons8-whatsapp-100.png"),
-                    _buildShareItem("Сообщения", Icons.message, "assets/publication_success/icons8-чат-100.png"),
-                    _buildShareItem("Gmail", Icons.mail, "assets/publication_success/icons8-gmail-100.png"),
+                    _buildShareItem(
+                      "Быстрая отправка",
+                      Icons.send,
+                      "assets/publication_success/email_10401109.png",
+                    ),
+                    _buildShareItem(
+                      "Chats",
+                      Icons.chat,
+                      "assets/publication_success/icons8-чат-100.png",
+                    ),
+                    _buildShareItem(
+                      "Telegram",
+                      Icons.send,
+                      "assets/publication_success/icons8-telegram-100.png",
+                    ),
+                    _buildShareItem(
+                      "Открыть в Браузере",
+                      Icons.open_in_browser,
+                      "assets/publication_success/free-icon-yandex-6124986.png",
+                    ),
+                    _buildShareItem("Читалка", Icons.menu_book, null),
+                    _buildShareItem(
+                      "WhatsApp",
+                      Icons.message,
+                      "assets/publication_success/icons8-whatsapp-100.png",
+                    ),
+                    _buildShareItem(
+                      "Сообщения",
+                      Icons.message,
+                      "assets/publication_success/icons8-чат-100.png",
+                    ),
+                    _buildShareItem(
+                      "Gmail",
+                      Icons.mail,
+                      "assets/publication_success/icons8-gmail-100.png",
+                    ),
                   ],
                 ),
               ),
@@ -662,7 +700,7 @@ Row(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey[800], 
+                    backgroundColor: Colors.grey[800],
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(50),
@@ -670,10 +708,7 @@ Row(
                     padding: const EdgeInsets.symmetric(vertical: 15),
                   ),
                   onPressed: () => Navigator.pop(bc),
-                  child: const Text(
-                    "Отмена",
-                    style: TextStyle(fontSize: 18),
-                  ),
+                  child: const Text("Отмена", style: TextStyle(fontSize: 18)),
                 ),
               ),
               const SizedBox(height: 50),
@@ -684,21 +719,24 @@ Row(
     );
   }
 
-  Widget _buildShareItem(String title, IconData defaultIcon, String? assetPath) {
+  Widget _buildShareItem(
+    String title,
+    IconData defaultIcon,
+    String? assetPath,
+  ) {
     return GestureDetector(
       onTap: () {
-        
-        Navigator.pop(context); 
-        
+        Navigator.pop(context);
+
         print("Share $title tapped");
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
-          if (assetPath != null) 
-            Image.asset(assetPath, width: 50, height: 50) 
-          else 
-            Icon(defaultIcon, size: 50, color: Colors.white), 
+          if (assetPath != null)
+            Image.asset(assetPath, width: 50, height: 50)
+          else
+            Icon(defaultIcon, size: 50, color: Colors.white),
           const SizedBox(height: 8),
           Text(
             title,
@@ -710,7 +748,6 @@ Row(
     );
   }
 }
-
 
 class _InfoRow extends StatelessWidget {
   final String title;
@@ -738,25 +775,35 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-
-
 class _AllListingsButton extends StatelessWidget {
   final List<Listing> similarListings;
+  final String sellerName;
+  final String sellerAvatar;
 
-  const _AllListingsButton({required this.similarListings});
+  const _AllListingsButton({
+    required this.similarListings,
+    required this.sellerName,
+    required this.sellerAvatar,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Создаем ImageProvider в зависимости от типа URL
+        ImageProvider avatarProvider;
+        if (sellerAvatar.startsWith('http')) {
+          avatarProvider = NetworkImage(sellerAvatar);
+        } else {
+          avatarProvider = AssetImage(sellerAvatar);
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => SellerProfileScreen(
-              sellerName: "Андрей Коломойский", 
-              sellerAvatar: const AssetImage(
-                "assets/property_details_screen/Andrey.png",
-              ),
+              sellerName: sellerName,
+              sellerAvatar: avatarProvider,
               sellerListings: similarListings
                   .map(
                     (listing) => {
@@ -769,7 +816,7 @@ class _AllListingsButton extends StatelessWidget {
                       "isFavorited": listing.isFavorited,
                     },
                   )
-                  .toList(), 
+                  .toList(),
             ),
           ),
         );
@@ -810,7 +857,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   @override
   void initState() {
     super.initState();
-    
+
     _isFavorited = HiveService.isFavorite(widget.listing.id);
   }
 
@@ -853,7 +900,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                           ? SvgPicture.asset(
                               'assets/profile_dashboard/heart-rounded.svg',
                               colorFilter: const ColorFilter.mode(
-                                Colors.red, 
+                                Colors.red,
                                 BlendMode.srcIn,
                               ),
                               width: 20,
@@ -861,16 +908,12 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                             )
                           : Image.asset(
                               'assets/BottomNavigation/heart-rounded.png',
-                              color:
-                                  Colors.white70, 
+                              color: Colors.white70,
                               colorBlendMode: BlendMode.srcIn,
                               width: 20,
                               height: 20,
                             ),
                     ),
-                    
-                    
-                    
                   ],
                 ),
                 const SizedBox(height: 3),

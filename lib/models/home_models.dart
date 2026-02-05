@@ -52,6 +52,15 @@ class Listing {
   /// Флаг, указывающий, добавлено ли объявление в избранное.
   bool isFavorited; // Added isFavorited field
 
+  /// Имя продавца
+  final String? sellerName;
+
+  /// Аватарка продавца (URL или путь к активу)
+  final String? sellerAvatar;
+
+  /// Дата регистрации продавца на платформе
+  final String? sellerRegistrationDate;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -63,6 +72,9 @@ class Listing {
     required this.location,
     required this.date,
     this.isFavorited = false, // Default to false
+    this.sellerName,
+    this.sellerAvatar,
+    this.sellerRegistrationDate,
   });
 
   factory Listing.fromJson(Map<String, dynamic> json) {
@@ -82,6 +94,10 @@ class Listing {
           'Unknown Location', // Assuming 'address' corresponds to 'location'
       date: json['date'] ?? 'Unknown Date',
       isFavorited: json['isFavorited'] ?? false,
+      sellerName: json['seller']?['name'] ?? json['sellerName'],
+      sellerAvatar: json['seller']?['avatar'] ?? json['sellerAvatar'],
+      sellerRegistrationDate:
+          json['seller']?['registrationDate'] ?? json['sellerRegistrationDate'],
     );
   }
 }
