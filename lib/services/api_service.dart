@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/models/filter_models.dart'; // Import the new model
@@ -266,6 +267,21 @@ class ApiService {
       print('❌ 401 Unauthorized - Token might be expired or invalid');
       print('Error response: ${data['message'] ?? 'Token expired'}');
       throw Exception('Token expired');
+    } else if (response.statusCode == 422) {
+      // Validation error - return response with errors
+      print('❌ 422 Validation Error');
+      print('Full error response: ${jsonEncode(data)}');
+      if (data['errors'] is Map) {
+        print('\n📋 Detailed validation errors:');
+        (data['errors'] as Map).forEach((key, value) {
+          print('  ❌ $key: $value');
+          if (key == 'attributes' && value is List) {
+            print('     ^ ATTRIBUTES error! Check field structure');
+          }
+        });
+      }
+      // Don't throw exception, let calling code handle it
+      return data;
     } else if (response.statusCode == 500) {
       print('❌ 500 Server Error');
       print('Error message: ${data['message'] ?? 'Server error'}');
@@ -273,7 +289,7 @@ class ApiService {
     } else {
       print('❌ Error with status ${response.statusCode}');
       print('Error response: ${data['message'] ?? 'Ошибка сервера'}');
-      throw Exception(data['message'] ?? 'Ошибка сервера');
+      return data; // Return the response so caller can handle it
     }
   }
 
@@ -430,7 +446,54 @@ class ApiService {
         queryParams,
         token: token,
       );
-      return MetaFiltersResponse.fromJson(response);
+      // API returns { "success": true, "data": {"sort": [...], "filters": [...]} }
+      // Extract the data object which contains sort and filters
+      final data = response['data'] ?? response;
+      print('📊 Full filter JSON keys: ${data.keys.toList()}');
+      if (data['filters'] is List) {
+        final filtersList = data['filters'] as List;
+        print('📊 Filters count: ${filtersList.length}');
+        for (int i = 0; i < filtersList.length; i++) {
+          final filter = filtersList[i];
+          print(
+            '  [$i] ID=${filter['id']}, Title=${filter['title']}, Values=${filter['values']?.length ?? 0}',
+          );
+          print(
+            '       is_title_hidden=${filter['is_title_hidden']}, is_special_design=${filter['is_special_design']}',
+          );
+        }
+        // Сканируем все фильтры на предмет "Вам предложат цену"
+        print('🔍 Searching for "Вам предложат цену" filter...');
+        bool found = false;
+        for (final filter in filtersList) {
+          final title = filter['title']?.toString() ?? '';
+          if (title.contains('предложат') ||
+              title.contains('цену') ||
+              title.contains('offer') ||
+              title.contains('price')) {
+            print(
+              '   ✅ Found possible match: ID=${filter['id']}, Title=$title',
+            );
+            found = true;
+          }
+        }
+        if (!found) {
+          print('   ❌ "Вам предложат цену" filter NOT found in API response!');
+          print('   NOTE: This filter is REQUIRED but not returned by API');
+          print('   It will be added programmatically in _loadAttributes()');
+        }
+      }
+      try {
+        // API returns: {"success":true,"data":{"sort":[...],"filters":[...]}}
+        // data already contains {"sort": [...], "filters": [...]}
+        // So we pass it directly to fromJson
+        return MetaFiltersResponse.fromJson(data);
+      } catch (parseError) {
+        print('🔴 ERROR parsing MetaFiltersResponse:');
+        print('   Error: $parseError');
+        print('   Data keys: ${data.keys}');
+        rethrow;
+      }
     } catch (e) {
       if (e.toString().contains('Token expired') && token != null) {
         // Попытка обновить токен и повторить запрос
@@ -453,7 +516,26 @@ class ApiService {
     String? token,
   }) async {
     try {
-      final response = await post('/adverts', request.toJson(), token: token);
+      final json = request.toJson();
+      print('\n🚀 SENDING TO API: POST /adverts');
+      print('Full JSON:');
+      print(json);
+      if (json['attributes'] != null) {
+        print('\nAttributes structure:');
+        print('  - value_selected: ${json['attributes']['value_selected']}');
+        print(
+          '  - values keys: ${json['attributes']['values']?.keys.toList()}',
+        );
+        if (json['attributes']['values'] != null) {
+          print(
+            '  - values[1048]: ${json['attributes']['values']['1048']} (Type: ${json['attributes']['values']['1048'].runtimeType})',
+          );
+          print('  - values[1127]: ${json['attributes']['values']['1127']}');
+          print('  - values[1040]: ${json['attributes']['values']['1040']}');
+        }
+      }
+
+      final response = await post('/adverts', json, token: token);
       return response;
     } catch (e) {
       if (e.toString().contains('Token expired') && token != null) {
@@ -556,6 +638,206 @@ class ApiService {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
       throw Exception('Ошибка загрузки файла: $e');
+    }
+  }
+
+  /// Загрузить/обновить изображения для объявления
+  ///
+  /// Поддерживает три операции согласно документации API:
+  /// 1. Загрузка новых изображений (List<String> imagePaths)
+  /// 2. Сохранение существующих изображений (List<String> existingImages)
+  /// 3. Удаление изображений (List<String> deleteImages)
+  ///
+  /// ОГРАНИЧЕНИЯ по API:
+  /// - Обязательно должен быть передан хотя бы один из параметров: imagePaths или deleteImages
+  /// - НЕЛЬЗЯ одновременно загружать новые и удалять: либо images, либо delete_images
+  /// - Порядок изображений сохраняется как в параметре
+  /// - Существующие изображения могут быть переданы как строки (имена файлов)
+  static Future<Map<String, dynamic>> uploadAdvertImages(
+    int advertId,
+    List<String> imagePaths, {
+    required String token,
+    List<String>? existingImages,
+    List<String>? deleteImages,
+    Function(int uploaded, int total)? onProgress,
+  }) async {
+    try {
+      // Валидация: должен быть хотя бы один параметр
+      final hasImagesToUpload =
+          imagePaths.isNotEmpty || (existingImages?.isNotEmpty ?? false);
+      final hasImagesToDelete = deleteImages?.isNotEmpty ?? false;
+
+      if (!hasImagesToUpload && !hasImagesToDelete) {
+        throw Exception(
+          'Ошибка: нужно передать хотя бы один параметр (images или delete_images)',
+        );
+      }
+
+      // Валидация: нельзя одновременно загружать и удалять
+      if (hasImagesToUpload && hasImagesToDelete) {
+        throw Exception(
+          'Ошибка: нельзя одновременно загружать и удалять изображения. '
+          'Выберите либо загрузку (images), либо удаление (delete_images)',
+        );
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/adverts/$advertId/images'),
+      );
+
+      // Добавить заголовки авторизации
+      request.headers.addAll({
+        'Authorization': 'Bearer $token',
+        ...defaultHeaders,
+      });
+
+      // Добавить новые загруженные файлы
+      int imageIndex = 0;
+      for (final filePath in imagePaths) {
+        print('📎 Adding image $imageIndex: $filePath');
+        final file = File(filePath);
+
+        if (await file.exists()) {
+          request.files.add(
+            await http.MultipartFile.fromPath('images[$imageIndex]', filePath),
+          );
+          imageIndex++;
+        } else {
+          print('⚠️ File not found: $filePath');
+        }
+      }
+
+      // Добавить существующие изображения (для сохранения текущих и/или изменения порядка)
+      if (existingImages != null && existingImages.isNotEmpty) {
+        for (int i = 0; i < existingImages.length; i++) {
+          final existingFileName = existingImages[i];
+          request.fields['images[${imageIndex + i}]'] = existingFileName;
+          print('📸 Preserving existing image: $existingFileName');
+        }
+      }
+
+      // Добавить изображения для удаления (если требуется)
+      if (deleteImages != null && deleteImages.isNotEmpty) {
+        for (int i = 0; i < deleteImages.length; i++) {
+          request.fields['delete_images[$i]'] = deleteImages[i];
+          print('🗑️ Marking for deletion: ${deleteImages[i]}');
+        }
+      }
+
+      // Логирование запроса
+      print('════════════════════════════════════════════════════');
+      print('📤 MULTIPART REQUEST to /adverts/$advertId/images');
+      print('   Mode: ${deleteImages != null ? 'DELETE' : 'UPLOAD'}');
+      print('   New files: ${imagePaths.length}');
+      if (existingImages != null && existingImages.isNotEmpty) {
+        print('   Existing: ${existingImages.length}');
+      }
+      if (deleteImages != null && deleteImages.isNotEmpty) {
+        print('   To delete: ${deleteImages.length}');
+      }
+      print('════════════════════════════════════════════════════');
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('тЬЕ API Response status: ${response.statusCode}');
+      print('ЁЯУЛ Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        print('✅ Images operation completed successfully!');
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        // Токен истёк - пытаемся обновить и повторить
+        print('⚠️ Token expired (401), attempting to refresh...');
+        final newToken = await refreshToken(token);
+        if (newToken != null) {
+          print('✅ Token refreshed, retrying upload...');
+          return uploadAdvertImages(
+            advertId,
+            imagePaths,
+            token: newToken,
+            existingImages: existingImages,
+            deleteImages: deleteImages,
+            onProgress: onProgress,
+          );
+        }
+        throw Exception('Токен истёк и обновление не удалось');
+      } else if (response.statusCode == 404) {
+        throw Exception('Объявление не найдено (ID: $advertId)');
+      } else if (response.statusCode == 422) {
+        // Ошибка валидации - обычно это означает попытку одновременно загружать и удалять
+        final errorData = jsonDecode(response.body) as Map<String, dynamic>;
+        final message = errorData['message'] ?? 'Validation error';
+        throw Exception('Ошибка валидации: $message');
+      } else {
+        throw Exception(
+          'Ошибка при операции с изображениями: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('тЭМ Error with image operation: $e');
+      rethrow;
+    }
+  }
+
+  /// Поиск адресов по запросу
+  /// Возвращает список результатов поиска с ID region, city, street, building
+  static Future<List<Map<String, dynamic>>> searchAddresses(
+    String query, {
+    String? token,
+    List<String>? types,
+    Map<String, dynamic>? filters,
+  }) async {
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      // Build query parameters for GET request
+      final params = {'q': query};
+      if (types != null && types.isNotEmpty) {
+        // API expects types[] format (array parameters) not comma-separated
+        for (int i = 0; i < types.length; i++) {
+          params['types[$i]'] = types[i];
+        }
+      }
+      if (filters != null && filters.isNotEmpty) {
+        filters.forEach((key, value) {
+          params['filters[$key]'] = value.toString();
+        });
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl/addresses/search',
+      ).replace(queryParameters: params);
+
+      print('═══════════════════════════════════════════════════════');
+      print('📥 GET REQUEST /addresses/search');
+      print('URL: $uri');
+
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      print('✅ API Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true || jsonResponse['data'] != null) {
+          final List<dynamic> data = jsonResponse['data'] ?? [];
+          return List<Map<String, dynamic>>.from(
+            data.whereType<Map<String, dynamic>>(),
+          );
+        }
+        return [];
+      } else {
+        throw Exception('Failed to search addresses: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error searching addresses: $e');
     }
   }
 }

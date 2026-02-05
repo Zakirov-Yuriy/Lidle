@@ -16,7 +16,7 @@ Map<String, dynamic> _$FilterMetaResponseToJson(FilterMetaResponse instance) =>
 
 FilterMetaData _$FilterMetaDataFromJson(Map<String, dynamic> json) =>
     FilterMetaData(
-      sort: Map<String, String>.from(json['sort'] as Map),
+      sort: json['sort'] as List<dynamic>,
       filters: (json['filters'] as List<dynamic>)
           .map((e) => FilterField.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -36,7 +36,7 @@ FilterField _$FilterFieldFromJson(Map<String, dynamic> json) => FilterField(
   is_max_value: json['is_max_value'] as bool,
   data_type: json['data_type'] as String?,
   style: json['style'] as String?,
-  order: (json['order'] as num).toInt(),
+  order: (json['order'] as num?)?.toInt(),
   values: (json['values'] as List<dynamic>)
       .map((e) => FilterValue.fromJson(e as Map<String, dynamic>))
       .toList(),

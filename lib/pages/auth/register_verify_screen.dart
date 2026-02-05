@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
+import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
@@ -14,7 +15,9 @@ import 'sign_in_screen.dart';
 class RegisterVerifyScreen extends StatefulWidget {
   static const routeName = '/register-verify';
 
-  const RegisterVerifyScreen({super.key});
+  final String? email;
+
+  const RegisterVerifyScreen({super.key, this.email});
 
   @override
   State<RegisterVerifyScreen> createState() => _RegisterVerifyScreenState();
@@ -28,82 +31,76 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
 
   final _codeCtrl = TextEditingController();
 
-  final _emailCtrl = TextEditingController();
-
-  final _phoneCtrl = TextEditingController();
+  late String _email = '';
 
   static const _cooldown = Duration(seconds: 40);
 
-  Timer? _emailTimer;
+  Timer? _resendTimer;
 
-  Timer? _phoneTimer;
+  Duration _resendLeft = Duration.zero;
 
-  Duration _emailLeft = Duration.zero;
+  bool _canResendCode = false;
 
-  Duration _phoneLeft = Duration.zero;
+  @override
+  void initState() {
+    super.initState();
+    // Получаем email из конструктора или из параметров маршрута
+    if (widget.email != null && widget.email!.isNotEmpty) {
+      _email = widget.email!;
+    } else {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      _email = args?['email'] ?? '';
+    }
+
+    // Отправляем код автоматически при открытии экрана
+    if (_email.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          context.read<AuthBloc>().add(SendCodeEvent(email: _email));
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
     _codeCtrl.dispose();
-    _emailCtrl.dispose();
-    _phoneCtrl.dispose();
-    _emailTimer?.cancel();
-    _phoneTimer?.cancel();
+    _resendTimer?.cancel();
     super.dispose();
   }
 
   // ============================================================
-  // "Отправка кода на email"
+  // "Отправка кода повторно"
   // ============================================================
-  void _sendEmailCode() {
-    if (_emailCtrl.text.isEmpty) return;
+  void _resendCode() {
+    if (_email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Email не найден')));
+      return;
+    }
 
-    context.read<AuthBloc>().add(SendCodeEvent(email: _emailCtrl.text));
-    _startEmailTimer();
+    context.read<AuthBloc>().add(SendCodeEvent(email: _email));
+    _startResendTimer();
   }
 
   // ============================================================
-  // "Отправка кода на телефон"
+  // "Запуск таймера для блокировки повторной отправки"
   // ============================================================
-  void _sendPhoneCode() {
-    if (_phoneCtrl.text.isEmpty) return;
-
-    context.read<AuthBloc>().add(
-      SendCodeEvent(email: _phoneCtrl.text),
-    );
-    _startPhoneTimer();
-  }
-
-  // ============================================================
-  // "Запуск таймера для email"
-  // ============================================================
-  void _startEmailTimer() {
-    _emailTimer?.cancel();
-    setState(() => _emailLeft = _cooldown);
-    _emailTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) return;
-      if (_emailLeft.inSeconds <= 1) {
-        t.cancel();
-        setState(() => _emailLeft = Duration.zero);
-      } else {
-        setState(() => _emailLeft -= const Duration(seconds: 1));
-      }
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() {
+      _resendLeft = _cooldown;
+      _canResendCode = false;
     });
-  }
-
-  // ============================================================
-  // "Запуск таймера для телефона"
-  // ============================================================
-  void _startPhoneTimer() {
-    _phoneTimer?.cancel();
-    setState(() => _phoneLeft = _cooldown);
-    _phoneTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
-      if (_phoneLeft.inSeconds <= 1) {
+      if (_resendLeft.inSeconds <= 1) {
         t.cancel();
-        setState(() => _phoneLeft = Duration.zero);
+        setState(() => _resendLeft = Duration.zero);
       } else {
-        setState(() => _phoneLeft -= const Duration(seconds: 1));
+        setState(() => _resendLeft -= const Duration(seconds: 1));
       }
     });
   }
@@ -120,16 +117,14 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
       return;
     }
 
-    String email = _emailCtrl.text.trim();
-
-    if (email.isEmpty) {
+    if (_email.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Введите email')));
+      ).showSnackBar(const SnackBar(content: Text('Email не найден')));
       return;
     }
 
-    context.read<AuthBloc>().add(VerifyEmailEvent(email: email, code: code));
+    context.read<AuthBloc>().add(VerifyEmailEvent(email: _email, code: code));
   }
 
   // ============================================================
@@ -151,13 +146,14 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
         } else if (state is AuthEmailVerified) {
           Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(
+          // Активируем кнопку "Отправить код повторно" при ошибке
+          setState(() => _canResendCode = true);
+          ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
-                onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                message: state.message,
+                onClose: () =>
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
               backgroundColor: primaryBackground,
             ),
@@ -167,6 +163,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
       builder: (context, state) {
         return Scaffold(
           resizeToAvoidBottomInset: true,
+          backgroundColor: primaryBackground,
           body: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -175,6 +172,8 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Header(),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -185,14 +184,14 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                             children: [
                               Icon(
                                 Icons.chevron_left,
-                                color: Color(0xFF60A5FA),
+                                color: Color.fromARGB(255, 248, 248, 248),
                               ),
                               SizedBox(width: 0),
                               Text(
-                                'Назад',
+                                'Подтверждение пароля',
                                 style: TextStyle(
-                                  color: Color(0xFF60A5FA),
-                                  fontSize: 16,
+                                  color: Color.fromARGB(255, 249, 249, 250),
+                                  fontSize: 20,
                                 ),
                               ),
                             ],
@@ -212,88 +211,59 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                       ],
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 10),
                     const Text(
-                      'Введите номер телефона или электронную почту\nдля отправки кода',
+                      'Введите код с письма на электронной почте или смс на телефоне',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 15,
                         height: 1.3,
                       ),
                     ),
-                    const SizedBox(height: 7),
+                    const SizedBox(height: 9),
 
-                    _CodeField(controller: _codeCtrl),
-                    const SizedBox(height: 13),
-
-                    _SendCodeField(
-                      label: 'Электронная почта',
-                      hint: 'Введите почту',
-                      controller: _emailCtrl,
-                      keyboard: TextInputType.emailAddress,
-                      canSend: _emailLeft == Duration.zero,
-                      onSend: _sendEmailCode,
+                    _CodeField(
+                      controller: _codeCtrl,
+                      canSend: _canResendCode && _resendLeft == Duration.zero,
+                      onSend: _resendCode,
                     ),
-                    const SizedBox(height: 8),
+
                     _CooldownText(
-                      visible: _emailLeft > Duration.zero,
-                      text: _fmt(_emailLeft),
-                    ),
-                    const SizedBox(height: 12),
-
-                    _SendCodeField(
-                      label: 'Телефон',
-                      hint: 'Введите телефон',
-                      controller: _phoneCtrl,
-                      keyboard: TextInputType.phone,
-                      canSend: _phoneLeft == Duration.zero,
-                      onSend: _sendPhoneCode,
-                    ),
-                    const SizedBox(height: 8),
-                    _CooldownText(
-                      visible: _phoneLeft > Duration.zero,
-                      text: _fmt(_phoneLeft),
+                      visible: _resendLeft > Duration.zero,
+                      text: _fmt(_resendLeft),
                     ),
 
+                    SizedBox(
+                      width: double.infinity,
+                      height: 53,
+                      child: ElevatedButton(
+                        onPressed: _verify,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: activeIconColor,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        child: const Text(
+                          'Подтвердить',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 17),
+                    const Text(
+                      'На вашу почту или номер телефона был отправлен код',
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
                   ],
                 ),
               ),
             ),
-          ),
-
-          bottomNavigationBar: Builder(
-            builder: (context) {
-              return AnimatedPadding(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                padding: EdgeInsets.fromLTRB(25, 12, 25, 48),
-                child: SafeArea(
-                  top: false,
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 53,
-                    child: ElevatedButton(
-                      onPressed: _verify,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: activeIconColor,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      child: const Text(
-                        'Подтвердить',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         );
       },
@@ -302,35 +272,59 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
 }
 
 // ============================================================
-// "Поле ввода кода верификации"
+// "Поле ввода кода верификации с кнопкой отправки повторно"
 // ============================================================
 class _CodeField extends StatelessWidget {
   final TextEditingController controller;
 
-  const _CodeField({required this.controller});
+  final bool canSend;
+
+  final VoidCallback onSend;
+
+  const _CodeField({
+    required this.controller,
+    required this.canSend,
+    required this.onSend,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return _Labeled(
-      label: 'Пороль',
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Введите код с письма или смс',
-          hintStyle: const TextStyle(color: textMuted),
-          filled: true,
-          fillColor: secondaryBackground,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 18,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
-          ),
+    final suffix = Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: TextButton(
+        onPressed: canSend ? onSend : null,
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 0),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          foregroundColor: canSend ? activeIconColor : Colors.white38,
         ),
+        child: const Text(
+          'Отправить код повторно',
+          style: TextStyle(fontSize: 11),
+        ),
+      ),
+    );
+
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        hintText: 'Код с письма или смс',
+        hintStyle: const TextStyle(color: textMuted),
+        filled: true,
+        fillColor: secondaryBackground,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 11,
+          // vertical: 18,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(5),
+          borderSide: BorderSide.none,
+        ),
+        suffixIcon: suffix,
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       ),
     );
   }

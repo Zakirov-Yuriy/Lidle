@@ -706,17 +706,10 @@ abstract class _Value implements Value {
       throw _privateConstructorUsedError;
 }
 
-MetaFiltersResponse _$MetaFiltersResponseFromJson(Map<String, dynamic> json) {
-  return _MetaFiltersResponse.fromJson(json);
-}
-
 /// @nodoc
 mixin _$MetaFiltersResponse {
-  Map<String, String> get sort => throw _privateConstructorUsedError;
+  List<dynamic> get sort => throw _privateConstructorUsedError;
   List<Attribute> get filters => throw _privateConstructorUsedError;
-
-  /// Serializes this MetaFiltersResponse to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of MetaFiltersResponse
   /// with the given fields replaced by the non-null parameter values.
@@ -732,7 +725,7 @@ abstract class $MetaFiltersResponseCopyWith<$Res> {
     $Res Function(MetaFiltersResponse) then,
   ) = _$MetaFiltersResponseCopyWithImpl<$Res, MetaFiltersResponse>;
   @useResult
-  $Res call({Map<String, String> sort, List<Attribute> filters});
+  $Res call({List<dynamic> sort, List<Attribute> filters});
 }
 
 /// @nodoc
@@ -755,7 +748,7 @@ class _$MetaFiltersResponseCopyWithImpl<$Res, $Val extends MetaFiltersResponse>
             sort: null == sort
                 ? _value.sort
                 : sort // ignore: cast_nullable_to_non_nullable
-                      as Map<String, String>,
+                      as List<dynamic>,
             filters: null == filters
                 ? _value.filters
                 : filters // ignore: cast_nullable_to_non_nullable
@@ -775,7 +768,7 @@ abstract class _$$MetaFiltersResponseImplCopyWith<$Res>
   ) = __$$MetaFiltersResponseImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({Map<String, String> sort, List<Attribute> filters});
+  $Res call({List<dynamic> sort, List<Attribute> filters});
 }
 
 /// @nodoc
@@ -797,7 +790,7 @@ class __$$MetaFiltersResponseImplCopyWithImpl<$Res>
         sort: null == sort
             ? _value._sort
             : sort // ignore: cast_nullable_to_non_nullable
-                  as Map<String, String>,
+                  as List<dynamic>,
         filters: null == filters
             ? _value._filters
             : filters // ignore: cast_nullable_to_non_nullable
@@ -808,23 +801,20 @@ class __$$MetaFiltersResponseImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
   const _$MetaFiltersResponseImpl({
-    required final Map<String, String> sort,
+    required final List<dynamic> sort,
     required final List<Attribute> filters,
   }) : _sort = sort,
        _filters = filters;
 
-  factory _$MetaFiltersResponseImpl.fromJson(Map<String, dynamic> json) =>
-      _$$MetaFiltersResponseImplFromJson(json);
-
-  final Map<String, String> _sort;
+  final List<dynamic> _sort;
   @override
-  Map<String, String> get sort {
-    if (_sort is EqualUnmodifiableMapView) return _sort;
+  List<dynamic> get sort {
+    if (_sort is EqualUnmodifiableListView) return _sort;
     // ignore: implicit_dynamic_type
-    return EqualUnmodifiableMapView(_sort);
+    return EqualUnmodifiableListView(_sort);
   }
 
   final List<Attribute> _filters;
@@ -849,7 +839,6 @@ class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
             const DeepCollectionEquality().equals(other._filters, _filters));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
@@ -867,24 +856,16 @@ class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
         this,
         _$identity,
       );
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$MetaFiltersResponseImplToJson(this);
-  }
 }
 
 abstract class _MetaFiltersResponse implements MetaFiltersResponse {
   const factory _MetaFiltersResponse({
-    required final Map<String, String> sort,
+    required final List<dynamic> sort,
     required final List<Attribute> filters,
   }) = _$MetaFiltersResponseImpl;
 
-  factory _MetaFiltersResponse.fromJson(Map<String, dynamic> json) =
-      _$MetaFiltersResponseImpl.fromJson;
-
   @override
-  Map<String, String> get sort;
+  List<dynamic> get sort;
   @override
   List<Attribute> get filters;
 

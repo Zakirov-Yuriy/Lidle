@@ -28,7 +28,11 @@ class AuthError extends AuthState {
 
 /// Состояние успешной регистрации.
 /// Показывает, что регистрация прошла успешно, но требуется верификация.
-class AuthRegistered extends AuthState {}
+class AuthRegistered extends AuthState {
+  final String email;
+
+  AuthRegistered({required this.email});
+}
 
 /// Состояние успешной верификации email.
 /// Показывает, что email был успешно верифицирован.

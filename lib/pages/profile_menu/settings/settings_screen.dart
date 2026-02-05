@@ -53,7 +53,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (phonesResponse.data.isNotEmpty) {
           setState(() {
             _mainPhoneId = phonesResponse.data.first.id;
-            _mainPhoneValue = phonesResponse.data.first.phone; // save value
+            // Ensure phone is in correct format with +
+            String phone = phonesResponse.data.first.phone;
+            if (!phone.startsWith('+')) {
+              phone = '+$phone';
+            }
+            _mainPhoneValue = phone; // save value
           });
         } else {
           setState(() {

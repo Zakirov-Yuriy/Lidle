@@ -99,12 +99,20 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (phonesResponse.data.isNotEmpty) {
         _phone1Id = phonesResponse.data.first.id;
         phone1 = phonesResponse.data.first.phone;
+        // Ensure phone is in correct format with +
+        if (!phone1.startsWith('+')) {
+          phone1 = '+$phone1';
+        }
       }
 
       String phone2 = '';
       if (phonesResponse.data.length > 1) {
         _phone2Id = phonesResponse.data[1].id;
         phone2 = phonesResponse.data[1].phone;
+        // Ensure phone is in correct format with +
+        if (!phone2.startsWith('+')) {
+          phone2 = '+$phone2';
+        }
       }
 
       setState(() {

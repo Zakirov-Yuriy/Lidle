@@ -17,7 +17,7 @@ class FilterMetaResponse {
 @JsonSerializable()
 class FilterMetaData {
   /// Доступные варианты сортировки
-  final Map<String, String> sort;
+  final List<dynamic> sort; // Can be either Map or List
 
   /// Доступные фильтры
   final List<FilterField> filters;
@@ -41,7 +41,7 @@ class FilterField {
   final bool is_max_value;
   final String? data_type; // string, integer, numeric, boolean и т.д.
   final String? style;
-  final int order;
+  final int? order; // Can be null from API
   final List<FilterValue> values;
 
   FilterField({
@@ -55,7 +55,7 @@ class FilterField {
     required this.is_max_value,
     this.data_type,
     this.style,
-    required this.order,
+    this.order,
     required this.values,
   });
 

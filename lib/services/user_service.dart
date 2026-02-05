@@ -32,9 +32,15 @@ class UserService {
       );
       return profile;
     } catch (e) {
+      if (e.toString().contains('Token expired')) {
+        final newToken = await ApiService.refreshToken(token);
+        if (newToken != null) {
+          return getProfile(token: newToken);
+        }
+      }
       print('❌ UserService: Ошибка при загрузке профиля: $e');
       print('❌ UserService: Type: ${e.runtimeType}');
-      throw Exception('Ошибка при загрузке профиля: $e');
+      rethrow;
     }
   }
 
@@ -65,7 +71,20 @@ class UserService {
       final profileResponse = UserProfileResponse.fromJson(response);
       return profileResponse.data[0];
     } catch (e) {
-      throw Exception('Ошибка при обновлении профиля: $e');
+      if (e.toString().contains('Token expired')) {
+        final newToken = await ApiService.refreshToken(token);
+        if (newToken != null) {
+          return updateProfile(
+            name: name,
+            email: email,
+            phone: phone,
+            about: about,
+            avatar: avatar,
+            token: newToken,
+          );
+        }
+      }
+      rethrow;
     }
   }
 

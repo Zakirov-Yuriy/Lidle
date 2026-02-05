@@ -42,10 +42,37 @@ class Value with _$Value {
 @freezed
 class MetaFiltersResponse with _$MetaFiltersResponse {
   const factory MetaFiltersResponse({
-    required Map<String, String> sort,
+    required List<dynamic> sort,
     required List<Attribute> filters,
   }) = _MetaFiltersResponse;
 
-  factory MetaFiltersResponse.fromJson(Map<String, dynamic> json) =>
-      _$MetaFiltersResponseFromJson(json['data']);
+  factory MetaFiltersResponse.fromJson(Map<String, dynamic> json) {
+    // Manually parse without relying on generated code due to type casting issues
+    print('📦 Parsing MetaFiltersResponse from JSON');
+    try {
+      final sortList = json['sort'] as List<dynamic>?;
+      print('   ✅ sort: ${sortList?.length ?? 0} items');
+
+      final filtersList = json['filters'] as List<dynamic>?;
+      final parsedFilters = <Attribute>[];
+      if (filtersList != null) {
+        for (int i = 0; i < filtersList.length; i++) {
+          try {
+            final filterJson = filtersList[i] as Map<String, dynamic>;
+            final attr = Attribute.fromJson(filterJson);
+            parsedFilters.add(attr);
+          } catch (e) {
+            print('   ⚠️ Failed to parse filter at index $i: $e');
+          }
+        }
+      }
+      print('   ✅ filters: ${parsedFilters.length} parsed');
+
+      return MetaFiltersResponse(sort: sortList ?? [], filters: parsedFilters);
+    } catch (e) {
+      print('❌ Error parsing MetaFiltersResponse: $e');
+      // Ultimate fallback
+      return MetaFiltersResponse(sort: [], filters: []);
+    }
+  }
 }

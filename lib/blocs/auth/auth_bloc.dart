@@ -109,6 +109,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           response['token'];
       if (token != null) {
         await HiveService.saveUserData('token', token);
+        // ⚠️ ВАЖНО: Сохраняем флаг что email еще не верифицирован при регистрации
+        await HiveService.saveUserData('isEmailVerified', 'false');
 
         // Сохраняем возможные данные пользователя из ответа сразу в Hive
         final data = response['data'] ?? response;
@@ -149,11 +151,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           }
         }
 
-        emit(AuthAuthenticated(token: token));
+        emit(AuthRegistered(email: event.email));
+        print('✅ AuthBloc emitted AuthRegistered with email: ${event.email}');
       } else {
+        print('❌ AuthBloc: token is null after registration');
         emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
       }
     } catch (e) {
+      print('❌ AuthBloc error in _onRegister: $e');
       emit(AuthError(message: e.toString()));
     }
   }

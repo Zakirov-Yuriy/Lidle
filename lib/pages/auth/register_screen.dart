@@ -8,6 +8,7 @@ import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
+import 'register_verify_screen.dart';
 
 // ============================================================
 // "Экран регистрации пользователя"
@@ -64,15 +65,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ============================================================
   @override
   Widget build(BuildContext context) {
+    print('🏗️ RegisterScreen build() called');
     const primaryBlue = Color(0xFF0EA5E9);
 
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is AuthAuthenticated) {
+        print('🔍 RegisterScreen listener - New state: ${state.runtimeType}');
+        print('🔍 State details: $state');
+
+        if (state is AuthRegistered) {
+          print('✅ AuthRegistered state received, email: ${state.email}');
+          // Переходим на экран верификации с передачей email
           Navigator.of(context).pushReplacementNamed(
-            '/profile-dashboard',
-          ); // или ProfileDashboard.routeName, но проверим
+            RegisterVerifyScreen.routeName,
+            arguments: {'email': state.email},
+          );
+        } else if (state is AuthAuthenticated) {
+          print('✅ AuthAuthenticated state received');
+          Navigator.of(context).pushReplacementNamed('/profile-dashboard');
         } else if (state is AuthError) {
+          print('❌ AuthError state: ${state.message}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
@@ -87,6 +99,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       },
       builder: (context, state) {
+        print(
+          '🔨 RegisterScreen builder() called with state: ${state.runtimeType}',
+        );
         return Scaffold(
           backgroundColor: primaryBackground,
           body: SafeArea(

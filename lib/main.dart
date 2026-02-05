@@ -165,9 +165,10 @@ class LidleApp extends StatelessWidget {
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: const [Locale('en', ''), Locale('ru', '')],
           navigatorObservers: [routeObserver],
+
           // Production home
           home: const HomePage(),
-
+          // home: const RegisterVerifyScreen(email: 'workyury02@gmail.com'),
           routes: {
             SignInScreen.routeName: (context) => const SignInScreen(),
             ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),

@@ -51,7 +51,12 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         if (phonesResponse.data.isNotEmpty) {
           setState(() {
             _mainPhoneId = phonesResponse.data.first.id;
-            _mainPhoneValue = phonesResponse.data.first.phone;
+            // Ensure phone is in correct format with +
+            String phone = phonesResponse.data.first.phone;
+            if (!phone.startsWith('+')) {
+              phone = '+$phone';
+            }
+            _mainPhoneValue = phone;
           });
         } else {
           setState(() {

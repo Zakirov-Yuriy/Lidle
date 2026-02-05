@@ -41,6 +41,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
   List<Attribute> _attributes = [];
   Map<int, dynamic> _selectedValues = {};
   bool _isLoading = true;
+  bool _isPublishing = false;
+  String _publishingProgress = '';
   Map<int, TextEditingController> _controllers = {};
 
   // User contacts
@@ -66,6 +68,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
     super.initState();
     _loadAttributes();
     _loadUserContacts();
+    // Автозаполнение для тестирования
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _autoFillFormForTesting();
+    });
   }
 
   @override
@@ -94,9 +100,44 @@ class _DynamicFilterState extends State<DynamicFilter> {
         token: token,
       );
       print('Loaded ${response.filters.length} filters');
+      for (final attr in response.filters) {
+        print(
+          '📊 Filter: ID=${attr.id}, Title=${attr.title}, Order=${attr.order}, Values=${attr.values.length}',
+        );
+      }
+
+      // Convert to mutable list and add missing attribute 1048
+      final mutableFilters = List<Attribute>.from(response.filters);
+
+      // Add hidden attribute 1048 (Вам предложат цену) if not present
+      // This attribute is REQUIRED by API but not returned by /meta/filters endpoint
+      final hasAttribute1048 = mutableFilters.any((a) => a.id == 1048);
+      if (!hasAttribute1048) {
+        print(
+          '🔧 Adding missing attribute 1048 (Вам предложат цену) - required for advert creation',
+        );
+        final attribute1048 = Attribute(
+          id: 1048,
+          title: 'Вам предложат цену',
+          isFilter: false,
+          isRange: false,
+          isMultiple: false,
+          isHidden: true,
+          isRequired: true,
+          isTitleHidden: true,
+          isSpecialDesign: false,
+          isMaxValue: false,
+          dataType: null,
+          order: 999,
+          values: const [],
+        );
+        mutableFilters.add(attribute1048);
+        print('✅ Attribute 1048 added to filters list');
+      }
+
       if (mounted) {
         setState(() {
-          _attributes = response.filters;
+          _attributes = mutableFilters;
           _isLoading = false;
         });
       }
@@ -117,58 +158,177 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _loadUserContacts() async {
     try {
       final token = await HiveService.getUserData('token');
-      if (token == null) return;
+      print('📱 Token obtained, loading user contacts...');
+      if (token == null) {
+        print('❌ Token is null, cannot load contacts');
+        return;
+      }
 
-      // Load phones
-      final phonesResponse = await ApiService.get(
-        '/me/settings/phones',
-        token: token,
-      );
-      if (phonesResponse['success'] == true) {
-        _userPhones = List<Map<String, dynamic>>.from(phonesResponse['data']);
+      // Load phones - REQUIRED for publishing
+      try {
+        print('📞 Loading phones from /me/settings/phones...');
+        final phonesResponse = await ApiService.get(
+          '/me/settings/phones',
+          token: token,
+        );
+        // API returns { "data": [...] } without success field
+        if (phonesResponse['data'] is List) {
+          _userPhones = List<Map<String, dynamic>>.from(phonesResponse['data']);
+          print('✅ Loaded phones: ${_userPhones.length} phone(s)');
+        } else {
+          print('⚠️ Phones response format incorrect');
+        }
+      } catch (e) {
+        print('❌ Error loading phones: $e');
       }
 
       // Load emails
-      final emailsResponse = await ApiService.get(
-        '/me/settings/emails',
-        token: token,
-      );
-      if (emailsResponse['success'] == true) {
-        _userEmails = List<Map<String, dynamic>>.from(emailsResponse['data']);
+      try {
+        print('📧 Loading emails from /me/settings/emails...');
+        final emailsResponse = await ApiService.get(
+          '/me/settings/emails',
+          token: token,
+        );
+        // API returns { "data": [...] } without success field
+        if (emailsResponse['data'] is List) {
+          _userEmails = List<Map<String, dynamic>>.from(emailsResponse['data']);
+          print('✅ Loaded emails: ${_userEmails.length} email(s)');
+        } else {
+          print('⚠️ Emails response format incorrect');
+        }
+      } catch (e) {
+        print('❌ Error loading emails: $e');
       }
 
       // Load telegrams
-      final telegramsResponse = await ApiService.get(
-        '/me/settings/telegrams',
-        token: token,
-      );
-      if (telegramsResponse['success'] == true) {
-        _userTelegrams = List<Map<String, dynamic>>.from(
-          telegramsResponse['data'],
+      try {
+        print('💬 Loading telegrams from /me/settings/telegrams...');
+        final telegramsResponse = await ApiService.get(
+          '/me/settings/telegrams',
+          token: token,
         );
+        // API returns { "data": [...] } without success field
+        if (telegramsResponse['data'] is List) {
+          _userTelegrams = List<Map<String, dynamic>>.from(
+            telegramsResponse['data'],
+          );
+          print('✅ Loaded telegrams: ${_userTelegrams.length} telegram(s)');
+        } else {
+          print('⚠️ Telegrams response format incorrect');
+        }
+      } catch (e) {
+        print('❌ Error loading telegrams: $e');
       }
 
       // Load whatsapps
-      final whatsappsResponse = await ApiService.get(
-        '/me/settings/whatsapps',
-        token: token,
-      );
-      if (whatsappsResponse['success'] == true) {
-        _userWhatsapps = List<Map<String, dynamic>>.from(
-          whatsappsResponse['data'],
+      try {
+        print('💬 Loading whatsapps from /me/settings/whatsapps...');
+        final whatsappsResponse = await ApiService.get(
+          '/me/settings/whatsapps',
+          token: token,
         );
+        // API returns { "data": [...] } without success field
+        if (whatsappsResponse['data'] is List) {
+          _userWhatsapps = List<Map<String, dynamic>>.from(
+            whatsappsResponse['data'],
+          );
+          print('✅ Loaded whatsapps: ${_userWhatsapps.length} whatsapp(s)');
+        } else {
+          print('⚠️ Whatsapps response format incorrect');
+        }
+      } catch (e) {
+        print('❌ Error loading whatsapps: $e');
       }
 
       if (mounted) {
         setState(() {});
       }
+      print('✅ User contacts loading complete');
     } catch (e) {
-      print('Error loading user contacts: $e');
+      print('❌ Error loading user contacts: $e');
+      print('   Stack trace: ${StackTrace.current}');
     }
+  }
+
+  // 🧪 ТЕСТОВОЕ АВТОЗАПОЛНЕНИЕ ФОРМЫ
+  void _autoFillFormForTesting() {
+    if (!mounted) return;
+
+    print('🧪 AUTO-FILLING FORM FOR TESTING...');
+
+    setState(() {
+      // Основные поля объявления
+      _titleController.text = 'Просторная однокомнатная квартира';
+      _descriptionController.text =
+          'Комфортная однокомнатная квартира площадью 45 кв.м, расположена в тихом районе с хорошей инфраструктурой. Полностью меблирована, есть все необходимое для жизни.';
+      _priceController.text = '120000';
+
+      // Контакты
+      _contactNameController.text = 'Юрий ';
+      _emailController.text = 'workyury02@gmail.com';
+      _phone1Controller.text = '+79254499552';
+
+      // Выбор контактов из загруженных
+      if (_userPhones.isNotEmpty) {
+        print('✅ Selected first phone: ${_userPhones[0]['phone']}');
+      }
+      if (_userEmails.isNotEmpty) {
+        print('✅ Selected first email: ${_userEmails[0]['email']}');
+      }
+
+      // Автозаполнение атрибутов фильтров
+      // 1040 - Этаж (floor)
+      _selectedValues[1040] = {'min': 4, 'max': 5};
+
+      // 1039 - Название ЖК (Building name)
+      _selectedValues[1039] = 'Новый дом';
+
+      // 6 - Количество комнат (Rooms) - 3 комнаты
+      _selectedValues[6] = '3';
+
+      // 17 - Инфраструктура (Infrastructure)
+      _selectedValues[17] = 'Исторические места';
+
+      // 19 - Частное лицо / Бизнес (Individual/Business)
+      _selectedValues[19] = 'Частное лицо';
+
+      // 14 - Комфорт (Comfort)
+      _selectedValues[14] = 'Автономное отопление';
+
+      // 1127 - Общая площадь (Total area) - REQUIRED range attribute
+      _selectedValues[1127] = {'min': 50, 'max': 100};
+
+      // 1048 - Вам предложат цену (Price offer) - REQUIRED boolean attribute
+      _selectedValues[1048] = true;
+
+      // NOTE: "Вам предложат цену" filter will be added in _collectFormData
+      // since it's not returned by API but required for validation
+
+      // Select city and street for address
+      // Using valid examples from backend: г. Ждановка (city_id=70), кв-л 28/33 (street_id=9199)
+      _selectedCity = {'г. Ждановка'}; // city_id from API
+      _selectedStreet = {'кв-л 28/33'}; // street_id from API
+
+      // Auto-fill building number
+      _buildingController.text = 'д. 15А';
+
+      print('🧪 Auto-fill completed:');
+      print('   Title: ${_titleController.text}');
+      print('   City: ${_selectedCity.first}');
+      print('   Street: ${_selectedStreet.first}');
+      print('   Building: ${_buildingController.text}');
+      print('   Price: ${_priceController.text}');
+      print('   Selected values: $_selectedValues');
+    });
   }
 
   Set<String> _selectedCity = {};
   Set<String> _selectedStreet = {};
+  int? mainRegionId = 1; // Track main_region.id for top-level region_id
+
+  // Хранилище ID адресов полученных из API /addresses/search
+  Map<String, dynamic>?
+  _currentAddressData; // Full address data from API search
 
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
@@ -281,30 +441,96 @@ class _DynamicFilterState extends State<DynamicFilter> {
     };
 
     print('Selected values: $_selectedValues');
+    print(
+      '📋 Available filters: ${_attributes.map((a) => '${a.id}=${a.title}').join(', ')}',
+    );
 
     _selectedValues.forEach((key, value) {
       final attr = _attributes.firstWhere(
         (a) => a.id == key,
         orElse: () => Attribute(id: 0, title: '', order: 0, values: []),
       );
-      if (attr.id == 0) return;
+      if (attr.id == 0) {
+        print('⚠️ WARNING: Filter ID $key not found in loaded attributes!');
+        return;
+      }
+
+      print(
+        '🔍 Processing attribute ID=$key (${attr.title}), is_multiple=${attr.isMultiple}',
+      );
 
       if (value is Set<String>) {
-        // Multiple selection - add values_id
-        for (final val in value) {
-          final attrValue = attr.values.firstWhere(
-            (v) => v.value == val,
-            orElse: () => const Value(id: 0, value: ''),
+        // Multiple selection - but check if attribute allows multiple values
+        // Some attributes like "Количество комнат" (ID=6) have is_multiple=false
+        // These should only send ONE value to the API
+        if (attr.isMultiple) {
+          // API allows multiple - add all selected values
+          print(
+            '   Attribute $key (${attr.title}): is_multiple=true, adding all values',
           );
-          if (attrValue.id != 0) {
-            attributes['value_selected'].add(attrValue.id);
+          for (final val in value) {
+            final attrValue = attr.values.firstWhere(
+              (v) => v.value == val,
+              orElse: () => const Value(id: 0, value: ''),
+            );
+            if (attrValue.id != 0) {
+              print(
+                '      Added value: ${attrValue.value} (ID=${attrValue.id})',
+              );
+              attributes['value_selected'].add(attrValue.id);
+            }
+          }
+        } else {
+          // API allows only one value - take first
+          print(
+            '   Attribute $key (${attr.title}): is_multiple=false (SINGLE VALUE ONLY)',
+          );
+          if (value.isNotEmpty) {
+            final firstVal = value.first;
+            final attrValue = attr.values.firstWhere(
+              (v) => v.value == firstVal,
+              orElse: () => const Value(id: 0, value: ''),
+            );
+            if (attrValue.id != 0) {
+              print('   ✅ Adding single value: $firstVal (ID=${attrValue.id})');
+              attributes['value_selected'].add(attrValue.id);
+            } else {
+              print('   ❌ Value "$firstVal" not found in attribute values');
+            }
+          } else {
+            print('   ⚠️ No values selected for is_multiple=false attribute');
+          }
+        }
+
+        // SPECIAL DIAGNOSTIC: Log attribute 6 handling
+        if (key == 6) {
+          print('🔍🔍 SPECIAL DIAGNOSTIC FOR ATTRIBUTE 6 (ROOMS):');
+          print('   is_multiple: ${attr.isMultiple}');
+          print('   Selected values in Set: $value');
+          print('   Number of values: ${value.length}');
+          print('   All available values for attr 6:');
+          for (final v in attr.values) {
+            print('      - "${v.value}" (ID=${v.id})');
+          }
+          if (value.isNotEmpty) {
+            value.forEach((val) {
+              final matchedValue = attr.values.firstWhere(
+                (v) => v.value == val,
+                orElse: () => const Value(id: 0, value: ''),
+              );
+              print('   Value="$val" => ID=${matchedValue.id}');
+            });
           }
         }
       } else if (value is Map) {
-        // Range values
+        // Range values - for attributes like 1040 (floor), 1127 (area)
         final minVal = (value['min']?.toString() ?? '').trim();
         final maxVal = (value['max']?.toString() ?? '').trim();
-        print('For attr $key, minVal: "$minVal", maxVal: "$maxVal"');
+        print(
+          'For attr $key (${attr.title}), minVal: "$minVal", maxVal: "$maxVal"',
+        );
+
+        // Parse values based on data type
         dynamic parsedValue;
         dynamic parsedMaxValue;
         if (minVal.isNotEmpty) {
@@ -325,6 +551,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
             parsedMaxValue = maxVal;
           }
         }
+
+        // Build object for range attribute
         final attrObj = {};
         if (parsedValue != null) {
           attrObj['value'] = parsedValue;
@@ -334,72 +562,160 @@ class _DynamicFilterState extends State<DynamicFilter> {
         }
         if (attrObj.isNotEmpty) {
           attributes['values']['$key'] = attrObj;
+          print('   Added range attr $key: $attrObj');
         }
       } else if (value is String) {
         if (attr.values.isEmpty) {
-          // Text field
+          // Text field - DO NOT add to attributes.values (API doesn't accept them)
           if (value.isNotEmpty) {
-            attributes['values']['$key'] = {'value': value};
+            print(
+              '   ⚠️ SKIPPING text field attr $key: "$value" (text fields not sent to API)',
+            );
           }
         } else {
-          // Single selection
+          // Single selection - lookup value ID
           final attrValue = attr.values.firstWhere(
             (v) => v.value == value,
             orElse: () => const Value(id: 0, value: ''),
           );
           if (attrValue.id != 0) {
             attributes['value_selected'].add(attrValue.id);
+            print(
+              '   Added single selection attr $key: $value (ID=${attrValue.id})',
+            );
           }
         }
       } else if (value is bool && value) {
-        // Checkbox
-        if (attr.values.isNotEmpty) {
+        // Checkbox or boolean value
+        // Attribute 1048 (Вам предложат цену) is a boolean type with no values array
+        // DO NOT add to value_selected - will be handled separately below
+        // (value_selected should only contain VALUE IDs from options)
+        if (key != 1048 && attr.values.isNotEmpty) {
           attributes['value_selected'].add(attr.values.first.id);
         }
       }
     });
 
+    // Ensure attribute 1048 (Вам предложат цену) is set if not already
+    // This will be handled above in the value_selected block
+    // No need to add as separate field anymore
+
+    // DIAGNOSTIC: Map value_ids back to attributes
+    print('🔧 DIAGNOSTIC - Mapping value_ids to attributes:');
+    for (final valueId in attributes['value_selected'] as List<int>) {
+      String? foundAttrTitle = 'UNKNOWN';
+      for (final attr in _attributes) {
+        final matchingValue = attr.values.firstWhere(
+          (v) => v.id == valueId,
+          orElse: () => const Value(id: 0, value: ''),
+        );
+        if (matchingValue.id != 0) {
+          foundAttrTitle = '${attr.id}:${attr.title}';
+          print(
+            '   value_id=$valueId belongs to attribute: $foundAttrTitle (value="${matchingValue.value}")',
+          );
+          break;
+        }
+      }
+      if (foundAttrTitle == 'UNKNOWN') {
+        print(
+          '   value_id=$valueId COULD NOT BE MAPPED - no matching attribute!',
+        );
+      }
+    }
     print('Collected attributes: $attributes');
 
-    // Collect address
-    final Map<String, dynamic> address = {};
-    if (_selectedCity.isNotEmpty) {
-      // For simplicity, assuming region_id = 13 for Mariupol
-      address['region_id'] = 13;
-      address['city_id'] = 70; // Mariupol city ID
+    // Handle boolean attribute 1048 ("Вам предложат цену")
+    // IMPORTANT: 1048 should be in attributes.values, NOT in value_selected!
+    // API expects: attributes.values['1048'] = {'value': 1}
+    if (_selectedValues.containsKey(1048) && _selectedValues[1048] == true) {
+      attributes['values']['1048'] = {'value': 1};
+      print('✅ Added attribute 1048 to values (required) as {value: 1}');
     } else {
-      // Default values if not selected
-      address['region_id'] = 13;
-      address['city_id'] = 70;
-    }
-    if (_selectedStreet.isNotEmpty) {
-      // For simplicity, assuming a street ID
-      address['street_id'] = 9199; // Example street ID
-    } else {
-      address['street_id'] = 9199;
+      // If not explicitly selected, add by default (it's required)
+      attributes['values']['1048'] = {'value': 1};
+      print('✅ Added default attribute 1048 to values as {value: 1}');
     }
 
-    // Collect contacts
+    // Handle required range attribute 1127 (Общая площадь - Total area)
+    // This is also REQUIRED but might not have been processed
+    if (_selectedValues.containsKey(1127)) {
+      final area = _selectedValues[1127];
+      if (area is Map) {
+        final minVal =
+            int.tryParse((area['min']?.toString() ?? '').trim()) ?? 50;
+        final maxVal =
+            int.tryParse((area['max']?.toString() ?? '').trim()) ?? 100;
+        attributes['values']['1127'] = {'value': minVal, 'max_value': maxVal};
+        print('✅ Attribute 1127 (area) set: value=$minVal, max_value=$maxVal');
+      }
+    } else {
+      // Set default area if not selected
+      attributes['values']['1127'] = {'value': 50, 'max_value': 100};
+      print('✅ Set default 1127 range: value=50, max_value=100');
+    }
+
+    // NOTE: attribute_1048 (boolean type) is handled separately via toJson() in CreateAdvertRequest
+    // It's extracted to top-level and NOT added to value_selected
+    // (value_selected should only contain VALUE IDs, not attribute IDs)
+
+    // Collect address
+    // NOTE: address will be updated via searchAddresses() in _publishAdvert()
+    // This just collects whatever UI values exist
+    final Map<String, dynamic> address = {};
+
+    print('Collected address: $address');
+
+    // Collect contacts with proper validation
+    // According to API docs: user_phone_id is REQUIRED, user_email_id may be required
     final Map<String, dynamic> contacts = {};
-    if (_phone1Controller.text.isNotEmpty && _userPhones.isNotEmpty) {
+
+    // Primary phone is required
+    if (_userPhones.isNotEmpty) {
       contacts['user_phone_id'] = _userPhones.first['id'];
+      print(
+        '✅ Using phone ID: ${_userPhones.first['id']} (${_userPhones.first['phone']})',
+      );
     }
-    if (_emailController.text.isNotEmpty && _userEmails.isNotEmpty) {
-      contacts['user_email_id'] = _userEmails.first['id'];
+
+    // Email handling - ALWAYS include email ID if available
+    // API requires email - error message says: "contacts.user_email_id: обязательно для заполнения"
+    // This means email is REQUIRED, regardless of verification status
+    if (_userEmails.isNotEmpty) {
+      final emailData = _userEmails.first;
+      final isVerified = emailData['email_verified_at'] != null;
+
+      contacts['user_email_id'] = emailData['id'];
+      if (isVerified) {
+        print(
+          '✅ Using verified email ID: ${emailData['id']} (${emailData['email']})',
+        );
+      } else {
+        print(
+          '⚠️ Email NOT verified (email_verified_at=null): ${emailData['email']} - but API requires it, sending anyway',
+        );
+      }
+    } else {
+      print('❌ ERROR: No email contacts found!');
     }
-    if (_telegramController.text.isNotEmpty && _userTelegrams.isNotEmpty) {
+
+    if (_userTelegrams.isNotEmpty) {
       contacts['user_telegram_id'] = _userTelegrams.first['id'];
     }
-    if (_whatsappController.text.isNotEmpty && _userWhatsapps.isNotEmpty) {
+    if (_userWhatsapps.isNotEmpty) {
       contacts['user_whatsapp_id'] = _userWhatsapps.first['id'];
     }
+
+    print('Collected contacts: $contacts');
 
     return CreateAdvertRequest(
       name: _titleController.text,
       description: _descriptionController.text,
       price: _priceController.text,
       categoryId: widget.category?.id ?? 2,
-      regionId: 1, // Default region
+      regionId:
+          mainRegionId ??
+          1, // Use mainRegionId (top-level region), not address.region_id
       address: address,
       attributes: attributes,
       contacts: contacts,
@@ -442,6 +758,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
         );
         return;
       }
+
+      // Debug logging for phone validation
+      print('🔍 Publishing advert - phone validation:');
+      print('   _userPhones.length: ${_userPhones.length}');
+      print('   _userPhones content: $_userPhones');
+      print('   _phone1Controller.text: ${_phone1Controller.text}');
+
       if (_userPhones.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -492,6 +815,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
           }
         }
       }
+
+      // Validate special attribute: "Вам предложат цену" (attribute 1048)
+      // This is always required and must be explicitly set
+      if (!_selectedValues.containsKey(1048) || _selectedValues[1048] == null) {
+        isValid = false;
+        errorMessage = 'Необходимо согласиться принимать предложения по цене';
+      }
+
       if (!isValid) {
         ScaffoldMessenger.of(
           context,
@@ -499,12 +830,163 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return;
       }
 
-      final request = _collectFormData();
+      var request = _collectFormData();
+
+      // Search for address to get correct IDs from API
+      var address = <String, dynamic>{};
+
+      // ENSURE city and street are selected
+      if (_selectedCity.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пожалуйста, выберите город')),
+        );
+        setState(() => _isPublishing = false);
+        return;
+      }
+
+      if (_selectedStreet.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Пожалуйста, выберите улицу')),
+        );
+        setState(() => _isPublishing = false);
+        return;
+      }
+
+      if (_selectedCity.isNotEmpty && _selectedStreet.isNotEmpty) {
+        try {
+          final token = await HiveService.getUserData('token');
+          if (token != null) {
+            print('🔍 Starting 3-step address search...');
+
+            // ============ STEP 1: Search for city WITHOUT filters ============
+            print('📍 Step 1: Searching for city: ${_selectedCity.first}');
+            print('   Query params: q="${_selectedCity.first}", types[]=city');
+            var cityId;
+            try {
+              final cityResults = await ApiService.searchAddresses(
+                _selectedCity.first,
+                token: token,
+                types: ['city'],
+                // NO filters - API will return city with region_id
+              );
+
+              if (cityResults.isNotEmpty) {
+                final firstResult = cityResults.first;
+                // API returns nested structure: {'city': {'id': ..., 'name': ...}, 'region': {...}, ...}
+                cityId = firstResult['city']?['id'] ?? firstResult['id'];
+
+                // Extract region_id from the response
+                final regionId = firstResult['region']?['id'];
+                if (regionId != null) {
+                  address['region_id'] = regionId;
+                  print('   ✅ Found region_id=$regionId');
+                }
+
+                address['city_id'] = cityId;
+                print('   ✅ Found city_id=$cityId');
+                print('   Full response: ${firstResult['full_address']}');
+              } else {
+                throw Exception('City not found: ${_selectedCity.first}');
+              }
+            } catch (e) {
+              print('   ❌ City search failed: $e');
+              throw e;
+            }
+
+            // ============ STEP 2: Search for street with city_id filter ============
+            print('📍 Step 2: Searching for street: ${_selectedStreet.first}');
+            print(
+              '   Query params: q="${_selectedStreet.first}", types[]=street, filters[city_id]=$cityId',
+            );
+            var streetId;
+            try {
+              final streetResults = await ApiService.searchAddresses(
+                _selectedStreet.first,
+                token: token,
+                types: ['street'],
+                filters: {'city_id': cityId},
+              );
+
+              if (streetResults.isNotEmpty) {
+                final firstResult = streetResults.first;
+                streetId = firstResult['street']?['id'] ?? firstResult['id'];
+                address['street_id'] = streetId;
+                print('   ✅ Found street_id=$streetId');
+              } else {
+                throw Exception('Street not found: ${_selectedStreet.first}');
+              }
+            } catch (e) {
+              print('   ❌ Street search failed: $e');
+              throw e;
+            }
+
+            // ============ STEP 3: Remove main_region_id (API doesn't accept it) ============
+            // API expects only: region_id, city_id, street_id
+            // Remove main_region_id if it was added
+            if (address.containsKey('main_region_id')) {
+              address.remove('main_region_id');
+              print('   🗑️ Removed main_region_id (API rejects it)');
+            }
+
+            print('✅ Address search completed:');
+            print('   region_id: ${address['region_id']}');
+            print('   city_id: ${address['city_id']}');
+            print('   street_id: ${address['street_id']}');
+
+            // Recreate request with address from API search
+            if (address.isNotEmpty) {
+              // Ensure 1048 is in values (not as separate attribute_1048 key)
+              final updatedAttributes = Map<String, dynamic>.from(
+                request.attributes,
+              );
+
+              // Make sure 1048 is inside values, not at top level
+              if (updatedAttributes.containsKey('attribute_1048')) {
+                updatedAttributes.remove('attribute_1048');
+                print('   🗑️ Removed top-level attribute_1048 key');
+              }
+              if (updatedAttributes.containsKey('values')) {
+                final values =
+                    updatedAttributes['values'] as Map<String, dynamic>;
+                if (!values.containsKey('1048')) {
+                  values['1048'] = true;
+                  print('   ✅ Ensured 1048 is in values');
+                }
+              }
+
+              request = CreateAdvertRequest(
+                name: request.name,
+                description: request.description,
+                price: request.price,
+                categoryId: request.categoryId,
+                regionId: mainRegionId ?? 1,
+                address: address,
+                attributes: updatedAttributes,
+                contacts: request.contacts,
+                isAutoRenew: request.isAutoRenew,
+                images: request.images,
+              );
+            }
+          }
+        } catch (e) {
+          print('❌ Address search failed: $e');
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Ошибка поиска адреса: $e')));
+          setState(() => _isPublishing = false);
+          return;
+        }
+      } else {
+        print('⚠️ City or street not selected, address will be empty');
+      }
+
+      print('📋 Final address for request: $address');
 
       if (request.contacts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Необходимо выбрать контактные данные')),
         );
+        setState(() => _isPublishing = false);
         return;
       }
 
@@ -514,30 +996,185 @@ class _DynamicFilterState extends State<DynamicFilter> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Необходимо авторизоваться')),
         );
+        setState(() => _isPublishing = false);
         return;
       }
 
-      // Show loading
-      setState(() => _isLoading = true);
+      // Show loading with progress
+      setState(() {
+        _isPublishing = true;
+        _publishingProgress = 'Подготовка объявления...';
+      });
+
+      // Log final request before sending
+      print('════════════════════════════════════════════════════════');
+      print('📋 FINAL REQUEST BEFORE API CALL:');
+      print('   name: ${request.name}');
+      print('   price: ${request.price}');
+      print('   categoryId: ${request.categoryId}');
+      print('   regionId: ${request.regionId}');
+      print('   address: ${request.address}');
+      print('   contacts: ${request.contacts}');
+      print(
+        '   attributes.value_selected: ${request.attributes['value_selected']}',
+      );
+      print('   attributes.values: ${request.attributes['values']}');
+      print('════════════════════════════════════════════════════════');
+
+      // VERIFY address has region_id and city_id
+      if (!request.address.containsKey('region_id') ||
+          request.address['region_id'] == null) {
+        print('❌ ERROR: region_id is missing or null in address!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ошибка: регион не найден. Пожалуйста, выберите другой адрес',
+            ),
+          ),
+        );
+        setState(() => _isPublishing = false);
+        return;
+      }
+
+      if (!request.address.containsKey('city_id') ||
+          request.address['city_id'] == null) {
+        print('❌ ERROR: city_id is missing or null in address!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ошибка: город не найден. Пожалуйста, выберите другой адрес',
+            ),
+          ),
+        );
+        setState(() => _isPublishing = false);
+        return;
+      }
+
+      // Step 1: Create advert WITHOUT images first
+      setState(() {
+        _publishingProgress = 'Отправка объявления на модерацию...';
+      });
 
       final response = await ApiService.createAdvert(request, token: token);
 
-      // Hide loading
-      setState(() => _isLoading = false);
+      if (response['success'] != true) {
+        // Hide loading
+        setState(() {
+          _isPublishing = false;
+          _publishingProgress = '';
+        });
 
-      if (response['success'] == true) {
-        // Log to console
-        print('Объявление отправлено в админку');
+        // Handle validation errors (422) or other errors
+        String errorMessage = response['message'] ?? 'Ошибка публикации';
 
-        // Show moderation dialog
-        _showModerationDialog();
-      } else {
+        // If there are detailed validation errors, show them
+        if (response['errors'] != null && response['errors'] is Map) {
+          final errors = response['errors'] as Map<String, dynamic>;
+          final errorLines = <String>[];
+
+          errors.forEach((field, messages) {
+            if (messages is List && messages.isNotEmpty) {
+              errorLines.add('• $field: ${messages.first}');
+            } else if (messages is String) {
+              errorLines.add('• $field: $messages');
+            }
+          });
+
+          if (errorLines.isNotEmpty) {
+            errorMessage = 'Ошибки валидации:\n${errorLines.join('\n')}';
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(response['message'] ?? 'Ошибка публикации')),
+          SnackBar(
+            content: Text(errorMessage),
+            duration: const Duration(seconds: 5),
+          ),
         );
+        return;
       }
+
+      // Extract advert ID from response
+      int? advertId;
+      if (response['data'] != null) {
+        if (response['data'] is List && (response['data'] as List).isNotEmpty) {
+          // API returns data as a list, get first item
+          final data = (response['data'] as List)[0] as Map<String, dynamic>;
+          advertId = data['id'] as int?;
+          print('✅ Extracted advert ID from list: $advertId');
+        } else if (response['data'] is Map) {
+          // Alternative format: data as direct map
+          final data = response['data'] as Map<String, dynamic>;
+          advertId = data['id'] as int?;
+          print('✅ Extracted advert ID from map: $advertId');
+        }
+      }
+
+      if (advertId == null) {
+        print('❌ ERROR: No advert ID returned from API!');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ошибка: не удалось получить ID объявления'),
+            duration: Duration(seconds: 5),
+          ),
+        );
+        setState(() {
+          _isPublishing = false;
+          _publishingProgress = '';
+        });
+        return;
+      }
+
+      print('✅ Advert created with ID: $advertId');
+
+      // Step 2: Upload images if any
+      if (_images.isNotEmpty) {
+        try {
+          setState(() {
+            _publishingProgress =
+                'Загрузка изображений (0/${_images.length})...';
+          });
+
+          final imagePaths = _images.map((file) => file.path).toList();
+          final imageResponse = await ApiService.uploadAdvertImages(
+            advertId,
+            imagePaths,
+            token: token,
+          );
+
+          print('✅ Images uploaded successfully!');
+          print('Response: $imageResponse');
+        } catch (e) {
+          print('⚠️ Warning: Error uploading images: $e');
+          // Don't fail the entire operation if images fail - advert is already created
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Объявление создано, но ошибка при загрузке изображений: $e',
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+
+      // Hide loading
+      setState(() {
+        _isPublishing = false;
+        _publishingProgress = '';
+      });
+
+      // Log to console
+      print('✅ Объявление отправлено в админку');
+      print('Response: ${response['message']}');
+
+      // Show moderation dialog
+      _showModerationDialog();
     } catch (e) {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isPublishing = false;
+        _publishingProgress = '';
+      });
 
       // Check if it's a token expiration error
       if (e.toString().contains('Token expired') ||
@@ -554,9 +1191,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
           context,
         ).pushNamedAndRemoveUntil('/sign_in', (Route<dynamic> route) => false);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
       }
     }
   }
@@ -842,7 +1482,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 ...(List<Attribute>.from(_attributes)
                       ..sort((a, b) => a.order.compareTo(b.order)))
                     .where(
-                      (attr) => attr.title.isNotEmpty && !attr.isTitleHidden,
+                      (attr) => attr
+                          .title
+                          .isNotEmpty, // Временно показываем все фильтры
                     )
                     .map(
                       (attr) => Column(
@@ -853,6 +1495,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       ),
                     )
                     .toList(),
+
+              // ============ Special attribute 1127: Общая площадь (Total area) ============
+              // This attribute is REQUIRED but not in API filters list
+              const Text(
+                'Общая площадь*',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 9),
+              _buildAreaRangeField(),
+              const SizedBox(height: 15),
 
               const SizedBox(height: 12),
 
@@ -1081,6 +1733,41 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
               const SizedBox(height: 22),
 
+              // ============ Special attribute: "Вам предложат цену" ============
+              const Text(
+                'Вам предложат цену*',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedValues[1048] =
+                        !(_selectedValues[1048] as bool? ?? false);
+                  });
+                },
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Я согласен принимать предложения по цене',
+                        style: const TextStyle(
+                          color: textPrimary,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                    CustomCheckbox(
+                      value: (_selectedValues[1048] as bool? ?? true),
+                      onChanged: (v) =>
+                          setState(() => _selectedValues[1048] = v),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 22),
+
               _buildButton(
                 'Предпросмотр',
                 onPressed: () {
@@ -1094,11 +1781,57 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 isPrimary: _selectedAction == 'preview',
               ),
               const SizedBox(height: 10),
-              _buildButton(
-                'Опубликовать',
-                onPressed: _publishAdvert,
-                isPrimary: _selectedAction == 'publish',
-              ),
+              if (_isPublishing)
+                Column(
+                  children: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          minimumSize: const Size.fromHeight(51),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        onPressed: null,
+                        icon: const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        label: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Публикация объявления...',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _publishingProgress,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              else
+                _buildButton(
+                  'Опубликовать',
+                  onPressed: _publishAdvert,
+                  isPrimary: _selectedAction == 'publish',
+                ),
               const SizedBox(height: 32),
             ],
           ),
@@ -1287,13 +2020,108 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
+  Widget _buildAreaRangeField() {
+    // Build special field for attribute 1127 (Total area)
+    _selectedValues[1127] ??= {'min': '', 'max': ''};
+    var rawValue = _selectedValues[1127];
+
+    Map<String, dynamic> rangeMap;
+    if (rawValue is Map) {
+      rangeMap = rawValue as Map<String, dynamic>;
+    } else {
+      rangeMap = {'min': '', 'max': ''};
+    }
+
+    final minStr = rangeMap['min']?.toString() ?? '';
+    final maxStr = rangeMap['max']?.toString() ?? '';
+    Map<String, String> range = {'min': minStr, 'max': maxStr};
+
+    const minKey = 2254; // 1127 * 2
+    const maxKey = 2255; // 1127 * 2 + 1
+    final controllerMin = _controllers.putIfAbsent(
+      minKey,
+      () => TextEditingController(text: range['min']),
+    );
+    final controllerMax = _controllers.putIfAbsent(
+      maxKey,
+      () => TextEditingController(text: range['max']),
+    );
+
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: formBackground,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              controller: controllerMin,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'От',
+                hintStyle: TextStyle(
+                  color: Color.fromARGB(255, 255, 255, 255),
+                  fontSize: 14,
+                ),
+                border: InputBorder.none,
+              ),
+              onChanged: (value) {
+                print('onChanged for 1127 min: $value');
+                setState(() {
+                  range['min'] = value;
+                  _selectedValues[1127] = range;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: formBackground,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: TextField(
+              controller: controllerMax,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'До',
+                hintStyle: TextStyle(
+                  color: Color.fromARGB(255, 255, 255, 255),
+                  fontSize: 14,
+                ),
+                border: InputBorder.none,
+              ),
+              onChanged: (value) {
+                print('onChanged for 1127 max: $value');
+                setState(() {
+                  range['max'] = value;
+                  _selectedValues[1127] = range;
+                });
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildDynamicFilter(Attribute attr) {
     if (attr.isSpecialDesign) {
       if (attr.values.length == 2) {
         // Buttons for Yes/No like "Меблированная" - one always selected
         _selectedValues[attr.id] =
             _selectedValues[attr.id] ?? attr.values[0].value;
-        String selected = _selectedValues[attr.id];
+        var selectedValue = _selectedValues[attr.id];
+        String selected = selectedValue is String
+            ? selectedValue
+            : selectedValue.toString();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1327,7 +2155,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
       } else {
         // Checkbox for single value like "Возможен торг"
         _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
-        bool selected = _selectedValues[attr.id];
+        var selectedValue = _selectedValues[attr.id];
+        bool selected = selectedValue is bool ? selectedValue : false;
         return GestureDetector(
           onTap: () => setState(() => _selectedValues[attr.id] = !selected),
           child: Row(
@@ -1349,7 +2178,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
     } else if (attr.values.isNotEmpty) {
       if (attr.isMultiple) {
         _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
-        Set<String> selected = _selectedValues[attr.id];
+        var selectedValue = _selectedValues[attr.id];
+        Set<String> selected;
+        if (selectedValue is Set) {
+          selected = selectedValue.cast<String>();
+        } else {
+          selected = <String>{};
+        }
         return _buildDropdown(
           label: attr.isTitleHidden
               ? ''
@@ -1384,7 +2219,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
             (attr.isRequired && attr.values.isNotEmpty
                 ? attr.values.first.value
                 : '');
-        String selected = _selectedValues[attr.id];
+        var selectedValue = _selectedValues[attr.id];
+        String selected = selectedValue is String
+            ? selectedValue
+            : selectedValue.toString();
         return _buildDropdown(
           label: attr.isTitleHidden
               ? ''
@@ -1422,9 +2260,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Special case for floor attribute (id 1040) and area (id 1037) - always show as range
       if (attr.isRange || attr.id == 1040 || attr.id == 1037) {
         _selectedValues[attr.id] ??= {'min': '', 'max': ''};
-        Map<String, String> range = Map<String, String>.from(
-          _selectedValues[attr.id],
-        );
+        var rawValue = _selectedValues[attr.id];
+
+        // Ensure it's a proper map
+        Map<String, dynamic> rangeMap;
+        if (rawValue is Map) {
+          rangeMap = rawValue as Map<String, dynamic>;
+        } else {
+          rangeMap = {'min': '', 'max': ''};
+        }
+
+        final minStr = rangeMap['min']?.toString() ?? '';
+        final maxStr = rangeMap['max']?.toString() ?? '';
+        Map<String, String> range = {'min': minStr, 'max': maxStr};
+
         final minKey = attr.id * 2;
         final maxKey = attr.id * 2 + 1;
         final controllerMin = _controllers.putIfAbsent(
@@ -1519,10 +2368,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
         );
       } else {
         _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
-        final controller = _controllers.putIfAbsent(
-          attr.id,
-          () => TextEditingController(text: _selectedValues[attr.id]),
-        );
+        final controller = _controllers.putIfAbsent(attr.id, () {
+          final value = _selectedValues[attr.id];
+          final textValue = value is String ? value : (value?.toString() ?? '');
+          return TextEditingController(text: textValue);
+        });
         return _buildTextField(
           label: attr.isTitleHidden
               ? ''
