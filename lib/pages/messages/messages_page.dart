@@ -397,6 +397,7 @@ class _MessagesPageState extends State<MessagesPage> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
 
               // Conditional rendering for message list or empty state
               messages.isEmpty
@@ -460,223 +461,213 @@ class _MessagesPageState extends State<MessagesPage> {
                   : Expanded(
                       child: Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 25,
-                              vertical: 10,
-                            ),
-                            child: Row(
-                              children: [
-                                CustomCheckbox(
-                                  value: selectedMessages.values.every(
-                                    (element) => element,
+                          if (showCheckboxes)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 25,
+                                vertical: 10,
+                              ),
+                              child: Row(
+                                children: [
+                                  CustomCheckbox(
+                                    value: selectedMessages.values.every(
+                                      (element) => element,
+                                    ),
+                                    onChanged: (bool newValue) {
+                                      setState(() {
+                                        // Get filtered messages based on current tabs
+                                        final currentChatIsInternal =
+                                            isCompaniesSelected
+                                            ? isCompanyChatInternal
+                                            : isInternalChatSelected;
+                                        final filteredMessages = messages
+                                            .where(
+                                              (msg) =>
+                                                  msg.isInternal ==
+                                                      currentChatIsInternal &&
+                                                  msg.isCompany ==
+                                                      isCompaniesSelected,
+                                            )
+                                            .toList();
+
+                                        // Get original indices of filtered messages
+                                        final filteredIndices = filteredMessages
+                                            .map((msg) => messages.indexOf(msg))
+                                            .toList();
+
+                                        // Select/deselect only filtered messages
+                                        for (final index in filteredIndices) {
+                                          selectedMessages[index] = newValue;
+                                        }
+
+                                        // Hide panel if all messages are deselected
+                                        if (!newValue &&
+                                            selectedMessages.values
+                                                .where((v) => v)
+                                                .isEmpty) {
+                                          showCheckboxes = false;
+                                        }
+                                      });
+                                    },
                                   ),
-                                  onChanged: (bool newValue) {
-                                    setState(() {
-                                      // Get filtered messages based on current tabs
-                                      final currentChatIsInternal =
-                                          isCompaniesSelected
-                                          ? isCompanyChatInternal
-                                          : isInternalChatSelected;
-                                      final filteredMessages = messages
-                                          .where(
-                                            (msg) =>
-                                                msg.isInternal ==
-                                                    currentChatIsInternal &&
-                                                msg.isCompany ==
-                                                    isCompaniesSelected,
-                                          )
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Выбрать все',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  TextButton(
+                                    onPressed: () async {
+                                      final selectedIndices = selectedMessages
+                                          .entries
+                                          .where((entry) => entry.value)
+                                          .map((entry) => entry.key)
                                           .toList();
 
-                                      // Get original indices of filtered messages
-                                      final filteredIndices = filteredMessages
-                                          .map((msg) => messages.indexOf(msg))
+                                      if (selectedIndices.isNotEmpty) {
+                                        final selectedMessageMaps =
+                                            selectedIndices.map((index) {
+                                              final message = messages[index];
+                                              return {
+                                                'senderName':
+                                                    message.senderName,
+                                                'senderAvatar':
+                                                    message.senderAvatar,
+                                                'lastMessageTime':
+                                                    message.lastMessageTime,
+                                                'unreadCount':
+                                                    message.unreadCount,
+                                                'isInternal':
+                                                    message.isInternal,
+                                                'isCompany': message.isCompany,
+                                              };
+                                            }).toList();
+
+                                        // Add to archive
+                                        for (final messageMap
+                                            in selectedMessageMaps) {
+                                          await HiveService.addToArchive(
+                                            messageMap,
+                                          );
+                                        }
+
+                                        // Remove from currentMessages
+                                        final currentMessages =
+                                            HiveService.getCurrentMessages();
+                                        currentMessages.removeWhere(
+                                          (map) =>
+                                              selectedMessageMaps.contains(map),
+                                        );
+                                        await HiveService.saveCurrentMessages(
+                                          currentMessages,
+                                        );
+
+                                        setState(() {
+                                          // Remove selected messages from the list
+                                          selectedIndices.sort(
+                                            (a, b) => b.compareTo(a),
+                                          ); // Sort in descending order
+                                          for (final index in selectedIndices) {
+                                            messages.removeAt(index);
+                                            selectedMessages.remove(index);
+                                          }
+                                          // Reindex selectedMessages
+                                          final newSelected = <int, bool>{};
+                                          for (
+                                            int i = 0;
+                                            i < messages.length;
+                                            i++
+                                          ) {
+                                            newSelected[i] = false;
+                                          }
+                                          selectedMessages = newSelected;
+                                          showCheckboxes = false;
+                                        });
+                                      }
+                                    },
+                                    child: const Text(
+                                      'В архив',
+                                      style: TextStyle(
+                                        color: accentColor,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 19,
+                                    color: const Color(0xFF767676),
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      final selectedIndices = selectedMessages
+                                          .entries
+                                          .where((entry) => entry.value)
+                                          .map((entry) => entry.key)
                                           .toList();
 
-                                      // Select/deselect only filtered messages
-                                      for (final index in filteredIndices) {
-                                        selectedMessages[index] = newValue;
-                                      }
-
-                                      if (showCheckboxes &&
-                                          selectedMessages.values
-                                              .where((v) => v)
-                                              .isEmpty) {
-                                        showCheckboxes =
-                                            false; // Скрыть чекбоксы если нет выбранных
-                                      } else {
-                                        showCheckboxes =
-                                            true; // Показать чекбоксы
-                                      }
-                                    });
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                const Text(
-                                  'Выбрать все',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                const Spacer(),
-                                TextButton(
-                                  onPressed: () async {
-                                    setState(() {
-                                      if (showCheckboxes &&
-                                          selectedMessages.values
-                                              .where((v) => v)
-                                              .isEmpty) {
-                                        showCheckboxes =
-                                            false; // Скрыть чекбоксы если нет выбранных
-                                      } else {
-                                        showCheckboxes =
-                                            true; // Показать чекбоксы
-                                      }
-                                    });
-                                    final selectedIndices = selectedMessages
-                                        .entries
-                                        .where((entry) => entry.value)
-                                        .map((entry) => entry.key)
-                                        .toList();
-
-                                    if (selectedIndices.isNotEmpty) {
-                                      final selectedMessageMaps =
-                                          selectedIndices.map((index) {
-                                            final message = messages[index];
-                                            return {
-                                              'senderName': message.senderName,
-                                              'senderAvatar':
-                                                  message.senderAvatar,
-                                              'lastMessageTime':
-                                                  message.lastMessageTime,
-                                              'unreadCount':
-                                                  message.unreadCount,
-                                              'isInternal': message.isInternal,
-                                              'isCompany': message.isCompany,
-                                            };
-                                          }).toList();
-
-                                      // Add to archive
-                                      for (final messageMap
-                                          in selectedMessageMaps) {
-                                        await HiveService.addToArchive(
-                                          messageMap,
+                                      if (selectedIndices.isNotEmpty) {
+                                        showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return DeleteChatDialog(
+                                              onConfirm: () {
+                                                setState(() {
+                                                  // Remove selected messages from the list
+                                                  selectedIndices.sort(
+                                                    (a, b) => b.compareTo(a),
+                                                  ); // Sort in descending order
+                                                  for (final index
+                                                      in selectedIndices) {
+                                                    messages.removeAt(index);
+                                                    selectedMessages.remove(
+                                                      index,
+                                                    );
+                                                  }
+                                                  // Reindex selectedMessages
+                                                  final newSelected =
+                                                      <int, bool>{};
+                                                  for (
+                                                    int i = 0;
+                                                    i < messages.length;
+                                                    i++
+                                                  ) {
+                                                    newSelected[i] = false;
+                                                  }
+                                                  selectedMessages =
+                                                      newSelected;
+                                                  showCheckboxes = false;
+                                                });
+                                              },
+                                            );
+                                          },
                                         );
                                       }
-
-                                      // Remove from currentMessages
-                                      final currentMessages =
-                                          HiveService.getCurrentMessages();
-                                      currentMessages.removeWhere(
-                                        (map) =>
-                                            selectedMessageMaps.contains(map),
-                                      );
-                                      await HiveService.saveCurrentMessages(
-                                        currentMessages,
-                                      );
-
-                                      setState(() {
-                                        // Remove selected messages from the list
-                                        selectedIndices.sort(
-                                          (a, b) => b.compareTo(a),
-                                        ); // Sort in descending order
-                                        for (final index in selectedIndices) {
-                                          messages.removeAt(index);
-                                          selectedMessages.remove(index);
-                                        }
-                                        // Reindex selectedMessages
-                                        final newSelected = <int, bool>{};
-                                        for (
-                                          int i = 0;
-                                          i < messages.length;
-                                          i++
-                                        ) {
-                                          newSelected[i] = false;
-                                        }
-                                        selectedMessages = newSelected;
-                                      });
-                                    }
-                                  },
-                                  child: const Text(
-                                    'В архив',
-                                    style: TextStyle(
-                                      color: accentColor,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
+                                    },
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.only(
+                                        left: 10,
+                                        right: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Удалить',
+                                      style: TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Container(
-                                  width: 1,
-                                  height: 19,
-                                  color: const Color(0xFF767676),
-                                ),
-                                TextButton(
-                                  onPressed: () async {
-                                    final selectedIndices = selectedMessages
-                                        .entries
-                                        .where((entry) => entry.value)
-                                        .map((entry) => entry.key)
-                                        .toList();
-
-                                    if (selectedIndices.isNotEmpty) {
-                                      showDialog(
-                                        context: context,
-                                        builder: (BuildContext context) {
-                                          return DeleteChatDialog(
-                                            onConfirm: () {
-                                              setState(() {
-                                                // Remove selected messages from the list
-                                                selectedIndices.sort(
-                                                  (a, b) => b.compareTo(a),
-                                                ); // Sort in descending order
-                                                for (final index
-                                                    in selectedIndices) {
-                                                  messages.removeAt(index);
-                                                  selectedMessages.remove(
-                                                    index,
-                                                  );
-                                                }
-                                                // Reindex selectedMessages
-                                                final newSelected =
-                                                    <int, bool>{};
-                                                for (
-                                                  int i = 0;
-                                                  i < messages.length;
-                                                  i++
-                                                ) {
-                                                  newSelected[i] = false;
-                                                }
-                                                selectedMessages = newSelected;
-                                                showCheckboxes = false;
-                                              });
-                                            },
-                                          );
-                                        },
-                                      );
-                                    }
-                                  },
-                                  style: TextButton.styleFrom(
-                                    padding: const EdgeInsets.only(
-                                      left: 10,
-                                      right: 0,
-                                      top: 0,
-                                      bottom: 0,
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Удалить',
-                                    style: TextStyle(
-                                      color: Colors.red,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
                           Expanded(
                             child: Builder(
                               builder: (context) {
@@ -708,9 +699,25 @@ class _MessagesPageState extends State<MessagesPage> {
                                         setState(() {
                                           selectedMessages[originalIndex] =
                                               newValue!;
+                                          // Hide panel if all messages are deselected
+                                          if (selectedMessages.values
+                                              .where((v) => v)
+                                              .isEmpty) {
+                                            showCheckboxes = false;
+                                          }
+                                        });
+                                      },
+                                      onLongPress: () {
+                                        setState(() {
+                                          showCheckboxes = true;
+                                          selectedMessages[originalIndex] =
+                                              true;
                                         });
                                       },
                                       onTap: () {
+                                        setState(() {
+                                          showCheckboxes = false;
+                                        });
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
