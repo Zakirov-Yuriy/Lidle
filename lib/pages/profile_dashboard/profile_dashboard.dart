@@ -516,12 +516,12 @@ class _MessageCard extends StatelessWidget {
         border: border,
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(bottom: 7.0),
+              padding: const EdgeInsets.only(bottom: 1.0),
               child: Text(
                 title,
                 maxLines: 2,

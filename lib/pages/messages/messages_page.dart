@@ -11,6 +11,7 @@ import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/widgets/dialogs/delete_chat_dialog.dart';
 
 class MessagesPage extends StatefulWidget {
   // Renamed from MessagesEmptyPage
@@ -620,27 +621,40 @@ class _MessagesPageState extends State<MessagesPage> {
                                         .toList();
 
                                     if (selectedIndices.isNotEmpty) {
-                                      setState(() {
-                                        // Remove selected messages from the list
-                                        selectedIndices.sort(
-                                          (a, b) => b.compareTo(a),
-                                        ); // Sort in descending order
-                                        for (final index in selectedIndices) {
-                                          messages.removeAt(index);
-                                          selectedMessages.remove(index);
-                                        }
-                                        // Reindex selectedMessages
-                                        final newSelected = <int, bool>{};
-                                        for (
-                                          int i = 0;
-                                          i < messages.length;
-                                          i++
-                                        ) {
-                                          newSelected[i] = false;
-                                        }
-                                        selectedMessages = newSelected;
-                                        showCheckboxes = false;
-                                      });
+                                      showDialog(
+                                        context: context,
+                                        builder: (BuildContext context) {
+                                          return DeleteChatDialog(
+                                            onConfirm: () {
+                                              setState(() {
+                                                // Remove selected messages from the list
+                                                selectedIndices.sort(
+                                                  (a, b) => b.compareTo(a),
+                                                ); // Sort in descending order
+                                                for (final index
+                                                    in selectedIndices) {
+                                                  messages.removeAt(index);
+                                                  selectedMessages.remove(
+                                                    index,
+                                                  );
+                                                }
+                                                // Reindex selectedMessages
+                                                final newSelected =
+                                                    <int, bool>{};
+                                                for (
+                                                  int i = 0;
+                                                  i < messages.length;
+                                                  i++
+                                                ) {
+                                                  newSelected[i] = false;
+                                                }
+                                                selectedMessages = newSelected;
+                                                showCheckboxes = false;
+                                              });
+                                            },
+                                          );
+                                        },
+                                      );
                                     }
                                   },
                                   style: TextButton.styleFrom(
