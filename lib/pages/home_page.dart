@@ -88,27 +88,16 @@ class _HomePageState extends State<HomePage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 21, right: 23),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const Header(),
-                            const Spacer(),
                             Padding(
-                              padding: const EdgeInsets.only(top: 15.0),
+                              padding: const EdgeInsets.only(top: 19.0),
                               child: SvgPicture.asset(
-                                'assets/home_page/marker-pin.svg',
-                                width: 20,
-                                height: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 15.0),
-                              child: Text(
-                                _selectedCity,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Color(0xFFAAAAAA),
-                                ),
+                                'assets/home_page/share_outlined.svg',
+                                width: 24,
+                                height: 24,
                               ),
                             ),
                           ],

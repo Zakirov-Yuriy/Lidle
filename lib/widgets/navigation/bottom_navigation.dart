@@ -10,10 +10,7 @@ import 'package:lidle/pages/messages/messages_page.dart';
 class BottomNavigation extends StatelessWidget {
   final ValueChanged<int>? onItemSelected;
 
-  const BottomNavigation({
-    super.key,
-    this.onItemSelected,
-  });
+  const BottomNavigation({super.key, this.onItemSelected});
 
   @override
   Widget build(BuildContext context) {
@@ -41,20 +38,13 @@ class BottomNavigation extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          12,
-          0,
-          12,
-          bottomNavPaddingBottom,
-        ),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, bottomNavPaddingBottom),
         child: Container(
           height: bottomNavHeight,
           decoration: BoxDecoration(
             color: bottomNavBackground,
             borderRadius: BorderRadius.circular(37.5),
-            boxShadow: const [
-
-            ],
+            boxShadow: const [],
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -81,7 +71,7 @@ class BottomNavigation extends StatelessWidget {
         borderRadius: BorderRadius.circular(50),
         onTap: () => onItemSelected?.call(index),
         child: Padding(
-          padding: const EdgeInsets.all(0),
+          padding: const EdgeInsets.all(13.5),
           child: Image.asset(
             iconPath,
             width: 28,
@@ -99,17 +89,20 @@ class BottomNavigation extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(50),
         onTap: () => onItemSelected?.call(index),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          child: Image.asset(
-            plusIconAsset,
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Container(
             width: 28,
             height: 28,
-            color: isSelected ? activeIconColor : inactiveIconColor,
+            alignment: Alignment.center,
+            child: Image.asset(
+              plusIconAsset,
+              width: 28,
+              height: 28,
+              color: isSelected ? activeIconColor : inactiveIconColor,
+            ),
           ),
         ),
       ),
