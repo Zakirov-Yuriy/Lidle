@@ -16,7 +16,8 @@ class MessagesArchivePage extends StatefulWidget {
 }
 
 class _MessagesArchivePageState extends State<MessagesArchivePage> {
-  bool isInternalChatSelected = true; // true для внутреннего чата, false для внешнего
+  bool isInternalChatSelected =
+      true; // true для внутреннего чата, false для внешнего
   bool showCheckboxes = false; // Флаг для показа чекбоксов
   List<Map<String, dynamic>> archivedMessages = [];
   Map<int, bool> selectedMessages = {};
@@ -56,36 +57,32 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                 children: [const Header(), const Spacer()],
               ),
             ),
+
             // ───── Back / Archive ─────
-
             Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          color: activeIconColor,
-                          size: 16,
-                        ),
-                      ),
-                      const Text(
-                        'Назад',
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Spacer(),
-                      
-                    ],
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(
+                      Icons.arrow_back_ios,
+                      color: activeIconColor,
+                      size: 16,
+                    ),
                   ),
-                ),
-
-
-            
+                  const Text(
+                    'Назад',
+                    style: TextStyle(
+                      color: activeIconColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
 
             const SizedBox(height: 12),
 
@@ -121,7 +118,9 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                         child: Text(
                           'Внутренний чат',
                           style: TextStyle(
-                            color: isInternalChatSelected ? accentColor : Colors.white,
+                            color: isInternalChatSelected
+                                ? accentColor
+                                : Colors.white,
                             fontSize: 14,
                           ),
                         ),
@@ -136,7 +135,9 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                         child: Text(
                           'Внешний чат',
                           style: TextStyle(
-                            color: isInternalChatSelected ? Colors.white : accentColor,
+                            color: isInternalChatSelected
+                                ? Colors.white
+                                : accentColor,
                             fontSize: 14,
                           ),
                         ),
@@ -153,7 +154,9 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                       ),
                       AnimatedPositioned(
                         duration: const Duration(milliseconds: 200),
-                        left: isInternalChatSelected ? 0 : 125, // Примерная позиция для второй вкладки
+                        left: isInternalChatSelected
+                            ? 0
+                            : 125, // Примерная позиция для второй вкладки
                         child: Container(
                           height: 2,
                           width: 105, // Ширина подчеркивания
@@ -172,7 +175,11 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Image.asset('assets/messages/non.png', width: 120, height: 120),
+                        Image.asset(
+                          'assets/messages/non.png',
+                          width: 120,
+                          height: 120,
+                        ),
                         const SizedBox(height: 16),
                         const Text(
                           'Нет сообщений в архиве',
@@ -207,18 +214,30 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                     child: Column(
                       children: [
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 25,
+                            vertical: 10,
+                          ),
                           child: Row(
                             children: [
                               CustomCheckbox(
-                                value: selectedMessages.values.every((element) => element),
+                                value: selectedMessages.values.every(
+                                  (element) => element,
+                                ),
                                 onChanged: (bool newValue) {
                                   setState(() {
-                                    selectedMessages.updateAll((key, value) => newValue);
-                                    if (showCheckboxes && selectedMessages.values.where((v) => v).isEmpty) {
-                                      showCheckboxes = false; // Скрыть чекбоксы если нет выбранных
+                                    selectedMessages.updateAll(
+                                      (key, value) => newValue,
+                                    );
+                                    if (showCheckboxes &&
+                                        selectedMessages.values
+                                            .where((v) => v)
+                                            .isEmpty) {
+                                      showCheckboxes =
+                                          false; // Скрыть чекбоксы если нет выбранных
                                     } else {
-                                      showCheckboxes = true; // Показать чекбоксы
+                                      showCheckboxes =
+                                          true; // Показать чекбоксы
                                     }
                                   });
                                 },
@@ -226,26 +245,37 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                               const SizedBox(width: 8),
                               const Text(
                                 'Выбрать все',
-                                style: TextStyle(color: Colors.white, fontSize: 14),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
                               ),
                               const Spacer(),
                               TextButton(
                                 onPressed: () async {
                                   setState(() {
-                                    if (showCheckboxes && selectedMessages.values.where((v) => v).isEmpty) {
-                                      showCheckboxes = false; // Скрыть чекбоксы если нет выбранных
+                                    if (showCheckboxes &&
+                                        selectedMessages.values
+                                            .where((v) => v)
+                                            .isEmpty) {
+                                      showCheckboxes =
+                                          false; // Скрыть чекбоксы если нет выбранных
                                     } else {
-                                      showCheckboxes = true; // Показать чекбоксы
+                                      showCheckboxes =
+                                          true; // Показать чекбоксы
                                     }
                                   });
-                                  final selectedIndices = selectedMessages.entries
+                                  final selectedIndices = selectedMessages
+                                      .entries
                                       .where((entry) => entry.value)
                                       .map((entry) => entry.key)
                                       .toList();
 
                                   if (selectedIndices.isNotEmpty) {
                                     for (final index in selectedIndices) {
-                                      await HiveService.restoreFromArchive(index);
+                                      await HiveService.restoreFromArchive(
+                                        index,
+                                      );
                                     }
                                     await _loadArchivedMessages();
                                     Navigator.pop(context, true);
@@ -265,7 +295,10 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                         ),
                         Expanded(
                           child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 0,
+                              vertical: 0,
+                            ),
                             itemCount: archivedMessages.length,
                             itemBuilder: (context, index) {
                               final messageMap = archivedMessages[index];
@@ -275,6 +308,7 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                                 lastMessageTime: messageMap['lastMessageTime'],
                                 unreadCount: messageMap['unreadCount'],
                                 isInternal: messageMap['isInternal'] ?? true,
+                                isCompany: messageMap['isCompany'] ?? false,
                               );
                               return MessageCard(
                                 message: message,

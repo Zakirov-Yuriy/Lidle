@@ -25,10 +25,12 @@ class CompanyMessagesArchiveListScreen extends StatefulWidget {
   static const unreadBorder = Color(0xFF3A4A5A);
 
   @override
-  State<CompanyMessagesArchiveListScreen> createState() => _CompanyMessagesArchiveListScreenState();
+  State<CompanyMessagesArchiveListScreen> createState() =>
+      _CompanyMessagesArchiveListScreenState();
 }
 
-class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiveListScreen> {
+class _CompanyMessagesArchiveListScreenState
+    extends State<CompanyMessagesArchiveListScreen> {
   bool isMainSelected = false; // true для основных, false для архива
   bool selectAll = false;
   List<bool> selectedItems = [];
@@ -37,7 +39,13 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -103,23 +111,33 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                           child: Column(
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   GestureDetector(
                                     onTap: () {
-                                      Navigator.pushNamed(context, CompanyMessagesListScreen.routeName);
+                                      Navigator.pushNamed(
+                                        context,
+                                        CompanyMessagesListScreen.routeName,
+                                      );
                                     },
                                     child: Text(
                                       'Основные',
                                       style: TextStyle(
-                                        color: isMainSelected ? CompanyMessagesArchiveListScreen.accentColor : Colors.white,
+                                        color: isMainSelected
+                                            ? CompanyMessagesArchiveListScreen
+                                                  .accentColor
+                                            : Colors.white,
                                         fontSize: 15,
                                       ),
                                     ),
                                   ),
                                   Text(
                                     'Не прочитанные: 234',
-                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                   GestureDetector(
                                     onTap: () {
@@ -130,7 +148,10 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                     child: Text(
                                       'Архив',
                                       style: TextStyle(
-                                        color: isMainSelected ? Colors.white : CompanyMessagesArchiveListScreen.accentColor,
+                                        color: isMainSelected
+                                            ? Colors.white
+                                            : CompanyMessagesArchiveListScreen
+                                                  .accentColor,
                                         fontSize: 15,
                                       ),
                                     ),
@@ -147,11 +168,16 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                   ),
                                   AnimatedPositioned(
                                     duration: const Duration(milliseconds: 200),
-                                    left: isMainSelected ? 0 : 318, // Примерная позиция для второй вкладки
+                                    left: isMainSelected
+                                        ? 0
+                                        : 318, // Примерная позиция для второй вкладки
                                     child: Container(
                                       height: 2,
-                                      width: isMainSelected ? 75 : 45, // Ширина подчеркивания
-                                    color: CompanyMessagesArchiveListScreen.accentColor,
+                                      width: isMainSelected
+                                          ? 75
+                                          : 45, // Ширина подчеркивания
+                                      color: CompanyMessagesArchiveListScreen
+                                          .accentColor,
                                     ),
                                   ),
                                 ],
@@ -172,7 +198,11 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                 onChanged: (value) {
                                   setState(() {
                                     selectAll = value;
-                                    for (int i = 0; i < selectedItems.length; i++) {
+                                    for (
+                                      int i = 0;
+                                      i < selectedItems.length;
+                                      i++
+                                    ) {
                                       selectedItems[i] = selectAll;
                                     }
                                   });
@@ -183,29 +213,51 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                 onTap: () {
                                   setState(() {
                                     selectAll = !selectAll;
-                                    for (int i = 0; i < selectedItems.length; i++) {
+                                    for (
+                                      int i = 0;
+                                      i < selectedItems.length;
+                                      i++
+                                    ) {
                                       selectedItems[i] = selectAll;
                                     }
                                   });
                                 },
                                 child: const Text(
                                   'Выбрать все',
-                                  style: TextStyle(color: Colors.white, fontSize: 14),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                               const Spacer(),
                               GestureDetector(
                                 onTap: () {
-                                  final selectedIndices = selectedItems.asMap().entries.where((entry) => entry.value).map((entry) => entry.key).toList();
-                                  context.read<CompanyMessagesBloc>().add(UnarchiveCompanyMessages(selectedIndices));
+                                  final selectedIndices = selectedItems
+                                      .asMap()
+                                      .entries
+                                      .where((entry) => entry.value)
+                                      .map((entry) => entry.key)
+                                      .toList();
+                                  context.read<CompanyMessagesBloc>().add(
+                                    UnarchiveCompanyMessages(selectedIndices),
+                                  );
                                   setState(() {
-                                    selectedItems = List.filled(archivedMessages.length - selectedIndices.length, false);
+                                    selectedItems = List.filled(
+                                      archivedMessages.length -
+                                          selectedIndices.length,
+                                      false,
+                                    );
                                     selectAll = false;
                                   });
                                 },
                                 child: const Text(
                                   'Убрать из архива',
-                                  style: TextStyle(color: UserMessagesArchiveListScreen.accentColor, fontSize: 14),
+                                  style: TextStyle(
+                                    color: UserMessagesArchiveListScreen
+                                        .accentColor,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ],
@@ -220,7 +272,11 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Image.asset('assets/messages/non.png', width: 120, height: 120),
+                                    Image.asset(
+                                      'assets/messages/non.png',
+                                      width: 120,
+                                      height: 120,
+                                    ),
                                     const SizedBox(height: 16),
                                     const Text(
                                       'Нет сообщений в архиве',
@@ -234,7 +290,8 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                                     const SizedBox(
                                       width: double.infinity,
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
                                         children: [
                                           Text(
                                             'Архив пуст',
@@ -253,18 +310,24 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                               )
                             : Expanded(
                                 child: ListView.builder(
-                                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 25,
+                                  ),
                                   itemCount: archivedMessages.length,
                                   itemBuilder: (context, index) {
                                     return _MessageItem(
                                       name: archivedMessages[index]['name'],
-                                      subtitle: archivedMessages[index]['subtitle'],
-                                      unreadCount: archivedMessages[index]['unreadCount'],
+                                      subtitle:
+                                          archivedMessages[index]['subtitle'],
+                                      unreadCount:
+                                          archivedMessages[index]['unreadCount'],
                                       selected: selectedItems[index],
                                       onChanged: (value) {
                                         setState(() {
                                           selectedItems[index] = value ?? false;
-                                          selectAll = selectedItems.every((item) => item);
+                                          selectAll = selectedItems.every(
+                                            (item) => item,
+                                          );
                                         });
                                       },
                                     );
@@ -276,10 +339,15 @@ class _CompanyMessagesArchiveListScreenState extends State<CompanyMessagesArchiv
                   ),
                   bottomNavigationBar: BottomNavigation(
                     onItemSelected: (index) {
-                      if (index == 3) { // Shopping cart icon
-                        context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                      if (index == 3) {
+                        // Shopping cart icon
+                        context.read<NavigationBloc>().add(
+                          NavigateToMyPurchasesEvent(),
+                        );
                       } else {
-                        context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                        context.read<NavigationBloc>().add(
+                          SelectNavigationIndexEvent(index),
+                        );
                       }
                     },
                   ),
@@ -320,9 +388,7 @@ class _MessageItem extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const ChatPage(),
-          ),
+          MaterialPageRoute(builder: (context) => const ChatPage()),
         );
       },
       child: Container(
