@@ -29,31 +29,39 @@ class DeleteChatDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            RichText(
-              textAlign: TextAlign.start,
-              text: const TextSpan(
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-                children: [
-                  TextSpan(
-                    text: 'Внимание: ',
+            Row(
+              children: [
+                RichText(
+                  textAlign: TextAlign.start,
+                  text: const TextSpan(
                     style: TextStyle(
-                      color: Color(0xFFCCCC00),
-                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      fontSize: 16,
+                      height: 1.5,
                     ),
+                    children: [
+                      TextSpan(
+                        text: 'Внимание: ',
+                        style: TextStyle(
+                          color: Color(0xFFCCCC00),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextSpan(text: 'если вы хотите\nудалить чат'),
+                    ],
                   ),
-                  TextSpan(text: 'если вы хотите\nудалить чат'),
-                ],
-              ),
+                ),
+              ],
             ),
             const SizedBox(height: 9),
-            const Text(
-              'Потрердите действие',
-              textAlign: TextAlign.start,
-              style: TextStyle(color: Colors.white54, fontSize: 16),
+            Row(
+              children: [
+                const Text(
+                  'Потрердите действие',
+                  textAlign: TextAlign.start,
+                  style: TextStyle(color: Colors.white54, fontSize: 16),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             Row(
