@@ -77,6 +77,7 @@ flutter:
     - assets/product_card/
     - assets/user_qr/
     - assets/chat_page/send-03.svg
+    - assets/profile_dashboard/
     - .env
     - .env.production
     

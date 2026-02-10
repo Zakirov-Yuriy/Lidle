@@ -1,0 +1,25 @@
+<svg width="120" height="60" viewBox="0 0 120 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Barcode lines -->
+  <rect x="5" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="10" y="5" width="3" height="40" fill="currentColor"/>
+  <rect x="16" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="21" y="5" width="4" height="40" fill="currentColor"/>
+  <rect x="28" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="33" y="5" width="3" height="40" fill="currentColor"/>
+  <rect x="39" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="44" y="5" width="3" height="40" fill="currentColor"/>
+  <rect x="50" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="55" y="5" width="4" height="40" fill="currentColor"/>
+  <rect x="62" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="67" y="5" width="3" height="40" fill="currentColor"/>
+  <rect x="73" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="78" y="5" width="3" height="40" fill="currentColor"/>
+  <rect x="84" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="89" y="5" width="4" height="40" fill="currentColor"/>
+  <rect x="96" y="5" width="2" height="40" fill="currentColor"/>
+  <rect x="101" y="5" width="3" height="40" fill="currentColor"/>
+  <rect x="107" y="5" width="2" height="40" fill="currentColor"/>
+  
+  <!-- Numbers below barcode -->
+  <text x="60" y="55" text-anchor="middle" font-size="10" font-family="monospace" fill="currentColor">2342124342</text>
+</svg>

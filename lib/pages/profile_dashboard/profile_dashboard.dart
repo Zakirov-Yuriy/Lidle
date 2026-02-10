@@ -21,8 +21,6 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart';
-import 'package:lidle/pages/profile_dashboard/user_messages/user_messages_list_screen.dart';
-import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
@@ -172,6 +170,52 @@ class ProfileDashboard extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 24),
 
+                                  // Раздел «Ваши покупки»
+                                  const _SectionTitle('Ваши покупки'),
+                                  const SizedBox(height: 12),
+                                  // Карточка со штрихкодом
+                                  _BarcodeCard(),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    height: 82,
+                                    child: PageView(
+                                      controller: PageController(
+                                        viewportFraction: 0.70,
+                                      ),
+                                      padEnds: false,
+                                      pageSnapping: true,
+                                      children: [
+                                        // Карточка с товаром 1
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 10,
+                                          ),
+                                          child: _PurchaseCard(
+                                            productImage:
+                                                'assets/profile_dashboard/image.png',
+                                            title: 'Самовывоз',
+                                            subtitle: 'Готов к выдаче',
+                                            date: '21/04 c 14:00 до 18:00',
+                                          ),
+                                        ),
+                                        // Карточка с товаром 2
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 10,
+                                          ),
+                                          child: _PurchaseCard(
+                                            productImage:
+                                                'assets/profile_dashboard/image.png',
+                                            title: 'Курьеров',
+                                            subtitle: 'Ожидание',
+                                            date: '21/04 с 14:00 до 18:00',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+
                                   // Раздел «Ваши объявления»
                                   const _SectionTitle('Ваши объявления'),
                                   const SizedBox(height: 10),
@@ -194,6 +238,16 @@ class ProfileDashboard extends StatelessWidget {
                                     onTap: () => Navigator.of(
                                       context,
                                     ).pushNamed(ResponsesEmptyPage.routeName),
+                                  ),
+                                  const Divider(
+                                    color: Color(0xFF474747),
+                                    height: 8,
+                                  ),
+                                  _MenuItem(
+                                    title: 'Архив',
+                                    count: 0,
+                                    trailingChevron: true,
+                                    onTap: () {},
                                   ),
                                   const Divider(
                                     color: Color(0xFF474747),
@@ -547,5 +601,157 @@ class _MessageCard extends StatelessWidget {
     );
 
     return onTap != null ? GestureDetector(onTap: onTap, child: card) : card;
+  }
+}
+
+class _BarcodeCard extends StatelessWidget {
+  const _BarcodeCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 65,
+      // margin: const EdgeInsets.symmetric(horizontal: 5),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Штрихкод
+          Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: SvgPicture.asset(
+              'assets/profile_dashboard/barcode.svg',
+              width: 69,
+              height: 36,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Текст
+          Expanded(
+            child: Text(
+              'Покажите штрих-код продавцу для получение товара',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PurchaseCard extends StatelessWidget {
+  final String productImage;
+  final String title;
+  final String subtitle;
+  final String date;
+
+  const _PurchaseCard({
+    required this.productImage,
+    required this.title,
+    required this.subtitle,
+    required this.date,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      // margin: const EdgeInsets.symmetric(horizontal: 5),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(8),
+      child: Row(
+        children: [
+          // Изображение товара
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              productImage,
+              fit: BoxFit.cover,
+              width: 72,
+              height: 64,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: 72,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A2A),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    color: Colors.white24,
+                    size: 30,
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 10),
+          // Информация о товаре
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Название
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                // Статус
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: subtitle == 'Готов к выдаче'
+                        ? const Color(0xFF86DE59)
+                        : const Color(0xFFE3E335),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                // Дата
+                Text(
+                  date,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
