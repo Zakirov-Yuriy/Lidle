@@ -168,7 +168,7 @@ class LidleApp extends StatelessWidget {
 
           // Production home
           home: const HomePage(),
-          // home: const UserAccountPage(),
+          // home: const PropertyDetailsScreen(),
           routes: {
             SignInScreen.routeName: (context) => const SignInScreen(),
             ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),
