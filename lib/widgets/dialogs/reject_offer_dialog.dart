@@ -8,9 +8,7 @@ class RejectOfferDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: IncomingPriceOfferPage.backgroundColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -20,55 +18,56 @@ class RejectOfferDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const SizedBox(width: 24), // Spacer for centering title
-                
+
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.close, color: Colors.white, size: 24),
                 ),
               ],
             ),
             const Text(
-                  'Отклонить заявку',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-            const SizedBox(height: 22),
-            RichText(
-              textAlign: TextAlign.center,
-              text: const TextSpan(
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-                children: [
-                  TextSpan(
-                    text: 'Внимание: ',
-                    style: TextStyle(
-                      color: Color(0xFFD4E157), // Yellowish color from image
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'если вы хотите \nотклонить заявку.',
-                  ),
-                ],
+              'Отклонить заявку',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
               ),
             ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                RichText(
+                  textAlign: TextAlign.start,
+                  text: const TextSpan(
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      height: 1.5,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'Внимание: ',
+                        style: TextStyle(
+                          color: Color(
+                            0xFFD4E157,
+                          ), // Yellowish color from image
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      TextSpan(text: 'если вы хотите \nотклонить заявку.'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 9),
-            const Text(
-              'Потрердите действие',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 16,
-              ),
+            Row(
+              children: [
+                const Text(
+                  'Потрердите действие',
+                  style: TextStyle(color: Colors.white54, fontSize: 16),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             Row(
@@ -90,7 +89,9 @@ class RejectOfferDialog extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: IncomingPriceOfferPage.accentColor),
+                      side: const BorderSide(
+                        color: IncomingPriceOfferPage.accentColor,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),

@@ -7,25 +7,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
-import 'package:lidle/pages/profile_dashboard/responses/user_account_page.dart';
 
-class AcceptResponsePage extends StatefulWidget {
+class UserAccountPage extends StatefulWidget {
   final ResponseModel response;
-  final String? status;
-  final VoidCallback? onArchive;
 
-  const AcceptResponsePage({
-    super.key,
-    required this.response,
-    this.status,
-    this.onArchive,
-  });
+  const UserAccountPage({super.key, required this.response});
 
   @override
-  State<AcceptResponsePage> createState() => _AcceptResponsePageState();
+  State<UserAccountPage> createState() => _UserAccountPageState();
 }
 
-class _AcceptResponsePageState extends State<AcceptResponsePage> {
+class _UserAccountPageState extends State<UserAccountPage> {
   bool _spamChecked = false;
   bool _incorrectDataChecked = false;
   bool _inappropriateLanguageChecked = false;
@@ -69,7 +61,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                     ),
                     const SizedBox(width: 12),
                     const Text(
-                      'Принять заявку',
+                      'Аккаунт пользователя',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -90,18 +82,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
 
               const SizedBox(height: 16),
 
-              // ───── Message text ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: const Text(
-                  'Вы приняли сделку с исполнителем',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // ───── Executor Info Card ─────
+              // ───── User Info Card ─────
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 25),
                 padding: const EdgeInsets.all(16),
@@ -112,17 +93,17 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // User info header
+                    // User header
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         CircleAvatar(
-                          radius: 32,
+                          radius: 36,
                           backgroundImage: AssetImage(
                             widget.response.userAvatar,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +112,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                                 widget.response.userName,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -149,8 +130,8 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                                     index < widget.response.rating.floor()
                                         ? Icons.star
                                         : Icons.star_border,
-                                    color: Colors.amber,
-                                    size: 16,
+                                    color: Colors.orange,
+                                    size: 18,
                                   );
                                 }),
                               ),
@@ -160,124 +141,99 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
-                    // Message button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          // TODO: Implement messaging
-                        },
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: accentColor,
-                            width: 1.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text(
-                          'Написать',
-                          style: TextStyle(
-                            color: accentColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
+                    // Phone numbers
+                    if (widget.response.phoneNumbers != null) ...[
+                      const Text(
+                        'Номер',
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                      const SizedBox(height: 8),
+                      ...widget.response.phoneNumbers!.map(
+                        (phone) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            phone,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                      const SizedBox(height: 16),
+                    ],
 
-              const SizedBox(height: 16),
-
-              // ───── Package info sections ─────
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.symmetric(horizontal: 25),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: formBackground,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Pickup location
-                    _buildInfoSection(
-                      'Откуда забрать посылку',
-                      widget.response.category,
-                      '${widget.response.city ?? ""}',
-                      showMapButton: true,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Delivery location
-                    _buildInfoSection(
-                      'Куда доставить посылку',
-                      '${widget.response.city ?? ""}, д. 1, кв. 33',
-                      '',
-                      showMapButton: true,
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Elevator available
-                    _buildInfoItem('Лифт на месте доставки', 'Да'),
-
-                    const SizedBox(height: 12),
-
-                    // Package category
-                    _buildInfoItem(
-                      'Категория посылки',
-                      widget.response.category,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Weight
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        RichText(
-                          text: const TextSpan(
-                            children: [
-                              TextSpan(
-                                text: 'Вес посылки ',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              TextSpan(
-                                text: '(грамм.)',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
+                    // Telegram
+                    if (widget.response.telegram != null) ...[
+                      const Text(
+                        'Телеграмм',
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.response.telegram!,
+                        style: const TextStyle(
+                          color: accentColor,
+                          fontSize: 16,
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '500 г.',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // WhatsApp
+                    if (widget.response.whatsapp != null) ...[
+                      const Text(
+                        'WhatsApp',
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.response.whatsapp!,
+                        style: const TextStyle(
+                          color: accentColor,
+                          fontSize: 16,
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // VK
+                    if (widget.response.vk != null) ...[
+                      const Text(
+                        'VK',
+                        style: TextStyle(color: Colors.white54, fontSize: 14),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.response.vk!,
+                        style: const TextStyle(
+                          color: accentColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Divider
+                    const Divider(color: Colors.white24, height: 1),
+                    const SizedBox(height: 16),
+
+                    // City
+                    const Text(
+                      'Город',
+                      style: TextStyle(color: Colors.white54, fontSize: 14),
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // Payment
-                    _buildInfoItem('Оплата посылки', 'Оплачена'),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.response.city ?? 'Не указан',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -309,7 +265,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                       text: TextSpan(
                         style: const TextStyle(
                           color: Colors.white54,
-                          fontSize: 16,
+                          fontSize: 13,
                           height: 1.5,
                         ),
                         children: [
@@ -337,7 +293,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                         'Пожаловаться',
                         style: TextStyle(
                           color: Colors.red,
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -346,7 +302,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                 ),
               ),
 
-              const SizedBox(height: 127),
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -362,81 +318,6 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
           }
         },
       ),
-    );
-  }
-
-  Widget _buildInfoSection(
-    String title,
-    String location,
-    String address, {
-    bool showMapButton = false,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          location,
-          style: const TextStyle(color: Colors.white54, fontSize: 16),
-        ),
-        if (address.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            address,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-          ),
-        ],
-        if (showMapButton) ...[
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) =>
-                      UserAccountPage(response: widget.response),
-                ),
-              );
-            },
-            child: const Text(
-              'Показать карту',
-              style: TextStyle(
-                color: accentColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildInfoItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(color: Colors.white54, fontSize: 16),
-        ),
-      ],
     );
   }
 

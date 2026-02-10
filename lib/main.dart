@@ -168,7 +168,7 @@ class LidleApp extends StatelessWidget {
 
           // Production home
           home: const HomePage(),
-          // home: const RegisterVerifyScreen(email: 'workyury02@gmail.com'),
+          // home: const UserAccountPage(),
           routes: {
             SignInScreen.routeName: (context) => const SignInScreen(),
             ProfileMenuScreen.routeName: (context) => const ProfileMenuScreen(),

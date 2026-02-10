@@ -36,8 +36,7 @@ dependencies:
   equatable: ^2.0.5
   flutter_localizations:
     sdk: flutter
-
-dev_dependencies:
+  collection: ^1.18.0
   flutter_test:
     sdk: flutter
 
@@ -77,6 +76,7 @@ flutter:
     - assets/profile_menu/settings/
     - assets/product_card/
     - assets/user_qr/
+    - assets/chat_page/send-03.svg
     - .env
     - .env.production
     

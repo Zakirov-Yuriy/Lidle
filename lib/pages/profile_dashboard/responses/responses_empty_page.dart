@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:collection/collection.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/responses_sort_dialog.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
@@ -19,8 +21,10 @@ class ResponsesEmptyPage extends StatefulWidget {
 }
 
 class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
-  String _currentSort = 'По сумме оплаты';
+  List<String> _currentSort = ['По сумме оплаты'];
+  int _currentTopTab = 0; // 0 = Отклики мне, 1 = Мои отклики
   int _currentTab = 0;
+  Map<String, bool> _selectedCards = {}; // Track selected cards
 
   // Separate lists for different tabs
   List<ResponseModel> mainResponses = [
@@ -84,7 +88,8 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
   ];
 
   List<ResponseModel> archivedResponses = [];
-  Map<String, String> archiveReasons = {}; // Track archive reasons by response ID
+  Map<String, String> archiveReasons =
+      {}; // Track archive reasons by response ID
 
   void _moveToArchive(ResponseModel response) {
     setState(() {
@@ -92,6 +97,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
       // Add to archived with 'completed' reason
       archivedResponses.add(response);
       archiveReasons[response.id] = 'completed';
+      _selectedCards.remove(response.id);
     });
   }
 
@@ -105,6 +111,46 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
       // Add to archived with 'rejected' reason
       archivedResponses.add(response);
       archiveReasons[response.id] = 'rejected';
+      _selectedCards.remove(response.id);
+    });
+  }
+
+  void _rejectSelectedCards() {
+    setState(() {
+      final selectedIds = _selectedCards.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList();
+
+      for (final id in selectedIds) {
+        final response = performingResponses.firstWhereOrNull(
+          (r) => r.id == id,
+        );
+        if (response != null) {
+          performingResponses.remove(response);
+          archivedResponses.add(response);
+          archiveReasons[response.id] = 'rejected';
+        }
+      }
+
+      _selectedCards.clear();
+    });
+  }
+
+  void _selectAllCards(bool selectAll) {
+    setState(() {
+      List<ResponseModel> currentResponses;
+      switch (_currentTab) {
+        case 1:
+          currentResponses = performingResponses;
+          break;
+        default:
+          currentResponses = [];
+      }
+
+      for (final response in currentResponses) {
+        _selectedCards[response.id] = selectAll;
+      }
     });
   }
 
@@ -119,7 +165,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
         break;
       case 1:
         currentResponses = performingResponses;
-        status = 'Выполянется';
+        status = 'Выполняется';
         break;
       case 2:
         currentResponses = archivedResponses;
@@ -131,25 +177,95 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
     }
 
     if (currentResponses.isNotEmpty) {
-      return ListView.builder(
-        itemCount: currentResponses.length,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        itemBuilder: (context, index) {
-          // Determine archive reason for archive tab
-          String? archiveReason;
-          if (_currentTab == 2) {
-            // For archive tab, get the reason from the map
-            archiveReason = archiveReasons[currentResponses[index].id] ?? 'completed';
-          }
+      final bool allSelected =
+          currentResponses.isNotEmpty &&
+          currentResponses.every((r) => _selectedCards[r.id] ?? false);
+      final bool anySelected = currentResponses.any(
+        (r) => _selectedCards[r.id] ?? false,
+      );
 
-          return ResponseCard(
-            response: currentResponses[index],
-            status: status,
-            archiveReason: archiveReason,
-            onArchive: _currentTab == 1 ? () => _moveToArchive(currentResponses[index]) : null,
-            onReject: (_currentTab == 0 || _currentTab == 1) ? () => _rejectResponse(currentResponses[index]) : null,
-          );
-        },
+      return Column(
+        children: [
+          // Show selection header only for performing tab
+          if (_currentTab == 1) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+              child: Row(
+                children: [
+                  CustomCheckbox(
+                    value: allSelected,
+                    onChanged: (value) {
+                      _selectAllCards(value);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Выбрать все',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (anySelected)
+                    GestureDetector(
+                      onTap: _rejectSelectedCards,
+                      child: const Text(
+                        'Отклонить',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+          Expanded(
+            child: ListView.builder(
+              itemCount: currentResponses.length,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              itemBuilder: (context, index) {
+                // Determine archive reason for archive tab
+                String? archiveReason;
+                if (_currentTab == 2) {
+                  // For archive tab, get the reason from the map
+                  archiveReason =
+                      archiveReasons[currentResponses[index].id] ?? 'completed';
+                }
+
+                // Initialize selection state for new cards
+                _selectedCards.putIfAbsent(
+                  currentResponses[index].id,
+                  () => false,
+                );
+
+                return ResponseCard(
+                  response: currentResponses[index],
+                  status: status,
+                  archiveReason: archiveReason,
+                  showCheckbox: _currentTab == 1,
+                  isSelected:
+                      _selectedCards[currentResponses[index].id] ?? false,
+                  onSelectionChanged: (selected) {
+                    setState(() {
+                      _selectedCards[currentResponses[index].id] = selected;
+                    });
+                  },
+                  onArchive: _currentTab == 1
+                      ? () => _moveToArchive(currentResponses[index])
+                      : null,
+                  onReject: (_currentTab == 0 || _currentTab == 1)
+                      ? () => _rejectResponse(currentResponses[index])
+                      : null,
+                );
+              },
+            ),
+          ),
+        ],
       );
     } else {
       // Different empty states for different tabs
@@ -161,12 +277,14 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
         case 2: // Archive tab
           imagePath = 'assets/messages/non.png';
           title = 'Архив пуст';
-          description = 'У вас нет сообщений в архиве, \nкак только вы перенесете ваши \nсообщения они будет тут \nотображенно';
+          description =
+              'У вас нет сообщений в архиве, \nкак только вы перенесете ваши \nсообщения они будет тут \nотображенно';
           break;
         default: // Main and Performing tabs
           imagePath = 'assets/responses/responses.png';
           title = 'Ваши отклики пусты';
-          description = 'У вас нет откликов на быструю\nподработку, как только вы уберете\nобъявление с активных оно тут\nпоявится';
+          description =
+              'У вас нет откликов на быструю\nподработку, как только вы уберете\nобъявление с активных оно тут\nпоявится';
       }
 
       return Center(
@@ -174,11 +292,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(
-              imagePath,
-              height: 120,
-              fit: BoxFit.contain,
-            ),
+            Image.asset(imagePath, height: 120, fit: BoxFit.contain),
             const SizedBox(height: 24),
             Text(
               title,
@@ -224,7 +338,6 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
 
   static const backgroundColor = Color(0xFF243241);
   static const accentColor = Color(0xFF00B7FF);
-  
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +407,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
 
               const SizedBox(height: 20),
 
-              // ───── Tabs ─────
+              // ───── Top Tabs (Отклики мне / Мои отклики) ─────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 child: Column(
@@ -303,33 +416,26 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                     Row(
                       children: [
                         GestureDetector(
-                          onTap: () => setState(() => _currentTab = 0),
+                          onTap: () => setState(() => _currentTopTab = 0),
                           child: Text(
-                            'Основные',
+                            'Отклики мне',
                             style: TextStyle(
-                              color: _currentTab == 0 ? accentColor : Colors.white,
+                              color: _currentTopTab == 0
+                                  ? accentColor
+                                  : Colors.white,
                               fontSize: 15,
                             ),
                           ),
                         ),
                         const SizedBox(width: 20),
                         GestureDetector(
-                          onTap: () => setState(() => _currentTab = 1),
+                          onTap: () => setState(() => _currentTopTab = 1),
                           child: Text(
-                            'Выполняемые',
+                            'Мои отклики',
                             style: TextStyle(
-                              color: _currentTab == 1 ? accentColor : Colors.white,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        GestureDetector(
-                          onTap: () => setState(() => _currentTab = 2),
-                          child: Text(
-                            'Архив',
-                            style: TextStyle(
-                              color: _currentTab == 2 ? accentColor : Colors.white,
+                              color: _currentTopTab == 1
+                                  ? accentColor
+                                  : Colors.white,
                               fontSize: 15,
                             ),
                           ),
@@ -346,10 +452,91 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                         ),
                         AnimatedPositioned(
                           duration: const Duration(milliseconds: 200),
-                          left: _currentTab == 0 ? 0 : _currentTab == 1 ? 95 : 218,
+                          left: _currentTopTab == 0 ? 0 : 115,
                           child: Container(
                             height: 2,
-                            width: _currentTab == 0 ? 75 : _currentTab == 1 ? 105 : 45,
+                            width: _currentTopTab == 0 ? 105 : 95,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ───── Tabs ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => setState(() => _currentTab = 0),
+                          child: Text(
+                            'Основные',
+                            style: TextStyle(
+                              color: _currentTab == 0
+                                  ? accentColor
+                                  : Colors.white,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => setState(() => _currentTab = 1),
+                          child: Text(
+                            'Выполняемые',
+                            style: TextStyle(
+                              color: _currentTab == 1
+                                  ? accentColor
+                                  : Colors.white,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+                        GestureDetector(
+                          onTap: () => setState(() => _currentTab = 2),
+                          child: Text(
+                            'Архив',
+                            style: TextStyle(
+                              color: _currentTab == 2
+                                  ? accentColor
+                                  : Colors.white,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    Stack(
+                      children: [
+                        Container(
+                          height: 1,
+                          width: double.infinity,
+                          color: Colors.white24,
+                        ),
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          left: _currentTab == 0
+                              ? 0
+                              : _currentTab == 1
+                              ? 95
+                              : 218,
+                          child: Container(
+                            height: 2,
+                            width: _currentTab == 0
+                                ? 75
+                                : _currentTab == 1
+                                ? 105
+                                : 45,
                             color: accentColor,
                           ),
                         ),
@@ -360,9 +547,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
               ),
 
               // ───── Content ─────
-              Expanded(
-                child: _buildTabContent(),
-              ),
+              Expanded(child: _buildTabContent()),
 
               // const SizedBox(height: 80), // под bottom nav
             ],

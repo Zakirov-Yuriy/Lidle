@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/response_model.dart';
+import 'package:lidle/pages/profile_dashboard/responses/user_account_page.dart';
 
 class ResponseChatPage extends StatelessWidget {
   final ResponseModel response;
@@ -62,39 +63,56 @@ class ResponseChatPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      // avatar
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundImage: AssetImage(response.userAvatar),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        print('🔄 Переход на UserAccountPage...');
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                UserAccountPage(response: response),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
                           children: [
-                            Text(
-                              response.userName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                            // avatar
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundImage: AssetImage(response.userAvatar),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    response.userName,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'был(а) недавно',
+                                    style: TextStyle(
+                                      color: Colors.white54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'был(а) недавно',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 12,
-                              ),
-                            ),
+                            const Icon(Icons.more_vert, color: Colors.white),
                           ],
                         ),
                       ),
-                      const Icon(Icons.more_vert, color: Colors.white),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -131,7 +149,10 @@ class ResponseChatPage extends StatelessWidget {
                       ),
                       child: Text(
                         'Переписка по услуге: ${response.title}',
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -141,7 +162,8 @@ class ResponseChatPage extends StatelessWidget {
 
                   // initial message example if needed
                   _IncomingMessage(
-                    text: 'Здравствуйте! Я готов выполнить ваш заказ "${response.title}". Когда вам будет удобно?',
+                    text:
+                        'Здравствуйте! Я готов выполнить ваш заказ "${response.title}". Когда вам будет удобно?',
                     time: '12:00',
                   ),
                 ],
@@ -165,7 +187,10 @@ class ResponseChatPage extends StatelessWidget {
                         style: TextStyle(color: Colors.white, fontSize: 14),
                         decoration: InputDecoration(
                           hintText: 'Сообщение',
-                          hintStyle: TextStyle(color: Colors.white38, fontSize: 14),
+                          hintStyle: TextStyle(
+                            color: Colors.white38,
+                            fontSize: 14,
+                          ),
                           border: InputBorder.none,
                           isDense: true,
                         ),

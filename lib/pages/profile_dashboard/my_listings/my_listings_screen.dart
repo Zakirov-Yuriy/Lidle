@@ -25,7 +25,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   static const yellowColor = Color(0xFFE8FF00);
   static const redColor = Color(0xFFFF3B30);
 
-  String _currentSort = 'По цене';
+  List<String> _currentSort = ['По цене'];
 
   List<Map<String, dynamic>> _activeListings = [
     {'id': 1},
@@ -73,9 +73,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(Icons.close, color: Colors.white),
-                      ),
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.close, color: Colors.white),
+                  ),
                 ],
               ),
               Row(
@@ -90,7 +90,6 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  
                 ],
               ),
               const SizedBox(height: 22),
@@ -529,7 +528,6 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             const Text(
               'Просмотров: 340',
               style: TextStyle(color: Colors.white54, fontSize: 13),
-              
             ),
             const SizedBox(height: 4),
             const Text(
@@ -562,15 +560,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             ],
 
             Row(
-            children: [
-              Expanded(
-                child: _actionButton(
-                  'Удалить',
-                  redColor,
-                  onPressed: () => _showDeleteDialog(id, tabIndex),
+              children: [
+                Expanded(
+                  child: _actionButton(
+                    'Удалить',
+                    redColor,
+                    onPressed: () => _showDeleteDialog(id, tabIndex),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
                 Expanded(
                   child: tabIndex == 2
                       ? _actionButton(
@@ -578,7 +576,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           accentColor,
                           onPressed: () {
                             setState(() {
-                              final listing = _archiveListings.firstWhere((l) => l['id'] == id);
+                              final listing = _archiveListings.firstWhere(
+                                (l) => l['id'] == id,
+                              );
                               _archiveListings.remove(listing);
                               _activeListings.add(listing);
                             });
@@ -590,11 +590,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           onPressed: () {
                             setState(() {
                               if (tabIndex == 0) {
-                                final listing = _activeListings.firstWhere((l) => l['id'] == id);
+                                final listing = _activeListings.firstWhere(
+                                  (l) => l['id'] == id,
+                                );
                                 _activeListings.remove(listing);
                                 _archiveListings.add(listing);
                               } else if (tabIndex == 1) {
-                                final listing = _inactiveListings.firstWhere((l) => l['id'] == id);
+                                final listing = _inactiveListings.firstWhere(
+                                  (l) => l['id'] == id,
+                                );
                                 _inactiveListings.remove(listing);
                                 _archiveListings.add(listing);
                               }
@@ -607,25 +611,38 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
             const SizedBox(height: 8),
 
-            if (tabIndex == 0) _actionButton('Редактировать', accentColor, onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const DynamicFilter()),
-              );
-            }),
-            if (tabIndex == 1) _actionButton('Активировать', accentColor, onPressed: () {
-              setState(() {
-                final listing = _inactiveListings.firstWhere((l) => l['id'] == id);
-                _inactiveListings.remove(listing);
-                _activeListings.add(listing);
-              });
-            }),
+            if (tabIndex == 0)
+              _actionButton(
+                'Редактировать',
+                accentColor,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DynamicFilter(),
+                    ),
+                  );
+                },
+              ),
+            if (tabIndex == 1)
+              _actionButton(
+                'Активировать',
+                accentColor,
+                onPressed: () {
+                  setState(() {
+                    final listing = _inactiveListings.firstWhere(
+                      (l) => l['id'] == id,
+                    );
+                    _inactiveListings.remove(listing);
+                    _activeListings.add(listing);
+                  });
+                },
+              ),
           ],
         ],
       ),
     );
   }
-
 
   // ─────────────────────────────────────────────
   // BUTTON
@@ -684,11 +701,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(
-            imagePath,
-            height: 120,
-            fit: BoxFit.contain,
-          ),
+          Image.asset(imagePath, height: 120, fit: BoxFit.contain),
           const SizedBox(height: 24),
           Text(
             title,
