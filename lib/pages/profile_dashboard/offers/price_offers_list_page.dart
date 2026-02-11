@@ -8,6 +8,7 @@ import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 
 class PriceOffersListPage extends StatefulWidget {
   final Offer offer;
@@ -52,12 +53,18 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
   List<bool> itemChecked = [false, false];
   bool selectAllChecked = false;
+  bool isSelectionMode = false;
 
   void _toggleSelectAll() {
     setState(() {
       selectAllChecked = !selectAllChecked;
       for (int i = 0; i < itemChecked.length; i++) {
         itemChecked[i] = selectAllChecked;
+      }
+
+      // Exit selection mode if deselecting all
+      if (!selectAllChecked) {
+        isSelectionMode = false;
       }
     });
   }
@@ -66,6 +73,11 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
     setState(() {
       itemChecked[index] = !itemChecked[index];
       selectAllChecked = itemChecked.every((checked) => checked);
+
+      // Exit selection mode if no items are checked
+      if (!itemChecked.any((checked) => checked)) {
+        isSelectionMode = false;
+      }
     });
   }
 
@@ -78,6 +90,23 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         }
       }
       selectAllChecked = false; // Reset select all after deletion
+      isSelectionMode = false; // Exit selection mode after deletion
+    });
+  }
+
+  void _enterSelectionMode() {
+    setState(() {
+      isSelectionMode = true;
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      isSelectionMode = false;
+      selectAllChecked = false;
+      for (int i = 0; i < itemChecked.length; i++) {
+        itemChecked[i] = false;
+      }
     });
   }
 
@@ -85,7 +114,13 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -130,7 +165,11 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                     const Spacer(),
                     TextButton(
                       onPressed: () {
-                        Navigator.pop(context);
+                        if (isSelectionMode) {
+                          _exitSelectionMode();
+                        } else {
+                          Navigator.pop(context);
+                        }
                       },
                       child: const Text(
                         'Отмена',
@@ -144,36 +183,41 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
               const SizedBox(height: 16),
 
               // ───── Select all / Delete ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
-                  children: [
-                    _Checkbox(
-                      isChecked: selectAllChecked,
-                      onTap: _toggleSelectAll,
-                    ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Выбрать все',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: itemChecked.contains(true) ? _deleteSelected : null,
-                      child: Text(
-                        'Удалить',
-                        style: TextStyle(
-                          color: itemChecked.contains(true) ? PriceOffersListPage.dangerColor : Colors.white38,
-                          fontSize: 16,
+              if (isSelectionMode)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    children: [
+                      CustomCheckbox(
+                        value: selectAllChecked,
+                        onChanged: (value) => _toggleSelectAll(),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Выбрать все',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: itemChecked.contains(true)
+                            ? _deleteSelected
+                            : null,
+                        child: Text(
+                          'Удалить',
+                          style: TextStyle(
+                            color: itemChecked.contains(true)
+                                ? PriceOffersListPage.dangerColor
+                                : Colors.white38,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 12),
-              const Divider(color: Colors.white24, height: 0),
+              if (isSelectionMode) const SizedBox(height: 12),
+              if (isSelectionMode)
+                const Divider(color: Colors.white24, height: 0),
 
               // ───── List ─────
               Expanded(
@@ -187,14 +231,28 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                         _OfferItem(
                           offerItem: item,
                           isChecked: itemChecked[index],
+                          isSelectionMode: isSelectionMode,
                           onChanged: () => _toggleItem(index),
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            IncomingPriceOfferPage.routeName,
-                            arguments: item,
-                          ),
+                          onTap: () {
+                            if (isSelectionMode) {
+                              _toggleItem(index);
+                            } else {
+                              Navigator.pushNamed(
+                                context,
+                                IncomingPriceOfferPage.routeName,
+                                arguments: item,
+                              );
+                            }
+                          },
+                          onLongPress: () {
+                            if (!isSelectionMode) {
+                              _enterSelectionMode();
+                              _toggleItem(index);
+                            }
+                          },
                         ),
-                        if (index < items.length - 1) const SizedBox(height: 12),
+                        if (index < items.length - 1)
+                          const SizedBox(height: 12),
                       ],
                     );
                   },
@@ -205,10 +263,13 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         ),
         bottomNavigationBar: BottomNavigation(
           onItemSelected: (index) {
-            if (index == 3) { // Shopping cart icon
+            if (index == 3) {
+              // Shopping cart icon
               context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
             } else {
-              context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+              context.read<NavigationBloc>().add(
+                SelectNavigationIndexEvent(index),
+              );
             }
           },
         ),
@@ -222,20 +283,25 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 class _OfferItem extends StatelessWidget {
   final PriceOfferItem offerItem;
   final bool isChecked;
+  final bool isSelectionMode;
   final VoidCallback onChanged;
   final VoidCallback onTap;
+  final VoidCallback onLongPress;
 
   const _OfferItem({
     required this.offerItem,
     required this.isChecked,
+    required this.isSelectionMode,
     required this.onChanged,
     required this.onTap,
+    required this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         decoration: BoxDecoration(
           color: formBackground,
@@ -247,11 +313,12 @@ class _OfferItem extends StatelessWidget {
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  _Checkbox(
-                    isChecked: isChecked,
-                    onTap: onChanged,
-                  ),
-                  const SizedBox(width: 12),
+                  if (isSelectionMode)
+                    CustomCheckbox(
+                      value: isChecked,
+                      onChanged: (value) => onChanged(),
+                    ),
+                  if (isSelectionMode) const SizedBox(width: 12),
 
                   // avatar
                   CircleAvatar(
@@ -293,7 +360,9 @@ class _OfferItem extends StatelessWidget {
                     height: 24,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: PriceOffersListPage.yellowColor),
+                      border: Border.all(
+                        color: PriceOffersListPage.yellowColor,
+                      ),
                     ),
                     child: Center(
                       child: Text(
@@ -332,41 +401,6 @@ class _OfferItem extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────
-
-class _Checkbox extends StatelessWidget {
-  final bool isChecked;
-  final VoidCallback onTap;
-
-  const _Checkbox({
-    required this.isChecked,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 20,
-        height: 20,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.white38),
-          color: isChecked ? PriceOffersListPage.accentColor : Colors.transparent,
-        ),
-        child: isChecked
-            ? const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 16,
-              )
-            : null,
       ),
     );
   }

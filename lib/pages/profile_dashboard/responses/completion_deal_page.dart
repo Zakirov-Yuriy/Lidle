@@ -30,6 +30,7 @@ class _CompletionDealPageState extends State<CompletionDealPage> {
   bool _incorrectDataChecked = false;
   bool _inappropriateLanguageChecked = false;
   bool _strangeResourcesChecked = false;
+  bool _isSelectionMode = false;
 
   static const backgroundColor = Color(0xFF243241);
   static const accentColor = Color(0xFF00B7FF);
@@ -114,251 +115,270 @@ class _CompletionDealPageState extends State<CompletionDealPage> {
                 const SizedBox(height: 16),
 
                 // ───── Select all section ─────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      CustomCheckbox(
-                        value: _selectAllChecked,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectAllChecked = value;
-                            _archiveChecked = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Выбрать все',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () {
-                          if (_archiveChecked) {
+                if (_isSelectionMode)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Row(
+                      children: [
+                        CustomCheckbox(
+                          value: _selectAllChecked,
+                          onChanged: (value) {
                             setState(() {
-                              _cardArchived = true;
+                              _selectAllChecked = value;
+                              _archiveChecked = value;
+                              if (!value) {
+                                _isSelectionMode = false;
+                              }
                             });
-                            widget.onArchive?.call();
-                          }
-                        },
-                        child: const Text(
-                          'В архив',
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Выбрать все',
                           style: TextStyle(
-                            color: accentColor,
+                            color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        width: 1,
-                        height: 19,
-                        color: Colors.grey.withOpacity(0.5),
-                      ),
-                      const SizedBox(width: 10),
-                      GestureDetector(
-                        onTap: () {
-                          if (_archiveChecked) {
-                            setState(() {
-                              _cardDeleted = true;
-                            });
-                          }
-                        },
-                        child: const Text(
-                          'Удалить',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () {
+                            if (_archiveChecked) {
+                              setState(() {
+                                _cardArchived = true;
+                              });
+                              widget.onArchive?.call();
+                            }
+                          },
+                          child: const Text(
+                            'В архив',
+                            style: TextStyle(
+                              color: accentColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        Container(
+                          width: 1,
+                          height: 19,
+                          color: Colors.grey.withOpacity(0.5),
+                        ),
+                        const SizedBox(width: 10),
+                        GestureDetector(
+                          onTap: () {
+                            if (_archiveChecked) {
+                              setState(() {
+                                _cardDeleted = true;
+                              });
+                            }
+                          },
+                          child: const Text(
+                            'Удалить',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 16),
+                if (_isSelectionMode) const SizedBox(height: 16),
 
                 // ───── Deal Info Card ─────
                 if (!_cardDeleted && !_cardArchived) ...[
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 25),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: formBackground,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Category with checkbox
-                        Row(
-                          children: [
-                            CustomCheckbox(
-                              value: _archiveChecked,
-                              onChanged: (value) {
-                                setState(() {
-                                  _archiveChecked = value;
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                widget.response.category,
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 16,
+                  GestureDetector(
+                    onLongPress: () {
+                      if (!_isSelectionMode) {
+                        setState(() {
+                          _isSelectionMode = true;
+                          _archiveChecked = true;
+                        });
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 25),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: formBackground,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Category with checkbox
+                          Row(
+                            children: [
+                              if (_isSelectionMode)
+                                CustomCheckbox(
+                                  value: _archiveChecked,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _archiveChecked = value;
+                                      if (!value) {
+                                        _isSelectionMode = false;
+                                      }
+                                    });
+                                  },
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Выполнено',
-                              style: TextStyle(
-                                color: Color(0xFF19D849),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Deal title and price
-                        Text(
-                          '${widget.response.title}: ${widget.response.price.toInt()} ₽ за услугу',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Executor info
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => UserAccountPage(
-                                      response: widget.response,
-                                    ),
+                              if (_isSelectionMode) const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  widget.response.category,
+                                  style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 16,
                                   ),
-                                );
-                              },
-                              child: CircleAvatar(
-                                radius: 32,
-                                backgroundImage: AssetImage(
-                                  widget.response.userAvatar,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Выполнено',
+                                style: TextStyle(
+                                  color: Color(0xFF19D849),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // Deal title and price
+                          Text(
+                            '${widget.response.title}: ${widget.response.price.toInt()} ₽ за услугу',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => UserAccountPage(
-                                            response: widget.response,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Text(
-                                      widget.response.userName,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Executor info
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => UserAccountPage(
+                                        response: widget.response,
                                       ),
                                     ),
+                                  );
+                                },
+                                child: CircleAvatar(
+                                  radius: 32,
+                                  backgroundImage: AssetImage(
+                                    widget.response.userAvatar,
                                   ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Рейтинг',
-                                    style: TextStyle(
-                                      color: Colors.white54,
-                                      fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                UserAccountPage(
+                                                  response: widget.response,
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        widget.response.userName,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                  Row(
-                                    children: List.generate(5, (index) {
-                                      return Icon(
-                                        index < widget.response.rating.floor()
-                                            ? Icons.star
-                                            : index < widget.response.rating
-                                            ? Icons.star_half
-                                            : Icons.star_border,
-                                        color: Colors.orange,
-                                        size: 16,
-                                      );
-                                    }),
-                                  ),
-                                ],
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'Рейтинг',
+                                      style: TextStyle(
+                                        color: Colors.white54,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Row(
+                                      children: List.generate(5, (index) {
+                                        return Icon(
+                                          index < widget.response.rating.floor()
+                                              ? Icons.star
+                                              : index < widget.response.rating
+                                              ? Icons.star_half
+                                              : Icons.star_border,
+                                          color: Colors.orange,
+                                          size: 16,
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        const Divider(color: Color(0xFF474747), height: 11),
-
-                        // ───── Rating Section ─────
-                        const Text(
-                          'Оставить оценку',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: List.generate(5, (index) {
-                            return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _userRating = index + 1;
-                                });
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4.0,
-                                ),
-                                child: Icon(
-                                  _userRating > index
-                                      ? Icons.star
-                                      : Icons.star_border,
-                                  color: const Color.fromARGB(
-                                    255,
-                                    204,
-                                    204,
-                                    203,
+
+                          const SizedBox(height: 16),
+
+                          const Divider(color: Color(0xFF474747), height: 11),
+
+                          // ───── Rating Section ─────
+                          const Text(
+                            'Оставить оценку',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: List.generate(5, (index) {
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _userRating = index + 1;
+                                  });
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4.0,
                                   ),
-                                  size: 24,
+                                  child: Icon(
+                                    _userRating > index
+                                        ? Icons.star
+                                        : Icons.star_border,
+                                    color: const Color.fromARGB(
+                                      255,
+                                      204,
+                                      204,
+                                      203,
+                                    ),
+                                    size: 24,
+                                  ),
                                 ),
-                              ),
-                            );
-                          }),
-                        ),
-                      ],
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

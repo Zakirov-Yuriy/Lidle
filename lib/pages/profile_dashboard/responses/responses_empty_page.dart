@@ -25,6 +25,8 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
   int _currentTopTab = 0; // 0 = Отклики мне, 1 = Мои отклики
   int _currentTab = 0;
   Map<String, bool> _selectedCards = {}; // Track selected cards
+  bool _isSelectionMode = false; // Track selection mode for performing tab
+  bool _isArchiveSelectionMode = false; // Track selection mode for archive tab
 
   // Separate lists for different tabs
   List<ResponseModel> mainResponses = [
@@ -134,6 +136,21 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
       }
 
       _selectedCards.clear();
+      _isSelectionMode = false; // Exit selection mode after rejection
+    });
+  }
+
+  void _enterSelectionMode(String responseId) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedCards[responseId] = true;
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedCards.clear();
     });
   }
 
@@ -144,6 +161,9 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
         case 1:
           currentResponses = performingResponses;
           break;
+        case 2:
+          currentResponses = archivedResponses;
+          break;
         default:
           currentResponses = [];
       }
@@ -151,6 +171,71 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
       for (final response in currentResponses) {
         _selectedCards[response.id] = selectAll;
       }
+
+      // Exit selection mode if deselecting all
+      if (!selectAll) {
+        if (_currentTab == 1) {
+          _isSelectionMode = false;
+        } else if (_currentTab == 2) {
+          _isArchiveSelectionMode = false;
+        }
+      }
+    });
+  }
+
+  void _enterArchiveSelectionMode(String responseId) {
+    setState(() {
+      _isArchiveSelectionMode = true;
+      _selectedCards[responseId] = true;
+    });
+  }
+
+  void _exitArchiveSelectionMode() {
+    setState(() {
+      _isArchiveSelectionMode = false;
+      _selectedCards.clear();
+    });
+  }
+
+  void _deleteSelectedFromArchive() {
+    setState(() {
+      final selectedIds = _selectedCards.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList();
+
+      for (final id in selectedIds) {
+        final response = archivedResponses.firstWhereOrNull((r) => r.id == id);
+        if (response != null) {
+          archivedResponses.remove(response);
+          archiveReasons.remove(response.id);
+        }
+      }
+
+      _selectedCards.clear();
+      _isArchiveSelectionMode = false;
+    });
+  }
+
+  void _unarchiveSelectedCards() {
+    setState(() {
+      final selectedIds = _selectedCards.entries
+          .where((e) => e.value)
+          .map((e) => e.key)
+          .toList();
+
+      for (final id in selectedIds) {
+        final response = archivedResponses.firstWhereOrNull((r) => r.id == id);
+        if (response != null) {
+          archivedResponses.remove(response);
+          archiveReasons.remove(response.id);
+          // Restore to performing tab
+          performingResponses.add(response);
+        }
+      }
+
+      _selectedCards.clear();
+      _isArchiveSelectionMode = false;
     });
   }
 
@@ -186,8 +271,8 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
 
       return Column(
         children: [
-          // Show selection header only for performing tab
-          if (_currentTab == 1) ...[
+          // Show selection header for performing tab
+          if (_currentTab == 1 && _isSelectionMode) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
               child: Row(
@@ -224,6 +309,64 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
               ),
             ),
           ],
+          // Show selection header for archive tab
+          if (_currentTab == 2 && _isArchiveSelectionMode) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+              child: Row(
+                children: [
+                  CustomCheckbox(
+                    value: allSelected,
+                    onChanged: (value) {
+                      _selectAllCards(value);
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Выбрать все',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (anySelected)
+                    GestureDetector(
+                      onTap: _unarchiveSelectedCards,
+                      child: const Text(
+                        'Из архива',
+                        style: TextStyle(
+                          color: Color(0xFF00B7FF),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  if (anySelected) const SizedBox(width: 10),
+                  if (anySelected)
+                    Container(
+                      width: 1,
+                      height: 19,
+                      color: Colors.grey.withOpacity(0.5),
+                    ),
+                  if (anySelected) const SizedBox(width: 10),
+                  if (anySelected)
+                    GestureDetector(
+                      onTap: _deleteSelectedFromArchive,
+                      child: const Text(
+                        'Удалить',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
           Expanded(
             child: ListView.builder(
               itemCount: currentResponses.length,
@@ -247,14 +390,40 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                   response: currentResponses[index],
                   status: status,
                   archiveReason: archiveReason,
-                  showCheckbox: _currentTab == 1,
+                  showCheckbox:
+                      (_currentTab == 1 && _isSelectionMode) ||
+                      (_currentTab == 2 && _isArchiveSelectionMode),
                   isSelected:
                       _selectedCards[currentResponses[index].id] ?? false,
                   onSelectionChanged: (selected) {
                     setState(() {
                       _selectedCards[currentResponses[index].id] = selected;
+
+                      // Exit selection mode if no items are checked
+                      if (!_selectedCards.values.any((v) => v)) {
+                        if (_currentTab == 1) {
+                          _isSelectionMode = false;
+                        } else if (_currentTab == 2) {
+                          _isArchiveSelectionMode = false;
+                        }
+                      }
                     });
                   },
+                  onLongPress: _currentTab == 1
+                      ? () {
+                          if (!_isSelectionMode) {
+                            _enterSelectionMode(currentResponses[index].id);
+                          }
+                        }
+                      : _currentTab == 2
+                      ? () {
+                          if (!_isArchiveSelectionMode) {
+                            _enterArchiveSelectionMode(
+                              currentResponses[index].id,
+                            );
+                          }
+                        }
+                      : null,
                   onArchive: _currentTab == 1
                       ? () => _moveToArchive(currentResponses[index])
                       : null,

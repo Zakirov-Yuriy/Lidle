@@ -27,6 +27,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   int _selectedCatalog = 0; // 0: Недвижимость, 1: Авто
   int _selectedCategory = 0; // 0: Квартиры, 1: Гаражи
   bool _selectAllChecked = false;
+  bool _isSelectionMode = false; // Режим выбора
   Set<int> _selectedListingIds = {};
 
   static const accentColor = Color(0xFF00B7FF);
@@ -324,60 +325,71 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () => setState(() => _currentTab = 0),
-                              child: Text(
-                                'Активные',
-                                style: TextStyle(
-                                  color: _currentTab == 0
-                                      ? accentColor
-                                      : Colors.white,
-                                  fontSize: 14,
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => setState(() => _currentTab = 0),
+                                child: Text(
+                                  _activeListings.isEmpty
+                                      ? 'Активные'
+                                      : 'Активные ${_activeListings.length}',
+                                  style: TextStyle(
+                                    color: _currentTab == 0
+                                        ? accentColor
+                                        : Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            GestureDetector(
-                              onTap: () => setState(() => _currentTab = 1),
-                              child: Text(
-                                'Неактивные',
-                                style: TextStyle(
-                                  color: _currentTab == 1
-                                      ? accentColor
-                                      : Colors.white,
-                                  fontSize: 14,
+                              const SizedBox(width: 16),
+                              GestureDetector(
+                                onTap: () => setState(() => _currentTab = 1),
+                                child: Text(
+                                  _inactiveListings.isEmpty
+                                      ? 'Неактивные'
+                                      : 'Неактивные ${_inactiveListings.length}',
+                                  style: TextStyle(
+                                    color: _currentTab == 1
+                                        ? accentColor
+                                        : Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            GestureDetector(
-                              onTap: () => setState(() => _currentTab = 2),
-                              child: Text(
-                                'Архив',
-                                style: TextStyle(
-                                  color: _currentTab == 2
-                                      ? accentColor
-                                      : Colors.white,
-                                  fontSize: 14,
+                              const SizedBox(width: 16),
+                              GestureDetector(
+                                onTap: () => setState(() => _currentTab = 2),
+                                child: Text(
+                                  _archiveListings.isEmpty
+                                      ? 'Архив'
+                                      : 'Архив ${_archiveListings.length}',
+                                  style: TextStyle(
+                                    color: _currentTab == 2
+                                        ? accentColor
+                                        : Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 20),
-                            GestureDetector(
-                              onTap: () => setState(() => _currentTab = 3),
-                              child: Text(
-                                'На модерации',
-                                style: TextStyle(
-                                  color: _currentTab == 3
-                                      ? accentColor
-                                      : Colors.white,
-                                  fontSize: 14,
+                              const SizedBox(width: 16),
+                              GestureDetector(
+                                onTap: () => setState(() => _currentTab = 3),
+                                child: Text(
+                                  _moderationListings.isEmpty
+                                      ? 'На модерации'
+                                      : 'На модерации ${_moderationListings.length}',
+                                  style: TextStyle(
+                                    color: _currentTab == 3
+                                        ? accentColor
+                                        : Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 9),
                         Stack(
@@ -389,22 +401,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                             ),
                             AnimatedPositioned(
                               duration: const Duration(milliseconds: 200),
-                              left: _currentTab == 0
-                                  ? 0
-                                  : _currentTab == 1
-                                  ? 88
-                                  : _currentTab == 2
-                                  ? 192
-                                  : 254,
+                              left: _getTabPosition(_currentTab),
                               child: Container(
                                 height: 2,
-                                width: _currentTab == 0
-                                    ? 68
-                                    : _currentTab == 1
-                                    ? 84
-                                    : _currentTab == 2
-                                    ? 42
-                                    : 98,
+                                width: _getTabWidth(_currentTab),
                                 color: accentColor,
                               ),
                             ),
@@ -417,80 +417,81 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                   const SizedBox(height: 20),
 
                   // ───── Select all section ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Row(
-                      children: [
-                        CustomCheckbox(
-                          value: _selectAllChecked,
-                          onChanged: (value) {
-                            setState(() {
-                              _selectAllChecked = value;
-                              if (_selectAllChecked) {
-                                // Select all listings from current tab
-                                final currentListings =
-                                    _getCurrentTabListings();
-                                _selectedListingIds.addAll(
-                                  currentListings.map((l) => l['id'] as int),
-                                );
-                              } else {
-                                _selectedListingIds.clear();
-                              }
-                            });
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Выбрать все',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                  if (_isSelectionMode)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        children: [
+                          CustomCheckbox(
+                            value: _selectAllChecked,
+                            onChanged: (value) {
+                              setState(() {
+                                _selectAllChecked = value;
+                                if (_selectAllChecked) {
+                                  // Select all listings from current tab
+                                  final currentListings =
+                                      _getCurrentTabListings();
+                                  _selectedListingIds.addAll(
+                                    currentListings.map((l) => l['id'] as int),
+                                  );
+                                } else {
+                                  _selectedListingIds.clear();
+                                }
+                              });
+                            },
                           ),
-                        ),
-                        const Spacer(),
-                        if (_selectedListingIds.isNotEmpty) ...[
-                          if (_currentTab != 3) ...[
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Выбрать все',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (_selectedListingIds.isNotEmpty) ...[
+                            if (_currentTab != 3) ...[
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _moveToArchive();
+                                  });
+                                },
+                                child: Text(
+                                  _currentTab == 2 ? 'Из архива' : 'В архив',
+                                  style: const TextStyle(
+                                    color: accentColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Container(
+                                width: 1,
+                                height: 19,
+                                color: Colors.grey.withValues(alpha: 0.5),
+                              ),
+                              const SizedBox(width: 10),
+                            ],
                             GestureDetector(
                               onTap: () {
-                                setState(() {
-                                  _moveToArchive();
-                                });
+                                _showDeleteMultipleDialog();
                               },
                               child: const Text(
-                                'В архив',
+                                'Удалить',
                                 style: TextStyle(
-                                  color: accentColor,
+                                  color: Color(0xFFFF3B30),
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Container(
-                              width: 1,
-                              height: 19,
-                              color: Colors.grey.withValues(alpha: 0.5),
-                            ),
-                            const SizedBox(width: 10),
                           ],
-                          GestureDetector(
-                            onTap: () {
-                              _showDeleteMultipleDialog();
-                            },
-                            child: const Text(
-                              'Удалить',
-                              style: TextStyle(
-                                color: Color(0xFFFF3B30),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
 
                   // ───── Content ─────
                   _buildTabContent(),
@@ -624,283 +625,300 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   Widget _listingCard(int id, int tabIndex) {
     final isSelected = _selectedListingIds.contains(id);
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // image + info
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CustomCheckbox(
-                value: isSelected,
-                onChanged: (value) {
-                  setState(() {
-                    if (value) {
-                      _selectedListingIds.add(id);
-                    } else {
-                      _selectedListingIds.remove(id);
-                    }
-                    _selectAllChecked = false;
-                  });
-                },
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          const MyListingsPropertyDetailsScreen(),
+    return GestureDetector(
+      onLongPress: () {
+        setState(() {
+          _isSelectionMode = true;
+          _selectedListingIds.add(id);
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // image + info
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_isSelectionMode)
+                  CustomCheckbox(
+                    value: isSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        if (value) {
+                          _selectedListingIds.add(id);
+                        } else {
+                          _selectedListingIds.remove(id);
+                          // Выйти из режима выбора если ничего не выбрано
+                          if (_selectedListingIds.isEmpty) {
+                            _isSelectionMode = false;
+                            _selectAllChecked = false;
+                          }
+                        }
+                        _selectAllChecked = false;
+                      });
+                    },
+                  ),
+                if (_isSelectionMode) const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const MyListingsPropertyDetailsScreen(),
+                      ),
+                    );
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.asset(
+                      'assets/home_page/image2.png',
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
                     ),
-                  );
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: Image.asset(
-                    'assets/home_page/image2.png',
-                    width: 72,
-                    height: 72,
-                    fit: BoxFit.cover,
                   ),
                 ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '3-к. квартира, 125,5 м², 5/17 эт.',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        '44 500 000 ₽',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '354 582 ₽ за м²',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const Divider(color: Colors.white24, height: 24),
+
+            if (tabIndex == 3) ...[
+              const Center(
+                child: Text(
+                  'Объявление находится на модерации. В течении 24 часов администрация проверит ваше объявление',
+                  textAlign: TextAlign.start,
+                  style: TextStyle(color: Colors.white54, fontSize: 16),
+                ),
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 5),
+              Row(
+                children: [
+                  Expanded(
+                    child: _actionButton('Поддержка Лидле', Colors.white),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _actionButton(
+                      'Редактировать',
+                      accentColor,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DynamicFilter(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ] else ...[
+              const Text(
+                'Просмотров: 340',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Переходов: 24',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Поделились: 14',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+
+              const SizedBox(height: 16),
+
+              if (tabIndex == 0) ...[
+                Row(
                   children: [
-                    Text(
-                      '3-к. квартира, 125,5 м², 5/17 эт.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: _actionButton(
+                        'Деактивировать',
+                        yellowColor,
+                        onPressed: () {
+                          setState(() {
+                            final listing = _activeListings.firstWhere(
+                              (l) => l['id'] == id,
+                            );
+                            _activeListings.remove(listing);
+                            _inactiveListings.add(listing);
+                          });
+                        },
                       ),
                     ),
-                    SizedBox(height: 6),
-                    Text(
-                      '44 500 000 ₽',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _actionButton(
+                        'Редактировать',
+                        accentColor,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DynamicFilter(),
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '354 582 ₽ за м²',
-                      style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
                   ],
                 ),
+                // const SizedBox(height: 12),
+              ],
+
+              if (tabIndex == 1)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _actionButton(
+                        'Активировать',
+                        greenColor,
+                        onPressed: () {
+                          setState(() {
+                            final listing = _inactiveListings.firstWhere(
+                              (l) => l['id'] == id,
+                            );
+                            _inactiveListings.remove(listing);
+                            _activeListings.add(listing);
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _actionButton(
+                        'Редактировать',
+                        accentColor,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DynamicFilter(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              if (tabIndex == 2)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _actionButton(
+                        'Активировать',
+                        greenColor,
+                        onPressed: () {
+                          setState(() {
+                            final listing = _archiveListings.firstWhere(
+                              (l) => l['id'] == id,
+                            );
+                            _archiveListings.remove(listing);
+                            _activeListings.add(listing);
+                          });
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _actionButton(
+                        'Редактировать',
+                        accentColor,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DynamicFilter(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: 12),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: _actionButton(
+                      'Наружная реклама',
+                      Colors.white,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const OutdoorAdvertisingScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _actionButton(
+                      'Внутренняя реклама',
+                      Colors.white,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const IndoorAdvertisingScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ],
-          ),
-
-          const Divider(color: Colors.white24, height: 24),
-
-          if (tabIndex == 3) ...[
-            const Center(
-              child: Text(
-                'Объявление находится на модерации. В течении 24 часов администрация проверит ваше объявление',
-                textAlign: TextAlign.start,
-                style: TextStyle(color: Colors.white54, fontSize: 16),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Row(
-              children: [
-                Expanded(child: _actionButton('Поддержка Лидле', Colors.white)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _actionButton(
-                    'Редактировать',
-                    accentColor,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DynamicFilter(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ] else ...[
-            const Text(
-              'Просмотров: 340',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Переходов: 24',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Поделились: 14',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
-            ),
-
-            const SizedBox(height: 16),
-
-            if (tabIndex == 0) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _actionButton(
-                      'Деактивировать',
-                      yellowColor,
-                      onPressed: () {
-                        setState(() {
-                          final listing = _activeListings.firstWhere(
-                            (l) => l['id'] == id,
-                          );
-                          _activeListings.remove(listing);
-                          _inactiveListings.add(listing);
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _actionButton(
-                      'Редактировать',
-                      accentColor,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DynamicFilter(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              // const SizedBox(height: 12),
-            ],
-
-            if (tabIndex == 1)
-              Row(
-                children: [
-                  Expanded(
-                    child: _actionButton(
-                      'Активировать',
-                      greenColor,
-                      onPressed: () {
-                        setState(() {
-                          final listing = _inactiveListings.firstWhere(
-                            (l) => l['id'] == id,
-                          );
-                          _inactiveListings.remove(listing);
-                          _activeListings.add(listing);
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _actionButton(
-                      'Редактировать',
-                      accentColor,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DynamicFilter(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            if (tabIndex == 2)
-              Row(
-                children: [
-                  Expanded(
-                    child: _actionButton(
-                      'Активировать',
-                      greenColor,
-                      onPressed: () {
-                        setState(() {
-                          final listing = _archiveListings.firstWhere(
-                            (l) => l['id'] == id,
-                          );
-                          _archiveListings.remove(listing);
-                          _activeListings.add(listing);
-                        });
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _actionButton(
-                      'Редактировать',
-                      accentColor,
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DynamicFilter(),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-            const SizedBox(height: 12),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _actionButton(
-                    'Наружная реклама',
-                    Colors.white,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const OutdoorAdvertisingScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _actionButton(
-                    'Внутренняя реклама',
-                    Colors.white,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const IndoorAdvertisingScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -987,6 +1005,65 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // HELPER METHODS
   // ─────────────────────────────────────────────
 
+  double _getTextWidth(String text) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(fontSize: 14, fontFamily: 'SF Pro Display'),
+      ),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return textPainter.width;
+  }
+
+  double _getTabPosition(int tabIndex) {
+    double position = 0;
+    for (int i = 0; i < tabIndex; i++) {
+      position += _getTabWidth(i) + 16; // 16 - это SizedBox между вкладками
+    }
+    // Корректировка для каждой вкладки отдельно
+    if (tabIndex == 1) {
+      position += 4; // Неактивные
+    } else if (tabIndex == 2) {
+      position += 4; // Архив
+    } else if (tabIndex == 5) {
+      position += 8; // На модерации
+    }
+    return position;
+  }
+
+  double _getTabWidth(int tabIndex) {
+    switch (tabIndex) {
+      case 0:
+        return _getTextWidth(
+          _activeListings.isEmpty
+              ? 'Активные'
+              : 'Активные ${_activeListings.length}',
+        );
+      case 1:
+        return _getTextWidth(
+          _inactiveListings.isEmpty
+              ? 'Неактивные'
+              : 'Неактивные ${_inactiveListings.length}',
+        );
+      case 2:
+        return _getTextWidth(
+          _archiveListings.isEmpty
+              ? 'Архив'
+              : 'Архив ${_archiveListings.length}',
+        );
+      case 3:
+        return _getTextWidth(
+          _moderationListings.isEmpty
+              ? 'На модерации'
+              : 'На модерации ${_moderationListings.length}',
+        );
+      default:
+        return 0;
+    }
+  }
+
   List<Map<String, dynamic>> _getCurrentTabListings() {
     switch (_currentTab) {
       case 0:
@@ -1023,7 +1100,14 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         );
         _archiveListings.addAll(toArchive);
       } else if (_currentTab == 2) {
-        // Already in archive, no action needed
+        // Из архива в активные
+        final toActive = _archiveListings
+            .where((l) => _selectedListingIds.contains(l['id']))
+            .toList();
+        _archiveListings.removeWhere(
+          (l) => _selectedListingIds.contains(l['id']),
+        );
+        _activeListings.addAll(toActive);
       } else if (_currentTab == 3) {
         final toArchive = _moderationListings
             .where((l) => _selectedListingIds.contains(l['id']))
@@ -1035,6 +1119,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       }
       _selectedListingIds.clear();
       _selectAllChecked = false;
+      _isSelectionMode = false;
     });
   }
 
@@ -1061,6 +1146,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       }
       _selectedListingIds.clear();
       _selectAllChecked = false;
+      _isSelectionMode = false;
     });
   }
 
