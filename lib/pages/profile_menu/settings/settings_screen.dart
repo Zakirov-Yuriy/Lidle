@@ -946,7 +946,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: 193,
                       child: ElevatedButton(
                         onPressed: () {
-                          // TODO: Implement notification change logic
+                          // TODO: Реализовать изменение настроек уведомлений
                           Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
@@ -1081,7 +1081,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ─────────────────────────────────────────────
-  // QR PLACEHOLDER
+  // QR КОД
   // ─────────────────────────────────────────────
 
   Widget _qrBox(String? qrCodeBase64) {

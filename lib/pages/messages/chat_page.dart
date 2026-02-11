@@ -84,7 +84,7 @@ class ChatPage extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        'был(а) онлайн недавно', // Placeholder
+                        'был(а) онлайн недавно', // Заполнитель статуса
                         style: const TextStyle(
                           color: Colors.white70,
                           fontSize: 12,

@@ -196,7 +196,7 @@ class InviteFriendsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: QrImageView(
-                    data: 'https://lidle.app/invite/user_id_placeholder', // Здесь должна быть ссылка для приглашения
+                    data: 'https://lidle.app/invite/user_id_placeholder', // Должна быть заменена реальной ссылкой приглашения
                     version: QrVersions.auto,
                     size: 200.0,
                     gapless: false,

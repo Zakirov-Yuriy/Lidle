@@ -42,14 +42,12 @@ class _FiltersScreenState extends State<FiltersScreen> {
     if (_selectedCity.isNotEmpty) {
       await HiveService.saveSelectedCity(_selectedCity.first);
     }
-    // TODO: верните выбранные фильтры на предыдущий экран или примените их
+    // TODO: Вернуть выбранные фильтры на предыдущий экран или применить их
     Navigator.maybePop(context);
   }
 
   @override
   Widget build(BuildContext context) {
-    // final theme = Theme.of(context); // Не используется
-
     return Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
@@ -87,8 +85,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
                         // splashRadius: 18,
                       ),
                     ),
-                    
-                
+
                     const Text(
                       'Фильтры',
                       style: TextStyle(
@@ -133,14 +130,15 @@ class _FiltersScreenState extends State<FiltersScreen> {
                 child: Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: _selectedCategories.map((category) => _GreyTag(text: category)).toList(),
+                  children: _selectedCategories
+                      .map((category) => _GreyTag(text: category))
+                      .toList(),
                 ),
               ),
               const SizedBox(height: 16),
               const Divider(color: Color(0xFF474747)),
 
               // Выбор города
-          
               const SizedBox(height: 9),
               Padding(
                 padding: const EdgeInsets.only(left: 25.0, right: 25.0),
@@ -189,7 +187,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
               const SizedBox(height: 14),
 
               // Выбор категории
-              
               Padding(
                 padding: const EdgeInsets.only(left: 25.0, right: 25.0),
                 child: _buildDropdown(
@@ -247,7 +244,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           child: _ChoiceButton(
                             text: 'Новые',
                             selected: _dateSort == DateSort.newest,
-                            onTap: () => setState(() => _dateSort = DateSort.newest),
+                            onTap: () =>
+                                setState(() => _dateSort = DateSort.newest),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -255,7 +253,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           child: _ChoiceButton(
                             text: 'Старое',
                             selected: _dateSort == DateSort.oldest,
-                            onTap: () => setState(() => _dateSort = DateSort.oldest),
+                            onTap: () =>
+                                setState(() => _dateSort = DateSort.oldest),
                           ),
                         ),
                       ],
@@ -267,8 +266,9 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           child: _ChoiceButton(
                             text: 'Дорогие',
                             selected: _priceSort == PriceSort.expensive,
-                            onTap: () =>
-                                setState(() => _priceSort = PriceSort.expensive),
+                            onTap: () => setState(
+                              () => _priceSort = PriceSort.expensive,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -276,7 +276,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
                           child: _ChoiceButton(
                             text: 'Дешевые',
                             selected: _priceSort == PriceSort.cheap,
-                            onTap: () => setState(() => _priceSort = PriceSort.cheap),
+                            onTap: () =>
+                                setState(() => _priceSort = PriceSort.cheap),
                           ),
                         ),
                       ],
@@ -332,7 +333,6 @@ class _FiltersScreenState extends State<FiltersScreen> {
                   ],
                 ),
               ),
-
             ],
           ),
         ),

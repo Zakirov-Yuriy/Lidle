@@ -7,7 +7,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../constants.dart';
 import '../models/home_models.dart';
-import '../hive_service.dart';
 import '../widgets/components/header.dart';
 import '../widgets/components/search_bar.dart' as custom_widgets;
 import '../widgets/cards/category_card.dart';
@@ -42,14 +41,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late String _selectedCity;
-
   @override
   void initState() {
     super.initState();
     // Загружаем данные при инициализации страницы
     context.read<ListingsBloc>().add(LoadListingsEvent());
-    _selectedCity = HiveService.getSelectedCity();
   }
 
   /// Метод для обработки pull-to-refresh.
@@ -124,9 +120,6 @@ class _HomePageState extends State<HomePage> {
                                   context,
                                   FiltersScreen.routeName,
                                 );
-                                setState(() {
-                                  _selectedCity = HiveService.getSelectedCity();
-                                });
                               },
                               onMenuPressed: () {
                                 if (authState is AuthAuthenticated) {
@@ -531,13 +524,6 @@ class _HomePageState extends State<HomePage> {
         : (state is ListingsFiltered)
         ? state.filteredListings
         : <Listing>[];
-
-    print('🔍 DEBUG: _buildLatestSection listings.length = ${listings.length}');
-    if (state is ListingsLoaded) {
-      print(
-        '🔍 DEBUG: ListingsLoaded - currentPage=${state.currentPage}, totalPages=${state.totalPages}',
-      );
-    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 110.0),

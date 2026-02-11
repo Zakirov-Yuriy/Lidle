@@ -41,12 +41,15 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
                   ),
                 ),
                 const SizedBox(height: 25),
-                _buildCheckboxRow("Некорректная информация", _incorrectInfoChecked,
-                    (value) {
-                  setState(() {
-                    _incorrectInfoChecked = value;
-                  });
-                }),
+                _buildCheckboxRow(
+                  "Некорректная информация",
+                  _incorrectInfoChecked,
+                  (value) {
+                    setState(() {
+                      _incorrectInfoChecked = value;
+                    });
+                  },
+                ),
                 _buildCheckboxRow("Оскорбления", _insultsChecked, (value) {
                   setState(() {
                     _insultsChecked = value;
@@ -58,12 +61,14 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
                   });
                 }),
                 _buildCheckboxRow(
-                    "Ссылки на странные ресурсы", _strangeResourcesChecked,
-                    (value) {
-                  setState(() {
-                    _strangeResourcesChecked = value;
-                  });
-                }),
+                  "Ссылки на странные ресурсы",
+                  _strangeResourcesChecked,
+                  (value) {
+                    setState(() {
+                      _strangeResourcesChecked = value;
+                    });
+                  },
+                ),
                 const SizedBox(height: 35),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -84,7 +89,7 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
                     const SizedBox(width: 20),
                     OutlinedButton(
                       onPressed: () {
-                        // TODO: Implement complaint sending logic
+                        // TODO: Реализовать отправку жалобы
                         Navigator.of(context).pop();
                       },
                       style: OutlinedButton.styleFrom(
@@ -99,10 +104,7 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
                       ),
                       child: Text(
                         "Отправить",
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: activeIconColor, fontSize: 16),
                       ),
                     ),
                   ],
@@ -140,10 +142,7 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ),
-          CustomCheckbox(
-            value: isChecked,
-            onChanged: onChanged,
-          ),
+          CustomCheckbox(value: isChecked, onChanged: onChanged),
         ],
       ),
     );

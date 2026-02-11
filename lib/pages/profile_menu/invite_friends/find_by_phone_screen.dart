@@ -39,7 +39,7 @@ class _FindByPhoneScreenState extends State<FindByPhoneScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ───── Header ─────
-           Padding(
+            Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 23),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -102,11 +102,7 @@ class _FindByPhoneScreenState extends State<FindByPhoneScreen> {
               padding: EdgeInsets.symmetric(horizontal: 25),
               child: Text(
                 'Если владелец уже в LIDLE, вы сможете сразу начать общаться.',
-                style: TextStyle(
-                  color: hintColor,
-                  fontSize: 16,
-                  height: 1.4,
-                ),
+                style: TextStyle(color: hintColor, fontSize: 16, height: 1.4),
               ),
             ),
 
@@ -124,11 +120,8 @@ class _FindByPhoneScreenState extends State<FindByPhoneScreen> {
                 ),
                 child: Row(
                   children: [
-                    // flag placeholder
-                    const Text(
-                      '🇷🇺',
-                      style: TextStyle(fontSize: 20),
-                    ),
+                    // Флаг заполнитель
+                    const Text('🇷🇺', style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 4),
                     const Icon(
                       Icons.keyboard_arrow_down,
@@ -138,10 +131,7 @@ class _FindByPhoneScreenState extends State<FindByPhoneScreen> {
                     const SizedBox(width: 8),
                     const Text(
                       '+7',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 16),
                     ),
                     const SizedBox(width: 8),
                     Expanded(

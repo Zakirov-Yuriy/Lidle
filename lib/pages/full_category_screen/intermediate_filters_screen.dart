@@ -19,22 +19,16 @@ class IntermediateFiltersScreen extends StatefulWidget {
 }
 
 class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
-  
   String selectedSort = "recommended";
 
-  
   String selectedCurrency = "uah";
 
-  
   String sellerType = "business";
 
-  
   String viewMode = "gallery";
 
-  
   Set<String> selectedCities = {};
 
-  
   final List<String> cities = [
     'Киев',
     'Харьков',
@@ -60,7 +54,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     'Ужгород',
   ];
 
-  
   final TextEditingController priceFrom = TextEditingController();
   final TextEditingController priceTo = TextEditingController();
 
@@ -95,7 +88,8 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const RealEstateFullSubcategoriesScreen(),
+                            builder: (context) =>
+                                const RealEstateFullSubcategoriesScreen(),
                           ),
                         );
                       },
@@ -104,7 +98,9 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     const SizedBox(height: 18),
                     _buildSectionTitle("Выберите город"),
                     _buildClickableBox(
-                      value: selectedCities.isEmpty ? "Выбрать" : selectedCities.first,
+                      value: selectedCities.isEmpty
+                          ? "Выбрать"
+                          : selectedCities.first,
                       icon: Icons.chevron_right,
                       onTap: () {
                         showDialog(
@@ -137,11 +133,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     _buildSectionTitle("Частное лицо / Бизнес"),
                     const SizedBox(height: 18),
                     _buildSellerTypeButtons(),
-
-                    
-                    
-
-                    
                   ],
                 ),
               ),
@@ -153,8 +144,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       ),
     );
   }
-
-  
 
   Widget _buildHeader() {
     return Padding(
@@ -200,13 +189,10 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
               ),
             ],
           ),
-         
         ],
       ),
     );
   }
-
-  
 
   Widget _buildSectionTitle(String title) {
     return Text(
@@ -218,8 +204,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       ),
     );
   }
-
-  
 
   Widget _buildSortButtons() {
     return Row(
@@ -244,8 +228,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       ],
     );
   }
-
-
 
   Widget _buildClickableBox({
     required String value,
@@ -277,8 +259,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  
-
   Widget _buildCurrencyButtons() {
     return Row(
       children: [
@@ -305,8 +285,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       ],
     );
   }
-
-  
 
   Widget _buildPriceFields() {
     return Row(
@@ -341,8 +319,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  
-
   Widget _buildSellerTypeButtons() {
     return Row(
       children: [
@@ -367,46 +343,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-
-  
-  
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-
-  
-
   Widget _buildApplyButton() {
     return Container(
       color: primaryBackground,
@@ -421,15 +357,9 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
               borderRadius: BorderRadius.circular(8),
               side: const BorderSide(color: activeIconColor),
             ),
-            
           ),
           onPressed: () {
-            // Navigator.push(
-            //   context,
-            //   MaterialPageRoute(
-            //     builder: (context) => const RealEstateFullSubcategoriesScreen(),
-            //   ),
-            // );
+            // TODO: Реализовать навигацию к применению фильтров
           },
           child: const Text(
             "Применить",

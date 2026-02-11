@@ -128,13 +128,11 @@ class _ListingCardState extends State<ListingCard> {
                                 ? Icons.favorite
                                 : Icons.favorite_border,
                             color: _isFavorite ? Colors.red : textPrimary,
-                            // size: iconSize,
                           ),
                         ),
                       ],
                     ),
 
-                    // SizedBox(height: 3 * scale),
                     Text(
                       widget.listing.price,
                       style: TextStyle(

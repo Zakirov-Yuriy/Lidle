@@ -30,7 +30,7 @@ class CitySelectionDialog extends StatefulWidget {
 
 class _CitySelectionDialogState extends State<CitySelectionDialog> {
   late Set<String> _currentSelectedOptions;
-  late List<dynamic> _displayOptions; // Changed to dynamic to hold both cities and headers
+  late List<dynamic> _displayOptions;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -51,10 +51,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   void _buildDisplayOptions(List<String> cities) {
     List<dynamic> newDisplayOptions = [];
     String? currentLetter;
-    List<String> mutableCities = List<String>.from(cities); // Create a mutable copy
-    mutableCities.sort((a, b) => a.compareTo(b)); // Ensure sorted for grouping
+    List<String> mutableCities = List<String>.from(cities);
+    mutableCities.sort((a, b) => a.compareTo(b));
 
-    for (var city in mutableCities) { // Use the mutable copy
+    for (var city in mutableCities) {
       final firstLetter = city[0].toUpperCase();
       if (firstLetter != currentLetter) {
         newDisplayOptions.add(_LetterHeader(firstLetter));
@@ -72,16 +72,16 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     List<String> filteredCities = widget.options.where((option) {
       return option.toLowerCase().contains(query);
     }).toList();
-    _buildDisplayOptions(filteredCities); // Rebuild with filtered cities
+    _buildDisplayOptions(filteredCities);
   }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: const Color(0xFF222E3A), // Match SelectionDialog
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero), // Match SelectionDialog
+      backgroundColor: const Color(0xFF222E3A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 10, 13, 20), // Match SelectionDialog
+        padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
@@ -89,7 +89,7 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            IconButton( // Close button on the top right
+            IconButton(
               icon: const Icon(Icons.close, color: textPrimary),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -100,13 +100,13 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                   widget.title,
                   style: const TextStyle(
                     color: textPrimary,
-                    fontSize: 18, // Match SelectionDialog
-                    fontWeight: FontWeight.bold, // Match SelectionDialog
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 23), // Match SelectionDialog
+            const SizedBox(height: 23),
             TextField(
               controller: _searchController,
               style: const TextStyle(color: textPrimary),
@@ -123,16 +123,20 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
               ),
             ),
             const SizedBox(height: 15),
-            Flexible( // Use Flexible instead of Expanded for better sizing with SingleChildScrollView
+            Flexible(
               child: ScrollbarTheme(
                 data: ScrollbarThemeData(
-                  thumbColor: WidgetStateProperty.all<Color?>(const Color(0xFF3C3C3C)),
-                  trackColor: WidgetStateProperty.all<Color?>(const Color.fromARGB(255, 43, 23, 26)),
+                  thumbColor: WidgetStateProperty.all<Color?>(
+                    const Color(0xFF3C3C3C),
+                  ),
+                  trackColor: WidgetStateProperty.all<Color?>(
+                    const Color.fromARGB(255, 43, 23, 26),
+                  ),
                 ),
                 child: Scrollbar(
                   child: ListView.builder(
                     shrinkWrap: true,
-                    itemCount: _displayOptions.length, // Use _displayOptions
+                    itemCount: _displayOptions.length,
                     itemBuilder: (context, index) {
                       final item = _displayOptions[index];
                       if (item is _LetterHeader) {
@@ -149,7 +153,9 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                         );
                       } else {
                         final option = item as String;
-                        final isSelected = _currentSelectedOptions.contains(option);
+                        final isSelected = _currentSelectedOptions.contains(
+                          option,
+                        );
                         return GestureDetector(
                           onTap: () {
                             _currentSelectedOptions.clear();
@@ -162,7 +168,9 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                             child: Text(
                               option,
                               style: TextStyle(
-                                color: isSelected ? activeIconColor : textPrimary,
+                                color: isSelected
+                                    ? activeIconColor
+                                    : textPrimary,
                                 fontSize: 16,
                                 fontWeight: isSelected
                                     ? FontWeight.bold
@@ -176,10 +184,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                   ),
                 ),
               ),
-            ), // Закрывающая скобка для Flexible
-            const SizedBox(height: 20), // Match SelectionDialog
+            ),
+            const SizedBox(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.center, // Match SelectionDialog
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
                   onPressed: () {
@@ -188,20 +196,20 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                   child: const Text(
                     'Отмена',
                     style: TextStyle(
-                      color: textPrimary, // Match SelectionDialog
+                      color: textPrimary,
                       fontSize: 16,
-                      decoration: TextDecoration.underline, // Match SelectionDialog
-                      decorationColor: textPrimary, // Match SelectionDialog
+                      decoration: TextDecoration.underline,
+                      decorationColor: textPrimary,
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
-                OutlinedButton( // Change to OutlinedButton
+                OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    fixedSize: const Size(127, 35), // Match SelectionDialog
-                    side: const BorderSide(color: activeIconColor), // Match SelectionDialog
+                    fixedSize: const Size(127, 35),
+                    side: const BorderSide(color: activeIconColor),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8), // Match SelectionDialog
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   onPressed: () {
@@ -209,8 +217,8 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                     Navigator.of(context).pop();
                   },
                   child: const Text(
-                    'Готово', // Change text to 'Готово'
-                    style: TextStyle(color: activeIconColor, fontSize: 16), // Match SelectionDialog
+                    'Готово',
+                    style: TextStyle(color: activeIconColor, fontSize: 16),
                   ),
                 ),
               ],

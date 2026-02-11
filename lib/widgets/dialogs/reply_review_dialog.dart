@@ -30,9 +30,9 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(Icons.close, color: Colors.white70),
-                ),
+              onTap: () => Navigator.of(context).pop(),
+              child: const Icon(Icons.close, color: Colors.white70),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -44,11 +44,9 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                
               ],
             ),
-            const SizedBox(height: 13
-            ),
+            const SizedBox(height: 13),
             Row(
               // mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -68,12 +66,16 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                 return GestureDetector(
                   onTapDown: (details) {
                     final starWidth = constraints.maxWidth / 5;
-                    final rating = (details.localPosition.dx / starWidth).ceil().clamp(1, 5);
+                    final rating = (details.localPosition.dx / starWidth)
+                        .ceil()
+                        .clamp(1, 5);
                     setState(() => _rating = rating);
                   },
                   onHorizontalDragUpdate: (details) {
                     final starWidth = constraints.maxWidth / 5;
-                    final rating = (details.localPosition.dx / starWidth).ceil().clamp(1, 5);
+                    final rating = (details.localPosition.dx / starWidth)
+                        .ceil()
+                        .clamp(1, 5);
                     setState(() => _rating = rating);
                   },
                   child: Row(
@@ -117,7 +119,7 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -147,7 +149,7 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                 const SizedBox(width: 21),
                 OutlinedButton(
                   onPressed: () {
-                    // TODO: Implement send reply functionality
+                    // TODO: Реализовать отправку ответа
                     Navigator.of(context).pop();
                   },
                   style: OutlinedButton.styleFrom(
@@ -159,10 +161,7 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                   ),
                   child: Text(
                     'Отправить',
-                    style: TextStyle(
-                      color: activeIconColor,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: activeIconColor, fontSize: 16),
                   ),
                 ),
               ],

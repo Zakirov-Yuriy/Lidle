@@ -162,12 +162,12 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
 
                     const SizedBox(height: 16),
 
-                    // Message button
+                    // Кнопка сообщение
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () {
-                          // TODO: Implement messaging
+                          // TODO: Реализовать функцию отправки сообщения
                         },
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(

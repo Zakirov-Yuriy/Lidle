@@ -12,7 +12,7 @@ import 'package:lidle/widgets/components/product_card.dart'; // Import ProductCa
 
 class MyPurchasesScreen extends StatelessWidget {
   static const String routeName = '/my-purchases'; // Define route name
-   MyPurchasesScreen({super.key});
+  MyPurchasesScreen({super.key});
 
   // Dummy data for purchases
   final List<Listing> dummyPurchases = [
@@ -47,11 +47,15 @@ class MyPurchasesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasPurchases = dummyPurchases.isNotEmpty; // Check if there are purchases
+    final bool hasPurchases =
+        dummyPurchases.isNotEmpty; // Check if there are purchases
 
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToMessages) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToMessages) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -71,7 +75,11 @@ class MyPurchasesScreen extends StatelessWidget {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.arrow_back_ios, color: textPrimary, size: 16,),
+                      child: const Icon(
+                        Icons.arrow_back_ios,
+                        color: textPrimary,
+                        size: 16,
+                      ),
                     ),
                     const SizedBox(width: 10), // Added spacing
                     const Text(
@@ -84,9 +92,12 @@ class MyPurchasesScreen extends StatelessWidget {
                     ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.import_export, color: textPrimary), // Sort icon
+                      icon: const Icon(
+                        Icons.import_export,
+                        color: textPrimary,
+                      ), // Иконка сортировки
                       onPressed: () {
-                        // TODO: Implement sort functionality
+                        // TODO: Реализовать функцию сортировки
                       },
                     ),
                   ],
@@ -95,13 +106,17 @@ class MyPurchasesScreen extends StatelessWidget {
               Expanded(
                 child: hasPurchases
                     ? GridView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 0),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 9,
-                          mainAxisSpacing: 5,
-                          childAspectRatio: 0.55,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 25,
+                          vertical: 0,
                         ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 9,
+                              mainAxisSpacing: 5,
+                              childAspectRatio: 0.55,
+                            ),
                         itemCount: dummyPurchases.length,
                         itemBuilder: (context, index) {
                           return ProductCard(listing: dummyPurchases[index]);
@@ -115,7 +130,10 @@ class MyPurchasesScreen extends StatelessWidget {
                               'assets/my_purchases/shopping-bag-01.svg',
                               height: 120,
                               width: 120,
-                              colorFilter: const ColorFilter.mode(Color(0xFFFEDC02), BlendMode.srcIn),
+                              colorFilter: const ColorFilter.mode(
+                                Color(0xFFFEDC02),
+                                BlendMode.srcIn,
+                              ),
                             ),
                             const SizedBox(height: 24),
                             const Text(
@@ -147,7 +165,9 @@ class MyPurchasesScreen extends StatelessWidget {
         ),
         bottomNavigationBar: BottomNavigation(
           onItemSelected: (index) {
-            context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+            context.read<NavigationBloc>().add(
+              SelectNavigationIndexEvent(index),
+            );
           },
         ),
       ),

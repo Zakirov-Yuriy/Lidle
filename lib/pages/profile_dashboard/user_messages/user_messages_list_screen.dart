@@ -298,7 +298,7 @@ class _MessageItem extends StatelessWidget {
             CustomCheckbox(value: selected, onChanged: onChanged),
             const SizedBox(width: 12),
 
-            // avatar placeholder
+            // Заполнитель аватара
             Container(
               width: 44,
               height: 44,

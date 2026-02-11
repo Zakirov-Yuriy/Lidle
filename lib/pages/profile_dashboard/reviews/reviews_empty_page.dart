@@ -124,8 +124,8 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
                               setState(() {
                                 _selectedSortOption = selectedOption;
                               });
-                              // TODO: Implement actual sorting logic based on selectedOption
-                              print("Selected sort option: $selectedOption");
+                              // TODO: Реализовать функцию сортировки на основе выбранного варианта
+                              print("Выбран вариант сортировки: $selectedOption");
                             }
                           },
                         ),

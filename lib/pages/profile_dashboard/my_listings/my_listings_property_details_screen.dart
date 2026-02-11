@@ -4,7 +4,6 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости для моих объявлений"
@@ -139,7 +138,10 @@ class _MyListingsPropertyDetailsScreenState
                         onTap: () {},
                         child: SvgPicture.asset(
                           'assets/home_page/share_outlined.svg',
-                          color: textPrimary,
+                          colorFilter: const ColorFilter.mode(
+                            textPrimary,
+                            BlendMode.srcIn,
+                          ),
                           width: 24,
                           height: 24,
                         ),
@@ -187,7 +189,7 @@ class _MyListingsPropertyDetailsScreenState
           borderRadius: BorderRadius.circular(5),
           child: Container(
             height: 260,
-            color: Colors.grey[300],
+            color: const Color(0xFFD3D3D3),
             child: PageView(
               controller: _pageController,
               children: _images
@@ -216,7 +218,9 @@ class _MyListingsPropertyDetailsScreenState
       width: 11.0,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isActive ? Colors.blue : primaryBackground.withOpacity(0.5),
+        color: isActive
+            ? Colors.blue
+            : primaryBackground.withValues(alpha: 0.5),
         border: Border.all(color: Colors.grey, width: 1.0),
       ),
     );
@@ -469,37 +473,6 @@ class _MyListingsPropertyDetailsScreenState
           const SizedBox(height: 18),
         ],
       ),
-    );
-  }
-
-  Widget _buildSimilarOffersSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Похожие предложения",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 9,
-            mainAxisSpacing: 9,
-            mainAxisExtent: 263,
-          ),
-          itemCount: _similarListings.length,
-          itemBuilder: (context, i) {
-            return _SimilarOfferCard(listing: _similarListings[i]);
-          },
-        ),
-      ],
     );
   }
 

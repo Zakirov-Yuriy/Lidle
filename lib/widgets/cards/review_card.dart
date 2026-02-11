@@ -8,7 +8,11 @@ class ReviewCard extends StatefulWidget {
   final ReviewModel review;
   final bool isMyListingsTab;
 
-  const ReviewCard({super.key, required this.review, required this.isMyListingsTab});
+  const ReviewCard({
+    super.key,
+    required this.review,
+    required this.isMyListingsTab,
+  });
 
   @override
   State<ReviewCard> createState() => _ReviewCardState();
@@ -107,11 +111,11 @@ class _ReviewCardState extends State<ReviewCard> {
             ),
             const SizedBox(height: 10),
 
-            // Review Text
+            // Текст отзыва
             GestureDetector(
               onTap: () {
-                // TODO: Implement review text tap functionality
-                print('Review text tapped');
+                // TODO: Реализовать функционал нажатия на текст отзыва
+                print('Отзыв нажат');
               },
               child: Text(
                 widget.review.reviewText,
@@ -162,7 +166,7 @@ class _ReviewCardState extends State<ReviewCard> {
                           radius: 23,
                           backgroundImage: AssetImage(
                             'assets/profile_dashboard/Ellipse.png',
-                          ), // Placeholder for comment author avatar
+                          ), // Заполнитель для аватара автора комментария
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -239,12 +243,11 @@ class _ReviewCardState extends State<ReviewCard> {
                     ),
                   ),
                 ),
-                // const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: TextButton(
                     onPressed: () {
-                      // TODO: Implement send comment functionality
+                      // TODO: Реализовать отправку комментария
                     },
                     child: const Text(
                       'Отправить',
@@ -272,7 +275,7 @@ class _ReviewCardState extends State<ReviewCard> {
                             },
                           );
                         } else {
-                          // TODO: Implement edit functionality
+                          // TODO: Реализовать функцию редактирования
                         }
                       },
                     ),
@@ -292,7 +295,7 @@ class _ReviewCardState extends State<ReviewCard> {
                             },
                           );
                         } else {
-                          // TODO: Implement delete functionality
+                          // TODO: Реализовать функцию удаления
                         }
                       },
                     ),

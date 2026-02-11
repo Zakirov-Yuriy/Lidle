@@ -774,7 +774,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             action: SnackBarAction(
               label: 'Настройки',
               onPressed: () {
-                // TODO: Navigate to profile settings
+                // TODO: Перейти в настройки профиля
                 // Navigator.pushNamed(context, '/profile-settings');
               },
             ),

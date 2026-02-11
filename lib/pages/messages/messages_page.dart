@@ -30,7 +30,7 @@ class _MessagesPageState extends State<MessagesPage> {
   bool isCompanyChatInternal =
       true; // true для внутреннего чата с компаниями, false для внешнего
   bool showCheckboxes = false; // Флаг для показа чекбоксов
-  List<Message> messages = []; // Placeholder for messages
+  List<Message> messages = []; // Заполнитель для сообщений
 
   // Dummy data for messages
   List<Message> dummyMessages = [

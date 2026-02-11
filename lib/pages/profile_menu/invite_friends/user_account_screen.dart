@@ -8,11 +8,7 @@ class UserAccountScreen extends StatelessWidget {
   final String? name;
   final String? phone;
 
-  const UserAccountScreen({
-    super.key,
-    this.name,
-    this.phone,
-  });
+  const UserAccountScreen({super.key, this.name, this.phone});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +18,7 @@ class UserAccountScreen extends StatelessWidget {
         child: Column(
           children: [
             // Header
-           // ───── Header ─────
+            // ───── Header ─────
             Padding(
               padding: const EdgeInsets.only(bottom: 30, right: 23),
               child: Row(
@@ -50,8 +46,6 @@ class UserAccountScreen extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  
-                  
                 ],
               ),
             ),
@@ -91,10 +85,7 @@ class UserAccountScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       const Text(
                         'В сети',
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.white54, fontSize: 16),
                       ),
                     ],
                   ),
@@ -160,9 +151,15 @@ class UserAccountScreen extends StatelessWidget {
             // User Details
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 25,
+                  vertical: 20,
+                ),
                 children: [
-                  _buildDetailItem('Номер аккаунта', phone ?? '+7 949 545 54 45'),
+                  _buildDetailItem(
+                    'Номер аккаунта',
+                    phone ?? '+7 949 545 54 45',
+                  ),
                   const SizedBox(height: 20),
                   _buildDetailItem('Имя аккаунта', name ?? '@Postroisam'),
                   const SizedBox(height: 20),
@@ -172,13 +169,10 @@ class UserAccountScreen extends StatelessWidget {
                   const SizedBox(height: 18),
                   const Text(
                     'Qr-код аккаунта',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
                   ),
                   // const SizedBox(height: 15),
-                  // Placeholder for QR code
+                  // Заполнитель для QR кода
                   Align(
                     alignment: Alignment.centerLeft,
                     child: const Icon(
@@ -201,10 +195,7 @@ class UserAccountScreen extends StatelessWidget {
                       onPressed: () {},
                       child: const Text(
                         'Пожаловаться на аккаунт',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.red, fontSize: 16),
                       ),
                     ),
                   ),
@@ -223,10 +214,7 @@ class UserAccountScreen extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white54,
-            fontSize: 16,
-          ),
+          style: const TextStyle(color: Colors.white54, fontSize: 16),
         ),
         const SizedBox(height: 8),
         Text(

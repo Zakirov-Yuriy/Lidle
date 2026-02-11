@@ -157,11 +157,7 @@ class LidleApp extends StatelessWidget {
         child: MaterialApp(
           title: appTitle,
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            // scaffoldBackgroundColor: primaryBackground,
-            fontFamily: 'Roboto',
-            brightness: Brightness.dark,
-          ),
+          theme: ThemeData(fontFamily: 'Roboto', brightness: Brightness.dark),
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: const [Locale('en', ''), Locale('ru', '')],
           navigatorObservers: [routeObserver],
