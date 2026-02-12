@@ -99,36 +99,42 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Статические данные категорий.
   /// В будущем можно заменить на загрузку из API.
-  static final List<Category> _staticCategories = [
-    const Category(
-      title: 'Недвижи-\nмость',
-      color: Colors.blue,
-      imagePath: 'assets/home_page/14.png',
-    ),
-    const Category(
-      title: 'Авто\nи мото',
-      color: Colors.purple,
-      imagePath: 'assets/home_page/15.png',
-    ),
-    const Category(
-      title: 'Работа',
-      color: Colors.orange,
-      imagePath: 'assets/home_page/16.png',
-    ),
-    const Category(
-      title: 'Подработка',
-      color: Colors.teal,
-      imagePath: 'assets/home_page/17.png',
-    ),
-    const Category(
-      title: 'Смотреть\nвсе',
-      color: Color(0xFF00A6FF),
-      imagePath: '',
-    ),
-  ];
+  /// Вспомогательный метод для преобразования Catalog из API в Category
+  Category _catalogToCategory(dynamic catalog) {
+    final colors = <Color>[
+      Colors.blue,
+      Colors.purple,
+      Colors.orange,
+      Colors.teal,
+      Colors.green,
+      Colors.red,
+      Colors.pink,
+      Colors.cyan,
+    ];
+
+    // Используем хеш для выбора цвета на основе ID каталога
+    final colorIndex = (catalog.id ?? 0) % colors.length;
+
+    return Category(
+      id: catalog.id,
+      title: _formatCategoryTitle(catalog.name ?? ''),
+      color: colors[colorIndex],
+      imagePath: catalog.thumbnail ?? 'assets/home_page/default_category.png',
+    );
+  }
+
+  /// Вспомогательный метод для форматирования названия категории
+  /// Добавляет перевод строки для длинных названий
+  String _formatCategoryTitle(String title) {
+    final words = title.split(' ');
+    if (words.length > 2) {
+      return '${words[0]}\n${words.sublist(1).join(' ')}';
+    }
+    return title;
+  }
 
   /// Обработчик события загрузки объявлений.
-  /// Загружает данные объявлений из API.
+  /// Загружает объявления и категории из API.
   Future<void> _onLoadListings(
     LoadListingsEvent event,
     Emitter<ListingsState> emit,
@@ -137,6 +143,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     try {
       // Получаем токен для аутентификации
       final token = await HiveService.getUserData('token');
+
+      // Загружаем каталоги (категории) из API
+      final catalogsResponse = await ApiService.getCatalogs(token: token);
+      final loadedCategories = catalogsResponse.data
+          .map(_catalogToCategory)
+          .toList();
+
+      // Добавляем специальную категорию "Смотреть все" в конец
+      loadedCategories.add(
+        const Category(
+          title: 'Смотреть\nвсе',
+          color: Color(0xFF00A6FF),
+          imagePath: '',
+        ),
+      );
 
       // Загружаем объявления из API
       // Первая страница (page=1) с лимитом 20 объявлений
@@ -158,7 +179,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final totalPages = advertsResponse.meta?.lastPage ?? 1;
       final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
 
-      print('📊 API Response: ${listings.length} объявлений загружено');
+      print(
+        '📊 API Response: ${loadedCategories.length} категорий, ${listings.length} объявлений загружено',
+      );
       print(
         '📊 Meta: currentPage=$currentPage, totalPages=$totalPages, itemsPerPage=$itemsPerPage',
       );
@@ -166,37 +189,60 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       emit(
         ListingsLoaded(
           listings: listings,
-          categories: _staticCategories,
+          categories: loadedCategories,
           currentPage: currentPage,
           totalPages: totalPages,
           itemsPerPage: itemsPerPage,
         ),
       );
     } catch (e) {
-      // При ошибке API показываем ошибку вместо статических данных
+      // При ошибке API показываем ошибку
       print('❌ Error loading listings: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
 
   /// Обработчик события загрузки категорий.
-  /// Загружает статические данные категорий.
+  /// Загружает категории из API.
   Future<void> _onLoadCategories(
     LoadCategoriesEvent event,
     Emitter<ListingsState> emit,
   ) async {
     emit(ListingsLoading());
     try {
-      // Имитация задержки загрузки данных
-      await Future.delayed(const Duration(milliseconds: _searchDelayMs));
+      // Получаем токен для аутентификации
+      final token = await HiveService.getUserData('token');
 
-      // В будущем здесь будет вызов API
-      // final categories = await ApiService.getCategories();
+      // Загружаем каталоги (категории) из API
+      final catalogsResponse = await ApiService.getCatalogs(token: token);
+      final loadedCategories = catalogsResponse.data
+          .map(_catalogToCategory)
+          .toList();
 
-      emit(
-        ListingsLoaded(listings: staticListings, categories: _staticCategories),
+      // Добавляем специальную категорию "Смотреть все" в конец
+      loadedCategories.add(
+        const Category(
+          title: 'Смотреть\nвсе',
+          color: Color(0xFF00A6FF),
+          imagePath: '',
+        ),
       );
+
+      // Загружаем объявления также из API
+      final advertsResponse = await ApiService.getAdverts(
+        catalogId: 1,
+        token: token,
+        page: 1,
+        limit: 20,
+      );
+
+      final listings = advertsResponse.data.map((advert) {
+        return advert.toListing();
+      }).toList();
+
+      emit(ListingsLoaded(listings: listings, categories: loadedCategories));
     } catch (e) {
+      print('❌ Error loading categories: $e');
       emit(ListingsError(message: e.toString()));
     }
   }

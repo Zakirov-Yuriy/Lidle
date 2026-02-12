@@ -7,6 +7,7 @@ import 'package:lidle/blocs/catalog/catalog_event.dart';
 import 'package:lidle/blocs/catalog/catalog_state.dart';
 import 'package:lidle/main.dart';
 import 'full_real_estate_subcategories_screen.dart';
+import 'package:lidle/pages/add_listing/universal_category_screen.dart';
 
 // ============================================================
 // "Экран всех категорий предложений"
@@ -139,27 +140,84 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                                 ),
                               );
                             } else {
-                              // Handle other catalogs if needed
+                              // Универсальный экран для всех остальных каталогов
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => UniversalCategoryScreen(
+                                    catalogId: catalog.id,
+                                    catalogName: catalog.name,
+                                  ),
+                                ),
+                              );
                             }
                           },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5),
                             child: Stack(
                               children: [
-                                catalog.thumbnail != null
+                                catalog.thumbnail != null &&
+                                        catalog.thumbnail!.isNotEmpty &&
+                                        catalog.thumbnail!.startsWith('http')
                                     ? Image.network(
                                         catalog.thumbnail!,
                                         height: 83,
                                         width: 120,
                                         fit: BoxFit.cover,
+                                        loadingBuilder:
+                                            (context, child, loadingProgress) {
+                                              if (loadingProgress == null) {
+                                                return child;
+                                              }
+                                              return Container(
+                                                height: 83,
+                                                width: 120,
+                                                color: Colors.grey[700],
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 24,
+                                                    height: 24,
+                                                    child: CircularProgressIndicator(
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation(
+                                                            Colors.white,
+                                                          ),
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                         errorBuilder:
                                             (context, error, stackTrace) {
                                               return Container(
                                                 height: 83,
                                                 width: 120,
-                                                color: Colors.grey,
-                                                child: const Icon(
-                                                  Icons.image_not_supported,
+                                                color: const Color(0xFF2A3A4F),
+                                                child: Center(
+                                                  child: Column(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    children: [
+                                                      const Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                        color: Colors.white70,
+                                                        size: 24,
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        catalog.name,
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: const TextStyle(
+                                                          color: Colors.white70,
+                                                          fontSize: 10,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
                                               );
                                             },
@@ -167,9 +225,30 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                                     : Container(
                                         height: 83,
                                         width: 120,
-                                        color: Colors.grey,
-                                        child: const Icon(
-                                          Icons.image_not_supported,
+                                        color: const Color(0xFF2A3A4F),
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.category,
+                                                color: Colors.white70,
+                                                size: 24,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                catalog.name,
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                               ],

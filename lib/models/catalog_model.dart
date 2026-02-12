@@ -31,13 +31,19 @@ class Catalog {
 
 class CatalogType {
   final int id;
-  final String type;
-  final String path;
+  final String? type;
+  final String? path;
+  final String? slug;
 
-  CatalogType({required this.id, required this.type, required this.path});
+  CatalogType({required this.id, this.type, this.path, this.slug});
 
   factory CatalogType.fromJson(Map<String, dynamic> json) {
-    return CatalogType(id: json['id'], type: json['type'], path: json['path']);
+    return CatalogType(
+      id: json['id'],
+      type: json['type'] as String?,
+      path: json['path'] as String?,
+      slug: json['slug'] as String?,
+    );
   }
 }
 
@@ -88,13 +94,17 @@ class Category {
 
 class CategoryType {
   final int id;
-  final String type;
-  final String path;
+  final String? type;
+  final String? path;
 
-  CategoryType({required this.id, required this.type, required this.path});
+  CategoryType({required this.id, this.type, this.path});
 
   factory CategoryType.fromJson(Map<String, dynamic> json) {
-    return CategoryType(id: json['id'], type: json['type'], path: json['path']);
+    return CategoryType(
+      id: json['id'],
+      type: json['type'] as String?,
+      path: json['path'] as String?,
+    );
   }
 }
 

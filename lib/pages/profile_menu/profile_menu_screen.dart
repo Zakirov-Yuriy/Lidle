@@ -259,7 +259,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        state is ProfileLoaded ? state.username : '@Name',
+                        state is ProfileLoaded ? '${state.username}' : '@Name',
                         style: const TextStyle(
                           color: Color(0xFF009EE2),
                           fontSize: 14,

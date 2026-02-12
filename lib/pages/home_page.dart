@@ -292,84 +292,134 @@ class _HomePageState extends State<HomePage> {
         ? state.categories
         : <Category>[];
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(
-            left: 12,
-            right: 25,
-            top: 15,
-            bottom: 10,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  categoriesTitle,
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
+    // Отфильтруем категории, исключив "Смотреть все"
+    final filteredCategories = categories
+        .where(
+          (cat) =>
+              !cat.title.contains('Смотреть') && !cat.title.contains('все'),
+        )
+        .toList();
+
+    // Берем максимум 4 первые категории
+    final displayCategories = filteredCategories.take(4).toList();
+
+    // Добавляем "Смотреть все" в конец если оно есть в исходном списке
+    final viewAllCategory = categories.firstWhere(
+      (cat) => cat.title.contains('Смотреть') || cat.title.contains('все'),
+      orElse: () => Category(title: '', color: Colors.grey, imagePath: ''),
+    );
+    if (viewAllCategory.title.isNotEmpty) {
+      displayCategories.add(viewAllCategory);
+    }
+
+    return AnimatedOpacity(
+      opacity: displayCategories.isNotEmpty ? 1.0 : 0.5,
+      duration: const Duration(milliseconds: 300),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 12,
+              right: 25,
+              top: 15,
+              bottom: 10,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    categoriesTitle,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              TextButton(
-                onPressed: () =>
-                    Navigator.pushNamed(context, FullCategoryScreen.routeName),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  viewAll,
-                  style: TextStyle(
-                    color: activeIconColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
+                TextButton(
+                  onPressed: () => Navigator.pushNamed(
+                    context,
+                    FullCategoryScreen.routeName,
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    viewAll,
+                    style: TextStyle(
+                      color: activeIconColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        // const SizedBox(height: 10),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 19.0),
-          child: SizedBox(
-            height: 85,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return CategoryCard(
-                  category: category,
-                  onTap: () {
-                    if (category.title == 'Недвижи-\nмость') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const RealEstateListingsScreen(),
-                        ),
-                      );
-                    } else if (category.title == 'Смотреть\nвсе') {
-                      Navigator.pushNamed(
-                        context,
-                        FullCategoryScreen.routeName,
-                      );
-                    }
-                    // Для других категорий можно добавить логику позже
-                  },
-                );
-              },
+              ],
             ),
           ),
-        ),
-      ],
+          // const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 19.0),
+            child: SizedBox(
+              height: 85,
+              child: displayCategories.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Категории не загружены',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
+                      ),
+                    )
+                  : ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: displayCategories.length,
+                      itemBuilder: (context, index) {
+                        final category = displayCategories[index];
+                        return AnimatedScale(
+                          scale: 1.0,
+                          duration: Duration(milliseconds: 200 + (index * 50)),
+                          child: CategoryCard(
+                            category: category,
+                            onTap: () {
+                              // Проверяем только на "Смотреть все"
+                              final isViewAll =
+                                  category.title.contains('Смотреть') ||
+                                  category.title.contains('все') ||
+                                  category.title.contains('View All');
+
+                              if (isViewAll) {
+                                print('📍 Navigating to FullCategoryScreen');
+                                Navigator.pushNamed(
+                                  context,
+                                  FullCategoryScreen.routeName,
+                                );
+                              } else {
+                                // Универсальный экран для всех категорий
+                                print(
+                                  '📍 Opening category: ${category.title} (ID: ${category.id})',
+                                );
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        RealEstateListingsScreen(
+                                          catalogId: category.id,
+                                          categoryName: category.title,
+                                        ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

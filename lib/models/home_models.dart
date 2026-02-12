@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 /// Модель данных для категории.
 /// Используется для отображения различных категорий предложений на главной странице.
 class Category {
+  /// Уникальный идентификатор категории из API.
+  final int? id;
+
   /// Заголовок категории, например, "Автомобили" или "Недвижимость".
   final String title;
 
@@ -16,6 +19,7 @@ class Category {
 
   /// Конструктор для создания экземпляра [Category].
   const Category({
+    this.id,
     required this.title,
     required this.color,
     required this.imagePath,

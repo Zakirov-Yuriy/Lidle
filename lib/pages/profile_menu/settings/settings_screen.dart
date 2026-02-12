@@ -224,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 BlocBuilder<ProfileBloc, ProfileState>(
                   builder: (context, state) {
                     return _infoItem(
-                      title: state is ProfileLoaded ? state.username : '@Name',
+                      title: state is ProfileLoaded ? state.username : 'Name',
                       value: 'Имя аккаунта',
                       onTap: () => Navigator.pushNamed(context, '/username'),
                     );
@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            title,
+            '@$title',
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 6),

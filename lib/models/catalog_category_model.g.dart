@@ -12,7 +12,7 @@ Catalog _$CatalogFromJson(Map<String, dynamic> json) => Catalog(
   thumbnail: json['thumbnail'] as String?,
   slug: json['slug'] as String,
   type: CatalogType.fromJson(json['type'] as Map<String, dynamic>),
-  order: json['order'] as String?,
+  order: json['order'],
   categories: (json['categories'] as List<dynamic>?)
       ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -49,7 +49,7 @@ Category _$CategoryFromJson(Map<String, dynamic> json) => Category(
   thumbnail: json['thumbnail'] as String?,
   slug: json['slug'] as String,
   type: CatalogType.fromJson(json['type'] as Map<String, dynamic>),
-  order: json['order'] as String?,
+  order: json['order'],
   is_endpoint: json['is_endpoint'] as bool,
   children: (json['children'] as List<dynamic>?)
       ?.map((e) => Category.fromJson(e as Map<String, dynamic>))
@@ -79,10 +79,30 @@ CatalogResponse _$CatalogResponseFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$CatalogResponseToJson(CatalogResponse instance) =>
     <String, dynamic>{'data': instance.data};
 
+SimpleCatalog _$SimpleCatalogFromJson(Map<String, dynamic> json) =>
+    SimpleCatalog(
+      id: (json['id'] as num).toInt(),
+      name: json['name'] as String,
+      thumbnail: json['thumbnail'] as String?,
+      slug: json['slug'] as String,
+      type: CatalogType.fromJson(json['type'] as Map<String, dynamic>),
+      order: json['order'],
+    );
+
+Map<String, dynamic> _$SimpleCatalogToJson(SimpleCatalog instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'thumbnail': instance.thumbnail,
+      'slug': instance.slug,
+      'type': instance.type,
+      'order': instance.order,
+    };
+
 CatalogsResponse _$CatalogsResponseFromJson(Map<String, dynamic> json) =>
     CatalogsResponse(
       data: (json['data'] as List<dynamic>)
-          .map((e) => Catalog.fromJson(e as Map<String, dynamic>))
+          .map((e) => SimpleCatalog.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
 

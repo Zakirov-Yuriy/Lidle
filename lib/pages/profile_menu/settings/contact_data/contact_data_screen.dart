@@ -10,6 +10,7 @@ import 'package:lidle/services/user_service.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
+import 'package:lidle/blocs/profile/profile_state.dart';
 
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
@@ -50,6 +51,13 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller = TextEditingController();
     _telegramController = TextEditingController();
     _whatsappController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Загружаем профиль пользователя с принудительным обновлением
+    context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
     _loadContactData();
   }
 
@@ -83,22 +91,31 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         '✅ Loaded ${phonesResponse.data.length} phones and ${emailsResponse.data.length} emails',
       );
 
-      // Загружаем сохраненные данные
-      final name = HiveService.getUserData('name') as String? ?? '';
+      // Получаем имя пользователя из ProfileBloc (из API)
+      final profileState = context.read<ProfileBloc>().state;
+      final name = profileState is ProfileLoaded ? profileState.name : '';
+      final email = profileState is ProfileLoaded ? profileState.email : '';
+      final phone = profileState is ProfileLoaded ? profileState.phone : '';
+
+      // Загружаем сохраненные данные из Hive
       final telegram = HiveService.getUserData('telegram') as String? ?? '';
       final whatsapp = HiveService.getUserData('whatsapp') as String? ?? '';
 
       // Извлекаем ID и значения контактов
-      String email = '';
+      String emailValue = email;
       if (emailsResponse.data.isNotEmpty) {
         _emailId = emailsResponse.data.first.id;
-        email = emailsResponse.data.first.email;
+        if (emailsResponse.data.first.email.isNotEmpty) {
+          emailValue = emailsResponse.data.first.email;
+        }
       }
 
-      String phone1 = '';
+      String phone1 = phone;
       if (phonesResponse.data.isNotEmpty) {
         _phone1Id = phonesResponse.data.first.id;
-        phone1 = phonesResponse.data.first.phone;
+        if (phonesResponse.data.first.phone.isNotEmpty) {
+          phone1 = phonesResponse.data.first.phone;
+        }
         // Ensure phone is in correct format with +
         if (!phone1.startsWith('+')) {
           phone1 = '+$phone1';
@@ -117,7 +134,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
 
       setState(() {
         _nameController.text = name;
-        _emailController.text = email;
+        _emailController.text = emailValue;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
         _telegramController.text = telegram;

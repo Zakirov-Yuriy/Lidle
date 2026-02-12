@@ -11,7 +11,7 @@ import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/hive_service.dart';
 
 // ============================================================
-// "Экран объявлений недвижимости"
+// "Универсальный экран объявлений по категориям"
 // ============================================================
 
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
@@ -20,7 +20,14 @@ const String messageIconAssetLocal =
 const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateListingsScreen extends StatefulWidget {
-  const RealEstateListingsScreen({super.key});
+  final int? catalogId; // ID каталога для фильтрации
+  final String? categoryName; // Имя категории для отображения в заголовке
+
+  const RealEstateListingsScreen({
+    super.key,
+    this.catalogId,
+    this.categoryName,
+  });
 
   @override
   State<RealEstateListingsScreen> createState() =>
@@ -58,7 +65,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
       final token = await HiveService.getUserData('token');
       final response = await ApiService.getAdverts(
-        catalogId: 1, // Все категории
+        catalogId:
+            widget.catalogId ??
+            1, // Используем переданный catalogId или все категории
         sort: sort,
         page: isNextPage ? _currentPage + 1 : 1,
         limit: 20,
@@ -157,9 +166,94 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                   else if (_errorMessage != null)
                     SliverToBoxAdapter(
                       child: Center(
-                        child: Text(
-                          'Ошибка: $_errorMessage',
-                          style: TextStyle(color: Colors.white),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 80.0,
+                            horizontal: 20.0,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                color: Colors.grey[500],
+                                size: 60,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Пока тут нет объявлений',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Попробуйте позже или измените критерии поиска',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton.icon(
+                                onPressed: _loadAdverts,
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Попробовать еще'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF8B5CF6),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (_listings.isEmpty)
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 80.0,
+                            horizontal: 20.0,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_outlined,
+                                color: Colors.grey[500],
+                                size: 60,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Объявлений не найдено',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'В этой категории пока нет объявлений',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     )
@@ -348,17 +442,24 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }
 
   Widget _buildSectionHeader() {
+    // Форматируем заголовок из категории, удаляя переносы строк и очищая текст
+    final displayTitle =
+        widget.categoryName?.replaceAll('\n', ' ').trim() ?? 'Объявления';
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
-            "Продажа квартир",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: Text(
+              displayTitle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           _buildFilterDropdown(

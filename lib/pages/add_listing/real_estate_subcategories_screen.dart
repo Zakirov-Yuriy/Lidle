@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/add_listing/real_estate_apartments_screen.dart';
+import 'package:lidle/pages/add_listing/universal_category_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
@@ -190,16 +191,36 @@ class _RealEstateSubcategoriesScreenState
                                   color: Colors.white70,
                                 ),
                                 onTap: () {
-                                  // Передаем ID категории для получения её детей через API
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          RealEstateApartmentsScreen(
-                                            categoryId: category.id,
-                                          ),
-                                    ),
+                                  print(
+                                    '👆 Tapped on real estate category: ${category.name} (ID: ${category.id})',
                                   );
+
+                                  // Если есть подкатегории, переходим на экран деталей
+                                  if (category.children != null &&
+                                      category.children!.isNotEmpty) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            UniversalCategoryScreen(
+                                              category: category,
+                                              catalogName: 'Недвижимость',
+                                              level: 1,
+                                            ),
+                                      ),
+                                    );
+                                  } else if (category.isEndpoint) {
+                                    // Если это конечная точка, открываем экран квартир
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            RealEstateApartmentsScreen(
+                                              categoryId: category.id,
+                                            ),
+                                      ),
+                                    );
+                                  }
                                 },
                               ),
                               if (index < _categories.length - 1)

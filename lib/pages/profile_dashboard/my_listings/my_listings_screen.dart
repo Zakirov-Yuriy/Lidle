@@ -12,6 +12,8 @@ import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/indoor_advertising_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/outdoor_advertising_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_property_details_screen.dart';
+import 'package:lidle/services/catalog_service.dart';
+import 'package:lidle/models/catalog_category_model.dart';
 
 class MyListingsScreen extends StatefulWidget {
   static const routeName = '/my-listings';
@@ -24,8 +26,8 @@ class MyListingsScreen extends StatefulWidget {
 
 class _MyListingsScreenState extends State<MyListingsScreen> {
   int _currentTab = 0;
-  int _selectedCatalog = 0; // 0: Недвижимость, 1: Авто
-  int _selectedCategory = 0; // 0: Квартиры, 1: Гаражи
+  int _selectedCatalogIndex = 0; // Индекс выбранного каталога
+  int _selectedCategoryIndex = 0; // Индекс выбранной категории
   bool _selectAllChecked = false;
   bool _isSelectionMode = false; // Режим выбора
   Set<int> _selectedListingIds = {};
@@ -36,6 +38,13 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   List<String> _currentSort = ['По цене'];
 
+  // API данные
+  List<SimpleCatalog> _catalogs = [];
+  List<Category> _categories = [];
+  bool _isLoadingCatalogs = true;
+  bool _isLoadingCategories = false;
+  String? _errorMessage;
+
   List<Map<String, dynamic>> _activeListings = [
     {'id': 1},
     {'id': 2},
@@ -45,6 +54,66 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   List<Map<String, dynamic>> _moderationListings = [
     {'id': 3},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCatalogs();
+  }
+
+  /// Загрузить все каталоги
+  Future<void> _loadCatalogs() async {
+    try {
+      setState(() => _isLoadingCatalogs = true);
+      final response = await CatalogService.getCatalogs();
+      print('=== Каталоги загружены: ${response.data.length}');
+      for (var cat in response.data) {
+        print('Каталог: ${cat.name} (id: ${cat.id})');
+      }
+      setState(() {
+        _catalogs = response.data;
+        _isLoadingCatalogs = false;
+        if (_catalogs.isNotEmpty) {
+          _selectedCatalogIndex = 0;
+          _loadCategories(_catalogs[0].id);
+        }
+      });
+    } catch (e) {
+      print('=== Ошибка загрузки каталогов: $e');
+      setState(() {
+        _isLoadingCatalogs = false;
+        _errorMessage = 'Ошибка загрузки каталогов: $e';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_errorMessage ?? 'Ошибка загрузки')),
+        );
+      }
+    }
+  }
+
+  /// Загрузить категории для выбранного каталога
+  Future<void> _loadCategories(int catalogId) async {
+    try {
+      setState(() => _isLoadingCategories = true);
+      final catalog = await CatalogService.getCatalog(catalogId);
+      setState(() {
+        _categories = catalog.categories ?? [];
+        _isLoadingCategories = false;
+        _selectedCategoryIndex = 0;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingCategories = false;
+        _errorMessage = 'Ошибка загрузки категорий: $e';
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_errorMessage ?? 'Ошибка загрузки')),
+        );
+      }
+    }
+  }
 
   void _showSortDialog() {
     showDialog(
@@ -258,23 +327,48 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            _catalogButton(
-                              'Недвижимость',
-                              _selectedCatalog == 0,
-                              onPressed: () =>
-                                  setState(() => _selectedCatalog = 0),
+                        if (_isLoadingCatalogs)
+                          const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF00B7FF),
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            _catalogButton(
-                              'Авто',
-                              _selectedCatalog == 1,
-                              onPressed: () =>
-                                  setState(() => _selectedCatalog = 1),
+                          )
+                        else if (_catalogs.isEmpty)
+                          const Center(
+                            child: Text(
+                              'Каталоги не найдены',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 14,
+                              ),
                             ),
-                          ],
-                        ),
+                          )
+                        else
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: List.generate(
+                                _catalogs.length,
+                                (index) => Padding(
+                                  padding: EdgeInsets.only(
+                                    right: index < _catalogs.length - 1 ? 8 : 0,
+                                  ),
+                                  child: _catalogButton(
+                                    _catalogs[index].name,
+                                    _selectedCatalogIndex == index,
+                                    onPressed: () {
+                                      setState(
+                                        () => _selectedCatalogIndex = index,
+                                      );
+                                      _loadCategories(_catalogs[index].id);
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -296,23 +390,49 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            _catalogButton(
-                              'Квартиры',
-                              _selectedCategory == 0,
-                              onPressed: () =>
-                                  setState(() => _selectedCategory = 0),
+                        if (_isLoadingCategories)
+                          const Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF00B7FF),
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            _catalogButton(
-                              'Гаражи',
-                              _selectedCategory == 1,
-                              onPressed: () =>
-                                  setState(() => _selectedCategory = 1),
+                          )
+                        else if (_categories.isEmpty)
+                          const Center(
+                            child: Text(
+                              'Категории не найдены',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 14,
+                              ),
                             ),
-                          ],
-                        ),
+                          )
+                        else
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: List.generate(
+                                _categories.length,
+                                (index) => Padding(
+                                  padding: EdgeInsets.only(
+                                    right: index < _categories.length - 1
+                                        ? 8
+                                        : 0,
+                                  ),
+                                  child: _catalogButton(
+                                    _categories[index].name,
+                                    _selectedCategoryIndex == index,
+                                    onPressed: () {
+                                      setState(
+                                        () => _selectedCategoryIndex = index,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),

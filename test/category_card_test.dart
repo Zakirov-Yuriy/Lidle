@@ -8,6 +8,8 @@ void main() {
   group('CategoryCard Widget Tests', () {
     testWidgets('should display category title', (WidgetTester tester) async {
       const category = Category(
+        id: 1,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -15,17 +17,19 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 
       expect(find.text('Test Category'), findsOneWidget);
     });
 
-    testWidgets('should display image with correct path', (WidgetTester tester) async {
+    testWidgets('should display image with correct path', (
+      WidgetTester tester,
+    ) async {
       const category = Category(
+        id: 2,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -33,9 +37,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 
@@ -50,6 +52,8 @@ void main() {
 
     testWidgets('should have correct dimensions', (WidgetTester tester) async {
       const category = Category(
+        id: 3,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -57,9 +61,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 
@@ -70,8 +72,12 @@ void main() {
       expect(containerWidget.constraints?.maxWidth, categoryCardWidth);
     });
 
-    testWidgets('should have ClipRRect with border radius', (WidgetTester tester) async {
+    testWidgets('should have ClipRRect with border radius', (
+      WidgetTester tester,
+    ) async {
       const category = Category(
+        id: 4,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -79,9 +85,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 
@@ -94,6 +98,8 @@ void main() {
 
     testWidgets('should position text correctly', (WidgetTester tester) async {
       const category = Category(
+        id: 5,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -101,9 +107,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 
@@ -115,8 +119,12 @@ void main() {
       expect(positionedWidget.left, 10);
     });
 
-    testWidgets('should have correct text styling', (WidgetTester tester) async {
+    testWidgets('should have correct text styling', (
+      WidgetTester tester,
+    ) async {
       const category = Category(
+        id: 6,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -124,9 +132,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 
@@ -140,8 +146,12 @@ void main() {
       expect(textWidget.style?.height, 1.0);
     });
 
-    testWidgets('should handle different category data', (WidgetTester tester) async {
+    testWidgets('should handle different category data', (
+      WidgetTester tester,
+    ) async {
       const carCategory = Category(
+        id: 7,
+        catalogId: 1,
         title: 'Автомобили',
         color: Colors.blue,
         imagePath: 'assets/home_page/acura_mdx.png',
@@ -149,9 +159,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: carCategory),
-          ),
+          home: Scaffold(body: CategoryCard(category: carCategory)),
         ),
       );
 
@@ -163,8 +171,12 @@ void main() {
       expect(assetImage.assetName, 'assets/home_page/acura_mdx.png');
     });
 
-    testWidgets('should fit BoxFit.cover for image', (WidgetTester tester) async {
+    testWidgets('should fit BoxFit.cover for image', (
+      WidgetTester tester,
+    ) async {
       const category = Category(
+        id: 8,
+        catalogId: 1,
         title: 'Test Category',
         color: Colors.blue,
         imagePath: 'assets/home_page/14.png',
@@ -172,9 +184,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: CategoryCard(category: category),
-          ),
+          home: Scaffold(body: CategoryCard(category: category)),
         ),
       );
 

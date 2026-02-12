@@ -106,13 +106,13 @@ class ProfileDashboard extends StatelessWidget {
                                         : 'Загрузка...',
                                     userId: profileState is ProfileLoaded
                                         ? profileState.userId
-                                        : 'ID: ...',
+                                        : '...',
                                     profileImage: profileState is ProfileLoaded
                                         ? profileState.profileImage
                                         : null,
                                     username: profileState is ProfileLoaded
                                         ? profileState.username
-                                        : '@Name',
+                                        : 'Name',
                                   ),
                                   const SizedBox(height: 29),
 
@@ -320,7 +320,7 @@ class _ProfileHeader extends StatelessWidget {
     required this.name,
     required this.userId,
     this.profileImage,
-    this.username = '@Name',
+    this.username = 'Name',
   });
 
   @override
@@ -366,7 +366,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              username,
+              '$username',
               style: const TextStyle(
                 color: Colors.blue,
                 fontSize: 16,
@@ -375,7 +375,7 @@ class _ProfileHeader extends StatelessWidget {
             ),
             const SizedBox(height: 5),
             Text(
-              userId,
+              '$userId',
               style: const TextStyle(color: textSecondary, fontSize: 12),
             ),
           ],

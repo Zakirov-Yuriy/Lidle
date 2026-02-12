@@ -4,6 +4,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'real_estate_subcategories_screen.dart';
+import 'universal_category_screen.dart';
 
 /// ============================================================
 /// Виджет: Экран выбора категории объявления
@@ -19,7 +20,8 @@ import 'real_estate_subcategories_screen.dart';
 ///   - Пример: [{"id": 1, "name": "Недвижимость", ...}, {"id": 8, "name": "Работа", ...}]
 ///
 /// Использует ApiService.getCatalogs() для загрузки данных.
-/// При выборе "Недвижимость" переходит к RealEstateSubcategoriesScreen.
+/// При выборе "Недвижимость" переходит к RealEstateSubcategoriesScreen (специализированный экран).
+/// Для всех остальных каталогов используется UniversalCategoryScreen (универсальный, автоматический).
 class CategorySelectionScreen extends StatefulWidget {
   static const String routeName = '/category-selection';
 
@@ -61,32 +63,34 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
       final catalogsResponse = await ApiService.getCatalogs();
 
-      print('Loaded catalogs: ${catalogsResponse.data.length}');
-      catalogsResponse.data.forEach(
-        (catalog) => print('Catalog: ${catalog.name}'),
-      );
+      print('═══════════════════════════════════════════════════════');
+      print('📦 CATALOGS LOADED');
+      print('Total catalogs: ${catalogsResponse.data.length}');
+      print('═══════════════════════════════════════════════════════');
+      catalogsResponse.data.asMap().forEach((index, catalog) {
+        print('[$index] Catalog ID: ${catalog.id}');
+        print('    Name: ${catalog.name}');
+        print('    Slug: ${catalog.slug}');
+        print('    Thumbnail: ${catalog.thumbnail}');
+        print('    Type.id: ${catalog.type.id}');
+        print('    Type.type: ${catalog.type.type ?? 'null'}');
+        print('    Type.path: ${catalog.type.path ?? 'null'}');
+        print('    Type.slug: ${catalog.type.slug ?? 'null'}');
+        print('    Order: ${catalog.order}');
+        print('---');
+      });
+      print('═══════════════════════════════════════════════════════');
 
       setState(() {
         _catalogs = catalogsResponse.data;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ ERROR LOADING CATALOGS: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
       });
-    }
-  }
-
-  // Функция для получения изображения категории по умолчанию
-  String _getCategoryImage(String catalogName) {
-    switch (catalogName.toLowerCase()) {
-      case 'недвижимость':
-        return 'assets/categories/real_estate.png';
-      case 'работа':
-        return 'assets/categories/job.png';
-      default:
-        return 'assets/categories/real_estate.png'; // fallback
     }
   }
 
@@ -187,9 +191,15 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       itemCount: _catalogs.length,
                       itemBuilder: (context, index) {
                         final catalog = _catalogs[index];
+                        print(
+                          '🎨 Rendering catalog [$index/${_catalogs.length}]: ${catalog.name} (ID: ${catalog.id})',
+                        );
+
                         return GestureDetector(
                           onTap: () {
+                            print('👆 Tapped on catalog: ${catalog.name}');
                             if (catalog.name == 'Недвижимость') {
+                              // Специализированный экран для Недвижимости
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -197,35 +207,116 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                       const RealEstateSubcategoriesScreen(),
                                 ),
                               );
+                            } else {
+                              // Универсальный экран для всех остальных каталогов
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => UniversalCategoryScreen(
+                                    catalogId: catalog.id,
+                                    catalogName: catalog.name,
+                                  ),
+                                ),
+                              );
                             }
-                            // Для других каталогов можно добавить логику позже
                           },
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5),
                             child: Stack(
                               children: [
                                 catalog.thumbnail != null &&
+                                        catalog.thumbnail!.isNotEmpty &&
                                         catalog.thumbnail!.startsWith('http')
                                     ? Image.network(
                                         catalog.thumbnail!,
                                         height: 83,
                                         width: 120,
                                         fit: BoxFit.cover,
-                                        errorBuilder:
-                                            (context, error, stackTrace) {
-                                              return Image.asset(
-                                                _getCategoryImage(catalog.name),
+                                        loadingBuilder:
+                                            (context, child, loadingProgress) {
+                                              if (loadingProgress == null) {
+                                                return child;
+                                              }
+                                              return Container(
                                                 height: 83,
                                                 width: 120,
-                                                fit: BoxFit.cover,
+                                                color: Colors.grey[700],
+                                                child: const Center(
+                                                  child: SizedBox(
+                                                    width: 24,
+                                                    height: 24,
+                                                    child: CircularProgressIndicator(
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation(
+                                                            Colors.white,
+                                                          ),
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  ),
+                                                ),
                                               );
                                             },
+                                        errorBuilder: (context, error, stackTrace) {
+                                          print(
+                                            '❌ Error loading thumbnail for ${catalog.name}: $error',
+                                          );
+                                          return Container(
+                                            height: 83,
+                                            width: 120,
+                                            color: const Color(0xFF2A3A4F),
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.image_not_supported,
+                                                    color: Colors.white70,
+                                                    size: 24,
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    catalog.name,
+                                                    textAlign: TextAlign.center,
+                                                    style: const TextStyle(
+                                                      color: Colors.white70,
+                                                      fontSize: 10,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
                                       )
-                                    : Image.asset(
-                                        _getCategoryImage(catalog.name),
+                                    : Container(
                                         height: 83,
                                         width: 120,
-                                        fit: BoxFit.cover,
+                                        color: const Color(0xFF2A3A4F),
+                                        child: Center(
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              const Icon(
+                                                Icons.category,
+                                                color: Colors.white70,
+                                                size: 24,
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                catalog.name,
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                               ],
                             ),

@@ -10,7 +10,7 @@ class Catalog {
   final String? thumbnail;
   final String slug;
   final CatalogType type;
-  final String? order;
+  final dynamic order;
   final List<Category>? categories;
 
   Catalog({
@@ -52,7 +52,7 @@ class Category {
   final String? thumbnail;
   final String slug;
   final CatalogType type;
-  final String? order;
+  final dynamic order;
   final bool is_endpoint;
   final List<Category>? children;
 
@@ -86,10 +86,34 @@ class CatalogResponse {
   Map<String, dynamic> toJson() => _$CatalogResponseToJson(this);
 }
 
+/// Упрощённая модель каталога без категорий (для списка каталогов)
+@JsonSerializable()
+class SimpleCatalog {
+  final int id;
+  final String name;
+  final String? thumbnail;
+  final String slug;
+  final CatalogType type;
+  final dynamic order;
+
+  SimpleCatalog({
+    required this.id,
+    required this.name,
+    this.thumbnail,
+    required this.slug,
+    required this.type,
+    this.order,
+  });
+
+  factory SimpleCatalog.fromJson(Map<String, dynamic> json) =>
+      _$SimpleCatalogFromJson(json);
+  Map<String, dynamic> toJson() => _$SimpleCatalogToJson(this);
+}
+
 /// Ответ при получении списка каталогов
 @JsonSerializable()
 class CatalogsResponse {
-  final List<Catalog> data;
+  final List<SimpleCatalog> data;
 
   CatalogsResponse({required this.data});
 
