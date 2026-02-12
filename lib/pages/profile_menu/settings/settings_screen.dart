@@ -458,7 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '@$title',
+            '$title',
             style: const TextStyle(color: Colors.white, fontSize: 16),
           ),
           const SizedBox(height: 6),

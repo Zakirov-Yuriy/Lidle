@@ -13,6 +13,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import '../../../constants.dart';
 import '../../../services/api_service.dart';
+import '../../../services/user_service.dart';
 import '../../../models/filter_models.dart';
 import '../../../models/catalog_model.dart';
 import '../../../models/create_advert_model.dart';
@@ -240,6 +241,42 @@ class _DynamicFilterState extends State<DynamicFilter> {
         print('❌ Error loading whatsapps: $e');
       }
 
+      // Load user profile to get name
+      try {
+        print('👤 Loading user profile from /me...');
+        final userProfile = await UserService.getProfile(token: token);
+        print(
+          '✅ Loaded user profile: ${userProfile.name} ${userProfile.lastName}',
+        );
+
+        // Fill contact fields with user data
+        if (mounted) {
+          setState(() {
+            // Fill contact name from profile
+            final fullName = '${userProfile.name} ${userProfile.lastName}'
+                .trim();
+            _contactNameController.text = fullName;
+            print('✅ Filled contact name: $fullName');
+
+            // Fill email from first available email
+            if (_userEmails.isNotEmpty) {
+              final email = _userEmails[0]['email'] ?? '';
+              _emailController.text = email;
+              print('✅ Filled email: $email');
+            }
+
+            // Fill phone1 from first available phone
+            if (_userPhones.isNotEmpty) {
+              final phone = _userPhones[0]['phone'] ?? '';
+              _phone1Controller.text = phone;
+              print('✅ Filled phone1: $phone');
+            }
+          });
+        }
+      } catch (e) {
+        print('⚠️ Error loading user profile: $e');
+      }
+
       if (mounted) {
         setState(() {});
       }
@@ -263,10 +300,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
           'Комфортная однокомнатная квартира площадью 45 кв.м, расположена в тихом районе с хорошей инфраструктурой. Полностью меблирована, есть все необходимое для жизни.';
       _priceController.text = '120000';
 
-      // Контакты
-      _contactNameController.text = 'Юрий ';
-      _emailController.text = 'workyury02@gmail.com';
-      _phone1Controller.text = '+79254499552';
+      // Контакты - только если они ещё не загружены из API
+      // (Если они уже заполнены из API, не перезаписываем)
+      if (_contactNameController.text.isEmpty) {
+        _contactNameController.text = 'Юрий ';
+      }
+      if (_emailController.text.isEmpty) {
+        _emailController.text = '1workyury02@gmail.com';
+      }
+      if (_phone1Controller.text.isEmpty) {
+        _phone1Controller.text = '+79254499552';
+      }
 
       // Выбор контактов из загруженных
       if (_userPhones.isNotEmpty) {
@@ -295,8 +339,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // 14 - Комфорт (Comfort)
       _selectedValues[14] = 'Автономное отопление';
 
-      // 1127 - Общая площадь (Total area) - REQUIRED range attribute
-      _selectedValues[1127] = {'min': 50, 'max': 100};
+      // 1127 - Общая площадь (Total area) - Simple field (not range anymore)
+      _selectedValues[1127] = '50';
 
       // 1048 - Вам предложат цену (Price offer) - REQUIRED boolean attribute
       _selectedValues[1048] = true;
@@ -523,7 +567,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           }
         }
       } else if (value is Map) {
-        // Range values - for attributes like 1040 (floor), 1127 (area)
+        // Range values - for attributes like 1040 (floor) - but NOT 1127 anymore
         final minVal = (value['min']?.toString() ?? '').trim();
         final maxVal = (value['max']?.toString() ?? '').trim();
         print(
@@ -637,22 +681,29 @@ class _DynamicFilterState extends State<DynamicFilter> {
       print('✅ Added default attribute 1048 to values as {value: 1}');
     }
 
-    // Handle required range attribute 1127 (Общая площадь - Total area)
-    // This is also REQUIRED but might not have been processed
+    // Handle required attribute 1127 (Общая площадь - Total area)
+    // Now it's a simple field, not a range
     if (_selectedValues.containsKey(1127)) {
       final area = _selectedValues[1127];
-      if (area is Map) {
-        final minVal =
-            int.tryParse((area['min']?.toString() ?? '').trim()) ?? 50;
-        final maxVal =
-            int.tryParse((area['max']?.toString() ?? '').trim()) ?? 100;
-        attributes['values']['1127'] = {'value': minVal, 'max_value': maxVal};
-        print('✅ Attribute 1127 (area) set: value=$minVal, max_value=$maxVal');
+      if (area is String && area.isNotEmpty) {
+        final areaVal = int.tryParse(area.toString().trim());
+        if (areaVal != null) {
+          attributes['values']['1127'] = {'value': areaVal};
+          print('✅ Attribute 1127 (area) set: value=$areaVal');
+        } else {
+          // If parsing fails, set default
+          attributes['values']['1127'] = {'value': 50};
+          print('⚠️ Failed to parse area value, using default: 50');
+        }
+      } else {
+        // Set default area if not selected
+        attributes['values']['1127'] = {'value': 50};
+        print('✅ Set default 1127: value=50');
       }
     } else {
       // Set default area if not selected
-      attributes['values']['1127'] = {'value': 50, 'max_value': 100};
-      print('✅ Set default 1127 range: value=50, max_value=100');
+      attributes['values']['1127'] = {'value': 50};
+      print('✅ Set default 1127: value=50');
     }
 
     // NOTE: attribute_1048 (boolean type) is handled separately via toJson() in CreateAdvertRequest
@@ -1417,7 +1468,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 minLength: 70,
                 maxLength: 255,
                 maxLines: 4,
-                height: 149,
                 controller: _descriptionController,
               ),
 
@@ -1482,9 +1532,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 ...(List<Attribute>.from(_attributes)
                       ..sort((a, b) => a.order.compareTo(b.order)))
                     .where(
-                      (attr) => attr
-                          .title
-                          .isNotEmpty, // Временно показываем все фильтры
+                      (attr) =>
+                          attr.title.isNotEmpty &&
+                          attr.id !=
+                              1048, // Exclude "Вам предложат цену" - it's shown separately
                     )
                     .map(
                       (attr) => Column(
@@ -1847,7 +1898,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
     int minLength = 0,
     int? maxLength,
     TextInputType keyboardType = TextInputType.text,
-    double height = 45,
     TextEditingController? controller,
     ValueChanged<String>? onChanged,
   }) {
@@ -1856,28 +1906,33 @@ class _DynamicFilterState extends State<DynamicFilter> {
       children: [
         Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
         const SizedBox(height: 9),
-        ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: height),
+        Container(
+          decoration: BoxDecoration(
+            color: formBackground,
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: TextField(
             controller: controller,
-            minLines: 1,
-            maxLines: maxLines,
+            minLines: maxLines == 1 ? 1 : maxLines,
+            maxLines: null,
             maxLength: maxLength,
             keyboardType: keyboardType,
             style: const TextStyle(color: textPrimary),
             onChanged: onChanged,
+            expands: false,
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: const TextStyle(
                 color: Color.fromARGB(255, 255, 255, 255),
                 fontSize: 14,
               ),
-              filled: true,
-              fillColor: formBackground,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide.none,
+              filled: false,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
               ),
+              border: InputBorder.none,
+              counterText: '',
             ),
           ),
         ),
@@ -2022,93 +2077,39 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   Widget _buildAreaRangeField() {
     // Build special field for attribute 1127 (Total area)
-    _selectedValues[1127] ??= {'min': '', 'max': ''};
-    var rawValue = _selectedValues[1127];
+    // Changed to single input field instead of range
+    _selectedValues[1127] ??= '';
 
-    Map<String, dynamic> rangeMap;
-    if (rawValue is Map) {
-      rangeMap = rawValue as Map<String, dynamic>;
-    } else {
-      rangeMap = {'min': '', 'max': ''};
-    }
-
-    final minStr = rangeMap['min']?.toString() ?? '';
-    final maxStr = rangeMap['max']?.toString() ?? '';
-    Map<String, String> range = {'min': minStr, 'max': maxStr};
-
-    const minKey = 2254; // 1127 * 2
-    const maxKey = 2255; // 1127 * 2 + 1
-    final controllerMin = _controllers.putIfAbsent(
-      minKey,
-      () => TextEditingController(text: range['min']),
-    );
-    final controllerMax = _controllers.putIfAbsent(
-      maxKey,
-      () => TextEditingController(text: range['max']),
+    final controller = _controllers.putIfAbsent(
+      1127,
+      () => TextEditingController(text: _selectedValues[1127] ?? ''),
     );
 
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextField(
-              controller: controllerMin,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: textPrimary),
-              decoration: const InputDecoration(
-                hintText: 'От',
-                hintStyle: TextStyle(
-                  color: Color.fromARGB(255, 255, 255, 255),
-                  fontSize: 14,
-                ),
-                border: InputBorder.none,
-              ),
-              onChanged: (value) {
-                print('onChanged for 1127 min: $value');
-                setState(() {
-                  range['min'] = value;
-                  _selectedValues[1127] = range;
-                });
-              },
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: textPrimary),
+        decoration: const InputDecoration(
+          hintText: 'Введите',
+          hintStyle: TextStyle(
+            color: Color.fromARGB(255, 255, 255, 255),
+            fontSize: 14,
           ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextField(
-              controller: controllerMax,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: textPrimary),
-              decoration: const InputDecoration(
-                hintText: 'До',
-                hintStyle: TextStyle(
-                  color: Color.fromARGB(255, 255, 255, 255),
-                  fontSize: 14,
-                ),
-                border: InputBorder.none,
-              ),
-              onChanged: (value) {
-                print('onChanged for 1127 max: $value');
-                setState(() {
-                  range['max'] = value;
-                  _selectedValues[1127] = range;
-                });
-              },
-            ),
-          ),
-        ),
-      ],
+        onChanged: (value) {
+          print('onChanged for 1127 area: $value');
+          setState(() {
+            _selectedValues[1127] = value;
+          });
+        },
+      ),
     );
   }
 

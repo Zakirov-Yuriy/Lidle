@@ -4,6 +4,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 
 /// ============================================================
 /// Виджет: Универсальный экран для отображения категорий
@@ -249,12 +250,15 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                               ),
                             );
                           } else if (category.isEndpoint) {
-                            // Если это конечная точка, показываем сообщение
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Категория "${category.name}" выбрана. ID: ${category.id}',
-                                ),
+                            // Если это конечная точка, открываем динамический фильтр
+                            print(
+                              '🎯 Opening DynamicFilter for category: ${category.name} (ID: ${category.id})',
+                            );
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    DynamicFilter(category: category),
                               ),
                             );
                           }
