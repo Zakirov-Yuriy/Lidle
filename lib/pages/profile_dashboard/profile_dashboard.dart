@@ -24,6 +24,7 @@ import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+import 'package:lidle/services/my_adverts_service.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -39,10 +40,51 @@ String _getPluralForm(int count) {
   }
 }
 
-class ProfileDashboard extends StatelessWidget {
+class ProfileDashboard extends StatefulWidget {
   static const routeName = '/profile-dashboard';
 
   const ProfileDashboard({super.key});
+
+  @override
+  State<ProfileDashboard> createState() => _ProfileDashboardState();
+}
+
+class _ProfileDashboardState extends State<ProfileDashboard> {
+  int _activeListingsCount = 0;
+  int _inactiveListingsCount = 0;
+  bool _isLoadingListings = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadListingsCounts();
+  }
+
+  /// Загрузить количество активных и неактивных объявлений
+  Future<void> _loadListingsCounts() async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        setState(() => _isLoadingListings = false);
+        return;
+      }
+
+      // Загружаем активные и неактивные объявления
+      final results = await Future.wait([
+        MyAdvertsService.getMyAdverts(statusId: 1, token: token),
+        MyAdvertsService.getMyAdverts(statusId: 2, token: token),
+      ]);
+
+      setState(() {
+        _activeListingsCount = results[0].data.length;
+        _inactiveListingsCount = results[1].data.length;
+        _isLoadingListings = false;
+      });
+    } catch (e) {
+      print('⚠️ Ошибка загрузки количества объявлений: $e');
+      setState(() => _isLoadingListings = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -238,7 +280,10 @@ class ProfileDashboard extends StatelessWidget {
                                   const SizedBox(height: 10),
                                   _MenuItem(
                                     title: 'Активные / Неактивные',
-                                    count: 4,
+                                    count: _isLoadingListings
+                                        ? 0
+                                        : _activeListingsCount +
+                                              _inactiveListingsCount,
                                     trailingChevron: true,
                                     onTap: () => Navigator.of(
                                       context,

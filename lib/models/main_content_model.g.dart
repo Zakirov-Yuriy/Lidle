@@ -97,3 +97,95 @@ Map<String, dynamic> _$ContentTypeToJson(ContentType instance) =>
       'type': instance.type,
       'path': instance.path,
     };
+
+UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
+  id: (json['id'] as num).toInt(),
+  name: json['name'] as String,
+  thumbnail: json['thumbnail'] as String?,
+  price: json['price'] as String,
+  slug: json['slug'] as String,
+  address: json['address'] as String,
+  viewsCount: (json['views_count'] as num).toInt(),
+  clickCount: (json['click_count'] as num).toInt(),
+  shareCount: (json['share_count'] as num).toInt(),
+  createdAt: json['created_at'] as String,
+  type: ContentType.fromJson(json['type'] as Map<String, dynamic>),
+);
+
+Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'thumbnail': instance.thumbnail,
+      'price': instance.price,
+      'slug': instance.slug,
+      'address': instance.address,
+      'views_count': instance.viewsCount,
+      'click_count': instance.clickCount,
+      'share_count': instance.shareCount,
+      'created_at': instance.createdAt,
+      'type': instance.type,
+    };
+
+AdvertMetaResponse _$AdvertMetaResponseFromJson(Map<String, dynamic> json) =>
+    AdvertMetaResponse(
+      data: (json['data'] as List<dynamic>)
+          .map((e) => AdvertMetaData.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+
+Map<String, dynamic> _$AdvertMetaResponseToJson(AdvertMetaResponse instance) =>
+    <String, dynamic>{'data': instance.data};
+
+AdvertMetaData _$AdvertMetaDataFromJson(Map<String, dynamic> json) =>
+    AdvertMetaData(
+      catalogs: (json['catalogs'] as List<dynamic>)
+          .map((e) => AdvertMetaCatalog.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      tabs: (json['tabs'] as List<dynamic>)
+          .map((e) => AdvertMetaTab.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+
+Map<String, dynamic> _$AdvertMetaDataToJson(AdvertMetaData instance) =>
+    <String, dynamic>{'catalogs': instance.catalogs, 'tabs': instance.tabs};
+
+AdvertMetaCatalog _$AdvertMetaCatalogFromJson(Map<String, dynamic> json) =>
+    AdvertMetaCatalog(
+      catalogId: (json['catalog_id'] as num).toInt(),
+      name: json['name'] as String,
+      categories: (json['categories'] as List<dynamic>)
+          .map((e) => AdvertMetaCategory.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+
+Map<String, dynamic> _$AdvertMetaCatalogToJson(AdvertMetaCatalog instance) =>
+    <String, dynamic>{
+      'catalog_id': instance.catalogId,
+      'name': instance.name,
+      'categories': instance.categories,
+    };
+
+AdvertMetaCategory _$AdvertMetaCategoryFromJson(Map<String, dynamic> json) =>
+    AdvertMetaCategory(
+      categoryId: (json['category_id'] as num).toInt(),
+      name: json['name'] as String,
+    );
+
+Map<String, dynamic> _$AdvertMetaCategoryToJson(AdvertMetaCategory instance) =>
+    <String, dynamic>{
+      'category_id': instance.categoryId,
+      'name': instance.name,
+    };
+
+AdvertMetaTab _$AdvertMetaTabFromJson(Map<String, dynamic> json) =>
+    AdvertMetaTab(
+      advertStatusId: (json['advert_status_id'] as num).toInt(),
+      name: json['name'] as String,
+    );
+
+Map<String, dynamic> _$AdvertMetaTabToJson(AdvertMetaTab instance) =>
+    <String, dynamic>{
+      'advert_status_id': instance.advertStatusId,
+      'name': instance.name,
+    };

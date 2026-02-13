@@ -9,7 +9,7 @@ part of 'my_adverts_service.dart';
 MyAdvertsResponse _$MyAdvertsResponseFromJson(Map<String, dynamic> json) =>
     MyAdvertsResponse(
       data: (json['data'] as List<dynamic>)
-          .map((e) => MainAdvert.fromJson(e as Map<String, dynamic>))
+          .map((e) => UserAdvert.fromJson(e as Map<String, dynamic>))
           .toList(),
       total: (json['total'] as num?)?.toInt(),
       page: (json['page'] as num?)?.toInt(),

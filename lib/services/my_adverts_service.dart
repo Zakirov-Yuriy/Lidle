@@ -6,7 +6,7 @@ part 'my_adverts_service.g.dart';
 
 @JsonSerializable()
 class MyAdvertsResponse {
-  final List<MainAdvert> data;
+  final List<UserAdvert> data;
   final int? total;
   final int? page;
   @JsonKey(name: 'per_page')
@@ -95,15 +95,40 @@ class UpdateAdvertRequest {
 }
 
 class MyAdvertsService {
+  /// Получить мета-информацию объявлений (каталоги и категории с объявлениями)
+  static Future<AdvertMetaResponse> getAdvertsMeta({
+    required String token,
+  }) async {
+    try {
+      final response = await ApiService.get('/me/adverts/meta', token: token);
+
+      return AdvertMetaResponse.fromJson(response);
+    } catch (e) {
+      throw Exception('Ошибка при загрузке мета-информации объявлений: $e');
+    }
+  }
+
   /// Получить список мои объявлений текущего пользователя
   static Future<MyAdvertsResponse> getMyAdverts({
     int? page,
+    int? statusId,
+    int? catalogId,
+    int? categoryId,
     required String token,
   }) async {
     try {
       final params = <String, dynamic>{};
       if (page != null) {
         params['page'] = page;
+      }
+      if (statusId != null) {
+        params['advert_status_id'] = statusId;
+      }
+      if (catalogId != null) {
+        params['catalog_id'] = catalogId;
+      }
+      if (categoryId != null) {
+        params['category_id'] = categoryId;
       }
 
       final response = await ApiService.getWithQuery(
@@ -210,45 +235,40 @@ class MyAdvertsService {
     }
   }
 
-  /// Активировать объявление
-  static Future<MainAdvert> activateAdvert({
+  /// Обновить статус объявления
+  static Future<void> updateAdvertStatus({
+    required int advertId,
+    required int statusId,
+    required String token,
+  }) async {
+    try {
+      await ApiService.put('/me/adverts/$advertId/update_status', {
+        'advert_status_id': statusId,
+      }, token: token);
+    } catch (e) {
+      throw Exception('Ошибка при обновлении статуса объявления: $e');
+    }
+  }
+
+  /// Активировать объявление (изменение статуса на активный - 1)
+  static Future<void> activateAdvert({
     required int advertId,
     required String token,
   }) async {
     try {
-      final response = await ApiService.post(
-        '/me/adverts/$advertId/activate',
-        {},
-        token: token,
-      );
-
-      if (response.containsKey('data')) {
-        return MainAdvert.fromJson(response['data'] as Map<String, dynamic>);
-      } else {
-        return MainAdvert.fromJson(response);
-      }
+      await updateAdvertStatus(advertId: advertId, statusId: 1, token: token);
     } catch (e) {
       throw Exception('Ошибка при активации объявления: $e');
     }
   }
 
-  /// Деактивировать объявление
-  static Future<MainAdvert> deactivateAdvert({
+  /// Деактивировать объявление (изменение статуса на неактивный - 2)
+  static Future<void> deactivateAdvert({
     required int advertId,
     required String token,
   }) async {
     try {
-      final response = await ApiService.post(
-        '/me/adverts/$advertId/deactivate',
-        {},
-        token: token,
-      );
-
-      if (response.containsKey('data')) {
-        return MainAdvert.fromJson(response['data'] as Map<String, dynamic>);
-      } else {
-        return MainAdvert.fromJson(response);
-      }
+      await updateAdvertStatus(advertId: advertId, statusId: 2, token: token);
     } catch (e) {
       throw Exception('Ошибка при деактивации объявления: $e');
     }

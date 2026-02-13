@@ -106,3 +106,109 @@ class ContentType {
       _$ContentTypeFromJson(json);
   Map<String, dynamic> toJson() => _$ContentTypeToJson(this);
 }
+
+/// Модель для объявлений пользователя (GET /me/adverts)
+@JsonSerializable()
+class UserAdvert {
+  final int id;
+  final String name;
+  final String? thumbnail;
+  final String price;
+  final String slug;
+  final String address;
+  @JsonKey(name: 'views_count')
+  final int viewsCount;
+  @JsonKey(name: 'click_count')
+  final int clickCount;
+  @JsonKey(name: 'share_count')
+  final int shareCount;
+  @JsonKey(name: 'created_at')
+  final String createdAt;
+  final ContentType type;
+
+  UserAdvert({
+    required this.id,
+    required this.name,
+    this.thumbnail,
+    required this.price,
+    required this.slug,
+    required this.address,
+    required this.viewsCount,
+    required this.clickCount,
+    required this.shareCount,
+    required this.createdAt,
+    required this.type,
+  });
+
+  factory UserAdvert.fromJson(Map<String, dynamic> json) =>
+      _$UserAdvertFromJson(json);
+  Map<String, dynamic> toJson() => _$UserAdvertToJson(this);
+}
+
+/// Модель для мета-информации объявлений пользователя (GET /me/adverts/meta)
+@JsonSerializable()
+class AdvertMetaResponse {
+  final List<AdvertMetaData> data;
+
+  AdvertMetaResponse({required this.data});
+
+  factory AdvertMetaResponse.fromJson(Map<String, dynamic> json) =>
+      _$AdvertMetaResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$AdvertMetaResponseToJson(this);
+}
+
+@JsonSerializable()
+class AdvertMetaData {
+  final List<AdvertMetaCatalog> catalogs;
+  final List<AdvertMetaTab> tabs;
+
+  AdvertMetaData({required this.catalogs, required this.tabs});
+
+  factory AdvertMetaData.fromJson(Map<String, dynamic> json) =>
+      _$AdvertMetaDataFromJson(json);
+  Map<String, dynamic> toJson() => _$AdvertMetaDataToJson(this);
+}
+
+@JsonSerializable()
+class AdvertMetaCatalog {
+  @JsonKey(name: 'catalog_id')
+  final int catalogId;
+  final String name;
+  final List<AdvertMetaCategory> categories;
+
+  AdvertMetaCatalog({
+    required this.catalogId,
+    required this.name,
+    required this.categories,
+  });
+
+  factory AdvertMetaCatalog.fromJson(Map<String, dynamic> json) =>
+      _$AdvertMetaCatalogFromJson(json);
+  Map<String, dynamic> toJson() => _$AdvertMetaCatalogToJson(this);
+}
+
+@JsonSerializable()
+class AdvertMetaCategory {
+  @JsonKey(name: 'category_id')
+  final int categoryId;
+  final String name;
+
+  AdvertMetaCategory({required this.categoryId, required this.name});
+
+  factory AdvertMetaCategory.fromJson(Map<String, dynamic> json) =>
+      _$AdvertMetaCategoryFromJson(json);
+  Map<String, dynamic> toJson() => _$AdvertMetaCategoryToJson(this);
+}
+
+@JsonSerializable()
+class AdvertMetaTab {
+  @JsonKey(name: 'advert_status_id')
+  final int advertStatusId;
+  final String name;
+
+  AdvertMetaTab({required this.advertStatusId, required this.name});
+
+  factory AdvertMetaTab.fromJson(Map<String, dynamic> json) =>
+      _$AdvertMetaTabFromJson(json);
+  Map<String, dynamic> toJson() => _$AdvertMetaTabToJson(this);
+}

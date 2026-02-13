@@ -14,6 +14,9 @@ import 'package:lidle/pages/profile_dashboard/my_listings/outdoor_advertising_sc
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_property_details_screen.dart';
 import 'package:lidle/services/catalog_service.dart';
 import 'package:lidle/models/catalog_category_model.dart';
+import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/models/main_content_model.dart';
+import 'package:lidle/hive_service.dart';
 
 class MyListingsScreen extends StatefulWidget {
   static const routeName = '/my-listings';
@@ -38,74 +41,95 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   List<String> _currentSort = ['По цене'];
 
-  // API данные
-  List<SimpleCatalog> _catalogs = [];
-  List<Category> _categories = [];
-  bool _isLoadingCatalogs = true;
-  bool _isLoadingCategories = false;
+  // Мета-данные объявлений (только каталоги и категории с объявлениями)
+  List<AdvertMetaCatalog> _advertMetaCatalogs = [];
+  List<AdvertMetaCategory> _advertMetaCategories = [];
+  bool _isLoadingMetadata = true;
   String? _errorMessage;
 
-  List<Map<String, dynamic>> _activeListings = [
-    {'id': 1},
-    {'id': 2},
-  ];
-  List<Map<String, dynamic>> _inactiveListings = [];
-  List<Map<String, dynamic>> _archiveListings = [];
-  List<Map<String, dynamic>> _moderationListings = [
-    {'id': 3},
-  ];
+  // Реальные объявления с API
+  List<UserAdvert> _activeListings = [];
+  List<UserAdvert> _inactiveListings = [];
+  List<UserAdvert> _archiveListings = [];
+  List<UserAdvert> _moderationListings = [];
+  bool _isLoadingListings = true;
 
   @override
   void initState() {
     super.initState();
-    _loadCatalogs();
+    _loadAdvertMetadata();
+    _loadAllListings();
   }
 
-  /// Загрузить все каталоги
-  Future<void> _loadCatalogs() async {
+  /// Загрузить мета-информацию объявлений (каталоги и категории с объявлениями)
+  Future<void> _loadAdvertMetadata() async {
     try {
-      setState(() => _isLoadingCatalogs = true);
-      final response = await CatalogService.getCatalogs();
-      print('=== Каталоги загружены: ${response.data.length}');
-      for (var cat in response.data) {
-        print('Каталог: ${cat.name} (id: ${cat.id})');
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        setState(() {
+          _isLoadingMetadata = false;
+          _errorMessage = 'Токен не найден';
+        });
+        return;
       }
-      setState(() {
-        _catalogs = response.data;
-        _isLoadingCatalogs = false;
-        if (_catalogs.isNotEmpty) {
-          _selectedCatalogIndex = 0;
-          _loadCategories(_catalogs[0].id);
-        }
-      });
+
+      setState(() => _isLoadingMetadata = true);
+
+      final response = await MyAdvertsService.getAdvertsMeta(token: token);
+
+      if (response.data.isNotEmpty) {
+        final metaData = response.data[0];
+        setState(() {
+          _advertMetaCatalogs = metaData.catalogs;
+          if (_advertMetaCatalogs.isNotEmpty) {
+            _advertMetaCategories = _advertMetaCatalogs[0].categories;
+          }
+          _isLoadingMetadata = false;
+        });
+      }
     } catch (e) {
-      print('=== Ошибка загрузки каталогов: $e');
+      print('=== Ошибка загрузки мета-информации объявлений: $e');
       setState(() {
-        _isLoadingCatalogs = false;
-        _errorMessage = 'Ошибка загрузки каталогов: $e';
+        _isLoadingMetadata = false;
+        _errorMessage = 'Ошибка загрузки мета-информации: $e';
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_errorMessage ?? 'Ошибка загрузки')),
-        );
-      }
     }
   }
 
-  /// Загрузить категории для выбранного каталога
-  Future<void> _loadCategories(int catalogId) async {
+  /// Загрузить все объявления разных статусов
+  Future<void> _loadAllListings() async {
     try {
-      setState(() => _isLoadingCategories = true);
-      final catalog = await CatalogService.getCatalog(catalogId);
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        setState(() {
+          _isLoadingListings = false;
+          _errorMessage = 'Токен не найден';
+        });
+        return;
+      }
+
+      setState(() => _isLoadingListings = true);
+
+      // Загружаем объявления всех статусов параллельно
+      final results = await Future.wait([
+        MyAdvertsService.getMyAdverts(statusId: 1, token: token),
+        MyAdvertsService.getMyAdverts(statusId: 2, token: token),
+        MyAdvertsService.getMyAdverts(statusId: 3, token: token),
+        MyAdvertsService.getMyAdverts(statusId: 8, token: token),
+      ]);
+
       setState(() {
-        _categories = catalog.categories ?? [];
-        _isLoadingCategories = false;
-        _selectedCategoryIndex = 0;
+        _activeListings = results[0].data;
+        _inactiveListings = results[1].data;
+        _moderationListings = results[2].data;
+        _archiveListings = results[3].data;
+        _isLoadingListings = false;
       });
     } catch (e) {
+      print('=== Ошибка загрузки объявлений: $e');
       setState(() {
-        _isLoadingCategories = false;
-        _errorMessage = 'Ошибка загрузки категорий: $e';
+        _isLoadingListings = false;
+        _errorMessage = 'Ошибка загрузки объявлений: $e';
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -327,7 +351,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_isLoadingCatalogs)
+                        if (_isLoadingMetadata)
                           const Center(
                             child: CircularProgressIndicator(
                               valueColor: AlwaysStoppedAnimation<Color>(
@@ -335,7 +359,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               ),
                             ),
                           )
-                        else if (_catalogs.isEmpty)
+                        else if (_advertMetaCatalogs.isEmpty)
                           const Center(
                             child: Text(
                               'Каталоги не найдены',
@@ -350,19 +374,25 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: List.generate(
-                                _catalogs.length,
+                                _advertMetaCatalogs.length,
                                 (index) => Padding(
                                   padding: EdgeInsets.only(
-                                    right: index < _catalogs.length - 1 ? 8 : 0,
+                                    right:
+                                        index < _advertMetaCatalogs.length - 1
+                                        ? 8
+                                        : 0,
                                   ),
                                   child: _catalogButton(
-                                    _catalogs[index].name,
+                                    _advertMetaCatalogs[index].name,
                                     _selectedCatalogIndex == index,
                                     onPressed: () {
-                                      setState(
-                                        () => _selectedCatalogIndex = index,
-                                      );
-                                      _loadCategories(_catalogs[index].id);
+                                      setState(() {
+                                        _selectedCatalogIndex = index;
+                                        _advertMetaCategories =
+                                            _advertMetaCatalogs[index]
+                                                .categories;
+                                        _selectedCategoryIndex = 0;
+                                      });
                                     },
                                   ),
                                 ),
@@ -390,7 +420,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        if (_isLoadingCategories)
+                        if (_isLoadingMetadata)
                           const Center(
                             child: CircularProgressIndicator(
                               valueColor: AlwaysStoppedAnimation<Color>(
@@ -398,7 +428,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               ),
                             ),
                           )
-                        else if (_categories.isEmpty)
+                        else if (_advertMetaCategories.isEmpty)
                           const Center(
                             child: Text(
                               'Категории не найдены',
@@ -413,15 +443,16 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                             scrollDirection: Axis.horizontal,
                             child: Row(
                               children: List.generate(
-                                _categories.length,
+                                _advertMetaCategories.length,
                                 (index) => Padding(
                                   padding: EdgeInsets.only(
-                                    right: index < _categories.length - 1
+                                    right:
+                                        index < _advertMetaCategories.length - 1
                                         ? 8
                                         : 0,
                                   ),
                                   child: _catalogButton(
-                                    _categories[index].name,
+                                    _advertMetaCategories[index].name,
                                     _selectedCategoryIndex == index,
                                     onPressed: () {
                                       setState(
@@ -552,7 +583,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                   final currentListings =
                                       _getCurrentTabListings();
                                   _selectedListingIds.addAll(
-                                    currentListings.map((l) => l['id'] as int),
+                                    currentListings.map((l) => l.id),
                                   );
                                 } else {
                                   _selectedListingIds.clear();
@@ -656,7 +687,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         for (int i = 0; i < _activeListings.length; i++) ...[
-          _listingCard(_activeListings[i]['id'], 0),
+          _listingCard(_activeListings[i], 0),
           if (i < _activeListings.length - 1) const SizedBox(height: 10),
         ],
       ],
@@ -681,7 +712,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         for (int i = 0; i < _inactiveListings.length; i++) ...[
-          _listingCard(_inactiveListings[i]['id'], 1),
+          _listingCard(_inactiveListings[i], 1),
           if (i < _inactiveListings.length - 1) const SizedBox(height: 10),
         ],
       ],
@@ -706,7 +737,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         for (int i = 0; i < _archiveListings.length; i++) ...[
-          _listingCard(_archiveListings[i]['id'], 2),
+          _listingCard(_archiveListings[i], 2),
           if (i < _archiveListings.length - 1) const SizedBox(height: 10),
         ],
       ],
@@ -731,7 +762,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         for (int i = 0; i < _moderationListings.length; i++) ...[
-          _listingCard(_moderationListings[i]['id'], 3),
+          _listingCard(_moderationListings[i], 3),
           if (i < _moderationListings.length - 1) const SizedBox(height: 10),
         ],
       ],
@@ -742,14 +773,14 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // LISTING CARD
   // ─────────────────────────────────────────────
 
-  Widget _listingCard(int id, int tabIndex) {
-    final isSelected = _selectedListingIds.contains(id);
+  Widget _listingCard(UserAdvert advert, int tabIndex) {
+    final isSelected = _selectedListingIds.contains(advert.id);
 
     return GestureDetector(
       onLongPress: () {
         setState(() {
           _isSelectionMode = true;
-          _selectedListingIds.add(id);
+          _selectedListingIds.add(advert.id);
         });
       },
       child: Container(
@@ -771,9 +802,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     onChanged: (value) {
                       setState(() {
                         if (value) {
-                          _selectedListingIds.add(id);
+                          _selectedListingIds.add(advert.id);
                         } else {
-                          _selectedListingIds.remove(id);
+                          _selectedListingIds.remove(advert.id);
                           // Выйти из режима выбора если ничего не выбрано
                           if (_selectedListingIds.isEmpty) {
                             _isSelectionMode = false;
@@ -797,40 +828,68 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                   },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.asset(
-                      'assets/home_page/image2.png',
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                    ),
+                    child: advert.thumbnail != null
+                        ? Image.network(
+                            advert.thumbnail!,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                width: 72,
+                                height: 72,
+                                color: Colors.grey[800],
+                                child: const Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.white54,
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            width: 72,
+                            height: 72,
+                            color: Colors.grey[800],
+                            child: const Icon(
+                              Icons.image,
+                              color: Colors.white54,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '3-к. квартира, 125,5 м², 5/17 эт.',
-                        style: TextStyle(
+                        advert.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
-                        '44 500 000 ₽',
-                        style: TextStyle(
+                        '${advert.price} ₽',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        '354 582 ₽ за м²',
-                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                        advert.address,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -873,19 +932,19 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               ),
               const SizedBox(height: 20),
             ] else ...[
-              const Text(
-                'Просмотров: 340',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+              Text(
+                'Просмотров: ${advert.viewsCount}',
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Переходов: 24',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+              Text(
+                'Переходов: ${advert.clickCount}',
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Поделились: 14',
-                style: TextStyle(color: Colors.white54, fontSize: 13),
+              Text(
+                'Поделились: ${advert.shareCount}',
+                style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),
 
               const SizedBox(height: 16),
@@ -898,13 +957,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         'Деактивировать',
                         yellowColor,
                         onPressed: () {
-                          setState(() {
-                            final listing = _activeListings.firstWhere(
-                              (l) => l['id'] == id,
-                            );
-                            _activeListings.remove(listing);
-                            _inactiveListings.add(listing);
-                          });
+                          _deactivateAdvert(advert.id);
                         },
                       ),
                     ),
@@ -925,7 +978,6 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     ),
                   ],
                 ),
-                // const SizedBox(height: 12),
               ],
 
               if (tabIndex == 1)
@@ -936,13 +988,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         'Активировать',
                         greenColor,
                         onPressed: () {
-                          setState(() {
-                            final listing = _inactiveListings.firstWhere(
-                              (l) => l['id'] == id,
-                            );
-                            _inactiveListings.remove(listing);
-                            _activeListings.add(listing);
-                          });
+                          _activateAdvert(advert.id);
                         },
                       ),
                     ),
@@ -971,13 +1017,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         'Активировать',
                         greenColor,
                         onPressed: () {
-                          setState(() {
-                            final listing = _archiveListings.firstWhere(
-                              (l) => l['id'] == id,
-                            );
-                            _archiveListings.remove(listing);
-                            _activeListings.add(listing);
-                          });
+                          _activateAdvert(advert.id);
                         },
                       ),
                     ),
@@ -1184,7 +1224,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  List<Map<String, dynamic>> _getCurrentTabListings() {
+  List<UserAdvert> _getCurrentTabListings() {
     switch (_currentTab) {
       case 0:
         return _activeListings;
@@ -1205,35 +1245,31 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     setState(() {
       if (_currentTab == 0) {
         final toArchive = _activeListings
-            .where((l) => _selectedListingIds.contains(l['id']))
+            .where((l) => _selectedListingIds.contains(l.id))
             .toList();
-        _activeListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
-        );
+        _activeListings.removeWhere((l) => _selectedListingIds.contains(l.id));
         _archiveListings.addAll(toArchive);
       } else if (_currentTab == 1) {
         final toArchive = _inactiveListings
-            .where((l) => _selectedListingIds.contains(l['id']))
+            .where((l) => _selectedListingIds.contains(l.id))
             .toList();
         _inactiveListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
+          (l) => _selectedListingIds.contains(l.id),
         );
         _archiveListings.addAll(toArchive);
       } else if (_currentTab == 2) {
         // Из архива в активные
         final toActive = _archiveListings
-            .where((l) => _selectedListingIds.contains(l['id']))
+            .where((l) => _selectedListingIds.contains(l.id))
             .toList();
-        _archiveListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
-        );
+        _archiveListings.removeWhere((l) => _selectedListingIds.contains(l.id));
         _activeListings.addAll(toActive);
       } else if (_currentTab == 3) {
         final toArchive = _moderationListings
-            .where((l) => _selectedListingIds.contains(l['id']))
+            .where((l) => _selectedListingIds.contains(l.id))
             .toList();
         _moderationListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
+          (l) => _selectedListingIds.contains(l.id),
         );
         _archiveListings.addAll(toArchive);
       }
@@ -1248,26 +1284,74 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
     setState(() {
       if (_currentTab == 0) {
-        _activeListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
-        );
+        _activeListings.removeWhere((l) => _selectedListingIds.contains(l.id));
       } else if (_currentTab == 1) {
         _inactiveListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
+          (l) => _selectedListingIds.contains(l.id),
         );
       } else if (_currentTab == 2) {
-        _archiveListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
-        );
+        _archiveListings.removeWhere((l) => _selectedListingIds.contains(l.id));
       } else if (_currentTab == 3) {
         _moderationListings.removeWhere(
-          (l) => _selectedListingIds.contains(l['id']),
+          (l) => _selectedListingIds.contains(l.id),
         );
       }
       _selectedListingIds.clear();
       _selectAllChecked = false;
       _isSelectionMode = false;
     });
+  }
+
+  /// Активировать объявление
+  void _activateAdvert(int advertId) async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) return;
+
+      await MyAdvertsService.activateAdvert(advertId: advertId, token: token);
+
+      // Перезагружаем все объявления для синхронизации с сервером
+      await _loadAllListings();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Объявление активировано')),
+        );
+      }
+    } catch (e) {
+      print('Ошибка активации: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      }
+    }
+  }
+
+  /// Деактивировать объявление
+  void _deactivateAdvert(int advertId) async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) return;
+
+      await MyAdvertsService.deactivateAdvert(advertId: advertId, token: token);
+
+      // Перезагружаем все объявления для синхронизации с сервером
+      await _loadAllListings();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Объявление деактивировано')),
+        );
+      }
+    } catch (e) {
+      print('Ошибка деактивации: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      }
+    }
   }
 
   // ─────────────────────────────────────────────
