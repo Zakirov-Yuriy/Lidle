@@ -113,9 +113,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // Показываем свежие данные
       final userIdDisplay = 'ID: $userIdString';
+      final displayName = '${profile.name} ${profile.lastName}';
+
+      print('🔍 DEBUG ProfileBloc._onLoadProfile():');
+      print('   - profile.name = "${profile.name}"');
+      print('   - profile.lastName = "${profile.lastName}"');
+      print('   - displayName (for UI) = "$displayName"');
+
       emit(
         ProfileLoaded(
-          name: '${profile.name} ${profile.lastName}',
+          name: displayName,
           lastName: profile.lastName,
           email: profile.email,
           userId: userIdDisplay,

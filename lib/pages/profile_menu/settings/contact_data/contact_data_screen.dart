@@ -97,6 +97,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
 
+      print('🔍 DEBUG contact_data_screen._loadContactData():');
+      print('   - profileState.name = "$name"');
+      print('   - profileState.email = "$email"');
+      print('   - profileState.phone = "$phone"');
+
       // Загружаем сохраненные данные из Hive
       final telegram = HiveService.getUserData('telegram') as String? ?? '';
       final whatsapp = HiveService.getUserData('whatsapp') as String? ?? '';
@@ -177,6 +182,15 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           print('👤 Updating user name: ${_nameController.text}');
           // Получаем фамилию из Hive или используем пустую строку
           final lastName = HiveService.getUserData('lastName') as String? ?? '';
+
+          print('🔍 DEBUG contact_data_screen._saveContactData():');
+          print(
+            '   - Input: name = "${_nameController.text}", lastName = "$lastName"',
+          );
+          print(
+            '   - Sending to API: updateName(name: "${_nameController.text}", lastName: "$lastName")',
+          );
+
           await UserService.updateName(
             name: _nameController.text,
             lastName: lastName,

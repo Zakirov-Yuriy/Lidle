@@ -67,6 +67,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
   @override
   void initState() {
     super.initState();
+    // Initialize attribute 1048 (Вам предложат цену) to true by default
+    _selectedValues[1048] = true;
+
     _loadAttributes();
     _loadUserContacts();
     // Автозаполнение для тестирования
@@ -303,7 +306,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Контакты - только если они ещё не загружены из API
       // (Если они уже заполнены из API, не перезаписываем)
       if (_contactNameController.text.isEmpty) {
-        _contactNameController.text = 'Юрий ';
+        _contactNameController.text = 'Юрий1 ';
       }
       if (_emailController.text.isEmpty) {
         _emailController.text = '1workyury02@gmail.com';
@@ -1555,37 +1558,36 @@ class _DynamicFilterState extends State<DynamicFilter> {
               ),
               const SizedBox(height: 9),
               _buildAreaRangeField(),
-              const SizedBox(height: 15),
+              // const SizedBox(height: 15),
 
-              const SizedBox(height: 12),
+              // const SizedBox(height: 12),
 
-              const Text(
-                'Частное лицо / Бизнес*',
-                style: TextStyle(color: textPrimary, fontSize: 14),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Частное лицо',
-                    isIndividualSelected,
-                    () => _togglePersonType(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Бизнес',
-                    !isIndividualSelected,
-                    () => _togglePersonType(false),
-                  ),
-                ],
-              ),
+              // const Text(
+              //   'Частное лицо / Бизнес*',
+              //   style: TextStyle(color: textPrimary, fontSize: 14),
+              // ),
+              // const SizedBox(height: 12),
+              // Row(
+              //   children: [
+              //     _buildChoiceButton(
+              //       'Частное лицо',
+              //       isIndividualSelected,
+              //       () => _togglePersonType(true),
+              //     ),
+              //     const SizedBox(width: 10),
+              //     _buildChoiceButton(
+              //       'Бизнес',
+              //       !isIndividualSelected,
+              //       () => _togglePersonType(false),
+              //     ),
+              //   ],
+              // ),
 
-              const SizedBox(height: 12),
-              const Text(
-                'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
-                style: TextStyle(color: textMuted, fontSize: 11),
-              ),
-
+              // const SizedBox(height: 12),
+              // const Text(
+              //   'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
+              //   style: TextStyle(color: textMuted, fontSize: 11),
+              // ),
               const SizedBox(height: 18),
 
               Row(
@@ -1613,8 +1615,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
               ),
               const SizedBox(height: 18),
 
-              const SizedBox(height: 18),
-
+              // const SizedBox(height: 18),
               _buildDropdown(
                 label: 'Ваш город*',
                 hint: _selectedCity.isEmpty
@@ -1785,40 +1786,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
               const SizedBox(height: 22),
 
               // ============ Special attribute: "Вам предложат цену" ============
-              const Text(
-                'Вам предложат цену*',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedValues[1048] =
-                        !(_selectedValues[1048] as bool? ?? false);
-                  });
-                },
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Я согласен принимать предложения по цене',
-                        style: const TextStyle(
-                          color: textPrimary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    CustomCheckbox(
-                      value: (_selectedValues[1048] as bool? ?? true),
-                      onChanged: (v) =>
-                          setState(() => _selectedValues[1048] = v),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 22),
-
+              // СКРЫТО НА ЭКРАНЕ - логика отправки остается в _collectFormData()
+              // и _publishAdvert(), но UI не отображается
+              // GestureDetector и checkbox для 1048 удалены из build()
               _buildButton(
                 'Предпросмотр',
                 onPressed: () {

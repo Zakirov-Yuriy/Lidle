@@ -21,9 +21,9 @@ class ModerationDialog extends StatelessWidget {
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              children: const [
-                SizedBox(height: 20),
-                Text(
+              children: [
+                const SizedBox(height: 5),
+                const Text(
                   'Объявление на модерации',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -32,24 +32,39 @@ class ModerationDialog extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                SizedBox(height: 5),
-                Text(
-                  'от 1 час до 24 часов',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Мы вас уведомим когда объявление будет\nв Активном статусе для общего доступа.',
+                const SizedBox(height: 5),
+                const Text(
+                  'Ваше объявление отправлено на модерацию. После проверки оно будет опубликовано.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: textSecondary,
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 17),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                        color: Color(0xFF00B7FF),
+                        width: 1.5,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Продолжить',
+                      style: TextStyle(
+                        color: Color(0xFF00B7FF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
               ],

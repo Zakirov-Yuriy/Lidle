@@ -28,8 +28,10 @@ class AccountRecovery extends StatelessWidget {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
-                onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                message:
+                    'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                onClose: () =>
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
               backgroundColor: primaryBackground,
             ),
@@ -54,52 +56,50 @@ class AccountRecovery extends StatelessWidget {
         return Scaffold(
           backgroundColor: primaryBackground,
           body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical:28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              
-
-              Row(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InkWell(
-                    borderRadius: BorderRadius.circular(50),
-                    onTap: () => Navigator.maybePop(context),
-                    child: Icon(
-                      Icons.chevron_left,
-                      color: textPrimary,
-                      size: 28,
-                    ),
-                  ),
+                  Row(
+                    children: [
+                      InkWell(
+                        borderRadius: BorderRadius.circular(50),
+                        onTap: () => Navigator.maybePop(context),
+                        child: Icon(
+                          Icons.chevron_left,
+                          color: textPrimary,
+                          size: 28,
+                        ),
+                      ),
 
-                  Expanded(
-                    child: Text(
-                      'Восстановление пароля',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: textPrimary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                      Expanded(
+                        child: Text(
+                          'Восстановление пароля',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: textPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.maybePop(context),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      foregroundColor: const Color(0xFF60A5FA),
-                      textStyle: const TextStyle(
-                        fontWeight: FontWeight.w400,
-                        fontSize: 16,
+                      TextButton(
+                        onPressed: () => Navigator.maybePop(context),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          foregroundColor: const Color(0xFF60A5FA),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w400,
+                            fontSize: 16,
+                          ),
+                        ),
+                        child: const Text('Отмена'),
                       ),
-                    ),
-                    child: const Text('Отмена'),
+                    ],
                   ),
-                ],
-              ),
                   const SizedBox(height: 17),
 
                   Text(
@@ -166,11 +166,25 @@ class _RecoveryForm extends StatefulWidget {
 class _RecoveryFormState extends State<_RecoveryForm> {
   final _controller = TextEditingController();
   bool _isValid = false;
+  bool _isSubmitting = false; // Флаг для защиты от повторных нажатий
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_RecoveryForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Сброс флага при завершении загрузки (состояние isLoading изменилось с true на false)
+    if (oldWidget.isLoading && !widget.isLoading && _isSubmitting) {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 
   // ============================================================
@@ -193,11 +207,20 @@ class _RecoveryFormState extends State<_RecoveryForm> {
   // "Отправка запроса на восстановление пароля"
   // ============================================================
   void _submit() {
+    // Защита от повторных нажатий
+    if (_isSubmitting || widget.isLoading) {
+      return;
+    }
+
     final input = _controller.text.trim();
 
     if (input.isEmpty || !_isValid) {
       return;
     }
+
+    setState(() {
+      _isSubmitting = true;
+    });
 
     context.read<PasswordRecoveryBloc>().add(SendRecoveryCodeEvent(input));
   }
@@ -228,10 +251,7 @@ class _RecoveryFormState extends State<_RecoveryForm> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(5),
-              borderSide: const BorderSide(
-                color: Color(0xFF334155),
-                width: 1,
-              ),
+              borderSide: const BorderSide(color: Color(0xFF334155), width: 1),
             ),
           ),
         ),
@@ -242,7 +262,7 @@ class _RecoveryFormState extends State<_RecoveryForm> {
           width: double.infinity,
           height: 53,
           child: ElevatedButton(
-            onPressed: widget.isLoading ? null : _submit,
+            onPressed: (_isSubmitting || widget.isLoading) ? null : _submit,
             style: ElevatedButton.styleFrom(
               backgroundColor: activeIconColor,
               foregroundColor: Colors.white,
@@ -255,7 +275,7 @@ class _RecoveryFormState extends State<_RecoveryForm> {
                 fontWeight: FontWeight.w400,
               ),
             ),
-            child: widget.isLoading
+            child: (_isSubmitting || widget.isLoading)
                 ? const SizedBox(
                     width: 20,
                     height: 20,

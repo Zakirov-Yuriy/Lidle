@@ -50,13 +50,28 @@ class Advert {
       sellerRegistrationDate = user['created_at'] as String?;
     }
 
+    // Безопасный парсинг изображений
+    final imagess = <String>[];
+    if (json['images'] != null && json['images'] is List) {
+      try {
+        imagess.addAll(
+          (json['images'] as List<dynamic>)
+              .whereType<String>()
+              .where((img) => img.isNotEmpty)
+              .toList(),
+        );
+      } catch (e) {
+        print('Error parsing images for advert ${json['id']}: $e');
+      }
+    }
+
     return Advert(
       id: json['id'] ?? 0,
       date: json['date'] ?? '',
       name: json['name'] ?? '',
       price: json['price'] ?? '',
       thumbnail: json['thumbnail'],
-      images: List<String>.from(json['images'] ?? []),
+      images: imagess,
       status: json['status'] != null
           ? AdvertStatus.fromJson(json['status'])
           : AdvertStatus(id: 1, title: 'Active'),
@@ -110,11 +125,24 @@ class AdvertsResponse {
 
   factory AdvertsResponse.fromJson(Map<String, dynamic> json) {
     return AdvertsResponse(
-      data: (json['data'] as List<dynamic>)
-          .map((item) => Advert.fromJson(item as Map<String, dynamic>))
-          .toList(),
-      links: Links.fromJson(json['links']),
-      meta: Meta.fromJson(json['meta']),
+      data:
+          (json['data'] as List<dynamic>?)
+              ?.map((item) => Advert.fromJson(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      links: json['links'] != null ? Links.fromJson(json['links']) : Links(),
+      meta: json['meta'] != null
+          ? Meta.fromJson(json['meta'])
+          : Meta(
+              currentPage: 1,
+              from: 1,
+              lastPage: 1,
+              links: [],
+              path: '/adverts',
+              perPage: 10,
+              to: 10,
+              total: (json['data'] as List<dynamic>?)?.length ?? 0,
+            ),
     );
   }
 }
@@ -160,16 +188,16 @@ class Meta {
 
   factory Meta.fromJson(Map<String, dynamic> json) {
     return Meta(
-      currentPage: json['current_page'],
-      from: json['from'],
-      lastPage: json['last_page'],
-      links: (json['links'] as List<dynamic>)
+      currentPage: json['current_page'] as int? ?? 1,
+      from: json['from'] as int? ?? 1,
+      lastPage: json['last_page'] as int? ?? 1,
+      links: ((json['links'] as List<dynamic>?) ?? [])
           .map((item) => MetaLink.fromJson(item as Map<String, dynamic>))
           .toList(),
-      path: json['path'],
-      perPage: json['per_page'],
-      to: json['to'],
-      total: json['total'],
+      path: json['path'] as String? ?? '/adverts',
+      perPage: json['per_page'] as int? ?? 10,
+      to: json['to'] as int? ?? 10,
+      total: json['total'] as int? ?? 0,
     );
   }
 }

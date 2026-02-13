@@ -30,7 +30,78 @@ class UserService {
       print(
         '👤 UserService: Возвращаем профиль: ${profile.name} ${profile.lastName}',
       );
-      return profile;
+
+      // DEBUG: Детальное логирование полей
+      print('🔍 DEBUG UserService.getProfile() BEFORE FIX:');
+      print('   - profile.name = "${profile.name}"');
+      print('   - profile.lastName = "${profile.lastName}"');
+
+      // FIX: API иногда возвращает скомбинированное имя вместо отдельных полей
+      // Если nameполучилось как "Имя Фамилия Фамилия", нужно вычистить
+      String firstName = profile.name;
+      String lastName = profile.lastName;
+
+      // Если lastName не пустой и name кончается на lastName - удаляем это
+      if (lastName.isNotEmpty && firstName.endsWith(lastName)) {
+        // Убираем фамилию из конца имени
+        firstName = firstName
+            .substring(0, firstName.length - lastName.length)
+            .trim();
+        print('   ✏️ FIXED: Removed trailing lastName from name');
+      }
+
+      // Если в конце первого имени есть пробел - убираем его
+      if (firstName.contains(' ${lastName}')) {
+        firstName = firstName.replaceAll(' ${lastName}', '').trim();
+        print('   ✏️ FIXED: Removed space-separated lastName');
+      }
+
+      // Проверяем если уже нет дублирования
+      final parts = firstName.split(' ');
+      print('   - Parts in name: $parts');
+
+      // Если есть дублирование (например "Юрий Зак Зак"), оставляем только "Юрий"
+      // Ищем повторение слов в конце
+      if (parts.length > 1) {
+        bool hasDuplicate = false;
+        for (int i = 1; i < parts.length - 1; i++) {
+          if (parts[i] == parts[parts.length - 1]) {
+            // Нашли повторение - берем только первое имя
+            firstName = parts.first;
+            hasDuplicate = true;
+            print(
+              '   ✏️ FIXED: Detected duplicate in name, keeping only first part',
+            );
+            break;
+          }
+        }
+      }
+
+      print('🔍 DEBUG UserService.getProfile() AFTER FIX:');
+      print('   - firstName = "$firstName"');
+      print('   - lastName = "$lastName"');
+
+      // Создаем новый профиль с исправленными значениями
+      final correctedProfile = UserProfile(
+        id: profile.id,
+        name: firstName,
+        lastName: lastName,
+        email: profile.email,
+        phone: profile.phone,
+        nickname: profile.nickname,
+        avatar: profile.avatar,
+        about: profile.about,
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+        emailVerifiedAt: profile.emailVerifiedAt,
+        phoneVerifiedAt: profile.phoneVerifiedAt,
+        offersCount: profile.offersCount,
+        newOffersCount: profile.newOffersCount,
+        contacts: profile.contacts,
+        qrCode: profile.qrCode,
+      );
+
+      return correctedProfile;
     } catch (e) {
       if (e.toString().contains('Token expired')) {
         final newToken = await ApiService.refreshToken(token);

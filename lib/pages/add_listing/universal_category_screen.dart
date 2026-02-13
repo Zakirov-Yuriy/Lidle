@@ -169,7 +169,12 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
 
           // Title
           Padding(
-            padding: const EdgeInsets.only(left: 25, right: 25, top: 7),
+            padding: const EdgeInsets.only(
+              left: 25,
+              right: 25,
+              top: 7,
+              bottom: 5,
+            ),
             child: Text(
               _getTitle(),
               style: const TextStyle(
@@ -310,7 +315,7 @@ class _CategoryTile extends StatelessWidget {
                 child: Text(
                   category.name,
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w500,
                     color: Colors.white,
                   ),

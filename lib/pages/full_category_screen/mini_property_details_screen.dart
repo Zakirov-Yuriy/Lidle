@@ -157,13 +157,20 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     final precacheFutures = <Future<void>>[];
 
     for (final imageUrl in images) {
+      if (imageUrl.isEmpty) continue;
+
       if (imageUrl.startsWith('http')) {
-        // Precache network images
+        // Precache network images with timeout
         precacheFutures.add(
           precacheImage(
             NetworkImage(imageUrl),
             context,
             size: const Size(400, 260),
+          ).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              print('Timeout loading image: $imageUrl');
+            },
           ),
         );
       } else {
@@ -173,13 +180,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             AssetImage(imageUrl),
             context,
             size: const Size(400, 260),
+          ).timeout(
+            const Duration(seconds: 3),
+            onTimeout: () {
+              print('Timeout loading asset image: $imageUrl');
+            },
           ),
         );
       }
     }
 
     try {
-      await Future.wait(precacheFutures);
+      await Future.wait(precacheFutures, eagerError: false);
       print('Successfully precached ${images.length} images');
     } catch (e) {
       print('Error precaching images: $e');

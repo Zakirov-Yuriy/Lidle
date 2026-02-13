@@ -18,13 +18,26 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
-import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+
+// ============================================================
+// "Вспомогательная функция для правильного склонения слова"
+// ============================================================
+String _getPluralForm(int count) {
+  if (count % 10 == 1 && count % 100 != 11) {
+    return 'товар';
+  } else if ((count % 10 >= 2 && count % 10 <= 4) &&
+      (count % 100 < 10 || count % 100 >= 20)) {
+    return 'товара';
+  } else {
+    return 'товаров';
+  }
+}
 
 class ProfileDashboard extends StatelessWidget {
   static const routeName = '/profile-dashboard';
@@ -125,20 +138,24 @@ class ProfileDashboard extends StatelessWidget {
                                         builder: (context, box, child) {
                                           final favorites =
                                               HiveService.getFavorites();
-                                          final allListings =
-                                              ListingsBloc.staticListings;
-                                          final favoritedCount = allListings
-                                              .where(
-                                                (listing) => favorites.contains(
-                                                  listing.id,
-                                                ),
-                                              )
-                                              .length;
+
+                                          // ✅ Отладка: логируем количество избранных
+                                          print(
+                                            '❤️ Favorites count: ${favorites.length}',
+                                          );
+                                          print('   Favorites IDs: $favorites');
+
+                                          // Используем длину списка избранного напрямую
+                                          // (это более надёжно чем подсчёт через ListingsBloc.staticListings)
+                                          final favoritedCount =
+                                              favorites.length;
+
                                           return _QuickCard(
                                             iconPath:
                                                 'assets/profile_dashboard/heart-rounded.svg',
                                             title: 'Избранное',
-                                            subtitle: '$favoritedCount товаров',
+                                            subtitle:
+                                                '$favoritedCount ${_getPluralForm(favoritedCount)}',
                                             onTap: () => Navigator.of(
                                               context,
                                             ).pushNamed('/favorites'),

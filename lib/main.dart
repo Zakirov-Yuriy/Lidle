@@ -37,38 +37,38 @@ import 'package:lidle/pages/auth/account_recovery_code.dart';
 import 'package:lidle/pages/auth/account_recovery_new_password.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
-import 'pages/home_page.dart';
-import 'pages/auth/sign_in_screen.dart';
-import 'pages/profile_dashboard/profile_dashboard.dart';
-import 'pages/profile_menu/profile_menu_screen.dart';
-import 'pages/profile_menu/invite_friends/invite_friends_screen.dart';
-import 'pages/profile_menu/invite_friends/find_by_phone_screen.dart';
-import 'pages/profile_menu/invite_friends/connect_contacts_screen.dart';
-import 'pages/profile_menu/settings/settings_screen.dart';
-import 'pages/profile_menu/settings/devices/devices_screen.dart';
-import 'pages/profile_menu/settings/delete_account/delete_account_screen.dart';
-import 'pages/profile_menu/settings/privacy_policy/privacy_policy_screen.dart';
-import 'pages/profile_menu/settings/faq/faq_screen.dart';
-import 'pages/profile_menu/support_service_screen.dart';
-import 'pages/favorites_screen.dart';
-import 'pages/add_listing/add_listing_screen.dart';
-import 'pages/add_listing/category_selection_screen.dart';
-import 'pages/add_listing/payment_screen.dart';
-import 'pages/full_category_screen/full_category_screen.dart';
-import 'pages/full_category_screen/map_screen.dart';
-import 'pages/my_purchases_screen.dart';
-import 'pages/messages/messages_page.dart'; // Corrected import
-import 'pages/messages/messages_archive_page.dart';
-import 'pages/profile_dashboard/user_messages/user_messages_list_screen.dart';
-import 'pages/profile_dashboard/user_messages/user_messages_archive_list_screen.dart';
-import 'pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
-import 'pages/profile_dashboard/company_messages/company_messages_archive_list_screen.dart';
-import 'pages/profile_dashboard/offers/price_offers_empty_page.dart';
-import 'pages/profile_dashboard/offers/price_accepted_page.dart';
-import 'pages/profile_dashboard/offers/price_offers_list_page.dart'; // Import the new page
-import 'pages/profile_dashboard/offers/incoming_price_offer_page.dart'; // Import the new page
-import 'pages/profile_dashboard/offers/user_account_page.dart'; // Import UserAccountPage
-import 'pages/profile_dashboard/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
+import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/pages/auth/sign_in_screen.dart';
+import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/pages/profile_menu/profile_menu_screen.dart';
+import 'package:lidle/pages/profile_menu/invite_friends/invite_friends_screen.dart';
+import 'package:lidle/pages/profile_menu/invite_friends/find_by_phone_screen.dart';
+import 'package:lidle/pages/profile_menu/invite_friends/connect_contacts_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/settings_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/devices/devices_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/delete_account/delete_account_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/privacy_policy/privacy_policy_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/faq/faq_screen.dart';
+import 'package:lidle/pages/profile_menu/support_service_screen.dart';
+import 'package:lidle/pages/favorites_screen.dart';
+import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/add_listing/category_selection_screen.dart';
+import 'package:lidle/pages/add_listing/payment_screen.dart';
+import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+import 'package:lidle/pages/full_category_screen/map_screen.dart';
+import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/messages/messages_page.dart'; // Corrected import
+import 'package:lidle/pages/messages/messages_archive_page.dart';
+import 'package:lidle/pages/profile_dashboard/user_messages/user_messages_list_screen.dart';
+import 'package:lidle/pages/profile_dashboard/user_messages/user_messages_archive_list_screen.dart';
+import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_list_screen.dart';
+import 'package:lidle/pages/profile_dashboard/company_messages/company_messages_archive_list_screen.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_accepted_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_offers_list_page.dart'; // Import the new page
+import 'package:lidle/pages/profile_dashboard/offers/incoming_price_offer_page.dart'; // Import the new page
+import 'package:lidle/pages/profile_dashboard/offers/user_account_page.dart'; // Import UserAccountPage
+import 'package:lidle/pages/profile_dashboard/offers/user_account_only_page.dart'; // Import UserAccountOnlyPage
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/discounts_and_promotions_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
@@ -80,7 +80,7 @@ import 'package:lidle/pages/profile_menu/settings/devices/qr_scanner/qr_scanner_
 import 'package:lidle/pages/profile_menu/contacts/contacts_screen.dart';
 import 'package:lidle/pages/profile_menu/user_qr/user_qr_screen.dart';
 import 'package:lidle/pages/profile_menu/user_qr/qr_print_templates_screen.dart';
-import 'models/offer_model.dart';
+import 'package:lidle/models/offer_model.dart';
 
 // RouteObserver для отслеживания навигации
 final RouteObserver<ModalRoute<void>> routeObserver =

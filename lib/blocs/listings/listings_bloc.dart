@@ -119,7 +119,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       id: catalog.id,
       title: _formatCategoryTitle(catalog.name ?? ''),
       color: colors[colorIndex],
-      imagePath: catalog.thumbnail ?? 'assets/home_page/default_category.png',
+      imagePath: catalog.thumbnail ?? 'assets/home_page/image2.png',
     );
   }
 

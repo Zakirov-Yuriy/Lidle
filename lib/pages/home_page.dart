@@ -300,8 +300,8 @@ class _HomePageState extends State<HomePage> {
         )
         .toList();
 
-    // Берем максимум 4 первые категории
-    final displayCategories = filteredCategories.take(4).toList();
+    // Берем максимум 3 первые категории
+    final displayCategories = filteredCategories.take(3).toList();
 
     // Добавляем "Смотреть все" в конец если оно есть в исходном списке
     final viewAllCategory = categories.firstWhere(
@@ -601,54 +601,37 @@ class _HomePageState extends State<HomePage> {
 
               return Column(
                 children: [
-                  GridView.builder(
-                    padding: const EdgeInsets.only(left: 12, right: 12),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 9,
-                      mainAxisSpacing: 0,
-                      mainAxisExtent: tileHeight,
-                    ),
-                    itemCount: listings.length,
-                    itemBuilder: (context, index) {
-                      return ListingCard(listing: listings[index]);
+                  NotificationListener<ScrollNotification>(
+                    onNotification: (ScrollNotification scrollInfo) {
+                      // Проверяем достигнут ли конец списка
+                      if (scrollInfo.metrics.pixels ==
+                          scrollInfo.metrics.maxScrollExtent) {
+                        // Загружаем следующую страницу если есть еще страницы
+                        if (state is ListingsLoaded &&
+                            state.currentPage < state.totalPages) {
+                          context.read<ListingsBloc>().add(
+                            LoadNextPageEvent(),
+                          );
+                        }
+                      }
+                      return false;
                     },
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                  ),
-                  // Кнопка для загрузки следующей страницы
-                  // Показывается только если есть еще страницы для загрузки
-                  if (state is ListingsLoaded &&
-                      state.currentPage < state.totalPages)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 16.0,
-                        horizontal: 12.0,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.only(left: 12, right: 12),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 9,
+                        mainAxisSpacing: 0,
+                        mainAxisExtent: tileHeight,
                       ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            // Отправляем событие для загрузки следующей страницы
-                            context.read<ListingsBloc>().add(
-                              LoadNextPageEvent(),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B5CF6),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: const Text(
-                            'Загрузить еще',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
+                      itemCount: listings.length,
+                      itemBuilder: (context, index) {
+                        return ListingCard(listing: listings[index]);
+                      },
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                     ),
+                  ),
                 ],
               );
             },
