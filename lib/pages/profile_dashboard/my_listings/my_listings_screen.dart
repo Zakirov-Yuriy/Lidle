@@ -922,7 +922,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DynamicFilter(),
+                            builder: (context) =>
+                                DynamicFilter(categoryId: advert.type.id),
                           ),
                         );
                       },
@@ -970,7 +971,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const DynamicFilter(),
+                              builder: (context) =>
+                                  DynamicFilter(categoryId: advert.type.id),
                             ),
                           );
                         },
@@ -1001,7 +1003,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const DynamicFilter(),
+                              builder: (context) =>
+                                  DynamicFilter(categoryId: advert.type.id),
                             ),
                           );
                         },
@@ -1030,7 +1033,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const DynamicFilter(),
+                              builder: (context) =>
+                                  DynamicFilter(categoryId: advert.type.id),
                             ),
                           );
                         },

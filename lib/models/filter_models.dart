@@ -19,6 +19,7 @@ class Attribute with _$Attribute {
     dynamic maxValue,
     String? vmText,
     String? dataType,
+    @Default('') String style,
     required int order,
     @Default([]) List<Value> values,
   }) = _Attribute;

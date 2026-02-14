@@ -25,6 +25,7 @@ Map<String, dynamic> _$RegionsResponseToJson(RegionsResponse instance) =>
     <String, dynamic>{'data': instance.data};
 
 Address _$AddressFromJson(Map<String, dynamic> json) => Address(
+  id: (json['id'] as num?)?.toInt(),
   type: json['type'] as String,
   main_region: json['main_region'] == null
       ? null
@@ -41,16 +42,23 @@ Address _$AddressFromJson(Map<String, dynamic> json) => Address(
   street: json['street'] == null
       ? null
       : Region.fromJson(json['street'] as Map<String, dynamic>),
+  building: json['building'] == null
+      ? null
+      : Region.fromJson(json['building'] as Map<String, dynamic>),
+  building_number: json['building_number'] as String?,
   full_address: json['full_address'] as String,
 );
 
 Map<String, dynamic> _$AddressToJson(Address instance) => <String, dynamic>{
+  'id': instance.id,
   'type': instance.type,
   'main_region': instance.main_region,
   'region': instance.region,
   'city': instance.city,
   'district': instance.district,
   'street': instance.street,
+  'building': instance.building,
+  'building_number': instance.building_number,
   'full_address': instance.full_address,
 };
 

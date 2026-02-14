@@ -26,7 +26,7 @@ class _FiltersHousesShellScreenenState
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;
@@ -430,42 +430,42 @@ class _FiltersHousesShellScreenenState
                     const SizedBox(height: 10),
 
                     _buildDropdown(
-                label: 'Тип кровли',
-                hint: _selectedRoofTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedRoofTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return SelectionDialog(
-                        title: 'Тип кровли',
-                        options: const [
-                          'Металлочерепица',
-                          'Профнастил',
-                          'Шифер',
-                          'Гибкая черепица',
-                          'Ондулин',
-                          'Плоская кровля',
-                          'Деревянная',
-                          'Комбинированная',
-                          'Другое',
-                        ],
-                        selectedOptions: _selectedRoofTypes,
-                        onSelectionChanged: (selected) {
-                          setState(() => _selectedRoofTypes = selected);
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
+                      label: 'Тип кровли',
+                      hint: _selectedRoofTypes.isEmpty
+                          ? 'Выбрать'
+                          : _selectedRoofTypes.join(', '),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: textSecondary,
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SelectionDialog(
+                              title: 'Тип кровли',
+                              options: const [
+                                'Металлочерепица',
+                                'Профнастил',
+                                'Шифер',
+                                'Гибкая черепица',
+                                'Ондулин',
+                                'Плоская кровля',
+                                'Деревянная',
+                                'Комбинированная',
+                                'Другое',
+                              ],
+                              selectedOptions: _selectedRoofTypes,
+                              onSelectionChanged: (selected) {
+                                setState(() => _selectedRoofTypes = selected);
+                              },
+                              allowMultipleSelection: false,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
 
                     _buildDropdown(
                       label: 'Санузел',
@@ -553,9 +553,6 @@ class _FiltersHousesShellScreenenState
                       onRightTap: () => setState(() => _isFurnished = false),
                     ),
                     const SizedBox(height: 16),
-
-                    
-                    
 
                     _buildDropdown(
                       label: 'Мультимедиа',

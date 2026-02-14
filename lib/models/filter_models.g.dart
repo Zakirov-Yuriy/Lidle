@@ -21,6 +21,7 @@ _$AttributeImpl _$$AttributeImplFromJson(Map<String, dynamic> json) =>
       maxValue: json['maxValue'],
       vmText: json['vmText'] as String?,
       dataType: json['dataType'] as String?,
+      style: json['style'] as String? ?? '',
       order: (json['order'] as num).toInt(),
       values:
           (json['values'] as List<dynamic>?)
@@ -44,6 +45,7 @@ Map<String, dynamic> _$$AttributeImplToJson(_$AttributeImpl instance) =>
       'maxValue': instance.maxValue,
       'vmText': instance.vmText,
       'dataType': instance.dataType,
+      'style': instance.style,
       'order': instance.order,
       'values': instance.values,
     };

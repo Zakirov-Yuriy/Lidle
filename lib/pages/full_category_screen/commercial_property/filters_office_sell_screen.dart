@@ -25,7 +25,7 @@ class _FiltersOfficeSellScreenenState extends State<FiltersOfficeSellScreenen> {
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;

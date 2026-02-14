@@ -263,7 +263,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    DynamicFilter(category: category),
+                                    DynamicFilter(categoryId: category.id),
                               ),
                             );
                           }

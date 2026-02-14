@@ -301,7 +301,7 @@ class _HomePageState extends State<HomePage> {
         .toList();
 
     // Берем максимум 3 первые категории
-    final displayCategories = filteredCategories.take(3).toList();
+    final displayCategories = filteredCategories.take(4).toList();
 
     // Добавляем "Смотреть все" в конец если оно есть в исходном списке
     final viewAllCategory = categories.firstWhere(
@@ -609,9 +609,7 @@ class _HomePageState extends State<HomePage> {
                         // Загружаем следующую страницу если есть еще страницы
                         if (state is ListingsLoaded &&
                             state.currentPage < state.totalPages) {
-                          context.read<ListingsBloc>().add(
-                            LoadNextPageEvent(),
-                          );
+                          context.read<ListingsBloc>().add(LoadNextPageEvent());
                         }
                       }
                       return false;

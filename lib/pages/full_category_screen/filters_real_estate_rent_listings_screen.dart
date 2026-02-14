@@ -22,12 +22,11 @@ class FiltersRealEstateRentListingsScreen extends StatefulWidget {
 
 class _FiltersRealEstateRentListingsScreenState
     extends State<FiltersRealEstateRentListingsScreen> {
-
   String _sortType = 'newest';
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;
@@ -635,9 +634,7 @@ class _FiltersRealEstateRentListingsScreenState
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: defaultPadding,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
       child: Row(
         children: [
           GestureDetector(
@@ -908,8 +905,7 @@ class _FiltersRealEstateRentListingsScreenState
                 borderRadius: BorderRadius.circular(6),
               ),
             ),
-            onPressed: () {
-            },
+            onPressed: () {},
             child: Text(
               'Сохранить настройки фильтра',
               style: TextStyle(color: Colors.red, fontSize: 14),
@@ -927,8 +923,7 @@ class _FiltersRealEstateRentListingsScreenState
                 borderRadius: BorderRadius.circular(6),
               ),
             ),
-            onPressed: () {
-            },
+            onPressed: () {},
             child: const Text(
               'Показать на карте',
               style: TextStyle(color: textPrimary, fontSize: 14),
@@ -955,7 +950,6 @@ class _FiltersRealEstateRentListingsScreenState
             ),
           ),
         ),
-
       ],
     );
   }
@@ -995,7 +989,10 @@ class _FiltersRealEstateRentListingsScreenState
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 isCollapsed: true,
-                hintStyle: TextStyle(color: Color.fromARGB(255, 255, 255, 255), fontSize: 14),
+                hintStyle: TextStyle(
+                  color: Color.fromARGB(255, 255, 255, 255),
+                  fontSize: 14,
+                ),
               ).copyWith(hintText: hint),
             ),
           ),
@@ -1118,13 +1115,13 @@ class _FiltersRealEstateRentListingsScreenState
                   child: Text(
                     hint,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color.fromARGB(255, 255, 255, 255), fontSize: 14),
+                    style: const TextStyle(
+                      color: Color.fromARGB(255, 255, 255, 255),
+                      fontSize: 14,
+                    ),
                   ),
                 ),
-                const Icon(
-                  Icons.keyboard_arrow_down,
-                  color: textSecondary,
-                ),
+                const Icon(Icons.keyboard_arrow_down, color: textSecondary),
               ],
             ),
           ),

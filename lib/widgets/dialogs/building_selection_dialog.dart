@@ -1,22 +1,17 @@
 // ============================================================
-//  "Диалог выбора города"
+//  "Диалог выбора номера дома с поиском"
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 
-class _LetterHeader {
-  final String letter;
-  _LetterHeader(this.letter);
-}
-
-class CitySelectionDialog extends StatefulWidget {
+class BuildingSelectionDialog extends StatefulWidget {
   final String title;
   final List<String> options;
   final Set<String> selectedOptions;
   final Function(Set<String>) onSelectionChanged;
 
-  const CitySelectionDialog({
+  const BuildingSelectionDialog({
     super.key,
     required this.title,
     required this.options,
@@ -25,19 +20,20 @@ class CitySelectionDialog extends StatefulWidget {
   });
 
   @override
-  State<CitySelectionDialog> createState() => _CitySelectionDialogState();
+  State<BuildingSelectionDialog> createState() =>
+      _BuildingSelectionDialogState();
 }
 
-class _CitySelectionDialogState extends State<CitySelectionDialog> {
+class _BuildingSelectionDialogState extends State<BuildingSelectionDialog> {
   late Set<String> _currentSelectedOptions;
-  late List<dynamic> _displayOptions;
+  late List<String> _displayOptions;
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _currentSelectedOptions = Set<String>.from(widget.selectedOptions);
-    _buildDisplayOptions(widget.options); // Initial build
+    _buildDisplayOptions(widget.options);
     _searchController.addListener(_filterOptions);
   }
 
@@ -48,55 +44,44 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     super.dispose();
   }
 
-  /// Извлекает основное название города, удаляя префиксы (г., м.о., с. и т.д.)
-  String _getCityMainName(String fullCityName) {
-    // Удаляем префиксы: "г. ", "м.о. ", "с. ", "г.о. ", "пгт. " и т.д.
-    String mainName = fullCityName
-        .replaceAll(RegExp(r'^г\.\s+'), '')
-        .replaceAll(RegExp(r'^м\.о\.\s+'), '')
-        .replaceAll(RegExp(r'^с\.\s+'), '')
-        .replaceAll(RegExp(r'^г\.о\.\s+'), '')
-        .replaceAll(RegExp(r'^пгт\.\s+'), '')
-        .replaceAll(RegExp(r'^пс\.\s+'), '')
-        .replaceAll(RegExp(r'^п\.\s+'), '')
+  /// Извлекает основной номер дома, удаляя префиксы (д., дом и т.д.)
+  String _getBuildingMainNumber(String fullBuildingName) {
+    // Удаляем префиксы: "д. ", "дом " и т.д.
+    String mainName = fullBuildingName
+        .replaceAll(RegExp(r'^д\.\s+'), '')
+        .replaceAll(RegExp(r'^дом\s+'), '')
         .trim();
-    return mainName.isNotEmpty ? mainName : fullCityName;
+    return mainName.isNotEmpty ? mainName : fullBuildingName;
   }
 
-  void _buildDisplayOptions(List<String> cities) {
-    List<dynamic> newDisplayOptions = [];
-    String? currentLetter;
-    List<String> mutableCities = List<String>.from(cities);
+  void _buildDisplayOptions(List<String> buildings) {
+    List<String> mutableBuildings = List<String>.from(buildings);
 
-    // Сортируем по основному названию города, игнорируя префиксы
-    mutableCities.sort((a, b) {
-      String mainA = _getCityMainName(a);
-      String mainB = _getCityMainName(b);
+    // Сортируем по основному номеру дома
+    mutableBuildings.sort((a, b) {
+      String mainA = _getBuildingMainNumber(a);
+      String mainB = _getBuildingMainNumber(b);
+      // Попытаемся сортировать численно, если это числа
+      int? numA = int.tryParse(mainA);
+      int? numB = int.tryParse(mainB);
+      if (numA != null && numB != null) {
+        return numA.compareTo(numB);
+      }
+      // Иначе сортируем как строки
       return mainA.compareTo(mainB);
     });
 
-    for (var city in mutableCities) {
-      // Берем первую букву основного названия для группировки
-      String mainName = _getCityMainName(city);
-      final firstLetter = mainName[0].toUpperCase();
-
-      if (firstLetter != currentLetter) {
-        newDisplayOptions.add(_LetterHeader(firstLetter));
-        currentLetter = firstLetter;
-      }
-      newDisplayOptions.add(city);
-    }
     setState(() {
-      _displayOptions = newDisplayOptions;
+      _displayOptions = mutableBuildings;
     });
   }
 
   void _filterOptions() {
     final query = _searchController.text.toLowerCase();
-    List<String> filteredCities = widget.options.where((option) {
-      return option.toLowerCase().contains(query);
-    }).toList();
-    _buildDisplayOptions(filteredCities);
+    List<String> filteredBuildings = widget.options
+        .where((option) => option.toLowerCase().contains(query))
+        .toList();
+    _buildDisplayOptions(filteredBuildings);
   }
 
   @override
@@ -122,6 +107,7 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
               children: [
                 Text(
                   widget.title,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: textPrimary,
                     fontSize: 18,
@@ -162,48 +148,31 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                     shrinkWrap: true,
                     itemCount: _displayOptions.length,
                     itemBuilder: (context, index) {
-                      final item = _displayOptions[index];
-                      if (item is _LetterHeader) {
-                        return Padding(
+                      final option = _displayOptions[index];
+                      final isSelected = _currentSelectedOptions.contains(
+                        option,
+                      );
+                      return GestureDetector(
+                        onTap: () {
+                          _currentSelectedOptions.clear();
+                          _currentSelectedOptions.add(option);
+                          widget.onSelectionChanged(_currentSelectedOptions);
+                          Navigator.of(context).pop();
+                        },
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 8.0),
                           child: Text(
-                            item.letter,
-                            style: const TextStyle(
-                              color: textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            option,
+                            style: TextStyle(
+                              color: isSelected ? activeIconColor : textPrimary,
+                              fontSize: 16,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
-                        );
-                      } else {
-                        final option = item as String;
-                        final isSelected = _currentSelectedOptions.contains(
-                          option,
-                        );
-                        return GestureDetector(
-                          onTap: () {
-                            _currentSelectedOptions.clear();
-                            _currentSelectedOptions.add(option);
-                            widget.onSelectionChanged(_currentSelectedOptions);
-                            Navigator.of(context).pop();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(
-                              option,
-                              style: TextStyle(
-                                color: isSelected
-                                    ? activeIconColor
-                                    : textPrimary,
-                                fontSize: 16,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
+                        ),
+                      );
                     },
                   ),
                 ),

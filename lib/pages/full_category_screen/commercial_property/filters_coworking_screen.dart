@@ -668,7 +668,7 @@ class _FiltersCoworkingScreenenState extends State<FiltersCoworkingScreenen> {
           value: isBargain,
           onChanged: (v) => setState(() => isBargain = v),
         ),
-       
+
         const SizedBox(height: 8),
         _buildCheckboxRow(
           title: 'Работа с риелторами',
@@ -681,8 +681,8 @@ class _FiltersCoworkingScreenenState extends State<FiltersCoworkingScreenen> {
           value: isQuickBuyout,
           onChanged: (v) => setState(() => isQuickBuyout = v),
         ),
-       
-         const SizedBox(height: 8),
+
+        const SizedBox(height: 8),
         _buildCheckboxRow(
           title: 'Без комиссии',
           value: isNoCommission,
@@ -999,6 +999,4 @@ class _FiltersCoworkingScreenenState extends State<FiltersCoworkingScreenen> {
       },
     );
   }
-
-
 }

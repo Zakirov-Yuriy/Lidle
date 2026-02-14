@@ -13,9 +13,9 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import '../../../constants.dart';
 import '../../../services/api_service.dart';
+import '../../../services/address_service.dart';
 import '../../../services/user_service.dart';
 import '../../../models/filter_models.dart';
-import '../../../models/catalog_model.dart';
 import '../../../models/create_advert_model.dart';
 import '../../../hive_service.dart';
 import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
@@ -27,9 +27,9 @@ import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 class DynamicFilter extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
-  final Category? category;
+  final int? categoryId;
 
-  const DynamicFilter({super.key, this.category});
+  const DynamicFilter({super.key, this.categoryId});
 
   @override
   State<DynamicFilter> createState() => _DynamicFilterState();
@@ -45,6 +45,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
   bool _isPublishing = false;
   String _publishingProgress = '';
   Map<int, TextEditingController> _controllers = {};
+
+  // Category name
+  String _categoryName = '';
 
   // User contacts
   List<Map<String, dynamic>> _userPhones = [];
@@ -64,6 +67,24 @@ class _DynamicFilterState extends State<DynamicFilter> {
   final TextEditingController _whatsappController = TextEditingController();
   final TextEditingController _buildingController = TextEditingController();
 
+  // Address data from API
+  List<Map<String, dynamic>> _regions = [];
+  List<Map<String, dynamic>> _cities = [];
+  List<Map<String, dynamic>> _streets = [];
+  List<Map<String, dynamic>> _buildings = [];
+
+  // Selected address values
+  Set<String> _selectedRegion = {};
+  Set<String> _selectedCity = {};
+  Set<String> _selectedStreet = {};
+  Set<String> _selectedBuilding = {};
+
+  // Store IDs for API submission
+  int? _selectedRegionId;
+  int? _selectedCityId;
+  int? _selectedStreetId;
+  int? _selectedBuildingId;
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +93,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
     _loadAttributes();
     _loadUserContacts();
+    _loadRegions();
     // Автозаполнение для тестирования
     Future.delayed(const Duration(milliseconds: 500), () {
       _autoFillFormForTesting();
@@ -97,10 +119,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   Future<void> _loadAttributes() async {
     try {
-      print('Loading filters for category: ${widget.category?.id ?? 2}');
+      print('Loading filters for category: ${widget.categoryId ?? 2}');
       final token = await HiveService.getUserData('token');
       final response = await ApiService.getMetaFilters(
-        categoryId: widget.category?.id ?? 2,
+        categoryId: widget.categoryId ?? 2,
         token: token,
       );
       print('Loaded ${response.filters.length} filters');
@@ -145,6 +167,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _isLoading = false;
         });
       }
+
+      // Load category name
+      _loadCategoryInfo();
     } catch (e) {
       print('Error loading filters from API: $e');
       if (mounted) {
@@ -156,6 +181,65 @@ class _DynamicFilterState extends State<DynamicFilter> {
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) _loadAttributes();
       });
+    }
+  }
+
+  Future<void> _loadRegions() async {
+    try {
+      print('📍 Loading regions from API...');
+      final token = await HiveService.getUserData('token');
+
+      final regions = await ApiService.getRegions(token: token);
+
+      if (mounted) {
+        setState(() {
+          _regions = regions;
+        });
+      }
+      print('✅ Loaded ${regions.length} regions');
+    } catch (e) {
+      print('❌ Error loading regions: $e');
+      // Try again after 3 seconds
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) _loadRegions();
+      });
+    }
+  }
+
+  Future<void> _loadCategoryInfo() async {
+    try {
+      if (widget.categoryId == null) {
+        print('⚠️ Category ID is null, using default name');
+        if (mounted) {
+          setState(() {
+            _categoryName = 'Долгосрочная аренда комнат';
+          });
+        }
+        return;
+      }
+
+      final token = await HiveService.getUserData('token');
+      print('📦 Loading category info for ID: ${widget.categoryId}');
+
+      // Get category info by ID
+      final category = await ApiService.getCategory(
+        widget.categoryId!,
+        token: token,
+      );
+
+      if (mounted) {
+        setState(() {
+          _categoryName = category.name;
+        });
+      }
+      print('✅ Category name loaded: $_categoryName');
+    } catch (e) {
+      print('❌ Error loading category info: $e');
+      if (mounted) {
+        setState(() {
+          _categoryName = 'Категория';
+        });
+      }
     }
   }
 
@@ -306,7 +390,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Контакты - только если они ещё не загружены из API
       // (Если они уже заполнены из API, не перезаписываем)
       if (_contactNameController.text.isEmpty) {
-        _contactNameController.text = 'Юрий1 ';
+        _contactNameController.text = 'Юрий ';
       }
       if (_emailController.text.isEmpty) {
         _emailController.text = '1workyury02@gmail.com';
@@ -322,6 +406,46 @@ class _DynamicFilterState extends State<DynamicFilter> {
       if (_userEmails.isNotEmpty) {
         print('✅ Selected first email: ${_userEmails[0]['email']}');
       }
+
+      // Автозаполнение адресных полей
+      if (_regions.isNotEmpty) {
+        final firstRegion = _regions[0];
+        _selectedRegion = {firstRegion['name'] ?? 'Region'};
+        _selectedRegionId = firstRegion['id'];
+        print('✅ Auto-selected region: ${_selectedRegion}');
+      }
+
+      // После выбора региона автоматически загружаем города (отложено)
+      Future.delayed(const Duration(milliseconds: 300), () async {
+        if (_selectedRegionId != null && _cities.isEmpty) {
+          await _loadCitiesForSelectedRegion();
+          // Затем автоматически выбираем первый город
+          if (_cities.isNotEmpty && _selectedCity.isEmpty) {
+            final firstCity = _cities[0];
+            setState(() {
+              _selectedCity = {firstCity['name'] ?? 'City'};
+              _selectedCityId = firstCity['id'];
+              print('✅ Auto-selected city: ${_selectedCity}');
+            });
+
+            // После выбора города автоматически загружаем улицы
+            Future.delayed(const Duration(milliseconds: 300), () async {
+              if (_selectedCityId != null && _streets.isEmpty) {
+                await _loadStreetsForSelectedCity();
+                // Затем автоматически выбираем первую улицу
+                if (_streets.isNotEmpty && _selectedStreet.isEmpty) {
+                  final firstStreet = _streets[0];
+                  setState(() {
+                    _selectedStreet = {firstStreet['name'] ?? 'Street'};
+                    _selectedStreetId = firstStreet['id'];
+                    print('✅ Auto-selected street: ${_selectedStreet}');
+                  });
+                }
+              }
+            });
+          }
+        }
+      });
 
       // Автозаполнение атрибутов фильтров
       // 1040 - Этаж (floor)
@@ -351,32 +475,115 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // NOTE: "Вам предложат цену" filter will be added in _collectFormData
       // since it's not returned by API but required for validation
 
-      // Select city and street for address
-      // Using valid examples from backend: г. Ждановка (city_id=70), кв-л 28/33 (street_id=9199)
-      _selectedCity = {'г. Ждановка'}; // city_id from API
-      _selectedStreet = {'кв-л 28/33'}; // street_id from API
-
-      // Auto-fill building number
-      _buildingController.text = 'д. 15А';
-
       print('🧪 Auto-fill completed:');
       print('   Title: ${_titleController.text}');
-      print('   City: ${_selectedCity.first}');
-      print('   Street: ${_selectedStreet.first}');
-      print('   Building: ${_buildingController.text}');
       print('   Price: ${_priceController.text}');
       print('   Selected values: $_selectedValues');
     });
   }
 
-  Set<String> _selectedCity = {};
-  Set<String> _selectedStreet = {};
+  /// Загружает города для выбранного региона при автозаполнении
+  Future<void> _loadCitiesForSelectedRegion() async {
+    if (_selectedRegionId == null) return;
+
+    try {
+      final token = await HiveService.getUserData('token');
+      String searchQuery = 'по'; // Default search term
+
+      if (_selectedRegion.isNotEmpty) {
+        final regionName = _selectedRegion.first;
+        if (regionName.length >= 3) {
+          searchQuery = regionName.length > 50
+              ? regionName.substring(0, 50)
+              : regionName;
+        } else {
+          searchQuery = regionName + '   '; // Pad to at least 3
+        }
+      }
+
+      final response = await AddressService.searchAddresses(
+        query: searchQuery,
+        token: token,
+        types: ['city'],
+      );
+
+      print(
+        '🔍 Auto-load cities: API returned ${response.data.length} results',
+      );
+
+      final uniqueCities = <String, int>{};
+      for (final result in response.data) {
+        if (result.main_region?.id == _selectedRegionId &&
+            result.city != null) {
+          uniqueCities[result.city!.name] = result.city!.id;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _cities = uniqueCities.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+        });
+        print('✅ Auto-loaded ${_cities.length} cities');
+      }
+    } catch (e) {
+      print('❌ Error auto-loading cities: $e');
+    }
+  }
+
+  /// Загружает улицы для выбранного города при автозаполнении
+  Future<void> _loadStreetsForSelectedCity() async {
+    if (_selectedCityId == null) return;
+
+    try {
+      final token = await HiveService.getUserData('token');
+      String searchQuery = 'у';
+
+      if (_selectedCity.isNotEmpty) {
+        final cityName = _selectedCity.first;
+        if (cityName.length >= 3) {
+          searchQuery = cityName.length > 50
+              ? cityName.substring(0, 50)
+              : cityName;
+        } else {
+          searchQuery = cityName + '   ';
+        }
+      }
+
+      final response = await AddressService.searchAddresses(
+        query: searchQuery,
+        token: token,
+        types: ['street'],
+      );
+
+      print(
+        '🔍 Auto-load streets: API returned ${response.data.length} results',
+      );
+
+      final uniqueStreets = <String, int>{};
+      for (final result in response.data) {
+        if (result.city?.id == _selectedCityId && result.street != null) {
+          uniqueStreets[result.street!.name] = result.street!.id;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _streets = uniqueStreets.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+        });
+        print('✅ Auto-loaded ${_streets.length} streets');
+      }
+    } catch (e) {
+      print('❌ Error auto-loading streets: $e');
+    }
+  }
+
+  /// Загружает номера домов для выбранной улицы при автозаполнении
+
   int? mainRegionId = 1; // Track main_region.id for top-level region_id
-
-  // Хранилище ID адресов полученных из API /addresses/search
-  Map<String, dynamic>?
-  _currentAddressData; // Full address data from API search
-
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
@@ -459,7 +666,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
     });
   }
 
-  bool isIndividualSelected = true;
+  bool? isIndividualSelected =
+      null; // null = not selected, true = Частное лицо, false = Бизнес
   bool isSecondarySelected = true;
   bool isMortgageYes = true;
 
@@ -477,7 +685,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
   String _selectedAction = 'publish';
 
   void _togglePersonType(bool isIndividual) {
-    setState(() => isIndividualSelected = isIndividual);
+    setState(() {
+      isIndividualSelected = isIndividual;
+      if (isIndividual) {
+        _selectedValues[19] = 'Частное лицо';
+      } else {
+        _selectedValues[19] = 'Бизнес';
+      }
+    });
   }
 
   CreateAdvertRequest _collectFormData() {
@@ -766,7 +981,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       name: _titleController.text,
       description: _descriptionController.text,
       price: _priceController.text,
-      categoryId: widget.category?.id ?? 2,
+      categoryId: widget.categoryId ?? 2,
       regionId:
           mainRegionId ??
           1, // Use mainRegionId (top-level region), not address.region_id
@@ -913,81 +1128,96 @@ class _DynamicFilterState extends State<DynamicFilter> {
             print('🔍 Starting 3-step address search...');
 
             // ============ STEP 1: Search for city WITHOUT filters ============
-            print('📍 Step 1: Searching for city: ${_selectedCity.first}');
-            print('   Query params: q="${_selectedCity.first}", types[]=city');
-            var cityId;
-            try {
-              final cityResults = await ApiService.searchAddresses(
-                _selectedCity.first,
-                token: token,
-                types: ['city'],
-                // NO filters - API will return city with region_id
-              );
-
-              if (cityResults.isNotEmpty) {
-                final firstResult = cityResults.first;
-                // API returns nested structure: {'city': {'id': ..., 'name': ...}, 'region': {...}, ...}
-                cityId = firstResult['city']?['id'] ?? firstResult['id'];
-
-                // Extract region_id from the response
-                final regionId = firstResult['region']?['id'];
-                if (regionId != null) {
-                  address['region_id'] = regionId;
-                  print('   ✅ Found region_id=$regionId');
-                }
-
-                address['city_id'] = cityId;
-                print('   ✅ Found city_id=$cityId');
-                print('   Full response: ${firstResult['full_address']}');
-              } else {
-                throw Exception('City not found: ${_selectedCity.first}');
-              }
-            } catch (e) {
-              print('   ❌ City search failed: $e');
-              throw e;
+            // ============ Prepare address from selected API data ============
+            // Use already loaded IDs from API searches during dropdown selections
+            if (_selectedRegionId == null) {
+              errorMessage = 'Пожалуйста, выберите область';
+              throw Exception('Region not selected');
+            }
+            if (_selectedCityId == null) {
+              errorMessage = 'Пожалуйста, выберите город';
+              throw Exception('City not selected');
+            }
+            if (_selectedStreetId == null) {
+              errorMessage = 'Пожалуйста, выберите улицу';
+              throw Exception('Street not selected');
+            }
+            if (_selectedBuilding.isEmpty || _buildingController.text.isEmpty) {
+              errorMessage = 'Пожалуйста, введите номер дома';
+              throw Exception('Building number required');
             }
 
-            // ============ STEP 2: Search for street with city_id filter ============
-            print('📍 Step 2: Searching for street: ${_selectedStreet.first}');
-            print(
-              '   Query params: q="${_selectedStreet.first}", types[]=street, filters[city_id]=$cityId',
+            // Extract region.id (subregion) from selected city/street/building
+            int? addressRegionId;
+
+            // Try to get region_id from selected building first
+            final buildingIndex = _buildings.indexWhere(
+              (b) => b['name'] == _selectedBuilding.first,
             );
-            var streetId;
-            try {
-              final streetResults = await ApiService.searchAddresses(
-                _selectedStreet.first,
-                token: token,
-                types: ['street'],
-                filters: {'city_id': cityId},
+            if (buildingIndex >= 0) {
+              addressRegionId = _buildings[buildingIndex]['region_id'] as int?;
+            }
+
+            // If not found in building, try street
+            if (addressRegionId == null && _selectedStreet.isNotEmpty) {
+              final streetIndex = _streets.indexWhere(
+                (s) => s['name'] == _selectedStreet.first,
               );
-
-              if (streetResults.isNotEmpty) {
-                final firstResult = streetResults.first;
-                streetId = firstResult['street']?['id'] ?? firstResult['id'];
-                address['street_id'] = streetId;
-                print('   ✅ Found street_id=$streetId');
-              } else {
-                throw Exception('Street not found: ${_selectedStreet.first}');
+              if (streetIndex >= 0) {
+                addressRegionId = _streets[streetIndex]['region_id'] as int?;
               }
-            } catch (e) {
-              print('   ❌ Street search failed: $e');
-              throw e;
             }
 
-            // ============ STEP 3: Remove main_region_id (API doesn't accept it) ============
-            // API expects only: region_id, city_id, street_id
-            // Remove main_region_id if it was added
-            if (address.containsKey('main_region_id')) {
-              address.remove('main_region_id');
-              print('   🗑️ Removed main_region_id (API rejects it)');
+            // If not found in street, try city
+            if (addressRegionId == null && _selectedCity.isNotEmpty) {
+              final cityIndex = _cities.indexWhere(
+                (c) => c['name'] == _selectedCity.first,
+              );
+              if (cityIndex >= 0) {
+                addressRegionId = _cities[cityIndex]['region_id'] as int?;
+              }
             }
 
-            print('✅ Address search completed:');
-            print('   region_id: ${address['region_id']}');
+            address['region_id'] = addressRegionId;
+            address['city_id'] = _selectedCityId;
+            address['street_id'] = _selectedStreetId;
+            // Не отправляем building_id, так как номер дома вводится вручную
+            address['building_number'] = _selectedBuilding.first;
+
+            print('✅ Address prepared from selections:');
+            print('   region_id (for address): ${address['region_id']}');
             print('   city_id: ${address['city_id']}');
             print('   street_id: ${address['street_id']}');
+            print('   building_number: ${address['building_number']}');
+            print(
+              '   _selectedRegionId (main_region, for top-level): $_selectedRegionId',
+            );
+            print('');
+            print('📋 DEBUG INFO - Selected values stored:');
+            print('   _selectedRegion: $_selectedRegion');
+            print('   _selectedRegionId: $_selectedRegionId');
+            print('   _selectedCity: $_selectedCity');
+            print('   _selectedCityId: $_selectedCityId');
+            print('   _selectedStreet: $_selectedStreet');
+            print('   _selectedStreetId: $_selectedStreetId');
+            print('   _selectedBuilding: $_selectedBuilding');
+            print('   _selectedBuildingId: $_selectedBuildingId');
+            print('');
+            print('📋 DEBUG INFO - Lists content:');
+            print(
+              '   _regions: ${_regions.map((r) => '${r['name']}(id=${r['id']})').toList()}',
+            );
+            print(
+              '   _cities: ${_cities.map((c) => '${c['name']}(id=${c['id']})').toList()}',
+            );
+            print(
+              '   _streets: ${_streets.map((s) => '${s['name']}(id=${s['id']})').toList()}',
+            );
+            print(
+              '   _buildings: ${_buildings.map((b) => '${b['name']}(id=${b['id']})').toList()}',
+            );
 
-            // Recreate request with address from API search
+            // Recreate request with address from API selections
             if (address.isNotEmpty) {
               // Ensure 1048 is in values (not as separate attribute_1048 key)
               final updatedAttributes = Map<String, dynamic>.from(
@@ -1035,6 +1265,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       print('📋 Final address for request: $address');
+      print('');
+      print('🔍 Validating address data types:');
+      print(
+        '   region_id type: ${address['region_id'].runtimeType}, value: ${address['region_id']}',
+      );
+      print(
+        '   city_id type: ${address['city_id'].runtimeType}, value: ${address['city_id']}',
+      );
+      print(
+        '   street_id type: ${address['street_id'].runtimeType}, value: ${address['street_id']}',
+      );
+      print('   building_number: ${address['building_number']}');
 
       if (request.contacts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1449,7 +1691,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
               _buildDropdown(
                 label: 'Категория',
-                hint: widget.category?.name ?? 'Долгосрочная аренда комнат',
+                hint: _categoryName.isEmpty ? 'Загрузка...' : _categoryName,
                 subtitle: 'Недвижимость',
                 onTap: () {
                   Navigator.push(
@@ -1537,8 +1779,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     .where(
                       (attr) =>
                           attr.title.isNotEmpty &&
+                          attr.id != 1048 &&
                           attr.id !=
-                              1048, // Exclude "Вам предложат цену" - it's shown separately
+                              19, // Exclude both attributes (1048 - price offer, 19 - personal/business - shown separately)
                     )
                     .map(
                       (attr) => Column(
@@ -1558,36 +1801,34 @@ class _DynamicFilterState extends State<DynamicFilter> {
               ),
               const SizedBox(height: 9),
               _buildAreaRangeField(),
-              // const SizedBox(height: 15),
+              const SizedBox(height: 15),
 
-              // const SizedBox(height: 12),
+              const Text(
+                'Частное лицо / Бизнес*',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildChoiceButton(
+                    'Частное лицо',
+                    isIndividualSelected == true,
+                    () => _togglePersonType(true),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildChoiceButton(
+                    'Бизнес',
+                    isIndividualSelected == false,
+                    () => _togglePersonType(false),
+                  ),
+                ],
+              ),
 
-              // const Text(
-              //   'Частное лицо / Бизнес*',
-              //   style: TextStyle(color: textPrimary, fontSize: 14),
-              // ),
-              // const SizedBox(height: 12),
-              // Row(
-              //   children: [
-              //     _buildChoiceButton(
-              //       'Частное лицо',
-              //       isIndividualSelected,
-              //       () => _togglePersonType(true),
-              //     ),
-              //     const SizedBox(width: 10),
-              //     _buildChoiceButton(
-              //       'Бизнес',
-              //       !isIndividualSelected,
-              //       () => _togglePersonType(false),
-              //     ),
-              //   ],
-              // ),
-
-              // const SizedBox(height: 12),
-              // const Text(
-              //   'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
-              //   style: TextStyle(color: textMuted, fontSize: 11),
-              // ),
+              const SizedBox(height: 12),
+              const Text(
+                'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
+                style: TextStyle(color: textMuted, fontSize: 11),
+              ),
               const SizedBox(height: 18),
 
               Row(
@@ -1615,98 +1856,394 @@ class _DynamicFilterState extends State<DynamicFilter> {
               ),
               const SizedBox(height: 18),
 
-              // const SizedBox(height: 18),
+              // ADDRESS SECTION WITH API
+              // Region field
+              _buildDropdown(
+                label: 'Ваша область*',
+                hint: _selectedRegion.isEmpty
+                    ? 'Выберите область'
+                    : _selectedRegion.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: () {
+                  if (_regions.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Области загружаются...')),
+                    );
+                    return;
+                  }
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return SelectionDialog(
+                        title: 'Выберите область',
+                        options: _regions
+                            .map((r) => r['name'] as String)
+                            .toList(),
+                        selectedOptions: _selectedRegion,
+                        onSelectionChanged: (Set<String> selected) {
+                          if (selected.isNotEmpty) {
+                            final selectedRegionName = selected.first;
+                            final regionIndex = _regions.indexWhere(
+                              (r) => r['name'] == selectedRegionName,
+                            );
+                            int? regionId;
+                            if (regionIndex >= 0) {
+                              regionId = _regions[regionIndex]['id'] as int?;
+                            }
+                            setState(() {
+                              _selectedRegion = selected;
+                              _selectedRegionId = regionId;
+                              _selectedCity.clear();
+                              _selectedStreet.clear();
+                              _selectedCityId = null;
+                              _selectedStreetId = null;
+                              _cities.clear();
+                              _streets.clear();
+                              _selectedBuilding.clear();
+                              _selectedBuildingId = null;
+                              _buildings.clear();
+                            });
+                          }
+                        },
+                        allowMultipleSelection: false,
+                      );
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 9),
+
+              // City field
               _buildDropdown(
                 label: 'Ваш город*',
                 hint: _selectedCity.isEmpty
-                    ? 'Ваш город'
+                    ? 'Выберите город'
                     : _selectedCity.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return CitySelectionDialog(
-                        title: 'Ваш город',
-                        options: const [
-                          'Абаза',
-                          'Абакан',
-                          'Абдулино',
-                          'Абинск',
-                          'Агидель',
-                          'Агрыз',
-                          'Адыгейск',
-                          'Азнакаево',
-                          'Бабаево',
-                          'Бабушкин Бавлы',
-                          'Багратионовск',
-                        ],
-                        selectedOptions: _selectedCity,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedCity = selected;
-                          });
-                        },
-                      );
-                    },
-                  );
-                },
+                onTap: _selectedRegionId == null
+                    ? null
+                    : () async {
+                        // Load cities for selected region
+                        if (_cities.isEmpty && _selectedRegionId != null) {
+                          try {
+                            final token = await HiveService.getUserData(
+                              'token',
+                            );
+                            // Get the region name to use as search query
+                            // API requires q parameter to be at least 3 characters
+                            String searchQuery = 'по'; // Default search term
+                            if (_selectedRegion.isNotEmpty) {
+                              final regionName = _selectedRegion.first;
+                              // Ensure minimum 3 characters for API
+                              if (regionName.length >= 3) {
+                                // Use up to first 50 chars, but not more than length
+                                searchQuery = regionName.length > 50
+                                    ? regionName.substring(0, 50)
+                                    : regionName;
+                              } else {
+                                searchQuery =
+                                    regionName + '   '; // Pad to at least 3
+                              }
+                            }
+
+                            final response =
+                                await AddressService.searchAddresses(
+                                  query: searchQuery,
+                                  token: token,
+                                  types: ['city'],
+                                );
+
+                            print(
+                              '🔍 Поиск для области: "${_selectedRegion.isNotEmpty ? _selectedRegion.first : 'неизвестна'}" (ID: $_selectedRegionId)',
+                            );
+                            print('🔍 Поисковый запрос: "$searchQuery"');
+                            print(
+                              '🔍 API вернул ${response.data.length} результатов',
+                            );
+
+                            print('📋 City API response details:');
+                            for (
+                              int i = 0;
+                              i < response.data.take(3).length;
+                              i++
+                            ) {
+                              final result = response.data[i];
+                              print(
+                                '  City[$i]: city.id=${result.city?.id}, city.name=${result.city?.name}, main_region.id=${result.main_region?.id}, main_region.name=${result.main_region?.name}',
+                              );
+                            }
+
+                            final uniqueCities =
+                                <String, Map<String, dynamic>>{};
+                            int filtered = 0;
+                            for (int i = 0; i < response.data.length; i++) {
+                              final result = response.data[i];
+                              bool passed = false;
+                              String reason = '';
+
+                              // Filter by main_region on client side
+                              if (result.main_region == null) {
+                                reason = 'main_region is null';
+                              } else if (result.main_region?.id !=
+                                  _selectedRegionId) {
+                                reason =
+                                    'main_region.id=${result.main_region?.id}, ожидаем $_selectedRegionId';
+                              } else if (result.city == null) {
+                                reason = 'city is null';
+                              } else {
+                                // IMPORTANT: Store both main_region and region IDs from API response
+                                uniqueCities[result.city!.name] = {
+                                  'name': result.city!.name,
+                                  'id': result.city!.id,
+                                  'main_region_id': result.main_region?.id,
+                                  'region_id': result.region?.id,
+                                };
+                                passed = true;
+                              }
+
+                              if (!passed) {
+                                filtered++;
+                                // Попытаемся найти название области для логирования
+                                String mainRegionName =
+                                    result.main_region?.name ?? 'неизвестна';
+                                print(
+                                  '   ❌ №${i + 1}: ${result.city?.name ?? result.full_address} - main_region="$mainRegionName" (ID: ${result.main_region?.id}), ожидается ID=$_selectedRegionId',
+                                );
+                              }
+                            }
+
+                            print('   ✅ Прошло фильтр: ${uniqueCities.length}');
+                            print('   ❌ Отфильтровано: $filtered');
+
+                            setState(() {
+                              _cities = uniqueCities.values.toList();
+                              print(
+                                '📍 Загружено городов: ${_cities.length} для области ID $_selectedRegionId',
+                              );
+                              for (var i = 0; i < _cities.length; i++) {
+                                print(
+                                  '   ${i + 1}. ${_cities[i]['name']} (ID: ${_cities[i]['id']})',
+                                );
+                              }
+                            });
+                          } catch (e) {
+                            print('Error loading cities: $e');
+                          }
+                        }
+
+                        if (_cities.isNotEmpty) {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return CitySelectionDialog(
+                                title: 'Ваш город',
+                                options: _cities
+                                    .map((c) => c['name'] as String)
+                                    .toList(),
+                                selectedOptions: _selectedCity,
+                                onSelectionChanged: (Set<String> selected) {
+                                  if (selected.isNotEmpty) {
+                                    final selectedCityName = selected.first;
+                                    final cityIndex = _cities.indexWhere(
+                                      (c) => c['name'] == selectedCityName,
+                                    );
+                                    int? cityId;
+                                    int? mainRegionId;
+                                    if (cityIndex >= 0) {
+                                      cityId = _cities[cityIndex]['id'] as int?;
+                                      mainRegionId =
+                                          _cities[cityIndex]['main_region_id']
+                                              as int?;
+                                    }
+                                    setState(() {
+                                      _selectedCity = selected;
+                                      _selectedCityId = cityId;
+                                      _selectedRegionId = mainRegionId;
+                                      _selectedStreet.clear();
+                                      _selectedStreetId = null;
+                                      _streets.clear();
+                                      _selectedBuilding.clear();
+                                      _selectedBuildingId = null;
+                                      _buildings.clear();
+                                    });
+                                    print('✅ City selected:');
+                                    print('   Name: $selectedCityName');
+                                    print('   ID: $cityId');
+                                    print(
+                                      '   Full _cities data: ${_cities[cityIndex]}',
+                                    );
+                                  }
+                                },
+                              );
+                            },
+                          );
+                        }
+                      },
               ),
               const SizedBox(height: 9),
 
+              // Street field
               _buildDropdown(
                 label: 'Улица*',
                 hint: _selectedStreet.isEmpty
-                    ? 'Ваша улица'
+                    ? 'Выберите улицу'
                     : _selectedStreet.join(', '),
                 icon: const Icon(
                   Icons.keyboard_arrow_down_rounded,
                   color: textSecondary,
                 ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return StreetSelectionDialog(
-                        title: 'Улица',
-                        groupedOptions: const {
-                          'Центральный район': [
-                            'Аэродромная улица',
-                            'Бахмутская улица',
-                            'бул. Богдана Хмельницкого',
-                            'бул. Шевченко Георгиевская',
-                            'ул. Гранитная улица Греческая',
-                            'ул. Евпаторийская улица',
-                            'ул. Заводская',
-                            'Запорожское шоссе',
-                          ],
-                          'Приморский район': [
-                            'ул. Амурская',
-                            'Бердянский переулок',
-                            'ул. Большая Азовская',
-                          ],
-                        },
-                        selectedOptions: _selectedStreet,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedStreet = selected;
-                          });
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
+                onTap: _selectedCityId == null
+                    ? null
+                    : () async {
+                        // Load streets for selected city
+                        if (_streets.isEmpty && _selectedCityId != null) {
+                          try {
+                            final token = await HiveService.getUserData(
+                              'token',
+                            );
+                            // Get the city name to use as search query
+                            // API requires q parameter to be at least 3 characters
+                            String searchQuery = 'ул'; // Default search term
+                            if (_selectedCity.isNotEmpty) {
+                              final cityName = _selectedCity.first;
+                              // Ensure minimum 3 characters for API
+                              if (cityName.length >= 3) {
+                                // Use up to first 50 chars, but not more than length
+                                searchQuery = cityName.length > 50
+                                    ? cityName.substring(0, 50)
+                                    : cityName;
+                              } else {
+                                searchQuery =
+                                    cityName + '   '; // Pad to at least 3
+                              }
+                            }
 
+                            final response =
+                                await AddressService.searchAddresses(
+                                  query: searchQuery,
+                                  token: token,
+                                  types: ['street'],
+                                );
+
+                            final uniqueStreets =
+                                <String, Map<String, dynamic>>{};
+                            for (final result in response.data) {
+                              // Filter by city on client side
+                              if (result.city?.id == _selectedCityId &&
+                                  result.street != null) {
+                                // IMPORTANT: Store both main_region and region IDs from API response
+                                uniqueStreets[result.street!.name] = {
+                                  'name': result.street!.name,
+                                  'id': result.street!.id,
+                                  'city_id': result.city!.id,
+                                  'main_region_id': result.main_region?.id,
+                                  'region_id': result.region?.id,
+                                };
+                              }
+                            }
+
+                            setState(() {
+                              _streets = uniqueStreets.values.toList();
+                            });
+                          } catch (e) {
+                            print('Error loading streets: $e');
+                          }
+                        }
+
+                        if (_streets.isNotEmpty) {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return StreetSelectionDialog(
+                                title: 'Выберите улицу',
+                                options: _streets
+                                    .map((s) => s['name'] as String)
+                                    .toList(),
+                                selectedOptions: _selectedStreet,
+                                onSelectionChanged: (Set<String> selected) {
+                                  if (selected.isNotEmpty) {
+                                    final selectedStreetName = selected.first;
+                                    final streetIndex = _streets.indexWhere(
+                                      (s) => s['name'] == selectedStreetName,
+                                    );
+                                    int? streetId;
+                                    int? cityIdFromStreet;
+                                    if (streetIndex >= 0) {
+                                      streetId =
+                                          _streets[streetIndex]['id'] as int?;
+                                      cityIdFromStreet =
+                                          _streets[streetIndex]['city_id']
+                                              as int?;
+                                    }
+                                    setState(() {
+                                      _selectedStreet = selected;
+                                      _selectedStreetId = streetId;
+                                      _selectedCityId = cityIdFromStreet;
+                                      _selectedBuilding.clear();
+                                      _selectedBuildingId = null;
+                                      _buildings.clear();
+                                    });
+                                    print('✅ Street selected:');
+                                    print('   Name: $selectedStreetName');
+                                    print('   ID: $streetId');
+                                    print(
+                                      '   Full _streets data: ${_streets[streetIndex]}',
+                                    );
+                                  }
+                                },
+                              );
+                            },
+                          );
+                        }
+                      },
+              ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Номер дома*',
-                hint: 'Номер дома',
-                controller: _buildingController,
+              // Building number field - простой ввод текста
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Номер дома*',
+                    style: TextStyle(color: textPrimary, fontSize: 16),
+                  ),
+                  const SizedBox(height: 9),
+                  TextField(
+                    controller: _buildingController,
+                    readOnly: _selectedStreetId == null,
+                    enabled: _selectedStreetId != null,
+                    decoration: InputDecoration(
+                      hintText: _selectedStreetId == null
+                          ? 'Выберите улицу'
+                          : 'Введите номер дома (например: 45, 45А, 45/2)',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      filled: true,
+                      fillColor: _selectedStreetId == null
+                          ? formBackground
+                          : formBackground,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
+                    ),
+                    style: const TextStyle(color: textPrimary),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedBuilding = {value};
+                      });
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 9),
 
@@ -2084,278 +2621,327 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   Widget _buildDynamicFilter(Attribute attr) {
-    if (attr.isSpecialDesign) {
-      if (attr.values.length == 2) {
-        // Buttons for Yes/No like "Меблированная" - one always selected
-        _selectedValues[attr.id] =
-            _selectedValues[attr.id] ?? attr.values[0].value;
-        var selectedValue = _selectedValues[attr.id];
-        String selected = selectedValue is String
-            ? selectedValue
-            : selectedValue.toString();
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (!attr.isTitleHidden)
-              Text(
-                attr.title + (attr.isRequired ? '*' : ''),
-                style: const TextStyle(color: textPrimary, fontSize: 16),
-              ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildChoiceButton(
-                  attr.values[0].value,
-                  selected == attr.values[0].value,
-                  () => setState(
-                    () => _selectedValues[attr.id] = attr.values[0].value,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _buildChoiceButton(
-                  attr.values[1].value,
-                  selected == attr.values[1].value,
-                  () => setState(
-                    () => _selectedValues[attr.id] = attr.values[1].value,
-                  ),
-                ),
-              ],
+    // Render based on style from API
+    switch (attr.style) {
+      case 'B':
+        // Style B: Чекбокс (single value checkbox)
+        return _buildCheckboxField(attr);
+
+      case 'C':
+        // Style C: Специальный дизайн (buttons for yes/no)
+        return _buildSpecialDesignField(attr);
+
+      case 'D':
+        // Style D: Множественный выбор (dropdown list for multiple)
+        return _buildMultipleSelectDropdown(attr);
+
+      case 'E':
+        // Style E: Диапазон целых чисел (range with integers)
+        return _buildRangeField(attr, isInteger: true);
+
+      case 'F':
+        // Style F: Множественный выбор (modal/popup selection)
+        return _buildMultipleSelectPopup(attr);
+
+      case 'G':
+        // Style G: Диапазон чисел (range with decimals)
+        return _buildRangeField(attr, isInteger: false);
+
+      case 'H':
+        // Style H: Текстовое поле (text input)
+        return _buildTextInputField(attr);
+
+      case 'I':
+        // Style I: Скрытое поле (hidden checkbox without title)
+        return _buildHiddenCheckboxField(attr);
+
+      default:
+        // Fallback for unknown styles
+        if (attr.values.isNotEmpty) {
+          return _buildMultipleSelectPopup(attr);
+        } else if (attr.isRange) {
+          return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
+        } else {
+          return _buildTextInputField(attr);
+        }
+    }
+  }
+
+  // Style B: Single checkbox
+  Widget _buildCheckboxField(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
+    bool selected = _selectedValues[attr.id] is bool
+        ? _selectedValues[attr.id]
+        : false;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedValues[attr.id] = !selected),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              attr.title,
+              style: const TextStyle(color: textPrimary, fontSize: 14),
             ),
-          ],
-        );
-      } else {
-        // Checkbox for single value like "Возможен торг"
-        _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
-        var selectedValue = _selectedValues[attr.id];
-        bool selected = selectedValue is bool ? selectedValue : false;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedValues[attr.id] = !selected),
-          child: Row(
+          ),
+          CustomCheckbox(
+            value: selected,
+            onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Style C: Special design (buttons)
+  Widget _buildSpecialDesignField(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
+    String selected = _selectedValues[attr.id] is String
+        ? _selectedValues[attr.id]
+        : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden)
+          Text(
+            attr.title + (attr.isRequired ? '*' : ''),
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
+        const SizedBox(height: 12),
+        if (attr.values.length == 2)
+          Row(
             children: [
-              Expanded(
-                child: Text(
-                  attr.title,
-                  style: const TextStyle(color: textPrimary, fontSize: 14),
+              _buildChoiceButton(
+                attr.values[0].value,
+                selected == attr.values[0].value,
+                () => setState(
+                  () => _selectedValues[attr.id] = attr.values[0].value,
                 ),
               ),
-              CustomCheckbox(
-                value: selected,
-                onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+              const SizedBox(width: 10),
+              _buildChoiceButton(
+                attr.values[1].value,
+                selected == attr.values[1].value,
+                () => setState(
+                  () => _selectedValues[attr.id] = attr.values[1].value,
+                ),
               ),
             ],
           ),
-        );
-      }
-    } else if (attr.values.isNotEmpty) {
-      if (attr.isMultiple) {
-        _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
-        var selectedValue = _selectedValues[attr.id];
-        Set<String> selected;
-        if (selectedValue is Set) {
-          selected = selectedValue.cast<String>();
-        } else {
-          selected = <String>{};
-        }
-        return _buildDropdown(
-          label: attr.isTitleHidden
-              ? ''
-              : attr.title + (attr.isRequired ? '*' : ''),
-          hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: textSecondary,
-          ),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return SelectionDialog(
-                  title: attr.title,
-                  options: attr.values.map((v) => v.value).toList(),
-                  selectedOptions: selected,
-                  onSelectionChanged: (Set<String> newSelected) {
-                    setState(() {
-                      _selectedValues[attr.id] = newSelected;
-                    });
-                  },
-                  allowMultipleSelection: true,
-                );
+      ],
+    );
+  }
+
+  // Style D: Multiple select (dropdown)
+  Widget _buildMultipleSelectDropdown(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
+    Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    return _buildDropdown(
+      label: attr.isTitleHidden
+          ? ''
+          : attr.title + (attr.isRequired ? '*' : ''),
+      hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return SelectionDialog(
+              title: attr.title,
+              options: attr.values.map((v) => v.value).toList(),
+              selectedOptions: selected,
+              onSelectionChanged: (Set<String> newSelected) {
+                setState(() {
+                  _selectedValues[attr.id] = newSelected;
+                });
               },
+              allowMultipleSelection: attr.isMultiple,
             );
           },
         );
-      } else {
-        _selectedValues[attr.id] =
-            _selectedValues[attr.id] ??
-            (attr.isRequired && attr.values.isNotEmpty
-                ? attr.values.first.value
-                : '');
-        var selectedValue = _selectedValues[attr.id];
-        String selected = selectedValue is String
-            ? selectedValue
-            : selectedValue.toString();
-        return _buildDropdown(
-          label: attr.isTitleHidden
-              ? ''
-              : attr.title + (attr.isRequired ? '*' : ''),
-          hint: selected.isEmpty ? 'Выбрать' : selected,
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: textSecondary,
+      },
+    );
+  }
+
+  // Style E & G: Range fields (E for integer, G for decimal)
+  Widget _buildRangeField(Attribute attr, {required bool isInteger}) {
+    _selectedValues[attr.id] ??= {'min': '', 'max': ''};
+    Map<String, dynamic> rangeMap = _selectedValues[attr.id] is Map
+        ? _selectedValues[attr.id] as Map<String, dynamic>
+        : {'min': '', 'max': ''};
+
+    final minStr = rangeMap['min']?.toString() ?? '';
+    final maxStr = rangeMap['max']?.toString() ?? '';
+    Map<String, String> range = {'min': minStr, 'max': maxStr};
+
+    final minKey = attr.id * 2;
+    final maxKey = attr.id * 2 + 1;
+    final controllerMin = _controllers.putIfAbsent(
+      minKey,
+      () => TextEditingController(text: range['min']),
+    );
+    final controllerMax = _controllers.putIfAbsent(
+      maxKey,
+      () => TextEditingController(text: range['max']),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden)
+          Text(
+            attr.title + (attr.isRequired ? '*' : ''),
+            style: const TextStyle(color: textPrimary, fontSize: 16),
           ),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return SelectionDialog(
-                  title: attr.title,
-                  options: attr.values.map((v) => v.value).toList(),
-                  selectedOptions: {selected},
-                  onSelectionChanged: (Set<String> newSelected) {
-                    setState(() {
-                      _selectedValues[attr.id] = newSelected.isNotEmpty
-                          ? newSelected.first
-                          : (attr.isRequired && attr.values.isNotEmpty
-                                ? attr.values.first.value
-                                : '');
-                    });
-                  },
-                  allowMultipleSelection: false,
-                );
-              },
-            );
-          },
-        );
-      }
-    } else {
-      // Special case for floor attribute (id 1040) and area (id 1037) - always show as range
-      if (attr.isRange || attr.id == 1040 || attr.id == 1037) {
-        _selectedValues[attr.id] ??= {'min': '', 'max': ''};
-        var rawValue = _selectedValues[attr.id];
-
-        // Ensure it's a proper map
-        Map<String, dynamic> rangeMap;
-        if (rawValue is Map) {
-          rangeMap = rawValue as Map<String, dynamic>;
-        } else {
-          rangeMap = {'min': '', 'max': ''};
-        }
-
-        final minStr = rangeMap['min']?.toString() ?? '';
-        final maxStr = rangeMap['max']?.toString() ?? '';
-        Map<String, String> range = {'min': minStr, 'max': maxStr};
-
-        final minKey = attr.id * 2;
-        final maxKey = attr.id * 2 + 1;
-        final controllerMin = _controllers.putIfAbsent(
-          minKey,
-          () => TextEditingController(text: range['min']),
-        );
-        final controllerMax = _controllers.putIfAbsent(
-          maxKey,
-          () => TextEditingController(text: range['max']),
-        );
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 9),
+        Row(
           children: [
-            Text(
-              attr.isTitleHidden
-                  ? ''
-                  : attr.title + (attr.isRequired ? '*' : ''),
-              style: const TextStyle(color: textPrimary, fontSize: 16),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TextField(
+                  controller: controllerMin,
+                  keyboardType: isInteger
+                      ? TextInputType.number
+                      : TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(color: textPrimary),
+                  decoration: const InputDecoration(
+                    hintText: 'От',
+                    hintStyle: TextStyle(
+                      color: Color.fromARGB(255, 255, 255, 255),
+                      fontSize: 14,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      range['min'] = value;
+                      _selectedValues[attr.id] = range;
+                    });
+                  },
+                ),
+              ),
             ),
-            const SizedBox(height: 9),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: formBackground,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: TextField(
-                      controller: controllerMin,
-                      keyboardType: attr.dataType == 'integer'
-                          ? TextInputType.number
-                          : (attr.dataType == 'numeric'
-                                ? TextInputType.numberWithOptions(decimal: true)
-                                : TextInputType.text),
-                      style: const TextStyle(color: textPrimary),
-                      decoration: const InputDecoration(
-                        hintText: 'От',
-                        hintStyle: TextStyle(
-                          color: Color.fromARGB(255, 255, 255, 255),
-                          fontSize: 14,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (value) {
-                        print('onChanged for ${attr.id} min: $value');
-                        setState(() {
-                          range['min'] = value;
-                          _selectedValues[attr.id] = range;
-                        });
-                      },
-                    ),
-                  ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: formBackground,
-                      borderRadius: BorderRadius.circular(6),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TextField(
+                  controller: controllerMax,
+                  keyboardType: isInteger
+                      ? TextInputType.number
+                      : TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(color: textPrimary),
+                  decoration: const InputDecoration(
+                    hintText: 'До',
+                    hintStyle: TextStyle(
+                      color: Color.fromARGB(255, 255, 255, 255),
+                      fontSize: 14,
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: TextField(
-                      controller: controllerMax,
-                      keyboardType: attr.dataType == 'integer'
-                          ? TextInputType.number
-                          : (attr.dataType == 'numeric'
-                                ? TextInputType.numberWithOptions(decimal: true)
-                                : TextInputType.text),
-                      style: const TextStyle(color: textPrimary),
-                      decoration: const InputDecoration(
-                        hintText: 'До',
-                        hintStyle: TextStyle(
-                          color: Color.fromARGB(255, 255, 255, 255),
-                          fontSize: 14,
-                        ),
-                        border: InputBorder.none,
-                      ),
-                      onChanged: (value) {
-                        setState(() {
-                          range['max'] = value;
-                          _selectedValues[attr.id] = range;
-                        });
-                      },
-                    ),
+                    border: InputBorder.none,
                   ),
+                  onChanged: (value) {
+                    setState(() {
+                      range['max'] = value;
+                      _selectedValues[attr.id] = range;
+                    });
+                  },
                 ),
-              ],
+              ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  // Style F: Multiple select (popup/modal)
+  Widget _buildMultipleSelectPopup(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
+    Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    return _buildDropdown(
+      label: attr.isTitleHidden
+          ? ''
+          : attr.title + (attr.isRequired ? '*' : ''),
+      hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return SelectionDialog(
+              title: attr.title,
+              options: attr.values.map((v) => v.value).toList(),
+              selectedOptions: selected,
+              onSelectionChanged: (Set<String> newSelected) {
+                setState(() {
+                  _selectedValues[attr.id] = newSelected;
+                });
+              },
+              allowMultipleSelection: attr.isMultiple,
+            );
+          },
         );
-      } else {
-        _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
-        final controller = _controllers.putIfAbsent(attr.id, () {
-          final value = _selectedValues[attr.id];
-          final textValue = value is String ? value : (value?.toString() ?? '');
-          return TextEditingController(text: textValue);
-        });
-        return _buildTextField(
-          label: attr.isTitleHidden
-              ? ''
-              : attr.title + (attr.isRequired ? '*' : ''),
-          hint: attr.dataType == 'integer' ? 'Цифрами' : 'Текст',
-          keyboardType: attr.dataType == 'integer'
-              ? TextInputType.number
-              : TextInputType.text,
-          controller: controller,
-          onChanged: (value) => _selectedValues[attr.id] = value.trim(),
-        );
-      }
-    }
+      },
+    );
+  }
+
+  // Style H: Text input field
+  Widget _buildTextInputField(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
+    final controller = _controllers.putIfAbsent(attr.id, () {
+      final value = _selectedValues[attr.id];
+      final textValue = value is String ? value : (value?.toString() ?? '');
+      return TextEditingController(text: textValue);
+    });
+
+    return _buildTextField(
+      label: attr.isTitleHidden
+          ? ''
+          : attr.title + (attr.isRequired ? '*' : ''),
+      hint: attr.dataType == 'integer' ? 'Цифрами' : 'Текст',
+      keyboardType: attr.dataType == 'integer'
+          ? TextInputType.number
+          : TextInputType.text,
+      controller: controller,
+      onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+    );
+  }
+
+  // Style I: Hidden checkbox (no title)
+  Widget _buildHiddenCheckboxField(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
+    bool selected = _selectedValues[attr.id] is bool
+        ? _selectedValues[attr.id]
+        : false;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            attr.values.isNotEmpty ? attr.values[0].value : attr.title,
+            style: const TextStyle(color: textPrimary, fontSize: 14),
+          ),
+        ),
+        CustomCheckbox(
+          value: selected,
+          onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+        ),
+      ],
+    );
   }
 }

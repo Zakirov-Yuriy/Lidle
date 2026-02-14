@@ -34,6 +34,7 @@ mixin _$Attribute {
   dynamic get maxValue => throw _privateConstructorUsedError;
   String? get vmText => throw _privateConstructorUsedError;
   String? get dataType => throw _privateConstructorUsedError;
+  String get style => throw _privateConstructorUsedError;
   int get order => throw _privateConstructorUsedError;
   List<Value> get values => throw _privateConstructorUsedError;
 
@@ -66,6 +67,7 @@ abstract class $AttributeCopyWith<$Res> {
     dynamic maxValue,
     String? vmText,
     String? dataType,
+    String style,
     int order,
     List<Value> values,
   });
@@ -99,6 +101,7 @@ class _$AttributeCopyWithImpl<$Res, $Val extends Attribute>
     Object? maxValue = freezed,
     Object? vmText = freezed,
     Object? dataType = freezed,
+    Object? style = null,
     Object? order = null,
     Object? values = null,
   }) {
@@ -156,6 +159,10 @@ class _$AttributeCopyWithImpl<$Res, $Val extends Attribute>
                 ? _value.dataType
                 : dataType // ignore: cast_nullable_to_non_nullable
                       as String?,
+            style: null == style
+                ? _value.style
+                : style // ignore: cast_nullable_to_non_nullable
+                      as String,
             order: null == order
                 ? _value.order
                 : order // ignore: cast_nullable_to_non_nullable
@@ -193,6 +200,7 @@ abstract class _$$AttributeImplCopyWith<$Res>
     dynamic maxValue,
     String? vmText,
     String? dataType,
+    String style,
     int order,
     List<Value> values,
   });
@@ -225,6 +233,7 @@ class __$$AttributeImplCopyWithImpl<$Res>
     Object? maxValue = freezed,
     Object? vmText = freezed,
     Object? dataType = freezed,
+    Object? style = null,
     Object? order = null,
     Object? values = null,
   }) {
@@ -282,6 +291,10 @@ class __$$AttributeImplCopyWithImpl<$Res>
             ? _value.dataType
             : dataType // ignore: cast_nullable_to_non_nullable
                   as String?,
+        style: null == style
+            ? _value.style
+            : style // ignore: cast_nullable_to_non_nullable
+                  as String,
         order: null == order
             ? _value.order
             : order // ignore: cast_nullable_to_non_nullable
@@ -312,6 +325,7 @@ class _$AttributeImpl implements _Attribute {
     this.maxValue,
     this.vmText,
     this.dataType,
+    this.style = '',
     required this.order,
     final List<Value> values = const [],
   }) : _values = values;
@@ -355,6 +369,9 @@ class _$AttributeImpl implements _Attribute {
   @override
   final String? dataType;
   @override
+  @JsonKey()
+  final String style;
+  @override
   final int order;
   final List<Value> _values;
   @override
@@ -367,7 +384,7 @@ class _$AttributeImpl implements _Attribute {
 
   @override
   String toString() {
-    return 'Attribute(id: $id, title: $title, isFilter: $isFilter, isRange: $isRange, isMultiple: $isMultiple, isHidden: $isHidden, isRequired: $isRequired, isTitleHidden: $isTitleHidden, isSpecialDesign: $isSpecialDesign, isMaxValue: $isMaxValue, maxValue: $maxValue, vmText: $vmText, dataType: $dataType, order: $order, values: $values)';
+    return 'Attribute(id: $id, title: $title, isFilter: $isFilter, isRange: $isRange, isMultiple: $isMultiple, isHidden: $isHidden, isRequired: $isRequired, isTitleHidden: $isTitleHidden, isSpecialDesign: $isSpecialDesign, isMaxValue: $isMaxValue, maxValue: $maxValue, vmText: $vmText, dataType: $dataType, style: $style, order: $order, values: $values)';
   }
 
   @override
@@ -396,6 +413,7 @@ class _$AttributeImpl implements _Attribute {
             (identical(other.vmText, vmText) || other.vmText == vmText) &&
             (identical(other.dataType, dataType) ||
                 other.dataType == dataType) &&
+            (identical(other.style, style) || other.style == style) &&
             (identical(other.order, order) || other.order == order) &&
             const DeepCollectionEquality().equals(other._values, _values));
   }
@@ -417,6 +435,7 @@ class _$AttributeImpl implements _Attribute {
     const DeepCollectionEquality().hash(maxValue),
     vmText,
     dataType,
+    style,
     order,
     const DeepCollectionEquality().hash(_values),
   );
@@ -450,6 +469,7 @@ abstract class _Attribute implements Attribute {
     final dynamic maxValue,
     final String? vmText,
     final String? dataType,
+    final String style,
     required final int order,
     final List<Value> values,
   }) = _$AttributeImpl;
@@ -483,6 +503,8 @@ abstract class _Attribute implements Attribute {
   String? get vmText;
   @override
   String? get dataType;
+  @override
+  String get style;
   @override
   int get order;
   @override

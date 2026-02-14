@@ -1010,8 +1010,6 @@ class _FiltersCommercialPropertySellScreenenState
     );
   }
 
- 
-
   Widget _buildRangeFields({
     required String label,
     required String leftHint,

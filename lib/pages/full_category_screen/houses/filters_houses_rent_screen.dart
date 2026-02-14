@@ -25,7 +25,7 @@ class _FiltersHousesRentScreenenState extends State<FiltersHousesRentScreenen> {
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;

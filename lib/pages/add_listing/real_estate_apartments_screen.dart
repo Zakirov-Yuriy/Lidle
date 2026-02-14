@@ -230,7 +230,7 @@ class _RealEstateApartmentsScreenState
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => DynamicFilter(category: advertType),
+                builder: (context) => DynamicFilter(categoryId: advertType.id),
               ),
             );
           },

@@ -29,21 +29,27 @@ class RegionsResponse {
 /// Модель адреса (результат поиска)
 @JsonSerializable()
 class Address {
+  final int? id;
   final String type; // street, city, region и т.д.
   final Region? main_region;
   final Region? region;
   final Region? city;
   final Region? district;
   final Region? street;
+  final Region? building;
+  final String? building_number;
   final String full_address;
 
   Address({
+    this.id,
     required this.type,
     this.main_region,
     this.region,
     this.city,
     this.district,
     this.street,
+    this.building,
+    this.building_number,
     required this.full_address,
   });
 

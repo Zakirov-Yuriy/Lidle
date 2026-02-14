@@ -24,7 +24,7 @@ class _FiltersRoomRentScreenState extends State<FiltersRoomRentScreen> {
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;
@@ -462,8 +462,6 @@ class _FiltersRoomRentScreenState extends State<FiltersRoomRentScreen> {
                       },
                     ),
                     const SizedBox(height: 10),
-
-                    
 
                     _buildRangeFields(
                       label: 'Год постройки',

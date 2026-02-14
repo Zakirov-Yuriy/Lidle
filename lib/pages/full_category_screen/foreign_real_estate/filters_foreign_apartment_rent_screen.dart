@@ -26,7 +26,7 @@ class _FiltersForeignApartmentRentScreenState
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;
@@ -187,9 +187,6 @@ class _FiltersForeignApartmentRentScreenState
                     _buildCurrencyAndPrice(),
                     const SizedBox(height: 16),
 
-                    
-                
-
                     _buildPriceCheckboxes(),
                     const SizedBox(height: 20),
 
@@ -205,9 +202,7 @@ class _FiltersForeignApartmentRentScreenState
                           setState(() => isSecondarySelected = false),
                     ),
 
-                     const SizedBox(height: 10),
-
-                   
+                    const SizedBox(height: 10),
 
                     _buildDropdown(
                       label: 'Тип дома',
@@ -266,8 +261,6 @@ class _FiltersForeignApartmentRentScreenState
                       rightHint: 'До',
                     ),
                     const SizedBox(height: 10),
-
-                    
 
                     _buildRangeFields(
                       label: 'Общая площадь (м²)',
@@ -363,7 +356,7 @@ class _FiltersForeignApartmentRentScreenState
                     ),
                     const SizedBox(height: 10),
 
-                     _buildDropdown(
+                    _buildDropdown(
                       label: 'Количество спальных мест',
                       hint: _selectedSleepingPlaces.isEmpty
                           ? 'Цифрами'
@@ -655,8 +648,6 @@ class _FiltersForeignApartmentRentScreenState
                     ),
                     const SizedBox(height: 10),
 
-                    
-
                     _buildDropdown(
                       label: 'Инфраструктура (до 500 метров)',
                       hint: _selectedInfrastructureTypes.isEmpty
@@ -716,7 +707,6 @@ class _FiltersForeignApartmentRentScreenState
                         );
                       },
                     ),
-                    
 
                     const SizedBox(height: 20),
 
@@ -965,7 +955,6 @@ class _FiltersForeignApartmentRentScreenState
 
         const SizedBox(height: 8),
 
-        
         _buildCheckboxRow(
           title: 'Готов сотрудничать с риэлтором',
           value: isRealtor,
@@ -973,7 +962,7 @@ class _FiltersForeignApartmentRentScreenState
         ),
         const SizedBox(height: 8),
 
-         _buildCheckboxRow(
+        _buildCheckboxRow(
           title: 'Для совместной аренды',
           value: isCoRent,
           onChanged: (v) => setState(() => isCoRent = v),
@@ -981,11 +970,11 @@ class _FiltersForeignApartmentRentScreenState
 
         const SizedBox(height: 8),
 
-         _buildCheckboxRow(
+        _buildCheckboxRow(
           title: 'Домашние питомцы',
           value: isPetsAllowed,
           onChanged: (v) => setState(() => isPetsAllowed = v),
-         )
+        ),
       ],
     );
   }
@@ -1010,8 +999,6 @@ class _FiltersForeignApartmentRentScreenState
       ],
     );
   }
-
-
 
   Widget _buildBottomButtons() {
     return Column(
@@ -1335,11 +1322,4 @@ class _FiltersForeignApartmentRentScreenState
       },
     );
   }
-
-  
-
- 
-
-
-
 }

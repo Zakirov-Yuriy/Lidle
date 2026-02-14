@@ -169,7 +169,7 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
                                         ? profileState.username
                                         : 'Name',
                                   ),
-                                  const SizedBox(height: 29),
+                                  const SizedBox(height: 10),
 
                                   // 3 быстрых карточки
                                   Row(
@@ -227,8 +227,9 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: 10),
 
+                                  /*
                                   // Раздел «Ваши покупки»
                                   const _SectionTitle('Ваши покупки'),
                                   const SizedBox(height: 12),
@@ -274,10 +275,11 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
                                     ),
                                   ),
                                   const SizedBox(height: 24),
+                                  */
 
                                   // Раздел «Ваши объявления»
                                   const _SectionTitle('Ваши объявления'),
-                                  const SizedBox(height: 10),
+                                  // const SizedBox(height: 10),
                                   _MenuItem(
                                     title: 'Активные / Неактивные',
                                     count: _isLoadingListings
@@ -306,16 +308,6 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
                                     height: 8,
                                   ),
                                   _MenuItem(
-                                    title: 'Архив',
-                                    count: 0,
-                                    trailingChevron: true,
-                                    onTap: () {},
-                                  ),
-                                  const Divider(
-                                    color: Color(0xFF474747),
-                                    height: 8,
-                                  ),
-                                  _MenuItem(
                                     title: 'Предложения цен',
                                     count: 2,
                                     trailingChevron: true,
@@ -328,23 +320,34 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
                                     color: Color(0xFF474747),
                                     height: 8,
                                   ),
-                                  const SizedBox(height: 20),
+                                  _MenuItem(
+                                    title: 'Заказы',
+                                    count: 0,
+                                    trailingChevron: true,
+                                    isHighlight: true,
+                                    onTap: () {},
+                                  ),
+                                  const Divider(
+                                    color: Color(0xFF474747),
+                                    height: 8,
+                                  ),
+                                  const SizedBox(height: 58),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Container(
+                                      width: 185,
+                                      height: 48,
+                                      child: _MessageCard(
+                                        title: 'Поддержка LIDLE',
+                                        subtitle: 'Сообщения: Нет',
+                                        highlight: false,
+                                        onTap: () => Navigator.of(
+                                          context,
+                                        ).pushNamed(SupportScreen.routeName),
+                                      ),
+                                    ),
+                                  ),
                                 ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 21),
-                            child: Container(
-                              width: double.infinity,
-                              height: 48,
-                              child: _MessageCard(
-                                title: 'Поддержка LIDLE',
-                                subtitle: 'Сообщения: Нет',
-                                highlight: false,
-                                onTap: () => Navigator.of(
-                                  context,
-                                ).pushNamed(SupportScreen.routeName),
                               ),
                             ),
                           ),

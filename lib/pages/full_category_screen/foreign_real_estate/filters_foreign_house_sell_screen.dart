@@ -26,7 +26,7 @@ class _FiltersForeignHouseSellScreenState
 
   bool isSecondarySelected = true;
   bool isIndividualSelected = true;
-  bool? _isFurnished = null;
+  bool? _isFurnished;
 
   bool isBargain = false;
   bool isNoCommission = false;
@@ -244,50 +244,50 @@ class _FiltersForeignHouseSellScreenState
                       onChange: (v) => setState(() => installmentYes = v),
                     ),
 
-                  
                     const SizedBox(height: 10),
 
                     _buildDropdown(
-                label: 'Расстояние до ближайшего города',
-                hint: _selectedDistanceToCity.isEmpty
-                    ? 'Выбрать'
-                    : _selectedDistanceToCity.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return SelectionDialog(
-                        title: 'Расстояние до \nближайшего города',
-                        options: const [
-                          'В городе',
-                          'До 5 км',
-                          'До 10 км',
-                          'До 15 км',
-                          'До 20 км',
-                          'До 25 км',
-                          'До 30 км',
-                          'До 35 км',
-                          'До 40 км',
-                          'До 45 км',
-                          'До 50 км',
-                          'До 55 км',
-                        ],
-                        selectedOptions: _selectedDistanceToCity,
-                        onSelectionChanged: (selected) {
-                          setState(() => _selectedDistanceToCity = selected);
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-                   
+                      label: 'Расстояние до ближайшего города',
+                      hint: _selectedDistanceToCity.isEmpty
+                          ? 'Выбрать'
+                          : _selectedDistanceToCity.join(', '),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: textSecondary,
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SelectionDialog(
+                              title: 'Расстояние до \nближайшего города',
+                              options: const [
+                                'В городе',
+                                'До 5 км',
+                                'До 10 км',
+                                'До 15 км',
+                                'До 20 км',
+                                'До 25 км',
+                                'До 30 км',
+                                'До 35 км',
+                                'До 40 км',
+                                'До 45 км',
+                                'До 50 км',
+                                'До 55 км',
+                              ],
+                              selectedOptions: _selectedDistanceToCity,
+                              onSelectionChanged: (selected) {
+                                setState(
+                                  () => _selectedDistanceToCity = selected,
+                                );
+                              },
+                              allowMultipleSelection: false,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
 
                     _buildRangeFields(
                       label: 'Этажность',
@@ -296,18 +296,12 @@ class _FiltersForeignHouseSellScreenState
                     ),
                     const SizedBox(height: 10),
 
-                   
-
                     _buildRangeFields(
                       label: 'Общая площадь (м²)',
                       leftHint: 'От',
                       rightHint: 'До',
                     ),
                     const SizedBox(height: 10),
-
-                    
-
-                  
 
                     _buildDropdown(
                       label: 'Количество комнат',
@@ -336,67 +330,65 @@ class _FiltersForeignHouseSellScreenState
                     const SizedBox(height: 10),
 
                     _buildTextField(
-                label: 'Площадь участка (соток)',
-                hint: 'Цифрами',
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 9),
+                      label: 'Площадь участка (соток)',
+                      hint: 'Цифрами',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 9),
 
-             
+                    _buildDropdown(
+                      label: 'Тип дома',
+                      hint: _selectedHouseTypes.isEmpty
+                          ? 'Сталинка'
+                          : _selectedHouseTypes.join(', '),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: textSecondary,
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return SelectionDialog(
+                              title: 'Тип дома',
+                              options: const [
+                                'Все объявления',
+                                'Царский дом',
+                                'Сталинка',
+                                'Хрущевка',
+                                'Чешка',
+                                'Гостинка',
+                                'Совмин',
+                                'Общежитие',
+                                'Жилой фонд 80-90-е',
+                                'Жилой фонд 91-2000-е',
+                                'Жилой фонд 2001-2010-е',
+                                'Жилой фонд 2011-2020-е',
+                                'Жилой фонд от 2021 г.',
+                              ],
+                              selectedOptions: _selectedHouseTypes,
+                              onSelectionChanged: (Set<String> selected) {
+                                setState(() {
+                                  _selectedHouseTypes = selected;
+                                });
+                              },
+                              allowMultipleSelection: false,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
 
-              _buildDropdown(
-                label: 'Тип дома',
-                hint: _selectedHouseTypes.isEmpty
-                    ? 'Сталинка'
-                    : _selectedHouseTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SelectionDialog(
-                        title: 'Тип дома',
-                        options: const [
-                          'Все объявления',
-                          'Царский дом',
-                          'Сталинка',
-                          'Хрущевка',
-                          'Чешка',
-                          'Гостинка',
-                          'Совмин',
-                          'Общежитие',
-                          'Жилой фонд 80-90-е',
-                          'Жилой фонд 91-2000-е',
-                          'Жилой фонд 2001-2010-е',
-                          'Жилой фонд 2011-2020-е',
-                          'Жилой фонд от 2021 г.',
-                        ],
-                        selectedOptions: _selectedHouseTypes,
-                        onSelectionChanged: (Set<String> selected) {
-                          setState(() {
-                            _selectedHouseTypes = selected;
-                          });
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
+                    _buildTextField(
+                      label: 'Кадастровый номер',
+                      hint: _selectedCadastral.isEmpty
+                          ? 'Выбрать'
+                          : _selectedCadastral.join(', '),
+                    ),
+                    const SizedBox(height: 10),
 
-                      _buildTextField(
-                label: 'Кадастровый номер',
-                hint: _selectedCadastral.isEmpty
-                    ? 'Выбрать'
-                    : _selectedCadastral.join(', '),
-              ),
-              const SizedBox(height: 10),
-
-               _buildDropdown(
+                    _buildDropdown(
                       label: 'Класс жилья',
                       hint: _selectedHousingClassTypes.isEmpty
                           ? 'Выбрать'
@@ -419,12 +411,12 @@ class _FiltersForeignHouseSellScreenState
                     ),
                     const SizedBox(height: 10),
 
-                   _buildTextField(
-                label: 'Год постройки',
-                hint: 'Укажите год',
-                keyboardType: TextInputType.number,
-              ),
-          
+                    _buildTextField(
+                      label: 'Год постройки',
+                      hint: 'Укажите год',
+                      keyboardType: TextInputType.number,
+                    ),
+
                     const SizedBox(height: 10),
 
                     _buildDropdown(
@@ -465,83 +457,83 @@ class _FiltersForeignHouseSellScreenState
                     ),
                     const SizedBox(height: 10),
 
-                     _buildDropdown(
-                label: 'Внешнее утепление стен',
-                hint: _selectedOuterInsulationTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedOuterInsulationTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return SelectionDialog(
-                        title: 'Внешнее утепление стен',
-                        options: const [
-                          'Без утепления',
-                          'Минеральная вата',
-                          'Пенопласт',
-                          'Пенополистирол',
-                          'Пенополиуретан',
-                          'Комбинированное',
-                          'Другое',
-                        ],
-                        selectedOptions: _selectedOuterInsulationTypes,
-                        onSelectionChanged: (selected) {
-                          setState(
-                            () => _selectedOuterInsulationTypes = selected,
-                          );
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
+                    _buildDropdown(
+                      label: 'Внешнее утепление стен',
+                      hint: _selectedOuterInsulationTypes.isEmpty
+                          ? 'Выбрать'
+                          : _selectedOuterInsulationTypes.join(', '),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: textSecondary,
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SelectionDialog(
+                              title: 'Внешнее утепление стен',
+                              options: const [
+                                'Без утепления',
+                                'Минеральная вата',
+                                'Пенопласт',
+                                'Пенополистирол',
+                                'Пенополиуретан',
+                                'Комбинированное',
+                                'Другое',
+                              ],
+                              selectedOptions: _selectedOuterInsulationTypes,
+                              onSelectionChanged: (selected) {
+                                setState(
+                                  () =>
+                                      _selectedOuterInsulationTypes = selected,
+                                );
+                              },
+                              allowMultipleSelection: false,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
 
-               _buildDropdown(
-                label: 'Тип кровли',
-                hint: _selectedRoofTypes.isEmpty
-                    ? 'Выбрать'
-                    : _selectedRoofTypes.join(', '),
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: textSecondary,
-                ),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return SelectionDialog(
-                        title: 'Тип кровли',
-                        options: const [
-                          'Металлочерепица',
-                          'Профнастил',
-                          'Шифер',
-                          'Гибкая черепица',
-                          'Ондулин',
-                          'Плоская кровля',
-                          'Деревянная',
-                          'Комбинированная',
-                          'Другое',
-                        ],
-                        selectedOptions: _selectedRoofTypes,
-                        onSelectionChanged: (selected) {
-                          setState(() => _selectedRoofTypes = selected);
-                        },
-                        allowMultipleSelection: false,
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 9),
+                    _buildDropdown(
+                      label: 'Тип кровли',
+                      hint: _selectedRoofTypes.isEmpty
+                          ? 'Выбрать'
+                          : _selectedRoofTypes.join(', '),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: textSecondary,
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return SelectionDialog(
+                              title: 'Тип кровли',
+                              options: const [
+                                'Металлочерепица',
+                                'Профнастил',
+                                'Шифер',
+                                'Гибкая черепица',
+                                'Ондулин',
+                                'Плоская кровля',
+                                'Деревянная',
+                                'Комбинированная',
+                                'Другое',
+                              ],
+                              selectedOptions: _selectedRoofTypes,
+                              onSelectionChanged: (selected) {
+                                setState(() => _selectedRoofTypes = selected);
+                              },
+                              allowMultipleSelection: false,
+                            );
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 9),
 
-                    
                     _buildDropdown(
                       label: 'Санузел',
                       hint: _selectedBathroomTypes.isEmpty
@@ -744,7 +736,6 @@ class _FiltersForeignHouseSellScreenState
                     ),
 
                     const SizedBox(height: 10),
-                     
 
                     _buildDropdown(
                       label: 'Коммуникации',
@@ -1092,7 +1083,7 @@ class _FiltersForeignHouseSellScreenState
           value: isRealtor,
           onChanged: (v) => setState(() => isRealtor = v),
         ),
-         const SizedBox(height: 8),
+        const SizedBox(height: 8),
         _buildCheck("Срочная продажа", urgent, (v) {
           setState(() => urgent = v);
         }),
@@ -1519,12 +1510,16 @@ class _FiltersForeignHouseSellScreenState
         Expanded(
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              backgroundColor: selected == true ? activeIconColor : Colors.transparent,
+              backgroundColor: selected == true
+                  ? activeIconColor
+                  : Colors.transparent,
               side: selected == true
                   ? null
                   : const BorderSide(color: Colors.white, width: 1),
               minimumSize: const Size(0, 35),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5),
+              ),
             ),
             onPressed: () => onChange(true),
             child: Text(
@@ -1540,12 +1535,16 @@ class _FiltersForeignHouseSellScreenState
         Expanded(
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              backgroundColor: selected == false ? activeIconColor : Colors.transparent,
+              backgroundColor: selected == false
+                  ? activeIconColor
+                  : Colors.transparent,
               side: selected == false
                   ? null
                   : const BorderSide(color: Colors.white, width: 1),
               minimumSize: const Size(0, 35),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5),
+              ),
             ),
             onPressed: () => onChange(false),
             child: Text(

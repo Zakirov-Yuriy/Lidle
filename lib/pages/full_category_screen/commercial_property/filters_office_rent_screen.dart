@@ -1244,6 +1244,4 @@ class _FiltersOfficeRentScreenenState extends State<FiltersOfficeRentScreenen> {
       ),
     );
   }
-
-
 }

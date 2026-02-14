@@ -3,6 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
 
 class CustomSwitch extends StatelessWidget {
   final bool value;
@@ -32,7 +33,10 @@ class CustomSwitch extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.transparent,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(
+                color: value ? activeIconColor : Colors.white,
+                width: 2,
+              ),
             ),
           ),
         ),

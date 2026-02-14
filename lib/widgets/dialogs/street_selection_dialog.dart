@@ -1,5 +1,5 @@
 // ============================================================
-//  "Диалог выбора улицы"
+//  "Диалог выбора улицы с поиском"
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -12,14 +12,16 @@ class _SectionHeader {
 
 class StreetSelectionDialog extends StatefulWidget {
   final String title;
-  final Map<String, List<String>> groupedOptions;
+  final Map<String, List<String>>? groupedOptions;
+  final List<String>? options;
   final Set<String> selectedOptions;
   final Function(Set<String>) onSelectionChanged;
 
   const StreetSelectionDialog({
     super.key,
     required this.title,
-    required this.groupedOptions,
+    this.groupedOptions,
+    this.options,
     required this.selectedOptions,
     required this.onSelectionChanged,
   });
@@ -37,7 +39,11 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
   void initState() {
     super.initState();
     _currentSelectedOptions = Set<String>.from(widget.selectedOptions);
-    _buildDisplayOptions(widget.groupedOptions);
+    if (widget.groupedOptions != null) {
+      _buildDisplayOptions(widget.groupedOptions!);
+    } else if (widget.options != null) {
+      _buildDisplayOptionsFromList(widget.options!);
+    }
     _searchController.addListener(_filterOptions);
   }
 
@@ -48,14 +54,65 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
     super.dispose();
   }
 
+  /// Извлекает основное название улицы, удаляя префиксы (ул., пр., пер. и т.д.)
+  String _getStreetMainName(String fullStreetName) {
+    String mainName = fullStreetName
+        .replaceAll(RegExp(r'^ул\.\s+'), '')
+        .replaceAll(RegExp(r'^улица\s+'), '')
+        .replaceAll(RegExp(r'^пр\.\s+'), '')
+        .replaceAll(RegExp(r'^проспект\s+'), '')
+        .replaceAll(RegExp(r'^пер\.\s+'), '')
+        .replaceAll(RegExp(r'^переулок\s+'), '')
+        .replaceAll(RegExp(r'^бульвар\s+'), '')
+        .replaceAll(RegExp(r'^б-р\s+'), '')
+        .replaceAll(RegExp(r'^площадь\s+'), '')
+        .replaceAll(RegExp(r'^пл\.\s+'), '')
+        .replaceAll(RegExp(r'^шоссе\s+'), '')
+        .replaceAll(RegExp(r'^дорога\s+'), '')
+        .replaceAll(RegExp(r'^тракт\s+'), '')
+        .replaceAll(RegExp(r'^набережная\s+'), '')
+        .replaceAll(RegExp(r'^набер\.\s+'), '')
+        .trim();
+    return mainName.isNotEmpty ? mainName : fullStreetName;
+  }
+
+  // Для списка улиц (новый формат)
+  void _buildDisplayOptionsFromList(List<String> streets) {
+    List<dynamic> newDisplayOptions = [];
+    String? currentLetter;
+    List<String> mutableStreets = List<String>.from(streets);
+
+    mutableStreets.sort((a, b) {
+      String mainA = _getStreetMainName(a);
+      String mainB = _getStreetMainName(b);
+      return mainA.compareTo(mainB);
+    });
+
+    for (var street in mutableStreets) {
+      String mainName = _getStreetMainName(street);
+      final firstLetter = mainName[0].toUpperCase();
+
+      if (firstLetter != currentLetter) {
+        newDisplayOptions.add(_SectionHeader(firstLetter));
+        currentLetter = firstLetter;
+      }
+      newDisplayOptions.add(street);
+    }
+    setState(() {
+      _displayOptions = newDisplayOptions;
+    });
+  }
+
+  // Для сгруппированных улиц (старый формат)
   void _buildDisplayOptions(Map<String, List<String>> groupedStreets) {
     List<dynamic> newDisplayOptions = [];
-
     final sortedSectionKeys = groupedStreets.keys.toList()..sort();
 
     for (var sectionKey in sortedSectionKeys) {
       newDisplayOptions.add(_SectionHeader(sectionKey));
-      List<String> streetsInSection = List<String>.from(groupedStreets[sectionKey]!);
+      List<String> streetsInSection = List<String>.from(
+        groupedStreets[sectionKey]!,
+      );
       streetsInSection.sort();
       newDisplayOptions.addAll(streetsInSection);
     }
@@ -67,18 +124,28 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
 
   void _filterOptions() {
     final query = _searchController.text.toLowerCase();
-    Map<String, List<String>> filteredGroupedStreets = {};
 
-    widget.groupedOptions.forEach((sectionKey, streets) {
-      final filteredStreets = streets.where((street) {
-        return street.toLowerCase().contains(query);
-      }).toList();
-      if (filteredStreets.isNotEmpty) {
-        filteredGroupedStreets[sectionKey] = filteredStreets;
-      }
-    });
+    if (widget.groupedOptions != null) {
+      // Фильтр для сгруппированных улиц
+      Map<String, List<String>> filteredGroupedStreets = {};
 
-    _buildDisplayOptions(filteredGroupedStreets);
+      widget.groupedOptions!.forEach((sectionKey, streets) {
+        final filteredStreets = streets.where((street) {
+          return street.toLowerCase().contains(query);
+        }).toList();
+        if (filteredStreets.isNotEmpty) {
+          filteredGroupedStreets[sectionKey] = filteredStreets;
+        }
+      });
+
+      _buildDisplayOptions(filteredGroupedStreets);
+    } else if (widget.options != null) {
+      // Фильтр для списка улиц
+      List<String> filteredStreets = widget.options!
+          .where((option) => option.toLowerCase().contains(query))
+          .toList();
+      _buildDisplayOptionsFromList(filteredStreets);
+    }
   }
 
   @override
@@ -132,8 +199,12 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
             Flexible(
               child: ScrollbarTheme(
                 data: ScrollbarThemeData(
-                  thumbColor: WidgetStateProperty.all<Color?>(const Color(0xFF3C3C3C)),
-                  trackColor: WidgetStateProperty.all<Color?>(const Color.fromARGB(255, 43, 23, 26)),
+                  thumbColor: WidgetStateProperty.all<Color?>(
+                    const Color(0xFF3C3C3C),
+                  ),
+                  trackColor: WidgetStateProperty.all<Color?>(
+                    const Color.fromARGB(255, 43, 23, 26),
+                  ),
                 ),
                 child: Scrollbar(
                   child: ListView.builder(
@@ -155,19 +226,24 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
                         );
                       } else {
                         final option = item as String;
-                        final isSelected = _currentSelectedOptions.contains(option);
+                        final isSelected = _currentSelectedOptions.contains(
+                          option,
+                        );
                         return GestureDetector(
                           onTap: () {
                             _currentSelectedOptions.clear();
                             _currentSelectedOptions.add(option);
-                            setState(() {});
+                            widget.onSelectionChanged(_currentSelectedOptions);
+                            Navigator.of(context).pop();
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8.0),
                             child: Text(
                               option,
                               style: TextStyle(
-                                color: isSelected ? activeIconColor : textPrimary,
+                                color: isSelected
+                                    ? activeIconColor
+                                    : textPrimary,
                                 fontSize: 16,
                                 fontWeight: isSelected
                                     ? FontWeight.bold

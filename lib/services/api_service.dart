@@ -781,8 +781,48 @@ class ApiService {
     }
   }
 
+  /// Получить список регионов
+  static Future<List<Map<String, dynamic>>> getRegions({String? token}) async {
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final uri = Uri.parse('$baseUrl/addresses/regions');
+
+      print('═══════════════════════════════════════════════════════');
+      print('📥 GET REQUEST /addresses/regions');
+      print('URL: $uri');
+
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 30));
+
+      print('✅ API Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['data'] != null) {
+          final List<dynamic> data = jsonResponse['data'] ?? [];
+          return List<Map<String, dynamic>>.from(
+            data.whereType<Map<String, dynamic>>(),
+          );
+        }
+        return [];
+      } else {
+        throw Exception('Failed to get regions: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error getting regions: $e');
+      throw Exception('Error getting regions: $e');
+    }
+  }
+
   /// Поиск адресов по запросу
   /// Возвращает список результатов поиска с ID region, city, street, building
+  /// Note: API expects GET request with JSON body (unusual but required)
   static Future<List<Map<String, dynamic>>> searchAddresses(
     String query, {
     String? token,
@@ -795,31 +835,43 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      // Build query parameters for GET request
-      final params = {'q': query};
+      // Build request body for GET request (API requires JSON body, not query params)
+      final bodyMap = <String, dynamic>{'q': query};
       if (types != null && types.isNotEmpty) {
-        // API expects types[] format (array parameters) not comma-separated
-        for (int i = 0; i < types.length; i++) {
-          params['types[$i]'] = types[i];
-        }
+        bodyMap['types'] = types;
       }
       if (filters != null && filters.isNotEmpty) {
-        filters.forEach((key, value) {
-          params['filters[$key]'] = value.toString();
-        });
+        bodyMap['filters'] = filters;
       }
 
-      final uri = Uri.parse(
-        '$baseUrl/addresses/search',
-      ).replace(queryParameters: params);
+      final uri = Uri.parse('$baseUrl/addresses/search');
 
       print('═══════════════════════════════════════════════════════');
       print('📥 GET REQUEST /addresses/search');
       print('URL: $uri');
+      print('Token provided: ${token != null}');
+      if (token != null) {
+        print('Token preview: ${token.substring(0, 30)}...');
+      }
+      print('Headers:');
+      headers.forEach((key, value) {
+        if (key == 'Authorization') {
+          print('  $key: Bearer [HIDDEN]');
+        } else {
+          print('  $key: $value');
+        }
+      });
+      print('Body: ${jsonEncode(bodyMap)}');
 
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 30));
+      // Use http.Request to send GET with JSON body (unusual but API requires it)
+      final request = http.Request('GET', uri);
+      request.headers.addAll(headers);
+      request.body = jsonEncode(bodyMap);
+
+      final streamResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+      );
+      final response = await http.Response.fromStream(streamResponse);
 
       print('✅ API Response status: ${response.statusCode}');
 

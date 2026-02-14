@@ -39,12 +39,12 @@ class _SelectionDialogState extends State<SelectionDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: const Color(0xFF222E3A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(8)),
+      ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
-        constraints: BoxConstraints(
-          maxHeight: 359.0,
-        ),
+        constraints: BoxConstraints(maxHeight: 359.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -74,8 +74,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  children:
-                      widget.options.map((option) => _buildCheckbox(option)).toList(),
+                  children: widget.options
+                      .map((option) => _buildCheckbox(option))
+                      .toList(),
                 ),
               ),
             ),
@@ -91,7 +92,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
                     ),
                   ),
                   onPressed: () {
-                    Navigator.of(context).pop(); // Close without applying changes
+                    Navigator.of(
+                      context,
+                    ).pop(); // Close without applying changes
                   },
                   child: const Text(
                     'Отмена',
@@ -100,7 +103,6 @@ class _SelectionDialogState extends State<SelectionDialog> {
                       fontSize: 16,
                       decoration: TextDecoration.underline,
                       decorationColor: textPrimary,
-                      
                     ),
                   ),
                 ),
@@ -157,8 +159,10 @@ class _SelectionDialogState extends State<SelectionDialog> {
                 }
               });
             },
-            child: Text(title,
-                style: const TextStyle(color: textPrimary, fontSize: 16)),
+            child: Text(
+              title,
+              style: const TextStyle(color: textPrimary, fontSize: 16),
+            ),
           ),
           CustomCheckbox(
             value: _tempSelectedOptions.contains(title),
