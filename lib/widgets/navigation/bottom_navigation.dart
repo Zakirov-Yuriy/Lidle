@@ -6,6 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
+import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/pages/favorites_screen.dart';
+import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 
 class BottomNavigation extends StatelessWidget {
   final ValueChanged<int>? onItemSelected;
@@ -18,18 +22,21 @@ class BottomNavigation extends StatelessWidget {
 
     int getSelectedIndex() {
       switch (currentRoute) {
-        case '/':
+        case HomePage.routeName:
+        case '/': // home property в main.dart использует "/"
           return 0;
-        case '/favorites':
+        case FavoritesScreen.routeName:
           return 1;
+        case AddListingScreen.routeName:
+          return 2;
         case MyPurchasesScreen.routeName:
           return 3;
         case MessagesPage.routeName:
           return 4;
-        case '/profile-dashboard':
+        case ProfileDashboard.routeName:
           return 5;
         default:
-          return 0;
+          return -1; // На дочерних экранах все иконки белые
       }
     }
 
@@ -49,12 +56,12 @@ class BottomNavigation extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(homeIconAsset, 0, selectedIndex),
-              _buildNavItem(heartIconAsset, 1, selectedIndex),
-              _buildCenterAdd(2, selectedIndex),
-              _buildNavItem(shoppingCartIconAsset, 3, selectedIndex),
-              _buildNavItem(messageIconAsset, 4, selectedIndex),
-              _buildNavItem(userIconAsset, 5, selectedIndex),
+              _buildNavItem(context, homeIconAsset, 0, selectedIndex),
+              _buildNavItem(context, heartIconAsset, 1, selectedIndex),
+              _buildCenterAdd(context, 2, selectedIndex),
+              _buildNavItem(context, shoppingCartIconAsset, 3, selectedIndex),
+              _buildNavItem(context, messageIconAsset, 4, selectedIndex),
+              _buildNavItem(context, userIconAsset, 5, selectedIndex),
             ],
           ),
         ),
@@ -62,14 +69,22 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(String iconPath, int index, int currentSelected) {
+  Widget _buildNavItem(
+    BuildContext context,
+    String iconPath,
+    int index,
+    int currentSelected,
+  ) {
     final isSelected = currentSelected == index;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
-        onTap: () => onItemSelected?.call(index),
+        onTap: () {
+          _navigateToScreen(context, index);
+          onItemSelected?.call(index);
+        },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
           child: Image.asset(
@@ -83,14 +98,17 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
-  Widget _buildCenterAdd(int index, int currentSelected) {
+  Widget _buildCenterAdd(BuildContext context, int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
-        onTap: () => onItemSelected?.call(index),
+        onTap: () {
+          _navigateToScreen(context, index);
+          onItemSelected?.call(index);
+        },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
           child: Container(
@@ -107,5 +125,33 @@ class BottomNavigation extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _navigateToScreen(BuildContext context, int index) {
+    final String routeName;
+    switch (index) {
+      case 0:
+        routeName = HomePage.routeName;
+        break;
+      case 1:
+        routeName = FavoritesScreen.routeName;
+        break;
+      case 2:
+        routeName = AddListingScreen.routeName;
+        break;
+      case 3:
+        routeName = MyPurchasesScreen.routeName;
+        break;
+      case 4:
+        routeName = MessagesPage.routeName;
+        break;
+      case 5:
+        routeName = ProfileDashboard.routeName;
+        break;
+      default:
+        return;
+    }
+
+    Navigator.of(context).pushReplacementNamed(routeName);
   }
 }

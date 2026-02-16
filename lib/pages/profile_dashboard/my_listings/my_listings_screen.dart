@@ -66,33 +66,41 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        setState(() {
-          _isLoadingMetadata = false;
-          _errorMessage = 'Токен не найден';
-        });
+        if (mounted) {
+          setState(() {
+            _isLoadingMetadata = false;
+            _errorMessage = 'Токен не найден';
+          });
+        }
         return;
       }
 
-      setState(() => _isLoadingMetadata = true);
+      if (mounted) {
+        setState(() => _isLoadingMetadata = true);
+      }
 
       final response = await MyAdvertsService.getAdvertsMeta(token: token);
 
       if (response.data.isNotEmpty) {
         final metaData = response.data[0];
-        setState(() {
-          _advertMetaCatalogs = metaData.catalogs;
-          if (_advertMetaCatalogs.isNotEmpty) {
-            _advertMetaCategories = _advertMetaCatalogs[0].categories;
-          }
-          _isLoadingMetadata = false;
-        });
+        if (mounted) {
+          setState(() {
+            _advertMetaCatalogs = metaData.catalogs;
+            if (_advertMetaCatalogs.isNotEmpty) {
+              _advertMetaCategories = _advertMetaCatalogs[0].categories;
+            }
+            _isLoadingMetadata = false;
+          });
+        }
       }
     } catch (e) {
       print('=== Ошибка загрузки мета-информации объявлений: $e');
-      setState(() {
-        _isLoadingMetadata = false;
-        _errorMessage = 'Ошибка загрузки мета-информации: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingMetadata = false;
+          _errorMessage = 'Ошибка загрузки мета-информации: $e';
+        });
+      }
     }
   }
 
@@ -101,14 +109,18 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        setState(() {
-          _isLoadingListings = false;
-          _errorMessage = 'Токен не найден';
-        });
+        if (mounted) {
+          setState(() {
+            _isLoadingListings = false;
+            _errorMessage = 'Токен не найден';
+          });
+        }
         return;
       }
 
-      setState(() => _isLoadingListings = true);
+      if (mounted) {
+        setState(() => _isLoadingListings = true);
+      }
 
       // Загружаем объявления всех статусов параллельно
       final results = await Future.wait([
@@ -118,19 +130,23 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         MyAdvertsService.getMyAdverts(statusId: 8, token: token),
       ]);
 
-      setState(() {
-        _activeListings = results[0].data;
-        _inactiveListings = results[1].data;
-        _moderationListings = results[2].data;
-        _archiveListings = results[3].data;
-        _isLoadingListings = false;
-      });
+      if (mounted) {
+        setState(() {
+          _activeListings = results[0].data;
+          _inactiveListings = results[1].data;
+          _moderationListings = results[2].data;
+          _archiveListings = results[3].data;
+          _isLoadingListings = false;
+        });
+      }
     } catch (e) {
       print('=== Ошибка загрузки объявлений: $e');
-      setState(() {
-        _isLoadingListings = false;
-        _errorMessage = 'Ошибка загрузки объявлений: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingListings = false;
+          _errorMessage = 'Ошибка загрузки объявлений: $e';
+        });
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_errorMessage ?? 'Ошибка загрузки')),
@@ -284,6 +300,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             extendBody: true,
             backgroundColor: primaryBackground,
             body: SafeArea(
+              bottom: false,
               child: ListView(
                 children: [
                   // ───── Header ─────
@@ -646,6 +663,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
                   // ───── Content ─────
                   _buildTabContent(),
+                  SizedBox(
+                    height: bottomNavHeight + bottomNavPaddingBottom + 16,
+                  ),
                 ],
               ),
             ),

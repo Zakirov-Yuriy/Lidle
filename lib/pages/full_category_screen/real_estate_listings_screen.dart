@@ -9,6 +9,12 @@ import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dar
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/pages/favorites_screen.dart';
+import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/messages/messages_page.dart';
+import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 
 // ============================================================
 // "Универсальный экран объявлений по категориям"
@@ -53,6 +59,12 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     super.initState();
     _selectedSortOptions.add('Сначала новые');
     _loadAdverts();
+    _updateSelectedIndex();
+  }
+
+  void _updateSelectedIndex() {
+    // На этом экране всегда все иконки белые, так как это подэкран
+    _selectedIndex = -1;
   }
 
   Future<void> _loadAdverts({String? sort, bool isNextPage = false}) async {
@@ -133,8 +145,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       backgroundColor: primaryBackground,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             // ---------------- FIXED HEADER (не скроллится) ----------------
@@ -305,7 +319,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                         ),
                       ),
                     ),
-                  SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: bottomNavHeight + bottomNavPaddingBottom + 16,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -496,24 +514,27 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }
 
   Widget _buildBottomNavigation() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(25, 0, 25, 48),
-      child: Container(
-        height: bottomNavHeight,
-        decoration: BoxDecoration(
-          color: bottomNavBackground,
-          borderRadius: BorderRadius.circular(37.5),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(homeIconAsset, 0, _selectedIndex),
-            _buildNavItem(gridIconAsset, 1, _selectedIndex),
-            _buildCenterAdd(2, _selectedIndex),
-            _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
-            _buildNavItem(messageIconAssetLocal, 4, _selectedIndex),
-            _buildNavItem(userIconAsset, 5, _selectedIndex),
-          ],
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, bottomNavPaddingBottom),
+        child: Container(
+          height: bottomNavHeight,
+          decoration: BoxDecoration(
+            color: bottomNavBackground,
+            borderRadius: BorderRadius.circular(37.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(homeIconAsset, 0, _selectedIndex),
+              _buildNavItem(gridIconAsset, 1, _selectedIndex),
+              _buildCenterAdd(2, _selectedIndex),
+              _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
+              _buildNavItem(messageIconAssetLocal, 4, _selectedIndex),
+              _buildNavItem(userIconAsset, 5, _selectedIndex),
+            ],
+          ),
         ),
       ),
     );
@@ -521,30 +542,90 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
   Widget _buildNavItem(String iconPath, int index, int current) {
     final isSelected = index == current;
-    return InkWell(
-      borderRadius: BorderRadius.circular(50),
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Image.asset(
-        iconPath,
-        width: 28,
-        height: 28,
-        color: isSelected ? activeIconColor : inactiveIconColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Image.asset(
+            iconPath,
+            width: 28,
+            height: 28,
+            color: isSelected ? activeIconColor : inactiveIconColor,
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildCenterAdd(int index, int current) {
     final isSelected = index == current;
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Image.asset(
-        plusIconAsset,
-        width: 28,
-        height: 28,
-        color: isSelected ? activeIconColor : inactiveIconColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            child: Image.asset(
+              plusIconAsset,
+              width: 28,
+              height: 28,
+              color: isSelected ? activeIconColor : inactiveIconColor,
+            ),
+          ),
+        ),
       ),
     );
+  }
+
+  void _navigateToScreen(int index) {
+    final String routeName;
+    switch (index) {
+      case 0:
+        routeName = HomePage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 1:
+        // Заглушка - функция еще не реализована
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Эта функция пока не реализована'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        break;
+      case 2:
+        routeName = AddListingScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 3:
+        routeName = MyPurchasesScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 4:
+        routeName = MessagesPage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 5:
+        routeName = ProfileDashboard.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      default:
+        return;
+    }
   }
 
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {

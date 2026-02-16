@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:collection/collection.dart';
+import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/dialogs/responses_sort_dialog.dart';
@@ -526,6 +527,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
         extendBody: true,
         backgroundColor: backgroundColor,
         body: SafeArea(
+          bottom: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -717,8 +719,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
 
               // ───── Content ─────
               Expanded(child: _buildTabContent()),
-
-              // const SizedBox(height: 80), // под bottom nav
+              SizedBox(height: bottomNavHeight + bottomNavPaddingBottom + 16),
             ],
           ),
         ),
