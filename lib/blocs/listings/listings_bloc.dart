@@ -20,7 +20,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
   ListingsBloc() : super(ListingsInitial()) {
     on<LoadListingsEvent>(_onLoadListings);
-    on<LoadCategoriesEvent>(_onLoadCategories);
     on<SearchListingsEvent>(_onSearchListings);
     on<FilterListingsByCategoryEvent>(_onFilterListingsByCategory);
     on<ResetFiltersEvent>(_onResetFilters);
@@ -159,36 +158,51 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
 
-      // Загружаем объявления из API
-      // Первая страница (page=1) с лимитом 20 объявлений
-      final advertsResponse = await ApiService.getAdverts(
-        catalogId: 1, // Каталог 1 = все категории
-        token: token,
-        page: 1, // Начинаем с первой страницы
-        limit: 20, // Загружаем 20 объявлений за раз
-      );
+      // Получаем все catalogId
+      final catalogIds = catalogsResponse.data.map((c) => c.id).toList();
+      final List<Listing> allListings = [];
+      int currentPage = 1;
+      int totalPages = 1;
+      int itemsPerPage = 20;
 
-      // Преобразуем Advert в Listing для совместимости с UI
-      final listings = advertsResponse.data.map((advert) {
-        print('Advert ${advert.id} has ${advert.images.length} images');
-        return advert.toListing();
-      }).toList();
-
-      // Извлекаем информацию о пагинации из meta (если доступно)
-      final currentPage = advertsResponse.meta?.currentPage ?? 1;
-      final totalPages = advertsResponse.meta?.lastPage ?? 1;
-      final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
+      // Для каждого каталога делаем запрос объявлений (только первая страница)
+      for (final catalogId in catalogIds) {
+        try {
+          final advertsResponse = await ApiService.getAdverts(
+            catalogId: catalogId,
+            token: token,
+            page: 1,
+            limit: 500,
+          );
+          final listings = advertsResponse.data.map((advert) {
+            print('Advert ${advert.id} has ${advert.images.length} images');
+            return advert.toListing();
+          }).toList();
+          allListings.addAll(listings);
+          // Для первой категории сохраняем пагинацию
+          if (catalogId == catalogIds.first) {
+            currentPage = advertsResponse.meta?.currentPage ?? 1;
+            totalPages = advertsResponse.meta?.lastPage ?? 1;
+            itemsPerPage = advertsResponse.meta?.perPage ?? 20;
+          }
+        } catch (e) {
+          print('Ошибка загрузки объявлений для catalogId=$catalogId: $e');
+        }
+      }
 
       print(
-        '📊 API Response: ${loadedCategories.length} категорий, ${listings.length} объявлений загружено',
+        '📊 API Response: ${loadedCategories.length} категорий, ${allListings.length} объявлений загружено',
       );
       print(
         '📊 Meta: currentPage=$currentPage, totalPages=$totalPages, itemsPerPage=$itemsPerPage',
       );
 
+      // Сортируем объявления по датам (новые в начале)
+      final sortedListings = _sortListingsByDate(allListings);
+
       emit(
         ListingsLoaded(
-          listings: listings,
+          listings: sortedListings,
           categories: loadedCategories,
           currentPage: currentPage,
           totalPages: totalPages,
@@ -196,53 +210,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
     } catch (e) {
-      // При ошибке API показываем ошибку
       print('❌ Error loading listings: $e');
-      emit(ListingsError(message: e.toString()));
-    }
-  }
-
-  /// Обработчик события загрузки категорий.
-  /// Загружает категории из API.
-  Future<void> _onLoadCategories(
-    LoadCategoriesEvent event,
-    Emitter<ListingsState> emit,
-  ) async {
-    emit(ListingsLoading());
-    try {
-      // Получаем токен для аутентификации
-      final token = await HiveService.getUserData('token');
-
-      // Загружаем каталоги (категории) из API
-      final catalogsResponse = await ApiService.getCatalogs(token: token);
-      final loadedCategories = catalogsResponse.data
-          .map(_catalogToCategory)
-          .toList();
-
-      // Добавляем специальную категорию "Смотреть все" в конец
-      loadedCategories.add(
-        const Category(
-          title: 'Смотреть\nвсе',
-          color: Color(0xFF00A6FF),
-          imagePath: '',
-        ),
-      );
-
-      // Загружаем объявления также из API
-      final advertsResponse = await ApiService.getAdverts(
-        catalogId: 1,
-        token: token,
-        page: 1,
-        limit: 20,
-      );
-
-      final listings = advertsResponse.data.map((advert) {
-        return advert.toListing();
-      }).toList();
-
-      emit(ListingsLoaded(listings: listings, categories: loadedCategories));
-    } catch (e) {
-      print('❌ Error loading categories: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -416,7 +384,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         catalogId: 1, // Каталог 1 = все категории
         token: token,
         page: nextPage,
-        limit: 20, // Загружаем 20 объявлений за раз
+        limit: 500, // Загружаем 500 объявлений за раз
       );
 
       // Преобразуем Advert в Listing
@@ -474,13 +442,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         catalogId: 1, // Каталог 1 = все категории
         token: token,
         page: event.pageNumber,
-        limit: 20, // Загружаем 20 объявлений за раз
+        limit: 500, // Загружаем 500 объявлений за раз
       );
 
       // Преобразуем Advert в Listing
       final listings = advertsResponse.data.map((advert) {
         return advert.toListing();
       }).toList();
+
+      // Сортируем объявления по датам (новые в начале)
+      final sortedListings = _sortListingsByDate(listings);
 
       // Извлекаем информацию о пагинации
       final totalPages = advertsResponse.meta?.lastPage ?? 1;
@@ -489,7 +460,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Испускаем новое состояние с объявлениями указанной страницы
       emit(
         ListingsLoaded(
-          listings: listings,
+          listings: sortedListings,
           categories: currentState.categories,
           currentPage: event.pageNumber,
           totalPages: totalPages,
@@ -500,5 +471,60 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // При ошибке испускаем состояние ошибки
       emit(ListingsError(message: 'Ошибка при загрузке страницы: $e'));
     }
+  }
+
+  /// Метод для сортировки объявлений по датам.
+  /// Объявления с датой 'Сегодня' помещаются в начало.
+  /// Остальные объявления сортируются от новых к старым.
+  List<Listing> _sortListingsByDate(List<Listing> listings) {
+    // Функция для преобразования строки даты в объект DateTime для сравнения
+    DateTime? parseDate(String dateStr) {
+      // Если дата 'Сегодня', возвращаем очень новую дату
+      if (dateStr == 'Сегодня') {
+        return DateTime.now();
+      }
+
+      try {
+        // Пытаемся распарсить дату в формате DD.MM.YYYY
+        final parts = dateStr.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      } catch (e) {
+        print('Ошибка при парсировании даты "$dateStr": $e');
+      }
+      return null;
+    }
+
+    // Разделяем объявления на две группы: 'Сегодня' и остальные
+    final todayListings = <Listing>[];
+    final otherListings = <Listing>[];
+
+    for (final listing in listings) {
+      if (listing.date == 'Сегодня') {
+        todayListings.add(listing);
+      } else {
+        otherListings.add(listing);
+      }
+    }
+
+    // Сортируем остальные объявления от новых к старым
+    otherListings.sort((a, b) {
+      final dateA = parseDate(a.date);
+      final dateB = parseDate(b.date);
+
+      if (dateA == null || dateB == null) {
+        return 0; // Если не удалось распарсить, оставляем исходный порядок
+      }
+
+      // Сортируем в обратном порядке (новые сначала)
+      return dateB.compareTo(dateA);
+    });
+
+    // Объединяем: сначала 'Сегодня', потом отсортированные по датам
+    return [...todayListings, ...otherListings];
   }
 }

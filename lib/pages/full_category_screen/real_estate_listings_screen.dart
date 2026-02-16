@@ -71,7 +71,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         catalogId: widget.catalogId,
         sort: sort,
         page: isNextPage ? _currentPage + 1 : 1,
-        limit: 20,
+        limit: 500,
         token: token,
       );
 
