@@ -25,6 +25,7 @@ import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dar
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/core/cache/cacheable_bloc.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -54,6 +55,8 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
   int _inactiveListingsCount = 0;
   bool _isLoadingListings = true;
 
+  static const String _cacheKeyListings = 'profile_listings_counts';
+
   @override
   void initState() {
     super.initState();
@@ -61,8 +64,26 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
   }
 
   /// Загрузить количество активных и неактивных объявлений
-  Future<void> _loadListingsCounts() async {
+  /// 🔄 С кешированием: первый раз загружает, потом использует кеш
+  Future<void> _loadListingsCounts({bool forceRefresh = false}) async {
     try {
+      // 📖 Проверяем кеш если это не принудительное обновление
+      if (!forceRefresh) {
+        final cached = CacheManager().get<Map<String, int>>(_cacheKeyListings);
+        if (cached != null) {
+          print('✅ Используем кешированные данные листингов');
+          setState(() {
+            _activeListingsCount = cached['active'] ?? 0;
+            _inactiveListingsCount = cached['inactive'] ?? 0;
+            _isLoadingListings = false;
+          });
+          return;
+        }
+      }
+
+      // 🔄 Если нет кеша или forceRefresh=true, загружаем с API
+      setState(() => _isLoadingListings = true);
+
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
         setState(() => _isLoadingListings = false);
@@ -75,9 +96,18 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
         MyAdvertsService.getMyAdverts(statusId: 2, token: token),
       ]);
 
+      final activeCount = results[0].data.length;
+      final inactiveCount = results[1].data.length;
+
+      // 💾 Сохраняем в кеш
+      CacheManager().set<Map<String, int>>(_cacheKeyListings, {
+        'active': activeCount,
+        'inactive': inactiveCount,
+      });
+
       setState(() {
-        _activeListingsCount = results[0].data.length;
-        _inactiveListingsCount = results[1].data.length;
+        _activeListingsCount = activeCount;
+        _inactiveListingsCount = inactiveCount;
         _isLoadingListings = false;
       });
     } catch (e) {

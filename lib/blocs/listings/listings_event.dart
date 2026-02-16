@@ -7,7 +7,11 @@ abstract class ListingsEvent {
 /// Событие загрузки объявлений.
 /// Используется для инициализации или обновления списка объявлений.
 class LoadListingsEvent extends ListingsEvent {
-  const LoadListingsEvent();
+  /// Если true, всегда загружает данные заново (игнорирует кеш).
+  /// Используется при pull-to-refresh.
+  final bool forceRefresh;
+
+  const LoadListingsEvent({this.forceRefresh = false});
 }
 
 /// Событие загрузки категорий.

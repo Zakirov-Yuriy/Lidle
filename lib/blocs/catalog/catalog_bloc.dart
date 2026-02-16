@@ -5,6 +5,9 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
 
 class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
+  /// Флаг для отслеживания, уже ли загружены каталоги
+  bool _isCatalogsLoaded = false;
+
   CatalogBloc() : super(CatalogInitial()) {
     on<LoadCatalogs>(_onLoadCatalogs);
     on<LoadCatalog>(_onLoadCatalog);
@@ -15,10 +18,20 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
     LoadCatalogs event,
     Emitter<CatalogState> emit,
   ) async {
+    // 🔄 Кеширование: если каталоги уже загружены и это не принудительная загрузка,
+    // просто вернёмся к сохранённому состоянию
+    if (_isCatalogsLoaded && !event.forceRefresh && state is CatalogsLoaded) {
+      return;
+    }
+
     emit(CatalogLoading());
     try {
       final token = await HiveService.getUserData('token');
       final response = await ApiService.getCatalogs(token: token);
+
+      // ✅ Отмечаем, что каталоги загружены
+      _isCatalogsLoaded = true;
+
       emit(CatalogsLoaded(response.data));
     } catch (e) {
       emit(CatalogError(e.toString()));

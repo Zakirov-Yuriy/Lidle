@@ -16,6 +16,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Задержка имитации фильтрации (в миллисекундах).
   static const int _filterDelayMs = 200;
 
+  /// Флаг для отслеживания, уже ли загружены данные.
+  /// Предотвращает ненужные повторные загрузки.
+  bool _isInitialLoadComplete = false;
+
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
   ListingsBloc() : super(ListingsInitial()) {
@@ -138,6 +142,14 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     LoadListingsEvent event,
     Emitter<ListingsState> emit,
   ) async {
+    // 🔄 Кеширование: если данные уже загружены и это не принудительная загрузка (фреш),
+    // просто вернёмся к сохранённому состоянию
+    if (_isInitialLoadComplete &&
+        !event.forceRefresh &&
+        state is ListingsLoaded) {
+      return;
+    }
+
     emit(ListingsLoading());
     try {
       // Получаем токен для аутентификации
@@ -199,6 +211,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(allListings);
+
+      // ✅ Отмечаем, что первоначальная загрузка завершена
+      _isInitialLoadComplete = true;
 
       emit(
         ListingsLoaded(

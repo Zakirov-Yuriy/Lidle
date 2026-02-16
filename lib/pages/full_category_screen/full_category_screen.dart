@@ -45,7 +45,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
   void didPopNext() {
     super.didPopNext();
     // Перезагружаем список каталогов при возврате на экран
-    context.read<CatalogBloc>().add(LoadCatalogs());
+    context.read<CatalogBloc>().add(LoadCatalogs(forceRefresh: true));
   }
 
   @override
@@ -53,7 +53,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
     // Перезагружаем список каталогов, если состояние CatalogLoaded (от другого экрана)
     final state = context.read<CatalogBloc>().state;
     if (state is CatalogLoaded) {
-      context.read<CatalogBloc>().add(LoadCatalogs());
+      context.read<CatalogBloc>().add(LoadCatalogs(forceRefresh: true));
     }
     return Scaffold(
       backgroundColor: const Color(0xFF1D2835),

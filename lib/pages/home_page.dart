@@ -44,14 +44,17 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // Загружаем данные при инициализации страницы
-    context.read<ListingsBloc>().add(LoadListingsEvent());
+    // 🔄 Кеширование: загружаем данные только если их ещё нет
+    final currentState = context.read<ListingsBloc>().state;
+    if (currentState is! ListingsLoaded) {
+      context.read<ListingsBloc>().add(LoadListingsEvent());
+    }
   }
 
   /// Метод для обработки pull-to-refresh.
-  /// Перезагружает данные объявлений и категорий.
+  /// Перезагружает данные объявлений и категорий с флагом forceRefresh=true.
   Future<void> _onRefresh() async {
-    context.read<ListingsBloc>().add(LoadListingsEvent());
+    context.read<ListingsBloc>().add(LoadListingsEvent(forceRefresh: true));
     // Небольшая задержка для имитации загрузки и показа индикатора
     await Future.delayed(const Duration(seconds: 1));
   }
