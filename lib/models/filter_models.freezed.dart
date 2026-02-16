@@ -30,6 +30,7 @@ mixin _$Attribute {
   bool get isRequired => throw _privateConstructorUsedError;
   bool get isTitleHidden => throw _privateConstructorUsedError;
   bool get isSpecialDesign => throw _privateConstructorUsedError;
+  bool get isPopup => throw _privateConstructorUsedError;
   bool get isMaxValue => throw _privateConstructorUsedError;
   dynamic get maxValue => throw _privateConstructorUsedError;
   String? get vmText => throw _privateConstructorUsedError;
@@ -63,6 +64,7 @@ abstract class $AttributeCopyWith<$Res> {
     bool isRequired,
     bool isTitleHidden,
     bool isSpecialDesign,
+    bool isPopup,
     bool isMaxValue,
     dynamic maxValue,
     String? vmText,
@@ -97,6 +99,7 @@ class _$AttributeCopyWithImpl<$Res, $Val extends Attribute>
     Object? isRequired = null,
     Object? isTitleHidden = null,
     Object? isSpecialDesign = null,
+    Object? isPopup = null,
     Object? isMaxValue = null,
     Object? maxValue = freezed,
     Object? vmText = freezed,
@@ -142,6 +145,10 @@ class _$AttributeCopyWithImpl<$Res, $Val extends Attribute>
             isSpecialDesign: null == isSpecialDesign
                 ? _value.isSpecialDesign
                 : isSpecialDesign // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            isPopup: null == isPopup
+                ? _value.isPopup
+                : isPopup // ignore: cast_nullable_to_non_nullable
                       as bool,
             isMaxValue: null == isMaxValue
                 ? _value.isMaxValue
@@ -196,6 +203,7 @@ abstract class _$$AttributeImplCopyWith<$Res>
     bool isRequired,
     bool isTitleHidden,
     bool isSpecialDesign,
+    bool isPopup,
     bool isMaxValue,
     dynamic maxValue,
     String? vmText,
@@ -229,6 +237,7 @@ class __$$AttributeImplCopyWithImpl<$Res>
     Object? isRequired = null,
     Object? isTitleHidden = null,
     Object? isSpecialDesign = null,
+    Object? isPopup = null,
     Object? isMaxValue = null,
     Object? maxValue = freezed,
     Object? vmText = freezed,
@@ -274,6 +283,10 @@ class __$$AttributeImplCopyWithImpl<$Res>
         isSpecialDesign: null == isSpecialDesign
             ? _value.isSpecialDesign
             : isSpecialDesign // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        isPopup: null == isPopup
+            ? _value.isPopup
+            : isPopup // ignore: cast_nullable_to_non_nullable
                   as bool,
         isMaxValue: null == isMaxValue
             ? _value.isMaxValue
@@ -321,6 +334,7 @@ class _$AttributeImpl implements _Attribute {
     this.isRequired = false,
     this.isTitleHidden = false,
     this.isSpecialDesign = false,
+    this.isPopup = false,
     this.isMaxValue = false,
     this.maxValue,
     this.vmText,
@@ -361,6 +375,9 @@ class _$AttributeImpl implements _Attribute {
   final bool isSpecialDesign;
   @override
   @JsonKey()
+  final bool isPopup;
+  @override
+  @JsonKey()
   final bool isMaxValue;
   @override
   final dynamic maxValue;
@@ -384,7 +401,7 @@ class _$AttributeImpl implements _Attribute {
 
   @override
   String toString() {
-    return 'Attribute(id: $id, title: $title, isFilter: $isFilter, isRange: $isRange, isMultiple: $isMultiple, isHidden: $isHidden, isRequired: $isRequired, isTitleHidden: $isTitleHidden, isSpecialDesign: $isSpecialDesign, isMaxValue: $isMaxValue, maxValue: $maxValue, vmText: $vmText, dataType: $dataType, style: $style, order: $order, values: $values)';
+    return 'Attribute(id: $id, title: $title, isFilter: $isFilter, isRange: $isRange, isMultiple: $isMultiple, isHidden: $isHidden, isRequired: $isRequired, isTitleHidden: $isTitleHidden, isSpecialDesign: $isSpecialDesign, isPopup: $isPopup, isMaxValue: $isMaxValue, maxValue: $maxValue, vmText: $vmText, dataType: $dataType, style: $style, order: $order, values: $values)';
   }
 
   @override
@@ -407,6 +424,7 @@ class _$AttributeImpl implements _Attribute {
                 other.isTitleHidden == isTitleHidden) &&
             (identical(other.isSpecialDesign, isSpecialDesign) ||
                 other.isSpecialDesign == isSpecialDesign) &&
+            (identical(other.isPopup, isPopup) || other.isPopup == isPopup) &&
             (identical(other.isMaxValue, isMaxValue) ||
                 other.isMaxValue == isMaxValue) &&
             const DeepCollectionEquality().equals(other.maxValue, maxValue) &&
@@ -431,6 +449,7 @@ class _$AttributeImpl implements _Attribute {
     isRequired,
     isTitleHidden,
     isSpecialDesign,
+    isPopup,
     isMaxValue,
     const DeepCollectionEquality().hash(maxValue),
     vmText,
@@ -465,6 +484,7 @@ abstract class _Attribute implements Attribute {
     final bool isRequired,
     final bool isTitleHidden,
     final bool isSpecialDesign,
+    final bool isPopup,
     final bool isMaxValue,
     final dynamic maxValue,
     final String? vmText,
@@ -495,6 +515,8 @@ abstract class _Attribute implements Attribute {
   bool get isTitleHidden;
   @override
   bool get isSpecialDesign;
+  @override
+  bool get isPopup;
   @override
   bool get isMaxValue;
   @override

@@ -117,6 +117,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
     super.dispose();
   }
 
+  /// Маппинг стилей фильтров: Style (просмотр) → Style2 (подача объявления)
+  /// Согласно ui_filter_styles.md, при подаче объявления используются разные стили
+  String _getSubmissionStyle(String apiStyle) {
+    // API returns Style for viewing listings, but we need Style2 for submission form
+    const styleMapping = {
+      'A': 'A1', // Текстовое поле → Input
+      'B': 'B', // Чекбокс → без изменений
+      'C': 'C', // Да/Нет → без изменений
+      'D': 'D1', // Множественный выбор → Popup/CheckboxList
+      'E': 'E1', // Диапазон целых → Range (от/до)
+      'F': 'F', // Popup множественный → без изменений
+      'G': 'G1', // Числовое поле → Input (number)
+      'H': 'H', // Текстовое поле → без изменений
+      'I': 'I', // Скрытые чекбоксы → без изменений
+      'manual': 'manual',
+    };
+    return styleMapping[apiStyle] ?? apiStyle;
+  }
+
   Future<void> _loadAttributes() async {
     try {
       print('Loading filters for category: ${widget.categoryId ?? 2}');
@@ -128,12 +147,43 @@ class _DynamicFilterState extends State<DynamicFilter> {
       print('Loaded ${response.filters.length} filters');
       for (final attr in response.filters) {
         print(
-          '📊 Filter: ID=${attr.id}, Title=${attr.title}, Order=${attr.order}, Values=${attr.values.length}',
+          '📊 Filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, Order=${attr.order}, Values=${attr.values.length}',
         );
       }
 
-      // Convert to mutable list and add missing attribute 1048
-      final mutableFilters = List<Attribute>.from(response.filters);
+      // Convert to mutable list and apply Style → Style2 mapping for submission form
+      var mutableFilters = List<Attribute>.from(response.filters);
+
+      // Apply submission style mapping (Style → Style2)
+      mutableFilters = mutableFilters.map((attr) {
+        final submissionStyle = _getSubmissionStyle(attr.style);
+        if (submissionStyle != attr.style) {
+          print(
+            '🎨 Style mapping applied: ${attr.id} (${attr.title}) - Style: ${attr.style} → Style2: $submissionStyle',
+          );
+          // Create new attribute with updated style
+          return Attribute(
+            id: attr.id,
+            title: attr.title,
+            isFilter: attr.isFilter,
+            isRange: attr.isRange,
+            isMultiple: attr.isMultiple,
+            isHidden: attr.isHidden,
+            isRequired: attr.isRequired,
+            isTitleHidden: attr.isTitleHidden,
+            isSpecialDesign: attr.isSpecialDesign,
+            isPopup: attr.isPopup,
+            isMaxValue: attr.isMaxValue,
+            maxValue: attr.maxValue,
+            vmText: attr.vmText,
+            dataType: attr.dataType,
+            style: submissionStyle,
+            order: attr.order,
+            values: attr.values,
+          );
+        }
+        return attr;
+      }).toList();
 
       // Add hidden attribute 1048 (Вам предложат цену) if not present
       // This attribute is REQUIRED by API but not returned by /meta/filters endpoint
@@ -448,11 +498,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // });
 
       // Автозаполнение атрибутов фильтров (невидимые поля - оставляем)
-      // 1040 - Этаж (floor)
-      _selectedValues[1040] = {'min': 4, 'max': 5};
+      // 1040 - Этаж (floor) - ЗАКОММЕНТИРОВАНО
+      // _selectedValues[1040] = {'min': 4, 'max': 5};
 
-      // 1039 - Название ЖК (Building name)
-      _selectedValues[1039] = 'Новый дом';
+      // 1039 - Название ЖК (Building name) - ЗАКОММЕНТИРОВАНО
+      // _selectedValues[1039] = 'Новый дом';
 
       // 6 - Количество комнат (Rooms) - 3 комнаты
       _selectedValues[6] = '3';
@@ -2618,46 +2668,90 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   Widget _buildDynamicFilter(Attribute attr) {
-    // Render based on style from API
+    // Render based on style from API with proper flag checking
+    // According to ui_filter_styles.md documentation:
+    // - Style defines the UI element type (A-I)
+    // - is_special_design, is_title_hidden, is_popup flags modify the display
+
+    // Debug logging for style mapping
+    print(
+      '🎨 Building filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, '
+      'is_range=${attr.isRange}, is_multiple=${attr.isMultiple}, '
+      'is_popup=${attr.isPopup}, is_special_design=${attr.isSpecialDesign}, '
+      'is_title_hidden=${attr.isTitleHidden}, values_count=${attr.values.length}',
+    );
+
     switch (attr.style) {
+      case 'A':
+      case 'A1':
+        // Style A/A1: Текстовое поле (text input)
+        return _buildTextInputField(attr);
+
       case 'B':
         // Style B: Чекбокс (single value checkbox)
         return _buildCheckboxField(attr);
 
       case 'C':
-        // Style C: Специальный дизайн (buttons for yes/no)
+        // Style C: Да/Нет переключатель (buttons for yes/no)
+        // With is_special_design flag for button styling
         return _buildSpecialDesignField(attr);
 
       case 'D':
-        // Style D: Множественный выбор (dropdown list for multiple)
-        return _buildMultipleSelectDropdown(attr);
+      case 'D1':
+        // Style D/D1: Множественный выбор
+        // If is_popup=true: show as modal, else show as dropdown list
+        if (attr.isPopup) {
+          return _buildMultipleSelectPopup(attr);
+        } else {
+          return _buildMultipleSelectDropdown(attr);
+        }
 
       case 'E':
-        // Style E: Диапазон целых чисел (range with integers)
-        return _buildRangeField(attr, isInteger: true);
+      case 'E1':
+        // Style E/E1: Диапазон (range with от/до)
+        return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
 
       case 'F':
-        // Style F: Множественный выбор (modal/popup selection)
+        // Style F: Множественный выбор в попапе (modal/popup selection)
+        // Always show as popup with checkboxes
         return _buildMultipleSelectPopup(attr);
 
       case 'G':
-        // Style G: Диапазон чисел (range with decimals)
-        return _buildRangeField(attr, isInteger: false);
+      case 'G1':
+        // Style G/G1: Числовое поле (numeric input)
+        // If is_range=true: show range fields, else single input
+        if (attr.isRange) {
+          return _buildRangeField(attr, isInteger: false);
+        } else {
+          return _buildTextInputField(attr);
+        }
 
       case 'H':
         // Style H: Текстовое поле (text input)
         return _buildTextInputField(attr);
 
       case 'I':
-        // Style I: Скрытое поле (hidden checkbox without title)
+        // Style I: Скрытые чекбоксы (hidden without title, checkbox list)
+        // Multiple checkboxes with is_title_hidden=true
         return _buildHiddenCheckboxField(attr);
 
+      case 'manual':
+        // Manual style - custom UI rendering
+        return _buildTextInputField(attr);
+
       default:
-        // Fallback for unknown styles
-        if (attr.values.isNotEmpty) {
+        // Fallback for unknown styles - determine based on flags
+        print(
+          '⚠️ Unknown style "${attr.style}" for attribute ${attr.id}, using fallback logic',
+        );
+        if (attr.isPopup && attr.isMultiple && attr.values.isNotEmpty) {
           return _buildMultipleSelectPopup(attr);
         } else if (attr.isRange) {
           return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
+        } else if (attr.isMultiple && attr.values.isNotEmpty) {
+          return _buildMultipleSelectDropdown(attr);
+        } else if (attr.values.isNotEmpty) {
+          return _buildSpecialDesignField(attr);
         } else {
           return _buildTextInputField(attr);
         }
@@ -2670,13 +2764,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
     bool selected = _selectedValues[attr.id] is bool
         ? _selectedValues[attr.id]
         : false;
+
+    // According to documentation:
+    // Style B: Single checkbox (usually for one value like "Возможен торг")
+    // If no title is hidden, show as row with label and checkbox
+
     return GestureDetector(
       onTap: () => setState(() => _selectedValues[attr.id] = !selected),
       child: Row(
         children: [
           Expanded(
             child: Text(
-              attr.title,
+              attr.values.isNotEmpty
+                  ? attr.values[0].value
+                  : (attr.title + (attr.isRequired ? '*' : '')),
               style: const TextStyle(color: textPrimary, fontSize: 14),
             ),
           ),
@@ -2689,12 +2790,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  // Style C: Special design (buttons)
+  // Style C: Special design (yes/no buttons)
   Widget _buildSpecialDesignField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
     String selected = _selectedValues[attr.id] is String
         ? _selectedValues[attr.id]
         : '';
+
+    // According to documentation:
+    // Style C with is_special_design=true: Show as button group (Да/Нет)
+    // Usually has exactly 2 values
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2705,36 +2810,37 @@ class _DynamicFilterState extends State<DynamicFilter> {
             style: const TextStyle(color: textPrimary, fontSize: 16),
           ),
         const SizedBox(height: 12),
-        if (attr.values.length == 2)
+        if (attr.values.isNotEmpty)
           Row(
             children: [
-              _buildChoiceButton(
-                attr.values[0].value,
-                selected == attr.values[0].value,
-                () => setState(
-                  () => _selectedValues[attr.id] = attr.values[0].value,
+              for (int i = 0; i < attr.values.length && i < 2; i++) ...[
+                Expanded(
+                  child: _buildChoiceButton(
+                    attr.values[i].value,
+                    selected == attr.values[i].value,
+                    () => setState(
+                      () => _selectedValues[attr.id] = attr.values[i].value,
+                    ),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              _buildChoiceButton(
-                attr.values[1].value,
-                selected == attr.values[1].value,
-                () => setState(
-                  () => _selectedValues[attr.id] = attr.values[1].value,
-                ),
-              ),
+                if (i == 0) const SizedBox(width: 10),
+              ],
             ],
           ),
       ],
     );
   }
 
-  // Style D: Multiple select (dropdown)
+  // Style D: Multiple select (dropdown list or popup based on is_popup flag)
   Widget _buildMultipleSelectDropdown(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
     Set<String> selected = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
+
+    // According to documentation:
+    // - Style D with is_popup=false: show as dropdown/selection dialog
+    // - Style D with is_popup=true: show as popup modal
 
     return _buildDropdown(
       label: attr.isTitleHidden
@@ -2747,7 +2853,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           context: context,
           builder: (BuildContext context) {
             return SelectionDialog(
-              title: attr.title,
+              title: attr.title.isEmpty ? 'Выбор' : attr.title,
               options: attr.values.map((v) => v.value).toList(),
               selectedOptions: selected,
               onSelectionChanged: (Set<String> newSelected) {
@@ -2763,7 +2869,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  // Style E & G: Range fields (E for integer, G for decimal)
+  // Style E/E1 & G/G1: Range fields (E for integer, G for decimal)
   Widget _buildRangeField(Attribute attr, {required bool isInteger}) {
     _selectedValues[attr.id] ??= {'min': '', 'max': ''};
     Map<String, dynamic> rangeMap = _selectedValues[attr.id] is Map
@@ -2785,6 +2891,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
       () => TextEditingController(text: range['max']),
     );
 
+    // Determine keyboard type based on style and data_type
+    TextInputType keyboardType;
+    if (attr.dataType == 'numeric' || attr.style == 'G' || attr.style == 'G1') {
+      keyboardType = TextInputType.numberWithOptions(decimal: true);
+    } else {
+      keyboardType = TextInputType.number;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2805,9 +2919,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: TextField(
                   controller: controllerMin,
-                  keyboardType: isInteger
-                      ? TextInputType.number
-                      : TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: keyboardType,
                   style: const TextStyle(color: textPrimary),
                   decoration: const InputDecoration(
                     hintText: 'От',
@@ -2833,9 +2945,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: TextField(
                   controller: controllerMax,
-                  keyboardType: isInteger
-                      ? TextInputType.number
-                      : TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: keyboardType,
                   style: const TextStyle(color: textPrimary),
                   decoration: const InputDecoration(
                     hintText: 'До',
@@ -2857,12 +2967,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  // Style F: Multiple select (popup/modal)
+  // Style F & D (with is_popup=true): Multiple select (popup/modal)
   Widget _buildMultipleSelectPopup(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
     Set<String> selected = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
+
+    // According to documentation:
+    // Style F: Always popup with checkboxes
+    // Style D with is_popup=true: Popup with radio or checkboxes
+    // If is_multiple=true: checkboxes, else: radio buttons
 
     return _buildDropdown(
       label: attr.isTitleHidden
@@ -2875,7 +2990,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           context: context,
           builder: (BuildContext context) {
             return SelectionDialog(
-              title: attr.title,
+              title: attr.title.isEmpty ? 'Выбор' : attr.title,
               options: attr.values.map((v) => v.value).toList(),
               selectedOptions: selected,
               onSelectionChanged: (Set<String> newSelected) {
@@ -2891,7 +3006,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  // Style H: Text input field
+  // Style A/A1/H: Text input field
   Widget _buildTextInputField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
     final controller = _controllers.putIfAbsent(attr.id, () {
@@ -2900,39 +3015,66 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return TextEditingController(text: textValue);
     });
 
+    // Determine keyboard type based on data_type
+    TextInputType keyboardType = TextInputType.text;
+    if (attr.dataType == 'integer') {
+      keyboardType = TextInputType.number;
+    } else if (attr.dataType == 'numeric') {
+      keyboardType = TextInputType.numberWithOptions(decimal: true);
+    }
+
     return _buildTextField(
       label: attr.isTitleHidden
           ? ''
           : attr.title + (attr.isRequired ? '*' : ''),
-      hint: attr.dataType == 'integer' ? 'Цифрами' : 'Текст',
-      keyboardType: attr.dataType == 'integer'
-          ? TextInputType.number
-          : TextInputType.text,
+      hint: attr.dataType == 'integer'
+          ? 'Цифрами'
+          : (attr.dataType == 'numeric' ? 'Число' : 'Текст'),
+      keyboardType: keyboardType,
       controller: controller,
       onChanged: (value) => _selectedValues[attr.id] = value.trim(),
     );
   }
 
-  // Style I: Hidden checkbox (no title)
+  // Style I: Hidden checkbox (no title, checkbox list)
   Widget _buildHiddenCheckboxField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
     bool selected = _selectedValues[attr.id] is bool
         ? _selectedValues[attr.id]
         : false;
 
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            attr.values.isNotEmpty ? attr.values[0].value : attr.title,
-            style: const TextStyle(color: textPrimary, fontSize: 14),
+    // According to documentation:
+    // Style I: Hidden checkbox with is_title_hidden=true
+    // Show checkbox label from values[0].value, not from title
+    // Example: "Без комиссии", "Возможность обмена", etc.
+
+    String checkboxLabel = '';
+    if (attr.values.isNotEmpty) {
+      checkboxLabel = attr.values[0].value;
+    } else if (attr.title.isNotEmpty && !attr.isTitleHidden) {
+      checkboxLabel = attr.title;
+    }
+
+    if (checkboxLabel.isEmpty) {
+      return const SizedBox.shrink(); // Skip rendering if no label
+    }
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedValues[attr.id] = !selected),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              checkboxLabel,
+              style: const TextStyle(color: textPrimary, fontSize: 14),
+            ),
           ),
-        ),
-        CustomCheckbox(
-          value: selected,
-          onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
-        ),
-      ],
+          CustomCheckbox(
+            value: selected,
+            onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+          ),
+        ],
+      ),
     );
   }
 }

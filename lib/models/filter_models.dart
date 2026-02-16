@@ -15,6 +15,7 @@ class Attribute with _$Attribute {
     @Default(false) bool isRequired,
     @Default(false) bool isTitleHidden,
     @Default(false) bool isSpecialDesign,
+    @Default(false) bool isPopup,
     @Default(false) bool isMaxValue,
     dynamic maxValue,
     String? vmText,
