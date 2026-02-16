@@ -257,18 +257,25 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                       children: [
                         GestureDetector(
                           onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: activeIconColor,
-                            size: 16,
-                          ),
-                        ),
-                        const Text(
-                          'Назад',
-                          style: TextStyle(
-                            color: activeIconColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.arrow_back_ios,
+                                color: activeIconColor,
+                                size: 16,
+                              ),
+                              const SizedBox(
+                                width: 4,
+                              ), // Небольшой отступ между иконкой и текстом
+                              const Text(
+                                'Назад',
+                                style: TextStyle(
+                                  color: activeIconColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const Spacer(),
@@ -315,7 +322,7 @@ ${widget.listing.title}
                         _buildSellerCard(),
                         const SizedBox(height: 19),
                         _buildComplaintButton(),
-                        const SizedBox(height: 55),
+                        const SizedBox(height: 85),
                       ],
                     ),
                   ),

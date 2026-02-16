@@ -126,7 +126,7 @@ class _UniversalBrowseCategoryScreenState
         context,
         MaterialPageRoute(
           builder: (context) => RealEstateListingsScreen(
-            catalogId: category.id,
+            categoryId: category.id,
             categoryName: category.name,
           ),
         ),
@@ -148,18 +148,20 @@ class _UniversalBrowseCategoryScreenState
         context,
         MaterialPageRoute(
           builder: (context) => RealEstateListingsScreen(
-            catalogId: category.id,
+            categoryId: category.id,
             categoryName: category.name,
           ),
         ),
       );
     } else {
-      // Для аренды и других случаев используем экран аренды
+      // Для аренды и других случаев используем универсальный экран списков
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) =>
-              RealEstateRentListingsScreen(title: category.name),
+          builder: (context) => RealEstateListingsScreen(
+            categoryId: category.id,
+            categoryName: category.name,
+          ),
         ),
       );
     }
@@ -188,18 +190,25 @@ class _UniversalBrowseCategoryScreenState
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(
-                    Icons.arrow_back_ios,
-                    color: activeIconColor,
-                    size: 16,
-                  ),
-                ),
-                const Text(
-                  'Назад',
-                  style: TextStyle(
-                    color: activeIconColor,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.arrow_back_ios,
+                        color: activeIconColor,
+                        size: 16,
+                      ),
+                      const SizedBox(
+                        width: 0,
+                      ), // Небольшой отступ между иконкой и текстом
+                      const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Spacer(),
@@ -344,7 +353,8 @@ class _UniversalBrowseCategoryScreenState
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           RealEstateListingsScreen(
-                                            catalogId: widget.catalogId,
+                                            categoryId:
+                                                null, // Показать все объявления
                                             categoryName: widget.catalogName,
                                           ),
                                     ),

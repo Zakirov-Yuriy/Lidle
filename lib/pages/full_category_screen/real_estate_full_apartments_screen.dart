@@ -14,56 +14,59 @@ class RealEstateFullApartmentsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: primaryBackground,
-      
+
       body: Column(
-         crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          
           Column(
             children: [
               Padding(
-            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [const Header()],
-            ),
-          ),
-              Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          color: activeIconColor,
-                          size: 16,
-                        ),
-                      ),
-                      const Text(
-                        'Назад',
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
-                          'Отмена',
-                          style: TextStyle(
-                            color: activeIconColor,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [const Header()],
                 ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.arrow_back_ios,
+                            color: activeIconColor,
+                            size: 16,
+                          ),
+                          const SizedBox(
+                            width: 4,
+                          ), // Небольшой отступ между иконкой и текстом
+                          const Text(
+                            'Назад',
+                            style: TextStyle(
+                              color: activeIconColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text(
+                        'Отмена',
+                        style: TextStyle(color: activeIconColor, fontSize: 16),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           Padding(
@@ -95,14 +98,14 @@ class RealEstateFullApartmentsScreen extends StatelessWidget {
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text(
-            title,
-            style: const TextStyle(color: Colors.white),
-          ),
+          title: Text(title, style: const TextStyle(color: Colors.white)),
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => RealEstateFullFiltersScreen(selectedCategory: title)),
+              MaterialPageRoute(
+                builder: (context) =>
+                    RealEstateFullFiltersScreen(selectedCategory: title),
+              ),
             );
           },
         ),

@@ -396,7 +396,13 @@ class _HomePageState extends State<HomePage> {
                                   FullCategoryScreen.routeName,
                                 );
                               } else {
-                                // Универсальный экран для всех категорий
+                                // Специальная обработка для каталогов - показать все объявления каталога
+                                final isCatalogCategory = [
+                                  'Недвижимость',
+                                  'Работа',
+                                  'Подработка',
+                                  'Авто запчасти',
+                                ].contains(category.title);
                                 print(
                                   '📍 Opening category: ${category.title} (ID: ${category.id})',
                                 );
@@ -405,7 +411,12 @@ class _HomePageState extends State<HomePage> {
                                   MaterialPageRoute(
                                     builder: (context) =>
                                         RealEstateListingsScreen(
-                                          catalogId: category.id,
+                                          categoryId: isCatalogCategory
+                                              ? null
+                                              : category.id,
+                                          catalogId: isCatalogCategory
+                                              ? category.id
+                                              : null,
                                           categoryName: category.title,
                                         ),
                                   ),

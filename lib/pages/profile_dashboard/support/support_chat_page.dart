@@ -21,29 +21,32 @@ class SupportChatPage extends StatelessWidget {
         child: Column(
           children: [
             // ───── Header ─────
-           Padding(
-                    padding: const EdgeInsets.only(bottom: 20, right: 25),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [const Header(), const Spacer()],
-                    ),
-                  ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20, right: 25),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [const Header(), const Spacer()],
+              ),
+            ),
 
-                  // ───── Back / Cancel ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
+            // ───── Back / Cancel ─────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
 
-                    
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
                     child: Row(
                       children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: activeIconColor,
-                            size: 16,
-                          ),
+                        const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
                         ),
+                        const SizedBox(
+                          width: 4,
+                        ), // Небольшой отступ между иконкой и текстом
                         const Text(
                           'Назад',
                           style: TextStyle(
@@ -52,17 +55,18 @@ class SupportChatPage extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        
                       ],
                     ),
                   ),
+                ],
+              ),
+            ),
 
             // ───── Back + Support User ─────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Column(
                 children: [
-                  
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -73,10 +77,7 @@ class SupportChatPage extends StatelessWidget {
                           color: formBackground,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white24,
-                        ),
+                        child: const Icon(Icons.person, color: Colors.white24),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(
@@ -121,18 +122,14 @@ class SupportChatPage extends StatelessWidget {
                   Center(
                     child: Text(
                       '8 февраля',
-                      style: TextStyle(
-                        color: Colors.white38,
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ),
 
                   SizedBox(height: 16),
 
                   _IncomingMessage(
-                    text:
-                        'Вас приветствует поддержка приложения LIDLE',
+                    text: 'Вас приветствует поддержка приложения LIDLE',
                     time: '20:21',
                   ),
                 ],
@@ -171,18 +168,12 @@ class SupportChatPage extends StatelessWidget {
                     const Expanded(
                       child: Text(
                         'Сообщение',
-                        style: TextStyle(
-                          color: Colors.white38,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: Colors.white38, fontSize: 14),
                       ),
                     ),
                     Padding(
                       padding: const EdgeInsets.only(right: 12),
-                      child: Icon(
-                        Icons.send,
-                        color: accentColor,
-                      ),
+                      child: Icon(Icons.send, color: accentColor),
                     ),
                   ],
                 ),
@@ -203,10 +194,7 @@ class _IncomingMessage extends StatelessWidget {
   final String text;
   final String time;
 
-  const _IncomingMessage({
-    required this.text,
-    required this.time,
-  });
+  const _IncomingMessage({required this.text, required this.time});
 
   @override
   Widget build(BuildContext context) {
@@ -233,10 +221,7 @@ class _IncomingMessage extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               time,
-              style: const TextStyle(
-                color: Colors.white38,
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
             ),
           ],
         ),
@@ -264,10 +249,7 @@ class _QuickChip extends StatelessWidget {
       ),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 14),
       ),
     );
   }

@@ -378,76 +378,76 @@ class _DynamicFilterState extends State<DynamicFilter> {
   void _autoFillFormForTesting() {
     if (!mounted) return;
 
-    print('🧪 AUTO-FILLING FORM FOR TESTING...');
+    print('🧪 AUTO-FILLING HIDDEN FIELDS FOR TESTING...');
 
     setState(() {
-      // Основные поля объявления
-      _titleController.text = 'Просторная однокомнатная квартира';
-      _descriptionController.text =
-          'Комфортная однокомнатная квартира площадью 45 кв.м, расположена в тихом районе с хорошей инфраструктурой. Полностью меблирована, есть все необходимое для жизни.';
-      _priceController.text = '120000';
+      // Основные поля объявления - ЗАКОММЕНТИРОВАНО (видимые поля)
+      // _titleController.text = 'Просторная однокомнатная квартира';
+      // _descriptionController.text =
+      //     'Комфортная однокомнатная квартира площадью 45 кв.м, расположена в тихом районе с хорошей инфраструктурой. Полностью меблирована, есть все необходимое для жизни.';
+      // _priceController.text = '120000';
 
-      // Контакты - только если они ещё не загружены из API
+      // Контакты - только если они ещё не загружены из API - ЗАКОММЕНТИРОВАНО (видимые поля)
       // (Если они уже заполнены из API, не перезаписываем)
-      if (_contactNameController.text.isEmpty) {
-        _contactNameController.text = 'Юрий ';
-      }
-      if (_emailController.text.isEmpty) {
-        _emailController.text = '1workyury02@gmail.com';
-      }
-      if (_phone1Controller.text.isEmpty) {
-        _phone1Controller.text = '+79254499552';
-      }
+      // if (_contactNameController.text.isEmpty) {
+      //   _contactNameController.text = 'Юрий ';
+      // }
+      // if (_emailController.text.isEmpty) {
+      //   _emailController.text = '1workyury02@gmail.com';
+      // }
+      // if (_phone1Controller.text.isEmpty) {
+      //   _phone1Controller.text = '+79254499552';
+      // }
 
-      // Выбор контактов из загруженных
-      if (_userPhones.isNotEmpty) {
-        print('✅ Selected first phone: ${_userPhones[0]['phone']}');
-      }
-      if (_userEmails.isNotEmpty) {
-        print('✅ Selected first email: ${_userEmails[0]['email']}');
-      }
+      // Выбор контактов из загруженных - ЗАКОММЕНТИРОВАНО (видимые поля)
+      // if (_userPhones.isNotEmpty) {
+      //   print('✅ Selected first phone: ${_userPhones[0]['phone']}');
+      // }
+      // if (_userEmails.isNotEmpty) {
+      //   print('✅ Selected first email: ${_userEmails[0]['email']}');
+      // }
 
-      // Автозаполнение адресных полей
-      if (_regions.isNotEmpty) {
-        final firstRegion = _regions[0];
-        _selectedRegion = {firstRegion['name'] ?? 'Region'};
-        _selectedRegionId = firstRegion['id'];
-        print('✅ Auto-selected region: ${_selectedRegion}');
-      }
+      // Автозаполнение адресных полей - ЗАКОММЕНТИРОВАНО (видимые поля)
+      // if (_regions.isNotEmpty) {
+      //   final firstRegion = _regions[0];
+      //   _selectedRegion = {firstRegion['name'] ?? 'Region'};
+      //   _selectedRegionId = firstRegion['id'];
+      //   print('✅ Auto-selected region: ${_selectedRegion}');
+      // }
 
-      // После выбора региона автоматически загружаем города (отложено)
-      Future.delayed(const Duration(milliseconds: 300), () async {
-        if (_selectedRegionId != null && _cities.isEmpty) {
-          await _loadCitiesForSelectedRegion();
-          // Затем автоматически выбираем первый город
-          if (_cities.isNotEmpty && _selectedCity.isEmpty) {
-            final firstCity = _cities[0];
-            setState(() {
-              _selectedCity = {firstCity['name'] ?? 'City'};
-              _selectedCityId = firstCity['id'];
-              print('✅ Auto-selected city: ${_selectedCity}');
-            });
+      // После выбора региона автоматически загружаем города (отложено) - ЗАКОММЕНТИРОВАНО
+      // Future.delayed(const Duration(milliseconds: 300), () async {
+      //   if (_selectedRegionId != null && _cities.isEmpty) {
+      //     await _loadCitiesForSelectedRegion();
+      //     // Затем автоматически выбираем первый город
+      //     if (_cities.isNotEmpty && _selectedCity.isEmpty) {
+      //       final firstCity = _cities[0];
+      //       setState(() {
+      //         _selectedCity = {firstCity['name'] ?? 'City'};
+      //         _selectedCityId = firstCity['id'];
+      //         print('✅ Auto-selected city: ${_selectedCity}');
+      //       });
 
-            // После выбора города автоматически загружаем улицы
-            Future.delayed(const Duration(milliseconds: 300), () async {
-              if (_selectedCityId != null && _streets.isEmpty) {
-                await _loadStreetsForSelectedCity();
-                // Затем автоматически выбираем первую улицу
-                if (_streets.isNotEmpty && _selectedStreet.isEmpty) {
-                  final firstStreet = _streets[0];
-                  setState(() {
-                    _selectedStreet = {firstStreet['name'] ?? 'Street'};
-                    _selectedStreetId = firstStreet['id'];
-                    print('✅ Auto-selected street: ${_selectedStreet}');
-                  });
-                }
-              }
-            });
-          }
-        }
-      });
+      //       // После выбора города автоматически загружаем улицы
+      //       Future.delayed(const Duration(milliseconds: 300), () async {
+      //         if (_selectedCityId != null && _streets.isEmpty) {
+      //           await _loadStreetsForSelectedCity();
+      //           // Затем автоматически выбираем первую улицу
+      //           if (_streets.isNotEmpty && _selectedStreet.isEmpty) {
+      //             final firstStreet = _streets[0];
+      //             setState(() {
+      //               _selectedStreet = {firstStreet['name'] ?? 'Street'};
+      //               _selectedStreetId = firstStreet['id'];
+      //               print('✅ Auto-selected street: ${_selectedStreet}');
+      //             });
+      //           }
+      //         });
+      //       });
+      //     }
+      //   }
+      // });
 
-      // Автозаполнение атрибутов фильтров
+      // Автозаполнение атрибутов фильтров (невидимые поля - оставляем)
       // 1040 - Этаж (floor)
       _selectedValues[1040] = {'min': 4, 'max': 5};
 
@@ -476,8 +476,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // since it's not returned by API but required for validation
 
       print('🧪 Auto-fill completed:');
-      print('   Title: ${_titleController.text}');
-      print('   Price: ${_priceController.text}');
+      // print('   Title: ${_titleController.text}'); - ЗАКОММЕНТИРОВАНО
+      // print('   Price: ${_priceController.text}'); - ЗАКОММЕНТИРОВАНО
       print('   Selected values: $_selectedValues');
     });
   }
@@ -1742,7 +1742,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                               decoration: const InputDecoration(
                                 hintText: '1 000 000',
                                 hintStyle: TextStyle(
-                                  color: Color.fromARGB(255, 255, 255, 255),
+                                  color: textSecondary,
                                   fontSize: 14,
                                 ),
                                 border: InputBorder.none,
@@ -2222,7 +2222,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       hintText: _selectedStreetId == null
                           ? 'Выберите улицу'
                           : 'Введите номер дома (например: 45, 45А, 45/2)',
-                      hintStyle: const TextStyle(color: Colors.grey),
+                      hintStyle: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
                       filled: true,
                       fillColor: _selectedStreetId == null
                           ? formBackground
@@ -2429,10 +2432,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             expands: false,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(
-                color: Color.fromARGB(255, 255, 255, 255),
-                fontSize: 14,
-              ),
+              hintStyle: const TextStyle(color: textSecondary, fontSize: 14),
               filled: false,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
@@ -2603,10 +2603,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         style: const TextStyle(color: textPrimary),
         decoration: const InputDecoration(
           hintText: 'Введите',
-          hintStyle: TextStyle(
-            color: Color.fromARGB(255, 255, 255, 255),
-            fontSize: 14,
-          ),
+          hintStyle: TextStyle(color: textSecondary, fontSize: 14),
           border: InputBorder.none,
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
@@ -2814,10 +2811,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   style: const TextStyle(color: textPrimary),
                   decoration: const InputDecoration(
                     hintText: 'От',
-                    hintStyle: TextStyle(
-                      color: Color.fromARGB(255, 255, 255, 255),
-                      fontSize: 14,
-                    ),
+                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
                     border: InputBorder.none,
                   ),
                   onChanged: (value) {
@@ -2845,10 +2839,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   style: const TextStyle(color: textPrimary),
                   decoration: const InputDecoration(
                     hintText: 'До',
-                    hintStyle: TextStyle(
-                      color: Color.fromARGB(255, 255, 255, 255),
-                      fontSize: 14,
-                    ),
+                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
                     border: InputBorder.none,
                   ),
                   onChanged: (value) {

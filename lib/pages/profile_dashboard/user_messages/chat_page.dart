@@ -34,18 +34,25 @@ class ChatPage extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: activeIconColor,
-                      size: 16,
-                    ),
-                  ),
-                  const Text(
-                    'Назад',
-                    style: TextStyle(
-                      color: activeIconColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.arrow_back_ios,
+                          color: activeIconColor,
+                          size: 16,
+                        ),
+                        const SizedBox(
+                          width: 4,
+                        ), // Небольшой отступ между иконкой и текстом
+                        const Text(
+                          'Назад',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -68,7 +75,10 @@ class ChatPage extends StatelessWidget {
                           color: cardColor,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.person_outline_sharp, color: Colors.white24),
+                        child: const Icon(
+                          Icons.person_outline_sharp,
+                          color: Colors.white24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       const Expanded(

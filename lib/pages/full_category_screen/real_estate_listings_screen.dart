@@ -20,11 +20,13 @@ const String messageIconAssetLocal =
 const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateListingsScreen extends StatefulWidget {
+  final int? categoryId; // ID категории для фильтрации
   final int? catalogId; // ID каталога для фильтрации
   final String? categoryName; // Имя категории для отображения в заголовке
 
   const RealEstateListingsScreen({
     super.key,
+    this.categoryId,
     this.catalogId,
     this.categoryName,
   });
@@ -65,9 +67,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
       final token = await HiveService.getUserData('token');
       final response = await ApiService.getAdverts(
-        catalogId:
-            widget.catalogId ??
-            1, // Используем переданный catalogId или все категории
+        categoryId: widget.categoryId,
+        catalogId: widget.catalogId,
         sort: sort,
         page: isNextPage ? _currentPage + 1 : 1,
         limit: 20,
@@ -145,16 +146,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             const SizedBox(height: 10),
 
             _buildLocationAndFilters(),
-            SizedBox(height: 10),
+            // SizedBox(height: 10),
 
-            _buildCategoryChips(),
+            // _buildCategoryChips(),
 
             // ---------------- ВСЁ НИЖЕ — СКРОЛЛИТСЯ ----------------
             Expanded(
               child: CustomScrollView(
                 slivers: [
                   // ---- СКРОЛЛ СТАРТУЕТ ЗДЕСЬ ----
-                  SliverToBoxAdapter(child: SizedBox(height: 18)),
+                  SliverToBoxAdapter(child: SizedBox(height: 13)),
                   SliverToBoxAdapter(child: _buildSectionHeader()),
                   SliverToBoxAdapter(child: SizedBox(height: 13)),
 
@@ -235,7 +236,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Объявлений не найдено',
+                                'Пока объявлений нет',
                                 style: TextStyle(
                                   color: Colors.grey[400],
                                   fontSize: 16,
@@ -402,44 +403,44 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  Widget _buildCategoryChips() {
-    final chipStyle = BoxDecoration(
-      color: primaryBackground,
-      borderRadius: BorderRadius.circular(11),
-      border: Border.all(color: Colors.white),
-    );
+  // Widget _buildCategoryChips() {
+  //   final chipStyle = BoxDecoration(
+  //     color: primaryBackground,
+  //     borderRadius: BorderRadius.circular(11),
+  //     border: Border.all(color: Colors.white),
+  //   );
 
-    Widget chip(String label, {IconData? icon}) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: chipStyle,
-        child: Row(
-          children: [
-            Text(label, style: const TextStyle(color: Colors.white)),
-            if (icon != null) ...[
-              const SizedBox(width: 6),
-              Icon(icon, color: Colors.white, size: 18),
-            ],
-          ],
-        ),
-      );
-    }
+  //   Widget chip(String label, {IconData? icon}) {
+  //     return Container(
+  //       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+  //       decoration: chipStyle,
+  //       child: Row(
+  //         children: [
+  //           Text(label, style: const TextStyle(color: Colors.white)),
+  //           if (icon != null) ...[
+  //             const SizedBox(width: 6),
+  //             Icon(icon, color: Colors.white, size: 18),
+  //           ],
+  //         ],
+  //       ),
+  //     );
+  //   }
 
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        scrollDirection: Axis.horizontal,
-        children: [
-          chip("Квартиры", icon: Icons.close),
-          const SizedBox(width: 10),
-          chip("Новостройка", icon: Icons.keyboard_arrow_down_sharp),
-          const SizedBox(width: 10),
-          chip("Количество комнат", icon: Icons.apps),
-        ],
-      ),
-    );
-  }
+  //   return SizedBox(
+  //     height: 40,
+  //     child: ListView(
+  //       padding: const EdgeInsets.symmetric(horizontal: 12),
+  //       scrollDirection: Axis.horizontal,
+  //       children: [
+  //         chip("Квартиры", icon: Icons.close),
+  //         const SizedBox(width: 10),
+  //         chip("Новостройка", icon: Icons.keyboard_arrow_down_sharp),
+  //         const SizedBox(width: 10),
+  //         chip("Количество комнат", icon: Icons.apps),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildSectionHeader() {
     // Форматируем заголовок из категории, удаляя переносы строк и очищая текст
