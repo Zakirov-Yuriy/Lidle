@@ -144,7 +144,10 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
             context,
           ).showSnackBar(const SnackBar(content: Text('Код отправлен')));
         } else if (state is AuthEmailVerified) {
-          Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            SignInScreen.routeName,
+            (route) => route.settings.name == '/' || route.isFirst,
+          );
         } else if (state is AuthError) {
           // Активируем кнопку "Отправить код повторно" при ошибке
           setState(() => _canResendCode = true);

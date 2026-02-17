@@ -131,9 +131,12 @@ class _HomePageState extends State<HomePage> {
                                     ProfileMenuScreen.routeName,
                                   );
                                 } else {
-                                  Navigator.pushNamed(
+                                  Navigator.pushNamedAndRemoveUntil(
                                     context,
                                     SignInScreen.routeName,
+                                    (route) =>
+                                        route.settings.name == '/' ||
+                                        route.isFirst,
                                   );
                                 }
                               },

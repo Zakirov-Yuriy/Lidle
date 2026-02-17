@@ -127,7 +127,10 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthInitial || state is AuthLoggedOut) {
-          Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            SignInScreen.routeName,
+            (route) => route.settings.name == '/' || route.isFirst,
+          );
         }
       },
       child: BlocListener<ProfileBloc, ProfileState>(

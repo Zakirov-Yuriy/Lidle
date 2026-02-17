@@ -76,7 +76,10 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
       listener: (context, state) {
         if (state is AuthInitial ||
             (state is AuthError && !(state is AuthAuthenticated))) {
-          Navigator.of(context).pushReplacementNamed(SignInScreen.routeName);
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            SignInScreen.routeName,
+            (route) => route.settings.name == '/' || route.isFirst,
+          );
         }
       },
       child: Scaffold(
@@ -323,7 +326,11 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
 
         // Добавить аккаунт
         GestureDetector(
-          onTap: () => Navigator.pushNamed(context, SignInScreen.routeName),
+          onTap: () => Navigator.pushNamedAndRemoveUntil(
+            context,
+            SignInScreen.routeName,
+            (route) => route.settings.name == '/' || route.isFirst,
+          ),
           child: Row(
             children: const [
               Icon(Icons.add, color: Colors.white, size: 22),

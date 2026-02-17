@@ -21,7 +21,9 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToHomeEvent>(_onNavigateToHome);
     on<NavigateToFavoritesEvent>(_onNavigateToFavorites);
     on<NavigateToAddListingEvent>(_onNavigateToAddListing);
-    on<NavigateToMyPurchasesEvent>(_onNavigateToMyPurchases); // Handle new event
+    on<NavigateToMyPurchasesEvent>(
+      _onNavigateToMyPurchases,
+    ); // Handle new event
     on<NavigateToMessagesEvent>(_onNavigateToMessages);
     on<SelectNavigationIndexEvent>(_onSelectNavigationIndex);
   }
@@ -215,7 +217,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     if (token != null && token.isNotEmpty) {
       Navigator.of(context).pushNamed(ProfileDashboard.routeName);
     } else {
-      Navigator.of(context).pushNamed(SignInScreen.routeName);
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        SignInScreen.routeName,
+        (route) => route.settings.name == '/' || route.isFirst,
+      );
     }
   }
 
@@ -231,7 +236,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
 
   /// Выполняет навигацию к экрану входа.
   void _executeSignInNavigation(BuildContext context) {
-    Navigator.of(context).pushNamed(SignInScreen.routeName);
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      SignInScreen.routeName,
+      (route) => route.settings.name == '/' || route.isFirst,
+    );
   }
 
   /// Выполняет навигацию к добавлению объявления.

@@ -36,202 +36,205 @@ class _SignInScreenState extends State<SignInScreen> {
   // ============================================================
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthAuthenticated) {
-          Navigator.of(
-            context,
-          ).pushReplacementNamed(ProfileDashboard.routeName);
-        } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: CustomErrorSnackBar(
-                message: state.message,
-                onClose: () =>
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-              ),
-              backgroundColor: primaryBackground,
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
-        return Scaffold(
-          backgroundColor: primaryBackground,
-          resizeToAvoidBottomInset: true,
-          body: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 18.0, left: 3),
-                  child: const Header(),
+    return PopScope(
+      canPop: false,
+      child: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthAuthenticated) {
+            Navigator.of(
+              context,
+            ).pushReplacementNamed(ProfileDashboard.routeName);
+          } else if (state is AuthError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: CustomErrorSnackBar(
+                  message: state.message,
+                  onClose: () =>
+                      ScaffoldMessenger.of(context).hideCurrentSnackBar(),
                 ),
+                backgroundColor: primaryBackground,
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          return Scaffold(
+            backgroundColor: primaryBackground,
+            resizeToAvoidBottomInset: true,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 18.0, left: 3),
+                    child: const Header(),
+                  ),
 
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
-                    // ============================================================
-                    // "Форма входа с валидацией"
-                    // ============================================================
-                    child: FormBuilder(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          RichText(
-                            text: TextSpan(
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
+                      // ============================================================
+                      // "Форма входа с валидацией"
+                      // ============================================================
+                      child: FormBuilder(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            RichText(
+                              text: TextSpan(
+                                style: const TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 24,
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                children: const [
+                                  TextSpan(text: 'Вы уже почти с нами'),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 11),
+                            const Text(
+                              'Введите личные данные',
+                              style: TextStyle(
+                                color: textMuted,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: 17),
+
+                            const _FieldLabel('Электронная почта'),
+                            const SizedBox(height: 9),
+                            // ============================================================
+                            // "Поле ввода электронной почты"
+                            // ============================================================
+                            FormBuilderTextField(
+                              name: 'email',
+                              keyboardType: TextInputType.emailAddress,
                               style: const TextStyle(
                                 color: textPrimary,
-                                fontSize: 24,
-                                height: 1.25,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
                               ),
-                              children: const [
-                                TextSpan(text: 'Вы уже почти с нами'),
+                              decoration: _inputDecoration('Введите'),
+                              validator: FormBuilderValidators.compose([
+                                FormBuilderValidators.required(
+                                  errorText: 'Введите почту',
+                                ),
+                                FormBuilderValidators.email(
+                                  errorText: 'Неверный формат почты',
+                                ),
+                              ]),
+                            ),
+                            const SizedBox(height: 9),
+
+                            const _FieldLabel('Пароль'),
+                            const SizedBox(height: 9),
+                            // ============================================================
+                            // "Поле ввода пароля с показом/скрытием"
+                            // ============================================================
+                            FormBuilderTextField(
+                              name: 'password',
+                              obscureText: _obscure,
+                              style: const TextStyle(
+                                color: textPrimary,
+                                fontSize: 14,
+                              ),
+                              decoration: _inputDecoration('Введите').copyWith(
+                                suffixIcon: IconButton(
+                                  onPressed: () =>
+                                      setState(() => _obscure = !_obscure),
+                                  icon: Icon(
+                                    _obscure
+                                        ? Icons.visibility
+                                        : Icons.visibility_off,
+                                    color: textMuted,
+                                  ),
+                                ),
+                              ),
+                              validator: FormBuilderValidators.compose([
+                                FormBuilderValidators.required(
+                                  errorText: 'Введите пароль',
+                                ),
+                                FormBuilderValidators.minLength(
+                                  6,
+                                  errorText: 'Минимум 6 символов',
+                                ),
+                              ]),
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                TextButton(
+                                  onPressed: _onForgotPassword,
+                                  style: _linkStyle,
+                                  child: const Text('Забыл пароль'),
+                                ),
+                                TextButton(
+                                  onPressed: _onSignUp,
+                                  style: _linkStyle,
+                                  child: const Text('Регистрация'),
+                                ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 11),
-                          const Text(
-                            'Введите личные данные',
-                            style: TextStyle(
-                              color: textMuted,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          const SizedBox(height: 17),
 
-                          const _FieldLabel('Электронная почта'),
-                          const SizedBox(height: 9),
-                          // ============================================================
-                          // "Поле ввода электронной почты"
-                          // ============================================================
-                          FormBuilderTextField(
-                            name: 'email',
-                            keyboardType: TextInputType.emailAddress,
-                            style: const TextStyle(
-                              color: textPrimary,
-                              fontSize: 14,
-                            ),
-                            decoration: _inputDecoration('Введите'),
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(
-                                errorText: 'Введите почту',
-                              ),
-                              FormBuilderValidators.email(
-                                errorText: 'Неверный формат почты',
-                              ),
-                            ]),
-                          ),
-                          const SizedBox(height: 9),
+                            const SizedBox(height: 12),
 
-                          const _FieldLabel('Пароль'),
-                          const SizedBox(height: 9),
-                          // ============================================================
-                          // "Поле ввода пароля с показом/скрытием"
-                          // ============================================================
-                          FormBuilderTextField(
-                            name: 'password',
-                            obscureText: _obscure,
-                            style: const TextStyle(
-                              color: textPrimary,
-                              fontSize: 14,
-                            ),
-                            decoration: _inputDecoration('Введите').copyWith(
-                              suffixIcon: IconButton(
-                                onPressed: () =>
-                                    setState(() => _obscure = !_obscure),
-                                icon: Icon(
-                                  _obscure
-                                      ? Icons.visibility
-                                      : Icons.visibility_off,
-                                  color: textMuted,
+                            // ============================================================
+                            // "Кнопка входа с индикацией загрузки"
+                            // ============================================================
+                            SizedBox(
+                              width: double.infinity,
+                              height: 53,
+                              child: ElevatedButton(
+                                onPressed: state is AuthLoading
+                                    ? null
+                                    : _onSubmit,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: state is AuthLoading
+                                      ? Colors.grey
+                                      : activeIconColor,
+                                  foregroundColor: textPrimary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  elevation: 0,
                                 ),
+                                child: state is AuthLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Войти',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w400,
+                                        ),
+                                      ),
                               ),
                             ),
-                            validator: FormBuilderValidators.compose([
-                              FormBuilderValidators.required(
-                                errorText: 'Введите пароль',
-                              ),
-                              FormBuilderValidators.minLength(
-                                6,
-                                errorText: 'Минимум 6 символов',
-                              ),
-                            ]),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              TextButton(
-                                onPressed: _onForgotPassword,
-                                style: _linkStyle,
-                                child: const Text('Забыл пароль'),
-                              ),
-                              TextButton(
-                                onPressed: _onSignUp,
-                                style: _linkStyle,
-                                child: const Text('Регистрация'),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // ============================================================
-                          // "Кнопка входа с индикацией загрузки"
-                          // ============================================================
-                          SizedBox(
-                            width: double.infinity,
-                            height: 53,
-                            child: ElevatedButton(
-                              onPressed: state is AuthLoading
-                                  ? null
-                                  : _onSubmit,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: state is AuthLoading
-                                    ? Colors.grey
-                                    : activeIconColor,
-                                foregroundColor: textPrimary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: state is AuthLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
-                                      ),
-                                    )
-                                  : const Text(
-                                      'Войти',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
