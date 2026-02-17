@@ -240,8 +240,7 @@ extension AdvertToListingExtension on Advert {
   Listing toListing() {
     return Listing(
       id: id.toString(),
-      imagePath:
-          thumbnail ?? 'assets/home_page/image.png', // Fallback if no thumbnail
+      imagePath: (thumbnail != null && thumbnail!.isNotEmpty) ? thumbnail! : '',
       images: images,
       title: name,
       price: price,

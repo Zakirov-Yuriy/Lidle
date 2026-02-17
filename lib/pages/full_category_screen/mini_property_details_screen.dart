@@ -124,13 +124,24 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   void initState() {
     super.initState();
     _listing = widget.listing;
-    _isAdvertLoaded = false;
     _imagesPrecached = false;
     print(
       'MiniPropertyDetailsScreen init: listing id ${_listing.id}, images ${_listing.images.length}',
     );
-    // Always load the full advert to ensure we have complete data including all images
-    context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
+
+    // 🔄 Загружаем полное объявление, если:
+    // 1. Нет изображений (значит это базовые данные со списка)
+    // 2. Нет достаточно информации для отображения
+    // Если объявление уже полностью загружено, не загружаем повторно
+    if (_listing.images.isEmpty) {
+      print('📥 MiniPropertyDetailsScreen: Загружаем полные данные объявления');
+      _isAdvertLoaded = false;
+      context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
+    } else {
+      print('✅ MiniPropertyDetailsScreen: Используем уже загруженные данные');
+      _isAdvertLoaded = true;
+    }
+
     _pageController.addListener(() {
       int next = _pageController.page!.round();
       if (_currentPage != next) {

@@ -7,6 +7,7 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ListingCard extends StatefulWidget {
   final Listing listing;
@@ -67,20 +68,29 @@ class _ListingCardState extends State<ListingCard> {
                 height: imageHeight,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(5 * scale),
-                  child: widget.listing.imagePath.startsWith('http')
-                      ? Image.network(
-                          widget.listing.imagePath,
+                  child: widget.listing.imagePath.isEmpty
+                      ? Container(
+                          color: const Color(0xFF374B5C),
+                          child: Icon(
+                            Icons.image_not_supported,
+                            color: textMuted,
+                            size: 50 * scale,
+                          ),
+                        )
+                      : widget.listing.imagePath.startsWith('http')
+                      ? CachedNetworkImage(
+                          imageUrl: widget.listing.imagePath,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: const Color(0xFF374B5C),
-                              child: Icon(
-                                Icons.image,
-                                color: textMuted,
-                                size: 50 * scale,
-                              ),
-                            );
-                          },
+                          placeholder: (context, url) =>
+                              Container(color: const Color(0xFF374B5C)),
+                          errorWidget: (context, url, error) => Container(
+                            color: const Color(0xFF374B5C),
+                            child: Icon(
+                              Icons.image,
+                              color: textMuted,
+                              size: 50 * scale,
+                            ),
+                          ),
                         )
                       : Image.asset(
                           widget.listing.imagePath,

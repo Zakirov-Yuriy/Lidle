@@ -47,6 +47,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   List<Listing> _listings = [];
   Set<String> _selectedSortOptions = {};
   bool _isLoading = true;
+  bool _isLoadingMore = false; // Для индикатора подгрузки
   String? _errorMessage;
 
   // Пагинация
@@ -54,12 +55,23 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   int _totalPages = 1;
   int _itemsPerPage = 20;
 
+  late final ScrollController _scrollController;
+
   @override
   void initState() {
     super.initState();
     _selectedSortOptions.add('Сначала новые');
     _loadAdverts();
     _updateSelectedIndex();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _updateSelectedIndex() {
@@ -67,15 +79,29 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     _selectedIndex = -1;
   }
 
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 200 &&
+        !_isLoading &&
+        !_isLoadingMore &&
+        _currentPage < _totalPages) {
+      _loadNextPage();
+    }
+  }
+
   Future<void> _loadAdverts({String? sort, bool isNextPage = false}) async {
     try {
-      setState(() {
-        if (!isNextPage) {
+      if (!isNextPage) {
+        setState(() {
           _isLoading = true;
-          _currentPage = 1; // Сбрасываем на первую страницу при новой загрузке
-        }
-        _errorMessage = null;
-      });
+          _errorMessage = null;
+          _currentPage = 1;
+        });
+      } else {
+        setState(() {
+          _isLoadingMore = true;
+        });
+      }
 
       final token = await HiveService.getUserData('token');
       final response = await ApiService.getAdverts(
@@ -83,7 +109,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         catalogId: widget.catalogId,
         sort: sort,
         page: isNextPage ? _currentPage + 1 : 1,
-        limit: 500,
+        limit: 20,
         token: token,
       );
 
@@ -92,16 +118,14 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         '📊 Meta: currentPage=${response.meta?.currentPage}, totalPages=${response.meta?.lastPage}, itemsPerPage=${response.meta?.perPage}',
       );
 
-      setState(() {
-        final newListings = response.data
-            .map((advert) => advert.toListing())
-            .toList();
+      final newListings = response.data
+          .map((advert) => advert.toListing())
+          .toList();
 
+      setState(() {
         if (isNextPage) {
-          // Добавляем новые объявления к существующим
           _listings.addAll(newListings);
         } else {
-          // Заменяем список полностью
           _listings = newListings;
         }
 
@@ -110,18 +134,20 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         _itemsPerPage = response.meta?.perPage ?? 20;
 
         _isLoading = false;
+        _isLoadingMore = false;
       });
     } catch (e) {
       print('❌ Error loading listings: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
+        _isLoadingMore = false;
       });
     }
   }
 
   void _loadNextPage() {
-    if (_currentPage < _totalPages) {
+    if (_currentPage < _totalPages && !_isLoadingMore) {
       _loadAdverts(isNextPage: true);
     }
   }
@@ -167,6 +193,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             // ---------------- ВСЁ НИЖЕ — СКРОЛЛИТСЯ ----------------
             Expanded(
               child: CustomScrollView(
+                controller: _scrollController,
                 slivers: [
                   // ---- СКРОЛЛ СТАРТУЕТ ЗДЕСЬ ----
                   SliverToBoxAdapter(child: SizedBox(height: 13)),
@@ -289,34 +316,12 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                         ),
                       ),
                     ),
-                  // Кнопка загрузки следующей страницы
-                  if (!_isLoading &&
-                      _errorMessage == null &&
-                      _currentPage < _totalPages)
+                  // Индикатор подгрузки
+                  if (_isLoadingMore)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 16.0,
-                          horizontal: 12.0,
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _loadNextPage,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8B5CF6),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text(
-                              'Загрузить еще',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Center(child: CircularProgressIndicator()),
                       ),
                     ),
                   SliverToBoxAdapter(

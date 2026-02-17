@@ -45,6 +45,7 @@ dependencies:
   build_runner: ^2.4.11 # Added
   freezed: ^2.5.2 # Added
   json_serializable: ^6.8.0 # Added
+  cached_network_image: ^3.4.1
 
 flutter:
 

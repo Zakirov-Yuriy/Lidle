@@ -44,11 +44,17 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    // 🔄 Кеширование: загружаем данные только если их ещё нет
+    // 🔄 Кеширование: загружаем данные только если их ещё нет и нет ошибок
     final currentState = context.read<ListingsBloc>().state;
-    if (currentState is! ListingsLoaded) {
+
+    // Загружаем только если:
+    // 1. Состояние == ListingsInitial (никогда не загружалось)
+    // 2. Состояние == ListingsError (была ошибка, пробуем снова)
+    if (currentState is ListingsInitial || currentState is ListingsError) {
       context.read<ListingsBloc>().add(LoadListingsEvent());
     }
+    // Если состояние ListingsLoaded или ListingsLoading - не трогаем,
+    // используем существующие данные/кеш
   }
 
   /// Метод для обработки pull-to-refresh.

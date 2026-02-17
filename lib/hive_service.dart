@@ -13,11 +13,18 @@ class HiveService {
   /// Приватная константа для имени бокса, хранящего настройки приложения.
   static const String _settingsBox = 'settingsBox';
 
+  /// Приватная константа для имени бокса, хранящего кеш объявлений.
+  static const String _listingsBox = 'listingsBox';
+
+  /// Время жизни кеша в минутах (5 минут).
+  static const int _cacheLifetimeMinutes = 5;
+
   /// Инициализирует сервис Hive, открывая все необходимые боксы.
   /// Этот метод должен быть вызван перед любыми операциями с Hive.
   static Future<void> init() async {
     await Hive.openBox(_userBox);
     await Hive.openBox(_settingsBox);
+    await Hive.openBox(_listingsBox);
   }
 
   /// Возвращает открытый бокс для пользовательских данных.
@@ -192,6 +199,91 @@ class HiveService {
       }
       archived.removeAt(archiveIndex);
       await saveArchivedMessages(archived);
+    }
+  }
+
+  // ============================================================
+  // МЕТОДЫ КЕШИРОВАНИЯ ОБЪЯВЛЕНИЙ И КАТЕГОРИЙ
+  // ============================================================
+
+  /// Возвращает открытый бокс для кеша объявлений.
+  static Box get listingsBox => Hive.box(_listingsBox);
+
+  /// Сохраняет объявления в кеш с временем создания.
+  /// [data] - объект или список объявлений/категорий в формате JSON.
+  /// [key] - ключ коэффициента для идентификации учитывается в кешце.
+  static Future<void> saveListingsCache(String key, dynamic data) async {
+    try {
+      final cacheData = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'data': data,
+      };
+      await listingsBox.put(key, cacheData);
+      print('💾 HiveService: Сохранили кеш $key');
+    } catch (e) {
+      print('❌ HiveService: Ошибка при сохранении кеша $key: $e');
+    }
+  }
+
+  /// Получает объявления из кеша, если они ещё свежие.
+  /// Возвращает null, если кеша нет или он устарел.
+  /// [key] - ключ для получения данных из кеша.
+  static dynamic getListingsCacheIfValid(String key) {
+    try {
+      final cached = listingsBox.get(key);
+      if (cached == null) {
+        print('📖 HiveService: Кеш $key не найден');
+        return null;
+      }
+
+      if (cached is! Map) {
+        print('⚠️ HiveService: Кеш $key имеет неправильный формат');
+        listingsBox.delete(key);
+        return null;
+      }
+
+      final timestamp = cached['timestamp'];
+      if (timestamp == null) return null;
+
+      final cachedTime = DateTime.parse(timestamp as String);
+      final now = DateTime.now();
+      final difference = now.difference(cachedTime).inMinutes;
+
+      if (difference > _cacheLifetimeMinutes) {
+        print(
+          '⏰ HiveService: Кеш $key устарел (${difference}м > ${_cacheLifetimeMinutes}м)',
+        );
+        // Очищаем кеш синхронно (не требует async)
+        listingsBox.delete(key);
+        return null;
+      }
+
+      print('✅ HiveService: Кеш $key свежий (${difference}м)');
+      return cached['data'];
+    } catch (e) {
+      print('❌ HiveService: Ошибка при чтении кеша $key: $e');
+      return null;
+    }
+  }
+
+  /// Очищает кеш по ключу.
+  /// [key] - ключ кеша для удаления.
+  static Future<void> clearListingsCache(String key) async {
+    try {
+      await listingsBox.delete(key);
+      print('🗑️ HiveService: Очистили кеш $key');
+    } catch (e) {
+      print('❌ HiveService: Ошибка при очистке кеша $key: $e');
+    }
+  }
+
+  /// Очищает все кеши объявлений.
+  static Future<void> clearAllListingsCache() async {
+    try {
+      await listingsBox.clear();
+      print('🗑️ HiveService: Очистили все кеши объявлений');
+    } catch (e) {
+      print('❌ HiveService: Ошибка при очистке всех кешей: $e');
     }
   }
 }

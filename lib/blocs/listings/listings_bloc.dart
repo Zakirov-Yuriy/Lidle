@@ -143,11 +143,49 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Emitter<ListingsState> emit,
   ) async {
     // 🔄 Кеширование: если данные уже загружены и это не принудительная загрузка (фреш),
-    // просто вернёмся к сохранённому состоянию
+    // и нет ошибок, просто вернёмся к сохранённому состоянию
     if (_isInitialLoadComplete &&
         !event.forceRefresh &&
-        state is ListingsLoaded) {
+        state is ListingsLoaded &&
+        state is! ListingsError) {
+      print('🔄 ListingsBloc: Используем кеш в памяти (уже загружено)');
       return;
+    }
+
+    // 🔄 Проверяем кеш из Hive, если это не forceRefresh
+    if (!event.forceRefresh && state is! ListingsLoading) {
+      final cachedListings = HiveService.getListingsCacheIfValid(
+        'listings_data',
+      );
+      if (cachedListings != null &&
+          cachedListings is Map &&
+          cachedListings.containsKey('listings') &&
+          cachedListings.containsKey('categories')) {
+        print('✅ ListingsBloc: Восстановили из кеша Hive');
+        try {
+          // Каст JSON обратно в объекты
+          final listings = (cachedListings['listings'] as List)
+              .map((item) => _jsonToListing(item as Map<String, dynamic>))
+              .toList();
+          final categories = (cachedListings['categories'] as List)
+              .map((item) => _jsonToCategory(item as Map<String, dynamic>))
+              .toList();
+
+          emit(
+            ListingsLoaded(
+              listings: listings,
+              categories: categories,
+              currentPage: cachedListings['currentPage'] ?? 1,
+              totalPages: cachedListings['totalPages'] ?? 1,
+              itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
+            ),
+          );
+          _isInitialLoadComplete = true;
+          return;
+        } catch (e) {
+          print('❌ ListingsBloc: Ошибка при восстановлении из кеша: $e');
+        }
+      }
     }
 
     emit(ListingsLoading());
@@ -249,6 +287,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(allListings);
+
+      // 💾 Сохраняем в кеш перед отправкой состояния
+      final cacheData = {
+        'listings': sortedListings.map(_listingToJson).toList(),
+        'categories': loadedCategories.map(_categoryToJson).toList(),
+        'currentPage': currentPage,
+        'totalPages': totalPages,
+        'itemsPerPage': itemsPerPage,
+      };
+      await HiveService.saveListingsCache('listings_data', cacheData);
 
       // ✅ Отмечаем, что первоначальная загрузка завершена
       _isInitialLoadComplete = true;
@@ -389,6 +437,23 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     Emitter<ListingsState> emit,
   ) async {
     print('Loading single advert for id ${event.advertId}');
+
+    // 🔄 Проверяем кеш перед запросом к API
+    final cacheKey = 'advert_${event.advertId}';
+    final cachedAdvert = HiveService.getListingsCacheIfValid(cacheKey);
+    if (cachedAdvert != null && cachedAdvert is Map<String, dynamic>) {
+      try {
+        print('✅ ListingsBloc: Восстановили объявление из кеша');
+        final listing = _jsonToListing(cachedAdvert);
+        emit(AdvertLoaded(listing: listing));
+        return;
+      } catch (e) {
+        print(
+          '❌ ListingsBloc: Ошибка при восстановлении объявления из кеша: $e',
+        );
+      }
+    }
+
     emit(ListingsLoading());
     try {
       // Получаем токен для аутентификации
@@ -406,6 +471,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final listing = advert.toListing();
 
       print('Converted to listing with ${listing.images.length} images');
+
+      // 💾 Сохраняем в кеш
+      await HiveService.saveListingsCache(cacheKey, _listingToJson(listing));
 
       emit(AdvertLoaded(listing: listing));
     } catch (e) {
@@ -584,5 +652,57 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Объединяем: сначала 'Сегодня', потом отсортированные по датам
     return [...todayListings, ...otherListings];
+  }
+
+  /// Конвертирует Listing в JSON для кеша.
+  Map<String, dynamic> _listingToJson(Listing listing) {
+    return {
+      'id': listing.id,
+      'imagePath': listing.imagePath,
+      'images': listing.images,
+      'title': listing.title,
+      'price': listing.price,
+      'location': listing.location,
+      'date': listing.date,
+      'isFavorited': listing.isFavorited,
+      'sellerName': listing.sellerName,
+      'sellerAvatar': listing.sellerAvatar,
+      'sellerRegistrationDate': listing.sellerRegistrationDate,
+    };
+  }
+
+  /// Конвертирует JSON обратно в Listing из кеша.
+  Listing _jsonToListing(Map<String, dynamic> json) {
+    return Listing(
+      id: json['id'] ?? '',
+      imagePath: json['imagePath'] ?? '',
+      images: List<String>.from(json['images'] ?? []),
+      title: json['title'] ?? '',
+      price: json['price'] ?? '',
+      location: json['location'] ?? '',
+      date: json['date'] ?? '',
+      isFavorited: json['isFavorited'] ?? false,
+      sellerName: json['sellerName'] ?? '',
+      sellerAvatar: json['sellerAvatar'] ?? '',
+      sellerRegistrationDate: json['sellerRegistrationDate'] ?? '',
+    );
+  }
+
+  /// Конвертирует Category в JSON для кеша.
+  Map<String, dynamic> _categoryToJson(Category category) {
+    return {
+      'title': category.title,
+      'color': category.color.value,
+      'imagePath': category.imagePath,
+    };
+  }
+
+  /// Конвертирует JSON обратно в Category из кеша.
+  Category _jsonToCategory(Map<String, dynamic> json) {
+    return Category(
+      title: json['title'] ?? '',
+      color: Color(json['color'] ?? 0xFF00A6FF),
+      imagePath: json['imagePath'] ?? '',
+    );
   }
 }
