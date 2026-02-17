@@ -8,12 +8,23 @@ import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
 
+/// Пользовательское исключение для 429 (rate limit) ошибок
+class RateLimitException implements Exception {
+  final String message;
+  RateLimitException(this.message);
+  
+  @override
+  String toString() => 'RateLimitException: $message';
+}
+
 /// Базовый класс для работы с API.
 /// Обрабатывает общие заголовки и базовый URL.
 class ApiService {
   // ОПТИМИЗАЦИЯ: Базовый URL захардкодирован чтобы не использовать dotenv при инициализации
   // dotenv.load() отнимает ~900ms, а базовый URL не меняется
   static String get baseUrl => 'https://dev-api.lidle.io/v1';
+  static const int _maxRetries = 4;
+  static const int _retryDelayMs = 1000; // Стартовая задержка перед retry (exponential backoff)
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     // Заголовки согласно официальной документации API Lidle
@@ -27,11 +38,22 @@ class ApiService {
   // X-Client-Platform: web
   // Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7
 
-  /// Выполняет GET запрос.
+  /// Выполняет GET запрос с автоматическим retry при 429.
   static Future<Map<String, dynamic>> get(
     String endpoint, {
     String? token,
   }) async {
+    return _retryRequest(
+      () => _getRequest(endpoint, token),
+      endpoint,
+    );
+  }
+
+  /// Внутренний метод для GET запроса
+  static Future<Map<String, dynamic>> _getRequest(
+    String endpoint,
+    String? token,
+  ) async {
     try {
       final headers = {...defaultHeaders};
       if (token != null) {
@@ -70,12 +92,24 @@ class ApiService {
     }
   }
 
-  /// Выполняет POST запрос.
+  /// Выполняет POST запрос с автоматическим retry при 429.
   static Future<Map<String, dynamic>> post(
     String endpoint,
     Map<String, dynamic> body, {
     String? token,
   }) async {
+    return _retryRequest(
+      () => _postRequest(endpoint, body, token),
+      endpoint,
+    );
+  }
+
+  /// Внутренний метод для POST запроса
+  static Future<Map<String, dynamic>> _postRequest(
+    String endpoint,
+    Map<String, dynamic> body,
+    String? token,
+  ) async {
     try {
       final headers = {...defaultHeaders};
       if (token != null) {
@@ -119,12 +153,24 @@ class ApiService {
     }
   }
 
-  /// Выполняет GET запрос с query параметрами.
+  /// Выполняет GET запрос с query параметрами с retry при 429.
   static Future<Map<String, dynamic>> getWithQuery(
     String endpoint,
     Map<String, dynamic> queryParams, {
     String? token,
   }) async {
+    return _retryRequest(
+      () => _getWithQueryRequest(endpoint, queryParams, token),
+      endpoint,
+    );
+  }
+
+  /// Внутренний метод для GET запроса с query параметрами
+  static Future<Map<String, dynamic>> _getWithQueryRequest(
+    String endpoint,
+    Map<String, dynamic> queryParams,
+    String? token,
+  ) async {
     try {
       final headers = {...defaultHeaders};
       if (token != null) {
@@ -152,12 +198,24 @@ class ApiService {
     }
   }
 
-  /// Выполняет PUT запрос.
+  /// Выполняет PUT запрос с retry при 429.
   static Future<Map<String, dynamic>> put(
     String endpoint,
     Map<String, dynamic> body, {
     String? token,
   }) async {
+    return _retryRequest(
+      () => _putRequest(endpoint, body, token),
+      endpoint,
+    );
+  }
+
+  /// Внутренний метод для PUT запроса
+  static Future<Map<String, dynamic>> _putRequest(
+    String endpoint,
+    Map<String, dynamic> body,
+    String? token,
+  ) async {
     try {
       final headers = {...defaultHeaders};
       if (token != null) {
@@ -201,12 +259,24 @@ class ApiService {
     }
   }
 
-  /// Выполняет DELETE запрос (поддерживает тело запроса).
+  /// Выполняет DELETE запрос с retry при 429 (поддерживает тело запроса).
   static Future<Map<String, dynamic>> delete(
     String endpoint, {
     String? token,
     Map<String, dynamic>? body,
   }) async {
+    return _retryRequest(
+      () => _deleteRequest(endpoint, token, body),
+      endpoint,
+    );
+  }
+
+  /// Внутренний метод для DELETE запроса
+  static Future<Map<String, dynamic>> _deleteRequest(
+    String endpoint,
+    String? token,
+    Map<String, dynamic>? body,
+  ) async {
     try {
       final headers = {...defaultHeaders};
       if (token != null) {
@@ -252,6 +322,29 @@ class ApiService {
     }
   }
 
+  /// Retry логика с exponential backoff для обработки 429 ошибок.
+  /// Автоматически повторяет запросы с задержкой: 1s, 2s, 4s, 8s
+  static Future<Map<String, dynamic>> _retryRequest(
+    Future<Map<String, dynamic>> Function() request,
+    String endpoint,
+  ) async {
+    for (int attempt = 0; attempt < _maxRetries; attempt++) {
+      try {
+        return await request();
+      } on RateLimitException {
+        if (attempt < _maxRetries - 1) {
+          final delayMs = _retryDelayMs * (1 << attempt); // Exponential backoff
+          print('⏳ Rate limited (429). Retry attempt ${attempt + 1}/$_maxRetries в ${delayMs}ms...');
+          await Future.delayed(Duration(milliseconds: delayMs));
+        } else {
+          print('❌ Максимум попыток достигнут. Прекращаю retry.');
+          rethrow;
+        }
+      }
+    }
+    throw Exception('Failed after $_maxRetries attempts');
+  }
+
   /// Обрабатывает ответ от сервера.
   static Map<String, dynamic> _handleResponse(http.Response response) {
     print('✅ API Response status: ${response.statusCode}');
@@ -261,6 +354,11 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       print('✅ Request successful!');
       return data;
+    } else if (response.statusCode == 429) {
+      // Rate limit - signal to retry
+      print('⚠️ 429 Too Many Requests - Rate limited');
+      print('Error response: ${data['message'] ?? 'Too many requests'}');
+      throw RateLimitException('429 Too Many Requests');
     } else if (response.statusCode == 401) {
       print('❌ 401 Unauthorized - Token might be expired or invalid');
       print('Error response: ${data['message'] ?? 'Token expired'}');
@@ -392,7 +490,18 @@ class ApiService {
   }) async {
     try {
       final response = await get('/content/catalogs/$catalogId', token: token);
-      return CatalogWithCategories.fromJson(response['data'][0]);
+      
+      // Проверяем наличие data и что это не null
+      if (response['data'] == null || response['data'] is! List) {
+        throw Exception('Invalid catalog response: data is null or not a list');
+      }
+      
+      final dataList = response['data'] as List<dynamic>;
+      if (dataList.isEmpty) {
+        throw Exception('Catalog not found');
+      }
+      
+      return CatalogWithCategories.fromJson(dataList[0] as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Failed to load catalog: $e');
     }
@@ -405,7 +514,18 @@ class ApiService {
         '/content/categories/$categoryId',
         token: token,
       );
-      return Category.fromJson(response['data'][0]);
+      
+      // Проверяем наличие data и что это не null
+      if (response['data'] == null || response['data'] is! List) {
+        throw Exception('Invalid category response: data is null or not a list');
+      }
+      
+      final dataList = response['data'] as List<dynamic>;
+      if (dataList.isEmpty) {
+        throw Exception('Category not found');
+      }
+      
+      return Category.fromJson(dataList[0] as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Failed to load category: $e');
     }

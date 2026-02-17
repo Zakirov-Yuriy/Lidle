@@ -23,7 +23,11 @@ class CatalogService {
         token: token,
       );
       // API возвращает массив, берём первый элемент
-      final List<dynamic> dataList = response['data'] ?? [];
+      if (response['data'] == null || response['data'] is! List) {
+        throw Exception('Invalid catalog response: data is null or not a list');
+      }
+
+      final List<dynamic> dataList = response['data'] as List<dynamic>;
       if (dataList.isEmpty) {
         throw Exception('Catalog not found');
       }
@@ -41,7 +45,13 @@ class CatalogService {
         token: token,
       );
       // API возвращает массив в data
-      final List<dynamic> dataList = response['data'] ?? [];
+      if (response['data'] == null || response['data'] is! List) {
+        throw Exception(
+          'Invalid category response: data is null or not a list',
+        );
+      }
+
+      final List<dynamic> dataList = response['data'] as List<dynamic>;
       if (dataList.isEmpty) {
         throw Exception('Category not found');
       }
