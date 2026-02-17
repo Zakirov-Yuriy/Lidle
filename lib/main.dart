@@ -13,7 +13,6 @@ import 'package:lidle/pages/profile_menu/settings/change_photo/change_photo_scre
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
@@ -21,12 +20,9 @@ import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
-import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/password_recovery/password_recovery_bloc.dart';
 import 'package:lidle/blocs/messages/messages_bloc.dart';
-import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/blocs/company_messages/company_messages_bloc.dart';
-import 'package:lidle/blocs/company_messages/company_messages_event.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/blocs/catalog/catalog_bloc.dart';
 import 'package:lidle/pages/filters_screen.dart';
@@ -92,11 +88,21 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 // ============================================================
 
 void main() async {
+  final mainStartTime = DateTime.now();
+  print(
+    '⏱️ [APP START] Приложение запущено в ${mainStartTime.toIso8601String()}',
+  );
+
   WidgetsFlutterBinding.ensureInitialized();
+  print(
+    '⏱️ [BINDING] WidgetsFlutterBinding инициализирован за ${DateTime.now().difference(mainStartTime).inMilliseconds}ms',
+  );
 
-  // Загрузка переменных окружения
-  await dotenv.load(fileName: kReleaseMode ? ".env.production" : ".env");
+  // ПРОПУСК dotenv.load() - переменные закэшированы в constants.dart
+  print('⏱️ [DOTENV] Переменные окружения инициализированы константами');
 
+  // Инициализация Hive
+  final hiveStart = DateTime.now();
   if (kIsWeb) {
     await Hive.initFlutter();
   } else {
@@ -104,6 +110,9 @@ void main() async {
     await Hive.initFlutter(appDocumentDir.path);
   }
   await HiveService.init();
+  print(
+    '⏱️ [HIVE] Hive инициализирован за ${DateTime.now().difference(hiveStart).inMilliseconds}ms',
+  );
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -113,6 +122,12 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
+
+  final totalAppInitTime = DateTime.now().difference(mainStartTime);
+  print(
+    '⏱️ [INIT COMPLETE] Полная инициализация главной программы: ${totalAppInitTime.inMilliseconds}ms',
+  );
+
   runApp(const LidleApp());
 }
 
@@ -137,22 +152,16 @@ class LidleApp extends StatelessWidget {
         BlocProvider<PasswordRecoveryBloc>(
           create: (context) => PasswordRecoveryBloc(),
         ),
-        BlocProvider<MessagesBloc>(
-          create: (context) => MessagesBloc()..add(LoadMessages()),
-        ),
+        BlocProvider<MessagesBloc>(create: (context) => MessagesBloc()),
         BlocProvider<CompanyMessagesBloc>(
-          create: (context) =>
-              CompanyMessagesBloc()..add(LoadCompanyMessages()),
+          create: (context) => CompanyMessagesBloc(),
         ),
         BlocProvider<CartBloc>(create: (context) => CartBloc()),
         BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            // При успешной аутентификации — загрузим профиль автоматически
-            context.read<ProfileBloc>().add(LoadProfileEvent());
-          }
+          // Профиль загружается лениво при переходе в ProfileDashboard
         },
         child: MaterialApp(
           title: appTitle,

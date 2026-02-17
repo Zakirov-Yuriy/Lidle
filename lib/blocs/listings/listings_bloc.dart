@@ -152,11 +152,22 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     emit(ListingsLoading());
     try {
+      final startTime = DateTime.now();
+      print(
+        '⏱️ [START] LoadListings начал загрузку в ${startTime.toIso8601String()}',
+      );
+
       // Получаем токен для аутентификации
       final token = await HiveService.getUserData('token');
 
+      final catalogsStart = DateTime.now();
       // Загружаем каталоги (категории) из API
       final catalogsResponse = await ApiService.getCatalogs(token: token);
+      final catalogsDuration = DateTime.now().difference(catalogsStart);
+      print(
+        '⏱️ [CATALOGS] Загрузка каталогов: ${catalogsDuration.inMilliseconds}ms',
+      );
+
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
           .toList();
@@ -177,29 +188,56 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       int totalPages = 1;
       int itemsPerPage = 20;
 
-      // Для каждого каталога делаем запрос объявлений (только первая страница)
-      for (final catalogId in catalogIds) {
-        try {
-          final advertsResponse = await ApiService.getAdverts(
-            catalogId: catalogId,
-            token: token,
-            page: 1,
-            limit: 500,
-          );
-          final listings = advertsResponse.data.map((advert) {
-            print('Advert ${advert.id} has ${advert.images.length} images');
-            return advert.toListing();
-          }).toList();
-          allListings.addAll(listings);
-          // Для первой категории сохраняем пагинацию
-          if (catalogId == catalogIds.first) {
-            currentPage = advertsResponse.meta?.currentPage ?? 1;
-            totalPages = advertsResponse.meta?.lastPage ?? 1;
-            itemsPerPage = advertsResponse.meta?.perPage ?? 20;
-          }
-        } catch (e) {
-          print('Ошибка загрузки объявлений для catalogId=$catalogId: $e');
-        }
+      // 🚀 ПАРАЛЛЕЛЬНАЯ загрузка: все запросы выполняются одновременно!
+      final advertsStart = DateTime.now();
+      print(
+        '⏱️ [ADVERTS] Начало параллельной загрузки ${catalogIds.length} каталогов...',
+      );
+
+      final advertsFutures = catalogIds
+          .map(
+            (catalogId) =>
+                ApiService.getAdverts(
+                      catalogId: catalogId,
+                      token: token,
+                      page: 1,
+                      limit: 50,
+                    )
+                    .then((response) {
+                      final listings = response.data.map((advert) {
+                        print(
+                          'Advert ${advert.id} has ${advert.images.length} images',
+                        );
+                        return advert.toListing();
+                      }).toList();
+
+                      // Для первой категории сохраняем пагинацию
+                      if (catalogId == catalogIds.first) {
+                        currentPage = response.meta?.currentPage ?? 1;
+                        totalPages = response.meta?.lastPage ?? 1;
+                        itemsPerPage = response.meta?.perPage ?? 20;
+                      }
+
+                      return listings;
+                    })
+                    .catchError((e) {
+                      print(
+                        'Ошибка загрузки объявлений для catalogId=$catalogId: $e',
+                      );
+                      return <Listing>[];
+                    }),
+          )
+          .toList();
+
+      // Ждём все запросы одновременно
+      final allAdvertsLists = await Future.wait(advertsFutures);
+      final advertsDuration = DateTime.now().difference(advertsStart);
+      print(
+        '⏱️ [ADVERTS] Параллельная загрузка завершена за ${advertsDuration.inMilliseconds}ms',
+      );
+
+      for (final listings in allAdvertsLists) {
+        allListings.addAll(listings);
       }
 
       print(
@@ -214,6 +252,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // ✅ Отмечаем, что первоначальная загрузка завершена
       _isInitialLoadComplete = true;
+
+      final totalDuration = DateTime.now().difference(startTime);
+      print(
+        '⏱️ [COMPLETE] LoadListings завершена за ${totalDuration.inMilliseconds}ms',
+      );
 
       emit(
         ListingsLoaded(
@@ -399,7 +442,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         catalogId: 1, // Каталог 1 = все категории
         token: token,
         page: nextPage,
-        limit: 500, // Загружаем 500 объявлений за раз
+        limit: 50, // Оптимизация: загружаем 50 объявлений, остальные при scroll
       );
 
       // Преобразуем Advert в Listing
@@ -457,7 +500,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         catalogId: 1, // Каталог 1 = все категории
         token: token,
         page: event.pageNumber,
-        limit: 500, // Загружаем 500 объявлений за раз
+        limit: 50, // Оптимизация: загружаем 50 объявлений, остальные при scroll
       );
 
       // Преобразуем Advert в Listing

@@ -25,7 +25,8 @@ class CompanyMessagesListScreen extends StatefulWidget {
   static const unreadBorder = Color(0xFF3A4A5A);
 
   @override
-  State<CompanyMessagesListScreen> createState() => _CompanyMessagesListScreenState();
+  State<CompanyMessagesListScreen> createState() =>
+      _CompanyMessagesListScreenState();
 }
 
 class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
@@ -34,10 +35,23 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
   List<bool> selectedItems = [];
 
   @override
+  void initState() {
+    super.initState();
+    // 🔄 Ленивая загрузка корпоративных сообщений при переходе на страницу
+    context.read<CompanyMessagesBloc>().add(LoadCompanyMessages());
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -103,7 +117,8 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                           child: Column(
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   GestureDetector(
                                     onTap: () {
@@ -114,23 +129,36 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                                     child: Text(
                                       'Основные',
                                       style: TextStyle(
-                                        color: isMainSelected ? CompanyMessagesListScreen.accentColor : Colors.white,
+                                        color: isMainSelected
+                                            ? CompanyMessagesListScreen
+                                                  .accentColor
+                                            : Colors.white,
                                         fontSize: 15,
                                       ),
                                     ),
                                   ),
                                   Text(
                                     'Не прочитанные: 234',
-                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                   GestureDetector(
                                     onTap: () {
-                                      Navigator.pushNamed(context, CompanyMessagesArchiveListScreen.routeName);
+                                      Navigator.pushNamed(
+                                        context,
+                                        CompanyMessagesArchiveListScreen
+                                            .routeName,
+                                      );
                                     },
                                     child: Text(
                                       'Архив',
                                       style: TextStyle(
-                                        color: isMainSelected ? Colors.white : CompanyMessagesListScreen.accentColor,
+                                        color: isMainSelected
+                                            ? Colors.white
+                                            : CompanyMessagesListScreen
+                                                  .accentColor,
                                         fontSize: 15,
                                       ),
                                     ),
@@ -147,11 +175,16 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                                   ),
                                   AnimatedPositioned(
                                     duration: const Duration(milliseconds: 200),
-                                    left: isMainSelected ? 0 : 318, // Примерная позиция для второй вкладки
+                                    left: isMainSelected
+                                        ? 0
+                                        : 318, // Примерная позиция для второй вкладки
                                     child: Container(
                                       height: 2,
-                                      width: isMainSelected ? 75 : 45, // Ширина подчеркивания
-                                    color: CompanyMessagesListScreen.accentColor,
+                                      width: isMainSelected
+                                          ? 75
+                                          : 45, // Ширина подчеркивания
+                                      color:
+                                          CompanyMessagesListScreen.accentColor,
                                     ),
                                   ),
                                 ],
@@ -172,7 +205,11 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     selectAll = value;
-                                    for (int i = 0; i < selectedItems.length; i++) {
+                                    for (
+                                      int i = 0;
+                                      i < selectedItems.length;
+                                      i++
+                                    ) {
                                       selectedItems[i] = selectAll;
                                     }
                                   });
@@ -183,29 +220,50 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                                 onTap: () {
                                   setState(() {
                                     selectAll = !selectAll;
-                                    for (int i = 0; i < selectedItems.length; i++) {
+                                    for (
+                                      int i = 0;
+                                      i < selectedItems.length;
+                                      i++
+                                    ) {
                                       selectedItems[i] = selectAll;
                                     }
                                   });
                                 },
                                 child: const Text(
                                   'Выбрать все',
-                                  style: TextStyle(color: Colors.white, fontSize: 14),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                               const Spacer(),
                               GestureDetector(
                                 onTap: () {
-                                  final selectedIndices = selectedItems.asMap().entries.where((entry) => entry.value).map((entry) => entry.key).toList();
-                                  context.read<CompanyMessagesBloc>().add(ArchiveCompanyMessages(selectedIndices));
+                                  final selectedIndices = selectedItems
+                                      .asMap()
+                                      .entries
+                                      .where((entry) => entry.value)
+                                      .map((entry) => entry.key)
+                                      .toList();
+                                  context.read<CompanyMessagesBloc>().add(
+                                    ArchiveCompanyMessages(selectedIndices),
+                                  );
                                   setState(() {
-                                    selectedItems = List.filled(messages.length - selectedIndices.length, false);
+                                    selectedItems = List.filled(
+                                      messages.length - selectedIndices.length,
+                                      false,
+                                    );
                                     selectAll = false;
                                   });
                                 },
                                 child: const Text(
                                   'В архив',
-                                  style: TextStyle(color: CompanyMessagesListScreen.accentColor, fontSize: 14),
+                                  style: TextStyle(
+                                    color:
+                                        CompanyMessagesListScreen.accentColor,
+                                    fontSize: 14,
+                                  ),
                                 ),
                               ),
                             ],
@@ -228,7 +286,9 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     selectedItems[index] = value ?? false;
-                                    selectAll = selectedItems.every((item) => item);
+                                    selectAll = selectedItems.every(
+                                      (item) => item,
+                                    );
                                   });
                                 },
                               );
@@ -240,10 +300,15 @@ class _CompanyMessagesListScreenState extends State<CompanyMessagesListScreen> {
                   ),
                   bottomNavigationBar: BottomNavigation(
                     onItemSelected: (index) {
-                      if (index == 3) { // Shopping cart icon
-                        context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                      if (index == 3) {
+                        // Shopping cart icon
+                        context.read<NavigationBloc>().add(
+                          NavigateToMyPurchasesEvent(),
+                        );
                       } else {
-                        context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                        context.read<NavigationBloc>().add(
+                          SelectNavigationIndexEvent(index),
+                        );
                       }
                     },
                   ),
@@ -284,9 +349,7 @@ class _MessageItem extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => const ChatPage(),
-          ),
+          MaterialPageRoute(builder: (context) => const ChatPage()),
         );
       },
       child: Container(

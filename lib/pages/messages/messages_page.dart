@@ -7,6 +7,8 @@ import 'package:lidle/widgets/cards/message_card.dart'; // Import MessageCard
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/messages/messages_bloc.dart';
+import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
@@ -135,6 +137,8 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   void initState() {
     super.initState();
+    // 🔄 Ленивая загрузка сообщений при переходе на страницу
+    context.read<MessagesBloc>().add(LoadMessages());
     _loadMessages();
   }
 

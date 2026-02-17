@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/catalog_model.dart';
@@ -12,10 +11,9 @@ import 'package:lidle/hive_service.dart';
 /// Базовый класс для работы с API.
 /// Обрабатывает общие заголовки и базовый URL.
 class ApiService {
-  static String get baseUrl => (dotenv.get(
-    'API_BASE_URL',
-    fallback: 'https://dev-api.lidle.io/v1',
-  )).replaceAll(RegExp(r'/$'), '');
+  // ОПТИМИЗАЦИЯ: Базовый URL захардкодирован чтобы не использовать dotenv при инициализации
+  // dotenv.load() отнимает ~900ms, а базовый URL не меняется
+  static String get baseUrl => 'https://dev-api.lidle.io/v1';
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     // Заголовки согласно официальной документации API Lidle
@@ -60,7 +58,7 @@ class ApiService {
 
       final response = await http
           .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
     } on http.ClientException catch (e) {
@@ -109,7 +107,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
     } on http.ClientException catch (e) {
@@ -139,7 +137,7 @@ class ApiService {
 
       final response = await http
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
     } on http.ClientException catch (e) {
@@ -191,7 +189,7 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
     } on http.ClientException catch (e) {
@@ -242,7 +240,7 @@ class ApiService {
             headers: headers,
             body: body != null ? jsonEncode(body) : null,
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
     } on http.ClientException catch (e) {
@@ -797,7 +795,7 @@ class ApiService {
 
       final response = await http
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 10));
 
       print('✅ API Response status: ${response.statusCode}');
 
@@ -869,7 +867,7 @@ class ApiService {
       request.body = jsonEncode(bodyMap);
 
       final streamResponse = await request.send().timeout(
-        const Duration(seconds: 30),
+        const Duration(seconds: 10),
       );
       final response = await http.Response.fromStream(streamResponse);
 

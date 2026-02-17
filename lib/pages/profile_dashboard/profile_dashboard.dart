@@ -60,6 +60,8 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
   @override
   void initState() {
     super.initState();
+    // 🔄 Ленивая загрузка профиля при входе на страницу профиля
+    context.read<ProfileBloc>().add(LoadProfileEvent());
     _loadListingsCounts();
   }
 
