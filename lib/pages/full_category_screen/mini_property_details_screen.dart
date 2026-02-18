@@ -31,6 +31,8 @@ class MiniPropertyDetailsScreen extends StatefulWidget {
 }
 
 class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
+  bool _showFullDescription = false;
+  bool _showAllCharacteristics = false;
   final PageController _pageController = PageController();
   int _currentPage = 0;
   bool _isAdvertLoaded = false;
@@ -558,8 +560,8 @@ ${widget.listing.title}
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Padding(
+        children: [
+          const Padding(
             padding: EdgeInsets.only(top: 6.0),
             child: Text(
               "О квартире",
@@ -570,45 +572,78 @@ ${widget.listing.title}
               ),
             ),
           ),
-          SizedBox(height: 8),
-          _InfoRow(title: "Количество комнат: ", value: "3"),
-          _InfoRow(title: "Общая площадь: ", value: "125.5 м²"),
-          _InfoRow(title: "Площадь кухни: ", value: "14.5 м²"),
-          _InfoRow(title: "Жилая площадь: ", value: "64.5 м²"),
-          _InfoRow(title: "Этаж: ", value: "5 из 17"),
-          _InfoRow(title: "Балкон / лоджия: ", value: "балкон, лоджия"),
-          _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
-          _InfoRow(title: "Тип комнат: ", value: "изолированные"),
-          SizedBox(height: 8),
-
-          Row(
-            children: [
-              Text(
-                "Все характеристики",
-                style: TextStyle(color: Colors.blue, fontSize: 14),
+          const SizedBox(height: 8),
+          const _InfoRow(title: "Количество комнат: ", value: "3"),
+          const _InfoRow(title: "Общая площадь: ", value: "125.5 м²"),
+          const _InfoRow(title: "Площадь кухни: ", value: "14.5 м²"),
+          const _InfoRow(title: "Жилая площадь: ", value: "64.5 м²"),
+          const _InfoRow(title: "Этаж: ", value: "5 из 17"),
+          const _InfoRow(title: "Балкон / лоджия: ", value: "балкон, лоджия"),
+          const _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
+          const _InfoRow(title: "Тип комнат: ", value: "изолированные"),
+          if (_showAllCharacteristics) ...[
+            const _InfoRow(title: "Санузел: ", value: "раздельный, 2 шт."),
+            const _InfoRow(title: "Ремонт: ", value: "евро"),
+            const _InfoRow(title: "Высота потолков: ", value: "3.1 м"),
+            const _InfoRow(title: "Вид из окон: ", value: "во двор и на улицу"),
+            const _InfoRow(title: "Мебель: ", value: "есть"),
+            const _InfoRow(title: "Техника: ", value: "есть"),
+            const _InfoRow(title: "Парковка: ", value: "подземная, во дворе"),
+            const _InfoRow(title: "Лифт: ", value: "пассажирский, грузовой"),
+            const _InfoRow(title: "Тип дома: ", value: "монолит"),
+            const _InfoRow(title: "Год постройки: ", value: "2018"),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showAllCharacteristics = false;
+                });
+              },
+              child: Row(
+                children: const [
+                  Text(
+                    "Свернуть характеристики",
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
+                  ),
+                  Icon(Icons.keyboard_arrow_up_sharp, color: Colors.blue),
+                ],
               ),
-              //  SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down_sharp,
-                color: Colors.blue,
-                // size: 18,
+            ),
+            const SizedBox(height: 2),
+          ] else ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showAllCharacteristics = true;
+                });
+              },
+              child: Row(
+                children: const [
+                  Text(
+                    "Все характеристики",
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
+                  ),
+                  Icon(Icons.keyboard_arrow_down_sharp, color: Colors.blue),
+                ],
               ),
-            ],
-          ),
-
-          SizedBox(height: 2),
+            ),
+            const SizedBox(height: 2),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildDescriptionCard() {
+    const String descriptionText =
+        "Объявление от coбcтвeнника! Предлагaю сoбствeнную пpоcтopную ceмeйную квapтиpу нa тихой улице в престижнoм pайоне Mосквы.Глaвнoe дocтoинcтвo квартиры - cочeтание проcторa и уюта. В квaртире нeт золoтыx унитазов, джакузи c пилонoм ...";
     return _card(
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             "Описание",
             style: TextStyle(
               color: Colors.white,
@@ -616,29 +651,53 @@ ${widget.listing.title}
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            "Объявление от coбcтвeнника! Предлагaю сoбствeнную пpоcтopную ceмeйную квapтиpу нa тихой улице в престижнoм pайоне Mосквы.Глaвнoe дocтoинcтвo квартиры - cочeтание проcторa и уюта. В квaртире нeт золoтыx унитазов, джакузи c пилонoм ...",
-            style: TextStyle(color: Colors.white, fontSize: 14),
-            maxLines: 6,
-            overflow: TextOverflow.ellipsis,
+            descriptionText,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            maxLines: _showFullDescription ? null : 6,
+            overflow: _showFullDescription
+                ? TextOverflow.visible
+                : TextOverflow.ellipsis,
           ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                "Все описание",
-                style: TextStyle(color: Colors.blue, fontSize: 14),
+          const SizedBox(height: 8),
+          if (_showFullDescription) ...[
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showFullDescription = false;
+                });
+              },
+              child: Row(
+                children: const [
+                  Text(
+                    "Свернуть описание",
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
+                  ),
+                  Icon(Icons.keyboard_arrow_up_sharp, color: Colors.blue),
+                ],
               ),
-              //  SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down_sharp,
-                color: Colors.blue,
-                // size: 18,
+            ),
+            const SizedBox(height: 2),
+          ] else ...[
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _showFullDescription = true;
+                });
+              },
+              child: Row(
+                children: const [
+                  Text(
+                    "Все описание",
+                    style: TextStyle(color: Colors.blue, fontSize: 14),
+                  ),
+                  Icon(Icons.keyboard_arrow_down_sharp, color: Colors.blue),
+                ],
               ),
-            ],
-          ),
-          SizedBox(height: 2),
+            ),
+            const SizedBox(height: 2),
+          ],
         ],
       ),
     );
