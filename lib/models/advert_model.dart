@@ -16,6 +16,7 @@ class Advert {
   final String? sellerName;
   final String? sellerAvatar;
   final String? sellerRegistrationDate;
+  final String? description;
 
   Advert({
     required this.id,
@@ -33,6 +34,7 @@ class Advert {
     this.sellerName,
     this.sellerAvatar,
     this.sellerRegistrationDate,
+    this.description,
   });
 
   factory Advert.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,7 @@ class Advert {
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
+      description: json['description'],
     );
   }
 }
@@ -250,6 +253,7 @@ extension AdvertToListingExtension on Advert {
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
+      description: description,
     );
   }
 }

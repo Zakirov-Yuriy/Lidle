@@ -1,8 +1,9 @@
+import 'package:lidle/models/catalog_category_model.dart' as catalog;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'listings_event.dart';
 import 'listings_state.dart';
-import '../../models/home_models.dart';
+import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
 import '../../hive_service.dart';
@@ -34,8 +35,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Статические данные объявлений.
   /// В будущем можно заменить на загрузку из API.
-  static final List<Listing> staticListings = [
-    Listing(
+  static final List<home.Listing> staticListings = [
+    home.Listing(
       id: 'listing_1',
       imagePath: 'assets/home_page/apartment1.png',
       images: ['assets/home_page/apartment1.png', 'assets/home_page/image.png'],
@@ -45,7 +46,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: 'Сегодня',
       isFavorited: false,
     ),
-    Listing(
+    home.Listing(
       id: 'listing_2',
       imagePath: 'assets/home_page/acura_mdx.png',
       images: ['assets/home_page/acura_mdx.png'],
@@ -55,7 +56,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '29.08.2024',
       isFavorited: false,
     ),
-    Listing(
+    home.Listing(
       id: 'listing_3',
       imagePath: 'assets/home_page/acura_rdx.png',
       images: ['assets/home_page/acura_rdx.png'],
@@ -65,7 +66,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '29.08.2024',
       isFavorited: false,
     ),
-    Listing(
+    home.Listing(
       id: 'listing_4',
       imagePath: 'assets/home_page/studio.png',
       images: ['assets/home_page/studio.png', 'assets/home_page/image2.png'],
@@ -75,7 +76,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '11.05.2024',
       isFavorited: false,
     ),
-    Listing(
+    home.Listing(
       id: 'listing_5',
       imagePath: 'assets/home_page/image.png',
       images: ['assets/home_page/image.png'],
@@ -85,7 +86,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       date: '11.05.2024',
       isFavorited: false,
     ),
-    Listing(
+    home.Listing(
       id: 'listing_6',
       imagePath: 'assets/home_page/image2.png',
       images: [
@@ -103,7 +104,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Статические данные категорий.
   /// В будущем можно заменить на загрузку из API.
   /// Вспомогательный метод для преобразования Catalog из API в Category
-  Category _catalogToCategory(dynamic catalog) {
+  home.Category _catalogToCategory(dynamic catalog) {
     final colors = <Color>[
       Colors.blue,
       Colors.purple,
@@ -118,7 +119,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // Используем хеш для выбора цвета на основе ID каталога
     final colorIndex = (catalog.id ?? 0) % colors.length;
 
-    return Category(
+    return home.Category(
       id: catalog.id,
       title: _formatCategoryTitle(catalog.name ?? ''),
       color: colors[colorIndex],
@@ -212,7 +213,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Добавляем специальную категорию "Смотреть все" в конец
       loadedCategories.add(
-        const Category(
+        const home.Category(
           title: 'Смотреть\nвсе',
           color: Color(0xFF00A6FF),
           imagePath: '',
@@ -221,7 +222,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Получаем все catalogId
       final catalogIds = catalogsResponse.data.map((c) => c.id).toList();
-      final List<Listing> allListings = [];
+      final List<home.Listing> allListings = [];
       int currentPage = 1;
       int totalPages = 1;
       int itemsPerPage = 20;
@@ -262,7 +263,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                       print(
                         'Ошибка загрузки объявлений для catalogId=$catalogId: $e',
                       );
-                      return <Listing>[];
+                      return <home.Listing>[];
                     }),
           )
           .toList();
@@ -367,7 +368,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Для демонстрации фильтрации используем простую логику
       // В будущем можно реализовать более сложную фильтрацию по API
-      List<Listing> filteredListings;
+      List<home.Listing> filteredListings;
       switch (event.categoryId) {
         case 'real-estate':
           filteredListings = currentState.listings
@@ -602,7 +603,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Метод для сортировки объявлений по датам.
   /// Объявления с датой 'Сегодня' помещаются в начало.
   /// Остальные объявления сортируются от новых к старым.
-  List<Listing> _sortListingsByDate(List<Listing> listings) {
+  List<home.Listing> _sortListingsByDate(List<home.Listing> listings) {
     // Функция для преобразования строки даты в объект DateTime для сравнения
     DateTime? parseDate(String dateStr) {
       // Если дата 'Сегодня', возвращаем очень новую дату
@@ -626,8 +627,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
 
     // Разделяем объявления на две группы: 'Сегодня' и остальные
-    final todayListings = <Listing>[];
-    final otherListings = <Listing>[];
+    final todayListings = <home.Listing>[];
+    final otherListings = <home.Listing>[];
 
     for (final listing in listings) {
       if (listing.date == 'Сегодня') {
@@ -655,7 +656,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   }
 
   /// Конвертирует Listing в JSON для кеша.
-  Map<String, dynamic> _listingToJson(Listing listing) {
+  Map<String, dynamic> _listingToJson(home.Listing listing) {
     return {
       'id': listing.id,
       'imagePath': listing.imagePath,
@@ -672,8 +673,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   }
 
   /// Конвертирует JSON обратно в Listing из кеша.
-  Listing _jsonToListing(Map<String, dynamic> json) {
-    return Listing(
+  home.Listing _jsonToListing(Map<String, dynamic> json) {
+    return home.Listing(
       id: json['id'] ?? '',
       imagePath: json['imagePath'] ?? '',
       images: List<String>.from(json['images'] ?? []),
@@ -689,7 +690,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   }
 
   /// Конвертирует Category в JSON для кеша.
-  Map<String, dynamic> _categoryToJson(Category category) {
+  Map<String, dynamic> _categoryToJson(home.Category category) {
     return {
       'title': category.title,
       'color': category.color.value,
@@ -698,8 +699,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   }
 
   /// Конвертирует JSON обратно в Category из кеша.
-  Category _jsonToCategory(Map<String, dynamic> json) {
-    return Category(
+  home.Category _jsonToCategory(Map<String, dynamic> json) {
+    return home.Category(
       title: json['title'] ?? '',
       color: Color(json['color'] ?? 0xFF00A6FF),
       imagePath: json['imagePath'] ?? '',

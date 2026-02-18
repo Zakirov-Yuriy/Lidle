@@ -636,8 +636,7 @@ ${widget.listing.title}
   }
 
   Widget _buildDescriptionCard() {
-    const String descriptionText =
-        "Объявление от coбcтвeнника! Предлагaю сoбствeнную пpоcтopную ceмeйную квapтиpу нa тихой улице в престижнoм pайоне Mосквы.Глaвнoe дocтoинcтвo квартиры - cочeтание проcторa и уюта. В квaртире нeт золoтыx унитазов, джакузи c пилонoм ...";
+    final String? descriptionText = _listing.description;
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -652,16 +651,28 @@ ${widget.listing.title}
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            descriptionText,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            maxLines: _showFullDescription ? null : 6,
-            overflow: _showFullDescription
-                ? TextOverflow.visible
-                : TextOverflow.ellipsis,
-          ),
+          if (descriptionText != null && descriptionText.isNotEmpty)
+            Text(
+              descriptionText,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              maxLines: _showFullDescription ? null : 6,
+              overflow: _showFullDescription
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
+            )
+          else
+            const Text(
+              "Описание отсутствует",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           const SizedBox(height: 8),
-          if (_showFullDescription) ...[
+          if (_showFullDescription &&
+              descriptionText != null &&
+              descriptionText.isNotEmpty) ...[
             GestureDetector(
               onTap: () {
                 setState(() {
@@ -679,7 +690,7 @@ ${widget.listing.title}
               ),
             ),
             const SizedBox(height: 2),
-          ] else ...[
+          ] else if (descriptionText != null && descriptionText.isNotEmpty) ...[
             GestureDetector(
               onTap: () {
                 setState(() {

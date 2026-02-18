@@ -65,6 +65,9 @@ class Listing {
   /// Дата регистрации продавца на платформе
   final String? sellerRegistrationDate;
 
+  /// Описание объявления (может быть null)
+  final String? description;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -79,6 +82,7 @@ class Listing {
     this.sellerName,
     this.sellerAvatar,
     this.sellerRegistrationDate,
+    this.description,
   });
 
   factory Listing.fromJson(Map<String, dynamic> json) {
@@ -102,6 +106,7 @@ class Listing {
       sellerAvatar: json['seller']?['avatar'] ?? json['sellerAvatar'],
       sellerRegistrationDate:
           json['seller']?['registrationDate'] ?? json['sellerRegistrationDate'],
+      description: json['description'],
     );
   }
 }
