@@ -53,8 +53,8 @@ class Listing {
   /// Дата публикации или обновления объявления.
   final String date;
 
-  /// Флаг, указывающий, добавлено ли объявление в избранное.
-  bool isFavorited; // Added isFavorited field
+  /// Характеристики недвижимости (например, количество комнат, площадь и т.д.)
+  final Map<String, dynamic> characteristics;
 
   /// Имя продавца
   final String? sellerName;
@@ -68,6 +68,9 @@ class Listing {
   /// Описание объявления (может быть null)
   final String? description;
 
+  /// Флаг, указывающий, добавлено ли объявление в избранное.
+  final bool isFavorited;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -78,14 +81,29 @@ class Listing {
     required this.price,
     required this.location,
     required this.date,
-    this.isFavorited = false, // Default to false
+    this.isFavorited = false,
     this.sellerName,
     this.sellerAvatar,
     this.sellerRegistrationDate,
     this.description,
+    this.characteristics = const {},
   });
 
   factory Listing.fromJson(Map<String, dynamic> json) {
+    // Парсим характеристики из attributes (values)
+    final Map<String, dynamic> characteristics = {};
+    print('[DEBUG] Listing.fromJson attributes:');
+    print(json['attributes']);
+    if (json['attributes'] != null && json['attributes'] is Map) {
+      final attrs = json['attributes'];
+      if (attrs['values'] != null && attrs['values'] is Map) {
+        final values = attrs['values'] as Map;
+        values.forEach((key, valueObj) {
+          characteristics[key.toString()] = valueObj;
+        });
+      }
+    }
+
     return Listing(
       id:
           json['id'] ??
@@ -107,6 +125,7 @@ class Listing {
       sellerRegistrationDate:
           json['seller']?['registrationDate'] ?? json['sellerRegistrationDate'],
       description: json['description'],
+      characteristics: characteristics,
     );
   }
 }

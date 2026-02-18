@@ -17,7 +17,8 @@ import 'package:lidle/pages/full_category_screen/land/filters_land_rent_screen.d
 import 'package:lidle/pages/full_category_screen/garages/filters_garage_sell_screen.dart';
 import 'package:lidle/pages/full_category_screen/garages/filters_garage_rent_screen.dart';
 import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_rent_screen.dart';
-import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_apartment_rent_screen.dart' as apartment_rent;
+import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_apartment_rent_screen.dart'
+    as apartment_rent;
 import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_rooms_rent_screen.dart';
 import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_hotel_rent_screen.dart';
 import 'package:lidle/pages/full_category_screen/daily_rent/daily_hourly_hostel_rent_screen.dart';
@@ -47,21 +48,18 @@ class RealEstateRentListingsScreen extends StatefulWidget {
 
 class _RealEstateRentListingsScreenState
     extends State<RealEstateRentListingsScreen> {
-  
-  int _selectedIndex = 0; 
-  late List<Listing> _listings; 
-  Set<String> _selectedSortOptions = {}; 
+  int _selectedIndex = 0;
+  late List<Listing> _listings;
+  Set<String> _selectedSortOptions = {};
 
   @override
   void initState() {
     super.initState();
-    _listings =
-        _generateSampleListings(); 
-    
+    _listings = _generateSampleListings();
+
     _selectedSortOptions.add('Сначала новые');
   }
 
-  
   List<Listing> _generateSampleListings() {
     return [
       Listing(
@@ -121,17 +119,14 @@ class _RealEstateRentListingsScreenState
     ];
   }
 
-  
   double _parsePrice(String price) {
     try {
-      
       return double.parse(price.replaceAll(RegExp(r'[^0-9]'), ''));
     } catch (e) {
-      return 0.0; 
+      return 0.0;
     }
   }
 
-  
   DateTime _parseDate(String date) {
     try {
       final now = DateTime.now();
@@ -148,14 +143,11 @@ class _RealEstateRentListingsScreenState
         final weeks = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
         return now.subtract(Duration(days: weeks * 7));
       }
-    } catch (e) {
-      
-    }
+    } catch (e) {}
     return DateTime(1970);
   }
 
   void _sortListings(Set<String> selectedOptions) {
-
     SortOption? chosenSortOption;
     if (selectedOptions.contains('Сначала новые')) {
       chosenSortOption = SortOption.newest;
@@ -222,8 +214,6 @@ class _RealEstateRentListingsScreenState
       body: SafeArea(
         child: Column(
           children: [
-            
-            
             Padding(
               padding: const EdgeInsets.only(bottom: 20, right: 25, top: 0),
               child: Row(
@@ -246,10 +236,6 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  
-  
-  
-
   Widget _buildSearchField(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -259,7 +245,7 @@ class _RealEstateRentListingsScreenState
             onTap: () => Navigator.pop(context),
             child: const Icon(Icons.arrow_back_ios, color: textMuted),
           ),
-          
+
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -285,7 +271,8 @@ class _RealEstateRentListingsScreenState
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersRoomShellScreen(),
+                            builder: (context) =>
+                                const FiltersRoomShellScreen(),
                           ),
                         );
                       } else if (widget.title == 'Долгосрочная аренда комнат') {
@@ -299,91 +286,106 @@ class _RealEstateRentListingsScreenState
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersHousesShellScreenen(),
+                            builder: (context) =>
+                                const FiltersHousesShellScreenen(),
                           ),
                         );
                       } else if (widget.title == 'Долгосрочная аренда домов') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersHousesRentScreenen(),
+                            builder: (context) =>
+                                const FiltersHousesRentScreenen(),
                           ),
                         );
                       } else if (widget.title == 'Продажа торговых помещений') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersCommercialPropertySellScreenen(),
+                            builder: (context) =>
+                                const FiltersCommercialPropertySellScreenen(),
                           ),
                         );
                       } else if (widget.title == 'Продажа офисов') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersOfficeSellScreenen(),
+                            builder: (context) =>
+                                const FiltersOfficeSellScreenen(),
                           ),
                         );
                       } else if (widget.title == 'Аренда офисов') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersOfficeRentScreenen(),
+                            builder: (context) =>
+                                const FiltersOfficeRentScreenen(),
                           ),
                         );
                       } else if (widget.title == 'Продажа гаражей, парковок') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersGarageSellScreen(),
+                            builder: (context) =>
+                                const FiltersGarageSellScreen(),
                           ),
                         );
                       } else if (widget.title == 'Продажа земли') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersLandSellScreenen(),
+                            builder: (context) =>
+                                const FiltersLandSellScreenen(),
                           ),
                         );
                       } else if (widget.title == 'Долгосрочная аренда земли') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersLandRentScreenen(),
+                            builder: (context) =>
+                                const FiltersLandRentScreenen(),
                           ),
                         );
-                      } else if (widget.title == 'Комнаты посуточно, почасово') {
+                      } else if (widget.title ==
+                          'Комнаты посуточно, почасово') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DailyHourlyRoomsRentScreen(),
+                            builder: (context) =>
+                                const DailyHourlyRoomsRentScreen(),
                           ),
                         );
                       } else if (widget.title == 'Хостелы, койко-места') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DailyHourlyHostelRentScreen(),
+                            builder: (context) =>
+                                const DailyHourlyHostelRentScreen(),
                           ),
                         );
                       } else if (widget.title == 'Предложения Туроператоров') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DailyHourlyTourOperatorRentScreen(),
+                            builder: (context) =>
+                                const DailyHourlyTourOperatorRentScreen(),
                           ),
                         );
                       } else if (widget.title == 'Отели, базы отдыха') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const DailyHourlyHotelRentScreen(),
+                            builder: (context) =>
+                                const DailyHourlyHotelRentScreen(),
                           ),
                         );
-                      } else if (widget.title == 'Квартиры посуточно, почасово') {
+                      } else if (widget.title ==
+                          'Квартиры посуточно, почасово') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const apartment_rent.DailyHourlyApartmenRentScreen(),
+                            builder: (context) =>
+                                const apartment_rent.DailyHourlyApartmenRentScreen(),
                           ),
                         );
                       } else if (widget.title?.contains('посуточно') == true) {
@@ -393,46 +395,55 @@ class _RealEstateRentListingsScreenState
                             builder: (context) => const DailyHourlyRentScreen(),
                           ),
                         );
-                      } else if (widget.title == 'Долгосрочная аренда гаражей, парковок') {
+                      } else if (widget.title ==
+                          'Долгосрочная аренда гаражей, парковок') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersGarageRentScreen(),
+                            builder: (context) =>
+                                const FiltersGarageRentScreen(),
                           ),
                         );
                       } else if (widget.title == 'Продажа квартир за рубежом') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersForeignApartmentSellScreen(),
+                            builder: (context) =>
+                                const FiltersForeignApartmentSellScreen(),
                           ),
                         );
-                      } else if (widget.title == 'Долгосрочная аренда квартир за рубежом') {
+                      } else if (widget.title ==
+                          'Долгосрочная аренда квартир за рубежом') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersForeignApartmentRentScreen(),
+                            builder: (context) =>
+                                const FiltersForeignApartmentRentScreen(),
                           ),
                         );
                       } else if (widget.title == 'Продажа домов за рубежом') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersForeignHouseSellScreen(),
+                            builder: (context) =>
+                                const FiltersForeignHouseSellScreen(),
                           ),
                         );
-                      } else if (widget.title == 'Долгосрочная аренда домов за рубежом') {
+                      } else if (widget.title ==
+                          'Долгосрочная аренда домов за рубежом') {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const FiltersForeignHouseRentScreen(),
+                            builder: (context) =>
+                                const FiltersForeignHouseRentScreen(),
                           ),
                         );
                       } else {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => FiltersRealEstateRentListingsScreen(),
+                            builder: (context) =>
+                                FiltersRealEstateRentListingsScreen(),
                           ),
                         );
                       }
@@ -453,19 +464,13 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  
-  
-  
-
   Widget _buildSectionHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: <Widget>[
-          
           Text(
-
             _formatTitle(widget.title ?? "Долгосрочная аренда квартир"),
             style: TextStyle(
               color: Colors.white,
@@ -473,10 +478,10 @@ class _RealEstateRentListingsScreenState
               fontWeight: FontWeight.w600,
             ),
           ),
-          
+
           _buildFilterDropdown(
             label: _selectedSortOptions.isEmpty
-                ? 'Сначала' 
+                ? 'Сначала'
                 : _selectedSortOptions.join(', '),
             onTap: () {
               showDialog(
@@ -494,13 +499,10 @@ class _RealEstateRentListingsScreenState
                     onSelectionChanged: (Set<String> selected) {
                       setState(() {
                         _selectedSortOptions = selected;
-                        _sortListings(
-                          _selectedSortOptions,
-                        ); 
+                        _sortListings(_selectedSortOptions);
                       });
                     },
-                    allowMultipleSelection:
-                        false, 
+                    allowMultipleSelection: false,
                   );
                 },
               );
@@ -510,10 +512,6 @@ class _RealEstateRentListingsScreenState
       ),
     );
   }
-
-  
-  
-  
 
   Widget _buildListingsGrid() {
     return GridView.builder(
@@ -525,17 +523,11 @@ class _RealEstateRentListingsScreenState
         crossAxisSpacing: 8,
         childAspectRatio: 0.70,
       ),
-      itemBuilder: (_, i) => _buildListingCard(
-        index: i,
-        listing: _listings[i], 
-      ),
+      itemBuilder: (_, i) => _buildListingCard(index: i, listing: _listings[i]),
     );
   }
 
-  Widget _buildListingCard({
-    required int index,
-    required Listing listing, 
-  }) {
+  Widget _buildListingCard({required int index, required Listing listing}) {
     return Container(
       decoration: BoxDecoration(
         color: primaryBackground,
@@ -572,9 +564,22 @@ class _RealEstateRentListingsScreenState
                     GestureDetector(
                       onTap: () {
                         setState(() {
-                          
-                          _listings[index].isFavorited =
-                              !_listings[index].isFavorited;
+                          final old = _listings[index];
+                          _listings[index] = Listing(
+                            id: old.id,
+                            imagePath: old.imagePath,
+                            images: old.images,
+                            title: old.title,
+                            price: old.price,
+                            location: old.location,
+                            date: old.date,
+                            isFavorited: !old.isFavorited,
+                            sellerName: old.sellerName,
+                            sellerAvatar: old.sellerAvatar,
+                            sellerRegistrationDate: old.sellerRegistrationDate,
+                            description: old.description,
+                            characteristics: old.characteristics,
+                          );
                         });
                       },
                       child: Icon(
@@ -616,10 +621,6 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  
-  
-  
-
   Widget _buildBottomNavigation() {
     return SafeArea(
       top: false,
@@ -634,21 +635,20 @@ class _RealEstateRentListingsScreenState
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(homeIconAsset, 0, _selectedIndex),
-            _buildNavItem(gridIconAsset, 1, _selectedIndex),
-            _buildCenterAdd(2, _selectedIndex),
-            _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
-            _buildNavItem(messageIconAsset, 4, _selectedIndex),
-            _buildNavItem(userIconAsset, 5, _selectedIndex),
-          ],
+            children: [
+              _buildNavItem(homeIconAsset, 0, _selectedIndex),
+              _buildNavItem(gridIconAsset, 1, _selectedIndex),
+              _buildCenterAdd(2, _selectedIndex),
+              _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
+              _buildNavItem(messageIconAsset, 4, _selectedIndex),
+              _buildNavItem(userIconAsset, 5, _selectedIndex),
+            ],
           ),
         ),
       ),
     );
   }
 
-  
   Widget _buildNavItem(String iconPath, int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -656,21 +656,46 @@ class _RealEstateRentListingsScreenState
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
-        onTap: () => setState(() => _selectedIndex = index),
-        child: Padding(
-          padding: const EdgeInsets.all(0),
-          child: Image.asset(
-            iconPath,
-            width: 28,
-            height: 28,
+        onTap: () {
+          setState(() {
+            final old = _listings[index];
+            _listings[index] = Listing(
+              id: old.id,
+              imagePath: old.imagePath,
+              images: old.images,
+              title: old.title,
+              price: old.price,
+              location: old.location,
+              date: old.date,
+              isFavorited: !old.isFavorited,
+              sellerName: old.sellerName,
+              sellerAvatar: old.sellerAvatar,
+              sellerRegistrationDate: old.sellerRegistrationDate,
+              description: old.description,
+              characteristics: old.characteristics,
+            );
+          });
+        },
+        child: Container(
+          height: 28,
+          width: 28,
+          decoration: BoxDecoration(
             color: isSelected ? activeIconColor : inactiveIconColor,
+            borderRadius: BorderRadius.circular(50),
+          ),
+          child: Center(
+            child: Image.asset(
+              iconPath,
+              color: Colors.white,
+              width: 18,
+              height: 18,
+            ),
           ),
         ),
       ),
     );
   }
 
-  
   Widget _buildCenterAdd(int index, int currentSelected) {
     final isSelected = currentSelected == index;
 
@@ -694,7 +719,6 @@ class _RealEstateRentListingsScreenState
     );
   }
 
-  
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,

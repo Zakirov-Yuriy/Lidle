@@ -1,4 +1,5 @@
 import 'package:lidle/models/home_models.dart';
+import 'dart:convert';
 
 class Advert {
   final int id;
@@ -18,6 +19,8 @@ class Advert {
   final String? sellerRegistrationDate;
   final String? description;
 
+  final Map<String, dynamic>? characteristics;
+
   Advert({
     required this.id,
     required this.date,
@@ -35,6 +38,7 @@ class Advert {
     this.sellerAvatar,
     this.sellerRegistrationDate,
     this.description,
+    this.characteristics,
   });
 
   factory Advert.fromJson(Map<String, dynamic> json) {
@@ -67,6 +71,27 @@ class Advert {
       }
     }
 
+    // Парсим характеристики из attributes (List)
+    Map<String, dynamic>? characteristics;
+    if (json['attributes'] != null && json['attributes'] is List) {
+      final attrs = json['attributes'] as List<dynamic>;
+      characteristics = {};
+      for (final item in attrs) {
+        if (item is Map<String, dynamic>) {
+          final id = item['id']?.toString() ?? '';
+          if (id.isNotEmpty) {
+            // Сохраняем атрибут с его ID как ключ
+            characteristics![id] = {
+              'id': item['id'],
+              'title': item['title'] ?? '',
+              'value': item['value'],
+              'max_value': item['max_value'],
+            };
+          }
+        }
+      }
+    }
+
     return Advert(
       id: json['id'] ?? 0,
       date: json['date'] ?? '',
@@ -88,6 +113,7 @@ class Advert {
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
       description: json['description'],
+      characteristics: characteristics,
     );
   }
 }
@@ -254,6 +280,7 @@ extension AdvertToListingExtension on Advert {
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
       description: description,
+      characteristics: characteristics ?? {},
     );
   }
 }

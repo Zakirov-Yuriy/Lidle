@@ -557,6 +557,43 @@ ${widget.listing.title}
   }
 
   Widget _buildAboutApartmentCard() {
+    final Map<String, dynamic> chars = _listing.characteristics;
+    // DEBUG: Выводим характеристики в консоль для отладки
+    print('[DEBUG] Характеристики в карточке:');
+    chars.forEach((k, v) => print('  $k: $v'));
+
+    // Формируем список виджетов для отображения характеристик
+    final List<Widget> charWidgets = [];
+    chars.forEach((key, charData) {
+      if (charData is Map<String, dynamic>) {
+        final title = charData['title'] as String? ?? 'Характеристика';
+        final value = charData['value'];
+        final maxValue = charData['max_value'];
+
+        String displayValue = '-';
+        if (value is Map && value.containsKey('value')) {
+          // Случай: {"value": ..., "max_value": ...}
+          displayValue = value['value'].toString();
+          if (value.containsKey('max_value')) {
+            displayValue += ' — ' + value['max_value'].toString();
+          }
+        } else if (maxValue != null) {
+          // Диапазон: value и max_value на разных уровнях
+          displayValue = value.toString() + ' — ' + maxValue.toString();
+        } else if (value is bool) {
+          displayValue = value ? 'Да' : 'Нет';
+        } else if (value is num) {
+          displayValue = value.toString();
+        } else if (value is String) {
+          displayValue = value;
+        } else if (value is List) {
+          // Если value это список
+          displayValue = (value as List).join(', ');
+        }
+        charWidgets.add(_InfoRow(title: '$title: ', value: displayValue));
+      }
+    });
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,63 +610,17 @@ ${widget.listing.title}
             ),
           ),
           const SizedBox(height: 8),
-          const _InfoRow(title: "Количество комнат: ", value: "3"),
-          const _InfoRow(title: "Общая площадь: ", value: "125.5 м²"),
-          const _InfoRow(title: "Площадь кухни: ", value: "14.5 м²"),
-          const _InfoRow(title: "Жилая площадь: ", value: "64.5 м²"),
-          const _InfoRow(title: "Этаж: ", value: "5 из 17"),
-          const _InfoRow(title: "Балкон / лоджия: ", value: "балкон, лоджия"),
-          const _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
-          const _InfoRow(title: "Тип комнат: ", value: "изолированные"),
-          if (_showAllCharacteristics) ...[
-            const _InfoRow(title: "Санузел: ", value: "раздельный, 2 шт."),
-            const _InfoRow(title: "Ремонт: ", value: "евро"),
-            const _InfoRow(title: "Высота потолков: ", value: "3.1 м"),
-            const _InfoRow(title: "Вид из окон: ", value: "во двор и на улицу"),
-            const _InfoRow(title: "Мебель: ", value: "есть"),
-            const _InfoRow(title: "Техника: ", value: "есть"),
-            const _InfoRow(title: "Парковка: ", value: "подземная, во дворе"),
-            const _InfoRow(title: "Лифт: ", value: "пассажирский, грузовой"),
-            const _InfoRow(title: "Тип дома: ", value: "монолит"),
-            const _InfoRow(title: "Год постройки: ", value: "2018"),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showAllCharacteristics = false;
-                });
-              },
-              child: Row(
-                children: const [
-                  Text(
-                    "Свернуть характеристики",
-                    style: TextStyle(color: Colors.blue, fontSize: 14),
-                  ),
-                  Icon(Icons.keyboard_arrow_up_sharp, color: Colors.blue),
-                ],
+          if (charWidgets.isEmpty)
+            const Text(
+              "Нет данных о характеристиках",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
               ),
-            ),
-            const SizedBox(height: 2),
-          ] else ...[
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showAllCharacteristics = true;
-                });
-              },
-              child: Row(
-                children: const [
-                  Text(
-                    "Все характеристики",
-                    style: TextStyle(color: Colors.blue, fontSize: 14),
-                  ),
-                  Icon(Icons.keyboard_arrow_down_sharp, color: Colors.blue),
-                ],
-              ),
-            ),
-            const SizedBox(height: 2),
-          ],
+            )
+          else
+            ...charWidgets,
         ],
       ),
     );

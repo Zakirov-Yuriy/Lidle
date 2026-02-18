@@ -8,7 +8,8 @@ import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listin
 import 'package:lidle/pages/full_category_screen/mini_property_filtered_details_screen.dart';
 
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
-const String messageIconAssetLocal = 'assets/BottomNavigation/message-circle-01.png';
+const String messageIconAssetLocal =
+    'assets/BottomNavigation/message-circle-01.png';
 const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 // ============================================================
@@ -108,7 +109,8 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         final days = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
         return now.subtract(Duration(days: days));
       }
-      if (date.contains('Неделя назад')) return now.subtract(const Duration(days: 7));
+      if (date.contains('Неделя назад'))
+        return now.subtract(const Duration(days: 7));
       if (date.contains('недели назад')) {
         final weeks = int.parse(date.replaceAll(RegExp(r'[^0-9]'), ''));
         return now.subtract(Duration(days: weeks * 7));
@@ -120,25 +122,37 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
   void _sortListings(Set<String> selectedOptions) {
     SortOption? chosenSortOption;
 
-    if (selectedOptions.contains('Сначала новые')) chosenSortOption = SortOption.newest;
-    if (selectedOptions.contains('Сначала старые')) chosenSortOption = SortOption.oldest;
-    if (selectedOptions.contains('Сначала дорогие')) chosenSortOption = SortOption.mostExpensive;
-    if (selectedOptions.contains('Сначала дешевые')) chosenSortOption = SortOption.cheapest;
+    if (selectedOptions.contains('Сначала новые'))
+      chosenSortOption = SortOption.newest;
+    if (selectedOptions.contains('Сначала старые'))
+      chosenSortOption = SortOption.oldest;
+    if (selectedOptions.contains('Сначала дорогие'))
+      chosenSortOption = SortOption.mostExpensive;
+    if (selectedOptions.contains('Сначала дешевые'))
+      chosenSortOption = SortOption.cheapest;
 
     if (chosenSortOption != null) {
       setState(() {
         switch (chosenSortOption!) {
           case SortOption.newest:
-            _listings.sort((a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)));
+            _listings.sort(
+              (a, b) => _parseDate(b.date).compareTo(_parseDate(a.date)),
+            );
             break;
           case SortOption.oldest:
-            _listings.sort((a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)));
+            _listings.sort(
+              (a, b) => _parseDate(a.date).compareTo(_parseDate(b.date)),
+            );
             break;
           case SortOption.mostExpensive:
-            _listings.sort((a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)));
+            _listings.sort(
+              (a, b) => _parsePrice(b.price).compareTo(_parsePrice(a.price)),
+            );
             break;
           case SortOption.cheapest:
-            _listings.sort((a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)));
+            _listings.sort(
+              (a, b) => _parsePrice(a.price).compareTo(_parsePrice(b.price)),
+            );
             break;
         }
       });
@@ -159,7 +173,6 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       body: SafeArea(
         child: Column(
           children: [
-
             // ---------------- FIXED HEADER ----------------
             Padding(
               padding: const EdgeInsets.only(right: 12, top: 0),
@@ -179,8 +192,6 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
             Expanded(
               child: CustomScrollView(
                 slivers: [
-                  
-
                   // Начало скролла — ровно здесь
                   SliverToBoxAdapter(child: _buildSectionHeader()),
                   SliverToBoxAdapter(child: const SizedBox(height: 18)),
@@ -189,12 +200,13 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     sliver: SliverGrid(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 15,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: 0.70,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 15,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 0.70,
+                          ),
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _buildListingCard(
                           index: index,
@@ -262,7 +274,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
                       width: 20,
                       height: 20,
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -318,10 +330,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
     );
   }
 
-  Widget _buildListingCard({
-    required int index,
-    required Listing listing,
-  }) {
+  Widget _buildListingCard({required int index, required Listing listing}) {
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -339,7 +348,9 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         child: Column(
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(5),
+              ),
               child: Image.asset(
                 listing.imagePath,
                 height: 159,
@@ -358,14 +369,32 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
                       Expanded(
                         child: Text(
                           listing.title,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            _listings[index].isFavorited =
-                                !_listings[index].isFavorited;
+                            final old = _listings[index];
+                            _listings[index] = Listing(
+                              id: old.id,
+                              imagePath: old.imagePath,
+                              images: old.images,
+                              title: old.title,
+                              price: old.price,
+                              location: old.location,
+                              date: old.date,
+                              isFavorited: !old.isFavorited,
+                              sellerName: old.sellerName,
+                              sellerAvatar: old.sellerAvatar,
+                              sellerRegistrationDate:
+                                  old.sellerRegistrationDate,
+                              description: old.description,
+                              characteristics: old.characteristics,
+                            );
                           });
                         },
                         child: Icon(
