@@ -5,6 +5,7 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/hive_service.dart';
 
 // ============================================================
 // "Экран профиля продавца"
@@ -17,13 +18,15 @@ class SellerProfileScreen extends StatefulWidget {
 
   final String sellerName;
   final ImageProvider sellerAvatar;
-  final List<Map<String, dynamic>> sellerListings;
+  final List<Map<String, dynamic>>? sellerListings;
+  final String? userId;
 
   const SellerProfileScreen({
     super.key,
     required this.sellerName,
     required this.sellerAvatar,
-    required this.sellerListings,
+    this.sellerListings,
+    this.userId,
   });
 
   @override
@@ -33,6 +36,64 @@ class SellerProfileScreen extends StatefulWidget {
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
   int selectedStars = 1;
   int _selectedIndex = 0;
+  List<Map<String, dynamic>> _sellerListings = [];
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSellerListings();
+  }
+
+  /// Загружает объявления продавца из API или использует переданные
+  Future<void> _loadSellerListings() async {
+    // Если есть передаваемые объявления, используем их
+    if (widget.sellerListings != null && widget.sellerListings!.isNotEmpty) {
+      setState(() {
+        _sellerListings = widget.sellerListings ?? [];
+        _isLoading = false;
+      });
+      return;
+    }
+
+    // Если нет userId, не можем загрузить
+    if (widget.userId == null || widget.userId!.isEmpty) {
+      setState(() {
+        _error = 'Невозможно загрузить объявления продавца';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        throw Exception('Токен авторизации не найден');
+      }
+
+      // TODO: API фильтрация по user_id требует уточнения с бэк-командой
+      // Текущий вариант: используем похожие объявления которые передаются
+      // Если нужны ВСЕ объявления продавца, нужно:
+      // 1. Получить от бэка endpoint для фильтрации по user_id
+      // 2. Или загрузить из каждой категории и фильтровать локально
+
+      setState(() {
+        _sellerListings = [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Ошибка при загрузке объявлений: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,8 +298,67 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildListingsGrid() {
+    // Если идёт загрузка
+    if (_isLoading) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            children: const [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text(
+                'Загрузка объявлений...',
+                style: TextStyle(color: textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Если была ошибка
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Если нет объявлений
+    if (_sellerListings.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            children: const [
+              Icon(Icons.inbox, color: Colors.grey, size: 48),
+              SizedBox(height: 16),
+              Text(
+                'Объявления отсутствуют',
+                style: TextStyle(color: textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Отображаем сетку объявлений
     return GridView.builder(
-      itemCount: widget.sellerListings.length,
+      itemCount: _sellerListings.length,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -248,7 +368,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         childAspectRatio: 0.70,
       ),
       itemBuilder: (_, i) =>
-          ListingCard(listing: Listing.fromJson(widget.sellerListings[i])),
+          ListingCard(listing: Listing.fromJson(_sellerListings[i])),
     );
   }
 

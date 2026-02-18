@@ -59,6 +59,9 @@ class Listing {
   /// Имя продавца
   final String? sellerName;
 
+  /// ID продавца/пользователя
+  final String? userId;
+
   /// Аватарка продавца (URL или путь к активу)
   final String? sellerAvatar;
 
@@ -83,6 +86,7 @@ class Listing {
     required this.date,
     this.isFavorited = false,
     this.sellerName,
+    this.userId,
     this.sellerAvatar,
     this.sellerRegistrationDate,
     this.description,
@@ -121,11 +125,34 @@ class Listing {
       date: json['date'] ?? 'Unknown Date',
       isFavorited: json['isFavorited'] ?? false,
       sellerName: json['seller']?['name'] ?? json['sellerName'],
+      userId: json['seller']?['id']?.toString() ?? json['userId'],
       sellerAvatar: json['seller']?['avatar'] ?? json['sellerAvatar'],
       sellerRegistrationDate:
           json['seller']?['registrationDate'] ?? json['sellerRegistrationDate'],
       description: json['description'],
       characteristics: characteristics,
     );
+  }
+
+  /// Конвертирует Listing объект в JSON Map для передачи между экранами
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'image': imagePath,
+      'images': images,
+      'title': title,
+      'price': price,
+      'address': location,
+      'date': date,
+      'isFavorited': isFavorited,
+      'description': description,
+      'seller': {
+        'id': userId,
+        'name': sellerName,
+        'avatar': sellerAvatar,
+        'registrationDate': sellerRegistrationDate,
+      },
+      'attributes': {'values': characteristics},
+    };
   }
 }

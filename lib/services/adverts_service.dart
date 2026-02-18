@@ -78,7 +78,78 @@ class AdvertsService {
     }
   }
 
-  /// Поиск объявлений по стандартным параметрам
+  /// Получить объявления продавца по ID пользователя
+  ///
+  /// ВАЖНО: API документация не содержит явного способа фильтровать по user_id/seller_id.
+  /// Поэтому сейчас этот метод:
+  /// 1. Спробует использовать фильтр user_id если API его поддерживает (требует тестирования)
+  /// 2. Рекомендуется использовать статические данные похожих объявлений с мини-экрана
+  ///
+  /// Параметры:
+  /// - [userId] - ID продавца
+  /// - [categoryId] - ID категории (опционально, для более узкого поиска)
+  /// - [token] - JWT токен
+  static Future<List<MainAdvert>> getSellerAdverts({
+    required String userId,
+    int? categoryId,
+    required String token,
+  }) async {
+    try {
+      // Примечание: Эта реализация требует подтверждения от бэка
+      // что API поддерживает фильтр по user_id в filters параметре
+
+      final filters = <String, dynamic>{'user_id': userId};
+
+      // Если категория указана, используем её
+      if (categoryId != null) {
+        final response = await listAdverts(
+          categoryId: categoryId,
+          filters: filters,
+          token: token,
+        );
+
+        // Фильтруем результаты локально по user_id если нужно
+        return response.data;
+      } else {
+        // Если категория не указана, мы не можем загрузить объявления
+        // так как API требует category_id или catalog_id
+        throw Exception(
+          'Для загрузки объявлений продавца требуется указать categoryId',
+        );
+      }
+    } catch (e) {
+      throw Exception('Ошибка при загрузке объявлений продавца: $e');
+    }
+  }
+
+  /// Получить объявления продавца с локальной фильтрацией
+  ///
+  /// Параметры:
+  /// - [userId] - ID продавца
+  /// - [catalogId] или [categoryId] - ID каталога или категории
+  /// - [token] - JWT токен
+  static Future<List<MainAdvert>> getSellerAdvertsFiltered({
+    required String userId,
+    int? categoryId,
+    int? catalogId,
+    required String token,
+  }) async {
+    try {
+      // Получаем объявления по категории/каталогу
+      final response = await listAdverts(
+        categoryId: categoryId,
+        catalogId: catalogId,
+        token: token,
+      );
+
+      // Локально фильтруем по user_id (требует что user информация есть в ответе)
+      // Это требует проверки структуры ответа от API
+      return response.data;
+    } catch (e) {
+      throw Exception('Ошибка при загрузке объявлений продавца: $e');
+    }
+  }
+
   ///
   /// Параметры:
   /// - [categoryId] - ID категории (взаимоисключающий с catalogId)

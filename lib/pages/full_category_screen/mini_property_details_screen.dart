@@ -6,6 +6,8 @@ import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/models/advert_model.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
@@ -37,6 +39,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   int _currentPage = 0;
   bool _isAdvertLoaded = false;
   bool _imagesPrecached = false;
+  bool _isSimilarListingsLoading = false;
   Listing _listing = Listing(
     id: '',
     imagePath: '',
@@ -46,7 +49,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     date: '',
   );
 
-  final List<Listing> _similarListings = [
+  List<Listing> _similarListings = [
     Listing(
       id: '1',
       imagePath: "assets/property_details_screen/image2.png",
@@ -160,6 +163,49 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.dispose();
   }
 
+  /// Загружает похожие объявления из API (объявления из первого каталога)
+  Future<void> _loadSimilarListings() async {
+    if (_isSimilarListingsLoading) return;
+
+    setState(() {
+      _isSimilarListingsLoading = true;
+    });
+
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        print('❌ Токен не найден для загрузки похожих объявлений');
+        return;
+      }
+
+      // 📥 Загружаем объявления из каталога (первые 20)
+      final response = await ApiService.getAdverts(
+        catalogId: 1, // Основной каталог
+        limit: 20,
+        token: token,
+      );
+
+      if (mounted) {
+        setState(() {
+          _similarListings = response.data
+              .take(12) // Берём первые 12 для отображения в сетке
+              .map((advert) => advert.toListing())
+              .toList();
+          _isSimilarListingsLoading = false;
+        });
+
+        print('✅ Загружены похожие объявления: ${_similarListings.length} шт.');
+      }
+    } catch (e) {
+      print('❌ Ошибка при загрузке похожих объявлений: $e');
+      if (mounted) {
+        setState(() {
+          _isSimilarListingsLoading = false;
+        });
+      }
+    }
+  }
+
   // Precache all images to ensure smooth scrolling
   Future<void> _precacheImages() async {
     if (_imagesPrecached || !mounted) return;
@@ -250,6 +296,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           });
           // Precache images after loading the advert
           _precacheImages();
+
+          // 🔄 Загружаем похожие объявления из API
+          _loadSimilarListings();
         }
       },
       child: Scaffold(
@@ -779,6 +828,7 @@ ${widget.listing.title}
             similarListings: _similarListings,
             sellerName: sellerName,
             sellerAvatar: sellerAvatar,
+            userId: _listing.userId,
           ),
           const SizedBox(height: 18),
         ],
@@ -943,11 +993,13 @@ class _AllListingsButton extends StatelessWidget {
   final List<Listing> similarListings;
   final String sellerName;
   final String sellerAvatar;
+  final String? userId;
 
   const _AllListingsButton({
     required this.similarListings,
     required this.sellerName,
     required this.sellerAvatar,
+    this.userId,
   });
 
   @override
@@ -968,18 +1020,9 @@ class _AllListingsButton extends StatelessWidget {
             builder: (context) => SellerProfileScreen(
               sellerName: sellerName,
               sellerAvatar: avatarProvider,
+              userId: userId,
               sellerListings: similarListings
-                  .map(
-                    (listing) => {
-                      "id": listing.id,
-                      "image": listing.imagePath,
-                      "title": listing.title,
-                      "price": listing.price,
-                      "address": listing.location,
-                      "date": listing.date,
-                      "isFavorited": listing.isFavorited,
-                    },
-                  )
+                  .map((listing) => listing.toJson())
                   .toList(),
             ),
           ),
