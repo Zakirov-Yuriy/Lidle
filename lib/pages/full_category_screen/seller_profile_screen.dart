@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart';
@@ -6,6 +7,13 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/hive_service.dart';
+
+// Navigation targets used by bottom navigation
+import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/messages/messages_page.dart';
+import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 
 // ============================================================
 // "Экран профиля продавца"
@@ -160,7 +168,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         const Spacer(),
 
         IconButton(
-          icon: const Icon(Icons.share_outlined, color: Colors.white, size: 23),
+          icon: SvgPicture.asset(
+            'assets/home_page/share_outlined.svg',
+            width: 23,
+            height: 23,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
           onPressed: () {
             Share.share('Поделиться профилем продавца ${widget.sellerName}');
           },
@@ -444,9 +457,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
-        onTap: () => setState(() => _selectedIndex = index),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
         child: Padding(
-          padding: const EdgeInsets.all(0),
+          padding: const EdgeInsets.all(13.5),
           child: Image.asset(
             iconPath,
             width: 28,
@@ -464,17 +480,23 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: () => setState(() => _selectedIndex = index),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          child: Image.asset(
-            plusIconAsset,
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Container(
             width: 28,
             height: 28,
-            color: isSelected ? activeIconColor : inactiveIconColor,
+            alignment: Alignment.center,
+            child: Image.asset(
+              plusIconAsset,
+              width: 28,
+              height: 28,
+              color: isSelected ? activeIconColor : inactiveIconColor,
+            ),
           ),
         ),
       ),
@@ -482,27 +504,65 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildBottomNavigation() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(25, 0, 25, 48),
-      child: Container(
-        height: bottomNavHeight,
-        decoration: BoxDecoration(
-          color: bottomNavBackground,
-          borderRadius: BorderRadius.circular(37.5),
-          boxShadow: const [],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildNavItem(homeIconAsset, 0, _selectedIndex),
-            _buildNavItem(gridIconAsset, 1, _selectedIndex),
-            _buildCenterAdd(2, _selectedIndex),
-            _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
-            _buildNavItem(messageIconAsset, 4, _selectedIndex),
-            _buildNavItem(userIconAsset, 5, _selectedIndex),
-          ],
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, bottomNavPaddingBottom),
+        child: Container(
+          height: bottomNavHeight,
+          decoration: BoxDecoration(
+            color: bottomNavBackground,
+            borderRadius: BorderRadius.circular(37.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildNavItem(homeIconAsset, 0, _selectedIndex),
+              _buildNavItem(gridIconAsset, 1, _selectedIndex),
+              _buildCenterAdd(2, _selectedIndex),
+              _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
+              _buildNavItem(messageIconAsset, 4, _selectedIndex),
+              _buildNavItem(userIconAsset, 5, _selectedIndex),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  void _navigateToScreen(int index) {
+    final String routeName;
+    switch (index) {
+      case 0:
+        routeName = HomePage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 1:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Эта функция пока не реализована'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        break;
+      case 2:
+        routeName = AddListingScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 3:
+        routeName = MyPurchasesScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 4:
+        routeName = MessagesPage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 5:
+        routeName = ProfileDashboard.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      default:
+        return;
+    }
   }
 }

@@ -10,7 +10,6 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/home_page.dart';
-import 'package:lidle/pages/favorites_screen.dart';
 import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';

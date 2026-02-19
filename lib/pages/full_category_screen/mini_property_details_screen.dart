@@ -342,9 +342,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                         ),
                         const Spacer(),
                         IconButton(
-                          icon: const Icon(
-                            Icons.share_outlined,
-                            color: textPrimary,
+                          icon: SvgPicture.asset(
+                            'assets/home_page/share_outlined.svg',
+                            width: 24,
+                            height: 24,
+                            colorFilter: const ColorFilter.mode(
+                              textPrimary,
+                              BlendMode.srcIn,
+                            ),
                           ),
                           onPressed: () {
                             final textToShare =
@@ -536,7 +541,7 @@ ${widget.listing.title}
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
-                widget.listing.id,
+                '№ ${widget.listing.id}',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
@@ -971,17 +976,34 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Allow both title and value to wrap instead of truncating with an ellipsis.
+    // - Title: up to 2 lines (prevents single-line truncation for long labels).
+    // - Value: expands and wraps as needed.
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          // Title — разрешаем перенос строк (убираем усечение)
+          Flexible(
+            fit: FlexFit.loose,
+            child: Text(
+              title,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              softWrap: true,
+              maxLines: 2,
+              overflow: TextOverflow.visible,
+            ),
           ),
-          Text(
-            value,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+          const SizedBox(width: 6),
+          // Значение — занимает остаток строки и переносится по словам
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              softWrap: true,
+              overflow: TextOverflow.visible,
+            ),
           ),
         ],
       ),

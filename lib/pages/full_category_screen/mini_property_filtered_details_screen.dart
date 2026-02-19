@@ -145,9 +145,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        icon: const Icon(
-                          Icons.share_outlined,
-                          color: textPrimary,
+                        icon: SvgPicture.asset(
+                          'assets/home_page/share_outlined.svg',
+                          width: 24,
+                          height: 24,
+                          colorFilter: const ColorFilter.mode(
+                            textPrimary,
+                            BlendMode.srcIn,
+                          ),
                         ),
                         onPressed: () => _showShareBottomSheet(context),
                       ),
