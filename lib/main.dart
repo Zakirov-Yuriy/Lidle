@@ -17,6 +17,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
@@ -161,7 +162,31 @@ class LidleApp extends StatelessWidget {
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          // Профиль загружается лениво при переходе в ProfileDashboard
+          // Управляем TokenService в зависимости от состояния авторизации
+          if (state is AuthAuthenticated) {
+            // Пользователь авторизован — запускаем фоновое обновление токена
+            TokenService().init(context);
+          } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
+            // Пользователь вышел или токен истёк — останавливаем таймер
+            TokenService().dispose();
+          }
+
+          // При истечении токена — перенаправляем на экран входа
+          if (state is AuthTokenExpired) {
+            // Закрываем все экраны и открываем SignIn
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushNamedAndRemoveUntil(SignInScreen.routeName, (route) => false);
+            // Показываем уведомление пользователю
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Сессия истекла. Пожалуйста, войдите снова.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
         },
         child: MaterialApp(
           title: appTitle,

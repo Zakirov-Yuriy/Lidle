@@ -49,3 +49,7 @@ class AuthPasswordReset extends AuthState {}
 /// Состояние выхода из системы.
 /// Показывает, что пользователь вышел из аккаунта.
 class AuthLoggedOut extends AuthState {}
+
+/// Состояние истечения токена.
+/// Показывает, что токен истёк и refresh не удался — нужна повторная авторизация.
+class AuthTokenExpired extends AuthState {}

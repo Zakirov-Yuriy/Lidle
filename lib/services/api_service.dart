@@ -8,11 +8,21 @@ import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
 
+/// Исключение для 401 ошибок (токен истёк или невалиден).
+/// Используется для перехвата и автоматического refresh токена.
+class TokenExpiredException implements Exception {
+  final String message;
+  TokenExpiredException([this.message = 'Token expired']);
+
+  @override
+  String toString() => 'TokenExpiredException: $message';
+}
+
 /// Пользовательское исключение для 429 (rate limit) ошибок
 class RateLimitException implements Exception {
   final String message;
   RateLimitException(this.message);
-  
+
   @override
   String toString() => 'RateLimitException: $message';
 }
@@ -24,7 +34,8 @@ class ApiService {
   // dotenv.load() отнимает ~900ms, а базовый URL не меняется
   static String get baseUrl => 'https://dev-api.lidle.io/v1';
   static const int _maxRetries = 4;
-  static const int _retryDelayMs = 1000; // Стартовая задержка перед retry (exponential backoff)
+  static const int _retryDelayMs =
+      1000; // Стартовая задержка перед retry (exponential backoff)
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     // Заголовки согласно официальной документации API Lidle
@@ -43,10 +54,7 @@ class ApiService {
     String endpoint, {
     String? token,
   }) async {
-    return _retryRequest(
-      () => _getRequest(endpoint, token),
-      endpoint,
-    );
+    return _retryRequest(() => _getRequest(endpoint, token), endpoint);
   }
 
   /// Внутренний метод для GET запроса
@@ -98,10 +106,7 @@ class ApiService {
     Map<String, dynamic> body, {
     String? token,
   }) async {
-    return _retryRequest(
-      () => _postRequest(endpoint, body, token),
-      endpoint,
-    );
+    return _retryRequest(() => _postRequest(endpoint, body, token), endpoint);
   }
 
   /// Внутренний метод для POST запроса
@@ -204,10 +209,7 @@ class ApiService {
     Map<String, dynamic> body, {
     String? token,
   }) async {
-    return _retryRequest(
-      () => _putRequest(endpoint, body, token),
-      endpoint,
-    );
+    return _retryRequest(() => _putRequest(endpoint, body, token), endpoint);
   }
 
   /// Внутренний метод для PUT запроса
@@ -265,10 +267,7 @@ class ApiService {
     String? token,
     Map<String, dynamic>? body,
   }) async {
-    return _retryRequest(
-      () => _deleteRequest(endpoint, token, body),
-      endpoint,
-    );
+    return _retryRequest(() => _deleteRequest(endpoint, token, body), endpoint);
   }
 
   /// Внутренний метод для DELETE запроса
@@ -323,6 +322,7 @@ class ApiService {
   }
 
   /// Retry логика с exponential backoff для обработки 429 ошибок.
+  /// При получении TokenExpiredException — пробует обновить токен и повторить запрос.
   /// Автоматически повторяет запросы с задержкой: 1s, 2s, 4s, 8s
   static Future<Map<String, dynamic>> _retryRequest(
     Future<Map<String, dynamic>> Function() request,
@@ -331,10 +331,35 @@ class ApiService {
     for (int attempt = 0; attempt < _maxRetries; attempt++) {
       try {
         return await request();
+      } on TokenExpiredException {
+        // 401 — пробуем обновить токен один раз (только на первой попытке)
+        if (attempt == 0) {
+          print('🔄 ApiService: 401 перехвачен, пробуем refresh токена...');
+          final currentToken = HiveService.getUserData('token') as String?;
+          if (currentToken != null && currentToken.isNotEmpty) {
+            final newToken = await refreshToken(currentToken);
+            if (newToken != null) {
+              print('✅ ApiService: токен обновлён, повторяем запрос...');
+              // Повторяем запрос — он возьмёт новый токен из Hive автоматически
+              // (если вызывающий код читает токен из Hive перед каждым запросом)
+              // Для методов с явным token — пробрасываем исключение выше
+              // чтобы вызывающий код мог обновить свой token параметр
+              throw TokenExpiredException(
+                'Token refreshed, retry with new token: $newToken',
+              );
+            }
+          }
+          print('❌ ApiService: refresh не удался, пробрасываем исключение');
+          rethrow;
+        } else {
+          rethrow;
+        }
       } on RateLimitException {
         if (attempt < _maxRetries - 1) {
           final delayMs = _retryDelayMs * (1 << attempt); // Exponential backoff
-          print('⏳ Rate limited (429). Retry attempt ${attempt + 1}/$_maxRetries в ${delayMs}ms...');
+          print(
+            '⏳ Rate limited (429). Retry attempt ${attempt + 1}/$_maxRetries в ${delayMs}ms...',
+          );
           await Future.delayed(Duration(milliseconds: delayMs));
         } else {
           print('❌ Максимум попыток достигнут. Прекращаю retry.');
@@ -362,7 +387,8 @@ class ApiService {
     } else if (response.statusCode == 401) {
       print('❌ 401 Unauthorized - Token might be expired or invalid');
       print('Error response: ${data['message'] ?? 'Token expired'}');
-      throw Exception('Token expired');
+      // Бросаем типизированное исключение для перехвата в _retryRequestWithRefresh
+      throw TokenExpiredException(data['message'] ?? 'Token expired');
     } else if (response.statusCode == 422) {
       // Validation error - return response with errors
       print('❌ 422 Validation Error');
@@ -490,18 +516,20 @@ class ApiService {
   }) async {
     try {
       final response = await get('/content/catalogs/$catalogId', token: token);
-      
+
       // Проверяем наличие data и что это не null
       if (response['data'] == null || response['data'] is! List) {
         throw Exception('Invalid catalog response: data is null or not a list');
       }
-      
+
       final dataList = response['data'] as List<dynamic>;
       if (dataList.isEmpty) {
         throw Exception('Catalog not found');
       }
-      
-      return CatalogWithCategories.fromJson(dataList[0] as Map<String, dynamic>);
+
+      return CatalogWithCategories.fromJson(
+        dataList[0] as Map<String, dynamic>,
+      );
     } catch (e) {
       throw Exception('Failed to load catalog: $e');
     }
@@ -514,17 +542,19 @@ class ApiService {
         '/content/categories/$categoryId',
         token: token,
       );
-      
+
       // Проверяем наличие data и что это не null
       if (response['data'] == null || response['data'] is! List) {
-        throw Exception('Invalid category response: data is null or not a list');
+        throw Exception(
+          'Invalid category response: data is null or not a list',
+        );
       }
-      
+
       final dataList = response['data'] as List<dynamic>;
       if (dataList.isEmpty) {
         throw Exception('Category not found');
       }
-      
+
       return Category.fromJson(dataList[0] as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Failed to load category: $e');

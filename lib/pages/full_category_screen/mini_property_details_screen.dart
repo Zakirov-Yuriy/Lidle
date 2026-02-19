@@ -643,6 +643,13 @@ ${widget.listing.title}
       }
     });
 
+    // Количество строк, показываемых в свёрнутом состоянии
+    const int _collapsedCount = 8;
+    final bool hasMore = charWidgets.length > _collapsedCount;
+    final visibleWidgets = _showAllCharacteristics
+        ? charWidgets
+        : charWidgets.take(_collapsedCount).toList();
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,8 +675,36 @@ ${widget.listing.title}
                 fontStyle: FontStyle.italic,
               ),
             )
-          else
-            ...charWidgets,
+          else ...[
+            ...visibleWidgets,
+            if (hasMore) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showAllCharacteristics = !_showAllCharacteristics;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      _showAllCharacteristics
+                          ? "Свернуть характеристики"
+                          : "Все характеристики",
+                      style: const TextStyle(color: Colors.blue, fontSize: 14),
+                    ),
+                    Icon(
+                      _showAllCharacteristics
+                          ? Icons.keyboard_arrow_up_sharp
+                          : Icons.keyboard_arrow_down_sharp,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+            ],
+          ],
         ],
       ),
     );
