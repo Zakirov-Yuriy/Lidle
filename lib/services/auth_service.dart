@@ -4,6 +4,7 @@
 
 import 'dart:convert';
 import 'api_service.dart';
+import '../hive_service.dart';
 
 class AuthService {
   /// Отправка кода подтверждения.
@@ -88,9 +89,20 @@ class AuthService {
   }
 
   /// Выход из системы.
-  /// Здесь можно добавить логику для инвалидации токена на сервере.
+  /// Отправляет запрос на сервер для инвалидации токена,
+  /// затем очищает токен из локального хранилища.
   static Future<void> logout() async {
-    // TODO: Реализовать выход, если нужно отправить запрос на сервер
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token != null && token.isNotEmpty) {
+        // Инвалидируем токен на сервере
+        await ApiService.post('/auth/logout', {}, token: token);
+        print('✅ AuthService: logout на сервере выполнен');
+      }
+    } catch (e) {
+      // Игнорируем ошибки сервера — токен всё равно удалим локально
+      print('⚠️ AuthService: ошибка logout на сервере (игнорируем): $e');
+    }
   }
 
   /// Декодирует JWT токен и извлекает userId из claim 'sub'

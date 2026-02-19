@@ -19,6 +19,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ResetPasswordEvent>(_onResetPassword);
     on<LogoutEvent>(_onLogout);
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
+    on<TokenExpiredEvent>(_onTokenExpired);
+    on<TokenRefreshedEvent>(_onTokenRefreshed);
   }
 
   /// Обработчик события входа в систему.
@@ -242,5 +244,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       emit(AuthError(message: e.toString()));
     }
+  }
+
+  /// Обработчик события истечения токена.
+  ///
+  /// Вызывается когда TokenService не смог обновить токен.
+  /// Очищает локальные данные и переводит пользователя на экран входа.
+  Future<void> _onTokenExpired(
+    TokenExpiredEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    print('🔐 AuthBloc: токен истёк, выполняем принудительный logout...');
+    try {
+      // Пробуем корректно выйти на сервере
+      await AuthService.logout();
+    } catch (_) {
+      // Игнорируем ошибки сервера — всё равно очищаем локально
+    }
+    // Очищаем токен из локального хранилища
+    await HiveService.deleteUserData('token');
+    print('🔐 AuthBloc: токен удалён, переходим на экран входа');
+    emit(AuthTokenExpired());
+  }
+
+  /// Обработчик события успешного обновления токена.
+  ///
+  /// Вызывается когда TokenService успешно обновил токен в фоне.
+  /// Обновляет состояние с новым токеном без прерывания работы пользователя.
+  Future<void> _onTokenRefreshed(
+    TokenRefreshedEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    print(
+      '✅ AuthBloc: токен обновлён в фоне: ${event.newToken.substring(0, 20)}...',
+    );
+    // Токен уже сохранён в Hive через ApiService.refreshToken()
+    // Просто обновляем состояние с новым токеном
+    emit(AuthAuthenticated(token: event.newToken));
   }
 }

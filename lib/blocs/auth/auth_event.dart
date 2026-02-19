@@ -45,10 +45,7 @@ class VerifyEmailEvent extends AuthEvent {
   final String email;
   final String code;
 
-  VerifyEmailEvent({
-    required this.email,
-    required this.code,
-  });
+  VerifyEmailEvent({required this.email, required this.code});
 }
 
 /// Событие отправки кода подтверждения.
@@ -84,4 +81,17 @@ class LogoutEvent extends AuthEvent {
 /// Используется для проверки, авторизован ли пользователь при запуске приложения.
 class CheckAuthStatusEvent extends AuthEvent {
   const CheckAuthStatusEvent();
+}
+
+/// Событие истечения токена.
+/// Вызывается когда refresh токена не удался — пользователь должен войти заново.
+class TokenExpiredEvent extends AuthEvent {
+  const TokenExpiredEvent();
+}
+
+/// Событие успешного обновления токена.
+/// Вызывается когда токен был успешно обновлён в фоне.
+class TokenRefreshedEvent extends AuthEvent {
+  final String newToken;
+  const TokenRefreshedEvent({required this.newToken});
 }
