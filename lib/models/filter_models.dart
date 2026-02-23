@@ -12,19 +12,20 @@ class Attribute with _$Attribute {
   const factory Attribute({
     required int id,
     @Default('') String title,
-    @Default(false) bool isFilter,
-    @Default(false) bool isRange,
-    @Default(false) bool isMultiple,
-    @Default(false) bool isHidden,
-    @Default(false) bool isRequired,
-    @Default(false) bool isTitleHidden,
-    @Default(false) bool isSpecialDesign,
-    @Default(false) bool isPopup,
-    @Default(false) bool isMaxValue,
-    dynamic maxValue,
-    String? vmText,
-    String? dataType,
+    @JsonKey(name: 'is_filter') @Default(false) bool isFilter,
+    @JsonKey(name: 'is_range') @Default(false) bool isRange,
+    @JsonKey(name: 'is_multiple') @Default(false) bool isMultiple,
+    @JsonKey(name: 'is_hidden') @Default(false) bool isHidden,
+    @JsonKey(name: 'is_required') @Default(false) bool isRequired,
+    @JsonKey(name: 'is_title_hidden') @Default(false) bool isTitleHidden,
+    @JsonKey(name: 'is_special_design') @Default(false) bool isSpecialDesign,
+    @JsonKey(name: 'is_popup') @Default(false) bool isPopup,
+    @JsonKey(name: 'is_max_value') @Default(false) bool isMaxValue,
+    @JsonKey(name: 'max_value') dynamic maxValue,
+    @JsonKey(name: 'vm_text') String? vmText,
+    @JsonKey(name: 'data_type') String? dataType,
     @Default('') String style,
+    @JsonKey(name: 'style_single') String? styleSingle,
     @Default(0) int order, // API может возвращать null, используем default
     @Default([]) List<Value> values,
   }) = _Attribute;
@@ -40,7 +41,7 @@ class Value with _$Value {
     required int id,
     @Default('') String value,
     int? order,
-    int? maxValue,
+    @JsonKey(name: 'max_value') int? maxValue,
   }) = _Value;
 
   factory Value.fromJson(Map<String, dynamic> json) => _$ValueFromJson(json);

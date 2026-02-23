@@ -2594,22 +2594,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
     bool isSelected,
     VoidCallback onPressed,
   ) {
-    return Expanded(
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          backgroundColor: isSelected ? activeIconColor : Colors.transparent,
-          side: isSelected ? null : const BorderSide(color: Colors.white),
-
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        backgroundColor: isSelected ? activeIconColor : Colors.transparent,
+        side: isSelected ? null : const BorderSide(color: Colors.white),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      onPressed: onPressed,
+      child: Text(
+        text,
+        style: TextStyle(
+          color: isSelected ? Colors.white : textPrimary,
+          fontSize: 14,
         ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(
-            color: isSelected ? Colors.white : textPrimary,
-            fontSize: 14,
-          ),
-        ),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -2673,171 +2672,185 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   Widget _buildDynamicFilter(Attribute attr) {
-    // Render based on style from API with proper flag checking
+    // Render based on ATTRIBUTES FLAGS FIRST, then style
     // According to ui_filter_styles.md documentation:
-    // - Style defines the UI element type (A-I)
-    // - is_special_design, is_title_hidden, is_popup flags modify the display
+    // - Флаги (is_range, is_multiple, is_popup, is_special_design, is_title_hidden) имеют ВЫСШИЙ приоритет
+    // - Style (A-I) используется как подтверждение
+    // - Названия полей используются только для исключений/переопределений
     //
-    // ВАЖНО: Поля с is_title_hidden=true и is_multiple=true (Возможен торг, Без комиссии,
-    // Возможность обмена) должны отображаться как чекбоксы (Style B), независимо от
-    // того, какой style вернул API
+    // ВАЖНО: Эта логика должна работать с ДИНАМИЧЕСКИ добавляемыми полями,
+    // которые могут добавиться на сервере ПОСЛЕ написания этого кода!
 
     // Debug logging for style mapping
     print(
-      '🎨 Building filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, '
+      '🎨 Building filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, styleSingle=${attr.styleSingle ?? 'null'}, '
       'is_range=${attr.isRange}, is_multiple=${attr.isMultiple}, '
       'is_popup=${attr.isPopup}, is_special_design=${attr.isSpecialDesign}, '
       'is_title_hidden=${attr.isTitleHidden}, values_count=${attr.values.length}',
     );
 
-    // SPECIAL CASE: Чекбоксы (Возможен торг, Без комиссии, Возможность обмена)
-    // Эти поля должны отображаться как чекбоксы (Style B), независимо от style из API
-    // Определяем по названию поля или по флагам is_title_hidden + is_multiple
-    final checkboxTitles = [
-      'Возможен торг',
-      'Без комиссии',
-      'Возможность обмена',
-      'Срочная продажа',
-      'Продажа от застройщика',
-      'Учёт в росреестре',
-      'Учёт в рос реестре',
-      'Учёт в Росреестре',
-      'Учёт в Рос реестре',
-      'Готов сотрудничать с риэлтором',
-      'Готов сотрудничать с риелтором',
-      'Для совместной Аренды',
-      'Для совместной аренды',
-      'Совместная аренда',
-      'С домашними питомцами',
-      'С домашними животными',
-      'Домашние питомцы',
-      'Питомцы',
-      'Возможна сдача по часово',
-      'Возможна сдача по часам',
-      'Почасовая сдача',
-      'Сдача по часам',
-    ];
+    // Also print all field names in a compact way to find the exact "За месяц" name
+    print(
+      '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
+    );
 
-    final isCheckboxField =
-        checkboxTitles.contains(attr.title) ||
-        (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty);
+    // Special logging for "За месяц" field to debug its parameters
+    // Check multiple variations of the field name
+    bool isMonthField =
+        attr.title.toLowerCase().contains('месяц') ||
+        attr.title.toLowerCase().contains('month') ||
+        attr.title.toLowerCase().contains('year') ||
+        attr.title.toLowerCase().contains('период') ||
+        attr.title.toLowerCase().contains('время') ||
+        attr.title.contains('месяц') ||
+        attr.id == 999;
 
-    if (isCheckboxField) {
+    if (isMonthField) {
+      print('');
+      print('═════════════════════════════════════════════════════════════');
+      print('🔍 SPECIAL DEBUG: Field "${attr.title}" (ID=${attr.id})');
+      print('═════════════════════════════════════════════════════════════');
+      print('📊 FULL PARAMETERS:');
+      print('  • style: "${attr.style}"');
+      print('  • is_range: ${attr.isRange}');
+      print('  • is_multiple: ${attr.isMultiple}');
+      print('  • is_popup: ${attr.isPopup}');
+      print('  • is_special_design: ${attr.isSpecialDesign}');
+      print('  • is_title_hidden: ${attr.isTitleHidden}');
+      print('  • is_required: ${attr.isRequired}');
+      print('  • is_hidden: ${attr.isHidden}');
+      print('  • is_filter: ${attr.isFilter}');
+      print('  • data_type: "${attr.dataType}"');
+      print('  • values_count: ${attr.values.length}');
+      print('  • values: ${attr.values.map((v) => v.value).toList()}');
+      print('═════════════════════════════════════════════════════════════');
+      print('');
+    }
+
+    // =================================================================
+    // PRIORITY 1: Используем ФЛАГИ И СВОЙСТВА атрибута
+    // Это работает для ЛЮБЫХ новых полей, которые добавят на сервере
+    // =================================================================
+
+    // Случай 1: Скрытые чекбоксы (Style I)
+    // Флаги: is_title_hidden=true, is_multiple=true
+    // Пример: Без комиссии, Возможность обмена, Только с доставкой и т.д.
+    if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
       print(
-        '✅ Override style to B for checkbox field: ${attr.id} (${attr.title})',
+        '✅ DETECTED: Hidden checkboxes (is_title_hidden=true, is_multiple=true) for field: ${attr.id} (${attr.title})',
       );
       return _buildCheckboxField(attr);
     }
 
-    // SPECIAL CASE: Диапазон (Этаж) - всегда отображаем как два поля От/До
-    // Определяем по названию поля или по флагу is_range=true
-    final rangeTitles = ['Этаж', 'этаж', 'Этажи', 'этажи'];
-
-    final isRangeField = rangeTitles.contains(attr.title) || attr.isRange;
-
-    if (isRangeField) {
+    // Случай 1.5: Скрытый одиночный чекбокс (Style I - одиночный)
+    // Флаги: is_title_hidden=true, is_multiple=false, есть values
+    // Пример: Только с доставкой, Только с исполнителем (styleSingle=I)
+    if (attr.isTitleHidden && !attr.isMultiple && attr.values.isNotEmpty) {
       print(
-        '✅ Override style to E (range) for field: ${attr.id} (${attr.title})',
+        '✅ DETECTED: Hidden single checkbox (is_title_hidden=true, is_multiple=false) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildCheckboxField(attr);
+    }
+
+    // Случай 1.6: Специальное числовое поле (styleSingle=G1)
+    // Флаги: styleSingle='G1'
+    // Пример: Общее площадь, Жилая площадь (одиночное числовое поле)
+    if (attr.styleSingle == 'G1') {
+      print(
+        '✅ DETECTED: Special numeric field (styleSingle=G1) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildG1Field(attr);
+    }
+
+    // Случай 2: Простой чекбокс (Style B)
+    // Флаги: НЕ is_multiple (или is_multiple=false), есть values
+    // Но НЕ is_title_hidden
+    // Пример: Возможен торг, Меблированная (когда это одиночный чекбокс)
+    if (!attr.isMultiple &&
+        !attr.isTitleHidden &&
+        attr.values.isNotEmpty &&
+        attr.values.length <= 2) {
+      print(
+        '✅ DETECTED: Simple checkbox (is_multiple=false, values.length=${attr.values.length}) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildCheckboxField(attr);
+    }
+
+    // Случай 3: Диапазон (Style E)
+    // Флаг: is_range=true
+    // Пример: Этаж, Площадь, Цена и т.д.
+    if (attr.isRange) {
+      print(
+        '✅ DETECTED: Range field (is_range=true) for field: ${attr.id} (${attr.title})',
       );
       return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
     }
 
-    // SPECIAL CASE: Popup поля с множественным выбором (Тип дома, Количество комнат, Ландшафт и т.д.)
-    // Определяем по названию поля - эти поля должны открывать popup-диалог
-    // ВАЖНО: Эта проверка должна быть ДО switch по стилям, чтобы переопределить style='C' (Да/Нет кнопки)
-    // ВАЖНО: "Меблированная" НЕ должна быть в этом списке - она должна отображаться как кнопки Да/Нет (Style C)
-    final popupMultipleTitles = [
-      'Минимальное количество ночей',
-      'минимальное количество ночей',
-      'Минимальное кол-во ночей',
-      'Кол-во ночей',
-      'Количество ночей',
-      'Ночей (минимум)',
-      'Тип дома',
-      'тип дома',
-      'Количество комнат',
-      'количество комнат',
-      'Комнат',
-      'комнат',
-      'Ландшафт',
-      'ландшафт',
-      'Ландшафт (до 1 км)',
-      'Инфраструктура',
-      'инфраструктура',
-      'Инфраструктура (до 500 метров)',
-      // 'Меблированная' - УБРАНО! Должно быть кнопки Да/Нет (Style C)
-      // 'меблированная' - УБРАНО! Должно быть кнопки Да/Нет (Style C)
-      'Бытовая техника',
-      'бытовая техника',
-      'Коммуникации',
-      'коммуникации',
-      'Комфорт',
-      'комфорт',
-      'Мультимедиа',
-      'мультимедиа',
-      'Мультимедия',
-      'мультимедия',
-      'Ремонт',
-      'ремонт',
-      'Отопление',
-      'отопление',
-      'Санузел',
-      'санузел',
-      'Планировка',
-      'планировка',
-      'Класс жилья',
-      'класс жилья',
-      'Клас жилья',
-      'клас жилья',
-      'Тип стен',
-      'тип стен',
-      'Внешнее утепление',
-      'внешнее утепление',
-      'Тип кровли',
-      'тип кровли',
-      'Тип сделки',
-      'тип сделки',
-      'Количество спальных мест',
-      'количество спальных мест',
-      'Спальных мест',
-      'спальных мест',
-      'Расстояние до ближайшего города',
-      'расстояние до ближайшего города',
-      'Расстояние до города',
-      'расстояние до города',
-      'До ближайшего города',
-      'до ближайшего города',
-      'Тип недвижимости',
-      'тип недвижимости',
-      'Постройки на участке',
-      'постройки на участке',
-      'Постройки',
-      'постройки',
-      'Варианты размещения',
-      'варианты размещения',
-      'Дополнительно',
-      'дополнительно',
-      'Тип объекта',
-      'тип объекта',
-      'Класс офиса',
-      'класс офиса',
-      'Расположение',
-      'расположение',
-    ];
-
-    // Проверяем по названию, убирая символ * для обязательных полей
-    final titleWithoutStar = attr.title.replaceAll('*', '').trim();
-    final isPopupMultipleField =
-        popupMultipleTitles.contains(attr.title) ||
-        popupMultipleTitles.contains(titleWithoutStar) ||
-        popupMultipleTitles.any((t) => titleWithoutStar.contains(t));
-
-    if (isPopupMultipleField) {
+    // Случай 4: Popup с множественным выбором (Style F)
+    // Флаги: is_popup=true, is_multiple=true, есть values
+    // Пример: Тип дома, Количество комнат, Ландшафт и т.д.
+    if (attr.isPopup && attr.isMultiple && attr.values.isNotEmpty) {
       print(
-        '✅ Override style to F (popup multiple select) for field: ${attr.id} (${attr.title})',
+        '✅ DETECTED: Popup multiple select (is_popup=true, is_multiple=true) for field: ${attr.id} (${attr.title})',
       );
       return _buildMultipleSelectPopup(attr);
     }
+
+    // Случай 5: Группа кнопок (Style C)
+    // Флаги: is_special_design=true, есть values (2, 3 или больше)
+    // Примеры: Меблированная (2 кнопки), Вид сделки (3 кнопки)
+    if (attr.isSpecialDesign && attr.values.isNotEmpty) {
+      print(
+        '✅ DETECTED: Special design button group (is_special_design=true, ${attr.values.length} buttons) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildSpecialDesignField(attr);
+    }
+
+    // Случай 6: Множественный выбор (Style D)
+    // Флаги: is_multiple=true, есть values, НО НЕ is_popup
+    // Пример: Комфорт, Инфраструктура (как dropdown, не popup)
+    if (attr.isMultiple && !attr.isPopup && attr.values.isNotEmpty) {
+      print(
+        '✅ DETECTED: Multiple select dropdown (is_multiple=true, is_popup=false) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildMultipleSelectDropdown(attr);
+    }
+
+    // Случай 7: Один выбор из значений (Single select dropdown)
+    // Флаги: есть values, НО НЕ is_multiple, НЕ is_range, НЕ is_special_design
+    // Пример: Санузел (Раздельный/Смежный), Частное лицо / Бизнес (когда это выбор, а не текстовое поле)
+    if (!attr.isMultiple &&
+        !attr.isRange &&
+        !attr.isSpecialDesign &&
+        attr.values.isNotEmpty) {
+      print(
+        '✅ DETECTED: Single select from values for field: ${attr.id} (${attr.title}), ${attr.values.length} options',
+      );
+      // Если много вариантов - показать как popup, если мало - как dropdown
+      if (attr.values.length > 5) {
+        return _buildMultipleSelectPopup(attr);
+      } else {
+        // Одиночный выбор из dropdown (не кнопки)
+        return _buildSingleSelectDropdown(attr);
+      }
+    }
+
+    // Случай 8: Текстовое поле (Style A, H)
+    // Флаги: НЕТ values (текстовое поле без предопределенных вариантов)
+    // Пример: Название ЖК, Описание и т.д.
+    if (attr.values.isEmpty) {
+      print(
+        '✅ DETECTED: Text input field (values.isEmpty) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildTextInputField(attr);
+    }
+
+    // =================================================================
+    // PRIORITY 2: Если не совпадает ни один случай выше - используем STYLE
+    // =================================================================
+    print(
+      '⚠️ No attribute flags match, using style-based rendering for: ${attr.id} (${attr.title}, style=${attr.style})',
+    );
 
     switch (attr.style) {
       case 'A':
@@ -2898,10 +2911,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return _buildTextInputField(attr);
 
       default:
-        // Fallback for unknown styles - determine based on flags
-        print(
-          '⚠️ Unknown style "${attr.style}" for attribute ${attr.id}, using fallback logic',
-        );
+        // =================================================================
+        // PRIORITY 3: Finale fallback для неизвестных стилей
+        // Используем логику на основе флагов еще раз
+        // =================================================================
+        print('❌ Unknown style "${attr.style}", using final fallback logic');
         if (attr.isPopup && attr.isMultiple && attr.values.isNotEmpty) {
           return _buildMultipleSelectPopup(attr);
         } else if (attr.isRange) {
@@ -2948,7 +2962,29 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  // Style C: Special design (yes/no buttons)
+  // Style G1: Special numeric field (single numeric input)
+  Widget _buildG1Field(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
+    final controller = _controllers.putIfAbsent(attr.id, () {
+      final value = _selectedValues[attr.id];
+      final textValue = value is String ? value : (value?.toString() ?? '');
+      return TextEditingController(text: textValue);
+    });
+
+    // StyleSingle G1: Display as single numeric input field
+    // Example: Общее площадь, Жилая площадь
+    // Uses same styling as other text input fields (style A/H)
+
+    return _buildTextField(
+      label: attr.title + (attr.isRequired ? '*' : ''),
+      hint: 'Цифрами',
+      keyboardType: TextInputType.number,
+      controller: controller,
+      onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+    );
+  }
+
+  // Style C: Special design (button group with variable number of options)
   Widget _buildSpecialDesignField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
     String selected = _selectedValues[attr.id] is String
@@ -2956,8 +2992,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
         : '';
 
     // According to documentation:
-    // Style C with is_special_design=true: Show as button group (Да/Нет)
-    // Usually has exactly 2 values
+    // Style C with is_special_design=true: Show as button group
+    // Can have 2, 3, or more button options (Да/Нет, Совместная/Продажа/Аренда, etc.)
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2969,27 +3005,133 @@ class _DynamicFilterState extends State<DynamicFilter> {
           ),
         const SizedBox(height: 12),
         if (attr.values.isNotEmpty)
-          Row(
-            children: [
-              for (int i = 0; i < attr.values.length && i < 2; i++) ...[
-                Expanded(
-                  child: _buildChoiceButton(
-                    attr.values[i].value,
-                    selected == attr.values[i].value,
-                    () => setState(
-                      () => _selectedValues[attr.id] = attr.values[i].value,
-                    ),
-                  ),
-                ),
-                if (i == 0) const SizedBox(width: 10),
-              ],
-            ],
+          _buildButtonGrid(
+            buttons: attr.values,
+            selectedValue: selected,
+            onButtonPressed: (value) =>
+                setState(() => _selectedValues[attr.id] = value),
+          ),
+      ],
+    );
+  }
+
+  /// Builds a flexible grid of buttons that adapts to screen width
+  /// 2 buttons: 2 columns (50% each) in Row
+  /// 3 buttons: 3 columns (33% each) in Row
+  /// 4+ buttons: 3 columns per row with wrapping
+  Widget _buildButtonGrid({
+    required List<Value> buttons,
+    required String selectedValue,
+    required Function(String) onButtonPressed,
+  }) {
+    if (buttons.isEmpty) return const SizedBox.shrink();
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final padding = 32; // 16px on each side
+    final spacing = 10.0;
+
+    // For 2 buttons: Row with 50% width each
+    if (buttons.length == 2) {
+      return Row(
+        children: [
+          Expanded(
+            child: _buildChoiceButton(
+              buttons[0].value,
+              selectedValue == buttons[0].value,
+              () => onButtonPressed(buttons[0].value),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _buildChoiceButton(
+              buttons[1].value,
+              selectedValue == buttons[1].value,
+              () => onButtonPressed(buttons[1].value),
+            ),
+          ),
+        ],
+      );
+    }
+
+    // For 3 buttons: Row with 33% width each (all in one row)
+    if (buttons.length == 3) {
+      return Row(
+        children: [
+          for (int i = 0; i < buttons.length; i++) ...[
+            Expanded(
+              child: _buildChoiceButton(
+                buttons[i].value,
+                selectedValue == buttons[i].value,
+                () => onButtonPressed(buttons[i].value),
+              ),
+            ),
+            if (i < buttons.length - 1) const SizedBox(width: 10),
+          ],
+        ],
+      );
+    }
+
+    // For 4+ buttons: Wrap with flexible sizing
+    // Each button takes appropriate width and wraps to next row if needed
+    return Wrap(
+      spacing: spacing,
+      runSpacing: spacing,
+      children: [
+        for (int i = 0; i < buttons.length; i++)
+          Flexible(
+            flex: 1,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: _buildChoiceButton(
+                buttons[i].value,
+                selectedValue == buttons[i].value,
+                () => onButtonPressed(buttons[i].value),
+              ),
+            ),
           ),
       ],
     );
   }
 
   // Style D: Multiple select (dropdown list or popup based on is_popup flag)
+  Widget _buildSingleSelectDropdown(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
+    String selected = _selectedValues[attr.id] is String
+        ? (_selectedValues[attr.id] as String)
+        : '';
+
+    // Single select dropdown (not multiple, not buttons)
+    // Example: Санузел (Раздельный/Смежный)
+
+    return _buildDropdown(
+      label: attr.isTitleHidden
+          ? ''
+          : attr.title + (attr.isRequired ? '*' : ''),
+      hint: selected.isEmpty ? 'Выбрать' : selected,
+      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return SelectionDialog(
+              title: attr.title.isEmpty ? 'Выбор' : attr.title,
+              options: attr.values.map((v) => v.value).toList(),
+              selectedOptions: selected.isEmpty ? {} : {selected},
+              onSelectionChanged: (Set<String> newSelected) {
+                setState(() {
+                  _selectedValues[attr.id] = newSelected.isEmpty
+                      ? ''
+                      : newSelected.first;
+                });
+              },
+              allowMultipleSelection: false,
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildMultipleSelectDropdown(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
     Set<String> selected = _selectedValues[attr.id] is Set
@@ -3142,36 +3284,55 @@ class _DynamicFilterState extends State<DynamicFilter> {
         ? ''
         : attr.title + (attr.isRequired ? '*' : '');
 
+    // Helper function to intelligently wrap long text with line breaks
+    // Instead of hardcoding specific field names
+    String _wrapLongText(String text) {
+      const maxCharsPerLine = 20; // Максимум символов в одной строке
+      if (text.length <= maxCharsPerLine) {
+        return text;
+      }
+
+      // Пытаемся разбить по пробелам
+      final words = text.split(' ');
+      if (words.length == 1) {
+        // Слово без пробелов - разбиваем в середине
+        return '${text.substring(0, text.length ~/ 2)}\n${text.substring(text.length ~/ 2)}';
+      }
+
+      // Ищем оптимальную точку разрыва
+      String line1 = '';
+      String line2 = '';
+      for (int i = 0; i < words.length; i++) {
+        if ((line1 + ' ' + words[i]).length <= maxCharsPerLine) {
+          line1 += (line1.isEmpty ? '' : ' ') + words[i];
+        } else {
+          line2 = words.sublist(i).join(' ');
+          break;
+        }
+      }
+
+      return line2.isEmpty ? text : '$line1\n$line2';
+    }
+
     // Заголовок для диалога с переносом строки для длинных названий
     String dialogTitle = attr.title.isEmpty ? 'Выбор' : attr.title;
-    if (dialogTitle == 'Расстояние до ближайшего города') {
-      dialogTitle = 'Расстояние до\nближайшего города';
-    }
-    if (dialogTitle == 'Количество спальных мест*' ||
-        dialogTitle == 'Количество спальных мест') {
-      dialogTitle = 'Количество спальных\nмест*';
-    }
-    if (dialogTitle == 'Минимальное количество ночей*' ||
-        dialogTitle == 'Минимальное количество ночей') {
-      dialogTitle = 'Минимальное количество\nночей*';
-    }
+    dialogTitle = _wrapLongText(dialogTitle);
 
     // Обработка длинных значений опций с переносом строки
     List<String> processedOptions = attr.values.map((v) {
       String value = v.value;
-      // Добавляем перенос строки для длинных значений
-      if (value == 'Нежилое помещение в жилом фонде') {
-        return 'Нежилое помещение в\nжилом фонде';
-      }
-      return value;
+      return _wrapLongText(value);
     }).toList();
 
     // Также обрабатываем выбранные значения для отображения в hint
+    // Но сохраняем маппинг для восстановления оригинальных значений
+    Map<String, String> wrappedToOriginal = {};
     Set<String> processedSelected = selected.map((s) {
-      if (s == 'Нежилое помещение в жилом фонде') {
-        return 'Нежилое помещение в\nжилом фонде';
+      String wrapped = _wrapLongText(s);
+      if (wrapped != s) {
+        wrappedToOriginal[wrapped] = s;
       }
-      return s;
+      return wrapped;
     }).toSet();
 
     return _buildDropdown(
@@ -3191,10 +3352,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
               onSelectionChanged: (Set<String> newSelected) {
                 // Восстанавливаем оригинальные значения перед сохранением
                 Set<String> originalSelected = newSelected.map((s) {
-                  if (s == 'Нежилое помещение в\nжилом фонде') {
-                    return 'Нежилое помещение в жилом фонде';
-                  }
-                  return s;
+                  return wrappedToOriginal[s] ?? s;
                 }).toSet();
                 setState(() {
                   _selectedValues[attr.id] = originalSelected;
