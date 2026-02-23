@@ -119,6 +119,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Маппинг стилей фильтров: Style (просмотр) → Style2 (подача объявления)
   /// Согласно ui_filter_styles.md, при подаче объявления используются разные стили
+  ///
+  /// ВАЖНО: Style I (скрытые чекбоксы) → Style B (чекбоксы) для полей:
+  /// - Возможен торг
+  /// - Без комиссии
+  /// - Возможность обмена
+  /// Эти поля имеют is_title_hidden=true и is_multiple=true
   String _getSubmissionStyle(String apiStyle) {
     // API returns Style for viewing listings, but we need Style2 for submission form
     const styleMapping = {
@@ -130,7 +136,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       'F': 'F', // Popup множественный → без изменений
       'G': 'G1', // Числовое поле → Input (number)
       'H': 'H', // Текстовое поле → без изменений
-      'I': 'I', // Скрытые чекбоксы → без изменений
+      'I': 'B', // Скрытые чекбоксы → Style B (чекбокс) для подачи объявления
       'manual': 'manual',
     };
     return styleMapping[apiStyle] ?? apiStyle;
@@ -508,112 +514,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
   }
 
-  // 🧪 ТЕСТОВОЕ АВТОЗАПОЛНЕНИЕ ФОРМЫ
+  // 🧪 ТЕСТОВОЕ АВТОЗАПОЛНЕНИЕ ФОРМЫ (ОТКЛЮЧЕНО)
+  // Автозаполнение было нужно для тестирования, теперь отключено
   void _autoFillFormForTesting() {
     if (!mounted) return;
 
-    print('🧪 AUTO-FILLING HIDDEN FIELDS FOR TESTING...');
+    // Автозаполнение отключено - все поля оставляем пустыми
+    // Пользователь должен заполнить форму вручную
 
-    setState(() {
-      // Основные поля объявления - ЗАКОММЕНТИРОВАНО (видимые поля)
-      // _titleController.text = 'Просторная однокомнатная квартира';
-      // _descriptionController.text =
-      //     'Комфортная однокомнатная квартира площадью 45 кв.м, расположена в тихом районе с хорошей инфраструктурой. Полностью меблирована, есть все необходимое для жизни.';
-      // _priceController.text = '120000';
+    // Только инициализируем обязательный атрибут "Вам предложат цену" значением true
+    final categoryId = widget.categoryId ?? 2;
+    final offerPriceAttrId = getOfferPriceAttributeId(categoryId);
+    _selectedValues[offerPriceAttrId] = true;
 
-      // Контакты - только если они ещё не загружены из API - ЗАКОММЕНТИРОВАНО (видимые поля)
-      // (Если они уже заполнены из API, не перезаписываем)
-      // if (_contactNameController.text.isEmpty) {
-      //   _contactNameController.text = 'Юрий ';
-      // }
-      // if (_emailController.text.isEmpty) {
-      //   _emailController.text = '1workyury02@gmail.com';
-      // }
-      // if (_phone1Controller.text.isEmpty) {
-      //   _phone1Controller.text = '+79254499552';
-      // }
-
-      // Выбор контактов из загруженных - ЗАКОММЕНТИРОВАНО (видимые поля)
-      // if (_userPhones.isNotEmpty) {
-      //   print('✅ Selected first phone: ${_userPhones[0]['phone']}');
-      // }
-      // if (_userEmails.isNotEmpty) {
-      //   print('✅ Selected first email: ${_userEmails[0]['email']}');
-      // }
-
-      // Автозаполнение адресных полей - ЗАКОММЕНТИРОВАНО (видимые поля)
-      // if (_regions.isNotEmpty) {
-      //   final firstRegion = _regions[0];
-      //   _selectedRegion = {firstRegion['name'] ?? 'Region'};
-      //   _selectedRegionId = firstRegion['id'];
-      //   print('✅ Auto-selected region: ${_selectedRegion}');
-      // }
-
-      // После выбора региона автоматически загружаем города (отложено) - ЗАКОММЕНТИРОВАНО
-      // Future.delayed(const Duration(milliseconds: 300), () async {
-      //   if (_selectedRegionId != null && _cities.isEmpty) {
-      //     await _loadCitiesForSelectedRegion();
-      //     // Затем автоматически выбираем первый город
-      //     if (_cities.isNotEmpty && _selectedCity.isEmpty) {
-      //       final firstCity = _cities[0];
-      //       setState(() {
-      //         _selectedCity = {firstCity['name'] ?? 'City'};
-      //         _selectedCityId = firstCity['id'];
-      //         print('✅ Auto-selected city: ${_selectedCity}');
-      //       });
-
-      //       // После выбора города автоматически загружаем улицы
-      //       Future.delayed(const Duration(milliseconds: 300), () async {
-      //         if (_selectedCityId != null && _streets.isEmpty) {
-      //           await _loadStreetsForSelectedCity();
-      //           // Затем автоматически выбираем первую улицу
-      //           if (_streets.isNotEmpty && _selectedStreet.isEmpty) {
-      //             final firstStreet = _streets[0];
-      //             setState(() {
-      //               _selectedStreet = {firstStreet['name'] ?? 'Street'};
-      //               _selectedStreetId = firstStreet['id'];
-      //               print('✅ Auto-selected street: ${_selectedStreet}');
-      //             });
-      //           }
-      //         });
-      //       });
-      //     }
-      //   }
-      // });
-
-      // Автозаполнение атрибутов фильтров (невидимые поля - оставляем)
-      // 1040 - Этаж (floor) - ЗАКОММЕНТИРОВАНО
-      // _selectedValues[1040] = {'min': 4, 'max': 5};
-
-      // 1039 - Название ЖК (Building name) - ЗАКОММЕНТИРОВАНО
-      // _selectedValues[1039] = 'Новый дом';
-
-      // 6 - Количество комнат (Rooms) - 3 комнаты
-      _selectedValues[6] = '3';
-
-      // 17 - Инфраструктура (Infrastructure)
-      _selectedValues[17] = 'Исторические места';
-
-      // 19 - Частное лицо / Бизнес (Individual/Business)
-      _selectedValues[19] = 'Частное лицо';
-
-      // 14 - Комфорт (Comfort)
-      _selectedValues[14] = 'Автономное отопление';
-
-      // 1127 - Общая площадь (Total area) - Simple field (not range anymore)
-      _selectedValues[1127] = '50';
-
-      // 1048 - Вам предложат цену (Price offer) - REQUIRED boolean attribute
-      _selectedValues[1048] = true;
-
-      // NOTE: "Вам предложат цену" filter will be added in _collectFormData
-      // since it's not returned by API but required for validation
-
-      print('🧪 Auto-fill completed:');
-      // print('   Title: ${_titleController.text}'); - ЗАКОММЕНТИРОВАНО
-      // print('   Price: ${_priceController.text}'); - ЗАКОММЕНТИРОВАНО
-      print('   Selected values: $_selectedValues');
-    });
+    print('🧪 Auto-fill DISABLED - user must fill form manually');
+    print('   Only initialized required attribute $offerPriceAttrId = true');
   }
 
   /// Загружает города для выбранного региона при автозаполнении
@@ -1228,9 +1143,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
         }
       }
 
-      // Validate special attribute: "Вам предложат цену" (attribute 1048)
+      // Validate special attribute: "Вам предложат цену" (ID varies by category)
       // This is always required and must be explicitly set
-      if (!_selectedValues.containsKey(1048) || _selectedValues[1048] == null) {
+      final offerPriceAttrId = getOfferPriceAttributeId(widget.categoryId ?? 2);
+      if (!_selectedValues.containsKey(offerPriceAttrId) ||
+          _selectedValues[offerPriceAttrId] == null) {
         isValid = false;
         errorMessage = 'Необходимо согласиться принимать предложения по цене';
       }
@@ -1934,9 +1851,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     .where(
                       (attr) =>
                           attr.title.isNotEmpty &&
-                          attr.id != 1048 &&
                           attr.id !=
-                              19, // Exclude both attributes (1048 - price offer, 19 - personal/business - shown separately)
+                              getOfferPriceAttributeId(
+                                widget.categoryId ?? 2,
+                              ), // Exclude "Вам предложат цену" - hidden but always true
                     )
                     .map(
                       (attr) => Column(
@@ -1948,42 +1866,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     )
                     .toList(),
 
-              // ============ Special attribute 1127: Общая площадь (Total area) ============
-              // This attribute is REQUIRED but not in API filters list
-              const Text(
-                'Общая площадь*',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 9),
-              _buildAreaRangeField(),
-              const SizedBox(height: 15),
-
-              const Text(
-                'Частное лицо / Бизнес*',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _buildChoiceButton(
-                    'Частное лицо',
-                    isIndividualSelected == true,
-                    () => _togglePersonType(true),
-                  ),
-                  const SizedBox(width: 10),
-                  _buildChoiceButton(
-                    'Бизнес',
-                    isIndividualSelected == false,
-                    () => _togglePersonType(false),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-              const Text(
-                'Частное до 2х объявлений. Бизнес от 2х и более объявлений.',
-                style: TextStyle(color: textMuted, fontSize: 11),
-              ),
               const SizedBox(height: 18),
 
               Row(
@@ -2777,6 +2659,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // According to ui_filter_styles.md documentation:
     // - Style defines the UI element type (A-I)
     // - is_special_design, is_title_hidden, is_popup flags modify the display
+    //
+    // ВАЖНО: Поля с is_title_hidden=true и is_multiple=true (Возможен торг, Без комиссии,
+    // Возможность обмена) должны отображаться как чекбоксы (Style B), независимо от
+    // того, какой style вернул API
 
     // Debug logging for style mapping
     print(
@@ -2785,6 +2671,150 @@ class _DynamicFilterState extends State<DynamicFilter> {
       'is_popup=${attr.isPopup}, is_special_design=${attr.isSpecialDesign}, '
       'is_title_hidden=${attr.isTitleHidden}, values_count=${attr.values.length}',
     );
+
+    // SPECIAL CASE: Чекбоксы (Возможен торг, Без комиссии, Возможность обмена)
+    // Эти поля должны отображаться как чекбоксы (Style B), независимо от style из API
+    // Определяем по названию поля или по флагам is_title_hidden + is_multiple
+    final checkboxTitles = [
+      'Возможен торг',
+      'Без комиссии',
+      'Возможность обмена',
+      'Срочная продажа',
+      'Продажа от застройщика',
+      'Учёт в росреестре',
+      'Учёт в рос реестре',
+      'Учёт в Росреестре',
+      'Учёт в Рос реестре',
+      'Готов сотрудничать с риэлтором',
+      'Готов сотрудничать с риелтором',
+      'Для совместной Аренды',
+      'Для совместной аренды',
+      'Совместная аренда',
+      'С домашними питомцами',
+      'С домашними животными',
+      'Домашние питомцы',
+      'Питомцы',
+      'Возможна сдача по часово',
+      'Возможна сдача по часам',
+      'Почасовая сдача',
+      'Сдача по часам',
+    ];
+
+    final isCheckboxField =
+        checkboxTitles.contains(attr.title) ||
+        (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty);
+
+    if (isCheckboxField) {
+      print(
+        '✅ Override style to B for checkbox field: ${attr.id} (${attr.title})',
+      );
+      return _buildCheckboxField(attr);
+    }
+
+    // SPECIAL CASE: Диапазон (Этаж) - всегда отображаем как два поля От/До
+    // Определяем по названию поля или по флагу is_range=true
+    final rangeTitles = ['Этаж', 'этаж', 'Этажи', 'этажи'];
+
+    final isRangeField = rangeTitles.contains(attr.title) || attr.isRange;
+
+    if (isRangeField) {
+      print(
+        '✅ Override style to E (range) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
+    }
+
+    // SPECIAL CASE: Popup поля с множественным выбором (Тип дома, Количество комнат, Ландшафт и т.д.)
+    // Определяем по названию поля - эти поля должны открывать popup-диалог
+    // ВАЖНО: Эта проверка должна быть ДО switch по стилям, чтобы переопределить style='C' (Да/Нет кнопки)
+    final popupMultipleTitles = [
+      'Минимальное количество ночей',
+      'минимальное количество ночей',
+      'Минимальное кол-во ночей',
+      'Кол-во ночей',
+      'Количество ночей',
+      'Ночей (минимум)',
+      'Тип дома',
+      'тип дома',
+      'Количество комнат',
+      'количество комнат',
+      'Комнат',
+      'комнат',
+      'Ландшафт',
+      'ландшафт',
+      'Ландшафт (до 1 км)',
+      'Инфраструктура',
+      'инфраструктура',
+      'Инфраструктура (до 500 метров)',
+      'Меблированная',
+      'меблированная',
+      'Бытовая техника',
+      'бытовая техника',
+      'Коммуникации',
+      'коммуникации',
+      'Комфорт',
+      'комфорт',
+      'Мультимедиа',
+      'мультимедиа',
+      'Мультимедия',
+      'мультимедия',
+      'Ремонт',
+      'ремонт',
+      'Отопление',
+      'отопление',
+      'Санузел',
+      'санузел',
+      'Планировка',
+      'планировка',
+      'Класс жилья',
+      'класс жилья',
+      'Клас жилья',
+      'клас жилья',
+      'Тип стен',
+      'тип стен',
+      'Тип сделки',
+      'тип сделки',
+      'Количество спальных мест',
+      'количество спальных мест',
+      'Спальных мест',
+      'спальных мест',
+      'Расстояние до ближайшего города',
+      'расстояние до ближайшего города',
+      'Расстояние до города',
+      'расстояние до города',
+      'До ближайшего города',
+      'до ближайшего города',
+      'Тип недвижимости',
+      'тип недвижимости',
+      'Постройки на участке',
+      'постройки на участке',
+      'Постройки',
+      'постройки',
+      'Варианты размещения',
+      'варианты размещения',
+      'Дополнительно',
+      'дополнительно',
+      'Тип объекта',
+      'тип объекта',
+      'Класс офиса',
+      'класс офиса',
+      'Расположение',
+      'расположение',
+    ];
+
+    // Проверяем по названию, убирая символ * для обязательных полей
+    final titleWithoutStar = attr.title.replaceAll('*', '').trim();
+    final isPopupMultipleField =
+        popupMultipleTitles.contains(attr.title) ||
+        popupMultipleTitles.contains(titleWithoutStar) ||
+        popupMultipleTitles.any((t) => titleWithoutStar.contains(t));
+
+    if (isPopupMultipleField) {
+      print(
+        '✅ Override style to F (popup multiple select) for field: ${attr.id} (${attr.title})',
+      );
+      return _buildMultipleSelectPopup(attr);
+    }
 
     switch (attr.style) {
       case 'A':
@@ -3084,23 +3114,67 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Style D with is_popup=true: Popup with radio or checkboxes
     // If is_multiple=true: checkboxes, else: radio buttons
 
+    // Специальная обработка заголовка для переноса строки
+    String displayLabel = attr.isTitleHidden
+        ? ''
+        : attr.title + (attr.isRequired ? '*' : '');
+
+    // Заголовок для диалога с переносом строки для длинных названий
+    String dialogTitle = attr.title.isEmpty ? 'Выбор' : attr.title;
+    if (dialogTitle == 'Расстояние до ближайшего города') {
+      dialogTitle = 'Расстояние до\nближайшего города';
+    }
+    if (dialogTitle == 'Количество спальных мест*' ||
+        dialogTitle == 'Количество спальных мест') {
+      dialogTitle = 'Количество спальных\nмест*';
+    }
+    if (dialogTitle == 'Минимальное количество ночей*' ||
+        dialogTitle == 'Минимальное количество ночей') {
+      dialogTitle = 'Минимальное количество\nночей*';
+    }
+
+    // Обработка длинных значений опций с переносом строки
+    List<String> processedOptions = attr.values.map((v) {
+      String value = v.value;
+      // Добавляем перенос строки для длинных значений
+      if (value == 'Нежилое помещение в жилом фонде') {
+        return 'Нежилое помещение в\nжилом фонде';
+      }
+      return value;
+    }).toList();
+
+    // Также обрабатываем выбранные значения для отображения в hint
+    Set<String> processedSelected = selected.map((s) {
+      if (s == 'Нежилое помещение в жилом фонде') {
+        return 'Нежилое помещение в\nжилом фонде';
+      }
+      return s;
+    }).toSet();
+
     return _buildDropdown(
-      label: attr.isTitleHidden
-          ? ''
-          : attr.title + (attr.isRequired ? '*' : ''),
-      hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
+      label: displayLabel,
+      hint: processedSelected.isEmpty
+          ? 'Выбрать'
+          : processedSelected.join(', '),
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
       onTap: () {
         showDialog(
           context: context,
           builder: (BuildContext context) {
             return SelectionDialog(
-              title: attr.title.isEmpty ? 'Выбор' : attr.title,
-              options: attr.values.map((v) => v.value).toList(),
-              selectedOptions: selected,
+              title: dialogTitle,
+              options: processedOptions,
+              selectedOptions: processedSelected,
               onSelectionChanged: (Set<String> newSelected) {
+                // Восстанавливаем оригинальные значения перед сохранением
+                Set<String> originalSelected = newSelected.map((s) {
+                  if (s == 'Нежилое помещение в\nжилом фонде') {
+                    return 'Нежилое помещение в жилом фонде';
+                  }
+                  return s;
+                }).toSet();
                 setState(() {
-                  _selectedValues[attr.id] = newSelected;
+                  _selectedValues[attr.id] = originalSelected;
                 });
               },
               allowMultipleSelection: attr.isMultiple,

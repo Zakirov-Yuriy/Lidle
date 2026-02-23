@@ -669,11 +669,20 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'sellerName': listing.sellerName,
       'sellerAvatar': listing.sellerAvatar,
       'sellerRegistrationDate': listing.sellerRegistrationDate,
+      'description': listing.description,
+      'characteristics': listing.characteristics,
+      'userId': listing.userId,
     };
   }
 
   /// Конвертирует JSON обратно в Listing из кеша.
   home.Listing _jsonToListing(Map<String, dynamic> json) {
+    // Безопасное преобразование characteristics из JSON
+    Map<String, dynamic> characteristics = {};
+    if (json['characteristics'] != null && json['characteristics'] is Map) {
+      characteristics = Map<String, dynamic>.from(json['characteristics']);
+    }
+
     return home.Listing(
       id: json['id'] ?? '',
       imagePath: json['imagePath'] ?? '',
@@ -686,6 +695,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       sellerName: json['sellerName'] ?? '',
       sellerAvatar: json['sellerAvatar'] ?? '',
       sellerRegistrationDate: json['sellerRegistrationDate'] ?? '',
+      description: json['description'],
+      characteristics: characteristics,
+      userId: json['userId']?.toString(),
     );
   }
 

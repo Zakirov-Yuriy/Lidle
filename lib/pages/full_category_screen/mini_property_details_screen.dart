@@ -291,6 +291,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 sellerName: state.listing.sellerName,
                 sellerAvatar: state.listing.sellerAvatar,
                 sellerRegistrationDate: state.listing.sellerRegistrationDate,
+                description: state.listing.description,
+                characteristics: state.listing.characteristics,
+                userId: state.listing.userId,
               );
             }
           });
@@ -717,30 +720,31 @@ ${widget.listing.title}
 
   Widget _buildDescriptionCard() {
     final String? descriptionText = _listing.description;
+
+    // Проверяем, нужно ли показывать кнопку раскрытия
+    // Показываем кнопку только если текст достаточно длинный (больше 200 символов)
+    final bool hasLongDescription =
+        descriptionText != null &&
+        descriptionText.isNotEmpty &&
+        descriptionText.length > 200;
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 6),
-          const Text(
-            "Описание",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Описание",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          if (descriptionText != null && descriptionText.isNotEmpty)
-            Text(
-              descriptionText,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              maxLines: _showFullDescription ? null : 6,
-              overflow: _showFullDescription
-                  ? TextOverflow.visible
-                  : TextOverflow.ellipsis,
-            )
-          else
+          if (descriptionText == null || descriptionText.isEmpty)
             const Text(
               "Описание отсутствует",
               style: TextStyle(
@@ -748,46 +752,52 @@ ${widget.listing.title}
                 fontSize: 14,
                 fontStyle: FontStyle.italic,
               ),
-            ),
-          const SizedBox(height: 8),
-          if (_showFullDescription &&
-              descriptionText != null &&
-              descriptionText.isNotEmpty) ...[
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showFullDescription = false;
-                });
-              },
-              child: Row(
-                children: const [
-                  Text(
-                    "Свернуть описание",
-                    style: TextStyle(color: Colors.blue, fontSize: 14),
-                  ),
-                  Icon(Icons.keyboard_arrow_up_sharp, color: Colors.blue),
-                ],
+            )
+          else ...[
+            // Используем AnimatedCrossFade для плавного раскрытия/сворачивания
+            AnimatedCrossFade(
+              firstChild: Text(
+                descriptionText,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(height: 2),
-          ] else if (descriptionText != null && descriptionText.isNotEmpty) ...[
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _showFullDescription = true;
-                });
-              },
-              child: Row(
-                children: const [
-                  Text(
-                    "Все описание",
-                    style: TextStyle(color: Colors.blue, fontSize: 14),
-                  ),
-                  Icon(Icons.keyboard_arrow_down_sharp, color: Colors.blue),
-                ],
+              secondChild: Text(
+                descriptionText,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
               ),
+              crossFadeState: _showFullDescription
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
             ),
-            const SizedBox(height: 2),
+            if (hasLongDescription) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showFullDescription = !_showFullDescription;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      _showFullDescription
+                          ? "Свернуть описание"
+                          : "Все описание",
+                      style: const TextStyle(color: Colors.blue, fontSize: 14),
+                    ),
+                    Icon(
+                      _showFullDescription
+                          ? Icons.keyboard_arrow_up_sharp
+                          : Icons.keyboard_arrow_down_sharp,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
+            ],
           ],
         ],
       ),
