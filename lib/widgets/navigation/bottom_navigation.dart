@@ -152,6 +152,12 @@ class BottomNavigation extends StatelessWidget {
         return;
     }
 
-    Navigator.of(context).pushReplacementNamed(routeName);
+    // Для AddListingScreen (index 2) используем pushNamed вместо pushReplacementNamed,
+    // чтобы можно было вернуться назад на предыдущий экран по кнопке "крестик"
+    if (index == 2) {
+      Navigator.of(context).pushNamed(routeName);
+    } else {
+      Navigator.of(context).pushReplacementNamed(routeName);
+    }
   }
 }
