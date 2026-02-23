@@ -423,11 +423,60 @@ class ApiService {
       final response = await getWithQuery('/adverts/create', {
         'category_id': categoryId,
       }, token: token);
-      final List<dynamic> attributesJson = response['data']['attributes'];
-      return attributesJson
-          .map((json) => Attribute.fromJson(json as Map<String, dynamic>))
-          .toList();
+
+      print(
+        '📦 getAdvertCreationAttributes: Parsing response for category $categoryId',
+      );
+      print('   response type: ${response.runtimeType}');
+      print('   data type: ${response['data']?.runtimeType}');
+
+      // API возвращает: {"success":true,"data":[{"type":{...},"attributes":[...]}]}
+      // data - это List с одним элементом
+      final dataNode = response['data'];
+
+      List<dynamic>? attributesJson;
+
+      if (dataNode is List && dataNode.isNotEmpty) {
+        // data это List - берём первый элемент
+        final firstItem = dataNode[0] as Map<String, dynamic>?;
+        attributesJson = firstItem?['attributes'] as List<dynamic>?;
+        print(
+          '   ✅ Parsed from List: ${attributesJson?.length ?? 0} attributes',
+        );
+      } else if (dataNode is Map<String, dynamic>) {
+        // data это Map - берём attributes напрямую
+        attributesJson = dataNode['attributes'] as List<dynamic>?;
+        print(
+          '   ✅ Parsed from Map: ${attributesJson?.length ?? 0} attributes',
+        );
+      }
+
+      if (attributesJson == null || attributesJson.isEmpty) {
+        print('   ❌ No attributes found in response');
+        throw Exception('No attributes found in response');
+      }
+
+      // Парсим атрибуты с обработкой ошибок
+      final attributes = <Attribute>[];
+      for (int i = 0; i < attributesJson.length; i++) {
+        try {
+          final json = attributesJson[i];
+          if (json is Map<String, dynamic>) {
+            final attr = Attribute.fromJson(json);
+            attributes.add(attr);
+            print(
+              '   [${attr.id}] ${attr.title} (is_required=${attr.isRequired})',
+            );
+          }
+        } catch (e) {
+          print('   ⚠️ Failed to parse attribute at index $i: $e');
+        }
+      }
+
+      print('   ✅ Total parsed: ${attributes.length} attributes');
+      return attributes;
     } catch (e) {
+      print('❌ getAdvertCreationAttributes error: $e');
       if (e.toString().contains('Token expired') && token != null) {
         // Попытка обновить токен и повторить запрос
         final newToken = await refreshToken(token);

@@ -23,7 +23,7 @@ _$AttributeImpl _$$AttributeImplFromJson(Map<String, dynamic> json) =>
       vmText: json['vmText'] as String?,
       dataType: json['dataType'] as String?,
       style: json['style'] as String? ?? '',
-      order: (json['order'] as num).toInt(),
+      order: (json['order'] as num?)?.toInt() ?? 0,
       values:
           (json['values'] as List<dynamic>?)
               ?.map((e) => Value.fromJson(e as Map<String, dynamic>))
@@ -66,3 +66,16 @@ Map<String, dynamic> _$$ValueImplToJson(_$ValueImpl instance) =>
       'order': instance.order,
       'maxValue': instance.maxValue,
     };
+
+_$MetaFiltersResponseImpl _$$MetaFiltersResponseImplFromJson(
+  Map<String, dynamic> json,
+) => _$MetaFiltersResponseImpl(
+  sort: json['sort'] as List<dynamic>,
+  filters: (json['filters'] as List<dynamic>)
+      .map((e) => Attribute.fromJson(e as Map<String, dynamic>))
+      .toList(),
+);
+
+Map<String, dynamic> _$$MetaFiltersResponseImplToJson(
+  _$MetaFiltersResponseImpl instance,
+) => <String, dynamic>{'sort': instance.sort, 'filters': instance.filters};

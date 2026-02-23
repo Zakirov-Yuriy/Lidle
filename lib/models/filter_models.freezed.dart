@@ -36,7 +36,8 @@ mixin _$Attribute {
   String? get vmText => throw _privateConstructorUsedError;
   String? get dataType => throw _privateConstructorUsedError;
   String get style => throw _privateConstructorUsedError;
-  int get order => throw _privateConstructorUsedError;
+  int get order =>
+      throw _privateConstructorUsedError; // API может возвращать null, используем default
   List<Value> get values => throw _privateConstructorUsedError;
 
   /// Serializes this Attribute to a JSON map.
@@ -340,7 +341,7 @@ class _$AttributeImpl implements _Attribute {
     this.vmText,
     this.dataType,
     this.style = '',
-    required this.order,
+    this.order = 0,
     final List<Value> values = const [],
   }) : _values = values;
 
@@ -389,8 +390,11 @@ class _$AttributeImpl implements _Attribute {
   @JsonKey()
   final String style;
   @override
+  @JsonKey()
   final int order;
+  // API может возвращать null, используем default
   final List<Value> _values;
+  // API может возвращать null, используем default
   @override
   @JsonKey()
   List<Value> get values {
@@ -490,7 +494,7 @@ abstract class _Attribute implements Attribute {
     final String? vmText,
     final String? dataType,
     final String style,
-    required final int order,
+    final int order,
     final List<Value> values,
   }) = _$AttributeImpl;
 
@@ -528,7 +532,7 @@ abstract class _Attribute implements Attribute {
   @override
   String get style;
   @override
-  int get order;
+  int get order; // API может возвращать null, используем default
   @override
   List<Value> get values;
 
@@ -750,10 +754,17 @@ abstract class _Value implements Value {
       throw _privateConstructorUsedError;
 }
 
+MetaFiltersResponse _$MetaFiltersResponseFromJson(Map<String, dynamic> json) {
+  return _MetaFiltersResponse.fromJson(json);
+}
+
 /// @nodoc
 mixin _$MetaFiltersResponse {
   List<dynamic> get sort => throw _privateConstructorUsedError;
   List<Attribute> get filters => throw _privateConstructorUsedError;
+
+  /// Serializes this MetaFiltersResponse to a JSON map.
+  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of MetaFiltersResponse
   /// with the given fields replaced by the non-null parameter values.
@@ -845,13 +856,16 @@ class __$$MetaFiltersResponseImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-
+@JsonSerializable()
 class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
   const _$MetaFiltersResponseImpl({
     required final List<dynamic> sort,
     required final List<Attribute> filters,
   }) : _sort = sort,
        _filters = filters;
+
+  factory _$MetaFiltersResponseImpl.fromJson(Map<String, dynamic> json) =>
+      _$$MetaFiltersResponseImplFromJson(json);
 
   final List<dynamic> _sort;
   @override
@@ -883,6 +897,7 @@ class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
             const DeepCollectionEquality().equals(other._filters, _filters));
   }
 
+  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
@@ -900,6 +915,11 @@ class _$MetaFiltersResponseImpl implements _MetaFiltersResponse {
         this,
         _$identity,
       );
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$MetaFiltersResponseImplToJson(this);
+  }
 }
 
 abstract class _MetaFiltersResponse implements MetaFiltersResponse {
@@ -907,6 +927,9 @@ abstract class _MetaFiltersResponse implements MetaFiltersResponse {
     required final List<dynamic> sort,
     required final List<Attribute> filters,
   }) = _$MetaFiltersResponseImpl;
+
+  factory _MetaFiltersResponse.fromJson(Map<String, dynamic> json) =
+      _$MetaFiltersResponseImpl.fromJson;
 
   @override
   List<dynamic> get sort;

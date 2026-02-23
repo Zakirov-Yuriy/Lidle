@@ -136,23 +136,100 @@ class _DynamicFilterState extends State<DynamicFilter> {
     return styleMapping[apiStyle] ?? apiStyle;
   }
 
+  /// Маппинг ID обязательных атрибутов по категориям
+  /// Разные категории имеют разные ID для одинаковых по смыслу атрибутов
+  static int getOfferPriceAttributeId(int categoryId) {
+    switch (categoryId) {
+      case 2:
+        return 1048; // Продажа квартир
+      case 3:
+        return 1050; // Долгосрочная аренда квартир
+      // TODO: Добавить другие категории по мере необходимости
+      default:
+        return 1048;
+    }
+  }
+
+  static int getAreaAttributeId(int categoryId) {
+    switch (categoryId) {
+      case 2:
+        return 1127; // Продажа квартир
+      case 3:
+        return 1128; // Долгосрочная аренда квартир
+      // TODO: Добавить другие категории по мере необходимости
+      default:
+        return 1127;
+    }
+  }
+
+  static int getRoomsAttributeId(int categoryId) {
+    switch (categoryId) {
+      case 2:
+        return 6; // Продажа квартир
+      case 3:
+        return 39; // Долгосрочная аренда квартир
+      // TODO: Добавить другие категории по мере необходимости
+      default:
+        return 6;
+    }
+  }
+
+  static int getSellerTypeAttributeId(int categoryId) {
+    switch (categoryId) {
+      case 2:
+        return 19; // Продажа квартир
+      case 3:
+        return 52; // Долгосрочная аренда квартир
+      // TODO: Добавить другие категории по мере необходимости
+      default:
+        return 19;
+    }
+  }
+
   Future<void> _loadAttributes() async {
     try {
-      print('Loading filters for category: ${widget.categoryId ?? 2}');
+      final categoryId = widget.categoryId ?? 2;
+      print('Loading attributes for category: $categoryId');
       final token = await HiveService.getUserData('token');
-      final response = await ApiService.getMetaFilters(
-        categoryId: widget.categoryId ?? 2,
-        token: token,
-      );
-      print('Loaded ${response.filters.length} filters');
-      for (final attr in response.filters) {
+
+      // ИСПОЛЬЗУЕМ /adverts/create ВМЕСТО /meta/filters
+      // Этот endpoint возвращает правильные ID атрибутов для конкретной категории
+      // и включает обязательный атрибут "Вам предложат цену" (для категории 3)
+      List<Attribute> loadedAttributes;
+
+      try {
+        // Пытаемся получить атрибуты через /adverts/create
+        loadedAttributes = await ApiService.getAdvertCreationAttributes(
+          categoryId: categoryId,
+          token: token,
+        );
         print(
-          '📊 Filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, Order=${attr.order}, Values=${attr.values.length}',
+          '✅ Loaded ${loadedAttributes.length} attributes from /adverts/create',
+        );
+      } catch (e) {
+        print(
+          '⚠️ Failed to load from /adverts/create, falling back to /meta/filters: $e',
+        );
+        // Fallback на старый метод
+        final response = await ApiService.getMetaFilters(
+          categoryId: categoryId,
+          token: token,
+        );
+        loadedAttributes = response.filters;
+        print(
+          '✅ Loaded ${loadedAttributes.length} attributes from /meta/filters (fallback)',
+        );
+      }
+
+      // Логируем загруженные атрибуты
+      for (final attr in loadedAttributes) {
+        print(
+          '📊 Attribute: ID=${attr.id}, Title=${attr.title}, is_required=${attr.isRequired}, is_range=${attr.isRange}, Values=${attr.values.length}',
         );
       }
 
       // Convert to mutable list and apply Style → Style2 mapping for submission form
-      var mutableFilters = List<Attribute>.from(response.filters);
+      var mutableFilters = List<Attribute>.from(loadedAttributes);
 
       // Apply submission style mapping (Style → Style2)
       mutableFilters = mutableFilters.map((attr) {
@@ -185,15 +262,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return attr;
       }).toList();
 
-      // Add hidden attribute 1048 (Вам предложат цену) if not present
-      // This attribute is REQUIRED by API but not returned by /meta/filters endpoint
-      final hasAttribute1048 = mutableFilters.any((a) => a.id == 1048);
-      if (!hasAttribute1048) {
+      // Проверяем наличие обязательного атрибута "Вам предложат цену"
+      final offerPriceAttrId = getOfferPriceAttributeId(categoryId);
+      final hasOfferPriceAttr = mutableFilters.any(
+        (a) => a.id == offerPriceAttrId,
+      );
+
+      if (!hasOfferPriceAttr) {
         print(
-          '🔧 Adding missing attribute 1048 (Вам предложат цену) - required for advert creation',
+          '🔧 Adding missing attribute $offerPriceAttrId (Вам предложат цену) - required for category $categoryId',
         );
-        final attribute1048 = Attribute(
-          id: 1048,
+        final offerPriceAttr = Attribute(
+          id: offerPriceAttrId,
           title: 'Вам предложат цену',
           isFilter: false,
           isRange: false,
@@ -203,13 +283,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
           isTitleHidden: true,
           isSpecialDesign: false,
           isMaxValue: false,
-          dataType: null,
+          dataType: 'boolean',
           order: 999,
           values: const [],
         );
-        mutableFilters.add(attribute1048);
-        print('✅ Attribute 1048 added to filters list');
+        mutableFilters.add(offerPriceAttr);
+        print('✅ Attribute $offerPriceAttrId added to filters list');
       }
+
+      // Инициализируем атрибут "Вам предложат цену" значением true по умолчанию
+      _selectedValues[offerPriceAttrId] = true;
+      print('✅ Initialized attribute $offerPriceAttrId = true (default)');
 
       if (mounted) {
         setState(() {
@@ -221,7 +305,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Load category name
       _loadCategoryInfo();
     } catch (e) {
-      print('Error loading filters from API: $e');
+      print('Error loading attributes from API: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -937,41 +1021,50 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
     print('Collected attributes: $attributes');
 
-    // Handle boolean attribute 1048 ("Вам предложат цену")
-    // IMPORTANT: 1048 should be in attributes.values, NOT in value_selected!
-    // API expects: attributes.values['1048'] = {'value': 1}
-    if (_selectedValues.containsKey(1048) && _selectedValues[1048] == true) {
-      attributes['values']['1048'] = {'value': 1};
-      print('✅ Added attribute 1048 to values (required) as {value: 1}');
+    // Handle "Вам предложат цену" attribute (ID varies by category)
+    // IMPORTANT: This should be in attributes.values, NOT in value_selected!
+    // API expects: attributes.values['{id}'] = {'value': 1}
+    final categoryId = widget.categoryId ?? 2;
+    final offerPriceAttrId = getOfferPriceAttributeId(categoryId);
+
+    if (_selectedValues.containsKey(offerPriceAttrId) &&
+        _selectedValues[offerPriceAttrId] == true) {
+      attributes['values']['$offerPriceAttrId'] = {'value': 1};
+      print(
+        '✅ Added attribute $offerPriceAttrId (Вам предложат цену) to values as {value: 1}',
+      );
     } else {
       // If not explicitly selected, add by default (it's required)
-      attributes['values']['1048'] = {'value': 1};
-      print('✅ Added default attribute 1048 to values as {value: 1}');
+      attributes['values']['$offerPriceAttrId'] = {'value': 1};
+      print(
+        '✅ Added default attribute $offerPriceAttrId (Вам предложат цену) to values as {value: 1}',
+      );
     }
 
-    // Handle required attribute 1127 (Общая площадь - Total area)
-    // Now it's a simple field, not a range
-    if (_selectedValues.containsKey(1127)) {
-      final area = _selectedValues[1127];
+    // Handle required attribute "Общая площадь" (Total area) - ID varies by category
+    final areaAttrId = getAreaAttributeId(categoryId);
+
+    if (_selectedValues.containsKey(areaAttrId)) {
+      final area = _selectedValues[areaAttrId];
       if (area is String && area.isNotEmpty) {
         final areaVal = int.tryParse(area.toString().trim());
         if (areaVal != null) {
-          attributes['values']['1127'] = {'value': areaVal};
-          print('✅ Attribute 1127 (area) set: value=$areaVal');
+          attributes['values']['$areaAttrId'] = {'value': areaVal};
+          print('✅ Attribute $areaAttrId (area) set: value=$areaVal');
         } else {
           // If parsing fails, set default
-          attributes['values']['1127'] = {'value': 50};
+          attributes['values']['$areaAttrId'] = {'value': 50};
           print('⚠️ Failed to parse area value, using default: 50');
         }
       } else {
         // Set default area if not selected
-        attributes['values']['1127'] = {'value': 50};
-        print('✅ Set default 1127: value=50');
+        attributes['values']['$areaAttrId'] = {'value': 50};
+        print('✅ Set default $areaAttrId: value=50');
       }
     } else {
       // Set default area if not selected
-      attributes['values']['1127'] = {'value': 50};
-      print('✅ Set default 1127: value=50');
+      attributes['values']['$areaAttrId'] = {'value': 50};
+      print('✅ Set default $areaAttrId: value=50');
     }
 
     // NOTE: attribute_1048 (boolean type) is handled separately via toJson() in CreateAdvertRequest
@@ -1274,7 +1367,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 request.attributes,
               );
 
-              // Make sure 1048 is inside values, not at top level
+              // Make sure offer price attribute is in values with correct format {value: 1}
+              // IMPORTANT: API expects {value: 1}, NOT boolean true
+              final offerPriceAttrId = getOfferPriceAttributeId(
+                request.categoryId,
+              );
               if (updatedAttributes.containsKey('attribute_1048')) {
                 updatedAttributes.remove('attribute_1048');
                 print('   🗑️ Removed top-level attribute_1048 key');
@@ -1282,10 +1379,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
               if (updatedAttributes.containsKey('values')) {
                 final values =
                     updatedAttributes['values'] as Map<String, dynamic>;
-                if (!values.containsKey('1048')) {
-                  values['1048'] = true;
-                  print('   ✅ Ensured 1048 is in values');
+                // Remove any boolean values for offer price attributes
+                if (values.containsKey('1048') && values['1048'] is! Map) {
+                  values.remove('1048');
+                  print('   🗑️ Removed non-map 1048 from values');
                 }
+                if (values.containsKey('1050') && values['1050'] is! Map) {
+                  values.remove('1050');
+                  print('   🗑️ Removed non-map 1050 from values');
+                }
+                // Set correct format: {value: 1}
+                values['$offerPriceAttrId'] = {'value': 1};
+                print('   ✅ Set $offerPriceAttrId in values as {value: 1}');
               }
 
               request = CreateAdvertRequest(
