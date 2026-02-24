@@ -746,6 +746,39 @@ class ApiService {
     }
   }
 
+  /// Обновить объявление.
+  static Future<Map<String, dynamic>> updateAdvert(
+    int advertId,
+    CreateAdvertRequest request, {
+    String? token,
+  }) async {
+    try {
+      final json = request.toJson();
+      print('\n🔄 SENDING TO API: PUT /adverts/$advertId');
+      print('Full JSON:');
+      print(json);
+      if (json['attributes'] != null) {
+        print('\nAttributes structure:');
+        print('  - value_selected: ${json['attributes']['value_selected']}');
+        print(
+          '  - values keys: ${json['attributes']['values']?.keys.toList()}',
+        );
+      }
+
+      final response = await put('/adverts/$advertId', json, token: token);
+      return response;
+    } catch (e) {
+      if (e.toString().contains('Token expired') && token != null) {
+        // Попытка обновить токен и повторить запрос
+        final newToken = await refreshToken(token);
+        if (newToken != null) {
+          return updateAdvert(advertId, request, token: newToken);
+        }
+      }
+      throw Exception('Failed to update advert: $e');
+    }
+  }
+
   /// Обновить токен доступа.
   static Future<String?> refreshToken(String currentToken) async {
     try {

@@ -433,12 +433,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                 _label('Номер телефона 2'),
                 _field(_phone2Controller, 'Введите'),
 
-                _label('Ссылка на ваш чат в телеграм'),
+                _label('Ссылка на ваш чат в Max'),
                 _field(_telegramController, ''),
 
-                _label('Ссылка на ваш whatsapp'),
-                _field(_whatsappController, ''),
-
+                // _label('Ссылка на ваш whatsapp'),
+                // _field(_whatsappController, ''),
                 const SizedBox(height: 24),
 
                 // ───── Save button ─────

@@ -50,7 +50,8 @@ class ProfileDashboard extends StatefulWidget {
   State<ProfileDashboard> createState() => _ProfileDashboardState();
 }
 
-class _ProfileDashboardState extends State<ProfileDashboard> {
+class _ProfileDashboardState extends State<ProfileDashboard>
+    with WidgetsBindingObserver {
   int _activeListingsCount = 0;
   int _inactiveListingsCount = 0;
   bool _isLoadingListings = true;
@@ -60,62 +61,111 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
   @override
   void initState() {
     super.initState();
+    // Добавляем observer для отслеживания жизненного цикла приложения
+    WidgetsBinding.instance.addObserver(this);
     // 🔄 Ленивая загрузка профиля при входе на страницу профиля
     context.read<ProfileBloc>().add(LoadProfileEvent());
-    _loadListingsCounts();
+    // ⚠️ ВСЕГДА загружаем свежие данные о объявлениях (не используем кеш)
+    _loadListingsCounts(forceRefresh: true);
+  }
+
+  @override
+  void dispose() {
+    // Удаляем observer при удалении виджета
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Перезагружаем счетчики при возвращении в приложение
+    if (state == AppLifecycleState.resumed && mounted) {
+      print('🔄 Приложение вернулось в фокус - обновляем счетчики объявлений');
+      _loadListingsCounts(forceRefresh: true);
+    }
   }
 
   /// Загрузить количество активных и неактивных объявлений
-  /// 🔄 С кешированием: первый раз загружает, потом использует кеш
+  /// ⚠️ ВСЕГДА загружает свежие данные со ВСЕХ категорий и статусов
+  /// Загрузить количество объявлений со ВСЕХ статусов
+  /// ⚠️ ВСЕГДА загружает свежие данные (кеш НЕ используется)
   Future<void> _loadListingsCounts({bool forceRefresh = false}) async {
     try {
-      // 📖 Проверяем кеш если это не принудительное обновление
-      if (!forceRefresh) {
-        final cached = CacheManager().get<Map<String, int>>(_cacheKeyListings);
-        if (cached != null) {
-          print('✅ Используем кешированные данные листингов');
-          setState(() {
-            _activeListingsCount = cached['active'] ?? 0;
-            _inactiveListingsCount = cached['inactive'] ?? 0;
-            _isLoadingListings = false;
-          });
-          return;
-        }
-      }
-
-      // 🔄 Если нет кеша или forceRefresh=true, загружаем с API
       setState(() => _isLoadingListings = true);
 
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
+        print('❌ Нет токена!');
         setState(() => _isLoadingListings = false);
         return;
       }
 
-      // Загружаем активные и неактивные объявления
+      print('🔄 Загружаем количество объявлений со ВСЕХ статусов...');
+
+      // Загружаем со ВСЕХ статусов параллельно (как в my_listings_screen.dart)
+      // Статусы: 1=Активные, 2=Неактивные, 3=На модерации, 8=Архивированные
       final results = await Future.wait([
-        MyAdvertsService.getMyAdverts(statusId: 1, token: token),
-        MyAdvertsService.getMyAdverts(statusId: 2, token: token),
+        MyAdvertsService.getMyAdverts(statusId: 1, token: token, page: 1),
+        MyAdvertsService.getMyAdverts(statusId: 2, token: token, page: 1),
+        MyAdvertsService.getMyAdverts(statusId: 3, token: token, page: 1),
+        MyAdvertsService.getMyAdverts(statusId: 8, token: token, page: 1),
       ]);
 
-      final activeCount = results[0].data.length;
-      final inactiveCount = results[1].data.length;
+      // Используем response.total если доступно, иначе response.data.length
+      final activeCount = results[0].total ?? results[0].data.length;
+      final inactiveCount = results[1].total ?? results[1].data.length;
+      final moderationCount = results[2].total ?? results[2].data.length;
+      final archiveCount = results[3].total ?? results[3].data.length;
+      final totalCount =
+          activeCount + inactiveCount + moderationCount + archiveCount;
 
-      // 💾 Сохраняем в кеш
-      CacheManager().set<Map<String, int>>(_cacheKeyListings, {
-        'active': activeCount,
-        'inactive': inactiveCount,
-      });
+      print(
+        '📊 Активные: $activeCount (total=${results[0].total}, dataLen=${results[0].data.length})',
+      );
+      print(
+        '📊 Неактивные: $inactiveCount (total=${results[1].total}, dataLen=${results[1].data.length})',
+      );
+      print(
+        '📊 На модерации: $moderationCount (total=${results[2].total}, dataLen=${results[2].data.length})',
+      );
+      print(
+        '📊 Архивированные: $archiveCount (total=${results[3].total}, dataLen=${results[3].data.length})',
+      );
+      print('✅ ВСЕГО ОБЪЯВЛЕНИЙ: $totalCount');
+
+      // Показываем информацию о категориях объявлений
+      final allAdvertsMerged = <dynamic>[
+        ...results[0].data,
+        ...results[1].data,
+        ...results[2].data,
+        ...results[3].data,
+      ];
+
+      print('');
+      print('📁 СТАТУС ЗАГРУЗКИ:');
+      print('   ✓ Это объявления со ВСЕХ категорий!');
+      print('   ✓ Всего загружено объявлений: ${allAdvertsMerged.length}');
+      print(
+        '   ✓ Примеры: ${allAdvertsMerged.take(3).map((a) => a.name).toList()}',
+      );
+      print('');
 
       setState(() {
-        _activeListingsCount = activeCount;
-        _inactiveListingsCount = inactiveCount;
+        _activeListingsCount = totalCount;
+        _inactiveListingsCount = 0; // Используем только _activeListingsCount
         _isLoadingListings = false;
       });
     } catch (e) {
       print('⚠️ Ошибка загрузки количества объявлений: $e');
+      print('   Stack: $e');
       setState(() => _isLoadingListings = false);
     }
+  }
+
+  /// Инвалидировать кеш объявлений (вызывается после добавления/удаления объявления)
+  static void invalidateListingsCache() {
+    CacheManager().clear('profile_listings_counts');
+    print('🗑️ Кеш объявлений инвалидирован');
   }
 
   @override
@@ -316,11 +366,10 @@ class _ProfileDashboardState extends State<ProfileDashboard> {
                                   const _SectionTitle('Ваши объявления'),
                                   // const SizedBox(height: 10),
                                   _MenuItem(
-                                    title: 'Активные / Неактивные',
+                                    title: 'Все объявления',
                                     count: _isLoadingListings
                                         ? 0
-                                        : _activeListingsCount +
-                                              _inactiveListingsCount,
+                                        : _activeListingsCount,
                                     trailingChevron: true,
                                     onTap: () => Navigator.of(
                                       context,
@@ -620,15 +669,19 @@ class _MenuItem extends StatelessWidget {
                         : const Color(0xFF767676),
                   ),
                 ),
-                alignment: Alignment.center, // выравниваем текст по центру
+                alignment: Alignment.center,
                 child: Text(
                   '$count',
                   style: TextStyle(
                     color: isHighlight
                         ? const Color(0xFFE3E335)
                         : const Color(0xFF767676),
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
                   ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
 

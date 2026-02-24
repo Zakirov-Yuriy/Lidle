@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/blocs/listings/listings_event.dart';
+import 'package:lidle/blocs/listings/listings_state.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости для моих объявлений"
 // ============================================================
 
 class MyListingsPropertyDetailsScreen extends StatefulWidget {
-  const MyListingsPropertyDetailsScreen({super.key});
+  final Listing listing;
+
+  const MyListingsPropertyDetailsScreen({super.key, required this.listing});
 
   @override
   State<MyListingsPropertyDetailsScreen> createState() =>
@@ -21,68 +28,54 @@ class _MyListingsPropertyDetailsScreenState
     extends State<MyListingsPropertyDetailsScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _showFullDescription = false;
+  bool _showAllCharacteristics = false;
+  bool _isAdvertLoaded = false;
+  bool _imagesPrecached = false;
 
-  final List<String> _images = [
-    "assets/home_page/image2.png",
-    "assets/home_page/image.png",
-    "assets/home_page/apartment1.png",
-    "assets/home_page/apartment1.png",
-  ];
+  late Listing _listing;
 
-  final List<Listing> _similarListings = [
-    Listing(
-      id: '1',
-      imagePath: "assets/property_details_screen/image2.png",
-      title: "1-к. квартира, 33 м²",
-      price: "44 500 000 ₽",
-      location: "Москва, Истринская ул, 8к3",
-      date: "09.08.2024",
-      isFavorited: false,
-      sellerName: "Андрей Коломойский",
-      sellerAvatar: "assets/property_details_screen/Andrey.png",
-      sellerRegistrationDate: "2024г.",
-    ),
-    Listing(
-      id: '2',
-      imagePath: "assets/property_details_screen/image3.png",
-      title: "2-к. квартира, 65,5 м² ",
-      price: "21 000 000 ₽",
-      location: "Москва, ул. Коминтерна, 4",
-      date: "12.04.2024",
-      isFavorited: false,
-      sellerName: "Андрей Коломойский",
-      sellerAvatar: "assets/property_details_screen/Andrey.png",
-      sellerRegistrationDate: "2024г.",
-    ),
-    Listing(
-      id: '3',
-      imagePath: "assets/property_details_screen/image4.png",
-      title: "5-к. квартира, 111 м²",
-      price: "21 000 000 ₽",
-      location: "Москва, ул. Коминтерна, 4",
-      date: "11.08.2024",
-      isFavorited: false,
-      sellerName: "Андрей Коломойский",
-      sellerAvatar: "assets/property_details_screen/Andrey.png",
-      sellerRegistrationDate: "2024г.",
-    ),
-    Listing(
-      id: '4',
-      imagePath: "assets/property_details_screen/image5.png",
-      title: "1-к. квартира, 30 м² ...",
-      price: "21 000 000 ₽",
-      location: "Москва, ул. Коминтерна, 4",
-      date: "12.04.2024",
-      isFavorited: false,
-      sellerName: "Андрей Коломойский",
-      sellerAvatar: "assets/property_details_screen/Andrey.png",
-      sellerRegistrationDate: "2024г.",
-    ),
-  ];
+  final List<Listing> _similarListings = [];
 
   @override
   void initState() {
     super.initState();
+    _listing = widget.listing;
+    print(
+      'MyListingsPropertyDetailsScreen init: listing id ${_listing.id}, images ${_listing.images.length}',
+    );
+
+    // DEBUG логирование
+    print('[DEBUG] initState - проверка полноты данных:');
+    print(
+      '  - description: "${_listing.description}" (isEmpty: ${_listing.description?.isEmpty ?? true})',
+    );
+    print(
+      '  - characteristics: ${_listing.characteristics} (count: ${_listing.characteristics.length})',
+    );
+    print(
+      '  - sellerName: "${_listing.sellerName}" (isEmpty: ${_listing.sellerName?.isEmpty ?? true})',
+    );
+
+    // Проверяем, есть ли полные данные (описание, характеристики, информация о продавце)
+    final hasCompleteData =
+        (_listing.description != null && _listing.description!.isNotEmpty) &&
+        (_listing.characteristics.isNotEmpty) &&
+        (_listing.sellerName != null && _listing.sellerName!.isNotEmpty);
+
+    print('[DEBUG] hasCompleteData: $hasCompleteData');
+    if (!hasCompleteData) {
+      print(
+        '🔄 MyListingsPropertyDetailsScreen: Загружаем полные данные из API',
+      );
+      context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
+    } else {
+      print(
+        '✅ MyListingsPropertyDetailsScreen: Используем уже загруженные данные',
+      );
+      _isAdvertLoaded = true;
+    }
+
     _pageController.addListener(() {
       int next = _pageController.page!.round();
       if (_currentPage != next) {
@@ -99,102 +92,285 @@ class _MyListingsPropertyDetailsScreenState
     super.dispose();
   }
 
+  /// Precache all images to ensure smooth scrolling
+  Future<void> _precacheImages() async {
+    if (_imagesPrecached || !mounted) return;
+
+    final images = _listing.images.isNotEmpty
+        ? _listing.images
+        : [_listing.imagePath];
+    final precacheFutures = <Future<void>>[];
+
+    for (final imageUrl in images) {
+      if (imageUrl.isEmpty) continue;
+
+      if (imageUrl.startsWith('http')) {
+        // Precache network images with timeout
+        precacheFutures.add(
+          precacheImage(
+            NetworkImage(imageUrl),
+            context,
+            size: const Size(400, 260),
+          ).timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              print('Timeout loading image: $imageUrl');
+            },
+          ),
+        );
+      } else {
+        // Precache asset images
+        precacheFutures.add(
+          precacheImage(
+            AssetImage(imageUrl),
+            context,
+            size: const Size(400, 260),
+          ).timeout(
+            const Duration(seconds: 3),
+            onTimeout: () {
+              print('Timeout loading asset image: $imageUrl');
+            },
+          ),
+        );
+      }
+    }
+
+    try {
+      await Future.wait(precacheFutures, eagerError: false);
+      print('Successfully precached ${images.length} images');
+    } catch (e) {
+      print('Error precaching images: $e');
+    }
+
+    if (mounted) {
+      setState(() {
+        _imagesPrecached = true;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 20.0),
-                  child: const Header(),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: const Icon(
-                          Icons.arrow_back_ios,
-                          color: activeIconColor,
-                          size: 16,
-                        ),
-                      ),
-                      const Text(
-                        'Назад',
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () {},
-                        child: SvgPicture.asset(
-                          'assets/home_page/share_outlined.svg',
-                          colorFilter: const ColorFilter.mode(
-                            textPrimary,
-                            BlendMode.srcIn,
+    return BlocListener<ListingsBloc, ListingsState>(
+      listener: (context, state) {
+        print('BlocListener in MyListingsPropertyDetailsScreen: $state');
+        if (state is AdvertLoaded) {
+          print(
+            'Updating _listing to ${state.listing.id} with ${state.listing.images.length} images',
+          );
+          setState(() {
+            _isAdvertLoaded = true;
+            // Всегда обновляем все данные: описание, характеристики, информацию о продавце
+            if (state.listing.images.isNotEmpty) {
+              // API вернул изображения, используем их
+              _listing = state.listing;
+            } else {
+              // API вернул пустые изображения, сохраняем исходные, но обновляем остальные данные
+              _listing = Listing(
+                id: state.listing.id,
+                imagePath: state.listing.imagePath,
+                images: _listing.images.isNotEmpty
+                    ? _listing.images
+                    : state.listing.images,
+                title: state.listing.title,
+                price: state.listing.price,
+                location: state.listing.location,
+                date: state.listing.date,
+                isFavorited: state.listing.isFavorited,
+                sellerName: state.listing.sellerName ?? _listing.sellerName,
+                sellerAvatar:
+                    state.listing.sellerAvatar ?? _listing.sellerAvatar,
+                sellerRegistrationDate:
+                    state.listing.sellerRegistrationDate ??
+                    _listing.sellerRegistrationDate,
+                description: state.listing.description ?? _listing.description,
+                characteristics: state.listing.characteristics.isNotEmpty
+                    ? state.listing.characteristics
+                    : _listing.characteristics,
+                userId: state.listing.userId ?? _listing.userId,
+              );
+            }
+            print('✅ _listing updated:');
+            print('  - Title: ${_listing.title}');
+            print(
+              '  - Description: ${_listing.description?.substring(0, 50) ?? "null"}',
+            );
+            print('  - Seller: ${_listing.sellerName}');
+            print(
+              '  - Characteristics: ${_listing.characteristics.keys.length} items',
+            );
+          });
+          // Precache images after loading the advert
+          _precacheImages();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: primaryBackground,
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20.0),
+                    child: const Header(),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 25),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.arrow_back_ios,
+                                color: activeIconColor,
+                                size: 16,
+                              ),
+                              const SizedBox(
+                                width: 4,
+                              ), // Небольшой отступ между иконкой и текстом
+                              const Text(
+                                'Назад',
+                                style: TextStyle(
+                                  color: activeIconColor,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
-                          width: 24,
-                          height: 24,
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.only(
-                      right: 25,
-                      left: 25,
-                      top: 20,
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () {},
+                          child: SvgPicture.asset(
+                            'assets/home_page/share_outlined.svg',
+                            colorFilter: const ColorFilter.mode(
+                              textPrimary,
+                              BlendMode.srcIn,
+                            ),
+                            width: 24,
+                            height: 24,
+                          ),
+                        ),
+                      ],
                     ),
-                    children: [
-                      _buildImageCarousel(),
-                      const SizedBox(height: 16),
-                      _buildMainInfoCard(),
-                      const SizedBox(height: 16),
-                      const _OfferPriceButton(),
-                      const SizedBox(height: 19),
-                      _buildLocationCard(),
-                      const SizedBox(height: 10),
-                      _buildAboutApartmentCard(),
-                      const SizedBox(height: 10),
-                      _buildDescriptionCard(),
-                      const SizedBox(height: 24),
-                      _buildSellerCard(),
-                      const SizedBox(height: 19),
-                    ],
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.only(
+                        right: 25,
+                        left: 25,
+                        top: 20,
+                      ),
+                      children: [
+                        _buildImageCarousel(),
+                        const SizedBox(height: 16),
+                        _buildMainInfoCard(),
+                        const SizedBox(height: 16),
+                        const _OfferPriceButton(),
+                        const SizedBox(height: 19),
+                        _buildLocationCard(),
+                        const SizedBox(height: 10),
+                        _buildAboutApartmentCard(),
+                        const SizedBox(height: 10),
+                        _buildDescriptionCard(),
+                        const SizedBox(height: 24),
+                        _buildSellerCard(),
+                        const SizedBox(height: 19),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildImageCarousel() {
+    if (!_isAdvertLoaded) {
+      return Shimmer.fromColors(
+        baseColor: const Color(0xFF374B5C),
+        highlightColor: const Color(0xFF4A5C6A),
+        child: Container(height: 260, color: const Color(0xFF374B5C)),
+      );
+    }
+
+    print('Listing ${_listing.id} has ${_listing.images.length} images');
+    final images = _listing.images.isNotEmpty
+        ? _listing.images
+        : [_listing.imagePath];
+
     return Column(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(5),
           child: Container(
             height: 260,
-            color: const Color(0xFFD3D3D3),
+            color: const Color(0xFF374B5C),
             child: PageView(
               controller: _pageController,
-              children: _images
-                  .map((image) => Image.asset(image, fit: BoxFit.cover))
-                  .toList(),
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              children: List.generate(
+                images.length,
+                (index) => images[index].startsWith('http')
+                    ? Image.network(
+                        images[index],
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            color: const Color(0xFF374B5C),
+                            child: const Center(
+                              child: SizedBox(
+                                width: 30,
+                                height: 30,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white70,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: const Color(0xFF374B5C),
+                            child: Icon(
+                              Icons.image,
+                              color: textMuted,
+                              size: 50,
+                            ),
+                          );
+                        },
+                      )
+                    : Image.asset(
+                        images[index],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: const Color(0xFF374B5C),
+                            child: Icon(
+                              Icons.image,
+                              color: textMuted,
+                              size: 50,
+                            ),
+                          );
+                        },
+                      ),
+              ),
             ),
           ),
         ),
@@ -202,7 +378,7 @@ class _MyListingsPropertyDetailsScreenState
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
-            _images.length,
+            images.length,
             (index) => _buildPageIndicator(index == _currentPage),
           ),
         ),
@@ -230,40 +406,40 @@ class _MyListingsPropertyDetailsScreenState
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "29.08.2024",
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                _listing.date,
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
-                "№343 232 345",
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                '№ ${_listing.id}',
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
-            "3-к. квартира, 125,5 м², 5/17 эт.",
-            style: TextStyle(
+            _listing.title,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            "44 500 000 ₽",
-            style: TextStyle(
+            _listing.price,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 4),
-          Text(
+          const SizedBox(height: 4),
+          const Text(
             "354 582 ₽ за м²",
             style: TextStyle(
               color: Colors.white70,
@@ -271,8 +447,11 @@ class _MyListingsPropertyDetailsScreenState
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 4),
-          Text("Без скидки", style: TextStyle(color: textMuted, fontSize: 12)),
+          const SizedBox(height: 4),
+          const Text(
+            "Без скидки",
+            style: TextStyle(color: textMuted, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -280,10 +459,10 @@ class _MyListingsPropertyDetailsScreenState
 
   Widget _buildLocationCard() {
     return _card(
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(top: 6.0),
             child: Text(
               "Расположение",
@@ -294,23 +473,73 @@ class _MyListingsPropertyDetailsScreenState
               ),
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
-            "Москва, Истринская ул, 8к3",
-            style: TextStyle(color: Colors.white, fontSize: 14),
+            _listing.location,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
-          SizedBox(height: 3),
+          const SizedBox(height: 3),
         ],
       ),
     );
   }
 
   Widget _buildAboutApartmentCard() {
+    final Map<String, dynamic> chars = _listing.characteristics;
+    // DEBUG: Выводим характеристики в консоль для отладки
+    print('[DEBUG] Характеристики в карточке:');
+    print('  - Всего характеристик: ${chars.length}');
+    print('  - Keys: ${chars.keys.toList()}');
+    chars.forEach((k, v) => print('  $k: $v (type: ${v.runtimeType})'));
+
+    // Формируем список виджетов для отображения характеристик
+    final List<Widget> charWidgets = [];
+    chars.forEach((key, charData) {
+      if (charData is Map<String, dynamic>) {
+        final title = charData['title'] as String? ?? 'Характеристика';
+        final value = charData['value'];
+        final maxValue = charData['max_value'];
+
+        String displayValue = '-';
+        if (value is Map && value.containsKey('value')) {
+          // Случай: {"value": ..., "max_value": ...}
+          displayValue = value['value'].toString();
+          if (value.containsKey('max_value')) {
+            displayValue += ' — ' + value['max_value'].toString();
+          }
+        } else if (maxValue != null) {
+          // Диапазон: value и max_value на разных уровнях
+          displayValue = value.toString() + ' — ' + maxValue.toString();
+        } else if (value is bool) {
+          displayValue = value ? 'Да' : 'Нет';
+        } else if (value is num) {
+          displayValue = value.toString();
+        } else if (value is String) {
+          displayValue = value;
+        } else if (value is List) {
+          // Если value это список
+          displayValue = (value as List).join(', ');
+        }
+        charWidgets.add(_InfoRow(title: '$title: ', value: displayValue));
+      }
+    });
+
+    // Количество строк, показываемых в свёрнутом состоянии
+    const int _collapsedCount = 8;
+    final bool hasMore = charWidgets.length > _collapsedCount;
+    final visibleWidgets = _showAllCharacteristics
+        ? charWidgets
+        : charWidgets.take(_collapsedCount).toList();
+
+    print(
+      '[DEBUG] charWidgets.length: ${charWidgets.length}, visibleWidgets.length: ${visibleWidgets.length}',
+    );
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Padding(
+        children: [
+          const Padding(
             padding: EdgeInsets.only(top: 6.0),
             child: Text(
               "О квартире",
@@ -321,44 +550,74 @@ class _MyListingsPropertyDetailsScreenState
               ),
             ),
           ),
-          SizedBox(height: 8),
-          _InfoRow(title: "Количество комнат: ", value: "3"),
-          _InfoRow(title: "Общая площадь: ", value: "125.5 м²"),
-          _InfoRow(title: "Площадь кухни: ", value: "14.5 м²"),
-          _InfoRow(title: "Жилая площадь: ", value: "64.5 м²"),
-          _InfoRow(title: "Этаж: ", value: "5 из 17"),
-          _InfoRow(title: "Балкон / лоджия: ", value: "балкон, лоджия"),
-          _InfoRow(title: "Дополнительно: ", value: "гардеробная"),
-          _InfoRow(title: "Тип комнат: ", value: "изолированные"),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                "Все характеристики",
-                style: TextStyle(color: Colors.blue, fontSize: 14),
+          const SizedBox(height: 8),
+          if (charWidgets.isEmpty)
+            const Text(
+              "Нет данных о характеристиках",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
               ),
-              //  SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down_sharp,
-                color: Colors.blue,
-                // size: 18,
+            )
+          else ...[
+            ...visibleWidgets,
+            if (hasMore) ...[
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showAllCharacteristics = !_showAllCharacteristics;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      _showAllCharacteristics
+                          ? "Свернуть характеристики"
+                          : "Все характеристики",
+                      style: const TextStyle(color: Colors.blue, fontSize: 14),
+                    ),
+                    Icon(
+                      _showAllCharacteristics
+                          ? Icons.keyboard_arrow_up_sharp
+                          : Icons.keyboard_arrow_down_sharp,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 2),
             ],
-          ),
-
-          SizedBox(height: 2),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildDescriptionCard() {
+    final String? descriptionText = _listing.description;
+
+    // DEBUG логирование
+    print('[DEBUG] _buildDescriptionCard called:');
+    print(
+      '  - description: ${descriptionText?.substring(0, descriptionText.length > 50 ? 50 : descriptionText.length) ?? "null"}...',
+    );
+    print('  - isEmpty: ${descriptionText?.isEmpty ?? true}');
+
+    // Проверяем, нужно ли показывать кнопку раскрытия
+    // Показываем кнопку только если текст достаточно длинный (больше 200 символов)
+    final bool hasLongDescription =
+        descriptionText != null &&
+        descriptionText.isNotEmpty &&
+        descriptionText.length > 200;
+
     return _card(
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             "Описание",
             style: TextStyle(
               color: Colors.white,
@@ -366,51 +625,89 @@ class _MyListingsPropertyDetailsScreenState
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            "Объявление от coбcтвeнника! Предлагaю сoбствeнную пpоcтopную ceмeйную квapтиpу нa тихой улице в престижнoм pайоне Mосквы.Глaвнoe дocтoинcтвo квартиры - cочeтание проcторa и уюта. В квaртире нeт золoтыx унитазов, джакузи c пилонoм ...",
-            style: TextStyle(color: Colors.white, fontSize: 14),
-            maxLines: 6,
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              Text(
-                "Все описание",
-                style: TextStyle(color: Colors.blue, fontSize: 14),
+          const SizedBox(height: 8),
+          if (descriptionText == null || descriptionText.isEmpty)
+            const Text(
+              "Описание отсутствует",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
               ),
-              //  SizedBox(width: 4),
-              Icon(
-                Icons.keyboard_arrow_down_sharp,
-                color: Colors.blue,
-                // size: 18,
+            )
+          else ...[
+            // Используем AnimatedCrossFade для плавного раскрытия/сворачивания
+            AnimatedCrossFade(
+              firstChild: Text(
+                descriptionText,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                maxLines: 6,
+                overflow: TextOverflow.ellipsis,
               ),
+              secondChild: Text(
+                descriptionText,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+              crossFadeState: _showFullDescription
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+            if (hasLongDescription) ...[
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _showFullDescription = !_showFullDescription;
+                  });
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      _showFullDescription
+                          ? "Свернуть описание"
+                          : "Все описание",
+                      style: const TextStyle(color: Colors.blue, fontSize: 14),
+                    ),
+                    Icon(
+                      _showFullDescription
+                          ? Icons.keyboard_arrow_up_sharp
+                          : Icons.keyboard_arrow_down_sharp,
+                      color: Colors.blue,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 2),
             ],
-          ),
-          SizedBox(height: 2),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildSellerCard() {
-    // Используем данные из первого объявления похожих
-    final firstListing = _similarListings.isNotEmpty
-        ? _similarListings[0]
-        : null;
-    final sellerName = firstListing?.sellerName ?? "Имя не указано";
+    final sellerName = _listing.sellerName ?? "Имя не указано";
     final sellerAvatar =
-        firstListing?.sellerAvatar ??
-        "assets/property_details_screen/Andrey.png";
-    final sellerRegDate = firstListing?.sellerRegistrationDate ?? "2024г.";
+        _listing.sellerAvatar ?? "assets/property_details_screen/Andrey.png";
+    final sellerRegDate = _listing.sellerRegistrationDate ?? "2024г.";
+
+    // DEBUG логирование
+    print('[DEBUG] _buildSellerCard called:');
+    print('  - sellerName (from listing): ${_listing.sellerName ?? "null"}');
+    print(
+      '  - sellerAvatar (from listing): ${_listing.sellerAvatar ?? "null"}',
+    );
+    print(
+      '  - sellerRegDate (from listing): ${_listing.sellerRegistrationDate ?? "null"}',
+    );
 
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 6),
-          Text(
+          const SizedBox(height: 6),
+          const Text(
             "Продавец",
             style: TextStyle(
               color: Colors.white,
@@ -418,7 +715,7 @@ class _MyListingsPropertyDetailsScreenState
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 15),
+          const SizedBox(height: 15),
           Row(
             children: [
               sellerAvatar.startsWith('http')
@@ -446,12 +743,15 @@ class _MyListingsPropertyDetailsScreenState
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       "На LIDLE с $sellerRegDate",
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
                     ),
-                    Row(
+                    const Row(
                       children: [
                         Text(
                           "Оценка:   ⭐ ",
@@ -499,14 +799,18 @@ class _InfoRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
-          Text(
-            value,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              softWrap: true,
+            ),
           ),
         ],
       ),

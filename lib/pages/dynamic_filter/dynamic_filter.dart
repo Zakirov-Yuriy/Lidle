@@ -19,6 +19,7 @@ import '../../../services/attribute_resolver.dart';
 import '../../../models/filter_models.dart';
 import '../../../models/create_advert_model.dart';
 import '../../../hive_service.dart';
+import 'package:lidle/core/cache/cacheable_bloc.dart';
 import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
 import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 
@@ -29,8 +30,10 @@ class DynamicFilter extends StatefulWidget {
   static const String routeName = '/add-real-estate-apt';
 
   final int? categoryId;
+  final int?
+  advertId; // ID объявления для редактирования (если null - создание нового)
 
-  const DynamicFilter({super.key, this.categoryId});
+  const DynamicFilter({super.key, this.categoryId, this.advertId});
 
   @override
   State<DynamicFilter> createState() => _DynamicFilterState();
@@ -43,6 +46,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
   // =============== UI Mode ===============
   static const bool _isSubmissionMode =
       true; // DynamicFilter is for creating/submitting ads
+
+  // =============== Edit Mode ===============
+  bool _isEditMode = false; // Режим редактирования
+  Map<String, dynamic>? _editAdvertData; // Данные объявления для редактирования
+  bool _isLoadingEditData = false; // Загрузка данных объявления
+  int? _editAdvertCategoryId; // Категория объявления при редактировании
 
   // =============== Main state ===============
   List<Attribute> _attributes = [];
@@ -97,14 +106,61 @@ class _DynamicFilterState extends State<DynamicFilter> {
   @override
   void initState() {
     super.initState();
-    // Initialize attributes will happen in _loadAttributes() with proper ID resolution
+
+    // Проверить режим редактирования
+    _isEditMode = widget.advertId != null;
+    print('🔧 DynamicFilter initState:');
+    print('   - advertId: ${widget.advertId}');
+    print('   - categoryId: ${widget.categoryId}');
+    print('   - isEditMode: $_isEditMode');
+
+    // Используем разные сценарии инициализации для создания vs редактирования
+    if (_isEditMode) {
+      // При редактировании: сначала загрузить данные, потом атрибуты
+      print('   → Starting initialization for EDITING mode');
+      _initializeForEditing();
+    } else {
+      // При создании: загрузить атрибуты, контакты, регионы
+      print('   → Starting initialization for CREATION mode');
+      _initializeForCreation();
+    }
+  }
+
+  /// Инициализация для создания нового объявления
+  Future<void> _initializeForCreation() async {
     _loadAttributes();
     _loadUserContacts();
     _loadRegions();
+
     // Автозаполнение для тестирования
     Future.delayed(const Duration(milliseconds: 500), () {
       _autoFillFormForTesting();
     });
+  }
+
+  /// Инициализация для редактирования объявления
+  Future<void> _initializeForEditing() async {
+    print('📝 [EDIT MODE] Step 1: Loading advert data...');
+    // 1. Загружаем данные объявления ДО загрузки атрибутов
+    await _loadAdvertDataForEditing();
+
+    // После загрузки проверяем установилась ли категория
+    print(
+      '📝 [EDIT MODE] After loading data: _editAdvertCategoryId = $_editAdvertCategoryId',
+    );
+
+    print(
+      '📝 [EDIT MODE] Step 2: Loading attributes for category $_editAdvertCategoryId...',
+    );
+    // 2. Загружаем атрибуты для категории объявления
+    _loadAttributes();
+
+    print('📝 [EDIT MODE] Step 3: Loading user contacts and regions...');
+    // 3. Загружаем вспомогательные данные (контакты, регионы)
+    _loadUserContacts();
+    _loadRegions();
+
+    print('📝 [EDIT MODE] Initialization complete!');
   }
 
   @override
@@ -179,8 +235,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   Future<void> _loadAttributes() async {
     try {
-      final categoryId = widget.categoryId ?? 2;
-      print('Loading attributes for category: $categoryId');
+      // Определяем категорию: из редактирования, затем из параметра, затем по умолчанию 2
+      final categoryId = _editAdvertCategoryId ?? widget.categoryId ?? 2;
+      print('');
+      print('🎯 _loadAttributes() called:');
+      print('   - _editAdvertCategoryId: $_editAdvertCategoryId');
+      print('   - widget.categoryId: ${widget.categoryId}');
+      print('   - Using categoryId: $categoryId');
+      print('   Loading attributes for category: $categoryId');
       final token = await HiveService.getUserData('token');
 
       // ИСПОЛЬЗУЕМ /adverts/create ВМЕСТО /meta/filters
@@ -347,6 +409,158 @@ class _DynamicFilterState extends State<DynamicFilter> {
       Future.delayed(const Duration(seconds: 5), () {
         if (mounted) _loadAttributes();
       });
+    }
+  }
+
+  /// Загрузить данные объявления для редактирования
+  Future<void> _loadAdvertDataForEditing() async {
+    if (widget.advertId == null) return;
+
+    try {
+      setState(() => _isLoadingEditData = true);
+
+      final token = await HiveService.getUserData('token');
+      final advertId = widget.advertId!;
+
+      // Получаем полные данные объявления через публичный эндпоинт
+      // В API есть /adverts/{id} который возвращает все необходимые данные
+      print('📥 Loading advert data for editing: $advertId');
+
+      final response = await ApiService.get('/adverts/$advertId', token: token);
+
+      if (response == null) {
+        throw Exception('Не удалось загрузить данные объявления');
+      }
+
+      // Парсим ответ API
+      Map<String, dynamic> advertData;
+      if (response is Map<String, dynamic>) {
+        // Проверяем есть ли обертка с 'data'
+        if (response.containsKey('data')) {
+          final data = response['data'];
+          if (data is List && data.isNotEmpty) {
+            advertData = data[0] as Map<String, dynamic>;
+          } else if (data is Map<String, dynamic>) {
+            advertData = data;
+          } else {
+            advertData = response;
+          }
+        } else {
+          advertData = response;
+        }
+      } else {
+        throw Exception('Неожиданный формат ответа от API');
+      }
+
+      print('📦 Loaded advert data: ${advertData.keys.toList()}');
+      print('📦 Full advert type data: ${advertData['type']}');
+
+      // DEBUG: Вывести все можно используемые поля для идентификации категории
+      print('📦 DEBUG - All relevant fields:');
+      print('   - type: ${advertData['type']}');
+      print('   - category_id: ${advertData['category_id']}');
+      print('   - category: ${advertData['category']}');
+      print(
+        '   - attributes: ${(advertData['attributes'] is List) ? 'List of ${(advertData['attributes'] as List).length}' : advertData['attributes']}',
+      );
+
+      // ✅ ИЗВЛЕКАЕМ КАТЕГОРИЮ ИЗ ОБЪЯВЛЕНИЯ
+      // ВАЖНО: type.id это ID типа (2=adverts), НЕ категория!
+      // Нужно найти реальный ID категории
+      int? extractedCategoryId;
+
+      // Вариант 1: category_id
+      if (advertData.containsKey('category_id') &&
+          advertData['category_id'] != null) {
+        extractedCategoryId = advertData['category_id'] as int;
+        print('📂 Found category_id = $extractedCategoryId');
+      }
+
+      // Вариант 2: если category это Map с id
+      if (extractedCategoryId == null &&
+          advertData.containsKey('category') &&
+          advertData['category'] is Map) {
+        final categoryData = advertData['category'] as Map<String, dynamic>;
+        if (categoryData.containsKey('id')) {
+          extractedCategoryId = categoryData['id'] as int;
+          print('📂 Found category.id = $extractedCategoryId');
+        }
+      }
+
+      // Вариант 3: Если это передано как widget.categoryId (параметр навигации)
+      if (extractedCategoryId == null && widget.categoryId != null) {
+        extractedCategoryId = widget.categoryId;
+        print('📂 Using widget.categoryId = $extractedCategoryId (fallback)');
+      }
+
+      // Установляем найденную категорию
+      if (extractedCategoryId != null) {
+        _editAdvertCategoryId = extractedCategoryId;
+        print('✅ SET _editAdvertCategoryId = $_editAdvertCategoryId');
+      } else {
+        print('⚠️ Could not find category ID, will use default = 2');
+        _editAdvertCategoryId = 2; // Default fallback
+      }
+
+      if (mounted) {
+        setState(() {
+          _editAdvertData = advertData;
+          _isLoadingEditData = false;
+        });
+      }
+
+      // Заполняем основные поля формы
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      if (advertData.containsKey('name')) {
+        _titleController.text = advertData['name'] as String? ?? '';
+        print('✅ Filled title: ${advertData['name']}');
+      }
+
+      if (advertData.containsKey('description')) {
+        _descriptionController.text =
+            advertData['description'] as String? ?? '';
+        print('✅ Filled description');
+      }
+
+      if (advertData.containsKey('price')) {
+        final price = advertData['price'];
+        if (price != null) {
+          _priceController.text = price.toString();
+          print('✅ Filled price: $price');
+        }
+      }
+
+      if (advertData.containsKey('address')) {
+        _buildingController.text = advertData['address'] as String? ?? '';
+        print('✅ Filled address: ${advertData['address']}');
+      }
+
+      // Заполняем контакты если есть (может быть в разных местах)
+      String contactName = '';
+      if (advertData.containsKey('contact_name')) {
+        contactName = advertData['contact_name'] as String? ?? '';
+      } else if (advertData.containsKey('user') && advertData['user'] is Map) {
+        final user = advertData['user'] as Map<String, dynamic>;
+        if (user.containsKey('name')) {
+          contactName = user['name'] as String? ?? '';
+        }
+      }
+
+      if (contactName.isNotEmpty) {
+        _contactNameController.text = contactName;
+        print('✅ Filled contact name: $contactName');
+      }
+
+      print('✅ Advert data loaded successfully');
+    } catch (e) {
+      print('❌ Error loading advert data: $e');
+      if (mounted) {
+        setState(() => _isLoadingEditData = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка загрузки данных: $e')));
+      }
     }
   }
 
@@ -1492,12 +1706,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return;
       }
 
-      // Step 1: Create advert WITHOUT images first
+      // Step 1: Create or update advert WITHOUT images first
       setState(() {
-        _publishingProgress = 'Отправка объявления на модерацию...';
+        _publishingProgress = _isEditMode
+            ? 'Обновление объявления...'
+            : 'Отправка объявления на модерацию...';
       });
 
-      final response = await ApiService.createAdvert(request, token: token);
+      // Выбираем нужный метод API в зависимости от режима
+      final response = _isEditMode && widget.advertId != null
+          ? await ApiService.updateAdvert(
+              widget.advertId!,
+              request,
+              token: token,
+            )
+          : await ApiService.createAdvert(request, token: token);
 
       if (response['success'] != true) {
         // Hide loading
@@ -1507,7 +1730,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         });
 
         // Handle validation errors (422) or other errors
-        String errorMessage = response['message'] ?? 'Ошибка публикации';
+        String errorMessage = response['message'] ?? 'Ошибка операции';
 
         // If there are detailed validation errors, show them
         if (response['errors'] != null && response['errors'] is Map) {
@@ -1538,7 +1761,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Extract advert ID from response
       int? advertId;
-      if (response['data'] != null) {
+      if (_isEditMode && widget.advertId != null) {
+        // При редактировании используем существующий ID
+        advertId = widget.advertId;
+        print('✅ Using existing advert ID for updating: $advertId');
+      } else if (response['data'] != null) {
         if (response['data'] is List && (response['data'] as List).isNotEmpty) {
           // API returns data as a list, get first item
           final data = (response['data'] as List)[0] as Map<String, dynamic>;
@@ -1567,7 +1794,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return;
       }
 
-      print('✅ Advert created with ID: $advertId');
+      print(
+        _isEditMode
+            ? '✅ Advert updated with ID: $advertId'
+            : '✅ Advert created with ID: $advertId',
+      );
 
       // Step 2: Upload images if any
       if (_images.isNotEmpty) {
@@ -1610,6 +1841,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
       print('✅ Объявление отправлено в админку');
       print('Response: ${response['message']}');
 
+      // 🗑️ Инвалидируем кеш объявлений в профиле (счетчики обновятся при возврате)
+      CacheManager().clear('profile_listings_counts');
+      print('🗑️ Кеш профиля инвалидирован - счетчики обновятся при возврате');
+
       // Show moderation dialog
       _showModerationDialog();
     } catch (e) {
@@ -1644,13 +1879,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   void _showModerationDialog() {
+    final isEditMode = _isEditMode;
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Объявление на модерации'),
-          content: const Text(
-            'Ваше объявление отправлено на модерацию. После проверки оно будет опубликовано.',
+          title: Text(
+            isEditMode ? 'Объявление обновлено' : 'Объявление на модерации',
+          ),
+          content: Text(
+            isEditMode
+                ? 'Изменения в объявлении отправлены на модерацию. После проверки они будут применены.'
+                : 'Ваше объявление отправлено на модерацию. После проверки оно будет опубликовано.',
           ),
           actions: [
             TextButton(
@@ -2508,18 +2748,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
               const SizedBox(height: 9),
 
               _buildTextField(
-                label: 'Ссылка на ваш чат в телеграм',
-                hint: 'https://t.me/Namename',
+                label: 'Ссылка на ваш чат в Max',
+                hint: 'https://Namename',
                 controller: _telegramController,
               ),
               const SizedBox(height: 9),
 
-              _buildTextField(
-                label: 'Ссылка на ваш whatsapp',
-                hint: 'https://whatsapp/Namename',
-                controller: _whatsappController,
-              ),
-
+              // _buildTextField(
+              //   label: 'Ссылка на ваш whatsapp',
+              //   hint: 'https://whatsapp/Namename',
+              //   controller: _whatsappController,
+              // ),
               const SizedBox(height: 22),
 
               // ============ Special attribute: "Вам предложат цену" ============
@@ -2566,9 +2805,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         label: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Text(
-                              'Публикация объявления...',
-                              style: TextStyle(color: Colors.white),
+                            Text(
+                              _isEditMode
+                                  ? 'Обновление объявления...'
+                                  : 'Публикация объявления...',
+                              style: const TextStyle(color: Colors.white),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -2586,7 +2827,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 )
               else
                 _buildButton(
-                  'Опубликовать',
+                  _isEditMode ? 'Обновить' : 'Опубликовать',
                   onPressed: _publishAdvert,
                   isPrimary: _selectedAction == 'publish',
                 ),
