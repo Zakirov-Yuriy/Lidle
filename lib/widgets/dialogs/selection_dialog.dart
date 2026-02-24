@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import '../components/custom_checkbox.dart';
+import '../components/custom_radio_button.dart';
 
 class SelectionDialog extends StatefulWidget {
   final String title;
@@ -149,7 +150,7 @@ class _SelectionDialogState extends State<SelectionDialog> {
                     _tempSelectedOptions.add(title);
                   }
                 } else {
-                  // For single selection, clear existing and add new
+                  // For single selection (Style D1), clear existing and add new
                   if (_tempSelectedOptions.contains(title)) {
                     _tempSelectedOptions.remove(title);
                   } else {
@@ -164,27 +165,49 @@ class _SelectionDialogState extends State<SelectionDialog> {
               style: const TextStyle(color: textPrimary, fontSize: 16),
             ),
           ),
-          CustomCheckbox(
-            value: _tempSelectedOptions.contains(title),
-            onChanged: (bool value) {
-              setState(() {
-                if (widget.allowMultipleSelection) {
+          if (widget.allowMultipleSelection)
+            // 🔲 Множественный выбор - CHECKBOXES (квадратные)
+            CustomCheckbox(
+              value: _tempSelectedOptions.contains(title),
+              onChanged: (bool value) {
+                setState(() {
                   if (value) {
                     _tempSelectedOptions.add(title);
                   } else {
                     _tempSelectedOptions.remove(title);
                   }
-                } else {
-                  if (value) {
+                });
+              },
+            )
+          else
+            // 🔘 Одиночный выбор Style D1 - RADIO BUTTONS (круглые с синим бордером)
+            CustomRadioButton<String>(
+              value: title,
+              groupValue: _tempSelectedOptions.isNotEmpty
+                  ? _tempSelectedOptions.first
+                  : null,
+              onChanged: (String? value) {
+                if (value != null) {
+                  setState(() {
                     _tempSelectedOptions.clear();
-                    _tempSelectedOptions.add(title);
-                  } else {
+                    _tempSelectedOptions.add(value);
+                  });
+                } else if (value == null) {
+                  setState(() {
                     _tempSelectedOptions.remove(title);
-                  }
+                  });
                 }
-              });
-            },
-          ),
+              },
+              selectedBorderColor: const Color(
+                0xFF888888,
+              ), // Blue border when selected
+              unselectedBorderColor: const Color(
+                0xFF888888,
+              ), // Gray border when unselected
+              selectedFillColor: const Color(
+                0xFF00A6FF,
+              ), // Blue fill when selected
+            ),
         ],
       ),
     );

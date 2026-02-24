@@ -24,6 +24,7 @@ _$AttributeImpl _$$AttributeImplFromJson(Map<String, dynamic> json) =>
       dataType: json['data_type'] as String?,
       style: json['style'] as String? ?? '',
       styleSingle: json['style_single'] as String?,
+      style2: json['style2'] as String? ?? '',
       order: (json['order'] as num?)?.toInt() ?? 0,
       values:
           (json['values'] as List<dynamic>?)
@@ -50,6 +51,7 @@ Map<String, dynamic> _$$AttributeImplToJson(_$AttributeImpl instance) =>
       'data_type': instance.dataType,
       'style': instance.style,
       'style_single': instance.styleSingle,
+      'style2': instance.style2,
       'order': instance.order,
       'values': instance.values,
     };

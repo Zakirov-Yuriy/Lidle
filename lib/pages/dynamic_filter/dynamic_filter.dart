@@ -40,6 +40,11 @@ class DynamicFilter extends StatefulWidget {
 // "Класс состояния: Управление состоянием экрана аренды квартиры"
 // ============================================================
 class _DynamicFilterState extends State<DynamicFilter> {
+  // =============== UI Mode ===============
+  static const bool _isSubmissionMode =
+      true; // DynamicFilter is for creating/submitting ads
+
+  // =============== Main state ===============
   List<Attribute> _attributes = [];
   Map<int, dynamic> _selectedValues = {};
   bool _isLoading = true;
@@ -218,34 +223,34 @@ class _DynamicFilterState extends State<DynamicFilter> {
       var mutableFilters = List<Attribute>.from(loadedAttributes);
 
       // Apply submission style mapping (Style → Style2)
+      // Save both original style and transformed style
       mutableFilters = mutableFilters.map((attr) {
         final submissionStyle = _getSubmissionStyle(attr.style);
-        if (submissionStyle != attr.style) {
-          print(
-            '🎨 Style mapping applied: ${attr.id} (${attr.title}) - Style: ${attr.style} → Style2: $submissionStyle',
-          );
-          // Create new attribute with updated style
-          return Attribute(
-            id: attr.id,
-            title: attr.title,
-            isFilter: attr.isFilter,
-            isRange: attr.isRange,
-            isMultiple: attr.isMultiple,
-            isHidden: attr.isHidden,
-            isRequired: attr.isRequired,
-            isTitleHidden: attr.isTitleHidden,
-            isSpecialDesign: attr.isSpecialDesign,
-            isPopup: attr.isPopup,
-            isMaxValue: attr.isMaxValue,
-            maxValue: attr.maxValue,
-            vmText: attr.vmText,
-            dataType: attr.dataType,
-            style: submissionStyle,
-            order: attr.order,
-            values: attr.values,
-          );
-        }
-        return attr;
+        print(
+          '🎨 Style mapping: ${attr.id} (${attr.title}) - Style: ${attr.style} → Style2: $submissionStyle',
+        );
+        // Create new attribute with both styles preserved
+        return Attribute(
+          id: attr.id,
+          title: attr.title,
+          isFilter: attr.isFilter,
+          isRange: attr.isRange,
+          isMultiple: attr.isMultiple,
+          isHidden: attr.isHidden,
+          isRequired: attr.isRequired,
+          isTitleHidden: attr.isTitleHidden,
+          isSpecialDesign: attr.isSpecialDesign,
+          isPopup: attr.isPopup,
+          isMaxValue: attr.isMaxValue,
+          maxValue: attr.maxValue,
+          vmText: attr.vmText,
+          dataType: attr.dataType,
+          style: attr.style, // Keep original API style
+          styleSingle: attr.styleSingle,
+          style2: submissionStyle, // Add transformed style for submission
+          order: attr.order,
+          values: attr.values,
+        );
       }).toList();
 
       // Инициализируем resolver для динамического поиска ID атрибутов
@@ -2593,6 +2598,39 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
+  /// Builds style header that displays submission style (styleSingle)
+  /// Shows the attribute style code above the field label
+  /// styleSingle is used during form submission and contains values like A1, B1, C1, D1, E1, F, G1, H, I
+  Widget _buildStyleHeader(Attribute attr) {
+    // For submission mode, use styleSingle (API style for form submission)
+    // For viewing mode, use style (usually empty from API)
+    final displayStyle = _isSubmissionMode
+        ? (attr.styleSingle ?? '')
+        : attr.style;
+    final stylePrefix = _isSubmissionMode ? 'Style (submit)' : 'Style (view)';
+
+    if (displayStyle.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Показывает стили над полями для отладки и валидации правильности отображения
+        // Text(
+        //   '$stylePrefix: $displayStyle',
+        //   style: const TextStyle(
+        //     color: Color(0xFFFF1744), // Red color for debug visibility
+        //     fontSize: 12,
+        //     fontWeight: FontWeight.w600,
+        //     letterSpacing: 0.3,
+        //   ),
+        // ),
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
   Widget _buildTextField({
     required String label,
     required String hint,
@@ -2929,13 +2967,48 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
     }
 
-    // Случай 4: Popup с множественным выбором (Style F)
-    // Флаги: is_popup=true, is_multiple=true, есть values
-    // Пример: Тип дома, Количество комнат, Ландшафт и т.д.
-    if (attr.isPopup && attr.isMultiple && attr.values.isNotEmpty) {
+    // Случай 3.5: Style D1 Popup с RADIO BUTTONS (Одиночный выбор - SUBMISSION MODE)
+    // Флаги: is_popup=true, is_multiple=true (но это API quirk), НЕ Style F
+    // Пример: Тип дома (13 вариантов, но RADIO buttons - только ОДНО значение можно выбрать)
+    // ВАЖНО: несмотря на флаг is_multiple=true, это показывает RADIO BUTTONS и одиночный выбор
+
+    // Логика: D1 Popup это popup + multiple, но БЕЗ явного Style F marker
+    // Style F обычно определяется через values.length > 5 в Case 7
+    // D1 Popup это "другие" popup + multiple поля (типа ID=1)
+    bool isD1PopupWithoutF =
+        (attr.styleSingle == 'D1' || attr.style == 'D') &&
+        attr.isMultiple &&
+        attr
+            .values
+            .isNotEmpty; // Note: is_popup может быть false в API, но мы переопределим его
+
+    if (attr.id == 1) {
       print(
-        '✅ DETECTED: Popup multiple select (is_popup=true, is_multiple=true) for field: ${attr.id} (${attr.title})',
+        '🔍 DEBUG ID=1: style="${attr.style}", styleSingle="${attr.styleSingle}", isPopup=${attr.isPopup}, isMultiple=${attr.isMultiple}, values.length=${attr.values.length}, isD1PopupWithoutF=$isD1PopupWithoutF',
       );
+    }
+
+    if (isD1PopupWithoutF) {
+      print(
+        '✅ DETECTED: Style D1 Popup with RADIO BUTTONS - single select only for field: ${attr.id} (${attr.title})',
+      );
+      // D1 должен показывать POPUP с RADIO buttons - переопределяем isMultiple=false и is_popup=true
+      Attribute d1Attr = attr.copyWith(isMultiple: false, isPopup: true);
+      return _buildMultipleSelectPopup(d1Attr);
+    }
+
+    // Случай 4: Style D Popup с CHECKBOXES (Множественный выбор - VIEWING MODE)
+    // Флаги: is_popup=true, is_multiple=true, есть values, style='D' (БЕЗ styleSingle=D1)
+    // Пример: Все поля которые имеют is_popup=true из API и НЕ имеют styleSingle=D1
+    // ВАЖНО: это показывает CHECKBOXES и позволяет выбрать НЕСКОЛЬКО значений
+    if (attr.isPopup &&
+        attr.isMultiple &&
+        attr.styleSingle != 'D1' &&
+        attr.values.isNotEmpty) {
+      print(
+        '✅ DETECTED: Style D Popup with CHECKBOXES - multiple select (is_popup=true, is_multiple=true, no D1 override) for field: ${attr.id} (${attr.title})',
+      );
+      // D (без D1) должен показывать CHECKBOXES - оставляем isMultiple=true
       return _buildMultipleSelectPopup(attr);
     }
 
@@ -2959,21 +3032,27 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return _buildMultipleSelectDropdown(attr);
     }
 
-    // Случай 7: Один выбор из значений (Single select dropdown)
+    // Случай 7: Один выбор из значений (Single select dropdown/popup)
     // Флаги: есть values, НО НЕ is_multiple, НЕ is_range, НЕ is_special_design
-    // Пример: Санузел (Раздельный/Смежный), Частное лицо / Бизнес (когда это выбор, а не текстовое поле)
     if (!attr.isMultiple &&
         !attr.isRange &&
         !attr.isSpecialDesign &&
         attr.values.isNotEmpty) {
-      print(
-        '✅ DETECTED: Single select from values for field: ${attr.id} (${attr.title}), ${attr.values.length} options',
-      );
-      // Если много вариантов - показать как popup, если мало - как dropdown
+      // Style F: Много вариантов (> 5) - POPUP с CHECKBOXES (MULTIPLE selection)
+      // Examples: Тип сделки, Ландшафт, Инфраструктура (7, 20, 16 опций)
       if (attr.values.length > 5) {
-        return _buildMultipleSelectPopup(attr);
+        print(
+          '✅ DETECTED: Multiple select popup (Style F) for field: ${attr.id} (${attr.title}), ${attr.values.length} options',
+        );
+        // Override: Allow multiple selection for Style F with many options
+        Attribute multiAttr = attr.copyWith(isMultiple: true);
+        return _buildMultipleSelectPopup(multiAttr);
       } else {
-        // Одиночный выбор из dropdown (не кнопки)
+        // Мало вариантов (2-5) - Single select dropdown
+        // Example: Санузел (5 опций)
+        print(
+          '✅ DETECTED: Single select dropdown for field: ${attr.id} (${attr.title}), ${attr.values.length} options',
+        );
         return _buildSingleSelectDropdown(attr);
       }
     }
@@ -3084,25 +3163,31 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Style B: Single checkbox (usually for one value like "Возможен торг")
     // If no title is hidden, show as row with label and checkbox
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedValues[attr.id] = !selected),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              attr.values.isNotEmpty
-                  ? attr.values[0].value
-                  : (attr.title + (attr.isRequired ? '*' : '')),
-              style: const TextStyle(color: textPrimary, fontSize: 14),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        GestureDetector(
+          onTap: () => setState(() => _selectedValues[attr.id] = !selected),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  attr.values.isNotEmpty
+                      ? attr.values[0].value
+                      : (attr.title + (attr.isRequired ? '*' : '')),
+                  style: const TextStyle(color: textPrimary, fontSize: 14),
+                ),
+              ),
+              const SizedBox(width: 12),
+              CustomCheckbox(
+                value: selected,
+                onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          CustomCheckbox(
-            value: selected,
-            onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -3119,12 +3204,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Example: Общее площадь, Жилая площадь
     // Uses same styling as other text input fields (style A/H)
 
-    return _buildTextField(
-      label: attr.title + (attr.isRequired ? '*' : ''),
-      hint: 'Цифрами',
-      keyboardType: TextInputType.number,
-      controller: controller,
-      onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        _buildTextField(
+          label: attr.title + (attr.isRequired ? '*' : ''),
+          hint: 'Цифрами',
+          keyboardType: TextInputType.number,
+          controller: controller,
+          onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+        ),
+      ],
     );
   }
 
@@ -3142,6 +3233,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildStyleHeader(attr),
         if (!attr.isTitleHidden)
           Text(
             attr.title + (attr.isRequired ? '*' : ''),
@@ -3286,30 +3378,39 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // - Style D with is_popup=false: show as dropdown/selection dialog
     // - Style D with is_popup=true: show as popup modal
 
-    return _buildDropdown(
-      label: attr.isTitleHidden
-          ? ''
-          : attr.title + (attr.isRequired ? '*' : ''),
-      hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SelectionDialog(
-              title: attr.title.isEmpty ? 'Выбор' : attr.title,
-              options: attr.values.map((v) => v.value).toList(),
-              selectedOptions: selected,
-              onSelectionChanged: (Set<String> newSelected) {
-                setState(() {
-                  _selectedValues[attr.id] = newSelected;
-                });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        _buildDropdown(
+          label: attr.isTitleHidden
+              ? ''
+              : attr.title + (attr.isRequired ? '*' : ''),
+          hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return SelectionDialog(
+                  title: attr.title.isEmpty ? 'Выбор' : attr.title,
+                  options: attr.values.map((v) => v.value).toList(),
+                  selectedOptions: selected,
+                  onSelectionChanged: (Set<String> newSelected) {
+                    setState(() {
+                      _selectedValues[attr.id] = newSelected;
+                    });
+                  },
+                  allowMultipleSelection: attr.isMultiple,
+                );
               },
-              allowMultipleSelection: attr.isMultiple,
             );
           },
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -3346,6 +3447,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        _buildStyleHeader(attr),
         if (!attr.isTitleHidden)
           Text(
             attr.title + (attr.isRequired ? '*' : ''),
@@ -3479,34 +3581,43 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return wrapped;
     }).toSet();
 
-    return _buildDropdown(
-      label: displayLabel,
-      hint: processedSelected.isEmpty
-          ? 'Выбрать'
-          : processedSelected.join(', '),
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SelectionDialog(
-              title: dialogTitle,
-              options: processedOptions,
-              selectedOptions: processedSelected,
-              onSelectionChanged: (Set<String> newSelected) {
-                // Восстанавливаем оригинальные значения перед сохранением
-                Set<String> originalSelected = newSelected.map((s) {
-                  return wrappedToOriginal[s] ?? s;
-                }).toSet();
-                setState(() {
-                  _selectedValues[attr.id] = originalSelected;
-                });
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        _buildDropdown(
+          label: displayLabel,
+          hint: processedSelected.isEmpty
+              ? 'Выбрать'
+              : processedSelected.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return SelectionDialog(
+                  title: dialogTitle,
+                  options: processedOptions,
+                  selectedOptions: processedSelected,
+                  onSelectionChanged: (Set<String> newSelected) {
+                    // Восстанавливаем оригинальные значения перед сохранением
+                    Set<String> originalSelected = newSelected.map((s) {
+                      return wrappedToOriginal[s] ?? s;
+                    }).toSet();
+                    setState(() {
+                      _selectedValues[attr.id] = originalSelected;
+                    });
+                  },
+                  allowMultipleSelection: attr.isMultiple,
+                );
               },
-              allowMultipleSelection: attr.isMultiple,
             );
           },
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -3527,16 +3638,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
       keyboardType = TextInputType.numberWithOptions(decimal: true);
     }
 
-    return _buildTextField(
-      label: attr.isTitleHidden
-          ? ''
-          : attr.title + (attr.isRequired ? '*' : ''),
-      hint: attr.dataType == 'integer'
-          ? 'Цифрами'
-          : (attr.dataType == 'numeric' ? 'Число' : 'Текст'),
-      keyboardType: keyboardType,
-      controller: controller,
-      onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        _buildTextField(
+          label: attr.isTitleHidden
+              ? ''
+              : attr.title + (attr.isRequired ? '*' : ''),
+          hint: attr.dataType == 'integer'
+              ? 'Цифрами'
+              : (attr.dataType == 'numeric' ? 'Число' : 'Текст'),
+          keyboardType: keyboardType,
+          controller: controller,
+          onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+        ),
+      ],
     );
   }
 
@@ -3563,23 +3680,29 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return const SizedBox.shrink(); // Skip rendering if no label
     }
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedValues[attr.id] = !selected),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              checkboxLabel,
-              style: const TextStyle(color: textPrimary, fontSize: 14),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        GestureDetector(
+          onTap: () => setState(() => _selectedValues[attr.id] = !selected),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  checkboxLabel,
+                  style: const TextStyle(color: textPrimary, fontSize: 14),
+                ),
+              ),
+              const SizedBox(width: 12),
+              CustomCheckbox(
+                value: selected,
+                onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          CustomCheckbox(
-            value: selected,
-            onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

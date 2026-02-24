@@ -26,6 +26,7 @@ class Attribute with _$Attribute {
     @JsonKey(name: 'data_type') String? dataType,
     @Default('') String style,
     @JsonKey(name: 'style_single') String? styleSingle,
+    @Default('') String style2, // Преобразованный стиль для подачи объявления
     @Default(0) int order, // API может возвращать null, используем default
     @Default([]) List<Value> values,
   }) = _Attribute;

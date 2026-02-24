@@ -50,6 +50,8 @@ mixin _$Attribute {
   String get style => throw _privateConstructorUsedError;
   @JsonKey(name: 'style_single')
   String? get styleSingle => throw _privateConstructorUsedError;
+  String get style2 =>
+      throw _privateConstructorUsedError; // Преобразованный стиль для подачи объявления
   int get order =>
       throw _privateConstructorUsedError; // API может возвращать null, используем default
   List<Value> get values => throw _privateConstructorUsedError;
@@ -86,6 +88,7 @@ abstract class $AttributeCopyWith<$Res> {
     @JsonKey(name: 'data_type') String? dataType,
     String style,
     @JsonKey(name: 'style_single') String? styleSingle,
+    String style2,
     int order,
     List<Value> values,
   });
@@ -122,6 +125,7 @@ class _$AttributeCopyWithImpl<$Res, $Val extends Attribute>
     Object? dataType = freezed,
     Object? style = null,
     Object? styleSingle = freezed,
+    Object? style2 = null,
     Object? order = null,
     Object? values = null,
   }) {
@@ -191,6 +195,10 @@ class _$AttributeCopyWithImpl<$Res, $Val extends Attribute>
                 ? _value.styleSingle
                 : styleSingle // ignore: cast_nullable_to_non_nullable
                       as String?,
+            style2: null == style2
+                ? _value.style2
+                : style2 // ignore: cast_nullable_to_non_nullable
+                      as String,
             order: null == order
                 ? _value.order
                 : order // ignore: cast_nullable_to_non_nullable
@@ -231,6 +239,7 @@ abstract class _$$AttributeImplCopyWith<$Res>
     @JsonKey(name: 'data_type') String? dataType,
     String style,
     @JsonKey(name: 'style_single') String? styleSingle,
+    String style2,
     int order,
     List<Value> values,
   });
@@ -266,6 +275,7 @@ class __$$AttributeImplCopyWithImpl<$Res>
     Object? dataType = freezed,
     Object? style = null,
     Object? styleSingle = freezed,
+    Object? style2 = null,
     Object? order = null,
     Object? values = null,
   }) {
@@ -335,6 +345,10 @@ class __$$AttributeImplCopyWithImpl<$Res>
             ? _value.styleSingle
             : styleSingle // ignore: cast_nullable_to_non_nullable
                   as String?,
+        style2: null == style2
+            ? _value.style2
+            : style2 // ignore: cast_nullable_to_non_nullable
+                  as String,
         order: null == order
             ? _value.order
             : order // ignore: cast_nullable_to_non_nullable
@@ -368,6 +382,7 @@ class _$AttributeImpl implements _Attribute {
     @JsonKey(name: 'data_type') this.dataType,
     this.style = '',
     @JsonKey(name: 'style_single') this.styleSingle,
+    this.style2 = '',
     this.order = 0,
     final List<Value> values = const [],
   }) : _values = values;
@@ -424,6 +439,10 @@ class _$AttributeImpl implements _Attribute {
   final String? styleSingle;
   @override
   @JsonKey()
+  final String style2;
+  // Преобразованный стиль для подачи объявления
+  @override
+  @JsonKey()
   final int order;
   // API может возвращать null, используем default
   final List<Value> _values;
@@ -438,7 +457,7 @@ class _$AttributeImpl implements _Attribute {
 
   @override
   String toString() {
-    return 'Attribute(id: $id, title: $title, isFilter: $isFilter, isRange: $isRange, isMultiple: $isMultiple, isHidden: $isHidden, isRequired: $isRequired, isTitleHidden: $isTitleHidden, isSpecialDesign: $isSpecialDesign, isPopup: $isPopup, isMaxValue: $isMaxValue, maxValue: $maxValue, vmText: $vmText, dataType: $dataType, style: $style, styleSingle: $styleSingle, order: $order, values: $values)';
+    return 'Attribute(id: $id, title: $title, isFilter: $isFilter, isRange: $isRange, isMultiple: $isMultiple, isHidden: $isHidden, isRequired: $isRequired, isTitleHidden: $isTitleHidden, isSpecialDesign: $isSpecialDesign, isPopup: $isPopup, isMaxValue: $isMaxValue, maxValue: $maxValue, vmText: $vmText, dataType: $dataType, style: $style, styleSingle: $styleSingle, style2: $style2, order: $order, values: $values)';
   }
 
   @override
@@ -471,13 +490,14 @@ class _$AttributeImpl implements _Attribute {
             (identical(other.style, style) || other.style == style) &&
             (identical(other.styleSingle, styleSingle) ||
                 other.styleSingle == styleSingle) &&
+            (identical(other.style2, style2) || other.style2 == style2) &&
             (identical(other.order, order) || other.order == order) &&
             const DeepCollectionEquality().equals(other._values, _values));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     runtimeType,
     id,
     title,
@@ -495,9 +515,10 @@ class _$AttributeImpl implements _Attribute {
     dataType,
     style,
     styleSingle,
+    style2,
     order,
     const DeepCollectionEquality().hash(_values),
-  );
+  ]);
 
   /// Create a copy of Attribute
   /// with the given fields replaced by the non-null parameter values.
@@ -531,6 +552,7 @@ abstract class _Attribute implements Attribute {
     @JsonKey(name: 'data_type') final String? dataType,
     final String style,
     @JsonKey(name: 'style_single') final String? styleSingle,
+    final String style2,
     final int order,
     final List<Value> values,
   }) = _$AttributeImpl;
@@ -583,6 +605,8 @@ abstract class _Attribute implements Attribute {
   @override
   @JsonKey(name: 'style_single')
   String? get styleSingle;
+  @override
+  String get style2; // Преобразованный стиль для подачи объявления
   @override
   int get order; // API может возвращать null, используем default
   @override
