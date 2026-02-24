@@ -15,6 +15,7 @@ import '../../../constants.dart';
 import '../../../services/api_service.dart';
 import '../../../services/address_service.dart';
 import '../../../services/user_service.dart';
+import '../../../services/attribute_resolver.dart';
 import '../../../models/filter_models.dart';
 import '../../../models/create_advert_model.dart';
 import '../../../hive_service.dart';
@@ -46,8 +47,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
   String _publishingProgress = '';
   Map<int, TextEditingController> _controllers = {};
 
-  // Category name
+  // Category name and attribute resolver
   String _categoryName = '';
+  late AttributeResolver _attributeResolver = AttributeResolver(
+    [],
+  ); // Инициализируется when filters loaded
 
   // User contacts
   List<Map<String, dynamic>> _userPhones = [];
@@ -88,9 +92,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   @override
   void initState() {
     super.initState();
-    // Initialize attribute 1048 (Вам предложат цену) to true by default
-    _selectedValues[1048] = true;
-
+    // Initialize attributes will happen in _loadAttributes() with proper ID resolution
     _loadAttributes();
     _loadUserContacts();
     _loadRegions();
@@ -142,71 +144,31 @@ class _DynamicFilterState extends State<DynamicFilter> {
     return styleMapping[apiStyle] ?? apiStyle;
   }
 
-  /// Маппинг ID обязательных атрибутов по категориям
-  /// Разные категории имеют разные ID для одинаковых по смыслу атрибутов
-  ///
-  /// Категории:
-  /// - 2: Продажа квартир
-  /// - 3: Долгосрочная аренда квартир
-  /// - 5: Продажа комнат
-  /// - 6: Долгосрочная аренда комнат
-  static int getOfferPriceAttributeId(int categoryId) {
-    switch (categoryId) {
-      case 2:
-        return 1048; // Продажа квартир
-      case 3:
-        return 1050; // Долгосрочная аренда квартир
-      case 5:
-        return 1051; // Продажа комнат
-      case 6:
-        return 1052; // Долгосрочная аренда комнат (предположительно)
-      default:
-        return 1048;
+  /// Получить ID атрибута "Вам предложат цену" безопасно
+  /// Гарантирует наличие ID, так как атрибут всегда добавляется в _loadAttributes()
+  int? _getOfferPriceAttributeId() {
+    // Сначала пытаемся получить через resolver
+    var id = _attributeResolver.getOfferPriceAttributeId();
+    if (id != null) {
+      return id;
     }
-  }
 
-  static int getAreaAttributeId(int categoryId) {
-    switch (categoryId) {
-      case 2:
-        return 1127; // Продажа квартир
-      case 3:
-        return 1128; // Долгосрочная аренда квартир
-      case 5:
-        return 1129; // Продажа комнат
-      case 6:
-        return 1130; // Долгосрочная аренда комнат (предположительно)
-      default:
-        return 1127;
-    }
-  }
-
-  static int getRoomsAttributeId(int categoryId) {
-    switch (categoryId) {
-      case 2:
-        return 6; // Продажа квартир
-      case 3:
-        return 39; // Долгосрочная аренда квартир
-      case 5:
-        return 73; // Продажа комнат
-      case 6:
-        return 74; // Долгосрочная аренда комнат (предположительно)
-      default:
-        return 6;
-    }
-  }
-
-  static int getSellerTypeAttributeId(int categoryId) {
-    switch (categoryId) {
-      case 2:
-        return 19; // Продажа квартир
-      case 3:
-        return 52; // Долгосрочная аренда квартир
-      case 5:
-        return 85; // Продажа комнат
-      case 6:
-        return 86; // Долгосрочная аренда комнат (предположительно)
-      default:
-        return 19;
+    // Fallback: ищем в _attributes по названию
+    try {
+      final attr = _attributes.firstWhere(
+        (a) => a.title == 'Вам предложат цену',
+      );
+      return attr.id;
+    } catch (_) {
+      // Последний fallback: ищем булевый обязательный атрибут
+      try {
+        final attr = _attributes.firstWhere(
+          (a) => a.dataType == 'boolean' && a.isRequired,
+        );
+        return attr.id;
+      } catch (_) {
+        return null;
+      }
     }
   }
 
@@ -286,38 +248,79 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return attr;
       }).toList();
 
+      // Инициализируем resolver для динамического поиска ID атрибутов
+      _attributeResolver = AttributeResolver(mutableFilters);
+      print('');
+      print('📋 ═══════════════════════════════════════════════════════');
+      print('📋 CATEGORY $categoryId - ATTRIBUTES LOADED');
+      print('📋 ═══════════════════════════════════════════════════════');
+      _attributeResolver.debugPrintAll(prefix: '   ');
+      _attributeResolver.debugPrintCriticalAttributes(prefix: '   ');
+      print('📋 ═══════════════════════════════════════════════════════');
+      print('');
+
+      // Получаем ID критических атрибутов динамически
+      var offerPriceAttrId = _attributeResolver.getOfferPriceAttributeId();
+
+      // Если не нашли по имени/типу, ищем по известным ID для недвижимости
+      // и используем первый найденный или создаём новый
+      if (offerPriceAttrId == null) {
+        print(
+          '⚠️ WARNING: Could not find "Вам предложат цену" attribute dynamically',
+        );
+        print(
+          '   Trying to find by known IDs: 1048, 1050, 1051, 1052, 1128, 1130...',
+        );
+
+        // Попробуем найти по известным ID (в случае если API поменял названия)
+        const knownOfferPriceIds = [1048, 1050, 1051, 1052, 1128, 1130];
+        for (final id in knownOfferPriceIds) {
+          if (mutableFilters.any((a) => a.id == id)) {
+            offerPriceAttrId = id;
+            print('   ✅ Found by known ID: $id');
+            break;
+          }
+        }
+      }
+
+      // Если всё ещё не нашли, создаём новый с дефолтным ID для этой категории
+      if (offerPriceAttrId == null) {
+        print(
+          '🔧 Attribute not found by name or known IDs, will create new one',
+        );
+
+        // Используем ID в зависимости от категории (fallback)
+        if (categoryId == 2) {
+          offerPriceAttrId = 1048; // Продажа квартир
+        } else if (categoryId == 3) {
+          offerPriceAttrId = 1050; // Долгосрочная аренда квартир
+        } else if (categoryId == 5) {
+          offerPriceAttrId = 1051; // Продажа комнат
+        } else if (categoryId == 6) {
+          offerPriceAttrId = 1052; // Долгосрочная аренда комнат
+        } else {
+          // Для всех остальных категорий используем базовый ID
+          offerPriceAttrId = 2000 + categoryId;
+          print(
+            '   Assigned new ID $offerPriceAttrId for category $categoryId',
+          );
+        }
+      }
+
       // Проверяем наличие обязательного атрибута "Вам предложат цену"
-      final offerPriceAttrId = getOfferPriceAttributeId(categoryId);
       final hasOfferPriceAttr = mutableFilters.any(
         (a) => a.id == offerPriceAttrId,
       );
 
       if (!hasOfferPriceAttr) {
         print(
-          '🔧 Adding missing attribute $offerPriceAttrId (Вам предложат цену) - required for category $categoryId',
+          'ℹ️ Attribute "Вам предложат цену" (ID=$offerPriceAttrId) not found in category $categoryId - skipping creation',
         );
-        final offerPriceAttr = Attribute(
-          id: offerPriceAttrId,
-          title: 'Вам предложат цену',
-          isFilter: false,
-          isRange: false,
-          isMultiple: false,
-          isHidden: true,
-          isRequired: true,
-          isTitleHidden: true,
-          isSpecialDesign: false,
-          isMaxValue: false,
-          dataType: 'boolean',
-          order: 999,
-          values: const [],
-        );
-        mutableFilters.add(offerPriceAttr);
-        print('✅ Attribute $offerPriceAttrId added to filters list');
+        // НЕ создаём искусственный атрибут - это вызовет ошибку валидации на API!
+        // Он будет пропущен при отправке, так как его нет в _attributes
+      } else {
+        print('✅ Attribute $offerPriceAttrId already exists in filters');
       }
-
-      // Инициализируем атрибут "Вам предложат цену" значением true по умолчанию
-      _selectedValues[offerPriceAttrId] = true;
-      print('✅ Initialized attribute $offerPriceAttrId = true (default)');
 
       if (mounted) {
         setState(() {
@@ -541,12 +544,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Пользователь должен заполнить форму вручную
 
     // Только инициализируем обязательный атрибут "Вам предложат цену" значением true
-    final categoryId = widget.categoryId ?? 2;
-    final offerPriceAttrId = getOfferPriceAttributeId(categoryId);
-    _selectedValues[offerPriceAttrId] = true;
-
-    print('🧪 Auto-fill DISABLED - user must fill form manually');
-    print('   Only initialized required attribute $offerPriceAttrId = true');
+    final offerPriceAttrId = _getOfferPriceAttributeId();
+    if (offerPriceAttrId != null) {
+      _selectedValues[offerPriceAttrId] = true;
+      print('🧪 Auto-fill DISABLED - user must fill form manually');
+      print('   Only initialized required attribute $offerPriceAttrId = true');
+    } else {
+      print('🧪 Auto-fill DISABLED - could not find offer price attribute');
+    }
   }
 
   /// Загружает города для выбранного региона при автозаполнении
@@ -754,10 +759,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
   void _togglePersonType(bool isIndividual) {
     setState(() {
       isIndividualSelected = isIndividual;
-      if (isIndividual) {
-        _selectedValues[19] = 'Частное лицо';
+      // Dynamically get seller type attribute ID instead of hardcoding 19
+      final sellerTypeAttrId = _attributeResolver.getSellerTypeAttributeId();
+      if (sellerTypeAttrId != null) {
+        _selectedValues[sellerTypeAttrId] = isIndividual
+            ? 'Частное лицо'
+            : 'Бизнес';
+        print(
+          '✅ Seller type set via resolver ID $sellerTypeAttrId = ${_selectedValues[sellerTypeAttrId]}',
+        );
       } else {
-        _selectedValues[19] = 'Бизнес';
+        print('⚠️ Seller type attribute ID not found in category');
       }
     });
   }
@@ -957,47 +969,86 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Handle "Вам предложат цену" attribute (ID varies by category)
     // IMPORTANT: This should be in attributes.values, NOT in value_selected!
     // API expects: attributes.values['{id}'] = {'value': 1}
-    final categoryId = widget.categoryId ?? 2;
-    final offerPriceAttrId = getOfferPriceAttributeId(categoryId);
+    // ⚠️ КРИТИЧНО: Отправляем только если атрибут существует в этой категории!
+    final offerPriceAttrId = _getOfferPriceAttributeId();
 
-    if (_selectedValues.containsKey(offerPriceAttrId) &&
-        _selectedValues[offerPriceAttrId] == true) {
-      attributes['values']['$offerPriceAttrId'] = {'value': 1};
-      print(
-        '✅ Added attribute $offerPriceAttrId (Вам предложат цену) to values as {value: 1}',
-      );
+    if (offerPriceAttrId != null &&
+        _attributes.any((a) => a.id == offerPriceAttrId)) {
+      // Атрибут существует в этой категории - добавляем в запрос
+      if (_selectedValues.containsKey(offerPriceAttrId) &&
+          _selectedValues[offerPriceAttrId] == true) {
+        attributes['values']['$offerPriceAttrId'] = {'value': 1};
+        print(
+          '✅ Added attribute $offerPriceAttrId (Вам предложат цену) to values as {value: 1}',
+        );
+      } else {
+        // If not explicitly selected, add by default (it's required)
+        attributes['values']['$offerPriceAttrId'] = {'value': 1};
+        print(
+          '✅ Added default attribute $offerPriceAttrId (Вам предложат цену) to values as {value: 1}',
+        );
+      }
     } else {
-      // If not explicitly selected, add by default (it's required)
-      attributes['values']['$offerPriceAttrId'] = {'value': 1};
       print(
-        '✅ Added default attribute $offerPriceAttrId (Вам предложат цену) to values as {value: 1}',
+        '⚠️ Attribute "Вам предложат цену" (ID=$offerPriceAttrId) NOT in current category - skipping',
       );
     }
 
     // Handle required attribute "Общая площадь" (Total area) - ID varies by category
-    final areaAttrId = getAreaAttributeId(categoryId);
+    // ⚠️ КРИТИЧНО: Отправляем только если атрибут существует в этой категории!
+    final areaAttrId = _attributeResolver.getAreaAttributeId();
 
-    if (_selectedValues.containsKey(areaAttrId)) {
-      final area = _selectedValues[areaAttrId];
-      if (area is String && area.isNotEmpty) {
-        final areaVal = int.tryParse(area.toString().trim());
-        if (areaVal != null) {
-          attributes['values']['$areaAttrId'] = {'value': areaVal};
-          print('✅ Attribute $areaAttrId (area) set: value=$areaVal');
+    if (areaAttrId != null && _attributes.any((a) => a.id == areaAttrId)) {
+      // Атрибут существует в этой категории - добавляем в запрос
+      if (_selectedValues.containsKey(areaAttrId)) {
+        final area = _selectedValues[areaAttrId];
+        if (area is String && area.isNotEmpty) {
+          final areaVal = int.tryParse(area.toString().trim());
+          if (areaVal != null) {
+            attributes['values']['$areaAttrId'] = {'value': areaVal};
+            print('✅ Attribute $areaAttrId (area) set: value=$areaVal');
+          } else {
+            // If parsing fails, set default - но только если атрибут обязательный!
+            final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
+            if (areaAttr != null && areaAttr.isRequired) {
+              attributes['values']['$areaAttrId'] = {'value': 50};
+              print('⚠️ Failed to parse area value, using default: 50');
+            } else {
+              print(
+                'ℹ️ Area attribute not required and no value provided, skipping',
+              );
+            }
+          }
         } else {
-          // If parsing fails, set default
-          attributes['values']['$areaAttrId'] = {'value': 50};
-          print('⚠️ Failed to parse area value, using default: 50');
+          // Set default area if not selected - но только если атрибут обязательный!
+          final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
+          if (areaAttr != null && areaAttr.isRequired) {
+            attributes['values']['$areaAttrId'] = {'value': 50};
+            print('✅ Set default $areaAttrId: value=50');
+          } else {
+            print(
+              'ℹ️ Area attribute not required and no value provided, skipping',
+            );
+          }
         }
       } else {
-        // Set default area if not selected
-        attributes['values']['$areaAttrId'] = {'value': 50};
-        print('✅ Set default $areaAttrId: value=50');
+        // Атрибут заполнен? Нет - проверяем обязателен ли
+        final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
+        if (areaAttr != null && areaAttr.isRequired) {
+          // Обязательный - добавляем дефолт
+          attributes['values']['$areaAttrId'] = {'value': 50};
+          print('✅ Set required default $areaAttrId: value=50');
+        } else {
+          // Не обязательный - не добавляем
+          print(
+            'ℹ️ Area attribute ($areaAttrId) not required and not provided, skipping',
+          );
+        }
       }
     } else {
-      // Set default area if not selected
-      attributes['values']['$areaAttrId'] = {'value': 50};
-      print('✅ Set default $areaAttrId: value=50');
+      print(
+        '⚠️ Attribute "Общая площадь" (ID=$areaAttrId) NOT in current category - skipping',
+      );
     }
 
     // NOTE: attribute_1048 (boolean type) is handled separately via toJson() in CreateAdvertRequest
@@ -1163,8 +1214,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Validate special attribute: "Вам предложат цену" (ID varies by category)
       // This is always required and must be explicitly set
-      final offerPriceAttrId = getOfferPriceAttributeId(widget.categoryId ?? 2);
-      if (!_selectedValues.containsKey(offerPriceAttrId) ||
+      final offerPriceAttrId = _getOfferPriceAttributeId();
+      if (offerPriceAttrId == null ||
+          !_selectedValues.containsKey(offerPriceAttrId) ||
           _selectedValues[offerPriceAttrId] == null) {
         isValid = false;
         errorMessage = 'Необходимо согласиться принимать предложения по цене';
@@ -1304,9 +1356,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
               // Make sure offer price attribute is in values with correct format {value: 1}
               // IMPORTANT: API expects {value: 1}, NOT boolean true
-              final offerPriceAttrId = getOfferPriceAttributeId(
-                request.categoryId,
-              );
+              final offerPriceAttrId = _attributeResolver
+                  .getOfferPriceAttributeId();
               if (updatedAttributes.containsKey('attribute_1048')) {
                 updatedAttributes.remove('attribute_1048');
                 print('   🗑️ Removed top-level attribute_1048 key');
@@ -1866,14 +1917,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
               else
                 ...(List<Attribute>.from(_attributes)
                       ..sort((a, b) => a.order.compareTo(b.order)))
-                    .where(
-                      (attr) =>
-                          attr.title.isNotEmpty &&
+                    .where((attr) {
+                      final offerPriceAttrId = _attributeResolver
+                          .getOfferPriceAttributeId();
+                      return attr.title.isNotEmpty &&
                           attr.id !=
-                              getOfferPriceAttributeId(
-                                widget.categoryId ?? 2,
-                              ), // Exclude "Вам предложат цену" - hidden but always true
-                    )
+                              offerPriceAttrId; // Exclude "Вам предложат цену" - hidden but always true
+                    })
                     .map(
                       (attr) => Column(
                         children: [
@@ -1883,6 +1933,93 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       ),
                     )
                     .toList(),
+
+              // ============================================================
+              // REQUIRED CONSENT ATTRIBUTE: "Вам предложат цену"
+              // ============================================================
+              // This attribute is required for all categories but visually hidden
+              // Display it as a checkbox for user to explicitly agree
+              if (!_isLoading)
+                Builder(
+                  builder: (context) {
+                    final offerPriceAttrId = _attributeResolver
+                        .getOfferPriceAttributeId();
+                    if (offerPriceAttrId == null) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final offerPriceAttr = _attributeResolver.getAttributeById(
+                      offerPriceAttrId,
+                    );
+                    if (offerPriceAttr == null) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final isChecked = _selectedValues[offerPriceAttrId] == true;
+
+                    return Column(
+                      children: [
+                        // Чекбокс для согласия с предложениями по цене
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 0,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedValues[offerPriceAttrId] =
+                                          !(isChecked);
+                                    });
+                                  },
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Я согласен получать предложения по цене',
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Продавцы смогут делать вам предложения с лучшей ценой',
+                                        style: TextStyle(
+                                          color: textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              CustomCheckbox(
+                                value: isChecked,
+                                onChanged: (bool value) {
+                                  setState(() {
+                                    _selectedValues[offerPriceAttrId] = value;
+                                  });
+                                  print(
+                                    '✅ Updated attribute $offerPriceAttrId (${offerPriceAttr.title}): $value',
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    );
+                  },
+                ),
 
               const SizedBox(height: 18),
 
@@ -2637,13 +2774,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   Widget _buildAreaRangeField() {
-    // Build special field for attribute 1127 (Total area)
-    // Changed to single input field instead of range
-    _selectedValues[1127] ??= '';
+    // Build special field for total area - dynamically get attribute ID
+    final areaAttrId = _attributeResolver.getAreaAttributeId();
+
+    if (areaAttrId == null) {
+      print('⚠️ Area attribute ID not found, skipping field');
+      return const SizedBox.shrink();
+    }
+
+    _selectedValues[areaAttrId] ??= '';
 
     final controller = _controllers.putIfAbsent(
-      1127,
-      () => TextEditingController(text: _selectedValues[1127] ?? ''),
+      areaAttrId,
+      () => TextEditingController(text: _selectedValues[areaAttrId] ?? ''),
     );
 
     return Container(
@@ -2662,9 +2805,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         onChanged: (value) {
-          print('onChanged for 1127 area: $value');
+          print('onChanged for $areaAttrId area: $value');
           setState(() {
-            _selectedValues[1127] = value;
+            _selectedValues[areaAttrId] = value;
           });
         },
       ),
@@ -2953,6 +3096,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
               style: const TextStyle(color: textPrimary, fontSize: 14),
             ),
           ),
+          const SizedBox(width: 12),
           CustomCheckbox(
             value: selected,
             onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
@@ -3429,6 +3573,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
               style: const TextStyle(color: textPrimary, fontSize: 14),
             ),
           ),
+          const SizedBox(width: 12),
           CustomCheckbox(
             value: selected,
             onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
