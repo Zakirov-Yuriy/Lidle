@@ -346,15 +346,14 @@ class _UniversalBrowseCategoryScreenState
                               height: 51,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // Показать все объявления (можно реализовать фильтр "все")
-                                  // Пока просто открываем экран списков с catalogId
+                                  // Показать все объявления каталога
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           RealEstateListingsScreen(
-                                            categoryId:
-                                                null, // Показать все объявления
+                                            // Передаем catalogId для показа всех объявлений этого каталога
+                                            catalogId: widget.catalogId,
                                             categoryName: widget.catalogName,
                                           ),
                                     ),

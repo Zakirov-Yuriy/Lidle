@@ -408,21 +408,25 @@ class _HomePageState extends State<HomePage> {
                                   FullCategoryScreen.routeName,
                                 );
                               } else {
-                                // Для всех остальных категорий передаем их ID
-                                // API сам определит тип категории (каталог или подкатегория)
                                 print(
-                                  '📍 Opening category: ${category.title} (ID: ${category.id})',
+                                  '📍 Opening category: ${category.title} (ID: ${category.id}, isCatalog: ${category.isCatalog})',
                                 );
+
+                                // Если это основной каталог, передаем catalogId
+                                // Если это подкатегория, передаем categoryId
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) => RealEstateListingsScreen(
-                                      // Передаем categoryId для всех категорий
-                                      // API поддерживает оба параметра (category_id и catalog_id)
-                                      categoryId: category.id,
-                                      catalogId: null,
-                                      categoryName: category.title,
-                                    ),
+                                    builder: (context) =>
+                                        RealEstateListingsScreen(
+                                          categoryId: category.isCatalog
+                                              ? null
+                                              : category.id,
+                                          catalogId: category.isCatalog
+                                              ? category.id
+                                              : null,
+                                          categoryName: category.title,
+                                        ),
                                   ),
                                 );
                               }

@@ -124,6 +124,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       title: _formatCategoryTitle(catalog.name ?? ''),
       color: colors[colorIndex],
       imagePath: catalog.thumbnail ?? 'assets/home_page/image2.png',
+      isCatalog: true, // Это основной каталог
     );
   }
 
@@ -768,18 +769,22 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Конвертирует Category в JSON для кеша.
   Map<String, dynamic> _categoryToJson(home.Category category) {
     return {
+      'id': category.id,
       'title': category.title,
       'color': category.color.value,
       'imagePath': category.imagePath,
+      'isCatalog': category.isCatalog,
     };
   }
 
   /// Конвертирует JSON обратно в Category из кеша.
   home.Category _jsonToCategory(Map<String, dynamic> json) {
     return home.Category(
+      id: json['id'],
       title: json['title'] ?? '',
       color: Color(json['color'] ?? 0xFF00A6FF),
       imagePath: json['imagePath'] ?? '',
+      isCatalog: json['isCatalog'] ?? true,
     );
   }
 }

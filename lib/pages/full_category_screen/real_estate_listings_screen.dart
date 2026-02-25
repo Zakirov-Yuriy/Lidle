@@ -104,28 +104,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
       final token = await HiveService.getUserData('token');
 
-      // Определяем, какой параметр использовать для API запроса
-      // По умолчанию используем categoryId если он есть
-      // Но для основных каталогов (которые имеют много подкатегорий),
-      // используем catalogId вместо categoryId
-
-      int? finalCategoryId = widget.categoryId;
-      int? finalCatalogId = widget.catalogId;
-
-      // Если категория передана по имени, попробуем использовать catalogId
-      // (это означает, что это основной каталог с множеством подкатегорий)
-      if (widget.categoryName != null &&
-          widget.categoryId != null &&
-          widget.catalogId == null) {
-        // Для основных каталогов передаем catalogId вместо categoryId
-        // Это позволяет получить ВСЕ объявления из этого каталога, включая подкатегории
-        finalCatalogId = widget.categoryId;
-        finalCategoryId = null;
-      }
+      // Используем переданные параметры как есть:
+      // - Если catalogId передан → используем для фильтрации по каталогу
+      // - Если categoryId передан (и catalogId == null) → используем для фильтрации по подкатегории
 
       final response = await ApiService.getAdverts(
-        categoryId: finalCategoryId,
-        catalogId: finalCatalogId,
+        categoryId: widget.categoryId,
+        catalogId: widget.catalogId,
         sort: sort,
         page: isNextPage ? _currentPage + 1 : 1,
         limit: 20,
@@ -137,7 +122,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         '📊 Meta: currentPage=${response.meta?.currentPage}, totalPages=${response.meta?.lastPage}, itemsPerPage=${response.meta?.perPage}',
       );
       print(
-        '📊 Category: ${widget.categoryName}, categoryId=$finalCategoryId, catalogId=$finalCatalogId',
+        '📊 Category: ${widget.categoryName}, categoryId=${widget.categoryId}, catalogId=${widget.catalogId}',
       );
 
       final newListings = response.data

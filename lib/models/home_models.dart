@@ -17,12 +17,18 @@ class Category {
   /// Путь к изображению, представляющему категорию.
   final String imagePath;
 
+  /// Флаг, указывающий является ли это основным каталогом.
+  /// Если true - это каталог (Недвижимость, Работа, Подработка и т.д.)
+  /// Если false - это подкатегория (Продажа квартир, Аренда и т.д.)
+  final bool isCatalog;
+
   /// Конструктор для создания экземпляра [Category].
   const Category({
     this.id,
     required this.title,
     required this.color,
     required this.imagePath,
+    this.isCatalog = true,
   });
 }
 
