@@ -100,14 +100,14 @@ class Advert {
       thumbnail: json['thumbnail'],
       images: imagess,
       status: json['status'] != null
-          ? AdvertStatus.fromJson(json['status'])
+          ? AdvertStatus.fromJson(json['status'] as Map<String, dynamic>)
           : AdvertStatus(id: 1, title: 'Active'),
       address: json['address'] ?? '',
       viewsCount: json['views_count'] ?? 0,
       clickCount: json['click_count'] ?? 0,
       shareCount: json['share_count'] ?? 0,
       type: json['type'] != null
-          ? AdvertType.fromJson(json['type'])
+          ? AdvertType.fromJson(json['type'] as Map<String, dynamic>)
           : AdvertType(id: 1, type: 'adverts', path: 'adverts'),
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
@@ -125,7 +125,10 @@ class AdvertStatus {
   AdvertStatus({required this.id, required this.title});
 
   factory AdvertStatus.fromJson(Map<String, dynamic> json) {
-    return AdvertStatus(id: json['id'], title: json['title']);
+    return AdvertStatus(
+      id: json['id'] ?? 0,
+      title: json['title'] ?? 'Unknown', // Обрабатываем null значения
+    );
   }
 }
 
@@ -137,7 +140,11 @@ class AdvertType {
   AdvertType({required this.id, required this.type, required this.path});
 
   factory AdvertType.fromJson(Map<String, dynamic> json) {
-    return AdvertType(id: json['id'], type: json['type'], path: json['path']);
+    return AdvertType(
+      id: json['id'] ?? 0,
+      type: json['type'] ?? '', // Обрабатываем null значения из API
+      path: json['path'] ?? '',
+    );
   }
 }
 

@@ -139,6 +139,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Обработчик события загрузки объявлений.
   /// Загружает объявления и категории из API.
+  ///
+  /// Алгоритм:
+  /// 1. Загружает первые 3 страницы (150+ объявлений) для каждого каталога параллельно
+  /// 2. Объединяет результаты всех каталогов в один список
+  /// 3. Сортирует по датам (новые в начале)
+  /// 4. При скролле в конец списка, загружает следующие страницы (4+)
+  /// 5. Использует кеш Hive для быстрой загрузки при повторном открытии
   Future<void> _onLoadListings(
     LoadListingsEvent event,
     Emitter<ListingsState> emit,
@@ -227,57 +234,91 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       int totalPages = 1;
       int itemsPerPage = 20;
 
-      // 🚀 ПАРАЛЛЕЛЬНАЯ загрузка: все запросы выполняются одновременно!
+      // 🚀 ПАРАЛЛЕЛЬНАЯ загрузка ПЕРВЫХ 3 СТРАНИЦ: все запросы выполняются одновременно!
       final advertsStart = DateTime.now();
       print(
-        '⏱️ [ADVERTS] Начало параллельной загрузки ${catalogIds.length} каталогов...',
+        '⏱️ [ADVERTS] Начало параллельной загрузки ${catalogIds.length} каталогов (первые 3 страницы х 50 объявлений)...',
       );
 
-      final advertsFutures = catalogIds
-          .map(
-            (catalogId) =>
+      final advertsFutures = <Future<Map<String, dynamic>>>[];
+
+      // Для каждого каталога загружаем первые 3 страницы параллельно
+      for (final catalogId in catalogIds) {
+        advertsFutures.add(
+          Future.wait([
                 ApiService.getAdverts(
-                      catalogId: catalogId,
-                      token: token,
-                      page: 1,
-                      limit: 50,
-                    )
-                    .then((response) {
-                      final listings = response.data.map((advert) {
-                        print(
-                          'Advert ${advert.id} has ${advert.images.length} images',
-                        );
-                        return advert.toListing();
-                      }).toList();
+                  catalogId: catalogId,
+                  token: token,
+                  page: 1,
+                  limit: 50,
+                ),
+                ApiService.getAdverts(
+                  catalogId: catalogId,
+                  token: token,
+                  page: 2,
+                  limit: 50,
+                ),
+                ApiService.getAdverts(
+                  catalogId: catalogId,
+                  token: token,
+                  page: 3,
+                  limit: 50,
+                ),
+              ])
+              .then((pageResponses) {
+                final catalogListings = <home.Listing>[];
+                late AdvertsResponse lastResponse;
 
-                      // Для первой категории сохраняем пагинацию
-                      if (catalogId == catalogIds.first) {
-                        currentPage = response.meta?.currentPage ?? 1;
-                        totalPages = response.meta?.lastPage ?? 1;
-                        itemsPerPage = response.meta?.perPage ?? 20;
-                      }
-
-                      return listings;
-                    })
-                    .catchError((e) {
+                for (final response in pageResponses) {
+                  catalogListings.addAll(
+                    response.data.map((advert) {
                       print(
-                        'Ошибка загрузки объявлений для catalogId=$catalogId: $e',
+                        'Advert ${advert.id} has ${advert.images.length} images',
                       );
-                      return <home.Listing>[];
-                    }),
-          )
-          .toList();
+                      return advert.toListing();
+                    }).toList(),
+                  );
+                  lastResponse = response;
+                }
+
+                return {
+                  'listings': catalogListings,
+                  'lastPage': lastResponse.meta!.lastPage ?? 1,
+                  'perPage': lastResponse.meta!.perPage ?? 20,
+                };
+              })
+              .catchError((e) {
+                print(
+                  'Ошибка загрузки объявлений для catalogId=$catalogId: $e',
+                );
+                return {
+                  'listings': <home.Listing>[],
+                  'lastPage': 1,
+                  'perPage': 20,
+                };
+              }),
+        );
+      }
 
       // Ждём все запросы одновременно
-      final allAdvertsLists = await Future.wait(advertsFutures);
+      final allAdvertsResponses = await Future.wait(advertsFutures);
       final advertsDuration = DateTime.now().difference(advertsStart);
       print(
         '⏱️ [ADVERTS] Параллельная загрузка завершена за ${advertsDuration.inMilliseconds}ms',
       );
 
-      for (final listings in allAdvertsLists) {
+      // Объединяем результаты всех каталогов
+      for (final response in allAdvertsResponses) {
+        final listings = response['listings'] as List<home.Listing>;
         allListings.addAll(listings);
+
+        // Сохраняем информацию пагинации из ответа
+        totalPages = response['lastPage'] ?? 1;
+        itemsPerPage = response['perPage'] ?? 20;
       }
+
+      // Устанавливаем текущую страницу на 3 (так как загружали 3 страницы)
+      currentPage = 3;
 
       print(
         '📊 API Response: ${loadedCategories.length} категорий, ${allListings.length} объявлений загружено',
@@ -485,6 +526,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Обработчик события загрузки следующей страницы.
   /// Добавляет объявления из следующей страницы к существующим.
+  ///
+  /// Загружает следующую страницу (4+) из каталога 1 (все категории).
+  /// Используется при прокрутке списка до конца.
   Future<void> _onLoadNextPage(
     LoadNextPageEvent event,
     Emitter<ListingsState> emit,
@@ -496,28 +540,36 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Проверяем, не на последней ли мы странице
     if (currentState.currentPage >= currentState.totalPages) {
+      print(
+        '⚠️ Достигнута последняя страница (${currentState.currentPage}/${currentState.totalPages})',
+      );
       return; // Не загружаем, если это последняя страница
     }
 
     // Начинаем загрузку следующей страницы
     final nextPage = currentState.currentPage + 1;
+    print('📄 Загрузка страницы $nextPage из ${currentState.totalPages}...');
 
     try {
       // Получаем токен для аутентификации
       final token = await HiveService.getUserData('token');
 
-      // Загружаем объявления следующей страницы
+      // Загружаем объявления следующей страницы из каталога 1 (все категории)
       final advertsResponse = await ApiService.getAdverts(
         catalogId: 1, // Каталог 1 = все категории
         token: token,
         page: nextPage,
-        limit: 50, // Оптимизация: загружаем 50 объявлений, остальные при scroll
+        limit: 50,
       );
 
       // Преобразуем Advert в Listing
       final newListings = advertsResponse.data.map((advert) {
         return advert.toListing();
       }).toList();
+
+      print(
+        '✅ Загружено ${newListings.length} объявлений для страницы $nextPage',
+      );
 
       // Объединяем существующие объявления с новыми
       final allListings = [...currentState.listings, ...newListings];
@@ -546,6 +598,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Обработчик события загрузки конкретной страницы.
   /// Заменяет текущие объявления объявлениями указанной страницы.
+  ///
+  /// Загружает объявления из каталога 1 (все категории).
+  /// Используется для прямой навигации на конкретную страницу.
   Future<void> _onLoadSpecificPage(
     LoadSpecificPageEvent event,
     Emitter<ListingsState> emit,
@@ -557,25 +612,34 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Проверяем валидность номера страницы
     if (event.pageNumber < 1 || event.pageNumber > currentState.totalPages) {
+      print(
+        '⚠️ Неверный номер страницы: ${event.pageNumber} (всего: ${currentState.totalPages})',
+      );
       return;
     }
+
+    print('📄 Загрузка конкретной страницы ${event.pageNumber}...');
 
     try {
       // Получаем токен для аутентификации
       final token = await HiveService.getUserData('token');
 
-      // Загружаем объявления конкретной страницы
+      // Загружаем объявления конкретной страницы из каталога 1 (все категории)
       final advertsResponse = await ApiService.getAdverts(
         catalogId: 1, // Каталог 1 = все категории
         token: token,
         page: event.pageNumber,
-        limit: 50, // Оптимизация: загружаем 50 объявлений, остальные при scroll
+        limit: 50,
       );
 
       // Преобразуем Advert в Listing
       final listings = advertsResponse.data.map((advert) {
         return advert.toListing();
       }).toList();
+
+      print(
+        '✅ Загружено ${listings.length} объявлений для страницы ${event.pageNumber}',
+      );
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(listings);

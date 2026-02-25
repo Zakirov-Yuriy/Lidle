@@ -312,8 +312,8 @@ class _HomePageState extends State<HomePage> {
         )
         .toList();
 
-    // Берем максимум 3 первые категории
-    final displayCategories = filteredCategories.take(4).toList();
+    // Показываем все категории без ограничений
+    final displayCategories = filteredCategories.toList();
 
     // Добавляем "Смотреть все" в конец если оно есть в исходном списке
     final viewAllCategory = categories.firstWhere(
@@ -408,29 +408,21 @@ class _HomePageState extends State<HomePage> {
                                   FullCategoryScreen.routeName,
                                 );
                               } else {
-                                // Специальная обработка для каталогов - показать все объявления каталога
-                                final isCatalogCategory = [
-                                  'Недвижимость',
-                                  'Работа',
-                                  'Подработка',
-                                  'Авто запчасти',
-                                ].contains(category.title);
+                                // Для всех остальных категорий передаем их ID
+                                // API сам определит тип категории (каталог или подкатегория)
                                 print(
                                   '📍 Opening category: ${category.title} (ID: ${category.id})',
                                 );
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (context) =>
-                                        RealEstateListingsScreen(
-                                          categoryId: isCatalogCategory
-                                              ? null
-                                              : category.id,
-                                          catalogId: isCatalogCategory
-                                              ? category.id
-                                              : null,
-                                          categoryName: category.title,
-                                        ),
+                                    builder: (context) => RealEstateListingsScreen(
+                                      // Передаем categoryId для всех категорий
+                                      // API поддерживает оба параметра (category_id и catalog_id)
+                                      categoryId: category.id,
+                                      catalogId: null,
+                                      categoryName: category.title,
+                                    ),
                                   ),
                                 );
                               }
