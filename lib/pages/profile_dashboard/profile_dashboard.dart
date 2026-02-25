@@ -100,65 +100,85 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         return;
       }
 
-      print('🔄 Загружаем количество объявлений со ВСЕХ статусов...');
+      print('🔄 Загружаем ВСЕ объявления пользователя (все статусы)...');
 
-      // Загружаем со ВСЕХ статусов параллельно (как в my_listings_screen.dart)
-      // Статусы: 1=Активные, 2=Неактивные, 3=На модерации, 8=Архивированные
-      final results = await Future.wait([
-        MyAdvertsService.getMyAdverts(statusId: 1, token: token, page: 1),
-        MyAdvertsService.getMyAdverts(statusId: 2, token: token, page: 1),
-        MyAdvertsService.getMyAdverts(statusId: 3, token: token, page: 1),
-        MyAdvertsService.getMyAdverts(statusId: 8, token: token, page: 1),
-      ]);
+      // Статусы: 1=Active, 2=Inactive, 3=Moderation, 8=Archived
+      final statuses = [1, 2, 3, 8];
+      var allAdverts = <dynamic>[];
 
-      // Используем response.total если доступно, иначе response.data.length
-      final activeCount = results[0].total ?? results[0].data.length;
-      final inactiveCount = results[1].total ?? results[1].data.length;
-      final moderationCount = results[2].total ?? results[2].data.length;
-      final archiveCount = results[3].total ?? results[3].data.length;
-      final totalCount =
-          activeCount + inactiveCount + moderationCount + archiveCount;
+      for (final statusId in statuses) {
+        print('📄 Загружаем объявления со статусом $statusId...');
+        var pageNum = 1;
+        var hasMorePages = true;
 
-      print(
-        '📊 Активные: $activeCount (total=${results[0].total}, dataLen=${results[0].data.length})',
-      );
-      print(
-        '📊 Неактивные: $inactiveCount (total=${results[1].total}, dataLen=${results[1].data.length})',
-      );
-      print(
-        '📊 На модерации: $moderationCount (total=${results[2].total}, dataLen=${results[2].data.length})',
-      );
-      print(
-        '📊 Архивированные: $archiveCount (total=${results[3].total}, dataLen=${results[3].data.length})',
-      );
-      print('✅ ВСЕГО ОБЪЯВЛЕНИЙ: $totalCount');
+        while (hasMorePages) {
+          print(
+            '   📄 Страница $pageNum страница $pageNum (статус=$statusId)...',
+          );
 
-      // Показываем информацию о категориях объявлений
-      final allAdvertsMerged = <dynamic>[
-        ...results[0].data,
-        ...results[1].data,
-        ...results[2].data,
-        ...results[3].data,
-      ];
+          try {
+            final response = await MyAdvertsService.getMyAdverts(
+              token: token,
+              page: pageNum,
+              statusId: statusId,
+            );
+
+            print('   ✓ Response: data.length=${response.data.length}');
+            print('   ✓ Response.page=${response.page}');
+            print('   ✓ Response.lastPage=${response.lastPage}');
+
+            allAdverts.addAll(response.data);
+            print('   ✓ Всего в памяти: ${allAdverts.length}');
+
+            final currentPage = response.page ?? 1;
+            final lastPage = response.lastPage ?? 1;
+
+            if (currentPage >= lastPage) {
+              hasMorePages = false;
+              print('   ✓ Последняя страница для статуса $statusId');
+            } else {
+              pageNum++;
+            }
+          } catch (e, st) {
+            print('   ❌ Ошибка статус $statusId страница $pageNum: $e');
+            hasMorePages = false;
+            // Не пробрасываем - продолжаем со следующего статуса
+            break;
+          }
+        }
+      }
+
+      final totalCount = allAdverts.length;
 
       print('');
-      print('📁 СТАТУС ЗАГРУЗКИ:');
-      print('   ✓ Это объявления со ВСЕХ категорий!');
-      print('   ✓ Всего загружено объявлений: ${allAdvertsMerged.length}');
-      print(
-        '   ✓ Примеры: ${allAdvertsMerged.take(3).map((a) => a.name).toList()}',
-      );
+      print('✅ ФИНАЛЬНЫЙ РЕЗУЛЬТАТ:');
+      print('   ✓ Всего объявлений: $totalCount');
+      print('   ✓ По статусам загружено');
+      if (allAdverts.isNotEmpty) {
+        print(
+          '   ✓ Первые объявления: ${allAdverts.take(3).map((a) => '${a.name}').toList()}',
+        );
+      } else {
+        print('   ⚠️ Объявления не загружены!');
+      }
       print('');
 
       setState(() {
         _activeListingsCount = totalCount;
-        _inactiveListingsCount = 0; // Используем только _activeListingsCount
+        _inactiveListingsCount = 0;
         _isLoadingListings = false;
       });
-    } catch (e) {
-      print('⚠️ Ошибка загрузки количества объявлений: $e');
-      print('   Stack: $e');
-      setState(() => _isLoadingListings = false);
+    } catch (e, st) {
+      print('');
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА ЗАГРУЗКИ:');
+      print('   Error: $e');
+      print('   StackTrace: $st');
+      print('');
+      setState(() {
+        _activeListingsCount = 0;
+        _inactiveListingsCount = 0;
+        _isLoadingListings = false;
+      });
     }
   }
 

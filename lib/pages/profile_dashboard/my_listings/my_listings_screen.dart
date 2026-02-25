@@ -149,11 +149,32 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       _moderationListingsPage = 1;
 
       // Загружаем объявления всех статусов параллельно
+      // ⚠️ limit: 1000 позволяет получить ВСЕ объявления в одном запросе
       final results = await Future.wait([
-        MyAdvertsService.getMyAdverts(statusId: 1, token: token, page: 1),
-        MyAdvertsService.getMyAdverts(statusId: 2, token: token, page: 1),
-        MyAdvertsService.getMyAdverts(statusId: 3, token: token, page: 1),
-        MyAdvertsService.getMyAdverts(statusId: 8, token: token, page: 1),
+        MyAdvertsService.getMyAdverts(
+          statusId: 1,
+          token: token,
+          page: 1,
+          limit: 1000,
+        ),
+        MyAdvertsService.getMyAdverts(
+          statusId: 2,
+          token: token,
+          page: 1,
+          limit: 1000,
+        ),
+        MyAdvertsService.getMyAdverts(
+          statusId: 3,
+          token: token,
+          page: 1,
+          limit: 1000,
+        ),
+        MyAdvertsService.getMyAdverts(
+          statusId: 8,
+          token: token,
+          page: 1,
+          limit: 1000,
+        ),
       ]);
 
       if (mounted) {
@@ -221,30 +242,35 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       _moderationListingsPage = 1;
 
       // Загружаем объявления всех статусов по категории параллельно
+      // ⚠️ limit: 1000 позволяет получить ВСЕ объявления в одном запросе
       final results = await Future.wait([
         MyAdvertsService.getMyAdverts(
           statusId: 1,
           categoryId: categoryId,
           token: token,
           page: 1,
+          limit: 1000,
         ),
         MyAdvertsService.getMyAdverts(
           statusId: 2,
           categoryId: categoryId,
           token: token,
           page: 1,
+          limit: 1000,
         ),
         MyAdvertsService.getMyAdverts(
           statusId: 3,
           categoryId: categoryId,
           token: token,
           page: 1,
+          limit: 1000,
         ),
         MyAdvertsService.getMyAdverts(
           statusId: 8,
           categoryId: categoryId,
           token: token,
           page: 1,
+          limit: 1000,
         ),
       ]);
 
@@ -332,6 +358,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         categoryId: _selectedCategoryId,
         token: token,
         page: nextPage,
+        limit: 1000,
       );
 
       if (mounted) {

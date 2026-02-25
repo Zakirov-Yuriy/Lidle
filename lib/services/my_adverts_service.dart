@@ -5,22 +5,33 @@ import 'package:lidle/services/api_service.dart';
 part 'my_adverts_service.g.dart';
 
 @JsonSerializable()
-class MyAdvertsResponse {
-  final List<UserAdvert> data;
-  final int? total;
-  final int? page;
+class Meta {
+  @JsonKey(name: 'current_page')
+  final int? currentPage;
   @JsonKey(name: 'per_page')
   final int? perPage;
   @JsonKey(name: 'last_page')
   final int? lastPage;
+  final int? total;
 
-  MyAdvertsResponse({
-    required this.data,
-    this.total,
-    this.page,
-    this.perPage,
-    this.lastPage,
-  });
+  Meta({this.currentPage, this.perPage, this.lastPage, this.total});
+
+  factory Meta.fromJson(Map<String, dynamic> json) => _$MetaFromJson(json);
+  Map<String, dynamic> toJson() => _$MetaToJson(this);
+}
+
+@JsonSerializable()
+class MyAdvertsResponse {
+  final List<UserAdvert> data;
+  final Meta? meta;
+  final int? total;
+
+  // Convenience getters
+  int? get page => meta?.currentPage;
+  int? get perPage => meta?.perPage;
+  int? get lastPage => meta?.lastPage;
+
+  MyAdvertsResponse({required this.data, this.meta, this.total});
 
   factory MyAdvertsResponse.fromJson(Map<String, dynamic> json) =>
       _$MyAdvertsResponseFromJson(json);
@@ -114,6 +125,7 @@ class MyAdvertsService {
     int? statusId,
     int? catalogId,
     int? categoryId,
+    int? limit,
     required String token,
   }) async {
     try {
@@ -129,6 +141,9 @@ class MyAdvertsService {
       }
       if (categoryId != null) {
         params['category_id'] = categoryId;
+      }
+      if (limit != null) {
+        params['per_page'] = limit;
       }
 
       final response = await ApiService.getWithQuery(

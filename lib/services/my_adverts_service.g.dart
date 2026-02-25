@@ -6,24 +6,36 @@ part of 'my_adverts_service.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+Meta _$MetaFromJson(Map<String, dynamic> json) => Meta(
+  currentPage: (json['current_page'] as num?)?.toInt(),
+  perPage: (json['per_page'] as num?)?.toInt(),
+  lastPage: (json['last_page'] as num?)?.toInt(),
+  total: (json['total'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$MetaToJson(Meta instance) => <String, dynamic>{
+  'current_page': instance.currentPage,
+  'per_page': instance.perPage,
+  'last_page': instance.lastPage,
+  'total': instance.total,
+};
+
 MyAdvertsResponse _$MyAdvertsResponseFromJson(Map<String, dynamic> json) =>
     MyAdvertsResponse(
       data: (json['data'] as List<dynamic>)
           .map((e) => UserAdvert.fromJson(e as Map<String, dynamic>))
           .toList(),
+      meta: json['meta'] == null
+          ? null
+          : Meta.fromJson(json['meta'] as Map<String, dynamic>),
       total: (json['total'] as num?)?.toInt(),
-      page: (json['page'] as num?)?.toInt(),
-      perPage: (json['per_page'] as num?)?.toInt(),
-      lastPage: (json['last_page'] as num?)?.toInt(),
     );
 
 Map<String, dynamic> _$MyAdvertsResponseToJson(MyAdvertsResponse instance) =>
     <String, dynamic>{
       'data': instance.data,
+      'meta': instance.meta,
       'total': instance.total,
-      'page': instance.page,
-      'per_page': instance.perPage,
-      'last_page': instance.lastPage,
     };
 
 CreateAdvertRequest _$CreateAdvertRequestFromJson(Map<String, dynamic> json) =>
