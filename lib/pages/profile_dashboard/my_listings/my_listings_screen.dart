@@ -74,7 +74,6 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   void initState() {
     super.initState();
     _loadAdvertMetadata();
-    _loadAllListings();
   }
 
   /// Загрузить мета-информацию объявлений (каталоги и категории с объявлениями)
@@ -111,6 +110,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             }
             _isLoadingMetadata = false;
           });
+
+          // После загрузки мета-информации загрузить объявления по первой категории
+          if (_selectedCategoryId != null) {
+            await _loadListingsByCategory(_selectedCategoryId!);
+          }
         }
       }
     } catch (e) {
@@ -242,58 +246,26 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       _moderationListingsPage = 1;
 
       // Загружаем объявления всех статусов по категории параллельно
-      // ⚠️ limit: 1000 позволяет получить ВСЕ объявления в одном запросе
+      // Подгружаем ВСЕ объявления по всем страницам
       final results = await Future.wait([
-        MyAdvertsService.getMyAdverts(
-          statusId: 1,
-          categoryId: categoryId,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-        MyAdvertsService.getMyAdverts(
-          statusId: 2,
-          categoryId: categoryId,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-        MyAdvertsService.getMyAdverts(
-          statusId: 3,
-          categoryId: categoryId,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-        MyAdvertsService.getMyAdverts(
-          statusId: 8,
-          categoryId: categoryId,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
+        _loadAllAdvertsByStatus(1, categoryId, token),
+        _loadAllAdvertsByStatus(2, categoryId, token),
+        _loadAllAdvertsByStatus(3, categoryId, token),
+        _loadAllAdvertsByStatus(8, categoryId, token),
       ]);
 
       if (mounted) {
         setState(() {
-          _activeListings = results[0].data;
-          _inactiveListings = results[1].data;
-          _moderationListings = results[2].data;
-          _archiveListings = results[3].data;
+          _activeListings = results[0];
+          _inactiveListings = results[1];
+          _moderationListings = results[2];
+          _archiveListings = results[3];
 
-          // Сохранить информацию о последней странице
-          _activeIsLastPage = results[0].lastPage != null
-              ? _activeListingsPage >= results[0].lastPage!
-              : true;
-          _inactiveIsLastPage = results[1].lastPage != null
-              ? _inactiveListingsPage >= results[1].lastPage!
-              : true;
-          _moderationIsLastPage = results[2].lastPage != null
-              ? _moderationListingsPage >= results[2].lastPage!
-              : true;
-          _archiveIsLastPage = results[3].lastPage != null
-              ? _archiveListingsPage >= results[3].lastPage!
-              : true;
+          // Все объявления за один раз - они уже на последней странице
+          _activeIsLastPage = true;
+          _inactiveIsLastPage = true;
+          _moderationIsLastPage = true;
+          _archiveIsLastPage = true;
 
           _isLoadingListings = false;
         });
@@ -312,6 +284,42 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         );
       }
     }
+  }
+
+  /// Загрузить ВСЕ объявления для одного статуса по категории (все страницы)
+  Future<List<UserAdvert>> _loadAllAdvertsByStatus(
+    int statusId,
+    int categoryId,
+    String token,
+  ) async {
+    final allAdverts = <UserAdvert>[];
+    int currentPage = 1;
+    int lastPage = 1;
+
+    while (currentPage <= lastPage) {
+      try {
+        final response = await MyAdvertsService.getMyAdverts(
+          statusId: statusId,
+          categoryId: categoryId,
+          token: token,
+          page: currentPage,
+          limit: 100, // Стандартный лимит API
+        );
+
+        allAdverts.addAll(response.data);
+
+        // Обновить информацию о количестве страниц
+        lastPage = response.lastPage ?? 1;
+        currentPage++;
+      } catch (e) {
+        print(
+          'Ошибка при загрузке страницы $currentPage статуса $statusId: $e',
+        );
+        break;
+      }
+    }
+
+    return allAdverts;
   }
 
   /// Загрузить больше объявлений для текущей вкладки (пагинация)
@@ -358,7 +366,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         categoryId: _selectedCategoryId,
         token: token,
         page: nextPage,
-        limit: 1000,
+        limit: 10000,
       );
 
       if (mounted) {
@@ -962,21 +970,43 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       );
     }
 
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        for (int i = 0; i < filteredListings.length; i++) ...[
-          _listingCard(filteredListings[i], 0),
-          if (i < filteredListings.length - 1) const SizedBox(height: 10),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollEndNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels == metrics.maxScrollExtent &&
+              !_activeIsLastPage &&
+              !_isLoadingMore) {
+            _loadMoreListings();
+          }
+        }
+        return false;
+      },
+      child: ListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          for (int i = 0; i < filteredListings.length; i++) ...[
+            _listingCard(filteredListings[i], 0),
+            if (i < filteredListings.length - 1) const SizedBox(height: 10),
+          ],
+          // Индикатор подгрузки
+          if (_isLoadingMore) ...[
+            const SizedBox(height: 16),
+            const Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00B7FF)),
+                ),
+              ),
+            ),
+          ],
         ],
-        // Кнопка "Загрузить еще" если не последняя страница
-        if (!_activeIsLastPage) ...[
-          const SizedBox(height: 16),
-          _loadMoreButton(),
-        ],
-      ],
+      ),
     );
   }
 
@@ -995,21 +1025,43 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       );
     }
 
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        for (int i = 0; i < filteredListings.length; i++) ...[
-          _listingCard(filteredListings[i], 1),
-          if (i < filteredListings.length - 1) const SizedBox(height: 10),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollEndNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels == metrics.maxScrollExtent &&
+              !_inactiveIsLastPage &&
+              !_isLoadingMore) {
+            _loadMoreListings();
+          }
+        }
+        return false;
+      },
+      child: ListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          for (int i = 0; i < filteredListings.length; i++) ...[
+            _listingCard(filteredListings[i], 1),
+            if (i < filteredListings.length - 1) const SizedBox(height: 10),
+          ],
+          // Индикатор подгрузки
+          if (_isLoadingMore) ...[
+            const SizedBox(height: 16),
+            const Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00B7FF)),
+                ),
+              ),
+            ),
+          ],
         ],
-        // Кнопка "Загрузить еще" если не последняя страница
-        if (!_inactiveIsLastPage) ...[
-          const SizedBox(height: 16),
-          _loadMoreButton(),
-        ],
-      ],
+      ),
     );
   }
 
@@ -1028,21 +1080,43 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       );
     }
 
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        for (int i = 0; i < filteredListings.length; i++) ...[
-          _listingCard(filteredListings[i], 2),
-          if (i < filteredListings.length - 1) const SizedBox(height: 10),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollEndNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels == metrics.maxScrollExtent &&
+              !_archiveIsLastPage &&
+              !_isLoadingMore) {
+            _loadMoreListings();
+          }
+        }
+        return false;
+      },
+      child: ListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          for (int i = 0; i < filteredListings.length; i++) ...[
+            _listingCard(filteredListings[i], 2),
+            if (i < filteredListings.length - 1) const SizedBox(height: 10),
+          ],
+          // Индикатор подгрузки
+          if (_isLoadingMore) ...[
+            const SizedBox(height: 16),
+            const Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00B7FF)),
+                ),
+              ),
+            ),
+          ],
         ],
-        // Кнопка "Загрузить еще" если не последняя страница
-        if (!_archiveIsLastPage) ...[
-          const SizedBox(height: 16),
-          _loadMoreButton(),
-        ],
-      ],
+      ),
     );
   }
 
@@ -1061,61 +1135,42 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       );
     }
 
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      children: [
-        for (int i = 0; i < filteredListings.length; i++) ...[
-          _listingCard(filteredListings[i], 3),
-          if (i < filteredListings.length - 1) const SizedBox(height: 10),
-        ],
-        // Кнопка "Загрузить еще" если не последняя страница
-        if (!_moderationIsLastPage) ...[
-          const SizedBox(height: 16),
-          _loadMoreButton(),
-        ],
-      ],
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // LOAD MORE BUTTON
-  // ─────────────────────────────────────────────
-
-  Widget _loadMoreButton() {
-    return Center(
-      child: SizedBox(
-        height: 44,
-        width: double.infinity,
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFF00B7FF)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          onPressed: _isLoadingMore ? null : _loadMoreListings,
-          child: _isLoadingMore
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFF00B7FF),
-                    ),
-                  ),
-                )
-              : const Text(
-                  'Загрузить еще',
-                  style: TextStyle(
-                    color: Color(0xFF00B7FF),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollEndNotification) {
+          final metrics = notification.metrics;
+          if (metrics.pixels == metrics.maxScrollExtent &&
+              !_moderationIsLastPage &&
+              !_isLoadingMore) {
+            _loadMoreListings();
+          }
+        }
+        return false;
+      },
+      child: ListView(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          for (int i = 0; i < filteredListings.length; i++) ...[
+            _listingCard(filteredListings[i], 3),
+            if (i < filteredListings.length - 1) const SizedBox(height: 10),
+          ],
+          // Индикатор подгрузки
+          if (_isLoadingMore) ...[
+            const SizedBox(height: 16),
+            const Center(
+              child: SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00B7FF)),
                 ),
-        ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -1694,8 +1749,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       await MyAdvertsService.activateAdvert(advertId: advertId, token: token);
 
-      // Перезагружаем все объявления для синхронизации с сервером
-      await _loadAllListings();
+      // Перезагружаем объявления текущей категории для синхронизации с сервером
+      if (_selectedCategoryId != null) {
+        await _loadListingsByCategory(_selectedCategoryId!);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1720,8 +1777,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       await MyAdvertsService.deactivateAdvert(advertId: advertId, token: token);
 
-      // Перезагружаем все объявления для синхронизации с сервером
-      await _loadAllListings();
+      // Перезагружаем объявления текущей категории для синхронизации с сервером
+      if (_selectedCategoryId != null) {
+        await _loadListingsByCategory(_selectedCategoryId!);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
