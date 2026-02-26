@@ -26,18 +26,12 @@ class RealEstateFullFiltersScreen extends StatefulWidget {
 
 class _RealEstateFullFiltersScreenState
     extends State<RealEstateFullFiltersScreen> {
-  
+  String dealType = "sell";
 
-  
-  String dealType = "sell"; 
-
-  
   bool? mortgageYes = true;
 
-  
   bool? installmentYes = true;
 
-  
   bool noCommission = false;
   bool exchange = false;
   bool urgent = false;
@@ -45,13 +39,10 @@ class _RealEstateFullFiltersScreenState
   bool buyerOffer = false;
   bool registrySale = false;
 
-  
   bool isSecondary = true;
 
-  
   bool isPrivate = true;
 
-  
   Set<String> selectedCity = {};
   Set<String> selectedStreet = {};
   Set<String> selectedBuildingTypes = {};
@@ -67,7 +58,6 @@ class _RealEstateFullFiltersScreenState
   Set<String> selectedLandscape = {};
   Set<String> selectedRooms = {};
 
-  
   final houseNumberController = TextEditingController();
   final areaController = TextEditingController();
   final kitchenAreaController = TextEditingController();
@@ -75,8 +65,6 @@ class _RealEstateFullFiltersScreenState
   final floorController = TextEditingController();
   final constructionMin = TextEditingController();
   final constructionMax = TextEditingController();
-
-  
 
   @override
   Widget build(BuildContext context) {
@@ -89,57 +77,59 @@ class _RealEstateFullFiltersScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
+
               const SizedBox(height: 19),
+              _buildCategoryFilterBlock(),
+
+              const SizedBox(height: 10),
               _buildSortBlock(),
-              const SizedBox(height: 27),
+              const SizedBox(height: 10),
               const Divider(color: Colors.white24),
-              const SizedBox(height: 22),
-              
-              _buildTitle("Выберите категорию"),
-              _buildSelectedBox(
-                widget.selectedCategory,
-                showRemove: true,
-                onRemove: () => Navigator.pop(context),
-              ),
-              const SizedBox(height: 21),
-              const Divider(color: Colors.white24),
-              const SizedBox(height: 13),
+              const SizedBox(height: 0),
 
-              
-              _buildTitle("Выберите город"),
-              _buildSelector(
-                selectedCity.isEmpty ? "Мариуполь" : selectedCity.first,
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) {
-                      return CitySelectionDialog(
-                        title: "Выберите город",
-                        options: const [
-                          'Абаза',
-                          'Абакан',
-                          'Абдулино',
-                          'Абинск',
-                          'Агидель',
-                          'Агрыз',
-                          'Адыгейск',
-                          'Азнакаево',
-                          'Бабаево',
-                          'Бабушкин Бавлы',
-                          'Багратионовск',
-                        ],
-                        selectedOptions: selectedCity,
-                        onSelectionChanged: (v) =>
-                            setState(() => selectedCity = v),
-                      );
-                    },
-                  );
-                },
-                showArrow: true,
-              ),
-              const SizedBox(height: 16),
+              // _buildTitle("Выберите категорию"),
+              // _buildSelectedBox(
+              //   widget.selectedCategory,
+              //   showRemove: true,
+              //   onRemove: () => Navigator.pop(context),
+              // ),
+              // const SizedBox(height: 21),
+              // const Divider(color: Colors.white24),
+              // const SizedBox(height: 13),
 
-              
+              // _buildTitle("Выберите город"),
+              // _buildSelector(
+              //   selectedCity.isEmpty ? "Мариуполь" : selectedCity.first,
+              //   onTap: () {
+              //     showDialog(
+              //       context: context,
+              //       builder: (_) {
+              //         return CitySelectionDialog(
+              //           title: "Выберите город",
+              //           options: const [
+              //             'Абаза',
+              //             'Абакан',
+              //             'Абдулино',
+              //             'Абинск',
+              //             'Агидель',
+              //             'Агрыз',
+              //             'Адыгейск',
+              //             'Азнакаево',
+              //             'Бабаево',
+              //             'Бабушкин Бавлы',
+              //             'Багратионовск',
+              //           ],
+              //           selectedOptions: selectedCity,
+              //           onSelectionChanged: (v) =>
+              //               setState(() => selectedCity = v),
+              //         );
+              //       },
+              //     );
+              //   },
+              //   showArrow: true,
+              // ),
+              const SizedBox(height: 10),
+
               _buildTitle("Выберите улицу"),
               _buildSelector(
                 selectedStreet.isEmpty ? "Центр" : selectedStreet.join(", "),
@@ -176,14 +166,13 @@ class _RealEstateFullFiltersScreenState
                 showArrow: true,
               ),
 
-              
               const SizedBox(height: 16),
               _buildTitle("Номер дома"),
               _buildInput("12", houseNumberController),
-              const SizedBox(height: 21),
+              const SizedBox(height: 10),
               const Divider(color: Colors.white24),
-              const SizedBox(height: 12),
 
+              // const SizedBox(height: 12),
               _buildTitle("Вид сделки"),
               const SizedBox(height: 4),
               _buildThreeButtons(
@@ -212,19 +201,17 @@ class _RealEstateFullFiltersScreenState
                   );
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 10),
               const Divider(color: Colors.white24),
-              const SizedBox(height: 27),
+              const SizedBox(height: 10),
 
               _buildTitle("Валюта: Российский рубль (₽)"),
               _buildTitle("Цена"),
 
-              
               _buildPriceBlock(),
 
               const SizedBox(height: 15),
 
-              
               _buildCheck("Без комиссии", noCommission, (v) {
                 setState(() => noCommission = v);
               }),
@@ -255,7 +242,6 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 16),
 
-              
               _buildTitle("Ипотека"),
               const SizedBox(height: 4),
               _buildToggleYesNo(
@@ -267,7 +253,6 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 12),
 
-              
               _buildTitle("Рассрочка"),
               const SizedBox(height: 4),
               _buildToggleYesNo(
@@ -279,7 +264,6 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 17),
 
-              
               _buildSelectorDropdown(
                 label: "Тип дома",
                 selected: selectedBuildingTypes,
@@ -445,7 +429,7 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 13),
               _buildTitle("Меблирована"),
-              
+
               _buildToggleYesNo(
                 labelYes: "С мебелью",
                 labelNo: "Без мебели",
@@ -626,7 +610,6 @@ class _RealEstateFullFiltersScreenState
               const Divider(color: Colors.white24),
               const SizedBox(height: 21),
 
-              
               _buildBottomButtons(),
 
               const SizedBox(height: 60),
@@ -637,7 +620,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildHeader() {
     return Row(
       children: [
@@ -648,7 +630,10 @@ class _RealEstateFullFiltersScreenState
         const SizedBox(width: 13),
         const Text(
           "Фильтры",
-          style: TextStyle(fontSize: 18, color: Color.fromARGB(255, 255, 255, 255)),
+          style: TextStyle(
+            fontSize: 18,
+            color: Color.fromARGB(255, 255, 255, 255),
+          ),
         ),
         const Spacer(),
         GestureDetector(
@@ -662,9 +647,111 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
-  String? selectedDateSort = "new"; 
-  String? selectedPriceSort; 
+  String? selectedDateSort = "new";
+  String? selectedPriceSort;
+
+  Widget _buildCategoryFilterBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Категории",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildSelectedBox(
+          widget.selectedCategory,
+          showRemove: false,
+          backgroundColor: const Color(0xFF6B7280),
+          textColor: Colors.black,
+          fitWidth: true,
+          verticalPadding: 6,
+        ),
+        const SizedBox(height: 21),
+        _buildTitle("Выберите город"),
+        _buildSelector(
+          selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) {
+                return CitySelectionDialog(
+                  title: "Выберите город",
+                  options: const [
+                    'Абаза',
+                    'Абакан',
+                    'Абдулино',
+                    'Абинск',
+                    'Агидель',
+                    'Агрыз',
+                    'Адыгейск',
+                    'Азнакаево',
+                    'Бабаево',
+                    'Бабушкин Бавлы',
+                    'Багратионовск',
+                  ],
+                  selectedOptions: selectedCity,
+                  onSelectionChanged: (v) => setState(() => selectedCity = v),
+                );
+              },
+            );
+          },
+          showArrow: true,
+        ),
+        const SizedBox(height: 16),
+        _buildTitle("Выберите категорию"),
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            height: 60,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.selectedCategory,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _getCategorySubtitle(),
+                        style: const TextStyle(
+                          color: Color(0xFF7A7A7A),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Text(
+                  'Изменить',
+                  style: TextStyle(color: Colors.lightBlue, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildSortBlock() {
     return Column(
@@ -697,6 +784,10 @@ class _RealEstateFullFiltersScreenState
         ),
       ],
     );
+  }
+
+  String _getCategorySubtitle() {
+    return 'Недвижимость / ${widget.selectedCategory}';
   }
 
   Widget _sortButton(String label, String key) {
@@ -738,7 +829,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildTitle(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 9.0),
@@ -753,25 +843,26 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildSelectedBox(
     String text, {
     required bool showRemove,
     VoidCallback? onRemove,
+    Color? backgroundColor,
+    Color? textColor,
+    bool fitWidth = false,
+    double verticalPadding = 12,
   }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      
+      width: fitWidth ? null : double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: verticalPadding),
       decoration: BoxDecoration(
-        color: secondaryBackground,
+        color: backgroundColor ?? secondaryBackground,
         borderRadius: BorderRadius.circular(5),
       ),
       child: Row(
+        mainAxisSize: fitWidth ? MainAxisSize.min : MainAxisSize.max,
         children: [
-          Expanded(
-            child: Text(text, style: const TextStyle(color: Colors.white)),
-          ),
+          Text(text, style: TextStyle(color: textColor ?? Colors.white)),
           if (showRemove)
             GestureDetector(
               onTap: onRemove,
@@ -782,7 +873,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildSelector(
     String text, {
     VoidCallback? onTap,
@@ -810,7 +900,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildPriceBlock() {
     return Row(
       children: [
@@ -821,7 +910,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildCheck(String text, bool value, Function(bool) onChanged) {
     return Row(
       children: [
@@ -837,7 +925,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildToggleYesNo({
     required String labelYes,
     required String labelNo,
@@ -883,7 +970,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildThreeButtons({
     required List<String> labels,
     required int selectedIndex,
@@ -925,7 +1011,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildSelectorDropdown({
     required String label,
     required Set<String> selected,
@@ -936,7 +1021,7 @@ class _RealEstateFullFiltersScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(label),
-        
+
         GestureDetector(
           onTap: () {
             showDialog(
@@ -976,7 +1061,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildRange(
     String label,
     TextEditingController a,
@@ -986,7 +1070,7 @@ class _RealEstateFullFiltersScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTitle(label),
-        
+
         Row(
           children: [
             Expanded(child: _buildInput("От", a)),
@@ -998,7 +1082,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildInput(String label, TextEditingController controller) {
     return Container(
       height: 45,
@@ -1021,7 +1104,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildTwoOption({
     required String yes,
     required String no,
@@ -1037,7 +1119,6 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  
   Widget _buildBottomButtons() {
     return Column(
       children: [
@@ -1051,7 +1132,7 @@ class _RealEstateFullFiltersScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            
+
             onPressed: () {},
             child: const Text(
               "Сохранить настройки фильтра",
@@ -1091,7 +1172,11 @@ class _RealEstateFullFiltersScreenState
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => RealEstateFilteredScreen(selectedCategory: widget.selectedCategory)),
+                MaterialPageRoute(
+                  builder: (context) => RealEstateFilteredScreen(
+                    selectedCategory: widget.selectedCategory,
+                  ),
+                ),
               );
             },
             child: const Text(
