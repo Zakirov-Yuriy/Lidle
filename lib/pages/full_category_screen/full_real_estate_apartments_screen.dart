@@ -257,7 +257,8 @@ class _FullRealEstateApartmentsScreenState
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => const RealEstateListingsScreen(),
+              builder: (context) =>
+                  const RealEstateListingsScreen(isFromFullCategory: true),
             ),
           );
         } else {
@@ -267,6 +268,7 @@ class _FullRealEstateApartmentsScreenState
               builder: (context) => RealEstateListingsScreen(
                 categoryId: subcategory.id,
                 categoryName: subcategory.name,
+                isFromFullCategory: true,
               ),
             ),
           );

@@ -6,6 +6,7 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
+import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/hive_service.dart';
@@ -28,12 +29,15 @@ class RealEstateListingsScreen extends StatefulWidget {
   final int? categoryId; // ID категории для фильтрации
   final int? catalogId; // ID каталога для фильтрации
   final String? categoryName; // Имя категории для отображения в заголовке
+  final bool
+  isFromFullCategory; // true если переход с full_category_screen, false если с home_page
 
   const RealEstateListingsScreen({
     super.key,
     this.categoryId,
     this.catalogId,
     this.categoryName,
+    this.isFromFullCategory = false,
   });
 
   @override
@@ -405,12 +409,26 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           const Spacer(),
           GestureDetector(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const IntermediateFiltersScreen(),
-                ),
-              );
+              // Выбираем экран фильтров в зависимости от источника перехода
+              if (widget.isFromFullCategory) {
+                // Если пришли с full_category_screen, открываем real_estate_full_filters_screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RealEstateFullFiltersScreen(
+                      selectedCategory: widget.categoryName ?? 'Недвижимость',
+                    ),
+                  ),
+                );
+              } else {
+                // Если пришли с home_page, открываем intermediate_filters_screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const IntermediateFiltersScreen(),
+                  ),
+                );
+              }
             },
             child: Row(
               children: [

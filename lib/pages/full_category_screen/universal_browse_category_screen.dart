@@ -128,6 +128,7 @@ class _UniversalBrowseCategoryScreenState
           builder: (context) => RealEstateListingsScreen(
             categoryId: category.id,
             categoryName: category.name,
+            isFromFullCategory: true,
           ),
         ),
       );
@@ -150,6 +151,7 @@ class _UniversalBrowseCategoryScreenState
           builder: (context) => RealEstateListingsScreen(
             categoryId: category.id,
             categoryName: category.name,
+            isFromFullCategory: true,
           ),
         ),
       );
@@ -161,6 +163,7 @@ class _UniversalBrowseCategoryScreenState
           builder: (context) => RealEstateListingsScreen(
             categoryId: category.id,
             categoryName: category.name,
+            isFromFullCategory: true,
           ),
         ),
       );
@@ -355,6 +358,7 @@ class _UniversalBrowseCategoryScreenState
                                             // Передаем catalogId для показа всех объявлений этого каталога
                                             catalogId: widget.catalogId,
                                             categoryName: widget.catalogName,
+                                            isFromFullCategory: true,
                                           ),
                                     ),
                                   );
