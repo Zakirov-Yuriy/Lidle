@@ -878,12 +878,31 @@ class _DynamicFilterState extends State<DynamicFilter> {
   List<File> _images = [];
   final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickImage(ImageSource source) async {
-    final pickedFile = await _picker.pickImage(source: source);
+  /// Снимает одну фотографию с камеры
+  Future<void> _pickImageFromCamera() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
         _images.add(File(pickedFile.path));
       });
+    }
+  }
+
+  /// Выбирает несколько фотографий из галереи
+  Future<void> _pickMultipleImagesFromGallery() async {
+    final pickedFiles = await _picker.pickMultiImage();
+    if (pickedFiles.isNotEmpty) {
+      setState(() {
+        // Добавляем выбранные фотографии в список
+        for (final pickedFile in pickedFiles) {
+          _images.add(File(pickedFile.path));
+        }
+      });
+      if (mounted) {
+        print(
+          '✅ Добавлено ${pickedFiles.length} фотографий. Всего: ${_images.length}',
+        );
+      }
     }
   }
 
@@ -923,7 +942,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         style: TextStyle(color: Colors.white),
                       ),
                       onTap: () {
-                        _pickImage(ImageSource.camera);
+                        _pickImageFromCamera();
                         Navigator.of(context).pop();
                       },
                     ),
@@ -933,12 +952,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         'assets/showImageSourceActionSheet/image-01.svg',
                       ),
                       title: const Text(
-                        'Загрузить фотографию',
+                        'Загрузить несколько фотографий',
                         style: TextStyle(color: Colors.white),
                       ),
                       onTap: () {
                         Navigator.of(context).pop();
-                        _pickImage(ImageSource.gallery);
+                        _pickMultipleImagesFromGallery();
                       },
                     ),
                   ],
@@ -2182,90 +2201,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
               // ============================================================
               // REQUIRED CONSENT ATTRIBUTE: "Вам предложат цену"
               // ============================================================
-              // This attribute is required for all categories but visually hidden
-              // Display it as a checkbox for user to explicitly agree
-              if (!_isLoading)
-                Builder(
-                  builder: (context) {
-                    final offerPriceAttrId = _attributeResolver
-                        .getOfferPriceAttributeId();
-                    if (offerPriceAttrId == null) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final offerPriceAttr = _attributeResolver.getAttributeById(
-                      offerPriceAttrId,
-                    );
-                    if (offerPriceAttr == null) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final isChecked = _selectedValues[offerPriceAttrId] == true;
-
-                    return Column(
-                      children: [
-                        // Чекбокс для согласия с предложениями по цене
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 0,
-                            vertical: 12,
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedValues[offerPriceAttrId] =
-                                          !(isChecked);
-                                    });
-                                  },
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Я согласен получать предложения по цене',
-                                        style: TextStyle(
-                                          color: textPrimary,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Продавцы смогут делать вам предложения с лучшей ценой',
-                                        style: TextStyle(
-                                          color: textSecondary,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              CustomCheckbox(
-                                value: isChecked,
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    _selectedValues[offerPriceAttrId] = value;
-                                  });
-                                  print(
-                                    '✅ Updated attribute $offerPriceAttrId (${offerPriceAttr.title}): $value',
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    );
-                  },
-                ),
-
+              // Hidden - functionality moved to "Возможен торг" checkbox
+              // When user checks "Возможен торг", this attribute is automatically set to true
               const SizedBox(height: 18),
 
               Row(
@@ -2967,8 +2904,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                             Text(
                               hint,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color.fromARGB(255, 255, 255, 255),
+                              style: TextStyle(
+                                color: hint == 'Выбрать' || hint.isEmpty
+                                    ? const Color(0xFF7A7A7A)
+                                    : const Color.fromARGB(255, 255, 255, 255),
                                 fontSize: 14,
                               ),
                             ),
@@ -2985,8 +2924,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       : Text(
                           hint,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Color.fromARGB(255, 255, 255, 255),
+                          style: TextStyle(
+                            color: hint == 'Выбрать' || hint.isEmpty
+                                ? const Color(0xFF7A7A7A)
+                                : const Color.fromARGB(255, 255, 255, 255),
                             fontSize: 14,
                           ),
                         ),
@@ -3404,12 +3345,27 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Style B: Single checkbox (usually for one value like "Возможен торг")
     // If no title is hidden, show as row with label and checkbox
 
+    // Check if this is "Возможен торг" checkbox to link it with "предложат цену" attribute
+    bool isBargainCheckbox = attr.title.toLowerCase().contains('торг');
+    final offerPriceAttrId = isBargainCheckbox
+        ? _attributeResolver.getOfferPriceAttributeId()
+        : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStyleHeader(attr),
         GestureDetector(
-          onTap: () => setState(() => _selectedValues[attr.id] = !selected),
+          onTap: () => setState(() {
+            _selectedValues[attr.id] = !selected;
+            // If this is "Возможен торг", also set "предложат цену" to true
+            if (isBargainCheckbox && offerPriceAttrId != null) {
+              _selectedValues[offerPriceAttrId] = !selected;
+              print(
+                '✅ Linked: Возможен торг toggled to ${!selected}, also set предложат цену=${!selected}',
+              );
+            }
+          }),
           child: Row(
             children: [
               Expanded(
@@ -3423,7 +3379,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
               const SizedBox(width: 12),
               CustomCheckbox(
                 value: selected,
-                onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
+                onChanged: (v) {
+                  setState(() {
+                    _selectedValues[attr.id] = v;
+                    // If this is "Возможен торг", also set "предложат цену" to true
+                    if (isBargainCheckbox && offerPriceAttrId != null) {
+                      _selectedValues[offerPriceAttrId] = v;
+                      print(
+                        '✅ Linked: Возможен торг toggled to $v, also set предложат цену=$v',
+                      );
+                    }
+                  });
+                },
               ),
             ],
           ),
