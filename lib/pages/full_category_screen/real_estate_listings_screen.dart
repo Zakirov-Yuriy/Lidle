@@ -7,6 +7,7 @@ import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
+import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/hive_service.dart';
@@ -52,6 +53,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   bool _isLoading = true;
   bool _isLoadingMore = false; // Для индикатора подгрузки
   String? _errorMessage;
+  Map<String, dynamic> _appliedFilters = {}; // Применённые фильтры
 
   // Пагинация
   int _currentPage = 1;
@@ -409,25 +411,47 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           const Spacer(),
           GestureDetector(
             onTap: () {
-              // Выбираем экран фильтров в зависимости от источника перехода
-              if (widget.isFromFullCategory) {
-                // Если пришли с full_category_screen, открываем real_estate_full_filters_screen
+              // Открыть динамический фильтр для листинга
+              if (widget.categoryId != null) {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => RealEstateFullFiltersScreen(
-                      selectedCategory: widget.categoryName ?? 'Недвижимость',
+                    builder: (_) => RealEstateListingsFilterScreen(
+                      categoryId: widget.categoryId!,
+                      categoryName: widget.categoryName ?? 'Недвижимость',
+                      appliedFilters: _appliedFilters,
                     ),
                   ),
-                );
+                ).then((filters) {
+                  if (filters != null && filters is Map<String, dynamic>) {
+                    // Применить фильтры и перезагрузить объявления
+                    setState(() {
+                      _appliedFilters = filters;
+                      _currentPage = 1;
+                      _listings.clear();
+                    });
+                    _loadAdverts();
+                  }
+                });
               } else {
-                // Если пришли с home_page, открываем intermediate_filters_screen
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const IntermediateFiltersScreen(),
-                  ),
-                );
+                // Fallback: если нет categoryId, открыть old filter screen
+                if (widget.isFromFullCategory) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RealEstateFullFiltersScreen(
+                        selectedCategory: widget.categoryName ?? 'Недвижимость',
+                      ),
+                    ),
+                  );
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const IntermediateFiltersScreen(),
+                    ),
+                  );
+                }
               }
             },
             child: Row(

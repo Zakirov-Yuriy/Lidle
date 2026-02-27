@@ -17,7 +17,7 @@ class CustomCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.zero,
       onTap: () => onChanged?.call(!value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
@@ -25,14 +25,14 @@ class CustomCheckbox extends StatelessWidget {
         height: 22,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.white54, width: 2),
-          borderRadius: BorderRadius.circular(5),
+          borderRadius: BorderRadius.zero, // Идеально квадратные углы
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(3),
+          margin: const EdgeInsets.all(2),
           decoration: BoxDecoration(
             color: value ? const Color(0xFF0EA5E9) : Colors.transparent,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.zero, // Идеально квадратные углы
           ),
         ),
       ),

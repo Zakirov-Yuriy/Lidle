@@ -1122,4 +1122,53 @@ class ApiService {
       throw Exception('Error searching addresses: $e');
     }
   }
+
+  /// Получить фильтры для листинга объявлений
+  static Future<Map<String, dynamic>> getListingsFilterAttributes({
+    required int categoryId,
+    String? token,
+  }) async {
+    try {
+      final response = await getWithQuery('/adverts/create', {
+        'category_id': categoryId,
+      }, token: token);
+
+      print('📦 getListingsFilterAttributes: Parsing for category $categoryId');
+
+      // Если требуется токен и он истёк, обновить и повторить
+      if (response is Map &&
+          response['message'] != null &&
+          response['message'].toString().contains('Token expired') &&
+          token != null) {
+        final newToken = await refreshToken(token);
+        if (newToken != null) {
+          return getListingsFilterAttributes(
+            categoryId: categoryId,
+            token: newToken,
+          );
+        }
+      }
+
+      // Структура ответа: {"data": [{"type": {...}, "attributes": [...]}]}
+      // Берём attributes из первого элемента
+      List<dynamic> attributes = [];
+      if (response is Map && response['data'] is List) {
+        final dataList = response['data'] as List<dynamic>;
+        if (dataList.isNotEmpty && dataList[0] is Map) {
+          final firstItem = dataList[0] as Map<String, dynamic>;
+          attributes = firstItem['attributes'] as List<dynamic>? ?? [];
+        }
+      }
+
+      // Вернуть весь ответ
+      return {
+        'success': true,
+        'data': attributes,
+        'message': response['message'],
+      };
+    } catch (e) {
+      print('❌ getListingsFilterAttributes error: $e');
+      return {'success': false, 'data': [], 'message': e.toString()};
+    }
+  }
 }
