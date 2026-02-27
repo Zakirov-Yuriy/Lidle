@@ -66,11 +66,11 @@ class _RealEstateApartmentsScreenState
         token: token,
       );
 
-      print('Loaded category: ${category.name}');
-      print('Found advert types: ${category.children?.length ?? 0}');
-      category.children?.forEach(
-        (child) => print('Advert type: ${child.name}'),
-      );
+      // print('Loaded category: ${category.name}');
+      // print('Found advert types: ${category.children?.length ?? 0}');
+      // category.children?.forEach(
+      //   (child) => print('Advert type: ${child.name}'),
+      // );
 
       setState(() {
         _category = category;

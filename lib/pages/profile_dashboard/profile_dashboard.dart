@@ -80,7 +80,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Перезагружаем счетчики при возвращении в приложение
     if (state == AppLifecycleState.resumed && mounted) {
-      print('🔄 Приложение вернулось в фокус - обновляем счетчики объявлений');
+      // print('🔄 Приложение вернулось в фокус - обновляем счетчики объявлений');
       _loadListingsCounts(forceRefresh: true);
     }
   }
@@ -95,26 +95,24 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        print('❌ Нет токена!');
+        // print('❌ Нет токена!');
         setState(() => _isLoadingListings = false);
         return;
       }
 
-      print('🔄 Загружаем ВСЕ объявления пользователя (все статусы)...');
+      // print('🔄 Загружаем ВСЕ объявления пользователя (все статусы)...');
 
       // Статусы: 1=Active, 2=Inactive, 3=Moderation, 8=Archived
       final statuses = [1, 2, 3, 8];
       var allAdverts = <dynamic>[];
 
       for (final statusId in statuses) {
-        print('📄 Загружаем объявления со статусом $statusId...');
+        // print('📄 Загружаем объявления со статусом $statusId...');
         var pageNum = 1;
         var hasMorePages = true;
 
         while (hasMorePages) {
-          print(
-            '   📄 Страница $pageNum страница $pageNum (статус=$statusId)...',
-          );
+          // print();
 
           try {
             final response = await MyAdvertsService.getMyAdverts(
@@ -123,24 +121,24 @@ class _ProfileDashboardState extends State<ProfileDashboard>
               statusId: statusId,
             );
 
-            print('   ✓ Response: data.length=${response.data.length}');
-            print('   ✓ Response.page=${response.page}');
-            print('   ✓ Response.lastPage=${response.lastPage}');
+            // print('   ✓ Response: data.length=${response.data.length}');
+            // print('   ✓ Response.page=${response.page}');
+            // print('   ✓ Response.lastPage=${response.lastPage}');
 
             allAdverts.addAll(response.data);
-            print('   ✓ Всего в памяти: ${allAdverts.length}');
+            // print('   ✓ Всего в памяти: ${allAdverts.length}');
 
             final currentPage = response.page ?? 1;
             final lastPage = response.lastPage ?? 1;
 
             if (currentPage >= lastPage) {
               hasMorePages = false;
-              print('   ✓ Последняя страница для статуса $statusId');
+              // print('   ✓ Последняя страница для статуса $statusId');
             } else {
               pageNum++;
             }
           } catch (e, st) {
-            print('   ❌ Ошибка статус $statusId страница $pageNum: $e');
+            // print('   ❌ Ошибка статус $statusId страница $pageNum: $e');
             hasMorePages = false;
             // Не пробрасываем - продолжаем со следующего статуса
             break;
@@ -150,18 +148,18 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       final totalCount = allAdverts.length;
 
-      print('');
-      print('✅ ФИНАЛЬНЫЙ РЕЗУЛЬТАТ:');
-      print('   ✓ Всего объявлений: $totalCount');
-      print('   ✓ По статусам загружено');
+      // print('');
+      // print('✅ ФИНАЛЬНЫЙ РЕЗУЛЬТАТ:');
+      // print('   ✓ Всего объявлений: $totalCount');
+      // print('   ✓ По статусам загружено');
       if (allAdverts.isNotEmpty) {
-        print(
-          '   ✓ Первые объявления: ${allAdverts.take(3).map((a) => '${a.name}').toList()}',
-        );
+        // print(
+        //   '   ✓ Первые объявления: ${allAdverts.take(3).map((a) => '${a.name}').toList()}',
+        // );
       } else {
-        print('   ⚠️ Объявления не загружены!');
+        // print('   ⚠️ Объявления не загружены!');
       }
-      print('');
+      // print('');
 
       setState(() {
         _activeListingsCount = totalCount;
@@ -169,11 +167,11 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         _isLoadingListings = false;
       });
     } catch (e, st) {
-      print('');
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА ЗАГРУЗКИ:');
-      print('   Error: $e');
-      print('   StackTrace: $st');
-      print('');
+      // print('');
+      // print('❌ КРИТИЧЕСКАЯ ОШИБКА ЗАГРУЗКИ:');
+      // print('   Error: $e');
+      // print('   StackTrace: $st');
+      // print('');
       setState(() {
         _activeListingsCount = 0;
         _inactiveListingsCount = 0;
@@ -185,14 +183,14 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Инвалидировать кеш объявлений (вызывается после добавления/удаления объявления)
   static void invalidateListingsCache() {
     CacheManager().clear('profile_listings_counts');
-    print('🗑️ Кеш объявлений инвалидирован');
+    // print('🗑️ Кеш объявлений инвалидирован');
   }
 
   @override
   Widget build(BuildContext context) {
     // Загружаем профиль при первом построении
     context.read<ProfileBloc>().add(LoadProfileEvent());
-    print('🔄 ProfileDashboard: LoadProfileEvent добавлено');
+    // print('🔄 ProfileDashboard: LoadProfileEvent добавлено');
 
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
@@ -222,11 +220,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
             builder: (context, navigationState) {
               return BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, profileState) {
-                  print(
-                    '📱 ProfileDashboard BlocBuilder: profileState = ${profileState.runtimeType}',
-                  );
+                  // print();
                   if (profileState is ProfileLoaded) {
-                    print('✅ ProfileLoaded: ${profileState.name}');
+                    // print('✅ ProfileLoaded: ${profileState.name}');
                   }
                   return Scaffold(
                     extendBody: true,
@@ -287,10 +283,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                               HiveService.getFavorites();
 
                                           // ✅ Отладка: логируем количество избранных
-                                          print(
-                                            '❤️ Favorites count: ${favorites.length}',
-                                          );
-                                          print('   Favorites IDs: $favorites');
+                                          // print();
+                                          // print('   Favorites IDs: $favorites');
 
                                           // Используем длину списка избранного напрямую
                                           // (это более надёжно чем подсчёт через ListingsBloc.staticListings)

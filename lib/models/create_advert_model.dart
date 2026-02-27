@@ -24,8 +24,8 @@ class CreateAdvertRequest {
   });
 
   Map<String, dynamic> toJson() {
-    print('📦 CreateAdvertRequest.toJson() called');
-    print('   Input attributes keys: ${attributes.keys.toList()}');
+    // print('📦 CreateAdvertRequest.toJson() called');
+    // print('   Input attributes keys: ${attributes.keys.toList()}');
 
     // Build attributes according to API format:
     // {
@@ -43,7 +43,7 @@ class CreateAdvertRequest {
     // Always include value_selected if it exists
     if (attributes.containsKey('value_selected')) {
       flatAttributes['value_selected'] = attributes['value_selected'];
-      print('   ✅ Copied value_selected: ${attributes['value_selected']}');
+      // print('   ✅ Copied value_selected: ${attributes['value_selected']}');
     }
 
     // Process values map - KEEP 1048 in values (API requires it there!)
@@ -52,13 +52,11 @@ class CreateAdvertRequest {
       if (values != null && values.isNotEmpty) {
         // Keep all values including 1048
         flatAttributes['values'] = Map<String, dynamic>.from(values);
-        print(
-          '   ✅ Copied values (all kept, including 1048): $flatAttributes[\'values\']',
-        );
+        // print();
       }
     }
 
-    print('   📤 Processed attributes: $flatAttributes');
+    // print('   📤 Processed attributes: $flatAttributes');
 
     // Build final JSON
     final json = {
@@ -78,10 +76,10 @@ class CreateAdvertRequest {
     // API expects: attributes.values['1048'] = {'value': 1}
     // NOT at top-level
 
-    print(
-      '   📤 Final JSON: name + description + price + attributes + contacts',
-    );
-    print('   📤 JSON ready to send');
+    // print();
+    // print('   📤 JSON ready to send');
     return json;
   }
 }
+
+

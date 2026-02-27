@@ -130,20 +130,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.initState();
     _listing = widget.listing;
     _imagesPrecached = false;
-    print(
-      'MiniPropertyDetailsScreen init: listing id ${_listing.id}, images ${_listing.images.length}',
-    );
+    // print();
 
     // 🔄 Загружаем полное объявление, если:
     // 1. Нет изображений (значит это базовые данные со списка)
     // 2. Нет достаточно информации для отображения
     // Если объявление уже полностью загружено, не загружаем повторно
     if (_listing.images.isEmpty) {
-      print('📥 MiniPropertyDetailsScreen: Загружаем полные данные объявления');
+      // print('📥 MiniPropertyDetailsScreen: Загружаем полные данные объявления');
       _isAdvertLoaded = false;
       context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
     } else {
-      print('✅ MiniPropertyDetailsScreen: Используем уже загруженные данные');
+      // print('✅ MiniPropertyDetailsScreen: Используем уже загруженные данные');
       _isAdvertLoaded = true;
     }
 
@@ -174,7 +172,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        print('❌ Токен не найден для загрузки похожих объявлений');
+        // print('❌ Токен не найден для загрузки похожих объявлений');
         return;
       }
 
@@ -194,10 +192,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           _isSimilarListingsLoading = false;
         });
 
-        print('✅ Загружены похожие объявления: ${_similarListings.length} шт.');
+        // print('✅ Загружены похожие объявления: ${_similarListings.length} шт.');
       }
     } catch (e) {
-      print('❌ Ошибка при загрузке похожих объявлений: $e');
+      // print('❌ Ошибка при загрузке похожих объявлений: $e');
       if (mounted) {
         setState(() {
           _isSimilarListingsLoading = false;
@@ -228,7 +226,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ).timeout(
             const Duration(seconds: 5),
             onTimeout: () {
-              print('Timeout loading image: $imageUrl');
+              // print('Timeout loading image: $imageUrl');
             },
           ),
         );
@@ -242,7 +240,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ).timeout(
             const Duration(seconds: 3),
             onTimeout: () {
-              print('Timeout loading asset image: $imageUrl');
+              // print('Timeout loading asset image: $imageUrl');
             },
           ),
         );
@@ -251,9 +249,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
     try {
       await Future.wait(precacheFutures, eagerError: false);
-      print('Successfully precached ${images.length} images');
+      // print('Successfully precached ${images.length} images');
     } catch (e) {
-      print('Error precaching images: $e');
+      // print('Error precaching images: $e');
     }
 
     if (mounted) {
@@ -267,11 +265,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget build(BuildContext context) {
     return BlocListener<ListingsBloc, ListingsState>(
       listener: (context, state) {
-        print('BlocListener in MiniPropertyDetailsScreen: $state');
+        // print('BlocListener in MiniPropertyDetailsScreen: $state');
         if (state is AdvertLoaded) {
-          print(
-            'Updating _listing to ${state.listing.id} with ${state.listing.images.length} images',
-          );
+          // print();
           setState(() {
             _isAdvertLoaded = true;
             if (state.listing.images.isNotEmpty) {
@@ -420,7 +416,7 @@ ${widget.listing.title}
       );
     }
 
-    print('Listing ${_listing.id} has ${_listing.images.length} images');
+    // print('Listing ${_listing.id} has ${_listing.images.length} images');
     final images = _listing.images.isNotEmpty
         ? _listing.images
         : [_listing.imagePath];
@@ -616,8 +612,8 @@ ${widget.listing.title}
   Widget _buildAboutApartmentCard() {
     final Map<String, dynamic> chars = _listing.characteristics;
     // DEBUG: Выводим характеристики в консоль для отладки
-    print('[DEBUG] Характеристики в карточке:');
-    chars.forEach((k, v) => print('  $k: $v'));
+    // print('[DEBUG] Характеристики в карточке:');
+    // chars.forEach((k, v) => print('  $k: $v'));
 
     // Формируем список виджетов для отображения характеристик
     final List<Widget> charWidgets = [];

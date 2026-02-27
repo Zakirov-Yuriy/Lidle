@@ -67,7 +67,7 @@ class ResponseChatPage extends StatelessWidget {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        print('🔄 Переход на UserAccountPage...');
+                        // print('🔄 Переход на UserAccountPage...');
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) =>
@@ -253,3 +253,4 @@ class _IncomingMessage extends StatelessWidget {
     );
   }
 }
+

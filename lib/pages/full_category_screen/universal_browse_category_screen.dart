@@ -67,9 +67,7 @@ class _UniversalBrowseCategoryScreenState
 
       if (widget.catalogId != null) {
         // Загружаем категории каталога по ID
-        print(
-          '🔍 Browse Level ${widget.level}: Загрузка каталога ${widget.catalogName} (ID: ${widget.catalogId})',
-        );
+        // print();
 
         final catalogWithCategories = await ApiService.getCatalog(
           widget.catalogId!,
@@ -78,16 +76,12 @@ class _UniversalBrowseCategoryScreenState
 
         categories = catalogWithCategories.categories;
 
-        print(
-          '✅ Browse Level ${widget.level}: Загружено ${categories.length} категорий',
-        );
+        // print();
       } else if (widget.category != null) {
         // Используем дочерние категории из переданной категории
         categories = widget.category!.children ?? [];
 
-        print(
-          '🔍 Browse Level ${widget.level}: Отображение подкатегорий "${widget.category!.name}" (${categories.length} шт)',
-        );
+        // print();
       }
 
       setState(() {
@@ -95,7 +89,7 @@ class _UniversalBrowseCategoryScreenState
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Browse Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
+      // print('❌ Browse Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -303,9 +297,7 @@ class _UniversalBrowseCategoryScreenState
                               level: widget.level + 1,
                               catalogName: widget.catalogName,
                               onTap: () {
-                                print(
-                                  '👆 Browse Level ${widget.level}: Tapped on category: ${category.name} (ID: ${category.id})',
-                                );
+                                // print();
 
                                 // Если есть подкатегории, переходим глубже
                                 if (category.children != null &&
@@ -323,9 +315,7 @@ class _UniversalBrowseCategoryScreenState
                                   );
                                 } else {
                                   // Если это конечная категория, открываем экран списков
-                                  print(
-                                    '📋 Opening listings for category: ${category.name} (ID: ${category.id})',
-                                  );
+                                  // print();
                                   _navigateToListings(category);
                                 }
                               },
@@ -477,3 +467,5 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 }
+
+

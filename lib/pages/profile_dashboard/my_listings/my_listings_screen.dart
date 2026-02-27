@@ -118,7 +118,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         }
       }
     } catch (e) {
-      print('=== Ошибка загрузки мета-информации объявлений: $e');
+      // print('=== Ошибка загрузки мета-информации объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingMetadata = false;
@@ -206,7 +206,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         });
       }
     } catch (e) {
-      print('=== Ошибка загрузки объявлений: $e');
+      // print('=== Ошибка загрузки объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingListings = false;
@@ -271,7 +271,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         });
       }
     } catch (e) {
-      print('=== Ошибка загрузки объявлений: $e');
+      // print('=== Ошибка загрузки объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingListings = false;
@@ -312,9 +312,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         lastPage = response.lastPage ?? 1;
         currentPage++;
       } catch (e) {
-        print(
-          'Ошибка при загрузке страницы $currentPage статуса $statusId: $e',
-        );
+        // print();
         break;
       }
     }
@@ -398,7 +396,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         });
       }
     } catch (e) {
-      print('=== Ошибка загрузки дополнительных объявлений: $e');
+      // print('=== Ошибка загрузки дополнительных объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingMore = false;
@@ -1760,7 +1758,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         );
       }
     } catch (e) {
-      print('Ошибка активации: $e');
+      // print('Ошибка активации: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1788,7 +1786,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         );
       }
     } catch (e) {
-      print('Ошибка деактивации: $e');
+      // print('Ошибка деактивации: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1832,3 +1830,5 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     );
   }
 }
+
+

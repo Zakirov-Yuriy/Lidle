@@ -70,9 +70,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
 
       if (widget.catalogId != null) {
         // Загружаем категории каталога по ID
-        print(
-          '🔍 Level ${widget.level}: Загрузка каталога ${widget.catalogName} (ID: ${widget.catalogId})',
-        );
+        // print();
 
         final catalogWithCategories = await ApiService.getCatalog(
           widget.catalogId!,
@@ -81,16 +79,12 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
 
         categories = catalogWithCategories.categories;
 
-        print(
-          '✅ Level ${widget.level}: Загружено ${categories.length} категорий',
-        );
+        // print();
       } else if (widget.category != null) {
         // Используем дочерние категории из переданной категории
         categories = widget.category!.children ?? [];
 
-        print(
-          '🔍 Level ${widget.level}: Отображение подкатегорий "${widget.category!.name}" (${categories.length} шт)',
-        );
+        // print();
       }
 
       setState(() {
@@ -98,7 +92,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
+      // print('❌ Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -244,9 +238,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                         level: widget.level + 1,
                         catalogName: widget.catalogName,
                         onTap: () {
-                          print(
-                            '👆 Level ${widget.level}: Tapped on category: ${category.name} (ID: ${category.id})',
-                          );
+                          // print();
 
                           // Если есть подкатегории, переходим на экран с ними
                           if (category.children != null &&
@@ -263,9 +255,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                             );
                           } else if (category.isEndpoint) {
                             // Если это конечная точка, открываем динамический фильтр
-                            print(
-                              '🎯 Opening DynamicFilter for category: ${category.name} (ID: ${category.id})',
-                            );
+                            // print();
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -343,3 +333,5 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 }
+
+

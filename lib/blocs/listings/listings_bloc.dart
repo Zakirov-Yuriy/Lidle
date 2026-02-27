@@ -157,7 +157,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         !event.forceRefresh &&
         state is ListingsLoaded &&
         state is! ListingsError) {
-      print('🔄 ListingsBloc: Используем кеш в памяти (уже загружено)');
+      // print('🔄 ListingsBloc: Используем кеш в памяти (уже загружено)');
       return;
     }
 
@@ -170,7 +170,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           cachedListings is Map &&
           cachedListings.containsKey('listings') &&
           cachedListings.containsKey('categories')) {
-        print('✅ ListingsBloc: Восстановили из кеша Hive');
+        // print('✅ ListingsBloc: Восстановили из кеша Hive');
         try {
           // Каст JSON обратно в объекты
           final listings = (cachedListings['listings'] as List)
@@ -192,7 +192,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           _isInitialLoadComplete = true;
           return;
         } catch (e) {
-          print('❌ ListingsBloc: Ошибка при восстановлении из кеша: $e');
+          // print('❌ ListingsBloc: Ошибка при восстановлении из кеша: $e');
         }
       }
     }
@@ -200,9 +200,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     emit(ListingsLoading());
     try {
       final startTime = DateTime.now();
-      print(
-        '⏱️ [START] LoadListings начал загрузку в ${startTime.toIso8601String()}',
-      );
+      // print();
 
       // Получаем токен для аутентификации
       final token = await HiveService.getUserData('token');
@@ -211,9 +209,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Загружаем каталоги (категории) из API
       final catalogsResponse = await ApiService.getCatalogs(token: token);
       final catalogsDuration = DateTime.now().difference(catalogsStart);
-      print(
-        '⏱️ [CATALOGS] Загрузка каталогов: ${catalogsDuration.inMilliseconds}ms',
-      );
+      // print();
 
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
@@ -237,9 +233,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // 🚀 ПАРАЛЛЕЛЬНАЯ загрузка ПЕРВЫХ 3 СТРАНИЦ: все запросы выполняются одновременно!
       final advertsStart = DateTime.now();
-      print(
-        '⏱️ [ADVERTS] Начало параллельной загрузки ${catalogIds.length} каталогов (первые 3 страницы х 50 объявлений)...',
-      );
+      // print();
 
       final advertsFutures = <Future<Map<String, dynamic>>>[];
 
@@ -273,9 +267,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                 for (final response in pageResponses) {
                   catalogListings.addAll(
                     response.data.map((advert) {
-                      print(
-                        'Advert ${advert.id} has ${advert.images.length} images',
-                      );
+                      // print();
                       return advert.toListing();
                     }).toList(),
                   );
@@ -289,9 +281,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                 };
               })
               .catchError((e) {
-                print(
-                  'Ошибка загрузки объявлений для catalogId=$catalogId: $e',
-                );
+                // print();
                 return {
                   'listings': <home.Listing>[],
                   'lastPage': 1,
@@ -304,9 +294,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Ждём все запросы одновременно
       final allAdvertsResponses = await Future.wait(advertsFutures);
       final advertsDuration = DateTime.now().difference(advertsStart);
-      print(
-        '⏱️ [ADVERTS] Параллельная загрузка завершена за ${advertsDuration.inMilliseconds}ms',
-      );
+      // print();
 
       // Объединяем результаты всех каталогов
       for (final response in allAdvertsResponses) {
@@ -321,12 +309,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Устанавливаем текущую страницу на 3 (так как загружали 3 страницы)
       currentPage = 3;
 
-      print(
-        '📊 API Response: ${loadedCategories.length} категорий, ${allListings.length} объявлений загружено',
-      );
-      print(
-        '📊 Meta: currentPage=$currentPage, totalPages=$totalPages, itemsPerPage=$itemsPerPage',
-      );
+      // print();
+      // print();
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(allListings);
@@ -345,9 +329,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       _isInitialLoadComplete = true;
 
       final totalDuration = DateTime.now().difference(startTime);
-      print(
-        '⏱️ [COMPLETE] LoadListings завершена за ${totalDuration.inMilliseconds}ms',
-      );
+      // print();
 
       emit(
         ListingsLoaded(
@@ -359,7 +341,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
     } catch (e) {
-      print('❌ Error loading listings: $e');
+      // print('❌ Error loading listings: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -479,21 +461,19 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     LoadAdvertEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    print('Loading single advert for id ${event.advertId}');
+    // print('Loading single advert for id ${event.advertId}');
 
     // 🔄 Проверяем кеш перед запросом к API
     final cacheKey = 'advert_${event.advertId}';
     final cachedAdvert = HiveService.getListingsCacheIfValid(cacheKey);
     if (cachedAdvert != null && cachedAdvert is Map<String, dynamic>) {
       try {
-        print('✅ ListingsBloc: Восстановили объявление из кеша');
+        // print('✅ ListingsBloc: Восстановили объявление из кеша');
         final listing = _jsonToListing(cachedAdvert);
         emit(AdvertLoaded(listing: listing));
         return;
       } catch (e) {
-        print(
-          '❌ ListingsBloc: Ошибка при восстановлении объявления из кеша: $e',
-        );
+        // print();
       }
     }
 
@@ -508,19 +488,19 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         token: token,
       );
 
-      print('Loaded advert ${advert.id} with ${advert.images.length} images');
+      // print('Loaded advert ${advert.id} with ${advert.images.length} images');
 
       // Преобразуем Advert в Listing
       final listing = advert.toListing();
 
-      print('Converted to listing with ${listing.images.length} images');
+      // print('Converted to listing with ${listing.images.length} images');
 
       // 💾 Сохраняем в кеш
       await HiveService.saveListingsCache(cacheKey, _listingToJson(listing));
 
       emit(AdvertLoaded(listing: listing));
     } catch (e) {
-      print('Failed to load advert: $e');
+      // print('Failed to load advert: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -541,15 +521,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Проверяем, не на последней ли мы странице
     if (currentState.currentPage >= currentState.totalPages) {
-      print(
-        '⚠️ Достигнута последняя страница (${currentState.currentPage}/${currentState.totalPages})',
-      );
+      // print();
       return; // Не загружаем, если это последняя страница
     }
 
     // Начинаем загрузку следующей страницы
     final nextPage = currentState.currentPage + 1;
-    print('📄 Загрузка страницы $nextPage из ${currentState.totalPages}...');
+    // print('📄 Загрузка страницы $nextPage из ${currentState.totalPages}...');
 
     try {
       // Получаем токен для аутентификации
@@ -568,9 +546,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         return advert.toListing();
       }).toList();
 
-      print(
-        '✅ Загружено ${newListings.length} объявлений для страницы $nextPage',
-      );
+      // print();
 
       // Объединяем существующие объявления с новыми
       final allListings = [...currentState.listings, ...newListings];
@@ -613,13 +589,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Проверяем валидность номера страницы
     if (event.pageNumber < 1 || event.pageNumber > currentState.totalPages) {
-      print(
-        '⚠️ Неверный номер страницы: ${event.pageNumber} (всего: ${currentState.totalPages})',
-      );
+      // print();
       return;
     }
 
-    print('📄 Загрузка конкретной страницы ${event.pageNumber}...');
+    // print('📄 Загрузка конкретной страницы ${event.pageNumber}...');
 
     try {
       // Получаем токен для аутентификации
@@ -638,9 +612,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         return advert.toListing();
       }).toList();
 
-      print(
-        '✅ Загружено ${listings.length} объявлений для страницы ${event.pageNumber}',
-      );
+      // print();
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(listings);
@@ -686,7 +658,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           return DateTime(year, month, day);
         }
       } catch (e) {
-        print('Ошибка при парсировании даты "$dateStr": $e');
+        // print('Ошибка при парсировании даты "$dateStr": $e');
       }
       return null;
     }
@@ -788,3 +760,5 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     );
   }
 }
+
+

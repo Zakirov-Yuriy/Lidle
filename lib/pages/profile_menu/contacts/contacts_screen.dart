@@ -65,7 +65,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
       // Получаем userId из токена
       _currentUserId = AuthService.extractUserIdFromToken(token);
-      print('📱 Загружаем контакты для userId: $_currentUserId');
+      // print('📱 Загружаем контакты для userId: $_currentUserId');
 
       final savedContacts = _getSavedContactsFromLocal();
       List<Map<String, dynamic>> allContacts = [];
@@ -97,7 +97,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             });
           }
         } catch (e) {
-          print('❌ Error loading user profile: $e');
+          // print('❌ Error loading user profile: $e');
         }
       }
 
@@ -107,7 +107,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Error loading contacts: $e');
+      // print('❌ Error loading contacts: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -126,7 +126,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         decoded.map((item) => Map<String, dynamic>.from(item)),
       );
     } catch (e) {
-      print('❌ Error parsing saved contacts: $e');
+      // print('❌ Error parsing saved contacts: $e');
       return [];
     }
   }
@@ -138,7 +138,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     if (!savedContacts.any((c) => c['user_id'] == userId)) {
       savedContacts.add({'user_id': userId, 'phone': phone});
       HiveService.saveUserData(key, jsonEncode(savedContacts));
-      print('💾 Контакт сохранен для userId $_currentUserId: user_id=$userId');
+      // print('💾 Контакт сохранен для userId $_currentUserId: user_id=$userId');
     }
   }
 
@@ -399,7 +399,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         }
       }
     } catch (e) {
-      print('Error adding contact: $e');
+      // print('Error adding contact: $e');
       if (mounted) {
         try {
           Navigator.pop(context);
@@ -476,7 +476,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         );
       }
     } catch (e) {
-      print('❌ Error: $e');
+      // print('❌ Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
@@ -770,3 +770,4 @@ class _ContactUserCard extends StatelessWidget {
     return 'был(а) $lastSeen';
   }
 }
+

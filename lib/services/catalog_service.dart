@@ -7,10 +7,10 @@ class CatalogService {
   static Future<CatalogsResponse> getCatalogs({String? token}) async {
     try {
       final response = await ApiService.get('/content/catalogs', token: token);
-      print('=== API Каталоги ответ: $response');
+      // print('=== API Каталоги ответ: $response');
       return CatalogsResponse.fromJson(response);
     } catch (e) {
-      print('=== API Каталоги ошибка: $e');
+      // print('=== API Каталоги ошибка: $e');
       throw Exception('Failed to load catalogs: $e');
     }
   }
@@ -79,3 +79,4 @@ class CatalogService {
     }
   }
 }
+

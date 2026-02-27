@@ -63,6 +63,7 @@ class _RealEstateListingsFilterScreenState
   Set<String> _selectedCity = {};
   int? _selectedRegionId;
   int? _selectedCityId;
+  bool _citiesLoading = false; // Индикатор загрузки городов
 
   // =============== Sort Options ===============
   String? _selectedDateSort;
@@ -157,39 +158,180 @@ class _RealEstateListingsFilterScreenState
   void _loadAppliedFilters() {
     if (widget.appliedFilters == null) return;
 
+    print('\n🔄 ═══════════════════════════════════════');
+    print('🔄 _loadAppliedFilters() - RESTORING FILTERS');
+    print('🔄 Applied filters count: ${widget.appliedFilters!.length}');
+    print('🔄 ═══════════════════════════════════════');
+
     // Восстановить ранее выбранные значения
     widget.appliedFilters!.forEach((key, value) {
       try {
-        final attrId = int.tryParse(key);
-        if (attrId != null) {
-          _selectedValues[attrId] = value;
+        // Восстановить city_id если он есть
+        if (key == 'city_id' && value is int) {
+          _selectedCityId = value;
+          // Найти имя города по ID для отображения
+          for (final city in _cities) {
+            if (city['id'] == value) {
+              _selectedCity = {city['name'] as String};
+              print('✅ Restored city: ${city['name']} (ID: $value)');
+              break;
+            }
+          }
+        }
+        // Восстановить атрибуты по числовым ID
+        else {
+          final attrId = int.tryParse(key);
+          if (attrId != null) {
+            _selectedValues[attrId] = value;
+            print('✅ Restored attribute: $key = $value');
+          }
         }
       } catch (e) {
-        print('Error loading filter: $e');
+        print('⚠️  Error loading filter: $e');
       }
     });
+
+    print('🔄 ═══════════════════════════════════════\n');
   }
 
   Map<String, dynamic> _collectFilters() {
     final Map<String, dynamic> filters = {};
 
+    print('\n📦 ═══════════════════════════════════════');
+    print('📦 _collectFilters() - STARTING');
+    print('📦 ═══════════════════════════════════════');
+
+    // DEBUG: Выводим текущее состояние городов
+    print('📦 DEBUG STATE:');
+    print(
+      '   _selectedCityId: $_selectedCityId (type: ${_selectedCityId?.runtimeType})',
+    );
+    print('   _selectedCity: $_selectedCity');
+    print('   _cities.length: ${_cities.length}');
+
     // Добавить сортировку
     if (_selectedDateSort != null) {
       filters['sort_date'] = _selectedDateSort;
+      print('✅ Filter: sort_date = $_selectedDateSort');
     }
     if (_selectedPriceSort != null) {
       filters['sort_price'] = _selectedPriceSort;
+      print('✅ Filter: sort_price = $_selectedPriceSort');
     }
 
-    // Добавить атрибуты
+    // Добавить выбранный город
+    if (_selectedCityId != null) {
+      filters['city_id'] = _selectedCityId;
+      final cityName = _selectedCity.isNotEmpty
+          ? _selectedCity.first
+          : 'Unknown';
+      // 🟢 ВАЖНО: также добавляем имя города для клиентской фильтрации
+      filters['city_name'] = cityName;
+      print('✅ Filter: city_id = $_selectedCityId (city: $cityName)');
+      print('✅ Filter: city_name = $cityName (для клиентской фильтрации)');
+      print('✅ FILTER ADDED TO RESULT!');
+    } else {
+      print('⚠️  NO city selected. _selectedCityId is null');
+      print('   _selectedCity: $_selectedCity');
+      print('   _cities available: ${_cities.length}');
+      if (_cities.isNotEmpty) {
+        print(
+          '   Sample cities: ${_cities.take(3).map((c) => c['name']).toList()}',
+        );
+      }
+    }
+
+    // Добавить атрибуты в структуру values {} и value_selected {} (как требует API)
+    // ВАЖНО: API разделяет фильтры на:
+    // - filters[value_selected][attr_id] = [selected_value_ids] - для выбранных значений (ID < 1000)
+    // - filters[values][attr_id] = {min, max} - для диапазонов (ID >= 1000)
+    final valueSelectedMap = <String, dynamic>{}; // ID < 1000
+    final valuesMap = <String, dynamic>{}; // ID >= 1000
+
     _selectedValues.forEach((key, value) {
-      if (value != null &&
+      bool shouldInclude = false;
+      dynamic processedValue = value;
+
+      // Определяем тип фильтра по ID атрибута
+      final isValueSelectedType = key < 1000;
+      final filterType = isValueSelectedType ? 'value_selected' : 'values';
+
+      if (value is Map<String, dynamic>) {
+        // Range фильтры: {min: "1", max: "5"} или {min: "", max: ""}
+        final min = (value['min'] ?? '').toString().trim();
+        final max = (value['max'] ?? '').toString().trim();
+
+        // Включаем только если хотя бы один из min/max заполнен
+        if (min.isNotEmpty || max.isNotEmpty) {
+          shouldInclude = true;
+          // API требует ЧИСЛА для integer/numeric data_type, а не строки!
+          // Пытаемся конвертировать в число (int или double)
+          final minValue = min.isNotEmpty
+              ? (int.tryParse(min) ?? double.tryParse(min) ?? min)
+              : '';
+          final maxValue = max.isNotEmpty
+              ? (int.tryParse(max) ?? double.tryParse(max) ?? max)
+              : '';
+
+          processedValue = {
+            'min': minValue, // число или пустая строка
+            'max': maxValue, // число или пустая строка
+          };
+          print(
+            '✅ Attribute: [$key] = min:$minValue, max:$maxValue (type: $filterType)',
+          );
+        } else {
+          print('⏭️  Skipped: [$key] = {empty range}');
+        }
+      } else if (value is bool && value == true) {
+        // Включаем только true boolean'ы
+        shouldInclude = true;
+        print('✅ Attribute: [$key] = $value (type: $filterType, bool)');
+      } else if (value is bool && value == false) {
+        // Исключаем false boolean'ы
+        print('⏭️  Skipped: [$key] = false (checkbox not selected)');
+      } else if (value != null &&
           value != '' &&
           (value is! Set || (value as Set).isNotEmpty)) {
-        filters['attr_$key'] = value;
+        // Обычные значения (Set, List, String) - это value_selected
+        shouldInclude = true;
+        if (value is Set && (value as Set).isNotEmpty) {
+          print(
+            '✅ Attribute: [$key] = ${(value as Set).join(", ")} (type: Set<String>, count: ${(value as Set).length})',
+          );
+        } else {
+          print(
+            '✅ Attribute: [$key] = $value (type: $filterType, ${value.runtimeType})',
+          );
+        }
+      }
+
+      if (shouldInclude) {
+        if (isValueSelectedType) {
+          valueSelectedMap[key.toString()] = processedValue;
+        } else {
+          valuesMap[key.toString()] = processedValue;
+        }
       }
     });
 
+    // Если есть value_selected атрибуты, добавляем их в filters[value_selected]
+    if (valueSelectedMap.isNotEmpty) {
+      filters['value_selected'] = valueSelectedMap;
+      print('✅ value_selected attributes added to filters[value_selected]');
+    }
+
+    // Если есть атрибуты диапазонов, добавляем их в filters[values]
+    if (valuesMap.isNotEmpty) {
+      filters['values'] = valuesMap;
+      print('✅ range attributes added to filters[values]');
+    }
+
+    print('📦 ═══════════════════════════════════════');
+    print('📦 FINAL FILTERS: ${filters.toString()}');
+    print('📦 Filter keys: ${filters.keys.toList()}');
+    print('📦 Filter is empty? ${filters.isEmpty}');
+    print('📦 ═══════════════════════════════════════\n');
     return filters;
   }
 
@@ -472,6 +614,21 @@ class _RealEstateListingsFilterScreenState
         const SizedBox(height: 12),
         GestureDetector(
           onTap: () async {
+            print('\n🏙️ ════════════════════════════════════════');
+            print('🏙️ City block tapped');
+            print('🏙️ Cities available: ${_cities.length}');
+            print('🏙️ Is loading: $_citiesLoading');
+
+            if (_cities.isNotEmpty) {
+              print(
+                '🏙️ Opening CitySelectionDialog with ${_cities.length} cities',
+              );
+              print(
+                '🏙️ First city: ${_cities[0]['name']} (ID: ${_cities[0]['id']})',
+              );
+            }
+            print('🏙️ ════════════════════════════════════════\n');
+
             // Показать диалог выбора города
             if (_cities.isNotEmpty) {
               showDialog(
@@ -482,35 +639,82 @@ class _RealEstateListingsFilterScreenState
                     options: _cities.map((c) => c['name'] as String).toList(),
                     selectedOptions: _selectedCity,
                     onSelectionChanged: (Set<String> selected) {
+                      print('\n🟢 ════════════════════════════════════════');
+                      print('🟢 onSelectionChanged CALLED');
+                      print('🟢 Selected options: $selected');
+
                       if (selected.isNotEmpty) {
                         final selectedCityName = selected.first;
+                        print('🟢 Looking for city: "$selectedCityName"');
+                        print('🟢 Total cities in _cities: ${_cities.length}');
+
+                        // Вывести все города для отладки
+                        for (int i = 0; i < _cities.length; i++) {
+                          print(
+                            '   - [${_cities[i]['id']}] "${_cities[i]['name']}"',
+                          );
+                          if (_cities[i]['name'] == selectedCityName) {
+                            print('      ✅ FOUND MATCH at index $i');
+                          }
+                        }
+
                         final cityIndex = _cities.indexWhere(
                           (c) => c['name'] == selectedCityName,
                         );
+                        print('🟢 City index: $cityIndex');
+
                         int? cityId;
                         if (cityIndex >= 0) {
                           cityId = _cities[cityIndex]['id'] as int?;
+                          print('🟢 City ID found: $cityId');
+                        } else {
+                          print('🟢 ⚠️  CITY NOT FOUND in _cities!');
                         }
+
                         setState(() {
                           _selectedCity = selected;
                           _selectedCityId = cityId;
+                          print(
+                            '🟢 SET STATE: _selectedCityId = $_selectedCityId',
+                          );
+                          print('🟢 SET STATE: _selectedCity = $_selectedCity');
                         });
+
                         print(
                           '✅ Выбран город: $selectedCityName (ID: $cityId)',
                         );
+                      } else {
+                        print('🟢 ⚠️  selected is empty!');
                       }
-                      Navigator.of(context).pop();
+                      print('🟢 ════════════════════════════════════════\n');
+                      // Не вызываем Navigator.pop() здесь - диалог это сделает сам
                     },
                   );
                 },
               );
-            } else if (mounted) {
-              try {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Текущая загрузка городов...')),
-                );
-              } catch (e) {
-                print('⚠️ Cannot show snackbar: $e');
+            } else if (_citiesLoading) {
+              if (mounted) {
+                try {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('⏳ Города загружаются...')),
+                  );
+                } catch (e) {
+                  print('⚠️ Cannot show snackbar: $e');
+                }
+              }
+            } else {
+              if (mounted) {
+                try {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        '❌ Города не найдены. Проверьте подключение.',
+                      ),
+                    ),
+                  );
+                } catch (e) {
+                  print('⚠️ Cannot show snackbar: $e');
+                }
               }
             }
           },
@@ -682,11 +886,21 @@ class _RealEstateListingsFilterScreenState
         onTap: () {
           setState(() {
             if (key == "new" || key == "old") {
-              _selectedDateSort = key;
-              _selectedPriceSort = null; // Убрать сортировку по цене
+              // Если уже выбран этот вариант - отменяем, иначе выбираем
+              if (_selectedDateSort == key) {
+                _selectedDateSort = null;
+              } else {
+                _selectedDateSort = key;
+                // (Сортировка по цене остается независимой)
+              }
             } else if (key == "expensive" || key == "cheap") {
-              _selectedPriceSort = key;
-              _selectedDateSort = null; // Убрать сортировку по дате
+              // Если уже выбран этот вариант - отменяем, иначе выбираем
+              if (_selectedPriceSort == key) {
+                _selectedPriceSort = null;
+              } else {
+                _selectedPriceSort = key;
+                // (Сортировка по дате остается независимой)
+              }
             }
           });
         },
@@ -943,15 +1157,16 @@ class _RealEstateListingsFilterScreenState
             ...attr.values.asMap().entries.map((entry) {
               final index = entry.key;
               final value = entry.value;
-              final isChecked = selected.contains(value.value);
+              final valueId = value.id.toString();
+              final isChecked = selected.contains(valueId);
 
               return GestureDetector(
                 onTap: () {
                   setState(() {
                     if (isChecked) {
-                      selected.remove(value.value);
+                      selected.remove(valueId);
                     } else {
-                      selected.add(value.value);
+                      selected.add(valueId);
                     }
                     _selectedValues[attr.id] = selected;
                   });
@@ -967,9 +1182,9 @@ class _RealEstateListingsFilterScreenState
                         onChanged: (_) {
                           setState(() {
                             if (isChecked) {
-                              selected.remove(value.value);
+                              selected.remove(valueId);
                             } else {
-                              selected.add(value.value);
+                              selected.add(valueId);
                             }
                             _selectedValues[attr.id] = selected;
                           });
@@ -1144,7 +1359,7 @@ class _RealEstateListingsFilterScreenState
                         ? ''
                         : selected.first;
                   });
-                  Navigator.pop(context);
+                  // Не вызываем Navigator.pop() здесь - диалог это сделает сам
                 },
                 allowMultipleSelection: false,
               ),
@@ -1235,6 +1450,10 @@ class _RealEstateListingsFilterScreenState
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
 
+    print(
+      '🎨 StyleD Filter Built: ID=${attr.id}, Title="${attr.title}", Current selected: $selected',
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1244,6 +1463,9 @@ class _RealEstateListingsFilterScreenState
         if (!attr.isTitleHidden) const SizedBox(height: 8),
         GestureDetector(
           onTap: () {
+            print(
+              '🎯 StyleD Dialog opened: ID=${attr.id}, Title="${attr.title}"',
+            );
             showDialog(
               context: context,
               builder: (_) => SelectionDialog(
@@ -1251,10 +1473,26 @@ class _RealEstateListingsFilterScreenState
                 options: attr.values.map((v) => v.value).toList(),
                 selectedOptions: selected,
                 onSelectionChanged: (newSelected) {
+                  print(
+                    '✅ StyleD Selection changed: ID=${attr.id}, newSelected=$newSelected',
+                  );
                   setState(() {
-                    _selectedValues[attr.id] = newSelected;
+                    // Преобразуем выбранные значения в их ID
+                    final selectedIds = <String>{};
+                    for (var value in attr.values) {
+                      if (newSelected.contains(value.value)) {
+                        print(
+                          '   🔄 Converting: "${value.value}" (ID=${value.id}) → added to selectedIds',
+                        );
+                        selectedIds.add(value.id.toString());
+                      }
+                    }
+                    _selectedValues[attr.id] = selectedIds;
+                    print(
+                      '✅ StyleD Selection saved: _selectedValues[${attr.id}] = $selectedIds',
+                    );
                   });
-                  Navigator.pop(context);
+                  // Не вызываем Navigator.pop() здесь - диалог это сделает сам
                 },
                 allowMultipleSelection: true,
               ),
@@ -1294,6 +1532,10 @@ class _RealEstateListingsFilterScreenState
     Attribute attr,
     Set<String> currentSelected,
   ) {
+    print(
+      '🎨 StyleF Dialog opened: ID=${attr.id}, Title="${attr.title}", Current: $currentSelected',
+    );
+
     Set<String> tempSelected = Set.from(currentSelected);
 
     showDialog(
@@ -1317,6 +1559,7 @@ class _RealEstateListingsFilterScreenState
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
                       onPressed: () {
+                        print('❌ StyleF Dialog cancelled');
                         Navigator.of(context).pop();
                       },
                     ),
@@ -1345,9 +1588,8 @@ class _RealEstateListingsFilterScreenState
                           mainAxisSize: MainAxisSize.min,
                           children: attr.values.asMap().entries.map((entry) {
                             final value = entry.value;
-                            final isChecked = tempSelected.contains(
-                              value.value,
-                            );
+                            final valueId = value.id.toString();
+                            final isChecked = tempSelected.contains(valueId);
 
                             return Padding(
                               padding: const EdgeInsets.only(bottom: 15.0),
@@ -1359,9 +1601,15 @@ class _RealEstateListingsFilterScreenState
                                     onTap: () {
                                       setDialogState(() {
                                         if (isChecked) {
-                                          tempSelected.remove(value.value);
+                                          print(
+                                            '❌ StyleF Unchecked: ID=$valueId, Value="${value.value}"',
+                                          );
+                                          tempSelected.remove(valueId);
                                         } else {
-                                          tempSelected.add(value.value);
+                                          print(
+                                            '✅ StyleF Checked: ID=$valueId, Value="${value.value}"',
+                                          );
+                                          tempSelected.add(valueId);
                                         }
                                       });
                                     },
@@ -1378,9 +1626,15 @@ class _RealEstateListingsFilterScreenState
                                     onChanged: (bool val) {
                                       setDialogState(() {
                                         if (val) {
-                                          tempSelected.add(value.value);
+                                          print(
+                                            '✅ StyleF Checkbox Checked: ID=$valueId, Value="${value.value}"',
+                                          );
+                                          tempSelected.add(valueId);
                                         } else {
-                                          tempSelected.remove(value.value);
+                                          print(
+                                            '❌ StyleF Checkbox Unchecked: ID=$valueId, Value="${value.value}"',
+                                          );
+                                          tempSelected.remove(valueId);
                                         }
                                       });
                                     },
@@ -1405,6 +1659,7 @@ class _RealEstateListingsFilterScreenState
                             ),
                           ),
                           onPressed: () {
+                            print('❌ StyleF Dialog cancelled');
                             Navigator.of(context).pop();
                           },
                           child: const Text(
@@ -1427,6 +1682,9 @@ class _RealEstateListingsFilterScreenState
                             ),
                           ),
                           onPressed: () {
+                            print(
+                              '✅ StyleF Dialog confirmed: Final selected=$tempSelected',
+                            );
                             setState(() {
                               _selectedValues[attr.id] = tempSelected;
                             });
@@ -1523,7 +1781,16 @@ class _RealEstateListingsFilterScreenState
               ),
             ),
             onPressed: () {
+              print('\n🔵 ════════════════════════════════════════');
+              print('🔵 BUTTON "Применить фильтры" PRESSED');
+              print('🔵 ════════════════════════════════════════');
+
               final filters = _collectFilters();
+
+              print('🔵 About to return filters to listings_screen');
+              print('🔵 Filters to return: $filters');
+              print('🔵 ════════════════════════════════════════\n');
+
               Navigator.pop(context, filters);
             },
             child: const Text(
@@ -1629,7 +1896,17 @@ class _RealEstateListingsFilterScreenState
     List<Map<String, dynamic>> regions,
   ) async {
     try {
-      print('🔍 Загрузка городов из ${regions.length} регионов...');
+      if (mounted) {
+        setState(() {
+          _citiesLoading = true;
+        });
+      }
+
+      print('\n🔍 ═══════════════════════════════════════');
+      print('🔍 _loadAllCitiesFromAllRegions() - STARTING');
+      print('🔍 Regions count: ${regions.length}');
+      print('🔍 ═══════════════════════════════════════');
+
       final token = await HiveService.getUserData('token');
 
       final Map<int, Map<String, dynamic>> citiesMap = {};
@@ -1639,7 +1916,10 @@ class _RealEstateListingsFilterScreenState
         final regionId = region['id'] as int?;
         final regionName = region['name'] as String?;
 
-        if (regionId == null || regionName == null) continue;
+        if (regionId == null || regionName == null) {
+          print('⚠️  Skipping region with null ID or name: $region');
+          continue;
+        }
 
         try {
           // Подготовить поисковый запрос
@@ -1648,6 +1928,8 @@ class _RealEstateListingsFilterScreenState
             searchQuery = searchQuery + '   ';
           }
 
+          print('📍 Loading cities for region: "$regionName" (ID=$regionId)');
+
           // Загрузить города через API
           final response = await AddressService.searchAddresses(
             query: searchQuery,
@@ -1655,33 +1937,63 @@ class _RealEstateListingsFilterScreenState
             types: ['city'],
           );
 
+          print('   ✅ API returned ${response.data.length} results');
+
           // Добавить города в карту (без дубликатов по ID)
           for (final result in response.data) {
             final cityId = result.city?.id;
-            if (cityId != null && !citiesMap.containsKey(cityId)) {
-              citiesMap[cityId] = {
-                'name': result.city?.name ?? '',
-                'id': cityId,
-                'main_region_id': result.main_region?.id,
-              };
+            final cityName = result.city?.name;
+
+            if (cityId != null) {
+              if (!citiesMap.containsKey(cityId)) {
+                citiesMap[cityId] = {
+                  'name': cityName ?? '',
+                  'id': cityId,
+                  'main_region_id': result.main_region?.id,
+                };
+                print('      + City added: "$cityName" (ID=$cityId)');
+              }
+            } else {
+              print('      ⚠️  City with null ID skipped: $cityName');
             }
           }
 
-          print('✅ Загружено города из области "$regionName" (ID: $regionId)');
+          print(
+            '   📊 Cities map now has ${citiesMap.length} total unique cities',
+          );
         } catch (e) {
-          print('⚠️  Ошибка загрузки городов для "$regionName": $e');
+          print('   ❌ Ошибка загрузки городов для "$regionName": $e');
         }
       }
 
       // Обновить состояние с объединённым списком городов
-      if (mounted && citiesMap.isNotEmpty) {
+      if (mounted) {
         setState(() {
           _cities = citiesMap.values.toList();
+          _citiesLoading = false;
         });
-        print('✅ Всего загружено ${_cities.length} уникальных городов');
+
+        print('\n🔍 ═══════════════════════════════════════');
+        print('🔍 _loadAllCitiesFromAllRegions() - COMPLETE');
+        if (citiesMap.isNotEmpty) {
+          print('✅ Всего загружено ${_cities.length} уникальных городов');
+          print('🔍 First 3 cities:');
+          for (int i = 0; i < (_cities.length > 3 ? 3 : _cities.length); i++) {
+            print('   [${_cities[i]['id']}] - ${_cities[i]['name']}');
+          }
+        } else {
+          print('⚠️  На городов не найдено');
+        }
+        print('🔍 ═══════════════════════════════════════\n');
       }
     } catch (e) {
       print('❌ Ошибка при загрузке городов из регионов: $e');
+      print('   Stack trace: ${StackTrace.current}');
+      if (mounted) {
+        setState(() {
+          _citiesLoading = false;
+        });
+      }
     }
   }
 

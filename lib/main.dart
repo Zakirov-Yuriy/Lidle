@@ -90,17 +90,17 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 
 void main() async {
   final mainStartTime = DateTime.now();
-  print(
-    '⏱️ [APP START] Приложение запущено в ${mainStartTime.toIso8601String()}',
-  );
+  // print(
+  //   '⏱️ [APP START] Приложение запущено в ${mainStartTime.toIso8601String()}',
+  // );
 
   WidgetsFlutterBinding.ensureInitialized();
-  print(
-    '⏱️ [BINDING] WidgetsFlutterBinding инициализирован за ${DateTime.now().difference(mainStartTime).inMilliseconds}ms',
-  );
+  // print(
+  //   '⏱️ [BINDING] WidgetsFlutterBinding инициализирован за ${DateTime.now().difference(mainStartTime).inMilliseconds}ms',
+  // );
 
   // ПРОПУСК dotenv.load() - переменные закэшированы в constants.dart
-  print('⏱️ [DOTENV] Переменные окружения инициализированы константами');
+  // print('⏱️ [DOTENV] Переменные окружения инициализированы константами');
 
   // Инициализация Hive
   final hiveStart = DateTime.now();
@@ -111,9 +111,9 @@ void main() async {
     await Hive.initFlutter(appDocumentDir.path);
   }
   await HiveService.init();
-  print(
-    '⏱️ [HIVE] Hive инициализирован за ${DateTime.now().difference(hiveStart).inMilliseconds}ms',
-  );
+  // print(
+  //   '⏱️ [HIVE] Hive инициализирован за ${DateTime.now().difference(hiveStart).inMilliseconds}ms',
+  // );
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -125,9 +125,9 @@ void main() async {
   );
 
   final totalAppInitTime = DateTime.now().difference(mainStartTime);
-  print(
-    '⏱️ [INIT COMPLETE] Полная инициализация главной программы: ${totalAppInitTime.inMilliseconds}ms',
-  );
+  // print(
+  //   '⏱️ [INIT COMPLETE] Полная инициализация главной программы: ${totalAppInitTime.inMilliseconds}ms',
+  // );
 
   runApp(const LidleApp());
 }

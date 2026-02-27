@@ -55,9 +55,9 @@ class ContactService {
     String? token,
   }) async {
     try {
-      print(
-        '➕ ContactService.addPhone - Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
-      );
+      // print(
+      //   '➕ ContactService.addPhone - Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
+      // );
       final body = {'phone': phone};
 
       final response = await ApiService.post(
@@ -84,9 +84,9 @@ class ContactService {
     String? token,
   }) async {
     try {
-      print(
-        '➕ ContactService.addEmail - Email: $email, Token: ${token != null ? 'YES' : 'NO'}',
-      );
+      // print(
+      //   '➕ ContactService.addEmail - Email: $email, Token: ${token != null ? 'YES' : 'NO'}',
+      // );
       final body = {'email': email};
 
       final response = await ApiService.post(
@@ -115,9 +115,9 @@ class ContactService {
     String? token,
   }) async {
     try {
-      print(
-        '🔄 ContactService.updatePhone - ID: $id, Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
-      );
+      // print(
+      //   '🔄 ContactService.updatePhone - ID: $id, Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
+      // );
       final body = {'phone': phone};
 
       final response = await ApiService.put(
@@ -146,9 +146,9 @@ class ContactService {
     String? token,
   }) async {
     try {
-      print(
-        '🔄 ContactService.updateEmail - ID: $id, Email: $email, Token: ${token != null ? 'YES' : 'NO'}',
-      );
+      // print(
+      //   '🔄 ContactService.updateEmail - ID: $id, Email: $email, Token: ${token != null ? 'YES' : 'NO'}',
+      // );
       final body = {'email': email};
 
       final response = await ApiService.put(

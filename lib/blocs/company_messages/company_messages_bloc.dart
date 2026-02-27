@@ -30,7 +30,7 @@ class CompanyMessagesBloc
     if (!event.forceRefresh) {
       final cached = CacheManager().get<Map<String, dynamic>>(_cacheKey);
       if (cached != null) {
-        print('✅ Используем кешированные данные корп. сообщений (TTL: 1 мин)');
+        // print('✅ Используем кешированные данные корп. сообщений (TTL: 1 мин)');
         emit(
           CompanyMessagesLoaded(
             mainMessages: List.from(cached['main'] ?? []),
@@ -121,3 +121,4 @@ class CompanyMessagesBloc
     );
   }
 }
+

@@ -31,8 +31,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await AuthService.login(
         email: event.email,
         password: event.password,
-        remember: event.remember,
-      );
+        remember: event.remember);
 
       final token =
           response['data']?['access_token'] ??
@@ -70,14 +69,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           if (userData.containsKey('username')) {
             await HiveService.saveUserData(
               'username',
-              userData['username'] ?? '',
-            );
+              userData['username'] ?? '');
           }
           if (userData.containsKey('avatar')) {
             await HiveService.saveUserData(
               'profileImage',
-              userData['avatar'] ?? '',
-            );
+              userData['avatar'] ?? '');
           }
         }
 
@@ -101,8 +98,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         phone: event.phone,
         password: event.password,
-        passwordConfirmation: event.passwordConfirmation,
-      );
+        passwordConfirmation: event.passwordConfirmation);
 
       final token =
           response['data']?['access_token'] ??
@@ -142,25 +138,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           if (userData.containsKey('username')) {
             await HiveService.saveUserData(
               'username',
-              userData['username'] ?? '',
-            );
+              userData['username'] ?? '');
           }
           if (userData.containsKey('avatar')) {
             await HiveService.saveUserData(
               'profileImage',
-              userData['avatar'] ?? '',
-            );
+              userData['avatar'] ?? '');
           }
         }
 
         emit(AuthRegistered(email: event.email));
-        print('✅ AuthBloc emitted AuthRegistered with email: ${event.email}');
+        // print('✅ AuthBloc emitted AuthRegistered with email: ${event.email}');
       } else {
-        print('❌ AuthBloc: token is null after registration');
+        // print('❌ AuthBloc: token is null after registration');
         emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
       }
     } catch (e) {
-      print('❌ AuthBloc error in _onRegister: $e');
+      // print('❌ AuthBloc error in _onRegister: $e');
       emit(AuthError(message: e.toString()));
     }
   }
@@ -204,8 +198,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
         passwordConfirmation: event.passwordConfirmation,
-        token: event.token,
-      );
+        token: event.token);
       emit(AuthPasswordReset());
     } catch (e) {
       emit(AuthError(message: e.toString()));
@@ -254,7 +247,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     TokenExpiredEvent event,
     Emitter<AuthState> emit,
   ) async {
-    print('🔐 AuthBloc: токен истёк, выполняем принудительный logout...');
+    // print('🔐 AuthBloc: токен истёк, выполняем принудительный logout...');
     try {
       // Пробуем корректно выйти на сервере
       await AuthService.logout();
@@ -263,7 +256,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     // Очищаем токен из локального хранилища
     await HiveService.deleteUserData('token');
-    print('🔐 AuthBloc: токен удалён, переходим на экран входа');
+    // print('🔐 AuthBloc: токен удалён, переходим на экран входа');
     emit(AuthTokenExpired());
   }
 
@@ -275,11 +268,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     TokenRefreshedEvent event,
     Emitter<AuthState> emit,
   ) async {
-    print(
-      '✅ AuthBloc: токен обновлён в фоне: ${event.newToken.substring(0, 20)}...',
-    );
+    // print('✅ AuthBloc: токен обновлён в фоне: ${event.newToken.substring(0, 20)}...');
     // Токен уже сохранён в Hive через ApiService.refreshToken()
     // Просто обновляем состояние с новым токеном
     emit(AuthAuthenticated(token: event.newToken));
   }
 }
+
+

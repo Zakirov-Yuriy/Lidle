@@ -50,6 +50,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   int _selectedIndex = 0;
   List<Listing> _listings = [];
   Set<String> _selectedSortOptions = {};
+  String? _currentSort =
+      'new'; // Тип сортировки: 'new', 'old', 'expensive', 'cheap'
   bool _isLoading = true;
   bool _isLoadingMore = false; // Для индикатора подгрузки
   String? _errorMessage;
@@ -113,33 +115,196 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       // Используем переданные параметры как есть:
       // - Если catalogId передан → используем для фильтрации по каталогу
       // - Если categoryId передан (и catalogId == null) → используем для фильтрации по подкатегории
+      // - Применённые фильтры передаём в API
 
-      final response = await ApiService.getAdverts(
+      print('\n🔍 ═══════════════════════════════════════');
+      print('🔍 _loadAdverts() - LOADING');
+      print('🔍 ═══════════════════════════════════════');
+      print('🔍 Category: ${widget.categoryName}, ID=${widget.categoryId}');
+      print('🔍 Catalog: ID=${widget.catalogId}');
+      print('🔍 Applied Filters Count: ${_appliedFilters.length}');
+
+      if (_appliedFilters.isNotEmpty) {
+        print('🔍 Applied Filters Details:');
+        _appliedFilters.forEach((key, value) {
+          print('   - [$key] = $value (type: ${value.runtimeType})');
+        });
+      } else {
+        print('🔍 NO FILTERS APPLIED');
+      }
+      print('🔍 ═══════════════════════════════════════\n');
+
+      var response = await ApiService.getAdverts(
         categoryId: widget.categoryId,
         catalogId: widget.catalogId,
         sort: sort,
+        filters: _appliedFilters.isNotEmpty ? _appliedFilters : null,
         page: isNextPage ? _currentPage + 1 : 1,
         limit: 20,
         token: token,
       );
 
-      print('📊 API Response: ${response.data.length} объявлений загружено');
-      print(
-        '📊 Meta: currentPage=${response.meta?.currentPage}, totalPages=${response.meta?.lastPage}, itemsPerPage=${response.meta?.perPage}',
-      );
-      print(
-        '📊 Category: ${widget.categoryName}, categoryId=${widget.categoryId}, catalogId=${widget.catalogId}',
+      // 🟡 FALLBACK: Если API вернул 0 результатов с фильтром - загружаем ВСЕ
+      // затем применяем фильтры на клиенте (гибридный approach)
+      if (response.data.isEmpty && _appliedFilters.isNotEmpty && !isNextPage) {
+        print('\n⚠️  FALLBACK TRIGGERED: API returned 0 results with filters');
+        print('📥 Fetching ALL listings without API filters...\n');
+
+        response = await ApiService.getAdverts(
+          categoryId: widget.categoryId,
+          catalogId: widget.catalogId,
+          sort: sort,
+          filters: null, // БЕЗ фильтров!
+          page: 1,
+          limit: 100, // Загружаем больше для лучшего выбора на клиенте
+          token: token,
+        );
+
+        print(
+          '📊 Fallback Response: ${response.data.length} объявлений загружено БЕЗ фильтров',
+        );
+        print('   Будет применена КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ\n');
+
+        // 🔥 ЗАГРУЖАЕМ АТРИБУТЫ для клиентской фильтрации
+        print('📥 Loading attributes for each listing to enable filtering...');
+        if (response.data.isNotEmpty) {
+          final advertIds = response.data.map((advert) => advert.id).toList();
+
+          try {
+            // Загружаем атрибуты пакетами
+            final advertsWithAttributes =
+                await ApiService.getAdvertsWithAttributes(
+                  advertIds,
+                  token: token,
+                );
+
+            print(
+              '✅ Loaded attributes for ${advertsWithAttributes.length} adverts\n',
+            );
+
+            // Заменяем объявления на версии с атрибутами
+            for (int i = 0; i < response.data.length; i++) {
+              final advert = response.data[i];
+              if (advertsWithAttributes.containsKey(advert.id)) {
+                response.data[i] = advertsWithAttributes[advert.id]!;
+              }
+            }
+          } catch (e) {
+            print('⚠️  Failed to load attributes: $e');
+            // Продолжаем без атрибутов
+          }
+        }
+      }
+
+      // 🔍 КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ
+      // Применяем фильтры локально, если понадобилось
+      // Сначала конвертируем Advert в Listing
+      final listingsToFilter = response.data.map((advert) {
+        final listing = advert.toListing();
+        // DEBUG: Логируем характеристики
+        if (listing.characteristics.isEmpty) {
+          print(
+            '⚠️  Listing #${listing.id}: NO characteristics (will be skipped in filtering)',
+          );
+        } else {
+          print(
+            '✅ Listing #${listing.id}: ${listing.characteristics.length} characteristics - ${listing.characteristics.keys.toList()}',
+          );
+        }
+        return listing;
+      }).toList();
+
+      var sortedNewListings = _applyClientSideFiltering(
+        listingsToFilter,
+        _appliedFilters,
       );
 
-      final newListings = response.data
-          .map((advert) => advert.toListing())
-          .toList();
+      // 🔀 КЛИЕНТСКАЯ СОРТИРОВКА
+
+      // 🎯 Определяем типы сортировки: поддержка МУЛЬТИСОРТИРОВКИ
+      String? sortByDate = _currentSort;
+      String? sortByPrice = null;
+
+      // 🔍 Проверяем фильтры сортировки: дата И цена оба одновременно
+      if (_appliedFilters.containsKey('sort_date') &&
+          _appliedFilters['sort_date'] != null &&
+          (_appliedFilters['sort_date'] as String).isNotEmpty) {
+        sortByDate = _appliedFilters['sort_date'] as String;
+        print('🔀 SORT FROM FILTERS (DATE): $sortByDate');
+      }
+
+      if (_appliedFilters.containsKey('sort_price') &&
+          _appliedFilters['sort_price'] != null &&
+          (_appliedFilters['sort_price'] as String).isNotEmpty) {
+        sortByPrice = _appliedFilters['sort_price'] as String;
+        print('🔀 SORT FROM FILTERS (PRICE): $sortByPrice');
+      }
+
+      if (sortByDate != null && sortByDate.isNotEmpty) {
+        print(
+          '🔀 CLIENT-SIDE SORTING: Date=$sortByDate, Price=${sortByPrice ?? "none"}',
+        );
+        print('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
+
+        // МУЛЬТИСОРТИРОВКА: сначала по дате, потом по цене
+        sortedNewListings.sort((a, b) {
+          // Первичная сортировка: ПО ДАТЕ
+          final dateA = _parseDate(a.date);
+          final dateB = _parseDate(b.date);
+
+          int dateComparison = 0;
+          if (sortByDate == 'new') {
+            dateComparison = dateB.compareTo(dateA); // Новые сначала
+          } else if (sortByDate == 'old') {
+            dateComparison = dateA.compareTo(dateB); // Старые сначала
+          }
+
+          // Если даты одинаковые, сортируем ПО ЦЕНЕ
+          if (dateComparison == 0 &&
+              sortByPrice != null &&
+              sortByPrice!.isNotEmpty) {
+            final priceA = double.tryParse(a.price) ?? 0;
+            final priceB = double.tryParse(b.price) ?? 0;
+
+            if (sortByPrice == 'expensive') {
+              return priceB.compareTo(priceA); // Дорогие сначала
+            } else if (sortByPrice == 'cheap') {
+              return priceA.compareTo(priceB); // Дешевые сначала
+            }
+          }
+
+          return dateComparison;
+        });
+
+        print('🔀 AFTER sorting: ${sortedNewListings.length} listings');
+      } else if (sortByPrice != null && sortByPrice!.isNotEmpty) {
+        // Если выбрана только сортировка ПО ЦЕНЕ (без даты)
+        print('🔀 CLIENT-SIDE SORTING: Price only=$sortByPrice');
+        print('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
+
+        sortedNewListings.sort((a, b) {
+          final priceA = double.tryParse(a.price) ?? 0;
+          final priceB = double.tryParse(b.price) ?? 0;
+
+          if (sortByPrice == 'expensive') {
+            return priceB.compareTo(priceA); // Дорогие сначала
+          } else if (sortByPrice == 'cheap') {
+            return priceA.compareTo(priceB); // Дешевые сначала
+          }
+
+          return 0;
+        });
+
+        print('🔀 AFTER sorting: ${sortedNewListings.length} listings');
+      }
+
+      final fullListings = sortedNewListings;
 
       setState(() {
         if (isNextPage) {
-          _listings.addAll(newListings);
+          _listings.addAll(fullListings);
         } else {
-          _listings = newListings;
+          _listings = fullListings;
         }
 
         _currentPage = response.meta?.currentPage ?? 1;
@@ -165,6 +330,23 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     }
   }
 
+  /// 📅 Парсит дату формата "25.02.2026" в DateTime
+  DateTime _parseDate(String dateString) {
+    try {
+      final parts = dateString.split('.');
+      if (parts.length == 3) {
+        final day = int.parse(parts[0]);
+        final month = int.parse(parts[1]);
+        final year = int.parse(parts[2]);
+        return DateTime(year, month, day);
+      }
+    } catch (e) {
+      print('⚠️ Error parsing date "$dateString": $e');
+    }
+    // Возвращаем сегодняшнюю дату если парсинг не удался
+    return DateTime.now();
+  }
+
   void _sortListings(Set<String> selectedOptions) {
     String? sort;
     if (selectedOptions.contains('Сначала новые')) sort = 'new';
@@ -173,6 +355,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     if (selectedOptions.contains('Сначала дешевые')) sort = 'cheap';
 
     if (sort != null) {
+      print('📊 SORT SELECTED: $sort (${selectedOptions.join(", ")})');
+      _currentSort = sort; // 💾 Сохраняем текущий тип сортировки
       _loadAdverts(sort: sort);
     }
   }
@@ -411,6 +595,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           const Spacer(),
           GestureDetector(
             onTap: () {
+              print('\n🟣 ════════════════════════════════════════');
+              print('🟣 FILTERS BUTTON TAPPED on listings_screen');
+              print('🟣 Current applied filters: $_appliedFilters');
+              print('🟣 ════════════════════════════════════════\n');
+
               // Открыть динамический фильтр для листинга
               if (widget.categoryId != null) {
                 Navigator.push(
@@ -423,14 +612,32 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                     ),
                   ),
                 ).then((filters) {
+                  print('\n🟣 ════════════════════════════════════════');
+                  print('🟣 RETURNED FROM FILTER SCREEN');
+                  print('🟣 Filter type: ${filters?.runtimeType}');
+                  print('🟣 Filter is null? ${filters == null}');
+                  print('🟣 Filter is Map? ${filters is Map<String, dynamic>}');
+                  print('🟣 ════════════════════════════════════════\n');
+
                   if (filters != null && filters is Map<String, dynamic>) {
                     // Применить фильтры и перезагрузить объявления
+                    print('\n✅ ═══════════════════════════════════════');
+                    print('✅ FILTERS RETURNED FROM FILTER SCREEN');
+                    print('✅ ═══════════════════════════════════════');
+                    print('✅ Filter count: ${filters.length}');
+                    filters.forEach((key, value) {
+                      print('   [$key] = $value (type: ${value.runtimeType})');
+                    });
+                    print('✅ ═══════════════════════════════════════\n');
+
                     setState(() {
                       _appliedFilters = filters;
                       _currentPage = 1;
                       _listings.clear();
                     });
                     _loadAdverts();
+                  } else {
+                    print('❌ No filters returned or filters is not a Map');
                   }
                 });
               } else {
@@ -687,5 +894,569 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       onTap: onTap,
       child: const Icon(Icons.import_export, color: Colors.white, size: 25),
     );
+  }
+
+  /// ═══════════════════════════════════════════════════════════════════════════
+  /// МОЩНАЯ СИСТЕМА КЛИЕНТСКОЙ ФИЛЬТРАЦИИ
+  /// Универсальный метод для всех типов фильтров
+  /// ═══════════════════════════════════════════════════════════════════════════
+
+  /// Применяет ВСЕ типы фильтров на клиенте одновременно
+  /// Поддерживает: города, value_selected, values (диапазоны), булевы, текстовые
+  List<Listing> _applyClientSideFiltering(
+    List<Listing> listings,
+    Map<String, dynamic> filters,
+  ) {
+    if (filters.isEmpty || listings.isEmpty) {
+      return listings;
+    }
+
+    print(
+      '\n🟢 ═══════════════════════════════════════════════════════════════',
+    );
+    print('🟢 CLIENT-SIDE FILTERING STARTED');
+    print('🟢 Initial listings: ${listings.length}');
+    print('🟢 Filters to apply: ${filters.keys.toList()}');
+    print(
+      '🟢 ═══════════════════════════════════════════════════════════════\n',
+    );
+
+    var result = listings;
+
+    // 1️⃣ ФИЛЬТРАЦИЯ ПО ГОРОДУ
+    if (filters.containsKey('city_name') &&
+        filters['city_name'] != null &&
+        (filters['city_name'] as String).isNotEmpty) {
+      result = _filterByCity(result, filters['city_name'] as String);
+    }
+
+    // 2️⃣ ФИЛЬТРАЦИЯ ПО value_selected АТРИБУТАМ (Ландшафт, Инфраструктура и т.д.)
+    if (filters.containsKey('value_selected') &&
+        filters['value_selected'] is Map) {
+      final valueSelectedMap = (filters['value_selected'] as Map)
+          .cast<String, dynamic>();
+      print('🔍 VALUE_SELECTED FILTERS:');
+      print('   Full Map: $valueSelectedMap');
+      valueSelectedMap.forEach((k, v) {
+        print('   ├─ Key=$k, Value=$v (type=${v.runtimeType})');
+        if (v is Map) {
+          print('   │  └─ Map keys: ${(v as Map).keys.toList()}');
+          (v as Map).forEach((mk, mv) {
+            print('   │     ├─ $mk: $mv');
+          });
+        } else if (v is List) {
+          print('   │  └─ List length: ${(v as List).length}');
+          (v as List).forEach((item) {
+            print('   │     ├─ $item (type=${item.runtimeType})');
+          });
+        }
+      });
+      result = _filterByValueSelected(result, valueSelectedMap);
+    }
+
+    // 3️⃣ ФИЛЬТРАЦИЯ ПО values АТРИБУТАМ (диапазоны, цена, площадь и т.д.)
+    if (filters.containsKey('values') && filters['values'] is Map) {
+      result = _filterByValues(
+        result,
+        (filters['values'] as Map).cast<String, dynamic>(),
+      );
+    }
+
+    // 4️⃣ ФИЛЬТРАЦИЯ ПО БУЛЕВЫМ АТРИБУТАМ (Ипотека, Возможен торг и т.д.)
+    if (filters.containsKey('boolean') && filters['boolean'] is Map) {
+      result = _filterByBoolean(
+        result,
+        (filters['boolean'] as Map).cast<String, dynamic>(),
+      );
+    }
+
+    print(
+      '\n🟢 ═══════════════════════════════════════════════════════════════',
+    );
+    print('🟢 CLIENT-SIDE FILTERING COMPLETED');
+    print('🟢 Final listings: ${result.length}');
+    print(
+      '🟢 ═══════════════════════════════════════════════════════════════\n',
+    );
+
+    return result;
+  }
+
+  /// Фильтрует объявления по названию города
+  List<Listing> _filterByCity(List<Listing> listings, String cityName) {
+    print('🟢 FILTER BY CITY: "$cityName"');
+    print('   BEFORE: ${listings.length} listings');
+
+    final filtered = listings.where((listing) {
+      final matches = listing.location.startsWith(cityName);
+      if (!matches) {
+        print('      ❌ ID=${listing.id}: ${listing.location}');
+      }
+      return matches;
+    }).toList();
+
+    print('   AFTER: ${filtered.length} listings\n');
+    return filtered;
+  }
+
+  /// Фильтрует объявления по value_selected атрибутам (ID < 1000)
+  /// Примеры: Ландшафт, Инфраструктура, тип Дома и т.д.
+  List<Listing> _filterByValueSelected(
+    List<Listing> listings,
+    Map<String, dynamic> valueSelectedFilters,
+  ) {
+    if (valueSelectedFilters.isEmpty) {
+      return listings;
+    }
+
+    print('🟢 FILTER BY value_selected ATTRIBUTES');
+    print('   Filters: $valueSelectedFilters');
+
+    // DEBUG: логируем структуру фильтров
+    valueSelectedFilters.forEach((key, value) {
+      print('   Filter key=$key, value=$value (type=${value.runtimeType})');
+      if (value is List) {
+        print('      List items: $value');
+      } else if (value is Set) {
+        print('      Set items: $value');
+      }
+    });
+
+    print('   BEFORE: ${listings.length} listings');
+
+    // ДЕБАГ: показываем характеристики для первых 5 объявлений
+    print('\n📊 ХАРАКТЕРИСТИКИ ПЕРВЫХ 5 ОБЪЯВЛЕНИЙ:');
+    for (int i = 0; i < listings.length && i < 5; i++) {
+      final listing = listings[i];
+      print('\n   📌 Объявление ID=${listing.id}:');
+      if (listing.characteristics == null || listing.characteristics!.isEmpty) {
+        print('      ⚠️ БЕЗ ХАРАКТЕРИСТИК!');
+      } else {
+        print('      Всего своиств: ${listing.characteristics!.length}');
+        listing.characteristics!.forEach((attrId, value) {
+          print('      ├─ Атрибут $attrId: $value');
+        });
+      }
+    }
+    print('\n🟢 НАЧАЛО ФИЛЬТРАЦИИ:\n');
+
+    final filtered = listings.where((listing) {
+      // Каждый фильтр должен совпадать - логика AND между фильтрами
+      for (final filterEntry in valueSelectedFilters.entries) {
+        final attrIdStr = filterEntry.key;
+        final selectedValueIds = filterEntry.value;
+
+        // Получаем значение из characteristics
+        final characteristic = listing.characteristics?[attrIdStr];
+
+        // DEBUG для этого конкретного объявления
+        if (listing.id == 104 || listing.id == 103) {
+          print('   🔍🔍 ID=${listing.id}, атрибут $attrIdStr:');
+          print('      От фильтра ожидаем: $selectedValueIds');
+          print('      В объявлении: $characteristic');
+        }
+
+        // 🔴 ВАЖНО: Если нет характеристики - ИСКЛЮЧАЕМ объявление
+        // (не пропускаем фильтр, а полностью исключаем объявление)
+        if (characteristic == null) {
+          if (listing.id == 104 || listing.id == 103) {
+            print('      ❌ БЕЗ ХАРАКТЕРИСТИКИ\n');
+          }
+          return false; // Объявление НЕ прходит фильтр
+        }
+
+        // Извлекаем названия из characteristic для сравнения
+        // Если characteristic это Map с 'value', то это название опции (например, "Река")
+        final characteristicNames = _extractCharacteristicNames(characteristic);
+        final characteristicSet = _normalizeToSet(characteristicNames);
+
+        // Также получаем ВСЕ возможные значения (для сравнения по ID, если нужно)
+        final allValues = _getAllCharacteristicValuesAsSet(characteristic);
+
+        // Нормализуем selectedValueIds в Set<String> (значения из фильтра могут быть ID или названия)
+        final selectedIds = _normalizeToSet(selectedValueIds);
+
+        if (listing.id == 104 || listing.id == 103) {
+          print('      Основное значение: $characteristicSet');
+          print('      Все значения: $allValues');
+          print('      Ожидаемые значения (нормализованные): $selectedIds');
+        }
+
+        // Проверяем пересечение между выбранными и значением объявления
+        // Сраниваем И по названиям, И по всем возможным значениям из Map
+        final hasNameMatch = characteristicSet.any(
+          (name) => selectedIds.contains(name),
+        );
+
+        // Если совпадение по названиям не нашлось, проверяем по всем значениям
+        final hasAnyMatch =
+            hasNameMatch || allValues.any((val) => selectedIds.contains(val));
+
+        if (!hasAnyMatch) {
+          if (listing.id == 104 || listing.id == 103) {
+            print('      ❌ НЕ СОВПАДАЕТ\n');
+          }
+          return false;
+        }
+
+        if (listing.id == 104 || listing.id == 103) {
+          print('      ✅ СОВПАДАЕТ\n');
+        }
+      }
+
+      return true;
+    }).toList();
+
+    print('   AFTER: ${filtered.length} listings\n');
+    return filtered;
+  }
+
+  /// Извлекает названия/значения из характеристики для сравнения в фильтре
+  /// Приводит все к единому формату (названиям опций вроде "Река", "Клубные дома" и т.д.)
+  dynamic _extractCharacteristicNames(dynamic characteristic) {
+    if (characteristic == null) return null;
+
+    if (characteristic is Map) {
+      // 🔑 ПРИОРИТЕТ 1: Если есть поле 'value' - это название опции (например, "Река")
+      // Это первый выбор, так как это то, что пользователь видит в интерфейсе
+      if (characteristic.containsKey('value') &&
+          characteristic['value'] != null) {
+        print(
+          '      NAMES: extracted "value" field: ${characteristic['value']}',
+        );
+        return characteristic['value'];
+      }
+
+      // 🔑 ПРИОРИТЕТ 2: Если есть поле 'title' - используем название
+      if (characteristic.containsKey('title') &&
+          characteristic['title'] != null) {
+        print(
+          '      NAMES: extracted "title" field: ${characteristic['title']}',
+        );
+        return characteristic['title'];
+      }
+
+      // 🔑 ПРИОРИТЕТ 3: Если есть 'value_id' - это ID значения, пока что возвращаем строку
+      if (characteristic.containsKey('value_id') &&
+          characteristic['value_id'] != null) {
+        print(
+          '      NAMES: extracted "value_id" field: ${characteristic['value_id']}',
+        );
+        return characteristic['value_id'].toString();
+      }
+
+      return characteristic;
+    }
+
+    return characteristic;
+  }
+
+  /// Получает ВСЕ возможные значения из характеристики для сравнения
+  /// Включает названия (value), ID (value_id, id) и т.д. для гибкого сравнения
+  Set<String> _getAllCharacteristicValuesAsSet(dynamic characteristic) {
+    final values = <String>{};
+
+    if (characteristic == null) return values;
+
+    if (characteristic is Map) {
+      // Добавляем все значения из Map в виде строк
+      characteristic.forEach((k, v) {
+        if (v != null && v.toString().isNotEmpty) {
+          values.add(v.toString()); // Строка ("Река", "154" и т.д.)
+        }
+      });
+      print('      VALUES: all from Map: $values');
+    } else {
+      // Если это не Map, добавляем само значение
+      final valueStr = characteristic.toString();
+      if (valueStr.isNotEmpty) {
+        values.add(valueStr);
+      }
+      print('      VALUES: single value: $values');
+    }
+
+    return values;
+  }
+
+  /// Фильтрует объявления по values атрибутам (ID >= 1000)
+  /// Примеры: Цена, Площадь, Этаж и т.д. (диапазоны)
+  List<Listing> _filterByValues(
+    List<Listing> listings,
+    Map<String, dynamic> valuesFilters,
+  ) {
+    if (valuesFilters.isEmpty) {
+      return listings;
+    }
+
+    print('🟢 FILTER BY values ATTRIBUTES (Range filters)');
+    print('   Filters: $valuesFilters');
+    print('   BEFORE: ${listings.length} listings');
+
+    final filtered = listings.where((listing) {
+      // Каждый фильтр должен совпадать - логика AND между фильтрами
+      for (final filterEntry in valuesFilters.entries) {
+        final attrIdStr = filterEntry.key;
+        final filterValue = filterEntry.value;
+
+        // Получаем значение из characteristics
+        final characteristic = listing.characteristics?[attrIdStr];
+
+        // 🔴 ВАЖНО: Если нет характеристики - ИСКЛЮЧАЕМ объявление
+        // Если фильтр активен для диапазона, объавления ДОЛЖНЫ иметь это значение
+        if (characteristic == null) {
+          print(
+            '      ❌ ID=${listing.id}, attr=$attrIdStr: NO CHARACTERISTIC - SKIPPING',
+          );
+          return false;
+        }
+
+        // Если это Map с min/max (диапазон)
+        if (filterValue is Map &&
+            (filterValue.containsKey('min') ||
+                filterValue.containsKey('max'))) {
+          final minFilter = filterValue['min'];
+          final maxFilter = filterValue['max'];
+
+          final minNum = _parseNumber(minFilter);
+          final maxNum = _parseNumber(maxFilter);
+
+          // Если оба пусты, пропускаем фильтр
+          if (minNum == null && maxNum == null) {
+            continue;
+          }
+
+          // Извлекаем значение из characteristic
+          dynamic advertVal = characteristic;
+          if (characteristic is Map) {
+            // Может быть {value: 100, max_value: 200} (диапазон) или {value: 150} (одно значение)
+            if (characteristic.containsKey('value')) {
+              advertVal = characteristic['value'];
+              if (characteristic.containsKey('max_value')) {
+                // Это диапазон (например, этажи 1-3)
+                final advertMin = _parseNumber(characteristic['value']);
+                final advertMax = _parseNumber(characteristic['max_value']);
+
+                if (advertMin != null && advertMax != null) {
+                  // Проверяем, что весь диапазон объявления входит в фильтр
+                  bool ok = true;
+                  if (minNum != null) ok = ok && (advertMin >= minNum);
+                  if (maxNum != null) ok = ok && (advertMax <= maxNum);
+
+                  if (!ok) {
+                    print(
+                      '      ❌ ID=${listing.id}, attr=$attrIdStr: range $advertMin-$advertMax not in $minNum-$maxNum',
+                    );
+                    return false;
+                  }
+                }
+              }
+            }
+          }
+
+          // Если это простое число - проверяем диапазон
+          final advertNum = _parseNumber(advertVal);
+          if (advertNum != null) {
+            bool ok = true;
+            if (minNum != null) ok = ok && (advertNum >= minNum);
+            if (maxNum != null) ok = ok && (advertNum <= maxNum);
+
+            if (!ok) {
+              print(
+                '      ❌ ID=${listing.id}, attr=$attrIdStr: $advertNum not in $minNum-$maxNum',
+              );
+              return false;
+            }
+
+            print(
+              '      ✅ ID=${listing.id}, attr=$attrIdStr: $advertNum in $minNum-$maxNum',
+            );
+          }
+        }
+      }
+
+      return true;
+    }).toList();
+
+    print('   AFTER: ${filtered.length} listings\n');
+    return filtered;
+  }
+
+  /// Фильтрует объявления по булевым атрибутам (true/false)
+  List<Listing> _filterByBoolean(
+    List<Listing> listings,
+    Map<String, dynamic> booleanFilters,
+  ) {
+    if (booleanFilters.isEmpty) {
+      return listings;
+    }
+
+    print('🟢 FILTER BY BOOLEAN ATTRIBUTES');
+    print('   Filters: $booleanFilters');
+    print('   BEFORE: ${listings.length} listings');
+
+    final filtered = listings.where((listing) {
+      // Каждый фульгер должен совпадать - логика AND между фильтрами
+      for (final filterEntry in booleanFilters.entries) {
+        final attrIdStr = filterEntry.key;
+        final expectedValue = filterEntry.value;
+
+        // Получаем значение из characteristics
+        final characteristic = listing.characteristics?[attrIdStr];
+
+        if (characteristic == null) {
+          continue;
+        }
+
+        // Извлекаем булево значение
+        bool advertBool = false;
+        if (characteristic is bool) {
+          advertBool = characteristic;
+        } else if (characteristic is Map &&
+            characteristic.containsKey('value')) {
+          advertBool = characteristic['value'] == true;
+        }
+
+        // Проверяем совпадение
+        bool matches = false;
+        if (expectedValue == true) {
+          matches = advertBool;
+        } else if (expectedValue == false) {
+          matches = !advertBool;
+        }
+
+        if (!matches) {
+          print(
+            '      ❌ ID=${listing.id}, attr=$attrIdStr: $advertBool != $expectedValue',
+          );
+          return false;
+        }
+
+        print(
+          '      ✅ ID=${listing.id}, attr=$attrIdStr: $advertBool == $expectedValue',
+        );
+      }
+
+      return true;
+    }).toList();
+
+    print('   AFTER: ${filtered.length} listings\n');
+    return filtered;
+  }
+
+  /// ═══════════════════════════════════════════════════════════════════════════
+  /// ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ПАРСИРОВАНИЯ
+  /// ═══════════════════════════════════════════════════════════════════════════
+
+  /// Извлекает значение из различных форматов характеристик
+  dynamic _extractValue(dynamic value) {
+    if (value == null) return null;
+
+    // Логируем структуру
+    if (value is Map) {
+      print('      EXTRACT: value is Map with keys={${value.keys.toSet()}}');
+      print('      EXTRACT: FULL STRUCTURE: $value'); // 🔥 ВИДИМ ВСЮ СТРУКТУРУ
+
+      // Логируем каждое поле
+      value.forEach((k, v) {
+        print('         ├─ $k: $v (type=${v.runtimeType})');
+      });
+
+      // 🔑 ПРИОРИТЕТ 1: 'value_id' - ID значения в других форматах
+      if (value.containsKey('value_id')) {
+        print(
+          '      EXTRACT: found value_id=${value['value_id']} <- USING THIS',
+        );
+        return value['value_id'];
+      }
+      // 🔑 ПРИОРИТЕТ 2: 'value' - название значения (например, "Река")
+      if (value.containsKey('value')) {
+        print('      EXTRACT: found value=${value['value']} <- USING THIS');
+        return value['value'];
+      }
+      // 🔑 ПРИОРИТЕТ 3: 'id' - может быть ID значения в других случаях
+      if (value.containsKey('id')) {
+        print('      EXTRACT: found id=${value['id']}');
+        return value['id'];
+      }
+      // 🔑 ПРИОРИТЕТ 4: 'title' - название атрибута
+      if (value.containsKey('title')) {
+        print('      EXTRACT: found title=${value['title']}');
+        return value['title'];
+      }
+      // Иначе возвращаем весь объект
+      print('      EXTRACT: returning full object');
+      return value;
+    }
+    return value;
+  }
+
+  /// Нормализует значение в Set<String> для сравнения
+  /// Приводит всё (ID, названия, числа) к строковому формату
+  Set<String> _normalizeToSet(dynamic value) {
+    if (value == null) {
+      return {};
+    }
+
+    // Если это Set - конвертируем все элементы в String
+    if (value is Set) {
+      final result = value
+          .map((e) {
+            if (e == null) return '';
+            return e.toString();
+          })
+          .where((s) => s.isNotEmpty)
+          .toSet();
+      print('      NORMALIZE: Set -> $result');
+      return result;
+    }
+
+    // Если это List - конвертируем все элементы в String
+    if (value is List) {
+      final result = (value as List)
+          .map((e) {
+            if (e == null) return '';
+            return e.toString();
+          })
+          .where((s) => s.isNotEmpty)
+          .toSet();
+      print('      NORMALIZE: List -> $result');
+      return result;
+    }
+
+    // Если это Map - обрабатываем специально
+    if (value is Map) {
+      print('      NORMALIZE: Map with keys=${value.keys.toSet()}');
+      // Если это Map {value: X} - извлекаем X и рекурсим
+      if (value.containsKey('value') && value['value'] != null) {
+        print('      NORMALIZE: Found "value" key, recursing...');
+        return _normalizeToSet(value['value']);
+      }
+      // Если это Map с числовыми или строковыми значениями
+      final result = value.values
+          .map((v) {
+            if (v == null) return '';
+            return v.toString();
+          })
+          .where((s) => s.isNotEmpty)
+          .toSet();
+      if (result.isNotEmpty) {
+        print('      NORMALIZE: Map values -> $result');
+        return result;
+      }
+      return {};
+    }
+
+    // Для всего остального - преобразуем в String
+    final result = {value.toString()};
+    print('      NORMALIZE: ${value.runtimeType} -> $result');
+    return result;
+  }
+
+  /// Парсит число из различных форматов (string, int, double, null)
+  num? _parseNumber(dynamic value) {
+    if (value == null || value == '') return null;
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
   }
 }

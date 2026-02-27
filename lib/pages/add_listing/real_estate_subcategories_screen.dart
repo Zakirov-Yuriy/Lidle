@@ -41,27 +41,25 @@ class _RealEstateSubcategoriesScreenState
       });
 
       final token = await HiveService.getUserData('token');
-      print(
-        '🔍 RealEstateSubcategoriesScreen - Токен: ${token != null ? "получен" : "null"}',
-      );
+      // print();
 
       final catalogWithCategories = await ApiService.getCatalog(
         1,
         token: token,
       );
 
-      print('✅ Loaded categories: ${catalogWithCategories.categories.length}');
-      catalogWithCategories.categories.forEach(
-        (category) =>
-            print('📋 Category: ${category.name} (ID: ${category.id})'),
-      );
+      // print('✅ Loaded categories: ${catalogWithCategories.categories.length}');
+      // catalogWithCategories.categories.forEach(
+      //   (category) =>
+      //       print('📋 Category: ${category.name} (ID: ${category.id})'),
+      // );
 
       setState(() {
         _categories = catalogWithCategories.categories;
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Error loading categories: $e');
+      // print('❌ Error loading categories: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -198,9 +196,7 @@ class _RealEstateSubcategoriesScreenState
                                   color: Colors.white70,
                                 ),
                                 onTap: () {
-                                  print(
-                                    '👆 Tapped on real estate category: ${category.name} (ID: ${category.id})',
-                                  );
+                                  // print();
 
                                   // Если есть подкатегории, переходим на экран деталей
                                   if (category.children != null &&

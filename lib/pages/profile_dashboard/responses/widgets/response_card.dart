@@ -93,9 +93,7 @@ class ResponseCard extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      print(
-                        '🔄 Переход на UserAccountPage из response_card (архив)...',
-                      );
+                      // print();
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) =>
@@ -115,9 +113,7 @@ class ResponseCard extends StatelessWidget {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            print(
-                              '🔄 Переход на UserAccountPage из response_card (архив - имя)...',
-                            );
+                            // print();
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
@@ -262,7 +258,7 @@ class ResponseCard extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: () {
-                    print('🔄 Переход на UserAccountPage из response_card...');
+                    // print('🔄 Переход на UserAccountPage из response_card...');
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) =>
@@ -282,9 +278,7 @@ class ResponseCard extends StatelessWidget {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          print(
-                            '🔄 Переход на UserAccountPage из response_card (имя)...',
-                          );
+                          // print();
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) =>
@@ -477,3 +471,5 @@ class ResponseCard extends StatelessWidget {
     );
   }
 }
+
+

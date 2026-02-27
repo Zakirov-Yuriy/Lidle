@@ -344,18 +344,18 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
           return;
         }
 
-        print('📸 change_photo_screen: Загружаем аватарку...');
-        print('📍 Файл: ${image.path}');
+        // print('📸 change_photo_screen: Загружаем аватарку...');
+        // print('📍 Файл: ${image.path}');
 
         // Загружаем аватарку на сервер через API
         await UserService.uploadAvatar(filePath: image.path, token: token);
 
         if (mounted) Navigator.pop(context); // Закрываем loading
 
-        print('✅ change_photo_screen: Аватарка успешно загружена на сервер');
+        // print('✅ change_photo_screen: Аватарка успешно загружена на сервер');
 
         // Перезагружаем профиль с сервера
-        print('🔄 change_photo_screen: Перезагружаем профиль...');
+        // print('🔄 change_photo_screen: Перезагружаем профиль...');
         if (mounted) {
           context.read<ProfileBloc>().add(LoadProfileEvent());
         }
@@ -372,7 +372,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
       } catch (e) {
         if (mounted) Navigator.pop(context); // Закрываем loading
 
-        print('❌ change_photo_screen: Ошибка при загрузке: $e');
+        // print('❌ change_photo_screen: Ошибка при загрузке: $e');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -480,7 +480,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                             return;
                           }
 
-                          print('🗑️ change_photo_screen: Удаляем аватарку...');
+                          // print('🗑️ change_photo_screen: Удаляем аватарку...');
 
                           // Закрываем диалог
                           if (mounted) Navigator.pop(context);
@@ -504,9 +504,9 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                           if (mounted)
                             Navigator.pop(context); // Закрываем loading
 
-                          print(
-                            '✅ change_photo_screen: Аватарка успешно удалена',
-                          );
+                          // print(
+                          //   '✅ change_photo_screen: Аватарка успешно удалена',
+                          // );
 
                           // Перезагружаем профиль с сервера
                           if (mounted) {
@@ -526,9 +526,9 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                           if (mounted)
                             Navigator.pop(context); // Закрываем loading
 
-                          print(
-                            '❌ change_photo_screen: Ошибка при удалении: $e',
-                          );
+                          // print(
+                          //   '❌ change_photo_screen: Ошибка при удалении: $e',
+                          // );
 
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

@@ -34,7 +34,7 @@ class HiveService {
   /// [key] - уникальный идентификатор для сохранения данных.
   /// [value] - данные, которые нужно сохранить.
   static Future<void> saveUserData(String key, dynamic value) async {
-    print('💾 HiveService: Сохраняем $key = $value');
+    // print('💾 HiveService: Сохраняем $key = $value');
     await userBox.put(key, value);
   }
 
@@ -43,7 +43,7 @@ class HiveService {
   /// Возвращает данные, связанные с ключом, или `null`, если ключ не найден.
   static dynamic getUserData(String key) {
     final data = userBox.get(key);
-    print('📖 HiveService: Получили $key = $data');
+    // print('📖 HiveService: Получили $key = $data');
     return data;
   }
 
@@ -219,9 +219,9 @@ class HiveService {
         'data': data,
       };
       await listingsBox.put(key, cacheData);
-      print('💾 HiveService: Сохранили кеш $key');
+      // print('💾 HiveService: Сохранили кеш $key');
     } catch (e) {
-      print('❌ HiveService: Ошибка при сохранении кеша $key: $e');
+      // print('❌ HiveService: Ошибка при сохранении кеша $key: $e');
     }
   }
 
@@ -232,12 +232,12 @@ class HiveService {
     try {
       final cached = listingsBox.get(key);
       if (cached == null) {
-        print('📖 HiveService: Кеш $key не найден');
+        // print('📖 HiveService: Кеш $key не найден');
         return null;
       }
 
       if (cached is! Map) {
-        print('⚠️ HiveService: Кеш $key имеет неправильный формат');
+        // print('⚠️ HiveService: Кеш $key имеет неправильный формат');
         listingsBox.delete(key);
         return null;
       }
@@ -250,18 +250,16 @@ class HiveService {
       final difference = now.difference(cachedTime).inMinutes;
 
       if (difference > _cacheLifetimeMinutes) {
-        print(
-          '⏰ HiveService: Кеш $key устарел (${difference}м > ${_cacheLifetimeMinutes}м)',
-        );
+        // print();
         // Очищаем кеш синхронно (не требует async)
         listingsBox.delete(key);
         return null;
       }
 
-      print('✅ HiveService: Кеш $key свежий (${difference}м)');
+      // print('✅ HiveService: Кеш $key свежий (${difference}м)');
       return cached['data'];
     } catch (e) {
-      print('❌ HiveService: Ошибка при чтении кеша $key: $e');
+      // print('❌ HiveService: Ошибка при чтении кеша $key: $e');
       return null;
     }
   }
@@ -271,9 +269,9 @@ class HiveService {
   static Future<void> clearListingsCache(String key) async {
     try {
       await listingsBox.delete(key);
-      print('🗑️ HiveService: Очистили кеш $key');
+      // print('🗑️ HiveService: Очистили кеш $key');
     } catch (e) {
-      print('❌ HiveService: Ошибка при очистке кеша $key: $e');
+      // print('❌ HiveService: Ошибка при очистке кеша $key: $e');
     }
   }
 
@@ -281,9 +279,11 @@ class HiveService {
   static Future<void> clearAllListingsCache() async {
     try {
       await listingsBox.clear();
-      print('🗑️ HiveService: Очистили все кеши объявлений');
+      // print('🗑️ HiveService: Очистили все кеши объявлений');
     } catch (e) {
-      print('❌ HiveService: Ошибка при очистке всех кешей: $e');
+      // print('❌ HiveService: Ошибка при очистке всех кешей: $e');
     }
   }
 }
+
+

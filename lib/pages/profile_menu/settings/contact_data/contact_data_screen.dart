@@ -77,19 +77,17 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         return;
       }
 
-      print('🔐 Token from Hive: ${token.substring(0, 20)}...');
-      print('🔐 Token length: ${token.length}');
-      print(
-        '🔐 Token starts with: ${token.startsWith('eyJ') ? 'JWT (valid format)' : 'Unknown format'}',
-      );
+      // print('🔐 Token from Hive: ${token.substring(0, 20)}...');
+      // print('🔐 Token length: ${token.length}');
+      // print(
+      //   '🔐 Token starts with: ${token.startsWith('eyJ') ? 'JWT (valid format)' : 'Unknown format'}',
+      // );
 
       // Загружаем телефоны и почты
       final phonesResponse = await ContactService.getPhones(token: token);
       final emailsResponse = await ContactService.getEmails(token: token);
 
-      print(
-        '✅ Loaded ${phonesResponse.data.length} phones and ${emailsResponse.data.length} emails',
-      );
+      // print();
 
       // Получаем имя пользователя из ProfileBloc (из API)
       final profileState = context.read<ProfileBloc>().state;
@@ -97,10 +95,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
 
-      print('🔍 DEBUG contact_data_screen._loadContactData():');
-      print('   - profileState.name = "$name"');
-      print('   - profileState.email = "$email"');
-      print('   - profileState.phone = "$phone"');
+      // print('🔍 DEBUG contact_data_screen._loadContactData():');
+      // print('   - profileState.name = "$name"');
+      // print('   - profileState.email = "$email"');
+      // print('   - profileState.phone = "$phone"');
 
       // Загружаем сохраненные данные из Hive
       final telegram = HiveService.getUserData('telegram') as String? ?? '';
@@ -170,35 +168,29 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         return;
       }
 
-      print('💾 Saving contact data...');
-      print('Token: ${token.substring(0, 20)}...');
-      print(
-        'Email ID: $_emailId, Phone1 ID: $_phone1Id, Phone2 ID: $_phone2Id',
-      );
+      // print('💾 Saving contact data...');
+      // print('Token: ${token.substring(0, 20)}...');
+      // print();
 
       // Обновляем имя на API (если оно изменилось)
       if (_nameController.text.isNotEmpty) {
         try {
-          print('👤 Updating user name: ${_nameController.text}');
+          // print('👤 Updating user name: ${_nameController.text}');
           // Получаем фамилию из Hive или используем пустую строку
           final lastName = HiveService.getUserData('lastName') as String? ?? '';
 
-          print('🔍 DEBUG contact_data_screen._saveContactData():');
-          print(
-            '   - Input: name = "${_nameController.text}", lastName = "$lastName"',
-          );
-          print(
-            '   - Sending to API: updateName(name: "${_nameController.text}", lastName: "$lastName")',
-          );
+          // print('🔍 DEBUG contact_data_screen._saveContactData():');
+          // print();
+          // print();
 
           await UserService.updateName(
             name: _nameController.text,
             lastName: lastName,
             token: token,
           );
-          print('✅ User name updated successfully');
+          // print('✅ User name updated successfully');
         } catch (e) {
-          print('❌ Name update error: $e');
+          // print('❌ Name update error: $e');
         }
       }
 
@@ -211,25 +203,25 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (_emailController.text.isNotEmpty) {
         try {
           if (_emailId != null) {
-            print('📧 Updating email (ID: $_emailId)');
+            // print('📧 Updating email (ID: $_emailId)');
             // Обновляем существующий email
             await ContactService.updateEmail(
               id: _emailId!,
               email: _emailController.text,
               token: token,
             );
-            print('✅ Email updated successfully');
+            // print('✅ Email updated successfully');
           } else {
-            print('📧 Adding new email');
+            // print('📧 Adding new email');
             // Добавляем новый email
             await ContactService.addEmail(
               email: _emailController.text,
               token: token,
             );
-            print('✅ Email added successfully');
+            // print('✅ Email added successfully');
           }
         } catch (e) {
-          print('❌ Email update error: $e');
+          // print('❌ Email update error: $e');
         }
       }
 
@@ -237,25 +229,25 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (_phone1Controller.text.isNotEmpty) {
         try {
           if (_phone1Id != null) {
-            print('☎️ Updating phone1 (ID: $_phone1Id)');
+            // print('☎️ Updating phone1 (ID: $_phone1Id)');
             // Обновляем существующий телефон
             await ContactService.updatePhone(
               id: _phone1Id!,
               phone: _phone1Controller.text,
               token: token,
             );
-            print('✅ Phone1 updated successfully');
+            // print('✅ Phone1 updated successfully');
           } else {
-            print('☎️ Adding new phone1');
+            // print('☎️ Adding new phone1');
             // Добавляем новый телефон
             await ContactService.addPhone(
               phone: _phone1Controller.text,
               token: token,
             );
-            print('✅ Phone1 added successfully');
+            // print('✅ Phone1 added successfully');
           }
         } catch (e) {
-          print('❌ Phone 1 update error: $e');
+          // print('❌ Phone 1 update error: $e');
         }
       }
 
@@ -263,35 +255,35 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (_phone2Controller.text.isNotEmpty) {
         try {
           if (_phone2Id != null) {
-            print('☎️ Updating phone2 (ID: $_phone2Id)');
+            // print('☎️ Updating phone2 (ID: $_phone2Id)');
             // Обновляем существующий телефон
             await ContactService.updatePhone(
               id: _phone2Id!,
               phone: _phone2Controller.text,
               token: token,
             );
-            print('✅ Phone2 updated successfully');
+            // print('✅ Phone2 updated successfully');
           } else {
-            print('☎️ Adding new phone2');
+            // print('☎️ Adding new phone2');
             // Добавляем новый телефон
             await ContactService.addPhone(
               phone: _phone2Controller.text,
               token: token,
             );
-            print('✅ Phone2 added successfully');
+            // print('✅ Phone2 added successfully');
           }
         } catch (e) {
-          print('Phone 2 update error: $e');
+          // print('Phone 2 update error: $e');
         }
       }
 
       // После успешных изменений — проверяем данные на сервере
-      print('🔎 Verifying saved contact data by fetching from server...');
+      // print('🔎 Verifying saved contact data by fetching from server...');
       try {
         await _loadContactData();
-        print('✅ Verification GET complete');
+        // print('✅ Verification GET complete');
       } catch (e) {
-        print('❗ Reload after save failed: $e');
+        // print('❗ Reload after save failed: $e');
       }
 
       setState(() {

@@ -205,9 +205,9 @@ class AttributeResolver {
         .map((a) => a.id.toString().length)
         .fold<int>(0, (max, len) => len > max ? len : max);
 
-    print('$prefix═══════════════════════════════════════════════════');
-    print('$prefix📋 ATTRIBUTE RESOLVER: ${attributes.length} attributes');
-    print('$prefix═══════════════════════════════════════════════════');
+    // print('$prefix═══════════════════════════════════════════════════');
+    // print('$prefix📋 ATTRIBUTE RESOLVER: ${attributes.length} attributes');
+    // print('$prefix═══════════════════════════════════════════════════');
 
     for (final attr in attributes) {
       final idStr = attr.id.toString().padRight(padLength);
@@ -227,45 +227,45 @@ class AttributeResolver {
           ? ' - ${attr.values.length} values'
           : '';
 
-      print('$prefix[$idStr] ${attr.title}$dataTypeStr$flagsStr$valuesCount');
+      // print('$prefix[$idStr] ${attr.title}$dataTypeStr$flagsStr$valuesCount');
 
       // Логируем значения для атрибутов с предопределенными значениями
       if (attr.values.isNotEmpty && attr.values.length <= 10) {
         for (final val in attr.values) {
-          print('$prefix    • ${val.value} (id=${val.id})');
+          // print('$prefix    • ${val.value} (id=${val.id})');
         }
       }
     }
 
-    print('$prefix═══════════════════════════════════════════════════');
+    // print('$prefix═══════════════════════════════════════════════════');
   }
 
   /// Вывести отчет о найденных критических атрибутах
   void debugPrintCriticalAttributes({String prefix = ''}) {
-    print('$prefix🔍 CRITICAL ATTRIBUTES:');
+    // print('$prefix🔍 CRITICAL ATTRIBUTES:');
 
     final offerPrice = getOfferPriceAttributeId();
-    print(
-      '$prefix   Offer Price: ${offerPrice != null ? '✓ ID=$offerPrice' : '✗ NOT FOUND'}',
-    );
+    // print(
+    //   '$prefix   Offer Price: ${offerPrice != null ? '✓ ID=$offerPrice' : '✗ NOT FOUND'}',
+    // );
 
     final area = getAreaAttributeId();
-    print('$prefix   Area: ${area != null ? '✓ ID=$area' : '✗ NOT FOUND'}');
+    // print('$prefix   Area: ${area != null ? '✓ ID=$area' : '✗ NOT FOUND'}');
 
     final rooms = getRoomsAttributeId();
-    print('$prefix   Rooms: ${rooms != null ? '✓ ID=$rooms' : '✗ NOT FOUND'}');
+    // print('$prefix   Rooms: ${rooms != null ? '✓ ID=$rooms' : '✗ NOT FOUND'}');
 
     final sellerType = getSellerTypeAttributeId();
-    print(
-      '$prefix   Seller Type: ${sellerType != null ? '✓ ID=$sellerType' : '✗ NOT FOUND'}',
-    );
+    // print(
+    //   '$prefix   Seller Type: ${sellerType != null ? '✓ ID=$sellerType' : '✗ NOT FOUND'}',
+    // );
 
     final floor = getFloorAttributeId();
-    print('$prefix   Floor: ${floor != null ? '✓ ID=$floor' : '✗ NOT FOUND'}');
+    // print('$prefix   Floor: ${floor != null ? '✓ ID=$floor' : '✗ NOT FOUND'}');
 
     final bargain = getBargainAttributeId();
-    print(
-      '$prefix   Bargain: ${bargain != null ? '✓ ID=$bargain' : '✗ NOT FOUND'}',
-    );
+    // print(
+    //   '$prefix   Bargain: ${bargain != null ? '✓ ID=$bargain' : '✗ NOT FOUND'}',
+    // );
   }
 }

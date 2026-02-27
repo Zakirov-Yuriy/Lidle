@@ -96,22 +96,65 @@ class Listing {
     this.sellerAvatar,
     this.sellerRegistrationDate,
     this.description,
-    this.characteristics = const {},
+    this.characteristics =
+        const {}, // 🔥 NOTE: This creates immutable map - will be replaced with mutable later if needed
   });
 
   factory Listing.fromJson(Map<String, dynamic> json) {
-    // Парсим характеристики из attributes (values)
+    // Парсим характеристики из attributes (возвращаемых API, в формате структуры attributes)
     final Map<String, dynamic> characteristics = {};
-    print('[DEBUG] Listing.fromJson attributes:');
-    print(json['attributes']);
+
+    // 🔍 DEBUG: Логируем структуру attributes для диагностики
+    if (json['attributes'] != null) {
+      print(
+        '\n🔍 [Listing.fromJson] ID=${json['id']}, attributes type: ${json['attributes'].runtimeType}',
+      );
+      if (json['attributes'] is Map) {
+        final attrs = json['attributes'] as Map;
+        print('   attributes keys: ${attrs.keys.toList()}');
+        attrs.forEach((k, v) {
+          print('   [$k]: ${v.runtimeType} = $v');
+        });
+      } else {
+        print('   attributes is not Map! Value: ${json['attributes']}');
+      }
+    }
+
     if (json['attributes'] != null && json['attributes'] is Map) {
       final attrs = json['attributes'];
+
+      // 🟢 ВАЖНО: Парсим ОБА value_selected (ID < 1000) И values (ID >= 1000)
+      // Оба вида атрибутов нужны для корректной фильтрации на клиенте
+
+      // Парсим value_selected атрибуты (ID < 1000)
+      if (attrs['value_selected'] != null && attrs['value_selected'] is Map) {
+        final valueSelected = attrs['value_selected'] as Map;
+        valueSelected.forEach((key, valueObj) {
+          // key должен быть строкой (атрибут ID)
+          // valueObj может быть Map или простой объект с 'value' и другими полями
+          characteristics[key.toString()] = _parseAttributeValue(valueObj);
+        });
+      }
+
+      // Парсим values атрибуты (ID >= 1000)
       if (attrs['values'] != null && attrs['values'] is Map) {
         final values = attrs['values'] as Map;
         values.forEach((key, valueObj) {
-          characteristics[key.toString()] = valueObj;
+          // key должен быть строкой (атрибут ID)
+          // valueObj может быть Map с min/max или простое значение
+          characteristics[key.toString()] = _parseAttributeValue(valueObj);
         });
       }
+    }
+
+    // DEBUG: Показываем финальную структуру characteristics
+    if (characteristics.isNotEmpty) {
+      print('   Final characteristics: ${characteristics.keys.toList()}');
+      characteristics.forEach((k, v) {
+        print('      [$k]: ${v.runtimeType} = $v');
+      });
+    } else {
+      print('   Final characteristics: EMPTY');
     }
 
     return Listing(
@@ -138,6 +181,39 @@ class Listing {
       description: json['description'],
       characteristics: characteristics,
     );
+  }
+
+  /// Helper метод для парсинга значений атрибутов
+  /// Обрабатывает разные форматы: Map, простые значения, List
+  /// Возвращает нормализованное значение для фильтрации
+  static dynamic _parseAttributeValue(dynamic valueObj) {
+    if (valueObj == null) {
+      return null;
+    }
+
+    // Если это Map - это может быть структура с 'value', 'min', 'max' и т.д.
+    if (valueObj is Map) {
+      // Для value_selected атрибутов (ID < 1000)
+      // Формат: {id: 18, title: "...", value: 154, max_value: null}
+      if (valueObj.containsKey('value')) {
+        return valueObj['value'];
+      }
+      // Для values атрибутов (ID >= 1000) - диапазоны
+      // Формат: {min: 500000, max: 1200000}
+      if (valueObj.containsKey('min') || valueObj.containsKey('max')) {
+        return {'min': valueObj['min'], 'max': valueObj['max']};
+      }
+      // В иных случаях просто возвращаем Map
+      return valueObj;
+    }
+
+    // Если это List - возвращаем как есть
+    if (valueObj is List) {
+      return valueObj;
+    }
+
+    // Если это простое значение (String, int, double, bool) - возвращаем как есть
+    return valueObj;
   }
 
   /// Конвертирует Listing объект в JSON Map для передачи между экранами

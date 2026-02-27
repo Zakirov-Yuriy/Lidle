@@ -63,30 +63,30 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
       final catalogsResponse = await ApiService.getCatalogs();
 
-      print('═══════════════════════════════════════════════════════');
-      print('📦 CATALOGS LOADED');
-      print('Total catalogs: ${catalogsResponse.data.length}');
-      print('═══════════════════════════════════════════════════════');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📦 CATALOGS LOADED');
+      // print('Total catalogs: ${catalogsResponse.data.length}');
+      // print('═══════════════════════════════════════════════════════');
       catalogsResponse.data.asMap().forEach((index, catalog) {
-        print('[$index] Catalog ID: ${catalog.id}');
-        print('    Name: ${catalog.name}');
-        print('    Slug: ${catalog.slug}');
-        print('    Thumbnail: ${catalog.thumbnail}');
-        print('    Type.id: ${catalog.type.id}');
-        print('    Type.type: ${catalog.type.type ?? 'null'}');
-        print('    Type.path: ${catalog.type.path ?? 'null'}');
-        print('    Type.slug: ${catalog.type.slug ?? 'null'}');
-        print('    Order: ${catalog.order}');
-        print('---');
+        // print('[$index] Catalog ID: ${catalog.id}');
+        // print('    Name: ${catalog.name}');
+        // print('    Slug: ${catalog.slug}');
+        // print('    Thumbnail: ${catalog.thumbnail}');
+        // print('    Type.id: ${catalog.type.id}');
+        // print('    Type.type: ${catalog.type.type ?? 'null'}');
+        // print('    Type.path: ${catalog.type.path ?? 'null'}');
+        // print('    Type.slug: ${catalog.type.slug ?? 'null'}');
+        // print('    Order: ${catalog.order}');
+        // print('---');
       });
-      print('═══════════════════════════════════════════════════════');
+      // print('═══════════════════════════════════════════════════════');
 
       setState(() {
         _catalogs = catalogsResponse.data;
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ ERROR LOADING CATALOGS: $e');
+      // print('❌ ERROR LOADING CATALOGS: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -198,13 +198,11 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       itemCount: _catalogs.length,
                       itemBuilder: (context, index) {
                         final catalog = _catalogs[index];
-                        print(
-                          '🎨 Rendering catalog [$index/${_catalogs.length}]: ${catalog.name} (ID: ${catalog.id})',
-                        );
+                        // print();
 
                         return GestureDetector(
                           onTap: () {
-                            print('👆 Tapped on catalog: ${catalog.name}');
+                            // print('👆 Tapped on catalog: ${catalog.name}');
                             if (catalog.name == 'Недвижимость') {
                               // Специализированный экран для Недвижимости
                               Navigator.push(
@@ -264,9 +262,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                               );
                                             },
                                         errorBuilder: (context, error, stackTrace) {
-                                          print(
-                                            '❌ Error loading thumbnail for ${catalog.name}: $error',
-                                          );
+                                          // print();
                                           return Container(
                                             height: 83,
                                             width: 120,
@@ -338,3 +334,5 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     );
   }
 }
+
+

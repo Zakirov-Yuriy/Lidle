@@ -31,7 +31,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     if (!event.forceRefresh) {
       final cached = CacheManager().get<Map<String, dynamic>>(_cacheKey);
       if (cached != null) {
-        print('✅ Используем кешированные данные сообщений (TTL: 1 мин)');
+        // print('✅ Используем кешированные данные сообщений (TTL: 1 мин)');
         emit(
           MessagesLoaded(
             mainMessages: List.from(cached['main'] ?? []),
@@ -119,3 +119,4 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     );
   }
 }
+

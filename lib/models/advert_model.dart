@@ -42,7 +42,7 @@ class Advert {
   });
 
   factory Advert.fromJson(Map<String, dynamic> json) {
-    print('Advert ${json['id']} images in JSON: ${json['images']}');
+    // print('Advert ${json['id']} images in JSON: ${json['images']}');
 
     // Парсим информацию о продавце из поля 'user' или 'seller'
     String? sellerName;
@@ -67,29 +67,79 @@ class Advert {
               .toList(),
         );
       } catch (e) {
-        print('Error parsing images for advert ${json['id']}: $e');
+        // print('Error parsing images for advert ${json['id']}: $e');
       }
     }
 
-    // Парсим характеристики из attributes (List)
+    // Парсим характеристики из attributes
+    // 🟢 ВАЖНО: attributes могут быть двух форматов:
+    // 1. List - когда API возвращает attributes как массив (старый формат)
+    // 2. Map с 'value_selected' и 'values' ключами (новый структурированный формат)
     Map<String, dynamic>? characteristics;
-    if (json['attributes'] != null && json['attributes'] is List) {
-      final attrs = json['attributes'] as List<dynamic>;
+
+    // DEBUG: Логирование структуры JSON
+    print('📊 DEBUG Advert.fromJson for ID=${json['id']}:');
+    print('   Available fields: ${json.keys.toList()}');
+    print('   Has attributes? ${json.containsKey('attributes')}');
+    if (json.containsKey('attributes')) {
+      print('   attributes type: ${json['attributes'].runtimeType}');
+      if (json['attributes'] is Map) {
+        print(
+          '   attributes[Map] keys: ${(json['attributes'] as Map).keys.toList()}',
+        );
+      } else if (json['attributes'] is List) {
+        print(
+          '   attributes[List] length: ${(json['attributes'] as List).length}',
+        );
+      }
+    }
+
+    if (json['attributes'] != null) {
       characteristics = {};
-      for (final item in attrs) {
-        if (item is Map<String, dynamic>) {
-          final id = item['id']?.toString() ?? '';
-          if (id.isNotEmpty) {
-            // Сохраняем атрибут с его ID как ключ
-            characteristics![id] = {
-              'id': item['id'],
-              'title': item['title'] ?? '',
-              'value': item['value'],
-              'max_value': item['max_value'],
-            };
+
+      if (json['attributes'] is List) {
+        // Формат 1: List атрибутов
+        final attrs = json['attributes'] as List<dynamic>;
+        for (final item in attrs) {
+          if (item is Map<String, dynamic>) {
+            final id = item['id']?.toString() ?? '';
+            if (id.isNotEmpty) {
+              // Сохраняем атрибут с его ID как ключ
+              characteristics![id] = {
+                'id': item['id'],
+                'title': item['title'] ?? '',
+                'value': item['value'],
+                'max_value': item['max_value'],
+              };
+            }
           }
         }
+      } else if (json['attributes'] is Map) {
+        // Формат 2: Структурированный Map с value_selected и values
+        final attrs = json['attributes'] as Map<String, dynamic>;
+
+        // Парсим value_selected атрибуты (ID < 1000)
+        if (attrs['value_selected'] != null && attrs['value_selected'] is Map) {
+          final valueSelected = attrs['value_selected'] as Map;
+          valueSelected.forEach((key, valueObj) {
+            characteristics![key.toString()] = valueObj;
+          });
+        }
+
+        // Парсим values атрибуты (ID >= 1000)
+        if (attrs['values'] != null && attrs['values'] is Map) {
+          final values = attrs['values'] as Map;
+          values.forEach((key, valueObj) {
+            characteristics![key.toString()] = valueObj;
+          });
+        }
       }
+    } else {
+      print('   ⚠️ NO attributes found in JSON');
+    }
+
+    if (characteristics != null && characteristics!.isNotEmpty) {
+      print('   ✅ Parsed characteristics: ${characteristics!.keys.toList()}');
     }
 
     return Advert(

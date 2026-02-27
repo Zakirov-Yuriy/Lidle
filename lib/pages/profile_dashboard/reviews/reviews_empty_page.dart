@@ -125,7 +125,7 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
                                 _selectedSortOption = selectedOption;
                               });
                               // TODO: Реализовать функцию сортировки на основе выбранного варианта
-                              print("Выбран вариант сортировки: $selectedOption");
+                              // print("Выбран вариант сортировки: $selectedOption");
                             }
                           },
                         ),
@@ -253,3 +253,4 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
     }
   }
 }
+

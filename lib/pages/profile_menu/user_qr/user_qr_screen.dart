@@ -44,7 +44,7 @@ class _UserQrScreenState extends State<UserQrScreen> {
 
       // Сохраняем файл
       await file.writeAsBytes(bytes);
-      print('✅ QR код сохранен: ${file.path}');
+      // print('✅ QR код сохранен: ${file.path}');
 
       // Делимся файлом
       await Share.shareXFiles(
@@ -53,7 +53,7 @@ class _UserQrScreenState extends State<UserQrScreen> {
         subject: 'QR код пользователя LIDLE',
       );
     } catch (e) {
-      print('❌ Ошибка при шаринге QR кода: $e');
+      // print('❌ Ошибка при шаринге QR кода: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -259,3 +259,4 @@ class _UserQrScreenState extends State<UserQrScreen> {
     );
   }
 }
+

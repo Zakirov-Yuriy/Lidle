@@ -740,7 +740,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       onTap: () {
         Navigator.pop(context);
 
-        print("Share $title tapped");
+        // print("Share $title tapped");
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -955,3 +955,4 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
     );
   }
 }
+

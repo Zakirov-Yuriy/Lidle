@@ -8,33 +8,29 @@ class UserService {
   /// Получить профиль текущего пользователя
   static Future<UserProfile> getProfile({required String token}) async {
     try {
-      print('🔐 UserService: Запрашиваем профиль с токеном...');
+      // print('🔐 UserService: Запрашиваем профиль с токеном...');
       final response = await ApiService.get('/me', token: token);
 
-      print('📦 UserService: Ответ от API получен');
-      print('📦 UserService: Тип response: ${response.runtimeType}');
-      print('📦 UserService: Ключи response: ${response.keys.toList()}');
-      print('📦 UserService: Полный ответ: ${jsonEncode(response)}');
+      // print('📦 UserService: Ответ от API получен');
+      // print('📦 UserService: Тип response: ${response.runtimeType}');
+      // print('📦 UserService: Ключи response: ${response.keys.toList()}');
+      // print('📦 UserService: Полный ответ: ${jsonEncode(response)}');
 
       final profileResponse = UserProfileResponse.fromJson(response);
-      print('✅ UserService: Профиль распарсен');
-      print(
-        '✅ UserService: profileResponse.data.length = ${profileResponse.data.length}',
-      );
+      // print('✅ UserService: Профиль распарсен');
+      // print();
 
       if (profileResponse.data.isEmpty) {
         throw Exception('Список профилей пуст');
       }
 
       final profile = profileResponse.data[0];
-      print(
-        '👤 UserService: Возвращаем профиль: ${profile.name} ${profile.lastName}',
-      );
+      // print();
 
       // DEBUG: Детальное логирование полей
-      print('🔍 DEBUG UserService.getProfile() BEFORE FIX:');
-      print('   - profile.name = "${profile.name}"');
-      print('   - profile.lastName = "${profile.lastName}"');
+      // print('🔍 DEBUG UserService.getProfile() BEFORE FIX:');
+      // print('   - profile.name = "${profile.name}"');
+      // print('   - profile.lastName = "${profile.lastName}"');
 
       // FIX: API иногда возвращает скомбинированное имя вместо отдельных полей
       // Если nameполучилось как "Имя Фамилия Фамилия", нужно вычистить
@@ -47,18 +43,18 @@ class UserService {
         firstName = firstName
             .substring(0, firstName.length - lastName.length)
             .trim();
-        print('   ✏️ FIXED: Removed trailing lastName from name');
+        // print('   ✏️ FIXED: Removed trailing lastName from name');
       }
 
       // Если в конце первого имени есть пробел - убираем его
       if (firstName.contains(' ${lastName}')) {
         firstName = firstName.replaceAll(' ${lastName}', '').trim();
-        print('   ✏️ FIXED: Removed space-separated lastName');
+        // print('   ✏️ FIXED: Removed space-separated lastName');
       }
 
       // Проверяем если уже нет дублирования
       final parts = firstName.split(' ');
-      print('   - Parts in name: $parts');
+      // print('   - Parts in name: $parts');
 
       // Если есть дублирование (например "Юрий Зак Зак"), оставляем только "Юрий"
       // Ищем повторение слов в конце
@@ -69,17 +65,15 @@ class UserService {
             // Нашли повторение - берем только первое имя
             firstName = parts.first;
             hasDuplicate = true;
-            print(
-              '   ✏️ FIXED: Detected duplicate in name, keeping only first part',
-            );
+            // print();
             break;
           }
         }
       }
 
-      print('🔍 DEBUG UserService.getProfile() AFTER FIX:');
-      print('   - firstName = "$firstName"');
-      print('   - lastName = "$lastName"');
+      // print('🔍 DEBUG UserService.getProfile() AFTER FIX:');
+      // print('   - firstName = "$firstName"');
+      // print('   - lastName = "$lastName"');
 
       // Создаем новый профиль с исправленными значениями
       final correctedProfile = UserProfile(
@@ -109,8 +103,8 @@ class UserService {
           return getProfile(token: newToken);
         }
       }
-      print('❌ UserService: Ошибка при загрузке профиля: $e');
-      print('❌ UserService: Type: ${e.runtimeType}');
+      // print('❌ UserService: Ошибка при загрузке профиля: $e');
+      // print('❌ UserService: Type: ${e.runtimeType}');
       rethrow;
     }
   }
@@ -242,8 +236,8 @@ class UserService {
     required String token,
   }) async {
     try {
-      print('🖼️ UserService: Загружаем аватарку...');
-      print('📍 Путь файла: $filePath');
+      // print('🖼️ UserService: Загружаем аватарку...');
+      // print('📍 Путь файла: $filePath');
 
       final response = await ApiService.uploadFile(
         '/me/settings/avatar',
@@ -252,18 +246,18 @@ class UserService {
         token: token,
       );
 
-      print('✅ UserService: Аватарка успешно загружена');
-      print('📦 Ответ: $response');
+      // print('✅ UserService: Аватарка успешно загружена');
+      // print('📦 Ответ: $response');
 
       if (response['success'] == true) {
-        print('✅ UserService: success = true');
+        // print('✅ UserService: success = true');
         return true;
       } else {
-        print('❌ UserService: success = false');
+        // print('❌ UserService: success = false');
         throw Exception('API вернул success: false');
       }
     } catch (e) {
-      print('❌ UserService: Ошибка при загрузке аватарки: $e');
+      // print('❌ UserService: Ошибка при загрузке аватарки: $e');
       throw Exception('Ошибка при загрузке аватарки: $e');
     }
   }
@@ -271,7 +265,7 @@ class UserService {
   /// Удалить аватарку профиля
   static Future<bool> deleteAvatar({required String token}) async {
     try {
-      print('🖼️ UserService: Удаляем аватарку...');
+      // print('🖼️ UserService: Удаляем аватарку...');
 
       // API требует отправку как multipart с delete_image=true
       final headers = {'X-App-Client': 'mobile'};
@@ -279,11 +273,11 @@ class UserService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📤 DELETE AVATAR REQUEST');
-      print('URL: ${ApiService.baseUrl}/me/settings/avatar');
-      print('Token provided: true');
-      print('═══════════════════════════════════════════════════════');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📤 DELETE AVATAR REQUEST');
+      // print('URL: ${ApiService.baseUrl}/me/settings/avatar');
+      // print('Token provided: true');
+      // print('═══════════════════════════════════════════════════════');
 
       final request = http.MultipartRequest(
         'POST',
@@ -298,20 +292,20 @@ class UserService {
       );
       final httpResponse = await http.Response.fromStream(streamedResponse);
 
-      print('✅ Response status: ${httpResponse.statusCode}');
-      print('📋 Response: ${httpResponse.body}');
+      // print('✅ Response status: ${httpResponse.statusCode}');
+      // print('📋 Response: ${httpResponse.body}');
 
       if (httpResponse.statusCode == 200) {
         final response = jsonDecode(httpResponse.body) as Map<String, dynamic>;
         if (response['success'] == true) {
-          print('✅ UserService: Аватарка успешно удалена');
+          // print('✅ UserService: Аватарка успешно удалена');
           return true;
         }
       }
 
       throw Exception('Failed to delete avatar');
     } catch (e) {
-      print('❌ UserService: Ошибка при удалении аватарки: $e');
+      // print('❌ UserService: Ошибка при удалении аватарки: $e');
       throw Exception('Ошибка при удалении аватарки: $e');
     }
   }
@@ -322,7 +316,7 @@ class UserService {
     required String token,
   }) async {
     try {
-      print('📝 UserService: Обновляем информацию "О себе"...');
+      // print('📝 UserService: Обновляем информацию "О себе"...');
 
       final data = {'about': about};
 
@@ -332,12 +326,12 @@ class UserService {
         token: token,
       );
 
-      print('✅ UserService: Информация "О себе" успешно обновлена');
-      print('📦 Ответ: $response');
+      // print('✅ UserService: Информация "О себе" успешно обновлена');
+      // print('📦 Ответ: $response');
 
       return response;
     } catch (e) {
-      print('❌ UserService: Ошибка при обновлении "О себе": $e');
+      // print('❌ UserService: Ошибка при обновлении "О себе": $e');
       throw Exception('Ошибка при обновлении информации о себе: $e');
     }
   }
@@ -348,7 +342,7 @@ class UserService {
     required String token,
   }) async {
     try {
-      print('🌐 UserService: Меняем язык на "$locale"...');
+      // print('🌐 UserService: Меняем язык на "$locale"...');
 
       final data = {'locale': locale};
 
@@ -358,15 +352,15 @@ class UserService {
         token: token,
       );
 
-      print('✅ UserService: Язык успешно изменен на "$locale"');
-      print('📦 Ответ: $response');
+      // print('✅ UserService: Язык успешно изменен на "$locale"');
+      // print('📦 Ответ: $response');
 
       // Сохраняем текущий язык локально
       await HiveService.saveUserData('currentLocale', locale);
 
       return response;
     } catch (e) {
-      print('❌ UserService: Ошибка при изменении языка: $e');
+      // print('❌ UserService: Ошибка при изменении языка: $e');
       throw Exception('Ошибка при изменении языка: $e');
     }
   }
@@ -379,9 +373,7 @@ class UserService {
     required String token,
   }) async {
     try {
-      print(
-        '👤 UserService: Обновляем имя на "$name" и фамилию на "$lastName"...',
-      );
+      // print();
 
       final data = {
         'name': name,
@@ -395,13 +387,15 @@ class UserService {
         token: token,
       );
 
-      print('✅ UserService: Имя успешно обновлено');
-      print('📦 Ответ: $response');
+      // print('✅ UserService: Имя успешно обновлено');
+      // print('📦 Ответ: $response');
 
       return response;
     } catch (e) {
-      print('❌ UserService: Ошибка при обновлении имени: $e');
+      // print('❌ UserService: Ошибка при обновлении имени: $e');
       throw Exception('Ошибка при обновлении имени: $e');
     }
   }
 }
+
+

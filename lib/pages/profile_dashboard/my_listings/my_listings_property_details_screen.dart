@@ -41,21 +41,13 @@ class _MyListingsPropertyDetailsScreenState
   void initState() {
     super.initState();
     _listing = widget.listing;
-    print(
-      'MyListingsPropertyDetailsScreen init: listing id ${_listing.id}, images ${_listing.images.length}',
-    );
+    // print();
 
     // DEBUG логирование
-    print('[DEBUG] initState - проверка полноты данных:');
-    print(
-      '  - description: "${_listing.description}" (isEmpty: ${_listing.description?.isEmpty ?? true})',
-    );
-    print(
-      '  - characteristics: ${_listing.characteristics} (count: ${_listing.characteristics.length})',
-    );
-    print(
-      '  - sellerName: "${_listing.sellerName}" (isEmpty: ${_listing.sellerName?.isEmpty ?? true})',
-    );
+    // print('[DEBUG] initState - проверка полноты данных:');
+    // print();
+    // print();
+    // print();
 
     // Проверяем, есть ли полные данные (описание, характеристики, информация о продавце)
     final hasCompleteData =
@@ -63,16 +55,12 @@ class _MyListingsPropertyDetailsScreenState
         (_listing.characteristics.isNotEmpty) &&
         (_listing.sellerName != null && _listing.sellerName!.isNotEmpty);
 
-    print('[DEBUG] hasCompleteData: $hasCompleteData');
+    // print('[DEBUG] hasCompleteData: $hasCompleteData');
     if (!hasCompleteData) {
-      print(
-        '🔄 MyListingsPropertyDetailsScreen: Загружаем полные данные из API',
-      );
+      // print();
       context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
     } else {
-      print(
-        '✅ MyListingsPropertyDetailsScreen: Используем уже загруженные данные',
-      );
+      // print();
       _isAdvertLoaded = true;
     }
 
@@ -114,7 +102,7 @@ class _MyListingsPropertyDetailsScreenState
           ).timeout(
             const Duration(seconds: 5),
             onTimeout: () {
-              print('Timeout loading image: $imageUrl');
+              // print('Timeout loading image: $imageUrl');
             },
           ),
         );
@@ -128,7 +116,7 @@ class _MyListingsPropertyDetailsScreenState
           ).timeout(
             const Duration(seconds: 3),
             onTimeout: () {
-              print('Timeout loading asset image: $imageUrl');
+              // print('Timeout loading asset image: $imageUrl');
             },
           ),
         );
@@ -137,9 +125,9 @@ class _MyListingsPropertyDetailsScreenState
 
     try {
       await Future.wait(precacheFutures, eagerError: false);
-      print('Successfully precached ${images.length} images');
+      // print('Successfully precached ${images.length} images');
     } catch (e) {
-      print('Error precaching images: $e');
+      // print('Error precaching images: $e');
     }
 
     if (mounted) {
@@ -153,11 +141,9 @@ class _MyListingsPropertyDetailsScreenState
   Widget build(BuildContext context) {
     return BlocListener<ListingsBloc, ListingsState>(
       listener: (context, state) {
-        print('BlocListener in MyListingsPropertyDetailsScreen: $state');
+        // print('BlocListener in MyListingsPropertyDetailsScreen: $state');
         if (state is AdvertLoaded) {
-          print(
-            'Updating _listing to ${state.listing.id} with ${state.listing.images.length} images',
-          );
+          // print();
           setState(() {
             _isAdvertLoaded = true;
             // Всегда обновляем все данные: описание, характеристики, информацию о продавце
@@ -190,15 +176,11 @@ class _MyListingsPropertyDetailsScreenState
                 userId: state.listing.userId ?? _listing.userId,
               );
             }
-            print('✅ _listing updated:');
-            print('  - Title: ${_listing.title}');
-            print(
-              '  - Description: ${_listing.description?.substring(0, 50) ?? "null"}',
-            );
-            print('  - Seller: ${_listing.sellerName}');
-            print(
-              '  - Characteristics: ${_listing.characteristics.keys.length} items',
-            );
+            // print('✅ _listing updated:');
+            // print('  - Title: ${_listing.title}');
+            // print();
+            // print('  - Seller: ${_listing.sellerName}');
+            // print();
           });
           // Precache images after loading the advert
           _precacheImages();
@@ -302,7 +284,7 @@ class _MyListingsPropertyDetailsScreenState
       );
     }
 
-    print('Listing ${_listing.id} has ${_listing.images.length} images');
+    // print('Listing ${_listing.id} has ${_listing.images.length} images');
     final images = _listing.images.isNotEmpty
         ? _listing.images
         : [_listing.imagePath];
@@ -487,10 +469,10 @@ class _MyListingsPropertyDetailsScreenState
   Widget _buildAboutApartmentCard() {
     final Map<String, dynamic> chars = _listing.characteristics;
     // DEBUG: Выводим характеристики в консоль для отладки
-    print('[DEBUG] Характеристики в карточке:');
-    print('  - Всего характеристик: ${chars.length}');
-    print('  - Keys: ${chars.keys.toList()}');
-    chars.forEach((k, v) => print('  $k: $v (type: ${v.runtimeType})'));
+    // print('[DEBUG] Характеристики в карточке:');
+    // print('  - Всего характеристик: ${chars.length}');
+    // print('  - Keys: ${chars.keys.toList()}');
+    // chars.forEach((k, v) => print('  $k: $v (type: ${v.runtimeType})'));
 
     // Формируем список виджетов для отображения характеристик
     final List<Widget> charWidgets = [];
@@ -531,9 +513,7 @@ class _MyListingsPropertyDetailsScreenState
         ? charWidgets
         : charWidgets.take(_collapsedCount).toList();
 
-    print(
-      '[DEBUG] charWidgets.length: ${charWidgets.length}, visibleWidgets.length: ${visibleWidgets.length}',
-    );
+    // print();
 
     return _card(
       child: Column(
@@ -599,11 +579,9 @@ class _MyListingsPropertyDetailsScreenState
     final String? descriptionText = _listing.description;
 
     // DEBUG логирование
-    print('[DEBUG] _buildDescriptionCard called:');
-    print(
-      '  - description: ${descriptionText?.substring(0, descriptionText.length > 50 ? 50 : descriptionText.length) ?? "null"}...',
-    );
-    print('  - isEmpty: ${descriptionText?.isEmpty ?? true}');
+    // print('[DEBUG] _buildDescriptionCard called:');
+    // print();
+    // print('  - isEmpty: ${descriptionText?.isEmpty ?? true}');
 
     // Проверяем, нужно ли показывать кнопку раскрытия
     // Показываем кнопку только если текст достаточно длинный (больше 200 символов)
@@ -693,14 +671,10 @@ class _MyListingsPropertyDetailsScreenState
     final sellerRegDate = _listing.sellerRegistrationDate ?? "2024г.";
 
     // DEBUG логирование
-    print('[DEBUG] _buildSellerCard called:');
-    print('  - sellerName (from listing): ${_listing.sellerName ?? "null"}');
-    print(
-      '  - sellerAvatar (from listing): ${_listing.sellerAvatar ?? "null"}',
-    );
-    print(
-      '  - sellerRegDate (from listing): ${_listing.sellerRegistrationDate ?? "null"}',
-    );
+    // print('[DEBUG] _buildSellerCard called:');
+    // print('  - sellerName (from listing): ${_listing.sellerName ?? "null"}');
+    // print();
+    // print();
 
     return _card(
       child: Column(

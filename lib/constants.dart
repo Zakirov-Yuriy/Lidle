@@ -129,7 +129,7 @@ Widget buildProfileImage(
         },
       );
     } catch (e) {
-      print('❌ Error loading profile image: $e');
+      // print('❌ Error loading profile image: $e');
       return Container(
         width: width,
         height: height,

@@ -67,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
-      print('Error loading main phone ID: $e');
+      // print('Error loading main phone ID: $e');
     }
   }
 
@@ -1329,3 +1329,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+

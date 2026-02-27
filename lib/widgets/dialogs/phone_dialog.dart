@@ -19,7 +19,7 @@ class PhoneDialog extends StatelessWidget {
     if (await canLaunchUrl(launchUri)) {
       await launchUrl(launchUri);
     } else {
-      print('Could not launch $launchUri');
+      // print('Could not launch $launchUri');
     }
   }
 
@@ -94,3 +94,4 @@ class PhoneDialog extends StatelessWidget {
     );
   }
 }
+

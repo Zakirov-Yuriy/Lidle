@@ -115,7 +115,7 @@ class _ReviewCardState extends State<ReviewCard> {
             GestureDetector(
               onTap: () {
                 // TODO: Реализовать функционал нажатия на текст отзыва
-                print('Отзыв нажат');
+                // print('Отзыв нажат');
               },
               child: Text(
                 widget.review.reviewText,
@@ -325,3 +325,4 @@ class _ReviewCardState extends State<ReviewCard> {
     );
   }
 }
+

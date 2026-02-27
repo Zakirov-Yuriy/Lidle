@@ -65,26 +65,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ============================================================
   @override
   Widget build(BuildContext context) {
-    print('🏗️ RegisterScreen build() called');
+    // print('🏗️ RegisterScreen build() called');
     const primaryBlue = Color(0xFF0EA5E9);
 
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        print('🔍 RegisterScreen listener - New state: ${state.runtimeType}');
-        print('🔍 State details: $state');
+        // print('🔍 RegisterScreen listener - New state: ${state.runtimeType}');
+        // print('🔍 State details: $state');
 
         if (state is AuthRegistered) {
-          print('✅ AuthRegistered state received, email: ${state.email}');
+          // print('✅ AuthRegistered state received, email: ${state.email}');
           // Переходим на экран верификации с передачей email
           Navigator.of(context).pushReplacementNamed(
             RegisterVerifyScreen.routeName,
             arguments: {'email': state.email},
           );
         } else if (state is AuthAuthenticated) {
-          print('✅ AuthAuthenticated state received');
+          // print('✅ AuthAuthenticated state received');
           Navigator.of(context).pushReplacementNamed('/profile-dashboard');
         } else if (state is AuthError) {
-          print('❌ AuthError state: ${state.message}');
+          // print('❌ AuthError state: ${state.message}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
@@ -99,9 +99,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       },
       builder: (context, state) {
-        print(
-          '🔨 RegisterScreen builder() called with state: ${state.runtimeType}',
-        );
+        // print();
         return Scaffold(
           backgroundColor: primaryBackground,
           body: SafeArea(
@@ -464,3 +462,5 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
+
+

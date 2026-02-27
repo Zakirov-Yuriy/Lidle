@@ -68,23 +68,23 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📥 GET REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Token provided: ${token != null}');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📥 GET REQUEST');
+      // print('URL: $baseUrl$endpoint');
+      // print('Token provided: ${token != null}');
       if (token != null) {
-        print('Token preview: ${token.substring(0, 30)}...');
-        print('Token type: JWT');
+        // print('Token preview: ${token.substring(0, 30)}...');
+        // print('Token type: JWT');
       }
-      print('Headers:');
+      // print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          // print('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          // print('  $key: $value');
         }
       });
-      print('═══════════════════════════════════════════════════════');
+      // print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
@@ -121,24 +121,24 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📤 POST REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Token provided: ${token != null}');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📤 POST REQUEST');
+      // print('URL: $baseUrl$endpoint');
+      // print('Token provided: ${token != null}');
       if (token != null) {
-        print('Token preview: ${token.substring(0, 30)}...');
-        print('Token type: JWT');
+        // print('Token preview: ${token.substring(0, 30)}...');
+        // print('Token type: JWT');
       }
-      print('Headers:');
+      // print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          // print('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          // print('  $key: $value');
         }
       });
-      print('Body: $body');
-      print('═══════════════════════════════════════════════════════');
+      // print('Body: $body');
+      // print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .post(
@@ -182,9 +182,38 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      final uri = Uri.parse('$baseUrl$endpoint').replace(
-        queryParameters: queryParams.map((k, v) => MapEntry(k, v.toString())),
-      );
+      // Обработка query параметров с поддержкой множественных значений с одним ключом
+      // Это необходимо для фильтров типа filters[attr_6][]=value1&filters[attr_6][]=value2
+      final baseUri = Uri.parse('$baseUrl$endpoint');
+
+      // Если есть параметры, которые появляются несколько раз (массивы),
+      // нужно построить query string вручную
+      String? queryString;
+      final queryParts = <String>[];
+
+      queryParams.forEach((key, value) {
+        final encodedKey = Uri.encodeComponent(key);
+        final encodedValue = Uri.encodeComponent(value.toString());
+        queryParts.add('$encodedKey=$encodedValue');
+      });
+
+      if (queryParts.isNotEmpty) {
+        queryString = queryParts.join('&');
+      }
+
+      final uri = queryString != null
+          ? baseUri.replace(query: queryString)
+          : baseUri;
+
+      // print('═══════════════════════════════════════════════════════');
+      // print('📥 GET REQUEST WITH QUERY PARAMS');
+      // print('Endpoint: $endpoint');
+      // print('Full URL: ${uri.toString()}');
+      // print('Query Parameters:');
+      queryParams.forEach((key, value) {
+        // print('  $key: $value');
+      });
+      // print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .get(uri, headers: headers)
@@ -224,24 +253,24 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📤 PUT REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Token provided: ${token != null}');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📤 PUT REQUEST');
+      // print('URL: $baseUrl$endpoint');
+      // print('Token provided: ${token != null}');
       if (token != null) {
-        print('Token preview: ${token.substring(0, 30)}...');
-        print('Token type: JWT');
+        // print('Token preview: ${token.substring(0, 30)}...');
+        // print('Token type: JWT');
       }
-      print('Headers:');
+      // print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          // print('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          // print('  $key: $value');
         }
       });
-      print('Body: $body');
-      print('═══════════════════════════════════════════════════════');
+      // print('Body: $body');
+      // print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .put(
@@ -282,26 +311,26 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('🗑️ DELETE REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Token provided: ${token != null}');
+      // print('═══════════════════════════════════════════════════════');
+      // print('🗑️ DELETE REQUEST');
+      // print('URL: $baseUrl$endpoint');
+      // print('Token provided: ${token != null}');
       if (token != null) {
-        print('Token preview: ${token.substring(0, 30)}...');
-        print('Token type: JWT');
+        // print('Token preview: ${token.substring(0, 30)}...');
+        // print('Token type: JWT');
       }
-      print('Headers:');
+      // print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          // print('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          // print('  $key: $value');
         }
       });
       if (body != null) {
-        print('Body: $body');
+        // print('Body: $body');
       }
-      print('═══════════════════════════════════════════════════════');
+      // print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .delete(
@@ -334,12 +363,12 @@ class ApiService {
       } on TokenExpiredException {
         // 401 — пробуем обновить токен один раз (только на первой попытке)
         if (attempt == 0) {
-          print('🔄 ApiService: 401 перехвачен, пробуем refresh токена...');
+          // print('🔄 ApiService: 401 перехвачен, пробуем refresh токена...');
           final currentToken = HiveService.getUserData('token') as String?;
           if (currentToken != null && currentToken.isNotEmpty) {
             final newToken = await refreshToken(currentToken);
             if (newToken != null) {
-              print('✅ ApiService: токен обновлён, повторяем запрос...');
+              // print('✅ ApiService: токен обновлён, повторяем запрос...');
               // Повторяем запрос — он возьмёт новый токен из Hive автоматически
               // (если вызывающий код читает токен из Hive перед каждым запросом)
               // Для методов с явным token — пробрасываем исключение выше
@@ -349,7 +378,7 @@ class ApiService {
               );
             }
           }
-          print('❌ ApiService: refresh не удался, пробрасываем исключение');
+          // print('❌ ApiService: refresh не удался, пробрасываем исключение');
           rethrow;
         } else {
           rethrow;
@@ -357,12 +386,10 @@ class ApiService {
       } on RateLimitException {
         if (attempt < _maxRetries - 1) {
           final delayMs = _retryDelayMs * (1 << attempt); // Exponential backoff
-          print(
-            '⏳ Rate limited (429). Retry attempt ${attempt + 1}/$_maxRetries в ${delayMs}ms...',
-          );
+          // print();
           await Future.delayed(Duration(milliseconds: delayMs));
         } else {
-          print('❌ Максимум попыток достигнут. Прекращаю retry.');
+          // print('❌ Максимум попыток достигнут. Прекращаю retry.');
           rethrow;
         }
       }
@@ -372,45 +399,45 @@ class ApiService {
 
   /// Обрабатывает ответ от сервера.
   static Map<String, dynamic> _handleResponse(http.Response response) {
-    print('✅ API Response status: ${response.statusCode}');
-    print('📋 Response body: ${response.body}');
+    // print('✅ API Response status: ${response.statusCode}');
+    // print('📋 Response body: ${response.body}');
     final data = jsonDecode(response.body) as Map<String, dynamic>;
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      print('✅ Request successful!');
+      // print('✅ Request successful!');
       return data;
     } else if (response.statusCode == 429) {
       // Rate limit - signal to retry
-      print('⚠️ 429 Too Many Requests - Rate limited');
-      print('Error response: ${data['message'] ?? 'Too many requests'}');
+      // print('⚠️ 429 Too Many Requests - Rate limited');
+      // print('Error response: ${data['message'] ?? 'Too many requests'}');
       throw RateLimitException('429 Too Many Requests');
     } else if (response.statusCode == 401) {
-      print('❌ 401 Unauthorized - Token might be expired or invalid');
-      print('Error response: ${data['message'] ?? 'Token expired'}');
+      // print('❌ 401 Unauthorized - Token might be expired or invalid');
+      // print('Error response: ${data['message'] ?? 'Token expired'}');
       // Бросаем типизированное исключение для перехвата в _retryRequestWithRefresh
       throw TokenExpiredException(data['message'] ?? 'Token expired');
     } else if (response.statusCode == 422) {
       // Validation error - return response with errors
-      print('❌ 422 Validation Error');
-      print('Full error response: ${jsonEncode(data)}');
+      // print('❌ 422 Validation Error');
+      // print('Full error response: ${jsonEncode(data)}');
       if (data['errors'] is Map) {
-        print('\n📋 Detailed validation errors:');
+        // print('\n📋 Detailed validation errors:');
         (data['errors'] as Map).forEach((key, value) {
-          print('  ❌ $key: $value');
+          // print('  ❌ $key: $value');
           if (key == 'attributes' && value is List) {
-            print('     ^ ATTRIBUTES error! Check field structure');
+            // print('     ^ ATTRIBUTES error! Check field structure');
           }
         });
       }
       // Don't throw exception, let calling code handle it
       return data;
     } else if (response.statusCode == 500) {
-      print('❌ 500 Server Error');
-      print('Error message: ${data['message'] ?? 'Server error'}');
+      // print('❌ 500 Server Error');
+      // print('Error message: ${data['message'] ?? 'Server error'}');
       throw Exception(data['message'] ?? 'Ошибка сервера');
     } else {
-      print('❌ Error with status ${response.statusCode}');
-      print('Error response: ${data['message'] ?? 'Ошибка сервера'}');
+      // print('❌ Error with status ${response.statusCode}');
+      // print('Error response: ${data['message'] ?? 'Ошибка сервера'}');
       return data; // Return the response so caller can handle it
     }
   }
@@ -424,11 +451,9 @@ class ApiService {
         'category_id': categoryId,
       }, token: token);
 
-      print(
-        '📦 getAdvertCreationAttributes: Parsing response for category $categoryId',
-      );
-      print('   response type: ${response.runtimeType}');
-      print('   data type: ${response['data']?.runtimeType}');
+      // print();
+      // print('   response type: ${response.runtimeType}');
+      // print('   data type: ${response['data']?.runtimeType}');
 
       // API возвращает: {"success":true,"data":[{"type":{...},"attributes":[...]}]}
       // data - это List с одним элементом
@@ -440,19 +465,15 @@ class ApiService {
         // data это List - берём первый элемент
         final firstItem = dataNode[0] as Map<String, dynamic>?;
         attributesJson = firstItem?['attributes'] as List<dynamic>?;
-        print(
-          '   ✅ Parsed from List: ${attributesJson?.length ?? 0} attributes',
-        );
+        // print();
       } else if (dataNode is Map<String, dynamic>) {
         // data это Map - берём attributes напрямую
         attributesJson = dataNode['attributes'] as List<dynamic>?;
-        print(
-          '   ✅ Parsed from Map: ${attributesJson?.length ?? 0} attributes',
-        );
+        // print();
       }
 
       if (attributesJson == null || attributesJson.isEmpty) {
-        print('   ❌ No attributes found in response');
+        // print('   ❌ No attributes found in response');
         throw Exception('No attributes found in response');
       }
 
@@ -464,19 +485,17 @@ class ApiService {
           if (json is Map<String, dynamic>) {
             final attr = Attribute.fromJson(json);
             attributes.add(attr);
-            print(
-              '   [${attr.id}] ${attr.title} (is_required=${attr.isRequired})',
-            );
+            // print();
           }
         } catch (e) {
-          print('   ⚠️ Failed to parse attribute at index $i: $e');
+          // print('   ⚠️ Failed to parse attribute at index $i: $e');
         }
       }
 
-      print('   ✅ Total parsed: ${attributes.length} attributes');
+      // print('   ✅ Total parsed: ${attributes.length} attributes');
       return attributes;
     } catch (e) {
-      print('❌ getAdvertCreationAttributes error: $e');
+      // print('❌ getAdvertCreationAttributes error: $e');
       if (e.toString().contains('Token expired') && token != null) {
         // Попытка обновить токен и повторить запрос
         final newToken = await refreshToken(token);
@@ -500,6 +519,7 @@ class ApiService {
     int? page,
     int? limit,
     String? token,
+    bool withAttributes = false,
   }) async {
     try {
       final queryParams = <String, dynamic>{};
@@ -510,23 +530,152 @@ class ApiService {
       if (limit != null) queryParams['limit'] = limit;
 
       // Добавляем фильтры
-      if (filters != null) {
+      if (filters != null && filters.isNotEmpty) {
+        print('📦 API getAdverts - Processing filters:');
         filters.forEach((key, value) {
-          if (value is Map<String, dynamic>) {
-            value.forEach((subKey, subValue) {
-              queryParams['filters[$key][$subKey]'] = subValue.toString();
+          // 🟢 СПЕЦИАЛЬНАЯ ОБРАБОТКА для filters[value_selected] (для атрибутов выбранных значений, ID < 1000)
+          if (key == 'value_selected' && value is Map<String, dynamic>) {
+            print('   📍 Processing value_selected:');
+            // filters[value_selected][attr_id][0], [1] и т.д. - выбранные ID значений
+            value.forEach((attrId, attrValue) {
+              if (attrValue is Set) {
+                // Множественный выбор: Set<String> с ID выбранных значений
+                final setList = (attrValue as Set).toList();
+                if (setList.isNotEmpty) {
+                  for (int i = 0; i < setList.length; i++) {
+                    final paramKey = 'filters[value_selected][$attrId][$i]';
+                    queryParams[paramKey] = setList[i].toString();
+                    print('      ✅ $paramKey = ${setList[i].toString()}');
+                  }
+                }
+              } else if (attrValue is List) {
+                // Список значений
+                if ((attrValue as List).isNotEmpty) {
+                  for (int i = 0; i < (attrValue as List).length; i++) {
+                    final paramKey = 'filters[value_selected][$attrId][$i]';
+                    queryParams[paramKey] = attrValue[i].toString();
+                    print('      ✅ $paramKey = ${attrValue[i].toString()}');
+                  }
+                }
+              } else {
+                // Простое значение
+                final paramKey = 'filters[value_selected][$attrId]';
+                queryParams[paramKey] = attrValue.toString();
+                print('      ✅ $paramKey = ${attrValue.toString()}');
+              }
             });
+          } else if (key == 'values' && value is Map<String, dynamic>) {
+            // 🟢 СПЕЦИАЛЬНАЯ ОБРАБОТКА для filters[values] (требуется API структура для диапазонов, ID >= 1000)
+            // filters[values][attr_id][min], filters[values][attr_id][max] и т.д.
+            value.forEach((attrId, attrValue) {
+              if (attrValue is Map<String, dynamic>) {
+                // Диапазоны: {min: 1, max: 5} - отправляем только если не пусто
+                attrValue.forEach((rangeKey, rangeValue) {
+                  // Строгая проверка: не отправляем пустые строки или null
+                  if (rangeValue != null &&
+                      rangeValue.toString().isNotEmpty &&
+                      rangeValue.toString().trim().isNotEmpty) {
+                    final paramKey = 'filters[values][$attrId][$rangeKey]';
+                    queryParams[paramKey] = rangeValue.toString();
+                    // print('  ✅ $paramKey = ${rangeValue.toString()}');
+                  }
+                });
+              } else if (attrValue is Set) {
+                // Множественный выбор
+                final setList = (attrValue as Set).toList();
+                if (setList.isNotEmpty) {
+                  for (int i = 0; i < setList.length; i++) {
+                    final paramKey = 'filters[values][$attrId][$i]';
+                    queryParams[paramKey] = setList[i].toString();
+                    // print('  ✅ $paramKey = ${setList[i].toString()}');
+                  }
+                }
+              } else if (attrValue is List) {
+                // Список значений
+                if ((attrValue as List).isNotEmpty) {
+                  for (int i = 0; i < (attrValue as List).length; i++) {
+                    final paramKey = 'filters[values][$attrId][$i]';
+                    queryParams[paramKey] = attrValue[i].toString();
+                    // print('  ✅ $paramKey = ${attrValue[i].toString()}');
+                  }
+                }
+              } else {
+                // Простое значение (boolean и другие)
+                final paramKey = 'filters[values][$attrId]';
+                queryParams[paramKey] = attrValue.toString();
+                // print('  ✅ $paramKey = ${attrValue.toString()}');
+              }
+            });
+          } else if (value is Map<String, dynamic>) {
+            // Вложенные Map (например {min: 1, max: 5}) - обработка для остальных структур
+            value.forEach((subKey, subValue) {
+              final paramKey = 'filters[$key][$subKey]';
+              queryParams[paramKey] = subValue.toString();
+              // print('  ✅ $paramKey = ${subValue.toString()}');
+            });
+          } else if (value is Set) {
+            // Множественный выбор (Set<String>)
+            // ⚠️ ВАЖНО: создаём РАЗНЫЕ ключи для каждого элемента!
+            final setList = (value as Set).toList();
+            if (setList.isNotEmpty) {
+              for (int i = 0; i < setList.length; i++) {
+                final paramKey = 'filters[$key][$i]';
+                queryParams[paramKey] = setList[i].toString();
+                // print('  ✅ $paramKey = ${setList[i].toString()}');
+              }
+            }
+          } else if (value is List) {
+            // Список значений
+            // ⚠️ ВАЖНО: создаём РАЗНЫЕ ключи для каждого элемента!
+            if ((value as List).isNotEmpty) {
+              for (int i = 0; i < (value as List).length; i++) {
+                final paramKey = 'filters[$key][$i]';
+                queryParams[paramKey] = value[i].toString();
+                // print('  ✅ $paramKey = ${value[i].toString()}');
+              }
+            }
           } else {
-            queryParams['filters[$key]'] = value.toString();
+            // Простые значения (строки, числа)
+            final paramKey = 'filters[$key]';
+            queryParams[paramKey] = value.toString();
+            // print('  ✅ $paramKey = ${value.toString()}');
           }
         });
       }
+
+      // print('📋 Query Parameters:');
+      queryParams.forEach((key, value) {
+        print('  📋 $key: $value');
+      });
+
+      // 🟢 ТЕСТИРОВАНИЕ: Сначала пытаемся БЕЗ параметра with=attributes
+      // так как он может блокировать фильтры
+      // queryParams['with'] = 'attributes';
+
+      // 🟢 Добавляем параметр для получения атрибутов если нужно
+      // (используется в fallback режиме для client-side фильтрации)
+      if (withAttributes) {
+        // Попробуем оба варианта параметра получения атрибутов
+        queryParams['include'] = 'attributes'; // Вариант 1: include
+        // queryParams['with'] = 'attributes'; // Вариант 2: with
+      }
+
+      print('\n🔗 FULL REQUEST URL:');
+      print(
+        '   GET /adverts?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}').join('&')}',
+      );
+      print('');
 
       final response = await getWithQuery(
         '/adverts',
         queryParams,
         token: token,
       );
+
+      // � Успешно получен ответ от API
+      // Клиентская фильтрация будет применена на уровне RealEstateListingsScreen
+      // если необходимо (fallback стратегия)
+
       return AdvertsResponse.fromJson(response);
     } catch (e) {
       throw Exception('Failed to load adverts: $e');
@@ -546,6 +695,61 @@ class ApiService {
     } catch (e) {
       throw Exception('Failed to load advert: $e');
     }
+  }
+
+  /// Получить атрибуты объявления (нужно запросить отдельно, т.к. API не включает их в список)
+  static Future<Advert?> getAdvertWithAttributes(
+    int id, {
+    String? token,
+  }) async {
+    try {
+      final response = await getWithQuery('/adverts/$id', {
+        'with': 'attributes',
+      }, token: token);
+      final data = response['data'];
+      if (data is List && data.isNotEmpty) {
+        return Advert.fromJson(data[0] as Map<String, dynamic>);
+      } else if (data is Map<String, dynamic>) {
+        return Advert.fromJson(data);
+      }
+      return null;
+    } catch (e) {
+      // На ошибку просто возвращаем null и объявление останется БЕЗ атрибутов
+      print('⚠️  Failed to load attributes for advert $id: $e');
+      return null;
+    }
+  }
+
+  /// Загрузить атрибуты для нескольких объявлений параллельно
+  static Future<Map<int, Advert>> getAdvertsWithAttributes(
+    List<int> advertIds, {
+    String? token,
+  }) async {
+    final results = <int, Advert>{};
+
+    // Загружаем максимум 5 одновременно, чтобы не перегружать API
+    const batchSize = 5;
+    for (int i = 0; i < advertIds.length; i += batchSize) {
+      final batch = advertIds.sublist(
+        i,
+        (i + batchSize > advertIds.length) ? advertIds.length : i + batchSize,
+      );
+
+      final futures = batch.map(
+        (id) => getAdvertWithAttributes(id, token: token),
+      );
+      final adverts = await Future.wait(futures);
+
+      for (int j = 0; j < batch.length; j++) {
+        final id = batch[j];
+        final advert = adverts[j];
+        if (advert != null) {
+          results[id] = advert;
+        }
+      }
+    }
+
+    return results;
   }
 
   /// Получить все каталоги.
@@ -646,21 +850,17 @@ class ApiService {
       // API returns { "success": true, "data": {"sort": [...], "filters": [...]} }
       // Extract the data object which contains sort and filters
       final data = response['data'] ?? response;
-      print('📊 Full filter JSON keys: ${data.keys.toList()}');
+      // print('📊 Full filter JSON keys: ${data.keys.toList()}');
       if (data['filters'] is List) {
         final filtersList = data['filters'] as List;
-        print('📊 Filters count: ${filtersList.length}');
+        // print('📊 Filters count: ${filtersList.length}');
         for (int i = 0; i < filtersList.length; i++) {
           final filter = filtersList[i];
-          print(
-            '  [$i] ID=${filter['id']}, Title=${filter['title']}, Values=${filter['values']?.length ?? 0}',
-          );
-          print(
-            '       is_title_hidden=${filter['is_title_hidden']}, is_special_design=${filter['is_special_design']}',
-          );
+          // print('  [$i] ID=${filter['id']}, Title=${filter['title']}, Values=${filter['values']?.length ?? 0}');
+          // print('       is_title_hidden=${filter['is_title_hidden']}, is_special_design=${filter['is_special_design']}');
         }
         // Сканируем все фильтры на предмет "Вам предложат цену"
-        print('🔍 Searching for "Вам предложат цену" filter...');
+        // print('🔍 Searching for "Вам предложат цену" filter...');
         bool found = false;
         for (final filter in filtersList) {
           final title = filter['title']?.toString() ?? '';
@@ -668,16 +868,14 @@ class ApiService {
               title.contains('цену') ||
               title.contains('offer') ||
               title.contains('price')) {
-            print(
-              '   ✅ Found possible match: ID=${filter['id']}, Title=$title',
-            );
+            // print('   ✅ Found possible match: ID=${filter['id']}, Title=$title');
             found = true;
           }
         }
         if (!found) {
-          print('   ❌ "Вам предложат цену" filter NOT found in API response!');
-          print('   NOTE: This filter is REQUIRED but not returned by API');
-          print('   It will be added programmatically in _loadAttributes()');
+          // print('   ❌ "Вам предложат цену" filter NOT found in API response!');
+          // print('   NOTE: This filter is REQUIRED but not returned by API');
+          // print('   It will be added programmatically in _loadAttributes()');
         }
       }
       try {
@@ -686,9 +884,9 @@ class ApiService {
         // So we pass it directly to fromJson
         return MetaFiltersResponse.fromJson(data);
       } catch (parseError) {
-        print('🔴 ERROR parsing MetaFiltersResponse:');
-        print('   Error: $parseError');
-        print('   Data keys: ${data.keys}');
+        // print('🔴 ERROR parsing MetaFiltersResponse:');
+        // print('   Error: $parseError');
+        // print('   Data keys: ${data.keys}');
         rethrow;
       }
     } catch (e) {
@@ -714,21 +912,17 @@ class ApiService {
   }) async {
     try {
       final json = request.toJson();
-      print('\n🚀 SENDING TO API: POST /adverts');
-      print('Full JSON:');
-      print(json);
+      // print('\n🚀 SENDING TO API: POST /adverts');
+      // print('Full JSON:');
+      // print(json);
       if (json['attributes'] != null) {
-        print('\nAttributes structure:');
-        print('  - value_selected: ${json['attributes']['value_selected']}');
-        print(
-          '  - values keys: ${json['attributes']['values']?.keys.toList()}',
-        );
+        // print('\nAttributes structure:');
+        // print('  - value_selected: ${json['attributes']['value_selected']}');
+        // print('  - values keys: ${json['attributes']['values']?.keys.toList()}');
         if (json['attributes']['values'] != null) {
-          print(
-            '  - values[1048]: ${json['attributes']['values']['1048']} (Type: ${json['attributes']['values']['1048'].runtimeType})',
-          );
-          print('  - values[1127]: ${json['attributes']['values']['1127']}');
-          print('  - values[1040]: ${json['attributes']['values']['1040']}');
+          // print('  - values[1048]: ${json['attributes']['values']['1048']} (Type: ${json['attributes']['values']['1048'].runtimeType})');
+          // print('  - values[1127]: ${json['attributes']['values']['1127']}');
+          // print('  - values[1040]: ${json['attributes']['values']['1040']}');
         }
       }
 
@@ -754,15 +948,13 @@ class ApiService {
   }) async {
     try {
       final json = request.toJson();
-      print('\n🔄 SENDING TO API: PUT /adverts/$advertId');
-      print('Full JSON:');
-      print(json);
+      // print('\n🔄 SENDING TO API: PUT /adverts/$advertId');
+      // print('Full JSON:');
+      // print(json);
       if (json['attributes'] != null) {
-        print('\nAttributes structure:');
-        print('  - value_selected: ${json['attributes']['value_selected']}');
-        print(
-          '  - values keys: ${json['attributes']['values']?.keys.toList()}',
-        );
+        // print('\nAttributes structure:');
+        // print('  - value_selected: ${json['attributes']['value_selected']}');
+        // print('  - values keys: ${json['attributes']['values']?.keys.toList()}');
       }
 
       final response = await put('/adverts/$advertId', json, token: token);
@@ -812,7 +1004,7 @@ class ApiService {
     try {
       await post('/adverts/$advertId/view', {}, token: token);
     } catch (e) {
-      print('Failed to save advert view: $e');
+      // print('Failed to save advert view: $e');
       // Не пробрасываем ошибку, так как это некритично
     }
   }
@@ -822,7 +1014,7 @@ class ApiService {
     try {
       await post('/adverts/$advertId/share', {}, token: token);
     } catch (e) {
-      print('Failed to share advert: $e');
+      // print('Failed to share advert: $e');
       // Не пробрасываем ошибка
     }
   }
@@ -840,13 +1032,13 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📤 MULTIPART UPLOAD REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Field name: $fieldName');
-      print('File: $filePath');
-      print('Token provided: ${token != null}');
-      print('═══════════════════════════════════════════════════════');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📤 MULTIPART UPLOAD REQUEST');
+      // print('URL: $baseUrl$endpoint');
+      // print('Field name: $fieldName');
+      // print('File: $filePath');
+      // print('Token provided: ${token != null}');
+      // print('═══════════════════════════════════════════════════════');
 
       final request = http.MultipartRequest(
         'POST',
@@ -925,7 +1117,7 @@ class ApiService {
       // Добавить новые загруженные файлы
       int imageIndex = 0;
       for (final filePath in imagePaths) {
-        print('📎 Adding image $imageIndex: $filePath');
+        // print('📎 Adding image $imageIndex: $filePath');
         final file = File(filePath);
 
         if (await file.exists()) {
@@ -934,7 +1126,7 @@ class ApiService {
           );
           imageIndex++;
         } else {
-          print('⚠️ File not found: $filePath');
+          // print('⚠️ File not found: $filePath');
         }
       }
 
@@ -943,7 +1135,7 @@ class ApiService {
         for (int i = 0; i < existingImages.length; i++) {
           final existingFileName = existingImages[i];
           request.fields['images[${imageIndex + i}]'] = existingFileName;
-          print('📸 Preserving existing image: $existingFileName');
+          // print('📸 Preserving existing image: $existingFileName');
         }
       }
 
@@ -951,38 +1143,38 @@ class ApiService {
       if (deleteImages != null && deleteImages.isNotEmpty) {
         for (int i = 0; i < deleteImages.length; i++) {
           request.fields['delete_images[$i]'] = deleteImages[i];
-          print('🗑️ Marking for deletion: ${deleteImages[i]}');
+          // print('🗑️ Marking for deletion: ${deleteImages[i]}');
         }
       }
 
       // Логирование запроса
-      print('════════════════════════════════════════════════════');
-      print('📤 MULTIPART REQUEST to /adverts/$advertId/images');
-      print('   Mode: ${deleteImages != null ? 'DELETE' : 'UPLOAD'}');
-      print('   New files: ${imagePaths.length}');
+      // print('════════════════════════════════════════════════════');
+      // print('📤 MULTIPART REQUEST to /adverts/$advertId/images');
+      // print('   Mode: ${deleteImages != null ? 'DELETE' : 'UPLOAD'}');
+      // print('   New files: ${imagePaths.length}');
       if (existingImages != null && existingImages.isNotEmpty) {
-        print('   Existing: ${existingImages.length}');
+        // print('   Existing: ${existingImages.length}');
       }
       if (deleteImages != null && deleteImages.isNotEmpty) {
-        print('   To delete: ${deleteImages.length}');
+        // print('   To delete: ${deleteImages.length}');
       }
-      print('════════════════════════════════════════════════════');
+      // print('════════════════════════════════════════════════════');
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('тЬЕ API Response status: ${response.statusCode}');
-      print('ЁЯУЛ Response body: ${response.body}');
+      // print('тЬЕ API Response status: ${response.statusCode}');
+      // print('ЁЯУЛ Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        print('✅ Images operation completed successfully!');
+        // print('✅ Images operation completed successfully!');
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else if (response.statusCode == 401) {
         // Токен истёк - пытаемся обновить и повторить
-        print('⚠️ Token expired (401), attempting to refresh...');
+        // print('⚠️ Token expired (401), attempting to refresh...');
         final newToken = await refreshToken(token);
         if (newToken != null) {
-          print('✅ Token refreshed, retrying upload...');
+          // print('✅ Token refreshed, retrying upload...');
           return uploadAdvertImages(
             advertId,
             imagePaths,
@@ -1006,7 +1198,7 @@ class ApiService {
         );
       }
     } catch (e) {
-      print('тЭМ Error with image operation: $e');
+      // print('тЭМ Error with image operation: $e');
       rethrow;
     }
   }
@@ -1021,15 +1213,15 @@ class ApiService {
 
       final uri = Uri.parse('$baseUrl/addresses/regions');
 
-      print('═══════════════════════════════════════════════════════');
-      print('📥 GET REQUEST /addresses/regions');
-      print('URL: $uri');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📥 GET REQUEST /addresses/regions');
+      // print('URL: $uri');
 
       final response = await http
           .get(uri, headers: headers)
           .timeout(const Duration(seconds: 10));
 
-      print('✅ API Response status: ${response.statusCode}');
+      // print('✅ API Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -1045,7 +1237,7 @@ class ApiService {
         throw Exception('Failed to get regions: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error getting regions: $e');
+      // print('❌ Error getting regions: $e');
       throw Exception('Error getting regions: $e');
     }
   }
@@ -1076,22 +1268,22 @@ class ApiService {
 
       final uri = Uri.parse('$baseUrl/addresses/search');
 
-      print('═══════════════════════════════════════════════════════');
-      print('📥 GET REQUEST /addresses/search');
-      print('URL: $uri');
-      print('Token provided: ${token != null}');
+      // print('═══════════════════════════════════════════════════════');
+      // print('📥 GET REQUEST /addresses/search');
+      // print('URL: $uri');
+      // print('Token provided: ${token != null}');
       if (token != null) {
-        print('Token preview: ${token.substring(0, 30)}...');
+        // print('Token preview: ${token.substring(0, 30)}...');
       }
-      print('Headers:');
+      // print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          // print('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          // print('  $key: $value');
         }
       });
-      print('Body: ${jsonEncode(bodyMap)}');
+      // print('Body: ${jsonEncode(bodyMap)}');
 
       // Use http.Request to send GET with JSON body (unusual but API requires it)
       final request = http.Request('GET', uri);
@@ -1103,7 +1295,7 @@ class ApiService {
       );
       final response = await http.Response.fromStream(streamResponse);
 
-      print('✅ API Response status: ${response.statusCode}');
+      // print('✅ API Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -1133,7 +1325,7 @@ class ApiService {
         'category_id': categoryId,
       }, token: token);
 
-      print('📦 getListingsFilterAttributes: Parsing for category $categoryId');
+      // print('📦 getListingsFilterAttributes: Parsing for category $categoryId');
 
       // Если требуется токен и он истёк, обновить и повторить
       if (response is Map &&
@@ -1167,7 +1359,7 @@ class ApiService {
         'message': response['message'],
       };
     } catch (e) {
-      print('❌ getListingsFilterAttributes error: $e');
+      // print('❌ getListingsFilterAttributes error: $e');
       return {'success': false, 'data': [], 'message': e.toString()};
     }
   }

@@ -16,7 +16,7 @@ class CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        print('🎯 CategoryCard tapped: ${category.title}');
+        // print('🎯 CategoryCard tapped: ${category.title}');
         onTap?.call();
       },
       child: Container(
@@ -115,3 +115,4 @@ class CategoryCard extends StatelessWidget {
     }
   }
 }
+

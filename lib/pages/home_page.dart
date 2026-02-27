@@ -402,15 +402,13 @@ class _HomePageState extends State<HomePage> {
                                   category.title.contains('View All');
 
                               if (isViewAll) {
-                                print('📍 Navigating to FullCategoryScreen');
+                                // print('📍 Navigating to FullCategoryScreen');
                                 Navigator.pushNamed(
                                   context,
                                   FullCategoryScreen.routeName,
                                 );
                               } else {
-                                print(
-                                  '📍 Opening category: ${category.title} (ID: ${category.id}, isCatalog: ${category.isCatalog})',
-                                );
+                                // print();
 
                                 // Если это основной каталог, передаем catalogId
                                 // Если это подкатегория, передаем categoryId
@@ -658,3 +656,5 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
+
+

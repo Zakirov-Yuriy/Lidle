@@ -46,7 +46,7 @@ class TokenService {
   void init(BuildContext context) {
     _context = context;
     _scheduleRefresh();
-    print('✅ TokenService: инициализирован');
+    // print('✅ TokenService: инициализирован');
   }
 
   /// Останавливает таймер (при logout).
@@ -54,7 +54,7 @@ class TokenService {
     _refreshTimer?.cancel();
     _refreshTimer = null;
     _context = null;
-    print('🛑 TokenService: остановлен');
+    // print('🛑 TokenService: остановлен');
   }
 
   /// Планирует следующее обновление токена на основе текущего токена из Hive.
@@ -63,13 +63,13 @@ class TokenService {
 
     final token = HiveService.getUserData('token') as String?;
     if (token == null || token.isEmpty) {
-      print('⚠️ TokenService: токен не найден, таймер не запущен');
+      // print('⚠️ TokenService: токен не найден, таймер не запущен');
       return;
     }
 
     final expiresAt = _getTokenExpiry(token);
     if (expiresAt == null) {
-      print('⚠️ TokenService: не удалось декодировать exp из токена');
+      // print('⚠️ TokenService: не удалось декодировать exp из токена');
       // Fallback: обновляем через 55 минут (токен живёт 1 час)
       _startTimer(const Duration(minutes: 55));
       return;
@@ -80,18 +80,16 @@ class TokenService {
     final timeUntilRefresh =
         timeUntilExpiry - Duration(seconds: _refreshBeforeExpireSeconds);
 
-    print('🕐 TokenService: токен истекает в ${expiresAt.toLocal()}');
-    print('🕐 TokenService: до истечения: ${timeUntilExpiry.inMinutes} мин');
+    // print('🕐 TokenService: токен истекает в ${expiresAt.toLocal()}');
+    // print('🕐 TokenService: до истечения: ${timeUntilExpiry.inMinutes} мин');
 
     if (timeUntilRefresh.isNegative ||
         timeUntilRefresh.inSeconds < _minTokenLifetimeSeconds) {
       // Токен уже истёк или истекает очень скоро — обновляем немедленно
-      print('⚡ TokenService: токен истекает скоро, обновляем немедленно');
+      // print('⚡ TokenService: токен истекает скоро, обновляем немедленно');
       _doRefresh();
     } else {
-      print(
-        '⏰ TokenService: запланировано обновление через ${timeUntilRefresh.inMinutes} мин ${timeUntilRefresh.inSeconds % 60} сек',
-      );
+      // print();
       _startTimer(timeUntilRefresh);
     }
   }
@@ -103,11 +101,11 @@ class TokenService {
 
   /// Выполняет запрос на обновление токена.
   Future<void> _doRefresh() async {
-    print('🔄 TokenService: выполняем refresh токена...');
+    // print('🔄 TokenService: выполняем refresh токена...');
 
     final currentToken = HiveService.getUserData('token') as String?;
     if (currentToken == null || currentToken.isEmpty) {
-      print('❌ TokenService: нет токена для refresh');
+      // print('❌ TokenService: нет токена для refresh');
       _notifyTokenExpired();
       return;
     }
@@ -116,17 +114,17 @@ class TokenService {
       final newToken = await ApiService.refreshToken(currentToken);
 
       if (newToken != null && newToken.isNotEmpty) {
-        print('✅ TokenService: токен успешно обновлён');
+        // print('✅ TokenService: токен успешно обновлён');
         // Уведомляем AuthBloc о новом токене
         _notifyTokenRefreshed(newToken);
         // Планируем следующее обновление
         _scheduleRefresh();
       } else {
-        print('❌ TokenService: refresh вернул пустой токен');
+        // print('❌ TokenService: refresh вернул пустой токен');
         _notifyTokenExpired();
       }
     } catch (e) {
-      print('❌ TokenService: ошибка при refresh: $e');
+      // print('❌ TokenService: ошибка при refresh: $e');
       _notifyTokenExpired();
     }
   }
@@ -137,7 +135,7 @@ class TokenService {
     try {
       _context!.read<AuthBloc>().add(TokenRefreshedEvent(newToken: newToken));
     } catch (e) {
-      print('⚠️ TokenService: не удалось уведомить AuthBloc о refresh: $e');
+      // print('⚠️ TokenService: не удалось уведомить AuthBloc о refresh: $e');
     }
   }
 
@@ -147,7 +145,7 @@ class TokenService {
     try {
       _context!.read<AuthBloc>().add(const TokenExpiredEvent());
     } catch (e) {
-      print('⚠️ TokenService: не удалось уведомить AuthBloc об истечении: $e');
+      // print('⚠️ TokenService: не удалось уведомить AuthBloc об истечении: $e');
     }
   }
 
@@ -183,7 +181,7 @@ class TokenService {
       // exp — Unix timestamp в секундах
       return DateTime.fromMillisecondsSinceEpoch((exp as int) * 1000);
     } catch (e) {
-      print('❌ TokenService: ошибка декодирования JWT: $e');
+      // print('❌ TokenService: ошибка декодирования JWT: $e');
       return null;
     }
   }
@@ -192,23 +190,25 @@ class TokenService {
   ///
   /// Возвращает новый токен или null если refresh не удался.
   Future<String?> forceRefresh() async {
-    print('⚡ TokenService: принудительное обновление токена...');
+    // print('⚡ TokenService: принудительное обновление токена...');
     final currentToken = HiveService.getUserData('token') as String?;
     if (currentToken == null || currentToken.isEmpty) return null;
 
     try {
       final newToken = await ApiService.refreshToken(currentToken);
       if (newToken != null && newToken.isNotEmpty) {
-        print('✅ TokenService: принудительный refresh успешен');
+        // print('✅ TokenService: принудительный refresh успешен');
         _notifyTokenRefreshed(newToken);
         _scheduleRefresh(); // Перепланируем таймер
         return newToken;
       }
     } catch (e) {
-      print('❌ TokenService: принудительный refresh не удался: $e');
+      // print('❌ TokenService: принудительный refresh не удался: $e');
     }
 
     _notifyTokenExpired();
     return null;
   }
 }
+
+

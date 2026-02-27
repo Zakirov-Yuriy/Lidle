@@ -53,9 +53,9 @@ class AddressService {
 
       final uri = Uri.parse('${ApiService.baseUrl}/addresses/search');
 
-      print('📥 GET REQUEST /addresses/search');
-      print('URL: $uri');
-      print('Body: ${jsonEncode(bodyMap)}');
+      // print('📥 GET REQUEST /addresses/search');
+      // print('URL: $uri');
+      // print('Body: ${jsonEncode(bodyMap)}');
 
       // Use http.Request to send GET with JSON body
       final request = http.Request('GET', uri);
@@ -67,31 +67,29 @@ class AddressService {
       );
       final response = await http.Response.fromStream(streamResponse);
 
-      print('✅ API Response status: ${response.statusCode}');
-      print(
-        '📄 Response body: ${response.body.substring(0, response.body.length > 500 ? 500 : response.body.length)}...',
-      );
+      // print('✅ API Response status: ${response.statusCode}');
+      // print();
 
       if (response.statusCode == 200) {
-        print('🔄 Parsing JSON response...');
+        // print('🔄 Parsing JSON response...');
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        print('🔄 JSON decoded successfully');
+        // print('🔄 JSON decoded successfully');
 
         final result = AddressesResponse.fromJson(jsonResponse);
-        print(
-          '🏠 AddressesResponse created: success=${result.success}, items=${result.data.length}',
-        );
+        // print();
 
         return result;
       } else {
-        print('❌ ${response.statusCode} Error');
-        print('Response: ${response.body}');
+        // print('❌ ${response.statusCode} Error');
+        // print('Response: ${response.body}');
         throw Exception('Failed to search addresses: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Exception in searchAddresses: $e');
-      print('Stack trace: ${StackTrace.current}');
+      // print('❌ Exception in searchAddresses: $e');
+      // print('Stack trace: ${StackTrace.current}');
       throw Exception('Failed to search addresses: $e');
     }
   }
 }
+
+
