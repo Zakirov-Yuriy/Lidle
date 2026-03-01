@@ -47,14 +47,11 @@ class _HomePageState extends State<HomePage> {
     // 🔄 Кеширование: загружаем данные только если их ещё нет и нет ошибок
     final currentState = context.read<ListingsBloc>().state;
 
-    // Загружаем только если:
-    // 1. Состояние == ListingsInitial (никогда не загружалось)
-    // 2. Состояние == ListingsError (была ошибка, пробуем снова)
+    // Загружаем данные НЕЗАВИСИМО от авторизации
+    // (пользователь может просматривать контент как гость)
     if (currentState is ListingsInitial || currentState is ListingsError) {
       context.read<ListingsBloc>().add(LoadListingsEvent());
     }
-    // Если состояние ListingsLoaded или ListingsLoading - не трогаем,
-    // используем существующие данные/кеш
   }
 
   /// Метод для обработки pull-to-refresh.
@@ -67,52 +64,71 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<NavigationBloc, NavigationState>(
-      listener: (context, state) {
-        if (state is NavigationToProfile ||
-            state is NavigationToHome ||
-            state is NavigationToFavorites ||
-            state is NavigationToAddListing ||
-            state is NavigationToMyPurchases ||
-            state is NavigationToMessages ||
-            state is NavigationToSignIn) {
-          context.read<NavigationBloc>().executeNavigation(context);
-        }
-      },
-      child: BlocBuilder<NavigationBloc, NavigationState>(
-        builder: (context, navigationState) {
-          return BlocBuilder<ListingsBloc, ListingsState>(
-            builder: (context, listingsState) {
-              return Scaffold(
-                extendBody: true,
-                backgroundColor: primaryBackground,
-                body: SafeArea(
-                  bottom: false,
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 21, right: 23),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Header(),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 19.0),
-                              child: SvgPicture.asset(
-                                'assets/home_page/share_outlined.svg',
-                                width: 24,
-                                height: 24,
-                              ),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, authState) {
+        // Если пользователь не авторизован, показываем экран входа
+        return BlocListener<NavigationBloc, NavigationState>(
+          listener: (context, state) {
+            if (state is NavigationToProfile ||
+                state is NavigationToHome ||
+                state is NavigationToFavorites ||
+                state is NavigationToAddListing ||
+                state is NavigationToMyPurchases ||
+                state is NavigationToMessages ||
+                state is NavigationToSignIn) {
+              context.read<NavigationBloc>().executeNavigation(context);
+            }
+          },
+          child: BlocBuilder<NavigationBloc, NavigationState>(
+            builder: (context, navigationState) {
+              return BlocBuilder<ListingsBloc, ListingsState>(
+                builder: (context, listingsState) {
+                  return Scaffold(
+                    extendBody: true,
+                    backgroundColor: primaryBackground,
+                    body: SafeArea(
+                      bottom: false,
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: 21,
+                              right: 23,
                             ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 7.0, right: 11.0),
-                        child: BlocBuilder<AuthBloc, AuthState>(
-                          builder: (context, authState) {
-                            return custom_widgets.SearchBarWidget(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Header(),
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 19.0),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      // Проверяем авторизацию перед поделиться
+                                      if (authState is! AuthAuthenticated) {
+                                        Navigator.pushNamed(
+                                          context,
+                                          SignInScreen.routeName,
+                                        );
+                                      }
+                                      // TODO: реализовать логику поделиться
+                                    },
+                                    child: SvgPicture.asset(
+                                      'assets/home_page/share_outlined.svg',
+                                      width: 24,
+                                      height: 24,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              left: 7.0,
+                              right: 11.0,
+                            ),
+                            child: custom_widgets.SearchBarWidget(
                               onSearchChanged: (query) {
                                 if (query.isNotEmpty) {
                                   context.read<ListingsBloc>().add(
@@ -125,79 +141,95 @@ class _HomePageState extends State<HomePage> {
                                 }
                               },
                               onSettingsPressed: () async {
+                                // Проверяем авторизацию перед фильтрами
+                                if (authState is! AuthAuthenticated) {
+                                  Navigator.pushNamed(
+                                    context,
+                                    SignInScreen.routeName,
+                                  );
+                                  return;
+                                }
                                 await Navigator.pushNamed(
                                   context,
                                   FiltersScreen.routeName,
                                 );
                               },
                               onMenuPressed: () {
-                                if (authState is AuthAuthenticated) {
+                                // Проверяем авторизацию перед профилем
+                                if (authState is! AuthAuthenticated) {
+                                  Navigator.pushNamed(
+                                    context,
+                                    SignInScreen.routeName,
+                                  );
+                                } else {
                                   Navigator.pushNamed(
                                     context,
                                     ProfileMenuScreen.routeName,
                                   );
-                                } else {
-                                  Navigator.pushNamedAndRemoveUntil(
-                                    context,
-                                    SignInScreen.routeName,
-                                    (route) =>
-                                        route.settings.name == '/' ||
-                                        route.isFirst,
-                                  );
                                 }
                               },
-                            );
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: RefreshIndicator(
-                          onRefresh: _onRefresh,
-                          color: accentColor, // Цвет стрелки и индикатора
-                          backgroundColor:
-                              formBackground, // Цвет фона индикатора
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildCategoriesSection(listingsState),
-                                _buildLatestSection(listingsState),
-                                SizedBox(height: 10),
-                              ],
                             ),
                           ),
-                        ),
+                          Expanded(
+                            child: RefreshIndicator(
+                              onRefresh: _onRefresh,
+                              color: accentColor,
+                              backgroundColor: formBackground,
+                              child: SingleChildScrollView(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildCategoriesSection(
+                                      listingsState,
+                                      authState,
+                                    ),
+                                    _buildLatestSection(
+                                      listingsState,
+                                      authState,
+                                    ),
+                                    SizedBox(height: 10),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                bottomNavigationBar: BottomNavigation(
-                  onItemSelected: (index) {
-                    if (index == 3) {
-                      // Shopping cart icon
-                      context.read<NavigationBloc>().add(
-                        NavigateToMyPurchasesEvent(),
-                      );
-                    } else {
-                      context.read<NavigationBloc>().add(
-                        SelectNavigationIndexEvent(index),
-                      );
-                    }
-                  },
-                ),
+                    ),
+                    bottomNavigationBar: BottomNavigation(
+                      onItemSelected: (index) {
+                        // Проверяем авторизацию перед навигацией (кроме главной)
+                        if (authState is! AuthAuthenticated && index != 0) {
+                          Navigator.pushNamed(context, SignInScreen.routeName);
+                          return;
+                        }
+
+                        if (index == 3) {
+                          context.read<NavigationBloc>().add(
+                            NavigateToMyPurchasesEvent(),
+                          );
+                        } else {
+                          context.read<NavigationBloc>().add(
+                            SelectNavigationIndexEvent(index),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                },
               );
             },
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
   /// Приватный метод для построения секции категорий.
   /// Включает заголовок "Предложения на LIDLE", кнопку "Смотреть все"
   /// и горизонтальный список карточек категорий.
-  Widget _buildCategoriesSection(ListingsState state) {
+  Widget _buildCategoriesSection(ListingsState state, AuthState authState) {
     if (state is ListingsLoading) {
       return Column(
         children: [
@@ -395,6 +427,15 @@ class _HomePageState extends State<HomePage> {
                           child: CategoryCard(
                             category: category,
                             onTap: () {
+                              // Проверка авторизации перед взаимодействием
+                              if (authState is! AuthAuthenticated) {
+                                Navigator.pushNamed(
+                                  context,
+                                  SignInScreen.routeName,
+                                );
+                                return;
+                              }
+
                               // Проверяем только на "Смотреть все"
                               final isViewAll =
                                   category.title.contains('Смотреть') ||
@@ -442,7 +483,7 @@ class _HomePageState extends State<HomePage> {
 
   /// Приватный метод для построения секции последних объявлений.
   /// Включает заголовок "Самое новое" и адаптивную сетку карточек объявлений.
-  Widget _buildLatestSection(ListingsState state) {
+  Widget _buildLatestSection(ListingsState state, AuthState authState) {
     if (state is AdvertLoaded) {
       // Если состояние AdvertLoaded (после возврата с деталей), перезагружаем объявления
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -641,7 +682,10 @@ class _HomePageState extends State<HomePage> {
                       ),
                       itemCount: listings.length,
                       itemBuilder: (context, index) {
-                        return ListingCard(listing: listings[index]);
+                        return ListingCard(
+                          listing: listings[index],
+                          authState: authState,
+                        );
                       },
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -656,5 +700,3 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
-

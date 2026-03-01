@@ -17,6 +17,8 @@ class AuthService {
 
   /// Регистрация нового пользователя.
   /// Отправляет данные пользователя на сервер для создания аккаунта.
+  ///
+  /// ВАЖНО: API требует device_name параметр (обновление в документации)
   static Future<Map<String, dynamic>> register({
     required String name,
     required String lastName,
@@ -32,6 +34,8 @@ class AuthService {
       'phone': phone,
       'password': password,
       'password_confirmation': passwordConfirmation,
+      'device_name': 'Lidle Mobile App',
+      'app_version': '1.3.3',
     };
 
     return await ApiService.post('/auth/register', body);
@@ -50,12 +54,20 @@ class AuthService {
 
   /// Вход в систему.
   /// Аутентифицирует пользователя и возвращает токен.
+  ///
+  /// ВАЖНО: API требует device_name параметр (обновление в документации)
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
     bool remember = true,
   }) async {
-    final body = {'email': email, 'password': password, 'remember': remember};
+    final body = {
+      'email': email,
+      'password': password,
+      'remember': remember,
+      'device_name': 'Lidle Mobile App',
+      'app_version': '1.3.3',
+    };
 
     return await ApiService.post('/auth/login', body);
   }
@@ -154,4 +166,3 @@ class AuthService {
     }
   }
 }
-

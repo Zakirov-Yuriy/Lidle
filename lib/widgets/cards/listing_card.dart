@@ -8,11 +8,14 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:lidle/blocs/auth/auth_state.dart';
+import 'package:lidle/pages/auth/sign_in_screen.dart';
 
 class ListingCard extends StatefulWidget {
   final Listing listing;
+  final AuthState? authState;
 
-  const ListingCard({super.key, required this.listing});
+  const ListingCard({super.key, required this.listing, this.authState});
 
   @override
   State<ListingCard> createState() => _ListingCardState();
@@ -52,6 +55,13 @@ class _ListingCardState extends State<ListingCard> {
 
         return GestureDetector(
           onTap: () {
+            // Проверка авторизации перед взаимодействием (если authState передан)
+            if (widget.authState != null &&
+                widget.authState is! AuthAuthenticated) {
+              Navigator.pushNamed(context, SignInScreen.routeName);
+              return;
+            }
+            // Переходим к деталям объявления
             Navigator.push(
               context,
               MaterialPageRoute(
