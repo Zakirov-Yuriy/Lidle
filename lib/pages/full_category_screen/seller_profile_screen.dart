@@ -7,6 +7,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/api_service.dart';
 
 // Navigation targets used by bottom navigation
 import 'package:lidle/pages/home_page.dart';
@@ -26,14 +27,17 @@ class SellerProfileScreen extends StatefulWidget {
 
   final String sellerName;
   final ImageProvider sellerAvatar;
-  final List<Map<String, dynamic>>? sellerListings;
+
+  /// URL аватарки продавца в виде строки (для передачи в дочерние экраны).
+  /// Может быть http-ссылкой или путём к ассету.
+  final String? sellerAvatarUrl;
   final String? userId;
 
   const SellerProfileScreen({
     super.key,
     required this.sellerName,
     required this.sellerAvatar,
-    this.sellerListings,
+    this.sellerAvatarUrl,
     this.userId,
   });
 
@@ -48,31 +52,47 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = false;
   String? _error;
 
+  /// Статический кэш объявлений: ключ — userId, значение — список объявлений.
+  /// Живёт в рамках процесса приложения, сбрасывается при перезапуске.
+  static final Map<String, List<Map<String, dynamic>>> _cache = {};
+
+  /// Сбросить кэш для конкретного продавца (например, после pull-to-refresh).
+  static void invalidateCache(String userId) => _cache.remove(userId);
+
   @override
   void initState() {
     super.initState();
     _loadSellerListings();
   }
 
-  /// Загружает объявления продавца из API или использует переданные
-  Future<void> _loadSellerListings() async {
-    // Если есть передаваемые объявления, используем их
-    if (widget.sellerListings != null && widget.sellerListings!.isNotEmpty) {
+  /// Загружает объявления продавца из API по userId.
+  /// При повторном открытии экрана возвращает данные из кэша мгновенно.
+  /// [forceRefresh] = true — игнорирует кэш и запрашивает заново (pull-to-refresh).
+  Future<void> _loadSellerListings({bool forceRefresh = false}) async {
+    // Если нет userId, не загружаем
+    if (widget.userId == null || widget.userId!.isEmpty) {
+      print('❌ SellerProfileScreen: userId is null or empty');
       setState(() {
-        _sellerListings = widget.sellerListings ?? [];
+        _sellerListings = [];
         _isLoading = false;
       });
       return;
     }
 
-    // Если нет userId, не можем загрузить
-    if (widget.userId == null || widget.userId!.isEmpty) {
+    final userId = widget.userId!;
+
+    // Возвращаем кэш, если есть и не требуется обновление
+    if (!forceRefresh && _cache.containsKey(userId)) {
+      print('📦 SellerProfileScreen: загружено из кэша для userId=$userId');
       setState(() {
-        _error = 'Невозможно загрузить объявления продавца';
+        _sellerListings = _cache[userId]!;
         _isLoading = false;
       });
       return;
     }
+
+    print('✅ SellerProfileScreen: загрузка с API');
+    print('   userId: $userId');
 
     setState(() {
       _isLoading = true;
@@ -85,17 +105,119 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         throw Exception('Токен авторизации не найден');
       }
 
-      // TODO: API фильтрация по user_id требует уточнения с бэк-командой
-      // Текущий вариант: используем похожие объявления которые передаются
-      // Если нужны ВСЕ объявления продавца, нужно:
-      // 1. Получить от бэка endpoint для фильтрации по user_id
-      // 2. Или загрузить из каждой категории и фильтровать локально
+      print('📤 Загружаем объявления продавца');
+      print('   Endpoint: GET /users/$userId/adverts');
+      print('   User ID: $userId');
+
+      // API фиксирует per_page=30 и не принимает этот параметр в body.
+      // Запрос принимает только: sort (Array) и page (Integer).
+      // Чтобы получить все объявления — загружаем страницы последовательно.
+
+      final allData = <dynamic>[];
+
+      // Шаг 1: загружаем первую страницу и читаем meta.last_page
+      final firstPageBody = {
+        'sort': ['new'],
+        'page': 1,
+      };
+      print('   Request body: $firstPageBody');
+
+      final firstResponse = await ApiService.getWithBody(
+        '/users/$userId/adverts',
+        firstPageBody,
+        token: token,
+      );
+
+      print('📥 Страница 1 получена. Ключи: ${firstResponse.keys.toList()}');
+
+      final firstPageData = firstResponse['data'] as List<dynamic>? ?? [];
+      allData.addAll(firstPageData);
+
+      // Читаем общее количество страниц из meta
+      final meta = firstResponse['meta'] as Map<String, dynamic>?;
+      final lastPage = (meta?['last_page'] as num?)?.toInt() ?? 1;
+      final total = (meta?['total'] as num?)?.toInt() ?? firstPageData.length;
+
+      print('📊 Всего объявлений: $total, страниц: $lastPage');
+
+      // Шаг 2: загружаем остальные страницы, если они есть
+      if (lastPage > 1) {
+        for (int page = 2; page <= lastPage; page++) {
+          print('   Загружаем страницу $page/$lastPage...');
+          final pageBody = {
+            'sort': ['new'],
+            'page': page,
+          };
+          final pageResponse = await ApiService.getWithBody(
+            '/users/$userId/adverts',
+            pageBody,
+            token: token,
+          );
+          final pageData = pageResponse['data'] as List<dynamic>? ?? [];
+          allData.addAll(pageData);
+          print('   Страница $page: +${pageData.length} объявлений');
+        }
+      }
+
+      final data = allData;
+
+      print('   data length: ${data.length}');
+
+      if (data.isEmpty) {
+        print('⚠️ API вернул пустой список объявлений');
+        setState(() {
+          _sellerListings = [];
+          _isLoading = false;
+        });
+        return;
+      }
+
+      print('✅ Найдено ${data.length} объявлений (из $total активных)');
+
+      // Трансформируем API ответ в формат для Listing.
+      // Фильтруем до маппинга — берём только активные (status.id == 1).
+      final listings = data
+          .whereType<Map<String, dynamic>>()
+          .where(
+            (item) => (item['status'] as Map<String, dynamic>?)?['id'] == 1,
+          )
+          .map((item) {
+            // Конвертируем API формат в формат для Listing.fromJson()
+            // ВАЖНО: fromJson читает 'image', не 'imagePath'
+            final thumbnail = item['thumbnail'] as String?;
+            return <String, dynamic>{
+              'id': item['id']?.toString() ?? '',
+              'image': thumbnail ?? '', // fromJson использует 'image'
+              'images': thumbnail != null && thumbnail.isNotEmpty
+                  ? [thumbnail]
+                  : <String>[],
+              'title': item['name'] ?? '',
+              'price': item['price']?.toString() ?? '0',
+              'address': item['address'] ?? '',
+              'date': item['date'] ?? '',
+              'characteristics': {},
+              'sellerName': widget.sellerName,
+              'userId': widget.userId,
+              // Передаём URL аватарки строкой — MiniPropertyDetailsScreen
+              // читает это поле через Listing.fromJson() как sellerAvatar
+              'sellerAvatar': widget.sellerAvatarUrl,
+              'description': null,
+              'isFavorited': item['is_wishlisted'] ?? false,
+            };
+          })
+          .toList();
+
+      print('✅ Трансформировано ${listings.length} объявлений');
+
+      // Сохраняем в кэш — следующее открытие экрана отдаст данные мгновенно
+      _cache[userId] = listings;
 
       setState(() {
-        _sellerListings = [];
+        _sellerListings = listings;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Ошибка при загрузке объявлений: $e');
       setState(() {
         _error = 'Ошибка при загрузке объявлений: ${e.toString()}';
         _isLoading = false;
@@ -109,43 +231,57 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       backgroundColor: primaryBackground,
       bottomNavigationBar: _buildBottomNavigation(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20.0, left: 8),
-                child: const Header(),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Column(
-                  children: [
-                    _buildHeader(),
-
-                    const SizedBox(height: 31),
-                    _buildSellerInfo(),
-
-                    const SizedBox(height: 18),
-                    _buildRateSeller(),
-
-                    const SizedBox(height: 25),
-                    Row(children: [_buildListingsTitle()]),
-                    const SizedBox(height: 16),
-
-                    _buildListingsGrid(),
-
-                    const SizedBox(height: 36),
-                    _buildComplaintBlock(),
-
-                    const SizedBox(height: 40),
-                  ],
+        // RefreshIndicator позволяет пользователю свайпом вниз
+        // принудительно обновить список (сбрасывает кэш для этого продавца)
+        child: RefreshIndicator(
+          color: activeIconColor,
+          onRefresh: () async {
+            if (widget.userId != null) {
+              _SellerProfileScreenState.invalidateCache(widget.userId!);
+            }
+            await _loadSellerListings(forceRefresh: true);
+          },
+          child: SingleChildScrollView(
+            // AlwaysScrollable нужен, чтобы RefreshIndicator работал
+            // даже когда контент меньше экрана
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20.0, left: 8),
+                  child: const Header(),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Column(
+                    children: [
+                      _buildHeader(),
+
+                      const SizedBox(height: 31),
+                      _buildSellerInfo(),
+
+                      const SizedBox(height: 18),
+                      _buildRateSeller(),
+
+                      const SizedBox(height: 25),
+                      Row(children: [_buildListingsTitle()]),
+                      const SizedBox(height: 16),
+
+                      _buildListingsGrid(),
+
+                      const SizedBox(height: 36),
+                      _buildComplaintBlock(),
+
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ), // SingleChildScrollView
+        ), // RefreshIndicator
+      ), // SafeArea
     );
   }
 

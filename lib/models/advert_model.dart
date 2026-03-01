@@ -17,6 +17,9 @@ class Advert {
   final String? sellerName;
   final String? sellerAvatar;
   final String? sellerRegistrationDate;
+
+  /// ID продавца (из поля user.id детального ответа)
+  final String? sellerId;
   final String? description;
 
   final Map<String, dynamic>? characteristics;
@@ -37,6 +40,7 @@ class Advert {
     this.sellerName,
     this.sellerAvatar,
     this.sellerRegistrationDate,
+    this.sellerId,
     this.description,
     this.characteristics,
   });
@@ -49,11 +53,15 @@ class Advert {
     String? sellerAvatar;
     String? sellerRegistrationDate;
 
+    // Также берём id продавца из user.id детального ответа
+    String? sellerId;
+
     if (json['user'] != null) {
       final user = json['user'] as Map<String, dynamic>;
       sellerName = user['name'] as String?;
       sellerAvatar = user['avatar'] as String?;
       sellerRegistrationDate = user['created_at'] as String?;
+      sellerId = user['id']?.toString();
     }
 
     // Безопасный парсинг изображений
@@ -162,6 +170,7 @@ class Advert {
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
+      sellerId: sellerId,
       description: json['description'],
       characteristics: characteristics,
     );
@@ -336,6 +345,8 @@ extension AdvertToListingExtension on Advert {
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,
+      // sellerId берётся из user.id детального ответа API
+      userId: sellerId,
       description: description,
       characteristics: characteristics ?? {},
     );

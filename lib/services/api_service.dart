@@ -158,6 +158,53 @@ class ApiService {
     }
   }
 
+  /// Выполняет GET запрос с JSON body (нестандартное использование).
+  /// Используется для API endpoint-ов которые требуют GET + body параметры,
+  /// например: GET /v1/users/{id}/adverts с body { sort: [], page: 1 }
+  static Future<Map<String, dynamic>> getWithBody(
+    String endpoint,
+    Map<String, dynamic> body, {
+    String? token,
+  }) async {
+    return _retryRequest(
+      () => _getWithBodyRequest(endpoint, body, token),
+      endpoint,
+    );
+  }
+
+  /// Внутренний метод для GET запроса с JSON body.
+  /// Использует http.Request напрямую, так как http.get() не поддерживает body.
+  static Future<Map<String, dynamic>> _getWithBodyRequest(
+    String endpoint,
+    Map<String, dynamic> body,
+    String? token,
+  ) async {
+    try {
+      final headers = {...defaultHeaders};
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      // http.get() не поддерживает body, поэтому используем http.Request напрямую
+      final request = http.Request('GET', Uri.parse('$baseUrl$endpoint'));
+      request.headers.addAll(headers);
+      request.body = jsonEncode(body);
+
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 10),
+      );
+      final response = await http.Response.fromStream(streamedResponse);
+
+      return _handleResponse(response);
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    } catch (e) {
+      throw Exception('Неизвестная ошибка');
+    }
+  }
+
   /// Выполняет GET запрос с query параметрами с retry при 429.
   static Future<Map<String, dynamic>> getWithQuery(
     String endpoint,

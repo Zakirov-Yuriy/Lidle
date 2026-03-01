@@ -802,6 +802,11 @@ class _AllListingsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Получаем userId из первого объявления продавца
+        final String? sellerUserId = similarListings.isNotEmpty
+            ? similarListings.first.userId
+            : null;
+
         // Создаем ImageProvider в зависимости от типа URL
         ImageProvider avatarProvider;
         if (sellerAvatar.startsWith('http')) {
@@ -816,19 +821,9 @@ class _AllListingsButton extends StatelessWidget {
             builder: (context) => SellerProfileScreen(
               sellerName: sellerName,
               sellerAvatar: avatarProvider,
-              sellerListings: similarListings
-                  .map(
-                    (listing) => {
-                      "id": listing.id,
-                      "image": listing.imagePath,
-                      "title": listing.title,
-                      "price": listing.price,
-                      "address": listing.location,
-                      "date": listing.date,
-                      "isFavorited": listing.isFavorited,
-                    },
-                  )
-                  .toList(),
+              // Передаём оригинальный строковый URL аватарки
+              sellerAvatarUrl: sellerAvatar,
+              userId: sellerUserId,
             ),
           ),
         );
@@ -955,4 +950,3 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
     );
   }
 }
-

@@ -1083,10 +1083,9 @@ class _AllListingsButton extends StatelessWidget {
             builder: (context) => SellerProfileScreen(
               sellerName: sellerName,
               sellerAvatar: avatarProvider,
+              // Передаём оригинальный строковый URL аватарки
+              sellerAvatarUrl: sellerAvatar,
               userId: userId,
-              sellerListings: similarListings
-                  .map((listing) => listing.toJson())
-                  .toList(),
             ),
           ),
         );

@@ -173,11 +173,24 @@ class Listing {
           'Unknown Location', // Assuming 'address' corresponds to 'location'
       date: json['date'] ?? 'Unknown Date',
       isFavorited: json['isFavorited'] ?? false,
-      sellerName: json['seller']?['name'] ?? json['sellerName'],
-      userId: json['seller']?['id']?.toString() ?? json['userId'],
-      sellerAvatar: json['seller']?['avatar'] ?? json['sellerAvatar'],
+      // API detail endpoint returns seller info under 'user' key,
+      // while some responses may use 'seller' key.
+      sellerName:
+          json['user']?['name'] ??
+          json['seller']?['name'] ??
+          json['sellerName'],
+      userId:
+          json['user']?['id']?.toString() ??
+          json['seller']?['id']?.toString() ??
+          json['userId'],
+      sellerAvatar:
+          json['user']?['avatar'] ??
+          json['seller']?['avatar'] ??
+          json['sellerAvatar'],
       sellerRegistrationDate:
-          json['seller']?['registrationDate'] ?? json['sellerRegistrationDate'],
+          json['user']?['created_at'] ??
+          json['seller']?['registrationDate'] ??
+          json['sellerRegistrationDate'],
       description: json['description'],
       characteristics: characteristics,
     );
