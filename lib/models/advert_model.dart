@@ -3,6 +3,7 @@ import 'dart:convert';
 
 class Advert {
   final int id;
+  final String? slug;
   final String date;
   final String name;
   final String price;
@@ -26,6 +27,7 @@ class Advert {
 
   Advert({
     required this.id,
+    this.slug,
     required this.date,
     required this.name,
     required this.price,
@@ -152,6 +154,7 @@ class Advert {
 
     return Advert(
       id: json['id'] ?? 0,
+      slug: json['slug'],
       date: json['date'] ?? '',
       name: json['name'] ?? '',
       price: json['price'] ?? '',
@@ -335,6 +338,7 @@ extension AdvertToListingExtension on Advert {
   Listing toListing() {
     return Listing(
       id: id.toString(),
+      slug: slug,
       imagePath: (thumbnail != null && thumbnail!.isNotEmpty) ? thumbnail! : '',
       images: images,
       title: name,

@@ -1472,4 +1472,80 @@ class ApiService {
       return {'success': false, 'data': [], 'message': e.toString()};
     }
   }
+
+  /// 💰 Отправить предложение цены для объявления
+  /// POST /v1/adverts/{id}/offer
+  /// Параметры:
+  /// - advertId: ID объявления
+  /// - price: Предложенная цена (число)
+  /// - message: Сообщение продавцу
+  /// - token: Bearer токен пользователя
+  static Future<Map<String, dynamic>> submitPriceOffer({
+    required int advertId,
+    required double price,
+    required String message,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'price': price, 'message': message};
+
+      final response = await post(
+        '/adverts/$advertId/offer',
+        body,
+        token: effectiveToken,
+      );
+
+      // print('✅ Price offer sent successfully for advert $advertId');
+      return response;
+    } catch (e) {
+      // print('❌ Error submitting price offer: $e');
+      rethrow;
+    }
+  }
+
+  /// 💵 Получить список предложений цены для объявления
+  /// GET /v1/me/offers/received/{slug}/{id}
+  /// Возвращает список предложений с информацией о пользователе
+  static Future<List<Map<String, dynamic>>> getPriceOffers({
+    required int advertId,
+    required String advertSlug,
+    String? token,
+    int page = 1,
+    List<String> sort = const ['new'],
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final queryParams = {'sort': sort, 'page': page};
+
+      final response = await getWithQuery(
+        '/me/offers/received/$advertSlug/$advertId',
+        queryParams,
+        token: effectiveToken,
+      );
+
+      // Возвращаем список предложений
+      if (response['data'] is List) {
+        return List<Map<String, dynamic>>.from(
+          (response['data'] as List).whereType<Map<String, dynamic>>(),
+        );
+      }
+
+      return [];
+    } catch (e) {
+      // print('❌ Error getting price offers: $e');
+      // Возвращаем пустой список вместо ошибки, чтобы не сломать UI
+      return [];
+    }
+  }
 }

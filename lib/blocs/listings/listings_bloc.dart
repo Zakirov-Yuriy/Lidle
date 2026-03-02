@@ -722,6 +722,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     return home.Listing(
       id: json['id'] ?? '',
+      slug: json['slug'],
       imagePath: json['imagePath'] ?? '',
       images: List<String>.from(json['images'] ?? []),
       title: json['title'] ?? '',
@@ -760,5 +761,3 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     );
   }
 }
-
-

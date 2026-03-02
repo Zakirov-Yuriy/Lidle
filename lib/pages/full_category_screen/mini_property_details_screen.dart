@@ -40,6 +40,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   bool _isAdvertLoaded = false;
   bool _imagesPrecached = false;
   bool _isSimilarListingsLoading = false;
+  bool _isPriceOffersLoading = false;
+  List<Map<String, dynamic>> _priceOffers = [];
+
   Listing _listing = Listing(
     id: '',
     imagePath: '',
@@ -204,6 +207,51 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     }
   }
 
+  /// 💰 Загружает предложения цены для текущего объявления
+  Future<void> _loadPriceOffers() async {
+    if (_isPriceOffersLoading) return;
+
+    setState(() {
+      _isPriceOffersLoading = true;
+    });
+
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        // Пользователь не авторизован - пропускаем загрузку
+        return;
+      }
+
+      final advertId = int.tryParse(_listing.id);
+      if (advertId == null) {
+        return;
+      }
+
+      // 📥 Загружаем предложения цены из API
+      final offers = await ApiService.getPriceOffers(
+        advertId: advertId,
+        advertSlug: _listing.slug ?? _listing.id,
+        token: token,
+      );
+
+      if (mounted) {
+        setState(() {
+          _priceOffers = offers;
+          _isPriceOffersLoading = false;
+        });
+
+        // print('✅ Загружены предложения цены: ${_priceOffers.length} шт.');
+      }
+    } catch (e) {
+      // print('❌ Ошибка при загрузке предложений цены: $e');
+      if (mounted) {
+        setState(() {
+          _isPriceOffersLoading = false;
+        });
+      }
+    }
+  }
+
   // Precache all images to ensure smooth scrolling
   Future<void> _precacheImages() async {
     if (_imagesPrecached || !mounted) return;
@@ -298,6 +346,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
           // 🔄 Загружаем похожие объявления из API
           _loadSimilarListings();
+
+          // 💰 Загружаем предложения цены
+          _loadPriceOffers();
         }
       },
       child: Scaffold(
@@ -377,7 +428,10 @@ ${widget.listing.title}
                         const SizedBox(height: 16),
                         _buildMainInfoCard(),
                         const SizedBox(height: 16),
-                        const _OfferPriceButton(),
+                        _OfferPriceButton(
+                          advertId: _listing.id,
+                          advertSlug: _listing.slug ?? _listing.id,
+                        ),
                         const SizedBox(height: 19),
                         _buildLocationCard(),
                         const SizedBox(height: 10),
@@ -385,6 +439,10 @@ ${widget.listing.title}
                         const SizedBox(height: 10),
                         _buildDescriptionCard(),
                         const SizedBox(height: 24),
+                        if (_priceOffers.isNotEmpty) ...[
+                          _buildPriceOffersCard(),
+                          const SizedBox(height: 24),
+                        ],
                         _buildSellerCard(),
                         const SizedBox(height: 19),
                         _buildComplaintButton(),
@@ -800,6 +858,146 @@ ${widget.listing.title}
     );
   }
 
+  /// 💰 Карточка с предложениями цены от других пользователей
+  Widget _buildPriceOffersCard() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Предложения цены",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_priceOffers.isEmpty)
+            const Text(
+              "Нет предложений цены",
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _priceOffers.length,
+              separatorBuilder: (context, index) =>
+                  const Divider(color: Colors.white24, height: 16),
+              itemBuilder: (context, index) {
+                final offer = _priceOffers[index];
+                final user = offer['user'] as Map<String, dynamic>? ?? {};
+                final userName =
+                    user['name'] as String? ?? 'Неизвестный пользователь';
+                final userAvatar = user['avatar'] as String?;
+                final price = offer['price'] as String? ?? '-';
+                final message = offer['message'] as String? ?? '';
+                final createdAt = offer['created_at'] as String? ?? '';
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // Аватар пользователя
+                        if (userAvatar != null && userAvatar.isNotEmpty)
+                          CircleAvatar(
+                            radius: 20,
+                            backgroundImage: userAvatar.startsWith('http')
+                                ? NetworkImage(userAvatar)
+                                : AssetImage(userAvatar) as ImageProvider,
+                          )
+                        else
+                          const CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Colors.grey,
+                            child: Icon(Icons.person, color: Colors.white),
+                          ),
+                        const SizedBox(width: 12),
+                        // Информация о пользователе и цене
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                userName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                createdAt,
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Цена предложения
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '₽ $price',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Предложение',
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Сообщение пользователя
+                    if (message.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          message,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSellerCard() {
     final sellerName = _listing.sellerName ?? "Имя не указано";
     final sellerAvatar =
@@ -1018,7 +1216,10 @@ class _InfoRow extends StatelessWidget {
 }
 
 class _OfferPriceButton extends StatelessWidget {
-  const _OfferPriceButton();
+  final String advertId;
+  final String advertSlug;
+
+  const _OfferPriceButton({required this.advertId, required this.advertSlug});
 
   @override
   Widget build(BuildContext context) {
@@ -1027,7 +1228,10 @@ class _OfferPriceButton extends StatelessWidget {
         showDialog(
           context: context,
           builder: (BuildContext context) {
-            return const OfferPriceDialog();
+            return OfferPriceDialog(
+              advertId: int.parse(advertId),
+              advertSlug: advertSlug,
+            );
           },
         );
       },

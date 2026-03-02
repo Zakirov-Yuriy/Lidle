@@ -41,6 +41,9 @@ class Listing {
   /// Уникальный идентификатор объявления.
   final String id;
 
+  /// Slug объявления для API запросов
+  final String? slug;
+
   /// Путь к изображению, представляющему объявление.
   final String imagePath;
 
@@ -85,6 +88,7 @@ class Listing {
     // Changed to non-const constructor
     required this.id,
     required this.imagePath,
+    this.slug,
     this.images = const [],
     required this.title,
     required this.price,
@@ -162,6 +166,7 @@ class Listing {
           json['id'] ??
           UniqueKey()
               .toString(), // Assuming 'id' might be missing, generate a unique one
+      slug: json['slug'] ?? json['id']?.toString(),
       imagePath:
           json['image'] ??
           'assets/home_page/image.png', // Default image if not provided
