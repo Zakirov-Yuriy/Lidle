@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../services/auth_service.dart';
+import '../../services/api_service.dart';
 import '../../hive_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -31,7 +32,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await AuthService.login(
         email: event.email,
         password: event.password,
-        remember: event.remember);
+        remember: event.remember,
+      );
 
       final token =
           response['data']?['access_token'] ??
@@ -69,12 +71,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           if (userData.containsKey('username')) {
             await HiveService.saveUserData(
               'username',
-              userData['username'] ?? '');
+              userData['username'] ?? '',
+            );
           }
           if (userData.containsKey('avatar')) {
             await HiveService.saveUserData(
               'profileImage',
-              userData['avatar'] ?? '');
+              userData['avatar'] ?? '',
+            );
           }
         }
 
@@ -83,7 +87,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthError(message: 'Неверные учетные данные'));
       }
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      // Специальная обработка TokenExpiredException для неправильных учетных данных
+      if (e is TokenExpiredException) {
+        emit(AuthError(message: e.message));
+      } else {
+        // Для других ошибок извлекаем понятное сообщение
+        String errorMessage = 'Ошибка при входе в систему';
+
+        if (e is Exception) {
+          final errorStr = e.toString();
+          // Парсим сообщение из Exception
+          if (errorStr.contains('Exception: ')) {
+            errorMessage = errorStr.replaceAll('Exception: ', '');
+          } else {
+            errorMessage = errorStr;
+          }
+        }
+
+        emit(AuthError(message: errorMessage));
+      }
     }
   }
 
@@ -98,7 +120,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         phone: event.phone,
         password: event.password,
-        passwordConfirmation: event.passwordConfirmation);
+        passwordConfirmation: event.passwordConfirmation,
+      );
 
       final token =
           response['data']?['access_token'] ??
@@ -138,12 +161,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           if (userData.containsKey('username')) {
             await HiveService.saveUserData(
               'username',
-              userData['username'] ?? '');
+              userData['username'] ?? '',
+            );
           }
           if (userData.containsKey('avatar')) {
             await HiveService.saveUserData(
               'profileImage',
-              userData['avatar'] ?? '');
+              userData['avatar'] ?? '',
+            );
           }
         }
 
@@ -154,8 +179,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
       }
     } catch (e) {
-      // print('❌ AuthBloc error in _onRegister: $e');
-      emit(AuthError(message: e.toString()));
+      // Специальная обработка TokenExpiredException
+      if (e is TokenExpiredException) {
+        emit(AuthError(message: e.message));
+      } else {
+        // Для других ошибок извлекаем понятное сообщение
+        String errorMessage = 'Ошибка при регистрации';
+
+        if (e is Exception) {
+          final errorStr = e.toString();
+          if (errorStr.contains('Exception: ')) {
+            errorMessage = errorStr.replaceAll('Exception: ', '');
+          } else {
+            errorMessage = errorStr;
+          }
+        }
+
+        emit(AuthError(message: errorMessage));
+      }
     }
   }
 
@@ -170,7 +211,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await AuthService.verify(email: event.email, code: event.code);
       emit(AuthEmailVerified());
     } catch (e) {
-      emit(AuthError(message: e.toString()));
+      // Специальная обработка TokenExpiredException
+      if (e is TokenExpiredException) {
+        emit(AuthError(message: e.message));
+      } else {
+        String errorMessage = 'Ошибка при верификации email';
+
+        if (e is Exception) {
+          final errorStr = e.toString();
+          if (errorStr.contains('Exception: ')) {
+            errorMessage = errorStr.replaceAll('Exception: ', '');
+          } else {
+            errorMessage = errorStr;
+          }
+        }
+
+        emit(AuthError(message: errorMessage));
+      }
     }
   }
 
@@ -198,7 +255,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
         passwordConfirmation: event.passwordConfirmation,
-        token: event.token);
+        token: event.token,
+      );
       emit(AuthPasswordReset());
     } catch (e) {
       emit(AuthError(message: e.toString()));
@@ -274,5 +332,3 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthAuthenticated(token: event.newToken));
   }
 }
-
-

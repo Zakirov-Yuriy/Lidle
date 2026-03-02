@@ -40,6 +40,8 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadMyOffers();
+    // 📌 Также загружаем предложения мне при инициализации
+    _loadOffersToMe();
   }
 
   @override
@@ -110,23 +112,34 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
+        print('❌ No token - cannot load received offers');
         setState(() {
           _isLoadingOffersToMe = false;
         });
         return;
       }
 
+      print('📡 Calling ApiService.getAllReceivedOffers()...');
       final offersData = await ApiService.getAllReceivedOffers(token: token);
+      print('📦 API returned ${offersData.length} received offers');
 
       if (mounted) {
         setState(() {
-          _offersToMe = offersData
-              .map((data) => _parseOfferFromApi(data))
-              .toList();
+          _offersToMe = offersData.map((data) {
+            print(
+              '🔄 Parsing received offer: ${data['id']} - '
+              'Message: ${data['message']}, '
+              'Price: ${data['price']}, '
+              'Status: ${data['status']?['id']}',
+            );
+            return _parseOfferFromApi(data);
+          }).toList();
+          print('✅ Successfully parsed ${_offersToMe.length} received offers');
           _isLoadingOffersToMe = false;
         });
       }
     } catch (e) {
+      print('❌ Error in _loadOffersToMe: $e');
       if (mounted) {
         setState(() {
           _isLoadingOffersToMe = false;
@@ -136,13 +149,20 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   }
 
   /// Преобразует API ответ в объект Offer
+  /// Поддерживает как собственные предложения, так и полученные предложения
   Offer _parseOfferFromApi(Map<String, dynamic> apiData) {
     final model = apiData['model'] as Map<String, dynamic>? ?? {};
     final status = apiData['status'] as Map<String, dynamic>? ?? {};
+    final seller = apiData['seller'] as Map<String, dynamic>? ?? {};
 
     print('🔄 Parsing offer API data:');
     print('   apiData id (offer ID): ${apiData['id']}');
     print('   model id (advert ID): ${model['id']}');
+    print('   model name: ${model['name']}');
+    print('   seller name: ${seller['name']}');
+    print('   message (offer details): ${apiData['message']}');
+    print('   offered price: ${apiData['price']}');
+    print('   original price: ${model['price']}');
 
     return Offer(
       id: apiData['id']?.toString() ?? '', // ✅ ID предложения

@@ -102,6 +102,12 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
+    } on TokenExpiredException {
+      // Пробросить TokenExpiredException для обработки в AuthBloc
+      rethrow;
+    } on RateLimitException {
+      // Пробросить RateLimitException для retry логики
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
@@ -164,6 +170,12 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
+    } on TokenExpiredException {
+      // Пробросить TokenExpiredException для обработки в AuthBloc
+      rethrow;
+    } on RateLimitException {
+      // Пробросить RateLimitException для retry логики
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
@@ -216,6 +228,10 @@ class ApiService {
       final response = await http.Response.fromStream(streamedResponse);
 
       return _handleResponse(response);
+    } on TokenExpiredException {
+      rethrow;
+    } on RateLimitException {
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
@@ -367,6 +383,10 @@ class ApiService {
       print('⚠️ PUT RAW RESPONSE: statusCode=${response.statusCode}');
       print('⚠️ PUT RESPONSE BODY: ${response.body}');
       return _handleResponse(response);
+    } on TokenExpiredException {
+      rethrow;
+    } on RateLimitException {
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
@@ -431,6 +451,10 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
+    } on TokenExpiredException {
+      rethrow;
+    } on RateLimitException {
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {

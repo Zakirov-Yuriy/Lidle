@@ -25,6 +25,7 @@ import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dar
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/core/cache/cacheable_bloc.dart';
 
 // ============================================================
@@ -54,9 +55,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     with WidgetsBindingObserver {
   int _activeListingsCount = 0;
   int _inactiveListingsCount = 0;
+  int _priceOffersCount = 0;
   bool _isLoadingListings = true;
+  bool _isLoadingPriceOffers = false;
 
   static const String _cacheKeyListings = 'profile_listings_counts';
+  static const String _cacheKeyPriceOffers = 'profile_price_offers_count';
 
   /// Статический кэш счётчиков объявлений: { activeCount, inactiveCount, timestamp }
   /// Данные считаются свежими 60 секунд.
@@ -91,6 +95,34 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _listingsCache.clear();
   }
 
+  /// Статический кэш счётчиков предложений цен: { count, timestamp }
+  /// Данные считаются свежими 60 секунд.
+  static final Map<String, dynamic> _priceOffersCache = {};
+
+  /// Проверить, есть ли в кэше свежие данные для предложений цен
+  static bool _isPriceOffersCacheValid() {
+    if (!_priceOffersCache.containsKey('timestamp')) return false;
+    final timestamp = _priceOffersCache['timestamp'] as DateTime;
+    final age = DateTime.now().difference(timestamp).inSeconds;
+    return age < _cacheValiditySeconds;
+  }
+
+  /// Получить количество предложений из кэша
+  static int _getCachedPriceOffersCount() {
+    return _priceOffersCache['count'] as int? ?? 0;
+  }
+
+  /// Сохранить количество предложений в кэш
+  static void _savePriceOffersCacheData(int count) {
+    _priceOffersCache['count'] = count;
+    _priceOffersCache['timestamp'] = DateTime.now();
+  }
+
+  /// Инвалидировать кэш предложений цен
+  static void invalidatePriceOffersCache() {
+    _priceOffersCache.clear();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -100,6 +132,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     context.read<ProfileBloc>().add(LoadProfileEvent());
     // ⚡ Загружаем объявления: сначала из кэша (если свежий), потом в фоне обновляем
     _loadListingsCounts(useCache: true);
+    // 💰 Загружаем количество предложений цен
+    _loadPriceOffersCount(useCache: true);
   }
 
   @override
@@ -115,6 +149,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     // показываем их мгновенно, если нет — обновляем в фоне
     if (state == AppLifecycleState.resumed && mounted) {
       _loadListingsCounts(useCache: true);
+      _loadPriceOffersCount(useCache: true);
     }
   }
 
@@ -217,6 +252,78 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       if (mounted) {
         setState(() {
           _isLoadingListings = false;
+        });
+      }
+    }
+  }
+
+  /// Загрузить количество предложений цен.
+  /// [useCache] = true: сначала показать из кэша (если свежий), потом обновить в фоне
+  /// [useCache] = false: всегда загружать со свежими указанными данными
+  Future<void> _loadPriceOffersCount({bool useCache = false}) async {
+    try {
+      // Шаг 1: Если кэш разрешён и данные свежие — показать их мгновенно
+      if (useCache && _isPriceOffersCacheValid()) {
+        print(
+          '📦 ProfileDashboard: количество предложений цен загружено из кэша',
+        );
+        final count = _getCachedPriceOffersCount();
+        if (mounted) {
+          setState(() {
+            _priceOffersCount = count;
+            _isLoadingPriceOffers = false;
+          });
+        }
+        return; // Данные свежие — не загружаем с API
+      }
+
+      // Шаг 2: Если нужен кэш но он устарел ИЛИ кэш не нужен — загрузить с API
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        print('❌ Нет токена для загрузки предложений цен!');
+        if (mounted) {
+          setState(() => _isLoadingPriceOffers = false);
+        }
+        return;
+      }
+
+      // Показываем старые данные из кэша пока загружаем новые
+      if (useCache && _priceOffersCache.containsKey('count')) {
+        final cachedCount = _getCachedPriceOffersCount();
+        if (mounted) {
+          setState(() {
+            _priceOffersCount = cachedCount;
+            // _isLoadingPriceOffers остаётся true чтобы показать update
+          });
+        }
+        print(
+          '🔄 ProfileDashboard: обновляем количество предложений цен из API',
+        );
+      } else {
+        print('✅ ProfileDashboard: загружаем количество предложений цен с API');
+        if (mounted) {
+          setState(() => _isLoadingPriceOffers = true);
+        }
+      }
+
+      // Загружаем список предложений цен (мои предложения)
+      final offersData = await ApiService.getMyOffers(token: token);
+      final count = offersData.length;
+
+      // Сохраняем в кэш
+      _savePriceOffersCacheData(count);
+
+      if (mounted) {
+        setState(() {
+          _priceOffersCount = count;
+          _isLoadingPriceOffers = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Ошибка загрузки количества предложений цен: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingPriceOffers = false;
         });
       }
     }
@@ -443,12 +550,21 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   ),
                                   _MenuItem(
                                     title: 'Предложения цен',
-                                    count: 2,
+                                    count: _priceOffersCount,
                                     trailingChevron: true,
                                     isHighlight: true,
-                                    onTap: () => Navigator.of(
-                                      context,
-                                    ).pushNamed(PriceOffersEmptyPage.routeName),
+                                    onTap: () {
+                                      Navigator.of(context)
+                                          .pushNamed(
+                                            PriceOffersEmptyPage.routeName,
+                                          )
+                                          .then((_) {
+                                            // Обновляем счётчик при возврате на экран
+                                            _loadPriceOffersCount(
+                                              useCache: false,
+                                            );
+                                          });
+                                    },
                                   ),
                                   const Divider(
                                     color: Color(0xFF474747),

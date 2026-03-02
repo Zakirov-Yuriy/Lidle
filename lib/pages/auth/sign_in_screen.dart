@@ -45,16 +45,8 @@ class _SignInScreenState extends State<SignInScreen> {
               context,
             ).pushReplacementNamed(ProfileDashboard.routeName);
           } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: CustomErrorSnackBar(
-                  message: state.message,
-                  onClose: () =>
-                      ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-                ),
-                backgroundColor: primaryBackground,
-              ),
-            );
+            // Показываем ошибку с сервера с типом error
+            SnackBarHelper.showError(context, state.message);
           }
         },
         builder: (context, state) {
@@ -252,7 +244,35 @@ class _SignInScreenState extends State<SignInScreen> {
   void _onSubmit() {
     final formState = _formKey.currentState;
     final ok = formState?.validate() ?? false;
-    if (!ok) return;
+
+    if (!ok) {
+      // Проверяем конкретные ошибки валидации
+      final errors = formState?.fields;
+
+      if (errors != null) {
+        // Проверка почты
+        if (errors['email'] != null && errors['email']!.hasError) {
+          final emailError = errors['email']!.errorText ?? 'Ошибка в почте';
+          SnackBarHelper.showError(context, emailError);
+          return;
+        }
+
+        // Проверка пароля
+        if (errors['password'] != null && errors['password']!.hasError) {
+          final passwordError =
+              errors['password']!.errorText ?? 'Ошибка в пароле';
+          // Если это ошибка минимальной длины, показываем как warning
+          if (passwordError.contains('Минимум')) {
+            SnackBarHelper.showWarning(context, passwordError);
+          } else {
+            SnackBarHelper.showError(context, passwordError);
+          }
+          return;
+        }
+      }
+
+      return;
+    }
 
     formState?.save();
     final formData = formState?.value ?? {};
