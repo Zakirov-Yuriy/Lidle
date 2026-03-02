@@ -44,12 +44,20 @@ class ApiService {
     'Content-Type': 'application/json',
   };
 
+  /// Защита от частых попыток refresh токена (debounce)
+  /// Хранит timestamp последней попытки refresh
+  static DateTime? _lastTokenRefreshAttempt;
+
+  /// Минимальный интервал между попытками refresh (в секундах)
+  static const int _tokenRefreshMinIntervalSeconds = 2;
+
   //   Accept: application/json
   // X-App-Client: mobile
   // X-Client-Platform: web
   // Accept-Language: ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7
 
   /// Выполняет GET запрос с автоматическим retry при 429.
+  /// Если token не передан - автоматически читает из Hive.
   static Future<Map<String, dynamic>> get(
     String endpoint, {
     String? token,
@@ -64,16 +72,19 @@ class ApiService {
   ) async {
     try {
       final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // print('═══════════════════════════════════════════════════════');
       // print('📥 GET REQUEST');
       // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${token != null}');
-      if (token != null) {
-        // print('Token preview: ${token.substring(0, 30)}...');
+      // print('Token provided: ${effectiveToken != null}');
+      if (effectiveToken != null) {
+        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
         // print('Token type: JWT');
       }
       // print('Headers:');
@@ -101,6 +112,7 @@ class ApiService {
   }
 
   /// Выполняет POST запрос с автоматическим retry при 429.
+  /// Если token не передан - автоматически читает из Hive.
   static Future<Map<String, dynamic>> post(
     String endpoint,
     Map<String, dynamic> body, {
@@ -117,16 +129,19 @@ class ApiService {
   ) async {
     try {
       final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // print('═══════════════════════════════════════════════════════');
       // print('📤 POST REQUEST');
       // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${token != null}');
-      if (token != null) {
-        // print('Token preview: ${token.substring(0, 30)}...');
+      // print('Token provided: ${effectiveToken != null}');
+      if (effectiveToken != null) {
+        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
         // print('Token type: JWT');
       }
       // print('Headers:');
@@ -161,6 +176,8 @@ class ApiService {
   /// Выполняет GET запрос с JSON body (нестандартное использование).
   /// Используется для API endpoint-ов которые требуют GET + body параметры,
   /// например: GET /v1/users/{id}/adverts с body { sort: [], page: 1 }
+  ///
+  /// Если token не передан - автоматически читает из Hive.
   static Future<Map<String, dynamic>> getWithBody(
     String endpoint,
     Map<String, dynamic> body, {
@@ -181,8 +198,11 @@ class ApiService {
   ) async {
     try {
       final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // http.get() не поддерживает body, поэтому используем http.Request напрямую
@@ -225,8 +245,11 @@ class ApiService {
   ) async {
     try {
       final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // Обработка query параметров с поддержкой множественных значений с одним ключом
@@ -280,6 +303,7 @@ class ApiService {
   }
 
   /// Выполняет PUT запрос с retry при 429.
+  /// Если token не передан - автоматически читает из Hive.
   static Future<Map<String, dynamic>> put(
     String endpoint,
     Map<String, dynamic> body, {
@@ -296,16 +320,19 @@ class ApiService {
   ) async {
     try {
       final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // print('═══════════════════════════════════════════════════════');
       // print('📤 PUT REQUEST');
       // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${token != null}');
-      if (token != null) {
-        // print('Token preview: ${token.substring(0, 30)}...');
+      // print('Token provided: ${effectiveToken != null}');
+      if (effectiveToken != null) {
+        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
         // print('Token type: JWT');
       }
       // print('Headers:');
@@ -338,6 +365,7 @@ class ApiService {
   }
 
   /// Выполняет DELETE запрос с retry при 429 (поддерживает тело запроса).
+  /// Если token не передан - автоматически читает из Hive.
   static Future<Map<String, dynamic>> delete(
     String endpoint, {
     String? token,
@@ -354,16 +382,19 @@ class ApiService {
   ) async {
     try {
       final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // print('═══════════════════════════════════════════════════════');
       // print('🗑️ DELETE REQUEST');
       // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${token != null}');
-      if (token != null) {
-        // print('Token preview: ${token.substring(0, 30)}...');
+      // print('Token provided: ${effectiveToken != null}');
+      if (effectiveToken != null) {
+        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
         // print('Token type: JWT');
       }
       // print('Headers:');
@@ -397,43 +428,74 @@ class ApiService {
     }
   }
 
-  /// Retry логика с exponential backoff для обработки 429 ошибок.
-  /// При получении TokenExpiredException — пробует обновить токен и повторить запрос.
+  /// Retry логика с exponential backoff для обработки 429 ошибок и 401 (TokenExpired).
+  ///
+  /// При получении TokenExpiredException:
+  /// 1. На первой попытке пробует обновить токен (с debounce защитой)
+  /// 2. Повторяет запрос с новым токеном
+  /// 3. Если токен все еще невалиден - отправляет сигнал об истечении токена
+  ///
   /// Автоматически повторяет запросы с задержкой: 1s, 2s, 4s, 8s
   static Future<Map<String, dynamic>> _retryRequest(
     Future<Map<String, dynamic>> Function() request,
     String endpoint,
   ) async {
+    int tokenExpiredAttempts = 0;
+
     for (int attempt = 0; attempt < _maxRetries; attempt++) {
       try {
         return await request();
       } on TokenExpiredException {
-        // 401 — пробуем обновить токен один раз (только на первой попытке)
-        if (attempt == 0) {
+        // 401 — токен истёк, пробуем обновить один раз
+        if (tokenExpiredAttempts == 0) {
+          tokenExpiredAttempts++;
+
+          // Защита от слишком частых refresh запросов (debounce)
+          final now = DateTime.now();
+          final lastRefresh = _lastTokenRefreshAttempt;
+          if (lastRefresh != null) {
+            final timeSinceLastRefresh = now.difference(lastRefresh).inSeconds;
+            if (timeSinceLastRefresh < _tokenRefreshMinIntervalSeconds) {
+              // Слишком много попыток refresh подряд - отправляем TokenExpiredEvent
+              throw TokenExpiredException('Token refresh rate limit exceeded');
+            }
+          }
+
+          _lastTokenRefreshAttempt = now;
+
           // print('🔄 ApiService: 401 перехвачен, пробуем refresh токена...');
           final currentToken = HiveService.getUserData('token') as String?;
           if (currentToken != null && currentToken.isNotEmpty) {
-            final newToken = await refreshToken(currentToken);
-            if (newToken != null) {
-              // print('✅ ApiService: токен обновлён, повторяем запрос...');
-              // Повторяем запрос — он возьмёт новый токен из Hive автоматически
-              // (если вызывающий код читает токен из Hive перед каждым запросом)
-              // Для методов с явным token — пробрасываем исключение выше
-              // чтобы вызывающий код мог обновить свой token параметр
-              throw TokenExpiredException(
-                'Token refreshed, retry with new token: $newToken',
-              );
+            try {
+              final newToken = await refreshToken(currentToken);
+              if (newToken != null && newToken.isNotEmpty) {
+                // print('✅ ApiService: токен обновлён, повторяем запрос...');
+                // Повторяем запрос - при следующей итерации он будет использовать новый токен
+                // continue; перейдет к следующей итерации for цикла
+                continue;
+              } else {
+                // print('❌ ApiService: refresh вернул пустой токен');
+                throw TokenExpiredException(
+                  'Token refresh returned empty token',
+                );
+              }
+            } catch (e) {
+              // print('❌ ApiService: ошибка при refresh: $e');
+              throw TokenExpiredException('Token refresh failed: $e');
             }
+          } else {
+            // print('❌ ApiService: нет сохраненного токена для refresh');
+            throw TokenExpiredException('No saved token to refresh');
           }
-          // print('❌ ApiService: refresh не удался, пробрасываем исключение');
-          rethrow;
         } else {
+          // Вторая попытка все еще вернула 401 - токен реально истёк
+          // print('❌ ApiService: второй раз получена ошибка 401, отправляем TokenExpiredEvent');
           rethrow;
         }
       } on RateLimitException {
         if (attempt < _maxRetries - 1) {
           final delayMs = _retryDelayMs * (1 << attempt); // Exponential backoff
-          // print();
+          // print('⏳ ApiService: rate limit - ждем ${delayMs}ms перед повтором...');
           await Future.delayed(Duration(milliseconds: delayMs));
         } else {
           // print('❌ Максимум попыток достигнут. Прекращаю retry.');

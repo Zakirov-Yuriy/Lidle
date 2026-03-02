@@ -31,8 +31,12 @@ class TokenService {
   /// Минимальное время жизни токена для запуска таймера (30 секунд)
   static const int _minTokenLifetimeSeconds = 30;
 
+  /// Минимальный интервал между попытками refresh (в секундах) - защита от loop
+  static const int _minRefreshIntervalSeconds = 2;
+
   Timer? _refreshTimer;
   BuildContext? _context;
+  DateTime? _lastRefreshAttempt;
 
   // Singleton
   static final TokenService _instance = TokenService._internal();
@@ -103,6 +107,23 @@ class TokenService {
   Future<void> _doRefresh() async {
     // print('🔄 TokenService: выполняем refresh токена...');
 
+    // Защита от слишком частых попыток refresh (debounce)
+    final now = DateTime.now();
+    final lastAttempt = _lastRefreshAttempt;
+    if (lastAttempt != null) {
+      final timeSinceLastAttempt = now.difference(lastAttempt).inSeconds;
+      if (timeSinceLastAttempt < _minRefreshIntervalSeconds) {
+        // print('⏳ TokenService: защита debounce - skip refresh, слишком частые попытки');
+        // Перепланируем на позже
+        _startTimer(
+          Duration(seconds: _minRefreshIntervalSeconds - timeSinceLastAttempt),
+        );
+        return;
+      }
+    }
+
+    _lastRefreshAttempt = now;
+
     final currentToken = HiveService.getUserData('token') as String?;
     if (currentToken == null || currentToken.isEmpty) {
       // print('❌ TokenService: нет токена для refresh');
@@ -125,7 +146,10 @@ class TokenService {
       }
     } catch (e) {
       // print('❌ TokenService: ошибка при refresh: $e');
-      _notifyTokenExpired();
+      // При ошибке refresh - не сразу выбрасываем TokenExpiredEvent
+      // Повторим через 30 секунд
+      // print('⏳ TokenService: повторим refresh через 30 секунд');
+      _startTimer(const Duration(seconds: 30));
     }
   }
 
@@ -189,8 +213,23 @@ class TokenService {
   /// Принудительно обновляет токен (например, после получения 401).
   ///
   /// Возвращает новый токен или null если refresh не удался.
+  /// Применяет защиту от частых обновлений (debounce).
   Future<String?> forceRefresh() async {
     // print('⚡ TokenService: принудительное обновление токена...');
+
+    // Защита от слишком частых попыток refresh
+    final now = DateTime.now();
+    final lastAttempt = _lastRefreshAttempt;
+    if (lastAttempt != null) {
+      final timeSinceLastAttempt = now.difference(lastAttempt).inSeconds;
+      if (timeSinceLastAttempt < _minRefreshIntervalSeconds) {
+        // print('⏳ TokenService: защита debounce - skip, слишком частые попытки');
+        return HiveService.getUserData('token') as String?;
+      }
+    }
+
+    _lastRefreshAttempt = now;
+
     final currentToken = HiveService.getUserData('token') as String?;
     if (currentToken == null || currentToken.isEmpty) return null;
 
@@ -210,5 +249,3 @@ class TokenService {
     return null;
   }
 }
-
-

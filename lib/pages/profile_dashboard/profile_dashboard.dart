@@ -58,6 +58,39 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
   static const String _cacheKeyListings = 'profile_listings_counts';
 
+  /// Статический кэш счётчиков объявлений: { activeCount, inactiveCount, timestamp }
+  /// Данные считаются свежими 60 секунд.
+  static final Map<String, dynamic> _listingsCache = {};
+  static const int _cacheValiditySeconds = 60;
+
+  /// Проверить, есть ли в кэше свежие данные
+  static bool _isCacheValid() {
+    if (!_listingsCache.containsKey('timestamp')) return false;
+    final timestamp = _listingsCache['timestamp'] as DateTime;
+    final age = DateTime.now().difference(timestamp).inSeconds;
+    return age < _cacheValiditySeconds;
+  }
+
+  /// Получить данные из кэша
+  static Map<String, int> _getCachedCounts() {
+    return {
+      'activeCount': _listingsCache['activeCount'] as int? ?? 0,
+      'inactiveCount': _listingsCache['inactiveCount'] as int? ?? 0,
+    };
+  }
+
+  /// Сохранить данные в кэш
+  static void _saveCacheData(int activeCount, int inactiveCount) {
+    _listingsCache['activeCount'] = activeCount;
+    _listingsCache['inactiveCount'] = inactiveCount;
+    _listingsCache['timestamp'] = DateTime.now();
+  }
+
+  /// Инвалидировать кэш (вызывается после добавления/удаления объявления)
+  static void invalidateListingsCache() {
+    _listingsCache.clear();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,8 +98,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     WidgetsBinding.instance.addObserver(this);
     // 🔄 Ленивая загрузка профиля при входе на страницу профиля
     context.read<ProfileBloc>().add(LoadProfileEvent());
-    // ⚠️ ВСЕГДА загружаем свежие данные о объявлениях (не используем кеш)
-    _loadListingsCounts(forceRefresh: true);
+    // ⚡ Загружаем объявления: сначала из кэша (если свежий), потом в фоне обновляем
+    _loadListingsCounts(useCache: true);
   }
 
   @override
@@ -78,42 +111,63 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Перезагружаем счетчики при возвращении в приложение
+    // При возвращении в приложение проверяем кэш — если данные свежие,
+    // показываем их мгновенно, если нет — обновляем в фоне
     if (state == AppLifecycleState.resumed && mounted) {
-      // print('🔄 Приложение вернулось в фокус - обновляем счетчики объявлений');
-      _loadListingsCounts(forceRefresh: true);
+      _loadListingsCounts(useCache: true);
     }
   }
 
-  /// Загрузить количество активных и неактивных объявлений
-  /// ⚠️ ВСЕГДА загружает свежие данные со ВСЕХ категорий и статусов
-  /// Загрузить количество объявлений со ВСЕХ статусов
-  /// ⚠️ ВСЕГДА загружает свежие данные (кеш НЕ используется)
-  Future<void> _loadListingsCounts({bool forceRefresh = false}) async {
+  /// Загрузить количество объявлений.
+  /// [useCache] = true: сначала показать из кэша (если свежий), потом обновить в фоне
+  /// [useCache] = false: всегда загружать со свежими указанными данными
+  Future<void> _loadListingsCounts({bool useCache = false}) async {
     try {
-      setState(() => _isLoadingListings = true);
+      // Шаг 1: Если кэш разрешён и данные свежие — показать их мгновенно
+      if (useCache && _isCacheValid()) {
+        print('📦 ProfileDashboard: загружено из кэша (${DateTime.now()})');
+        final cached = _getCachedCounts();
+        setState(() {
+          _activeListingsCount = cached['activeCount'] ?? 0;
+          _inactiveListingsCount = cached['inactiveCount'] ?? 0;
+          _isLoadingListings = false;
+        });
+        return; // Данные свежие — не загружаем с API
+      }
 
+      // Шаг 2: Если нужен кэш но он устарел ИЛИ кэш не нужен — показать loading
+      // и загрузить с API
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        // print('❌ Нет токена!');
+        print('❌ Нет токена!');
         setState(() => _isLoadingListings = false);
         return;
       }
 
-      // print('🔄 Загружаем ВСЕ объявления пользователя (все статусы)...');
+      // Если кэш существует (но устарел) и мы не показали загрузку — показываем старые данные
+      // пока загружаем новые
+      if (useCache && _listingsCache.containsKey('activeCount')) {
+        final cached = _getCachedCounts();
+        setState(() {
+          _activeListingsCount = cached['activeCount'] ?? 0;
+          _inactiveListingsCount = cached['inactiveCount'] ?? 0;
+          // _isLoadingListings остаётся true чтобы показать refresh
+        });
+        print('🔄 ProfileDashboard: обновляем фоновые данные из API');
+      } else {
+        print('✅ ProfileDashboard: загрузка с API (данных в кэше нет)');
+        setState(() => _isLoadingListings = true);
+      }
 
       // Статусы: 1=Active, 2=Inactive, 3=Moderation, 8=Archived
       final statuses = [1, 2, 3, 8];
       var allAdverts = <dynamic>[];
 
       for (final statusId in statuses) {
-        // print('📄 Загружаем объявления со статусом $statusId...');
         var pageNum = 1;
         var hasMorePages = true;
 
         while (hasMorePages) {
-          // print();
-
           try {
             final response = await MyAdvertsService.getMyAdverts(
               token: token,
@@ -121,26 +175,18 @@ class _ProfileDashboardState extends State<ProfileDashboard>
               statusId: statusId,
             );
 
-            // print('   ✓ Response: data.length=${response.data.length}');
-            // print('   ✓ Response.page=${response.page}');
-            // print('   ✓ Response.lastPage=${response.lastPage}');
-
             allAdverts.addAll(response.data);
-            // print('   ✓ Всего в памяти: ${allAdverts.length}');
 
             final currentPage = response.page ?? 1;
             final lastPage = response.lastPage ?? 1;
 
             if (currentPage >= lastPage) {
               hasMorePages = false;
-              // print('   ✓ Последняя страница для статуса $statusId');
             } else {
               pageNum++;
             }
-          } catch (e, st) {
-            // print('   ❌ Ошибка статус $statusId страница $pageNum: $e');
+          } catch (e) {
             hasMorePages = false;
-            // Не пробрасываем - продолжаем со следующего статуса
             break;
           }
         }
@@ -148,42 +194,20 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       final totalCount = allAdverts.length;
 
-      // print('');
-      // print('✅ ФИНАЛЬНЫЙ РЕЗУЛЬТАТ:');
-      // print('   ✓ Всего объявлений: $totalCount');
-      // print('   ✓ По статусам загружено');
-      if (allAdverts.isNotEmpty) {
-        // print(
-        //   '   ✓ Первые объявления: ${allAdverts.take(3).map((a) => '${a.name}').toList()}',
-        // );
-      } else {
-        // print('   ⚠️ Объявления не загружены!');
-      }
-      // print('');
+      // Сохраняем в кэш
+      _saveCacheData(totalCount, 0);
 
       setState(() {
         _activeListingsCount = totalCount;
         _inactiveListingsCount = 0;
         _isLoadingListings = false;
       });
-    } catch (e, st) {
-      // print('');
-      // print('❌ КРИТИЧЕСКАЯ ОШИБКА ЗАГРУЗКИ:');
-      // print('   Error: $e');
-      // print('   StackTrace: $st');
-      // print('');
+    } catch (e) {
+      print('❌ Ошибка загрузки объявлений: $e');
       setState(() {
-        _activeListingsCount = 0;
-        _inactiveListingsCount = 0;
         _isLoadingListings = false;
       });
     }
-  }
-
-  /// Инвалидировать кеш объявлений (вызывается после добавления/удаления объявления)
-  static void invalidateListingsCache() {
-    CacheManager().clear('profile_listings_counts');
-    // print('🗑️ Кеш объявлений инвалидирован');
   }
 
   @override
