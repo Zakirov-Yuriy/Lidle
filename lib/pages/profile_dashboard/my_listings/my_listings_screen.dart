@@ -1830,5 +1830,3 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     );
   }
 }
-
-

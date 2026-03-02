@@ -9,6 +9,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости для моих объявлений"
@@ -743,7 +744,11 @@ class _MyListingsPropertyDetailsScreenState
             ],
           ),
           const SizedBox(height: 27),
-          const _AllListingsButton(),
+          _AllListingsButton(
+            sellerName: sellerName,
+            sellerAvatar: sellerAvatar,
+            userId: _listing.userId,
+          ),
           const SizedBox(height: 18),
         ],
       ),
@@ -818,23 +823,55 @@ class _OfferPriceButton extends StatelessWidget {
 }
 
 class _AllListingsButton extends StatelessWidget {
-  const _AllListingsButton();
+  final String sellerName;
+  final String sellerAvatar;
+  final String? userId;
+
+  const _AllListingsButton({
+    required this.sellerName,
+    required this.sellerAvatar,
+    this.userId,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 47,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: activeIconColor),
-      ),
-      child: const Center(
-        child: Text(
-          "Все обьявления продавца",
-          style: TextStyle(
-            color: activeIconColor,
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
+    return GestureDetector(
+      onTap: () {
+        // Создаем ImageProvider в зависимости от типа URL
+        ImageProvider avatarProvider;
+        if (sellerAvatar.startsWith('http')) {
+          avatarProvider = NetworkImage(sellerAvatar);
+        } else {
+          avatarProvider = AssetImage(sellerAvatar);
+        }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SellerProfileScreen(
+              sellerName: sellerName,
+              sellerAvatar: avatarProvider,
+              // Передаём оригинальный строковый URL аватарки
+              sellerAvatarUrl: sellerAvatar,
+              userId: userId,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        height: 47,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: activeIconColor),
+        ),
+        child: const Center(
+          child: Text(
+            "Все обьявления продавца",
+            style: TextStyle(
+              color: activeIconColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
       ),
