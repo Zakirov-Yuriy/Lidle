@@ -28,12 +28,30 @@ class OfferCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(5),
-                child: Image.asset(
-                  offer.imageUrl,
-                  width: 105,
-                  height: 74,
-                  fit: BoxFit.cover,
-                ),
+                child: offer.imageUrl.startsWith('http')
+                    ? Image.network(
+                        offer.imageUrl,
+                        width: 105,
+                        height: 74,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 105,
+                            height: 74,
+                            color: Colors.grey[800],
+                            child: const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
+                      )
+                    : Image.asset(
+                        offer.imageUrl,
+                        width: 105,
+                        height: 74,
+                        fit: BoxFit.cover,
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -44,7 +62,7 @@ class OfferCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '№ ${offer.id}',
+                          '№ ${offer.advertisementId ?? offer.id}',
                           style: const TextStyle(
                             color: textSecondary,
                             fontSize: 12,
@@ -129,28 +147,37 @@ class OfferCard extends StatelessWidget {
           const Divider(color: Color(0xFF474747), height: 9),
           // ───── View button ─────
           GestureDetector(
-            onTap: () {
+            onTap: () async {
               if (isOfferToMe) {
-                Navigator.pushNamed(context, PriceOffersListPage.routeName,
-                    arguments: offer);
+                Navigator.pushNamed(
+                  context,
+                  PriceOffersListPage.routeName,
+                  arguments: offer,
+                );
               } else {
-                Navigator.pushNamed(context, PriceAcceptedPage.routeName,
-                    arguments: offer);
+                final result = await Navigator.pushNamed(
+                  context,
+                  PriceAcceptedPage.routeName,
+                  arguments: offer,
+                );
+                // Если предложение было удалено, уведомляем родителя
+                if (result == true) {
+                  // print('✅ Предложение удалено, обновляем список');
+                  // Уведомляем parent widget (price_offers_empty_page) об обновлении
+                  // ignore: use_build_context_synchronously
+                  Navigator.pop(context, true);
+                }
               }
             },
             child: Text(
               'Просмотреть',
-              style: TextStyle(
-                color: activeIconColor,
-                fontSize: 15,
-              ),
+              style: TextStyle(color: activeIconColor, fontSize: 15),
             ),
           ),
         ],
       ),
     );
   }
-  
 
   Widget _buildStatusWidget(OfferStatus status) {
     switch (status) {

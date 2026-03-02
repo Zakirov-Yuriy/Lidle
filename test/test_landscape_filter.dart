@@ -1,83 +1,149 @@
-// Тест логики фильтров для Ландшафта
-void main() {
-  // Имитируем данные для Ландшафта (ID 18)
-  final landscapeAttributeId = 18;
-  final landscapeValues = {
-    154: "Река",
-    155: "Водохранилище",
-    156: "Водопад",
-    157: "Озера",
-  };
+import 'dart:io';
+import 'dart:convert';
 
-  // Имитируем выбор пользователя: "Река" и "Озера"
-  final userSelectedValues = {"Река", "Озера"};
+void main() async {
+  const baseUrl = 'https://dev-api.lidle.io/v1';
 
-  // Шаг 1: Преобразование в ID (как в _buildStyleDMultipleFilter)
-  final selectedIds = <String>{};
-  for (var id in landscapeValues.keys) {
-    if (userSelectedValues.contains(landscapeValues[id])) {
-      selectedIds.add(id.toString());
-    }
-  }
-  print("✅ Шаг 1 - Преобразование в ID: $selectedIds");
-  // Ожидаемый результат: {154, 157}
+  // Получите токен из логов или из переменной окружения
+  const token = 'YOUR_TOKEN_HERE';
 
-  // Шаг 2: Сохранение в _selectedValues (как в _buildStyleDMultipleFilter)
-  final Map<int, dynamic> selectedValues = {};
-  selectedValues[landscapeAttributeId] = selectedIds;
-  print(
-    "✅ Шаг 2 - Сохранение: selectedValues[$landscapeAttributeId] = $selectedIds",
+  print('═══════════════════════════════════════════════════════════');
+  print('🧪 ТЕСТ: Проверка фильтрации по Ландшафту (ID=18, Value=154)');
+  print('═══════════════════════════════════════════════════════════\n');
+
+  // ШАГ 1: Получить объявления БЕЗ фильтра
+  print('📍 ШАГ 1: Получить объявления БЕЗ фильтра');
+  print('─────────────────────────────────────────────────────────────');
+
+  var response = await httpGet(
+    '$baseUrl/adverts?category_id=2&limit=10',
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
   );
-  // Ожидаемый результат: {18: {154, 157}}
 
-  // Шаг 3: Сбор фильтров в _collectFilters()
-  final filters = <String, dynamic>{};
-  final valueSelectedMap = <String, dynamic>{};
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    final count = (data['data'] as List?)?.length ?? 0;
+    print('✅ Получено $count объявлений БЕЗ фильтра\n');
 
-  selectedValues.forEach((key, value) {
-    final isValueSelectedType = key < 1000; // 18 < 1000 = true
-    print(
-      "✅ Шаг 3a - key=$key, isValueSelectedType=$isValueSelectedType, value=$value (type: ${value.runtimeType})",
-    );
+    // Выведем ID и структуру первого объявления
+    if (count > 0) {
+      final first = (data['data'] as List)[0] as Map<String, dynamic>;
+      print('📋 Первое объявление:');
+      print('   ID: ${first['id']}');
+      print('   Title: ${first['name']}');
+      print('   Attributes type: ${first['attributes']?.runtimeType}');
 
-    if (isValueSelectedType) {
-      valueSelectedMap[key.toString()] = value; // "18": {154, 157}
-    }
-  });
+      if (first['attributes'] != null) {
+        print(
+          '   Attributes keys: ${(first['attributes'] as Map).keys.toList()}',
+        );
 
-  filters['value_selected'] = valueSelectedMap;
-  print("✅ Шаг 3b - Итоговые фильтры: ${filters['value_selected']}");
-  // Ожидаемый результат: {"18": {154, 157}}
-
-  // Шаг 4: Преобразование в query параметры (как в ApiService.getAdverts)
-  final queryParams = <String, String>{};
-  final valueSelected = filters['value_selected'] as Map<String, dynamic>;
-  valueSelected.forEach((attrId, attrValue) {
-    print(
-      "✅ Шаг 4a - attrId=$attrId, attrValue=$attrValue (type: ${attrValue.runtimeType})",
-    );
-
-    if (attrValue is Set) {
-      final setList = (attrValue as Set).toList();
-      print("✅ Шаг 4b - Преобразование Set в List: $setList");
-      if (setList.isNotEmpty) {
-        for (int i = 0; i < setList.length; i++) {
-          final paramKey = 'filters[value_selected][$attrId][$i]';
-          queryParams[paramKey] = setList[i].toString();
-          print("✅ Шаг 4c - Query параметр: $paramKey = ${setList[i]}");
+        // Проверим структуру attributes
+        final attrs = first['attributes'];
+        if (attrs is Map) {
+          if (attrs['value_selected'] != null) {
+            print('\n   ✅ Найден ключ value_selected:');
+            print('      ${attrs['value_selected']}');
+          }
+          if (attrs['values'] != null) {
+            print('\n   ✅ Найден ключ values:');
+            print(
+              '      Keys: ${(attrs['values'] as Map).keys.take(5).toList()}',
+            );
+          }
         }
       }
     }
-  });
+  } else {
+    print('❌ Ошибка: ${response.statusCode}\n');
+  }
 
-  // Итоговые query параметры
-  print("\n📦 ИТОГОВЫЕ QUERY ПАРАМЕТРЫ:");
-  queryParams.forEach((key, value) {
-    print("   $key = $value");
-  });
-  // Ожидаемулат:
-  //    filters[value_selected][18][0] = 154
-  //    filters[value_selected][18][1] = 157
+  // ШАГ 2: Попробуем фильтр по ландшафту
+  print('\n───────────────────────────────────────────────────────────── ');
+  print('📍 ШАГ 2: Получить объявления С ФИЛЬТРОМ ландшафта');
+  print('   Формат: filters[value_selected][18][0]=154');
+  print('─────────────────────────────────────────────────────────────');
 
-  print("\n✅ Тест пройден успешно!");
+  response = await httpGet(
+    '$baseUrl/adverts?category_id=2&filters[value_selected][18][0]=154&limit=10',
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    final count = (data['data'] as List?)?.length ?? 0;
+    print('✅ Получено $count объявлений С ФИЛЬТРОМ\n');
+  } else {
+    print('❌ Ошибка: ${response.statusCode}\n');
+  }
+
+  // ШАГ 3: Попробуем альтернативный формат
+  print('───────────────────────────────────────────────────────────── ');
+  print('📍 ШАГ 3: Альтернативный формат фильтра');
+  print('   Формат: filters[value_selected][18]=154');
+  print('─────────────────────────────────────────────────────────────');
+
+  response = await httpGet(
+    '$baseUrl/adverts?category_id=2&filters[value_selected][18]=154&limit=10',
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    final count = (data['data'] as List?)?.length ?? 0;
+    print('✅ Получено $count объявлений\n');
+  } else {
+    print('❌ Ошибка: ${response.statusCode}\n');
+  }
+
+  // ШАГ 4: Проверим какие фильтры вообще поддерживает API
+  print('───────────────────────────────────────────────────────────── ');
+  print('📍 ШАГ 4: Попробуем доступные фильтры');
+  print('─────────────────────────────────────────────────────────────');
+
+  // Получим объявление с фильтром по ID дома
+  response = await httpGet(
+    '$baseUrl/adverts?category_id=2&filters[value_selected][1][0]=1&limit=10',
+    headers: {'Authorization': 'Bearer $token', 'Accept': 'application/json'},
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    final count = (data['data'] as List?)?.length ?? 0;
+    print('✅ Фильтр по Тип дома (ID=1, Value=1): $count объявлений\n');
+  }
+
+  print('═══════════════════════════════════════════════════════════');
+  print('Тестирование завершено');
+  print('═══════════════════════════════════════════════════════════');
+}
+
+Future<HttpResponse> httpGet(String url, {Map<String, String>? headers}) async {
+  final uri = Uri.parse(url);
+  final client = HttpClient();
+
+  try {
+    final request = await client.getUrl(uri);
+
+    if (headers != null) {
+      headers.forEach((key, value) {
+        request.headers.set(key, value);
+      });
+    }
+
+    final response = await request.close();
+    final body = await response.transform(utf8.decoder).join();
+
+    return HttpResponse(response.statusCode, body);
+  } catch (e) {
+    print('Error: $e');
+    return HttpResponse(0, '');
+  }
+}
+
+class HttpResponse {
+  final int statusCode;
+  final String body;
+
+  HttpResponse(this.statusCode, this.body);
 }

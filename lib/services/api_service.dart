@@ -263,8 +263,18 @@ class ApiService {
 
       queryParams.forEach((key, value) {
         final encodedKey = Uri.encodeComponent(key);
-        final encodedValue = Uri.encodeComponent(value.toString());
-        queryParts.add('$encodedKey=$encodedValue');
+
+        // Обработка массивов: если value это List, добавляем несколько пар key=value
+        if (value is List) {
+          for (final item in value) {
+            final encodedValue = Uri.encodeComponent(item.toString());
+            queryParts.add('$encodedKey=$encodedValue');
+          }
+        } else {
+          // Обычный скалярный параметр
+          final encodedValue = Uri.encodeComponent(value.toString());
+          queryParts.add('$encodedKey=$encodedValue');
+        }
       });
 
       if (queryParts.isNotEmpty) {
@@ -354,6 +364,8 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
+      print('⚠️ PUT RAW RESPONSE: statusCode=${response.statusCode}');
+      print('⚠️ PUT RESPONSE BODY: ${response.body}');
       return _handleResponse(response);
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
@@ -1546,6 +1558,224 @@ class ApiService {
       // print('❌ Error getting price offers: $e');
       // Возвращаем пустой список вместо ошибки, чтобы не сломать UI
       return [];
+    }
+  }
+
+  /// 📤 Получить список МОЕ ОТПРАВЛЕННЫХ предложений цены
+  /// GET /v1/me/offers
+  /// Возвращает список предложений, которые пользователь отправил на объявления
+  static Future<List<Map<String, dynamic>>> getMyOffers({
+    String? token,
+    int page = 1,
+    List<String> sort = const ['new'],
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'sort': sort, 'page': page};
+
+      final response = await getWithBody(
+        '/me/offers',
+        body,
+        token: effectiveToken,
+      );
+
+      // Возвращаем список предложений
+      // Если нет предложений, API возвращает data: null вместо пустого массива
+      if (response['data'] is List) {
+        final offers = List<Map<String, dynamic>>.from(
+          (response['data'] as List).whereType<Map<String, dynamic>>(),
+        );
+
+        print('📊 getMyOffers() returned ${offers.length} offers');
+        if (offers.isNotEmpty) {
+          print('   First offer structure:');
+          offers.first.forEach((key, value) {
+            if (value is Map || value is List) {
+              print('      $key: [object with keys]');
+            } else {
+              print('      $key: $value (${value.runtimeType})');
+            }
+          });
+        }
+
+        return offers;
+      } else if (response['data'] == null) {
+        return [];
+      }
+
+      // Другие типы - значит ошибка структуры
+
+      return [];
+    } catch (e) {
+      print('❌ Error in getMyOffers: $e');
+      return [];
+    }
+  }
+
+  /// 💵 Получить список объявлений с полученными предложениями
+  /// GET /v1/me/offers/received - получает список объявлений где пользователь получил предложения
+  static Future<List<Map<String, dynamic>>> getOffersReceivedList({
+    String? token,
+    int page = 1,
+    List<String> sort = const ['new'],
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'sort': sort, 'page': page};
+
+      final response = await getWithBody(
+        '/me/offers/received',
+        body,
+        token: effectiveToken,
+      );
+
+      // Возвращаем список объявлений с информацией о предложениях
+      // API может вернуть data: null если нет объявлений
+      if (response['data'] is List) {
+        return List<Map<String, dynamic>>.from(
+          (response['data'] as List).whereType<Map<String, dynamic>>(),
+        );
+      } else if (response['data'] == null) {
+        return [];
+      }
+
+      return [];
+    } catch (e) {
+      // print('❌ Error getting offers received list: $e');
+      return [];
+    }
+  }
+
+  /// 💵 Получить все полученные предложения со всех объявлений
+  /// Комбинирует getOffersReceivedList + getPriceOffers для всех объявлений
+  static Future<List<Map<String, dynamic>>> getAllReceivedOffers({
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      // Сначала получаем список объявлений с полученными предложениями
+      final listingsWithOffers = await getOffersReceivedList(
+        token: effectiveToken,
+      );
+
+      if (listingsWithOffers.isEmpty) {
+        return [];
+      }
+
+      // Теперь для каждого объявления получаем список всех предложений
+      List<Map<String, dynamic>> allOffers = [];
+
+      for (final listing in listingsWithOffers) {
+        final id = listing['id'];
+        final slug = listing['slug'];
+
+        if (id != null && slug != null) {
+          final offers = await getPriceOffers(
+            advertId: id as int,
+            advertSlug: slug as String,
+            token: effectiveToken,
+          );
+          allOffers.addAll(offers);
+        }
+      }
+
+      return allOffers;
+    } catch (e) {
+      // print('❌ Error getting all received offers: $e');
+      return [];
+    }
+  }
+
+  /// 💰 Обновить статус полученного предложения цены
+  /// DELETE /v1/me/offers/{id}
+  /// Обновить статус ценового предложения которое я отправил
+  /// Параметры:
+  /// - offerId: ID предложения
+  /// - statusId: ID статуса (2=Accepted, 3=Refused)
+  /// - token: Bearer токен пользователя
+  static Future<Map<String, dynamic>> updateOfferStatus({
+    required int offerId,
+    required int statusId,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'offer_status_id': statusId};
+
+      print(
+        '🔄 Обновляем статус своего предложения #$offerId на статус $statusId',
+      );
+      print('   Endpoint: /me/offers/$offerId');
+      print('   Body: $body');
+      print('   ℹ️  Это МОЕ предложение которое я отправил');
+
+      final response = await delete(
+        '/me/offers/$offerId',
+        token: effectiveToken,
+        body: body,
+      );
+
+      print('✅ API Response received:');
+      print('   Response type: ${response.runtimeType}');
+      print('   Response keys: ${response.keys.toList()}');
+      print('   Full response: $response');
+
+      // Пытаемся получить success field - может быть во вложенной структуре
+      var success = response['success'];
+      var message = response['message'];
+      var data = response['data'];
+
+      print('   success field: $success (type: ${success.runtimeType})');
+      print(
+        '   message field: $message (type: ${message?.runtimeType ?? "null"})',
+      );
+      print('   data field: $data (type: ${data?.runtimeType ?? "null"})');
+
+      // Проверяем успешность - success может быть true или в другой структуре
+      if (success == true) {
+        print('   ✅ Статус успешно обновлен!');
+        return response;
+      } else if (success == false) {
+        final errMsg = message ?? 'Неизвестная ошибка';
+        print('   ❌ API вернул success=false');
+        print('   Message: $errMsg');
+        throw Exception(errMsg);
+      } else {
+        // success может быть null или отсутствовать
+        print('   ⚠️ Поле success имеет неожиданное значение: $success');
+        if (message != null) {
+          print('   Message: $message');
+          throw Exception(message);
+        } else {
+          print(
+            '   Предположим что операция успешна (success не присутствует)',
+          );
+          return response;
+        }
+      }
+    } catch (e) {
+      print('❌ Ошибка при обновлении статуса предложения: $e');
+      rethrow; // Используем rethrow вместо throw Exception для сохранения stacktrace
     }
   }
 }

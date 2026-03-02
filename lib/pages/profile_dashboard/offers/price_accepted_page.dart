@@ -5,9 +5,13 @@ import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/edit_price_dialog.dart';
+import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 
 class PriceAcceptedPage extends StatefulWidget {
   final Offer offer;
@@ -23,6 +27,7 @@ class PriceAcceptedPage extends StatefulWidget {
 class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
   late String _currentDescription;
   late String _currentPrice;
+  bool _isDeleting = false;
 
   @override
   void initState() {
@@ -45,6 +50,59 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
         _currentPrice = result['price'] ?? _currentPrice;
         _currentDescription = result['message'] ?? _currentDescription;
       });
+    }
+  }
+
+  void _showRejectDialog() async {
+    final shouldReject = await showDialog<bool>(
+      context: context,
+      builder: (context) => const RejectOfferDialog(),
+    );
+
+    if (shouldReject == true) {
+      _rejectOffer();
+    }
+  }
+
+  Future<void> _rejectOffer() async {
+    setState(() => _isDeleting = true);
+
+    try {
+      final offerId = int.parse(widget.offer.id);
+      print('🗑️ Удаляем предложение ID: $offerId');
+
+      final response = await ApiService.updateOfferStatus(
+        offerId: offerId,
+        statusId: 3, // 3 = Refused/Delete
+      );
+
+      // Проверяем что API вернул success: true
+      if (response['success'] == true) {
+        if (mounted) {
+          print('✅ Предложение успешно удалено!');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Предложение успешно отклонено'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          // Закрываем экран и возвращаемся на список
+          Navigator.pop(context, true); // true = предложение удалено
+        }
+      } else {
+        throw Exception(response['message'] ?? 'Неизвестная ошибка API');
+      }
+    } catch (e) {
+      print('❌ Ошибка при удалении предложения: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
     }
   }
 
@@ -146,17 +204,33 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                         child: Row(
                           children: [
                             // image
-                            Container(
-                              width: 105,
-                              height: 74,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(5),
-                                color: Colors.black26,
-                                image: DecorationImage(
-                                  image: AssetImage(widget.offer.imageUrl),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(5),
+                              child: widget.offer.imageUrl.startsWith('http')
+                                  ? Image.network(
+                                      widget.offer.imageUrl,
+                                      width: 105,
+                                      height: 74,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) {
+                                            return Container(
+                                              width: 105,
+                                              height: 74,
+                                              color: Colors.grey[800],
+                                              child: const Icon(
+                                                Icons.image_not_supported,
+                                                color: Colors.grey,
+                                              ),
+                                            );
+                                          },
+                                    )
+                                  : Image.asset(
+                                      widget.offer.imageUrl,
+                                      width: 105,
+                                      height: 74,
+                                      fit: BoxFit.cover,
+                                    ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
@@ -164,7 +238,7 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '№ ${widget.offer.id}',
+                                    '№ ${widget.offer.advertisementId ?? widget.offer.id}',
                                     style: const TextStyle(
                                       color: Colors.white54,
                                       fontSize: 12,
@@ -198,12 +272,40 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 15),
                         child: Center(
-                          child: Text(
-                            'Перейти',
-                            style: TextStyle(
-                              color: accentColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                          child: GestureDetector(
+                            onTap: () {
+                              // Создание Listing объекта из данных предложения
+                              final listing = Listing(
+                                id:
+                                    widget.offer.advertisementId ??
+                                    widget.offer.id,
+                                imagePath: widget.offer.imageUrl,
+                                title: widget.offer.title,
+                                price: widget.offer.originalPrice,
+                                location:
+                                    '', // Не требуется для инициального включения
+                                date:
+                                    '', // Не требуется для инициального включения
+                              );
+
+                              // Навигация на экран деталей объявления
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      MiniPropertyDetailsScreen(
+                                        listing: listing,
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'Перейти',
+                              style: TextStyle(
+                                color: accentColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
@@ -242,7 +344,11 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(
-                            top: 19, left: 9, bottom: 18, right: 10),
+                          top: 19,
+                          left: 9,
+                          bottom: 18,
+                          right: 10,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -291,15 +397,13 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                         child: Row(
                           children: [
                             GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _currentDescription = '';
-                                });
-                              },
-                              child: const Text(
+                              onTap: _isDeleting ? null : _showRejectDialog,
+                              child: Text(
                                 'Удалить',
                                 style: TextStyle(
-                                  color: dangerColor,
+                                  color: _isDeleting
+                                      ? Colors.grey
+                                      : dangerColor,
                                   fontSize: 16,
                                 ),
                               ),
@@ -327,8 +431,10 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
 
               // ───── Complaint Button ─────
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 25, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 25,
+                  vertical: 16,
+                ),
                 child: SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -362,9 +468,9 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
               // Shopping cart icon
               context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
             } else {
-              context
-                  .read<NavigationBloc>()
-                  .add(SelectNavigationIndexEvent(index));
+              context.read<NavigationBloc>().add(
+                SelectNavigationIndexEvent(index),
+              );
             }
           },
         ),

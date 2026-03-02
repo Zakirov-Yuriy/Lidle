@@ -1,12 +1,8 @@
-
-enum OfferStatus {
-  accepted,
-  rejected,
-  pending,
-}
+enum OfferStatus { accepted, rejected, pending }
 
 class Offer {
-  final String id;
+  final String id; // ID предложения (offer ID)
+  final String? advertisementId; // ID объявления (advert/product ID)
   final String imageUrl;
   final String title;
   final String description;
@@ -18,6 +14,7 @@ class Offer {
 
   Offer({
     required this.id,
+    this.advertisementId,
     required this.imageUrl,
     required this.title,
     required this.description,

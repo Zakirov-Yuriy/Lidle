@@ -127,11 +127,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       if (useCache && _isCacheValid()) {
         print('📦 ProfileDashboard: загружено из кэша (${DateTime.now()})');
         final cached = _getCachedCounts();
-        setState(() {
-          _activeListingsCount = cached['activeCount'] ?? 0;
-          _inactiveListingsCount = cached['inactiveCount'] ?? 0;
-          _isLoadingListings = false;
-        });
+        if (mounted) {
+          setState(() {
+            _activeListingsCount = cached['activeCount'] ?? 0;
+            _inactiveListingsCount = cached['inactiveCount'] ?? 0;
+            _isLoadingListings = false;
+          });
+        }
         return; // Данные свежие — не загружаем с API
       }
 
@@ -140,7 +142,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
         print('❌ Нет токена!');
-        setState(() => _isLoadingListings = false);
+        if (mounted) {
+          setState(() => _isLoadingListings = false);
+        }
         return;
       }
 
@@ -148,15 +152,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       // пока загружаем новые
       if (useCache && _listingsCache.containsKey('activeCount')) {
         final cached = _getCachedCounts();
-        setState(() {
-          _activeListingsCount = cached['activeCount'] ?? 0;
-          _inactiveListingsCount = cached['inactiveCount'] ?? 0;
-          // _isLoadingListings остаётся true чтобы показать refresh
-        });
+        if (mounted) {
+          setState(() {
+            _activeListingsCount = cached['activeCount'] ?? 0;
+            _inactiveListingsCount = cached['inactiveCount'] ?? 0;
+            // _isLoadingListings остаётся true чтобы показать refresh
+          });
+        }
         print('🔄 ProfileDashboard: обновляем фоновые данные из API');
       } else {
         print('✅ ProfileDashboard: загрузка с API (данных в кэше нет)');
-        setState(() => _isLoadingListings = true);
+        if (mounted) {
+          setState(() => _isLoadingListings = true);
+        }
       }
 
       // Статусы: 1=Active, 2=Inactive, 3=Moderation, 8=Archived
@@ -197,16 +205,20 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       // Сохраняем в кэш
       _saveCacheData(totalCount, 0);
 
-      setState(() {
-        _activeListingsCount = totalCount;
-        _inactiveListingsCount = 0;
-        _isLoadingListings = false;
-      });
+      if (mounted) {
+        setState(() {
+          _activeListingsCount = totalCount;
+          _inactiveListingsCount = 0;
+          _isLoadingListings = false;
+        });
+      }
     } catch (e) {
       print('❌ Ошибка загрузки объявлений: $e');
-      setState(() {
-        _isLoadingListings = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingListings = false;
+        });
+      }
     }
   }
 
