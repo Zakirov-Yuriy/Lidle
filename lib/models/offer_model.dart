@@ -78,6 +78,11 @@ class PriceOfferItem {
   final String? listingImage; // URL фото объявления
   final String? message; // Сообщение от покупателя
 
+  /// true если предложение уже принято (statusId == 2).
+  /// При нажатии на такой элемент в списке переходим на аккаунт покупателя,
+  /// а не на экран «Принять / Отклонить».
+  final bool isAccepted;
+
   PriceOfferItem({
     required this.name,
     required this.subtitle,
@@ -90,5 +95,6 @@ class PriceOfferItem {
     this.listingPrice,
     this.listingImage,
     this.message,
+    this.isAccepted = false,
   });
 }

@@ -145,9 +145,11 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       }).toList();
 
       // ✅ Prefetch: для каждого объявления параллельно загружаем детали
-      // предложений, чтобы сразу скрыть те у которых нет реальных «Новых»
-      // предложений. Это решает проблему когда бэкенд возвращает
-      // new_offers_count > 0, но все предложения уже приняты/отклонены.
+      // предложений, чтобы точно определить его видимость:
+      // — Есть новые (pending, id==1) или принятые (id==2) → показываем
+      // — Только отклонённые (id==3) или пустой список → скрываем
+      // Это решает проблему когда бэкенд возвращает new_offers_count > 0,
+      // но все предложения уже приняты/отклонены.
       print(
         '🔍 Prefetching offer details for ${parsedListings.length} listings...',
       );
@@ -166,18 +168,22 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
               advertSlug: typeSlug,
               token: token,
             );
-            // Считаем ТОЧНОЕ количество предложений со статусом «Новый»
-            // (id==1 или null — старые записи без статуса)
-            final newCount = offersData.where((o) {
+            // Считаем количество «актуальных» предложений:
+            // — statusId == 1 (Новый) — ещё не обработаны
+            // — statusId == 2 (Принят) — сделка состоялась, объявление нужно оставить
+            // — statusId == null — старые записи без статуса
+            // Скрываем объявление только когда остались ТОЛЬКО отклонённые (id == 3)
+            // или совсем нет предложений.
+            final relevantCount = offersData.where((o) {
               final statusMap = o['status'] as Map<String, dynamic>?;
               final statusId = statusMap?['id'] as int?;
-              return statusId == null || statusId == 1;
+              return statusId == null || statusId == 1 || statusId == 2;
             }).length;
             print(
               '   📊 Advert ${offer.advertisementId}: '
-              '${offersData.length} total, $newCount new',
+              '${offersData.length} total, $relevantCount relevant (new + accepted)',
             );
-            return MapEntry(offer, newCount);
+            return MapEntry(offer, relevantCount);
           } catch (e) {
             // При ошибке — показываем объявление, чтобы не скрыть лишнего
             print(
@@ -188,34 +194,34 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         }),
       );
 
-      // Оставляем только объявления где newCount > 0 (или -1 при ошибке).
-      // Обновляем offeredPricesCount точным значением через copyWith.
+      // Оставляем только объявления где relevantCount > 0 (или -1 при ошибке).
+      // relevantCount > 0 означает: есть хотя бы одно новое (pending) или принятое предложение.
+      // Если остались только отклонённые или вообще нет предложений — скрываем.
       final listingsWithNewOffers = prefetchResults
           .where((entry) => entry.value != 0)
           .map((entry) {
             // -1 = ошибка, оставляем оригинальный счётчик
             if (entry.value == -1) return entry.key;
-            // Обновляем точным количеством новых предложений
+            // Обновляем точным количеством актуальных предложений
             return entry.key.copyWith(offeredPricesCount: entry.value);
           })
           .toList();
 
-      // Те у которых нет новых — помечаем как обработанные (добавляем в blacklist).
-      // Те у которых есть новые — убираем из blacklist, чтобы показались снова
-      // (например, если по ранее обработанному объявлению пришло новое предложение).
+      // Те у которых нет актуальных (только отклонённые / пустые) — помечаем как обработанные.
+      // Те у которых есть новые или принятые — убираем из blacklist.
       for (final entry in prefetchResults) {
         final id = entry.key.advertisementId ?? entry.key.id;
         if (id == null) continue;
 
         if (entry.value == 0) {
-          // Нет новых предложений → скрываем
+          // Нет актуальных предложений → скрываем
           _handledAdvertIds.add(id);
-          print('   🗑️ Marked advert $id as handled (no new offers)');
+          print('   🗑️ Marked advert $id as handled (no relevant offers)');
         } else {
-          // Есть новые (или ошибка) → убираем из blacklist
+          // Есть актуальные (new/accepted) или ошибка → убираем из blacklist
           _handledAdvertIds.remove(id);
           print(
-            '   ✅ Advert $id has ${entry.value} new offers — removed from blacklist',
+            '   ✅ Advert $id has ${entry.value} relevant offers — removed from blacklist',
           );
         }
       }
@@ -343,8 +349,8 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   Widget build(BuildContext context) {
     // Для "Мои предложения" показываем ВСЕ предложения без фильтра —
     // пользователь видит свои предложения в любом статусе (pending/accepted/rejected).
-    // Для "Предложения мне" фильтруем: скрываем объявления без новых предложений
-    // (_handledAdvertIds = blacklist объявлений где все предложения уже обработаны).
+    // Для "Предложения мне" фильтруем: скрываем объявления где нет ни новых,
+    // ни принятых предложений (_handledAdvertIds = blacklist таких объявлений).
     final offersToDisplay = isMyOffersSelected
         ? _myOffers
         : _offersToMe

@@ -4,6 +4,8 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/pages/profile_dashboard/offers/incoming_price_offer_page.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart'
+    show PriceOffersEmptyPage;
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
@@ -74,14 +76,40 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       if (offersData.isNotEmpty) {
         final parsed = _parseOffers(offersData);
         if (mounted) {
+          // ✅ Если все предложения принят (statusId == 2) и нет ожидающих —
+          // сразу переходим на экран покупателя, минуя список предложений.
+          // PriceOffersListPage убирается из стека, чтобы Back вернул
+          // пользователя на PriceOffersEmptyPage, а не на список.
+          if (parsed.isNotEmpty && parsed.every((item) => item.isAccepted)) {
+            print(
+              '⚡ All offers for advert ${widget.offer.advertisementId} are accepted '
+              '— redirecting directly to /user-account',
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/user-account',
+                  (route) =>
+                      route.settings.name == PriceOffersEmptyPage.routeName ||
+                      route.isFirst,
+                  arguments: parsed.first,
+                );
+              }
+            });
+            return;
+          }
+
           setState(() {
             items = parsed;
             itemChecked = List<bool>.filled(items.length, false);
             _isLoading = false;
           });
 
-          // ✅ Если все предложения отклонены/приняты (бэкенд вернул данные,
-          // но _parseOffers отфильтровал все non-«Новый» статусы) —
+          // ✅ Если все предложения отклонены (бэкенд вернул данные,
+          // но _parseOffers отфильтровал все — остались только rejected / пустой список) —
           // автоматически возвращаемся на предыдущий экран с result=true
           // чтобы offer_card скрыл это объявление из списка.
           if (parsed.isEmpty) {
@@ -127,14 +155,20 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   /// Показываем только предложения со статусом «Новый» (id == 1),
   /// уже принятые/отклонённые скрываем.
   List<PriceOfferItem> _parseOffers(List<Map<String, dynamic>> offersData) {
-    final newOffers = offersData.where((offer) {
+    // Включаем: statusId == null (старые записи), 1 (ожидает), 2 (принято).
+    // statusId == 3 (отклонён) — скрываем из списка.
+    final visibleOffers = offersData.where((offer) {
       final statusMap = offer['status'] as Map<String, dynamic>?;
       final statusId = statusMap?['id'] as int?;
-      // null-статус тоже показываем (старые записи без статуса)
-      return statusId == null || statusId == 1;
+      return statusId == null || statusId == 1 || statusId == 2;
     }).toList();
 
-    return newOffers.map((offer) {
+    return visibleOffers.map((offer) {
+      final statusMap = offer['status'] as Map<String, dynamic>?;
+      final statusId = statusMap?['id'] as int?;
+      // true если предложение принято (id==2) — тап ведёт на /user-account
+      final isAccepted = statusId == 2;
+
       final user = offer['user'] as Map<String, dynamic>? ?? {};
       final model = offer['model'] as Map<String, dynamic>? ?? {};
       final createdAt = offer['created_at'] as String? ?? '';
@@ -147,6 +181,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       print('   avatar: $userAvatar');
       print('   created_at: $createdAt');
       print('   price: $price');
+      print('   isAccepted: $isAccepted');
       print('   listing: ${model['name']} (id: ${model['id']})');
 
       return PriceOfferItem(
@@ -161,6 +196,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         listingPrice: model['price'] as String?,
         listingImage: model['thumbnail'] as String?,
         message: message,
+        isAccepted: isAccepted,
       );
     }).toList();
   }
@@ -478,17 +514,28 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                                   } else {
                                     // Ждём результат: true = предложение отклонено,
                                     // нужно обновить список
-                                    final result = await Navigator.pushNamed(
-                                      context,
-                                      IncomingPriceOfferPage.routeName,
-                                      arguments: item,
-                                    );
-                                    if (result == true) {
-                                      // Ждём завершения загрузки перед проверкой
-                                      await _loadOffers();
-                                      // Если новых предложений нет — возвращаемся к списку объявлений
-                                      if (mounted && items.isEmpty) {
-                                        Navigator.of(context).pop(true);
+                                    if (item.isAccepted) {
+                                      // Предложение уже принято — переходим на профиль покупателя.
+                                      // Оставляем PriceOffersListPage в стеке: Back вернёт на список.
+                                      await Navigator.pushNamed(
+                                        context,
+                                        '/user-account',
+                                        arguments: item,
+                                      );
+                                    } else {
+                                      // Предложение ещё не обработано — экран «Принять / Отклонить»
+                                      final result = await Navigator.pushNamed(
+                                        context,
+                                        IncomingPriceOfferPage.routeName,
+                                        arguments: item,
+                                      );
+                                      if (result == true) {
+                                        // Ждём завершения загрузки перед проверкой
+                                        await _loadOffers();
+                                        // Если нет ни новых, ни принятых — возвращаемся к списку объявлений
+                                        if (mounted && items.isEmpty) {
+                                          Navigator.of(context).pop(true);
+                                        }
                                       }
                                     }
                                   }

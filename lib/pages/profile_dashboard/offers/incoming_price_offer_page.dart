@@ -11,6 +11,8 @@ import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart'
+    show PriceOffersEmptyPage;
 
 class IncomingPriceOfferPage extends StatelessWidget {
   final PriceOfferItem offerItem;
@@ -389,7 +391,22 @@ class _OfferCardState extends State<_OfferCard> {
     }
   }
 
-  /// Принять предложение цены через API и вернуться на предыдущий экран
+  /// Принять предложение цены через API и перейти на аккаунт покупателя.
+  ///
+  /// Логика навигации:
+  /// - Стек ДО:  PriceOffersEmptyPage / PriceOffersListPage / IncomingPriceOfferPage
+  /// - Стек ПОСЛЕ: PriceOffersEmptyPage / UserAccountPage
+  ///
+  /// Используем pushNamedAndRemoveUntil вместо связки pop+push, потому что:
+  /// 1. pop(true) → PriceOffersListPage получал result=true → перезагружал офферы →
+  ///    видел пустой список → вызывал pop(true) → убирал UserAccountPage со стека
+  ///    (баг: пользователя выбрасывало обратно на PriceOffersListPage)
+  /// 2. PriceOffersEmptyPage получал result=true → объявление пропадало из списка
+  ///    (баг: принятая сделка должна оставаться в списке, пока нет явного отказа)
+  ///
+  /// Правильная схема: удаляем IncomingPriceOfferPage + PriceOffersListPage из стека
+  /// без возврата результата — объявление остаётся в PriceOffersEmptyPage, и
+  /// при нажатии "Назад" с экрана профиля пользователь попадает на PriceOffersEmptyPage.
   Future<void> _acceptOffer(
     BuildContext context,
     PriceOfferItem offerItem,
@@ -411,12 +428,17 @@ class _OfferCardState extends State<_OfferCard> {
       );
 
       if (!mounted) return;
-      // Сохраняем Navigator до pop, т.к. после pop контекст меняется
-      final nav = Navigator.of(context);
-      // Возвращаемся в список (true = обновить список)
-      nav.pop(true);
-      // Открываем профиль пользователя поверх списка
-      nav.pushNamed('/user-account', arguments: offerItem);
+
+      // Переходим на профиль покупателя, убирая из стека
+      // IncomingPriceOfferPage и PriceOffersListPage, но оставляя PriceOffersEmptyPage.
+      // Так объявление не пропадает из списка и Back ведёт на PriceOffersEmptyPage.
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/user-account',
+        (route) =>
+            route.settings.name == PriceOffersEmptyPage.routeName ||
+            route.isFirst,
+        arguments: offerItem,
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
