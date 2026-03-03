@@ -119,22 +119,29 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         return;
       }
 
-      print('📡 Calling ApiService.getAllReceivedOffers()...');
-      final offersData = await ApiService.getAllReceivedOffers(token: token);
-      print('📦 API returned ${offersData.length} received offers');
+      print('📡 Calling ApiService.getOffersReceivedList()...');
+      // 💡 Используем getOffersReceivedList() вместо getAllReceivedOffers()
+      // чтобы получить объявления пользователя с информацией о количестве предложений
+      final listingsWithOffers = await ApiService.getOffersReceivedList(
+        token: token,
+      );
+      print(
+        '📦 API returned ${listingsWithOffers.length} listings with offers',
+      );
 
       if (mounted) {
         setState(() {
-          _offersToMe = offersData.map((data) {
+          _offersToMe = listingsWithOffers.map((data) {
             print(
-              '🔄 Parsing received offer: ${data['id']} - '
-              'Message: ${data['message']}, '
-              'Price: ${data['price']}, '
-              'Status: ${data['status']?['id']}',
+              '🔄 Parsing received listing: ${data['id']} - '
+              'Name: ${data['name']}, '
+              'New offers count: ${data['new_offers_count']}',
             );
-            return _parseOfferFromApi(data);
+            return _parseOfferFromApi(data, isReceivedOffer: true);
           }).toList();
-          print('✅ Successfully parsed ${_offersToMe.length} received offers');
+          print(
+            '✅ Successfully parsed ${_offersToMe.length} received listings',
+          );
           _isLoadingOffersToMe = false;
         });
       }
@@ -149,33 +156,95 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   }
 
   /// Преобразует API ответ в объект Offer
-  /// Поддерживает как собственные предложения, так и полученные предложения
-  Offer _parseOfferFromApi(Map<String, dynamic> apiData) {
-    final model = apiData['model'] as Map<String, dynamic>? ?? {};
-    final status = apiData['status'] as Map<String, dynamic>? ?? {};
-    final seller = apiData['seller'] as Map<String, dynamic>? ?? {};
+  /// Поддерживает как собственные предложения (Мои предложения),
+  /// так и полученные предложения (Предложения мне)
+  Offer _parseOfferFromApi(
+    Map<String, dynamic> apiData, {
+    bool isReceivedOffer = false,
+  }) {
+    // ✅ Для "Мои предложения" структура:
+    // {
+    //   "id": offer_id,
+    //   "message": "...",
+    //   "price": "500000",
+    //   "model": {...},
+    //   "status": {...}
+    // }
+    //
+    // ✅ Для "Предложения мне" структура (объявление пользователя):
+    // {
+    //   "id": advert_id,
+    //   "name": "...",
+    //   "thumbnail": "...",
+    //   "price": "...",
+    //   "slug": "...",
+    //   "new_offers_count": 3
+    // }
 
-    print('🔄 Parsing offer API data:');
-    print('   apiData id (offer ID): ${apiData['id']}');
-    print('   model id (advert ID): ${model['id']}');
-    print('   model name: ${model['name']}');
-    print('   seller name: ${seller['name']}');
-    print('   message (offer details): ${apiData['message']}');
-    print('   offered price: ${apiData['price']}');
-    print('   original price: ${model['price']}');
+    if (isReceivedOffer) {
+      // 📥 Это объявление пользователя на которое получены предложения
 
-    return Offer(
-      id: apiData['id']?.toString() ?? '', // ✅ ID предложения
-      advertisementId: model['id']?.toString(), // ✅ ID объявления (товара)
-      imageUrl:
-          (model['thumbnail'] as String?) ?? 'assets/home_page/apartment1.png',
-      title: model['name'] as String? ?? 'Объявление',
-      description: apiData['message'] as String? ?? '',
-      originalPrice: model['price'] as String? ?? '0',
-      yourPrice: apiData['price'] as String? ?? '0',
-      status: _parseStatusFromId(status['id'] as int?),
-      viewed: (apiData['read_at'] as String?) != null,
-    );
+      // Извлекаем type.slug — используется в URL: /me/offers/received/{type.slug}/{id}
+      final type = apiData['type'] as Map<String, dynamic>? ?? {};
+      final typeSlugValue = type['slug'] as String? ?? 'adverts';
+
+      print('🔄 Parsing received offer (my advertisement):');
+      print('   advert id: ${apiData['id']}');
+      print('   name: ${apiData['name']}');
+      print('   price: ${apiData['price']}');
+      print('   slug: ${apiData['slug']}');
+      print('   type.slug: $typeSlugValue');
+      print('   new_offers_count: ${apiData['new_offers_count']}');
+
+      return Offer(
+        id: apiData['id']?.toString() ?? '', // ✅ ID объявления
+        advertisementId: apiData['id']?.toString(), // ✅ ID объявления
+        slug: apiData['slug'] as String?, // ✅ Listing slug (информационный)
+        typeSlug:
+            typeSlugValue, // ✅ type.slug для URL: /me/offers/received/{typeSlug}/{id}
+        imageUrl:
+            (apiData['thumbnail'] as String?) ??
+            'assets/home_page/apartment1.png',
+        title: apiData['name'] as String? ?? 'Объявление',
+        description: '', // Нет описания в списке объявлений с предложениями
+        originalPrice: apiData['price'] as String? ?? '0',
+        yourPrice: '0', // Нет "вашей цены" - это входящие предложения
+        status: OfferStatus.pending,
+        viewed: false,
+        offeredPricesCount:
+            apiData['new_offers_count'] as int? ??
+            0, // ✅ Количество предложений
+      );
+    } else {
+      // 📤 Это предложение цены которое пользователь сам отправил
+      final model = apiData['model'] as Map<String, dynamic>? ?? {};
+      final status = apiData['status'] as Map<String, dynamic>? ?? {};
+
+      print('🔄 Parsing my offer (sent by me):');
+      print('   offer id: ${apiData['id']}');
+      print('   advert id: ${model['id']}');
+      print('   model name: ${model['name']}');
+      print('   message: ${apiData['message']}');
+      print('   offered price: ${apiData['price']}');
+      print('   original price: ${model['price']}');
+
+      return Offer(
+        id: apiData['id']?.toString() ?? '', // ✅ ID предложения
+        advertisementId: model['id']?.toString(), // ✅ ID объявления (товара)
+        slug: null, // ✅ Не используем для собственных предложений
+        typeSlug: null, // ✅ Не используем для собственных предложений
+        imageUrl:
+            (model['thumbnail'] as String?) ??
+            'assets/home_page/apartment1.png',
+        title: model['name'] as String? ?? 'Объявление',
+        description: apiData['message'] as String? ?? '',
+        originalPrice: model['price'] as String? ?? '0',
+        yourPrice: apiData['price'] as String? ?? '0',
+        status: _parseStatusFromId(status['id'] as int?),
+        viewed: (apiData['read_at'] as String?) != null,
+        offeredPricesCount: null, // ✅ Не заполняем для собственных предложений
+      );
+    }
   }
 
   /// Преобразует status ID в OfferStatus

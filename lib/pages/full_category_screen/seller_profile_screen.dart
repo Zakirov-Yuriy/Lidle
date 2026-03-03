@@ -290,16 +290,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       children: [
         GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: const Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.lightBlue,
-            size: 22,
+          child: Row(
+            children: [
+              const Icon(
+                Icons.arrow_back_ios,
+                color: activeIconColor,
+                size: 16,
+              ),
+              const SizedBox(
+                width: 4,
+              ), // Небольшой отступ между иконкой и текстом
+              const Text(
+                'Назад',
+                style: TextStyle(
+                  color: activeIconColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        ),
-
-        const Text(
-          "Назад",
-          style: TextStyle(color: Colors.lightBlue, fontSize: 16),
         ),
         const Spacer(),
 

@@ -8,6 +8,9 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/services/api_service.dart';
 
 class IncomingPriceOfferPage extends StatelessWidget {
   final PriceOfferItem offerItem;
@@ -25,7 +28,13 @@ class IncomingPriceOfferPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -76,13 +85,15 @@ class IncomingPriceOfferPage extends StatelessWidget {
                           },
                           child: const Text(
                             'Назад',
-                            style: TextStyle(color: activeIconColor, fontSize: 16),
+                            style: TextStyle(
+                              color: activeIconColor,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
 
                   // const SizedBox(height: 20),
 
@@ -134,7 +145,10 @@ class IncomingPriceOfferPage extends StatelessWidget {
 
                   // ───── Complaint ─────
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 25,
+                      vertical: 16,
+                    ),
                     child: SizedBox(
                       width: double.infinity,
                       height: 48,
@@ -164,10 +178,15 @@ class IncomingPriceOfferPage extends StatelessWidget {
             ),
             bottomNavigationBar: BottomNavigation(
               onItemSelected: (index) {
-                if (index == 3) { // Shopping cart icon
-                  context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                if (index == 3) {
+                  // Shopping cart icon
+                  context.read<NavigationBloc>().add(
+                    NavigateToMyPurchasesEvent(),
+                  );
                 } else {
-                  context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                  context.read<NavigationBloc>().add(
+                    SelectNavigationIndexEvent(index),
+                  );
                 }
               },
             ),
@@ -183,6 +202,24 @@ class IncomingPriceOfferPage extends StatelessWidget {
 class _ObjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Получаем данные объявления из родительского виджета
+    final offerItem = context
+        .findAncestorWidgetOfExactType<IncomingPriceOfferPage>()!
+        .offerItem;
+
+    // Определяем отображаемое изображение: сетевое или локальный ассет
+    final imageUrl = offerItem.listingImage;
+    final imageProvider = (imageUrl != null && imageUrl.startsWith('http'))
+        ? NetworkImage(imageUrl) as ImageProvider
+        : const AssetImage('assets/home_page/apartment1.png') as ImageProvider;
+
+    final listingTitle = offerItem.listingTitle ?? 'Объявление';
+    final listingId = offerItem.listingId ?? '';
+    final listingPrice = offerItem.listingPrice;
+    final formattedPrice = listingPrice != null
+        ? _formatListingPrice(listingPrice)
+        : '';
+
     return Container(
       decoration: BoxDecoration(
         color: formBackground,
@@ -194,42 +231,45 @@ class _ObjectCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
+                // Фото объявления
                 Container(
                   width: 105,
                   height: 74,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/property_details_screen/image7.png'),
+                    image: DecorationImage(
+                      image: imageProvider,
                       fit: BoxFit.cover,
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '№ 343 223 34',
-                        style: TextStyle(
+                        '№ $listingId',
+                        style: const TextStyle(
                           color: Colors.white54,
                           fontSize: 12,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        '3-к. квартира, 125,5 м²',
-                        style: TextStyle(
+                        listingTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
-                        '44 500 000₽',
-                        style: TextStyle(
+                        formattedPrice,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -242,14 +282,33 @@ class _ObjectCard extends StatelessWidget {
             ),
           ),
           const Divider(color: Colors.white24, height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            child: Text(
-              'Перейти',
-              style: TextStyle(
-                color: IncomingPriceOfferPage.accentColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          GestureDetector(
+            onTap: () {
+              // Создаём Listing из данных объявления и переходим на экран деталей
+              final listing = Listing(
+                id: offerItem.listingId ?? '',
+                imagePath: offerItem.listingImage ?? '',
+                title: offerItem.listingTitle ?? 'Объявление',
+                price: offerItem.listingPrice ?? '0',
+                location: '',
+                date: '',
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MiniPropertyDetailsScreen(listing: listing),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Text(
+                'Перейти',
+                style: TextStyle(
+                  color: IncomingPriceOfferPage.accentColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -257,12 +316,122 @@ class _ObjectCard extends StatelessWidget {
       ),
     );
   }
+
+  /// Форматирует цену объявления с разделителями
+  String _formatListingPrice(String priceStr) {
+    try {
+      final price = double.parse(priceStr);
+      final intPrice = price.toInt().toString();
+      String result = '';
+      int count = 0;
+      for (int i = intPrice.length - 1; i >= 0; i--) {
+        if (count > 0 && count % 3 == 0) result = ' $result';
+        result = '${intPrice[i]}$result';
+        count++;
+      }
+      return '$result₽';
+    } catch (_) {
+      return '$priceStr₽';
+    }
+  }
 }
 
-class _OfferCard extends StatelessWidget {
+class _OfferCard extends StatefulWidget {
+  @override
+  State<_OfferCard> createState() => _OfferCardState();
+}
+
+class _OfferCardState extends State<_OfferCard> {
+  /// true пока идёт запрос к API на отклонение
+  bool _isRejecting = false;
+
+  /// true пока идёт запрос к API на принятие
+  bool _isAccepting = false;
+
+  /// Отклонить предложение через API и вернуться на предыдущий экран
+  Future<void> _rejectOffer(
+    BuildContext context,
+    PriceOfferItem offerItem,
+  ) async {
+    // Диалог подтверждения
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => const RejectOfferDialog(),
+    );
+    if (confirmed != true) return;
+
+    final offerId = offerItem.offerId;
+    if (offerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось определить ID предложения')),
+      );
+      return;
+    }
+
+    setState(() => _isRejecting = true);
+    try {
+      // PUT /me/offers/received/{id} с offer_status_id: 3 (отказ)
+      await ApiService.updateReceivedOfferStatus(
+        offerId: int.parse(offerId),
+        statusId: 3,
+      );
+
+      if (!mounted) return;
+      // Возвращаем true — список обновится
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    } finally {
+      if (mounted) setState(() => _isRejecting = false);
+    }
+  }
+
+  /// Принять предложение цены через API и вернуться на предыдущий экран
+  Future<void> _acceptOffer(
+    BuildContext context,
+    PriceOfferItem offerItem,
+  ) async {
+    final offerId = offerItem.offerId;
+    if (offerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось определить ID предложения')),
+      );
+      return;
+    }
+
+    setState(() => _isAccepting = true);
+    try {
+      // PUT /me/offers/received/{id} с offer_status_id: 2 (принятие)
+      await ApiService.updateReceivedOfferStatus(
+        offerId: int.parse(offerId),
+        statusId: 2,
+      );
+
+      if (!mounted) return;
+      // Сохраняем Navigator до pop, т.к. после pop контекст меняется
+      final nav = Navigator.of(context);
+      // Возвращаемся в список (true = обновить список)
+      nav.pop(true);
+      // Открываем профиль пользователя поверх списка
+      nav.pushNamed('/user-account', arguments: offerItem);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+    } finally {
+      if (mounted) setState(() => _isAccepting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final offerItem = context.findAncestorWidgetOfExactType<IncomingPriceOfferPage>()!.offerItem;
+    final offerItem = context
+        .findAncestorWidgetOfExactType<IncomingPriceOfferPage>()!
+        .offerItem;
 
     return Container(
       decoration: BoxDecoration(
@@ -276,13 +445,19 @@ class _OfferCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: GestureDetector(
               onTap: () {
-                Navigator.pushNamed(context, '/user-account-only', arguments: offerItem);
+                Navigator.pushNamed(
+                  context,
+                  '/user-account-only',
+                  arguments: offerItem,
+                );
               },
               child: Row(
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundImage: AssetImage(offerItem.avatar),
+                    backgroundImage: offerItem.avatar.startsWith('http')
+                        ? NetworkImage(offerItem.avatar) as ImageProvider
+                        : AssetImage(offerItem.avatar) as ImageProvider,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -320,10 +495,7 @@ class _OfferCard extends StatelessWidget {
               children: [
                 const Text(
                   'Предлагаемая цена',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 6),
                 Text(
@@ -337,15 +509,12 @@ class _OfferCard extends StatelessWidget {
                 const SizedBox(height: 16),
                 const Text(
                   'Сообщение',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Готов предложить вам торг, так как вижу много косяков по ремонту',
-                  style: TextStyle(
+                Text(
+                  offerItem.message ?? '—',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     height: 1.4,
@@ -361,39 +530,62 @@ class _OfferCard extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: IncomingPriceOfferPage.dangerColor),
+                      side: const BorderSide(
+                        color: IncomingPriceOfferPage.dangerColor,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) => const RejectOfferDialog(),
-                      );
-                    },
-                    child: const Text(
-                      'Отклонить',
-                      style: TextStyle(color: IncomingPriceOfferPage.dangerColor),
-                    ),
+                    onPressed: _isRejecting || _isAccepting
+                        ? null
+                        : () => _rejectOffer(context, offerItem),
+                    child: _isRejecting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: IncomingPriceOfferPage.dangerColor,
+                            ),
+                          )
+                        : const Text(
+                            'Отклонить',
+                            style: TextStyle(
+                              color: IncomingPriceOfferPage.dangerColor,
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: IncomingPriceOfferPage.accentColor),
+                      side: const BorderSide(
+                        color: IncomingPriceOfferPage.accentColor,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/user-account', arguments: offerItem);
-                    },
-                    child: const Text(
-                      'Принять',
-                      style: TextStyle(color: IncomingPriceOfferPage.accentColor),
-                    ),
+                    onPressed: _isAccepting || _isRejecting
+                        ? null
+                        : () => _acceptOffer(context, offerItem),
+                    child: _isAccepting
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: IncomingPriceOfferPage.accentColor,
+                            ),
+                          )
+                        : const Text(
+                            'Принять',
+                            style: TextStyle(
+                              color: IncomingPriceOfferPage.accentColor,
+                            ),
+                          ),
                   ),
                 ),
               ],

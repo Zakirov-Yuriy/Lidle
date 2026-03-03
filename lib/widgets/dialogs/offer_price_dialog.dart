@@ -111,7 +111,7 @@ class _OfferPriceDialogState extends State<OfferPriceDialog> {
       child: Container(
         width: dialogWidth,
         padding: const EdgeInsets.only(
-          top: 25.0,
+          top: 10.0,
           left: 16.0,
           right: 16.0,
           bottom: 20.0,
@@ -263,10 +263,7 @@ class _OfferPriceDialogState extends State<OfferPriceDialog> {
           borderRadius: BorderRadius.circular(5),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 15,
-          vertical: 10,
-        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
       ),
     );
   }

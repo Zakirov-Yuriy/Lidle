@@ -237,7 +237,9 @@ class ApiService {
     } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
-      throw Exception('Неизвестная ошибка');
+      // Логируем реальную ошибку вместо скрытия
+      print('❌ _getWithBodyRequest unexpected error: ${e.runtimeType}: $e');
+      rethrow;
     }
   }
 
@@ -301,15 +303,12 @@ class ApiService {
           ? baseUri.replace(query: queryString)
           : baseUri;
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📥 GET REQUEST WITH QUERY PARAMS');
-      // print('Endpoint: $endpoint');
-      // print('Full URL: ${uri.toString()}');
-      // print('Query Parameters:');
-      queryParams.forEach((key, value) {
-        // print('  $key: $value');
-      });
-      // print('═══════════════════════════════════════════════════════');
+      print('🔗 API REQUEST:');
+      print('   Endpoint: $endpoint');
+      print('   Full URL: ${uri.toString()}');
+      if (queryParams.isNotEmpty) {
+        print('   Query Params: $queryParams');
+      }
 
       final response = await http
           .get(uri, headers: headers)
@@ -324,7 +323,9 @@ class ApiService {
       if (e.toString().contains('Token expired')) {
         rethrow; // Пропустить Token expired
       }
-      throw Exception('Неизвестная ошибка');
+      // Логируем реальную ошибку вместо скрытия
+      print('❌ _getWithQueryRequest unexpected error: ${e.runtimeType}: $e');
+      rethrow;
     }
   }
 
@@ -391,8 +392,11 @@ class ApiService {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
+    } on Exception {
+      // Пробрасываем Exception дальше (включая ошибки из _handleResponse)
+      rethrow;
     } catch (e) {
-      throw Exception('Неизвестная ошибка');
+      throw Exception('Неизвестная ошибка: $e');
     }
   }
 
@@ -544,9 +548,16 @@ class ApiService {
 
   /// Обрабатывает ответ от сервера.
   static Map<String, dynamic> _handleResponse(http.Response response) {
-    // print('✅ API Response status: ${response.statusCode}');
-    // print('📋 Response body: ${response.body}');
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    // Пробуем разобрать тело ответа как JSON
+    // Если сервер вернул HTML (например, 404 страница), бросаем понятное исключение
+    Map<String, dynamic> data;
+    try {
+      data = jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      print('❌ _handleResponse: не удалось разобрать JSON. Status: ${response.statusCode}');
+      print('   Raw body (first 200 chars): ${response.body.substring(0, response.body.length.clamp(0, 200))}');
+      throw Exception('Сервер вернул не JSON ответ (статус ${response.statusCode})');
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       // print('✅ Request successful!');
@@ -1548,6 +1559,9 @@ class ApiService {
   /// 💵 Получить список предложений цены для объявления
   /// GET /v1/me/offers/received/{slug}/{id}
   /// Возвращает список предложений с информацией о пользователе
+  /// 📥 Получить список предложений для конкретного объявления
+  /// GET /v1/me/offers/received/{slug}/{id}
+  /// Возвращает список предложений цены для конкретного объявления пользователя
   static Future<List<Map<String, dynamic>>> getPriceOffers({
     required int advertId,
     required String advertSlug,
@@ -1556,13 +1570,18 @@ class ApiService {
     List<String> sort = const ['new'],
   }) async {
     try {
+      print(
+        '🔗 getPriceOffers() calling: /me/offers/received/$advertSlug/$advertId',
+      );
+
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
       if (effectiveToken == null) {
         throw Exception('Требуется авторизация');
       }
 
-      final queryParams = {'sort': sort, 'page': page};
+      // Endpoint принимает параметры через query string (sort — опциональный)
+      final queryParams = <String, dynamic>{'page': page};
 
       final response = await getWithQuery(
         '/me/offers/received/$advertSlug/$advertId',
@@ -1570,18 +1589,23 @@ class ApiService {
         token: effectiveToken,
       );
 
-      // Возвращаем список предложений
+      print('📊 getPriceOffers() response:');
+      print('   Keys: ${response.keys.toList()}');
+      print('   Full response: $response');
+
       if (response['data'] is List) {
-        return List<Map<String, dynamic>>.from(
+        final offers = List<Map<String, dynamic>>.from(
           (response['data'] as List).whereType<Map<String, dynamic>>(),
         );
+        print('✅ getPriceOffers() returning ${offers.length} offers');
+        return offers;
       }
 
+      print('⚠️ getPriceOffers() data is not a List, returning empty');
       return [];
     } catch (e) {
-      // print('❌ Error getting price offers: $e');
-      // Возвращаем пустой список вместо ошибки, чтобы не сломать UI
-      return [];
+      print('❌ Error getting price offers: $e');
+      rethrow;
     }
   }
 
@@ -1725,7 +1749,40 @@ class ApiService {
     }
   }
 
-  /// 💰 Обновить статус полученного предложения цены
+  /// � Обновить статус ПОЛУЧЕННОГО предложения
+  /// PUT /v1/me/offers/received/{id}
+  /// statusId: 2 = Цена принята, 3 = Отказ от цены
+  static Future<Map<String, dynamic>> updateReceivedOfferStatus({
+    required int offerId,
+    required int statusId,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'offer_status_id': statusId};
+
+      print('🔄 Обновляем статус полученного предложения #$offerId на $statusId');
+
+      final response = await put(
+        '/me/offers/received/$offerId',
+        body,
+        token: effectiveToken,
+      );
+
+      print('✅ updateReceivedOfferStatus response: $response');
+      return response;
+    } catch (e) {
+      print('❌ Ошибка updateReceivedOfferStatus: $e');
+      rethrow;
+    }
+  }
+
+  /// �💰 Обновить статус полученного предложения цены
   /// DELETE /v1/me/offers/{id}
   /// Обновить статус ценового предложения которое я отправил
   /// Параметры:
