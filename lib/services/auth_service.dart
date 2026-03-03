@@ -12,13 +12,18 @@ class AuthService {
   static Future<Map<String, dynamic>> sendCode({required String email}) async {
     final body = {'email': email};
 
-    return await ApiService.post('/auth/resend-verification-email-code', body);
+    // skipTokenRefresh: true — 401 здесь не означает истёкший токен, не запускаем refresh
+    return await ApiService.post(
+      '/auth/resend-verification-email-code',
+      body,
+      skipTokenRefresh: true,
+    );
   }
 
   /// Регистрация нового пользователя.
   /// Отправляет данные пользователя на сервер для создания аккаунта.
   ///
-  /// ВАЖНО: API требует device_name параметр (обновление в документации)
+  /// API v1.3.3+: поля device_name и app_version НЕ используются при регистрации.
   static Future<Map<String, dynamic>> register({
     required String name,
     required String lastName,
@@ -34,11 +39,14 @@ class AuthService {
       'phone': phone,
       'password': password,
       'password_confirmation': passwordConfirmation,
-      'device_name': 'Lidle Mobile App',
-      'app_version': '1.3.3',
     };
 
-    return await ApiService.post('/auth/register', body);
+    // skipTokenRefresh: true — auth-эндпоинт, 401 = неверные данные, не обновлять токен
+    return await ApiService.post(
+      '/auth/register',
+      body,
+      skipTokenRefresh: true,
+    );
   }
 
   /// Верификация кода подтверждения.
@@ -49,27 +57,36 @@ class AuthService {
   }) async {
     final body = {'email': email, 'code': code};
 
-    return await ApiService.post('/auth/verify-email', body);
+    // skipTokenRefresh: true — auth-эндпоинт, 401 = неверные данные
+    return await ApiService.post(
+      '/auth/verify-email',
+      body,
+      skipTokenRefresh: true,
+    );
   }
 
   /// Вход в систему.
-  /// Аутентифицирует пользователя и возвращает токен.
+  /// Аутентифицирует пользователя и возвращает access_token + refresh_token.
   ///
-  /// ВАЖНО: API требует device_name параметр (обновление в документации)
+  /// API v1.4+: device_name обязателен, app_version необязателен.
+  /// Ответ: { access_token, refresh_token, token_type, expires_in: 900 }
+  /// 401 = неверные учётные данные
+  /// 422 = ошибка валидации (не заполненообязательное поле)
+  /// 423 = email не подтверждён (email_not_verified) или аккаунт заблокирован (account_locked)
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
-    bool remember = true,
   }) async {
     final body = {
       'email': email,
       'password': password,
-      'remember': remember,
-      'device_name': 'Lidle Mobile App',
-      'app_version': '1.3.3',
+      'device_name': 'Lidle Mobile App', // обязательное поле (API v1.4+)
+      'app_version': '1.4.1',
     };
 
-    return await ApiService.post('/auth/login', body);
+    // skipTokenRefresh: true — при 401 (неверные данные) не пытаемся refresh токена,
+    // иначе login зависает на 15с ожидая refresh.
+    return await ApiService.post('/auth/login', body, skipTokenRefresh: true);
   }
 
   /// Забыли пароль.
@@ -79,7 +96,12 @@ class AuthService {
   }) async {
     final body = {'email': email};
 
-    return await ApiService.post('/auth/forgot-password', body);
+    // skipTokenRefresh: true — auth-эндпоинт
+    return await ApiService.post(
+      '/auth/forgot-password',
+      body,
+      skipTokenRefresh: true,
+    );
   }
 
   /// Сброс пароля.
@@ -97,12 +119,17 @@ class AuthService {
       'token': token,
     };
 
-    return await ApiService.post('/auth/password/reset', body);
+    // skipTokenRefresh: true — auth-эндпоинт
+    return await ApiService.post(
+      '/auth/password/reset',
+      body,
+      skipTokenRefresh: true,
+    );
   }
 
   /// Выход из системы.
   /// Отправляет запрос на сервер для инвалидации токена,
-  /// затем очищает токен из локального хранилища.
+  /// затем очищает оба токена из локального хранилища.
   static Future<void> logout() async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -112,8 +139,12 @@ class AuthService {
         // print('✅ AuthService: logout на сервере выполнен');
       }
     } catch (e) {
-      // Игнорируем ошибки сервера — токен всё равно удалим локально
+      // Игнорируем ошибки сервера — токены всё равно удалим локально
       // print('⚠️ AuthService: ошибка logout на сервере (игнорируем): $e');
+    } finally {
+      // Всегда удаляем оба токена локально
+      await HiveService.deleteUserData('token');
+      await HiveService.deleteUserData('refresh_token');
     }
   }
 

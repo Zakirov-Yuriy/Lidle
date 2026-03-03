@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:lidle/models/user_profile_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 
 class UserService {
   /// Получить профиль текущего пользователя
@@ -412,4 +414,32 @@ class UserService {
   /// Асинхронно удаляет значение из локального хранилища по [key].
   static Future<void> deleteLocal(String key) =>
       HiveService.deleteUserData(key);
+
+  /// Полностью очищает данные профиля текущего пользователя:
+  /// удаляет все поля из Hive и инвалидирует L1/L2-кеш.
+  ///
+  /// Вызывать при logout и перед сохранением данных нового пользователя при login,
+  /// чтобы исключить показ данных предыдущей сессии.
+  static Future<void> clearLocalProfileData() async {
+    // Удаляем все поля профиля из Hive
+    const profileKeys = [
+      'name',
+      'lastName',
+      'email',
+      'phone',
+      'userId',
+      'profileImage',
+      'username',
+      'about',
+      'qrCode',
+    ];
+    for (final key in profileKeys) {
+      await HiveService.deleteUserData(key);
+    }
+
+    // Инвалидируем все кеши профиля (L1 + L2)
+    AppCacheService().invalidate(CacheKeys.profileData);
+    AppCacheService().invalidate(CacheKeys.profileListingsCounts);
+    AppCacheService().invalidate(CacheKeys.profilePriceOffersCount);
+  }
 }

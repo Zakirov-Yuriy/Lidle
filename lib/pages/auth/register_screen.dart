@@ -88,8 +88,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message:
-                    'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                // Показываем реальное сообщение от сервера (email занят, и т.д.)
+                message: state.message.isNotEmpty
+                    ? state.message
+                    : 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
                 onClose: () =>
                     ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
@@ -462,5 +464,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 }
-
-

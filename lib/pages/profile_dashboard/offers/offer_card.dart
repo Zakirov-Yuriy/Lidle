@@ -32,7 +32,23 @@ class OfferCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(5),
-                child: offer.imageUrl.startsWith('http')
+                // Показываем изображение только если URL не пустой.
+                // При отсутствии thumbnail — серый прямоугольник без заглушки.
+                child: offer.imageUrl.isEmpty
+                    ? Container(
+                        width: 105,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[850],
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          color: Colors.white24,
+                          size: 30,
+                        ),
+                      )
+                    : offer.imageUrl.startsWith('http')
                     ? Image.network(
                         offer.imageUrl,
                         width: 105,
@@ -73,12 +89,21 @@ class OfferCard extends StatelessWidget {
                           ),
                         ),
                         if (!isOfferToMe)
-                          Text(
-                            offer.viewed ? 'Просмотрено' : 'Не просмотрено',
-                            style: TextStyle(
-                              color: offer.viewed ? textMuted : textSecondary,
-                              fontSize: 12,
-                            ),
+                          Builder(
+                            builder: (_) {
+                              // Считаем просмотренным если: явно прочитано (read_at != null)
+                              // ИЛИ статус уже обработан (принято/отклонено)
+                              final isViewed =
+                                  offer.viewed ||
+                                  offer.status != OfferStatus.pending;
+                              return Text(
+                                isViewed ? 'Просмотрено' : 'Не просмотрено',
+                                style: TextStyle(
+                                  color: isViewed ? textMuted : textSecondary,
+                                  fontSize: 12,
+                                ),
+                              );
+                            },
                           ),
                       ],
                     ),
@@ -168,12 +193,10 @@ class OfferCard extends StatelessWidget {
                   PriceAcceptedPage.routeName,
                   arguments: offer,
                 );
-                // Если предложение было удалено, уведомляем родителя
+                // Если предложение было удалено/обновлено — обновляем список
+                // через callback, не закрывая price_offers_empty_page
                 if (result == true) {
-                  // print('✅ Предложение удалено, обновляем список');
-                  // Уведомляем parent widget (price_offers_empty_page) об обновлении
-                  // ignore: use_build_context_synchronously
-                  Navigator.pop(context, true);
+                  onRefreshNeeded?.call();
                 }
               }
             },

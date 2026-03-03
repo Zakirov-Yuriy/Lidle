@@ -33,16 +33,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await AuthService.login(
         email: event.email,
         password: event.password,
-        remember: event.remember,
       );
 
+      // API v1.3.3+: ответ содержит access_token и refresh_token
       final token =
           response['data']?['access_token'] ??
           response['data']?['token'] ??
           response['access_token'] ??
           response['token'];
       if (token != null) {
+        // Очищаем данные предыдущего пользователя перед сохранением новых.
+        // Это гарантирует, что profile_dashboard никогда не покажет данные
+        // старой сессии при входе под другим аккаунтом.
+        await UserService.clearLocalProfileData();
+
         await UserService.saveLocal('token', token);
+
+        // Сохраняем refresh_token для дальнейшего обновления access_token
+        final refreshToken =
+            response['data']?['refresh_token'] ?? response['refresh_token'];
+        if (refreshToken != null) {
+          await UserService.saveLocal('refresh_token', refreshToken);
+        }
+
+        // Сохраняем время истечения токена для TokenService.
+        // Sanctum opaque токены (формат "153|abc...") — не JWT, нельзя декодировать exp.
+        // Поэтому сохраняем expires_at из ответа API, чтобы TokenService мог
+        // запустить таймер refresh за 5 минут до истечения.
+        final expiresIn =
+            ((response['data']?['expires_in'] ?? response['expires_in'])
+                    as num?)
+                ?.toInt() ??
+            900; // expires_in: 900 секунд (15 минут) по документации API
+        final expiresAtMs = DateTime.now()
+            .add(Duration(seconds: expiresIn))
+            .millisecondsSinceEpoch;
+        await UserService.saveLocal('token_expires_at', '$expiresAtMs');
 
         // Сохраняем возможные данные пользователя из ответа сразу локально
         final data = response['data'] ?? response;
@@ -82,7 +108,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         emit(AuthAuthenticated(token: token));
       } else {
-        emit(AuthError(message: 'Неверные учетные данные'));
+        // success: false — используем сообщение сервера (напр. 423 email_not_verified)
+        final serverMessage =
+            response['message'] as String? ?? 'Неверные учетные данные';
+        emit(AuthError(message: serverMessage));
       }
     } catch (e) {
       // Специальная обработка TokenExpiredException для неправильных учетных данных
@@ -121,57 +150,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         passwordConfirmation: event.passwordConfirmation,
       );
 
-      final token =
-          response['data']?['access_token'] ??
-          response['data']?['token'] ??
-          response['access_token'] ??
-          response['token'];
-      if (token != null) {
-        await UserService.saveLocal('token', token);
-        // ⚠️ ВАЖНО: Сохраняем флаг что email еще не верифицирован при регистрации
+      // API v1.3.3+: регистрация больше не возвращает токен —
+      // ответ: { "success": true, "message": "...Подтвердите е-майл" }
+      final success = response['success'] == true;
+      if (success) {
+        // Сохраняем флаг: email ещё не подтверждён
         await UserService.saveLocal('isEmailVerified', 'false');
-
-        // Сохраняем возможные данные пользователя из ответа сразу локально
-        final data = response['data'] ?? response;
-        Map<String, dynamic>? userData;
-        if (data is Map<String, dynamic>) {
-          if (data.containsKey('user') &&
-              data['user'] is Map<String, dynamic>) {
-            userData = Map<String, dynamic>.from(data['user']);
-          } else {
-            userData = Map<String, dynamic>.from(data);
-          }
-        }
-
-        if (userData != null) {
-          if (userData.containsKey('name')) {
-            await UserService.saveLocal('name', userData['name'] ?? '');
-          }
-          if (userData.containsKey('email')) {
-            await UserService.saveLocal('email', userData['email'] ?? '');
-          }
-          if (userData.containsKey('phone')) {
-            await UserService.saveLocal('phone', userData['phone'] ?? '');
-          }
-          if (userData.containsKey('id')) {
-            await UserService.saveLocal('userId', '${userData['id']}');
-          }
-          if (userData.containsKey('username')) {
-            await UserService.saveLocal('username', userData['username'] ?? '');
-          }
-          if (userData.containsKey('avatar')) {
-            await UserService.saveLocal(
-              'profileImage',
-              userData['avatar'] ?? '',
-            );
-          }
-        }
-
         emit(AuthRegistered(email: event.email));
-        // print('✅ AuthBloc emitted AuthRegistered with email: ${event.email}');
       } else {
-        // print('❌ AuthBloc: token is null after registration');
-        emit(AuthError(message: 'Регистрация прошла, но токен не получен'));
+        final message =
+            response['message'] as String? ?? 'Ошибка при регистрации';
+        emit(AuthError(message: message));
       }
     } catch (e) {
       // Специальная обработка TokenExpiredException
@@ -263,12 +252,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
+      // AuthService.logout() сам удаляет токены из Hive
       await AuthService.logout();
-      await UserService.deleteLocal('token');
+      // Очищаем весь профиль и кеши — следующий пользователь увидит свои данные
+      await UserService.clearLocalProfileData();
       emit(AuthLoggedOut());
     } catch (e) {
-      // Даже если logout на сервере не удался, очищаем локальный токен
+      // Даже если logout на сервере не удался, очищаем данные локально
       await UserService.deleteLocal('token');
+      await UserService.deleteLocal('refresh_token');
+      await UserService.clearLocalProfileData();
       emit(AuthLoggedOut());
     }
   }
@@ -302,14 +295,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     // print('🔐 AuthBloc: токен истёк, выполняем принудительный logout...');
     try {
-      // Пробуем корректно выйти на сервере
       await AuthService.logout();
-    } catch (_) {
-      // Игнорируем ошибки сервера — всё равно очищаем локально
-    }
-    // Очищаем токен из локального хранилища
+    } catch (_) {}
+    // Очищаем токены и весь профиль из локального хранилища
     await UserService.deleteLocal('token');
-    // print('🔐 AuthBloc: токен удалён, переходим на экран входа');
+    await UserService.deleteLocal('refresh_token');
+    await UserService.clearLocalProfileData();
+    // print('🔐 AuthBloc: токены удалены, переходим на экран входа');
     emit(AuthTokenExpired());
   }
 

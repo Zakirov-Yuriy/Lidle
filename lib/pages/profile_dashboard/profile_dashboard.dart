@@ -258,10 +258,6 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
   @override
   Widget build(BuildContext context) {
-    // Загружаем профиль при первом построении
-    context.read<ProfileBloc>().add(LoadProfileEvent());
-    // print('🔄 ProfileDashboard: LoadProfileEvent добавлено');
-
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthInitial || state is AuthLoggedOut) {
@@ -269,6 +265,11 @@ class _ProfileDashboardState extends State<ProfileDashboard>
             SignInScreen.routeName,
             (route) => route.settings.name == '/' || route.isFirst,
           );
+        } else if (state is AuthAuthenticated) {
+          // Новый пользователь вошёл — сбрасываем кэш и загружаем актуальные данные.
+          // forceRefresh: true гарантирует, что старое состояние ProfileBloc
+          // (от предыдущей сессии) заменится спиннером и затем свежими данными.
+          context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
         }
       },
       child: BlocListener<ProfileBloc, ProfileState>(

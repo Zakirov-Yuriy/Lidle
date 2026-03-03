@@ -44,12 +44,9 @@ class ApiService {
     'Content-Type': 'application/json',
   };
 
-  /// Защита от частых попыток refresh токена (debounce)
-  /// Хранит timestamp последней попытки refresh
-  static DateTime? _lastTokenRefreshAttempt;
-
-  /// Минимальный интервал между попытками refresh (в секундах)
-  static const int _tokenRefreshMinIntervalSeconds = 2;
+  /// Lock для рефреша токена: если один запрос уже делает refresh,
+  /// все остальные ждут его завершения вместо того чтобы запускать параллельные refresh.
+  static Completer<String?>? _tokenRefreshCompleter;
 
   //   Accept: application/json
   // X-App-Client: mobile
@@ -62,7 +59,9 @@ class ApiService {
     String endpoint, {
     String? token,
   }) async {
-    return _retryRequest(() => _getRequest(endpoint, token), endpoint);
+    // Передаём null внутри замыкания, чтобы при retry после refresh токен
+    // читался свежим из Hive, а не использовался захваченный устаревший
+    return _retryRequest(() => _getRequest(endpoint, null), endpoint);
   }
 
   /// Внутренний метод для GET запроса
@@ -123,8 +122,17 @@ class ApiService {
     String endpoint,
     Map<String, dynamic> body, {
     String? token,
+
+    /// Если true — при 401 НЕ пытаемся обновить токен.
+    /// Обязательно true для всех auth-эндпоинтов (login, register, etc.),
+    /// иначе неверные учётные данные → 401 → 15с зависание на refresh.
+    bool skipTokenRefresh = false,
   }) async {
-    return _retryRequest(() => _postRequest(endpoint, body, token), endpoint);
+    return _retryRequest(
+      () => _postRequest(endpoint, body, null),
+      endpoint,
+      skipTokenRefresh: skipTokenRefresh,
+    );
   }
 
   /// Внутренний метод для POST запроса
@@ -196,7 +204,7 @@ class ApiService {
     String? token,
   }) async {
     return _retryRequest(
-      () => _getWithBodyRequest(endpoint, body, token),
+      () => _getWithBodyRequest(endpoint, body, null),
       endpoint,
     );
   }
@@ -250,7 +258,7 @@ class ApiService {
     String? token,
   }) async {
     return _retryRequest(
-      () => _getWithQueryRequest(endpoint, queryParams, token),
+      () => _getWithQueryRequest(endpoint, queryParams, null),
       endpoint,
     );
   }
@@ -315,15 +323,16 @@ class ApiService {
           .timeout(const Duration(seconds: 10));
 
       return _handleResponse(response);
+    } on TokenExpiredException {
+      // Пробрасываем для обработки в _retryRequest (refresh логика)
+      rethrow;
+    } on RateLimitException {
+      rethrow;
     } on http.ClientException catch (e) {
       throw Exception('Ошибка сети: ${e.message}');
     } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
-      if (e.toString().contains('Token expired')) {
-        rethrow; // Пропустить Token expired
-      }
-      // Логируем реальную ошибку вместо скрытия
       print('❌ _getWithQueryRequest unexpected error: ${e.runtimeType}: $e');
       rethrow;
     }
@@ -336,7 +345,7 @@ class ApiService {
     Map<String, dynamic> body, {
     String? token,
   }) async {
-    return _retryRequest(() => _putRequest(endpoint, body, token), endpoint);
+    return _retryRequest(() => _putRequest(endpoint, body, null), endpoint);
   }
 
   /// Внутренний метод для PUT запроса
@@ -407,7 +416,7 @@ class ApiService {
     String? token,
     Map<String, dynamic>? body,
   }) async {
-    return _retryRequest(() => _deleteRequest(endpoint, token, body), endpoint);
+    return _retryRequest(() => _deleteRequest(endpoint, null, body), endpoint);
   }
 
   /// Внутренний метод для DELETE запроса
@@ -471,66 +480,90 @@ class ApiService {
   /// Retry логика с exponential backoff для обработки 429 ошибок и 401 (TokenExpired).
   ///
   /// При получении TokenExpiredException:
-  /// 1. На первой попытке пробует обновить токен (с debounce защитой)
-  /// 2. Повторяет запрос с новым токеном
-  /// 3. Если токен все еще невалиден - отправляет сигнал об истечении токена
+  /// 1. Если refresh уже выполняется — ждём его завершения (Completer-lock).
+  /// 2. Если нет — запускаем единственный refresh, все параллельные запросы ждут.
+  /// 3. После обновления токена повторяем запрос.
   ///
-  /// Автоматически повторяет запросы с задержкой: 1s, 2s, 4s, 8s
+  /// Автоматически повторяет запросы при 429 с задержкой: 1s, 2s, 4s, 8s.
   static Future<Map<String, dynamic>> _retryRequest(
     Future<Map<String, dynamic>> Function() request,
-    String endpoint,
-  ) async {
-    int tokenExpiredAttempts = 0;
+    String endpoint, {
+
+    /// Если true — пропускаем попытку обновить токен при 401.
+    /// Используется для auth-эндпоинтов, где 401 = неверные учётные данные.
+    bool skipTokenRefresh = false,
+  }) async {
+    bool tokenRefreshAttempted = false;
 
     for (int attempt = 0; attempt < _maxRetries; attempt++) {
       try {
         return await request();
       } on TokenExpiredException {
-        // 401 — токен истёк, пробуем обновить один раз
-        if (tokenExpiredAttempts == 0) {
-          tokenExpiredAttempts++;
+        // Для auth-эндпоинтов (login, etc.) пропускаем refresh:
+        // 401 здесь означает неверные учётные данные, а не истёкший токен.
+        if (skipTokenRefresh) rethrow;
+        // 401 — токен истёк. Разрешаем одну попытку refresh на запрос.
+        if (tokenRefreshAttempted) {
+          // Уже пробовали refresh, повторная 401 — токен реально невалиден.
+          rethrow;
+        }
+        tokenRefreshAttempted = true;
 
-          // Защита от слишком частых refresh запросов (debounce)
-          final now = DateTime.now();
-          final lastRefresh = _lastTokenRefreshAttempt;
-          if (lastRefresh != null) {
-            final timeSinceLastRefresh = now.difference(lastRefresh).inSeconds;
-            if (timeSinceLastRefresh < _tokenRefreshMinIntervalSeconds) {
-              // Слишком много попыток refresh подряд - отправляем TokenExpiredEvent
-              throw TokenExpiredException('Token refresh rate limit exceeded');
-            }
+        // Если другой запрос уже выполняет refresh — ждём его завершения.
+        final existingCompleter = _tokenRefreshCompleter;
+        if (existingCompleter != null) {
+          try {
+            // print('⏳ Ожидаем завершения активного refresh...');
+            await existingCompleter.future;
+            // Токен обновлён другим запросом, повторяем свой запрос.
+            continue;
+          } catch (_) {
+            // Refresh завершился ошибкой — пробрасываем как TokenExpired.
+            throw TokenExpiredException(
+              'Token refresh failed by parallel request',
+            );
           }
+        }
 
-          _lastTokenRefreshAttempt = now;
+        // Мы первый — запускаем refresh и устанавливаем lock.
+        final completer = Completer<String?>();
+        _tokenRefreshCompleter = completer;
 
-          // print('🔄 ApiService: 401 перехвачен, пробуем refresh токена...');
+        try {
           final currentToken = HiveService.getUserData('token') as String?;
-          if (currentToken != null && currentToken.isNotEmpty) {
-            try {
-              final newToken = await refreshToken(currentToken);
-              if (newToken != null && newToken.isNotEmpty) {
-                // print('✅ ApiService: токен обновлён, повторяем запрос...');
-                // Повторяем запрос - при следующей итерации он будет использовать новый токен
-                // continue; перейдет к следующей итерации for цикла
-                continue;
-              } else {
-                // print('❌ ApiService: refresh вернул пустой токен');
-                throw TokenExpiredException(
-                  'Token refresh returned empty token',
-                );
-              }
-            } catch (e) {
-              // print('❌ ApiService: ошибка при refresh: $e');
-              throw TokenExpiredException('Token refresh failed: $e');
-            }
-          } else {
-            // print('❌ ApiService: нет сохраненного токена для refresh');
+          if (currentToken == null || currentToken.isEmpty) {
+            completer.completeError(
+              TokenExpiredException('No saved token to refresh'),
+            );
             throw TokenExpiredException('No saved token to refresh');
           }
-        } else {
-          // Вторая попытка все еще вернула 401 - токен реально истёк
-          // print('❌ ApiService: второй раз получена ошибка 401, отправляем TokenExpiredEvent');
+
+          final newToken = await refreshToken(currentToken);
+
+          if (newToken != null && newToken.isNotEmpty) {
+            // print('✅ ApiService: токен обновлён');
+            completer.complete(newToken);
+            // Повторяем исходный запрос с новым токеном (из Hive).
+            continue;
+          } else {
+            final error = TokenExpiredException(
+              'Token refresh returned empty token',
+            );
+            completer.completeError(error);
+            throw error;
+          }
+        } catch (e) {
+          if (!completer.isCompleted) {
+            completer.completeError(e);
+          }
           rethrow;
+        } finally {
+          // Сбрасываем lock с небольшой задержкой, чтобы ожидающие успели получить результат.
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (_tokenRefreshCompleter == completer) {
+              _tokenRefreshCompleter = null;
+            }
+          });
         }
       } on RateLimitException {
         if (attempt < _maxRetries - 1) {
@@ -554,9 +587,15 @@ class ApiService {
     try {
       data = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
-      print('❌ _handleResponse: не удалось разобрать JSON. Status: ${response.statusCode}');
-      print('   Raw body (first 200 chars): ${response.body.substring(0, response.body.length.clamp(0, 200))}');
-      throw Exception('Сервер вернул не JSON ответ (статус ${response.statusCode})');
+      print(
+        '❌ _handleResponse: не удалось разобрать JSON. Status: ${response.statusCode}',
+      );
+      print(
+        '   Raw body (first 200 chars): ${response.body.substring(0, response.body.length.clamp(0, 200))}',
+      );
+      throw Exception(
+        'Сервер вернул не JSON ответ (статус ${response.statusCode})',
+      );
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -570,8 +609,15 @@ class ApiService {
     } else if (response.statusCode == 401) {
       // print('❌ 401 Unauthorized - Token might be expired or invalid');
       // print('Error response: ${data['message'] ?? 'Token expired'}');
-      // Бросаем типизированное исключение для перехвата в _retryRequestWithRefresh
-      throw TokenExpiredException(data['message'] ?? 'Token expired');
+      // Бросаем типизированное исключение для перехвата в _retryRequest.
+      // Для auth-эндпоинтов (skipTokenRefresh: true) оно пробрасывается сразу,
+      // без попытки обновить токен.
+      throw TokenExpiredException(data['message'] ?? 'Неверные учетные данные');
+    } else if (response.statusCode == 423) {
+      // 423 = email не подтверждён (email_not_verified) или аккаунт заблокирован (account_locked).
+      // Не бросаем исключение — возвращаем тело ответа, чтобы BLoC обработал
+      // success:false и показал корректное сообщение пользователю.
+      return data;
     } else if (response.statusCode == 422) {
       // Validation error - return response with errors
       // print('❌ 422 Validation Error');
@@ -1127,20 +1173,98 @@ class ApiService {
   }
 
   /// Обновить токен доступа.
+  ///
+  /// API v1.3.3+: для обновления access_token нужно использовать
+  /// refresh_token (не access_token) в заголовке Authorization.
+  /// Параметр [currentToken] сохранён для обратной совместимости,
+  /// но внутри всегда используется refresh_token из Hive.
   static Future<String?> refreshToken(String currentToken) async {
     try {
-      final response = await post(
-        '/auth/refresh-token',
-        {},
-        token: currentToken,
+      // POST /auth/refresh-token  (документация API v1.4+)
+      // Authorization: Bearer {refresh_token}  ← refresh_token в заголовке
+      // Body: {"device_name": "...", "app_version": "..."}  ← обязательные поля!
+      //
+      // Ответ 200: {"access_token": "...", "refresh_token": "...",
+      //             "token_type": "Bearer", "expires_in": 900}
+      // Ответ 401: истёк / не авторизован → нужен logout
+      // Ответ 403: невалидный токен → нужен logout
+      final refreshTokenValue =
+          HiveService.getUserData('refresh_token') as String? ?? currentToken;
+
+      print(
+        '🔄 refreshToken: используем refresh_token: ${refreshTokenValue.substring(0, refreshTokenValue.length.clamp(0, 20))}...',
       );
-      final newToken = response['access_token'] as String?;
-      if (newToken != null) {
-        await HiveService.saveUserData('token', newToken);
+
+      final headers = {...defaultHeaders};
+      // Передаём REFRESH_TOKEN (не access_token) как Bearer в Authorization
+      headers['Authorization'] = 'Bearer $refreshTokenValue';
+
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/auth/refresh-token'),
+            headers: headers,
+            // device_name обязателен — API отклонит запрос без него
+            body: jsonEncode({
+              'device_name': 'Lidle Mobile App',
+              'app_version': '1.4.1',
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+
+      // 401 = токен истёк, 403 = токен невалиден.
+      // Оба случая означают что нужна повторная авторизация.
+      // TokenService._doRefresh() увидит null и вызовет _notifyTokenExpired().
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        print(
+          '🔒 refreshToken: токен истёк/невалиден (${response.statusCode}): ${response.body}',
+        );
+        return null;
       }
-      return newToken;
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        print(
+          '❌ refreshToken: сервер вернул ${response.statusCode}: ${response.body}',
+        );
+        return null;
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      // Сохраняем новый access_token
+      final newAccessToken = data['access_token'] as String?;
+      if (newAccessToken != null && newAccessToken.isNotEmpty) {
+        await HiveService.saveUserData('token', newAccessToken);
+        print(
+          '✅ refreshToken: новый access_token сохранён: ${newAccessToken.substring(0, newAccessToken.length.clamp(0, 20))}...',
+        );
+      } else {
+        print('❌ refreshToken: access_token не найден в ответе: $data');
+      }
+
+      // API v1.4+: обновлённый refresh_token тоже возвращается — сохраняем его.
+      // Без этого каждый следующий refresh завершится 401 (старый refresh_token истёк).
+      final newRefreshToken = data['refresh_token'] as String?;
+      if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+        await HiveService.saveUserData('refresh_token', newRefreshToken);
+        print('✅ refreshToken: новый refresh_token сохранён');
+      }
+
+      // Сохраняем время истечения для TokenService.
+      // Sanctum opaque токены (формат "153|abc...") НЕ являются JWT —
+      // нельзя декодировать поле exp. Поэтому используем expires_in из ответа.
+      final expiresIn = (data['expires_in'] as num?)?.toInt() ?? 900;
+      final expiresAtMs = DateTime.now()
+          .add(Duration(seconds: expiresIn))
+          .millisecondsSinceEpoch;
+      await HiveService.saveUserData('token_expires_at', expiresAtMs);
+      print(
+        '✅ refreshToken: expires_in=$expiresIn сек, истекает в '
+        '${DateTime.fromMillisecondsSinceEpoch(expiresAtMs).toLocal()}',
+      );
+
+      return newAccessToken;
     } catch (e) {
-      // Если refresh не удался, вернуть null
+      print('❌ refreshToken exception: $e');
       return null;
     }
   }
@@ -1764,7 +1888,9 @@ class ApiService {
 
       final body = {'offer_status_id': statusId};
 
-      print('🔄 Обновляем статус полученного предложения #$offerId на $statusId');
+      print(
+        '🔄 Обновляем статус полученного предложения #$offerId на $statusId',
+      );
 
       final response = await put(
         '/me/offers/received/$offerId',

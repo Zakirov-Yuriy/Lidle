@@ -5,7 +5,8 @@ import '../../services/auth_service.dart';
 
 /// Bloc для управления процессом восстановления пароля.
 /// Обрабатывает события отправки кода, верификации и сброса пароля.
-class PasswordRecoveryBloc extends Bloc<PasswordRecoveryEvent, PasswordRecoveryState> {
+class PasswordRecoveryBloc
+    extends Bloc<PasswordRecoveryEvent, PasswordRecoveryState> {
   /// Конструктор PasswordRecoveryBloc.
   /// Инициализирует Bloc с начальным состоянием PasswordRecoveryInitial.
   PasswordRecoveryBloc() : super(const PasswordRecoveryInitial()) {
@@ -54,10 +55,7 @@ class PasswordRecoveryBloc extends Bloc<PasswordRecoveryEvent, PasswordRecoveryS
 
       // Для демонстрации используем фиктивный токен
       const token = 'demo_recovery_token_123';
-      emit(RecoveryCodeVerified(
-        email: event.email,
-        token: token,
-      ));
+      emit(RecoveryCodeVerified(email: event.email, token: token));
     } catch (e) {
       emit(PasswordRecoveryError(e.toString()));
     }

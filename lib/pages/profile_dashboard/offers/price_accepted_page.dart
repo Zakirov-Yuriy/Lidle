@@ -206,7 +206,23 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                             // image
                             ClipRRect(
                               borderRadius: BorderRadius.circular(5),
-                              child: widget.offer.imageUrl.startsWith('http')
+                              // Показываем изображение только если URL не пустой.
+                              // При отсутствии thumbnail — серый прямоугольник без заглушки.
+                              child: widget.offer.imageUrl.isEmpty
+                                  ? Container(
+                                      width: 105,
+                                      height: 74,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[850],
+                                        borderRadius: BorderRadius.circular(5),
+                                      ),
+                                      child: const Icon(
+                                        Icons.image_not_supported_outlined,
+                                        color: Colors.white24,
+                                        size: 30,
+                                      ),
+                                    )
+                                  : widget.offer.imageUrl.startsWith('http')
                                   ? Image.network(
                                       widget.offer.imageUrl,
                                       width: 105,

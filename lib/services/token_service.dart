@@ -80,9 +80,10 @@ class TokenService {
 
     final expiresAt = _getTokenExpiry(token);
     if (expiresAt == null) {
-      // print('⚠️ TokenService: не удалось декодировать exp из токена');
-      // Fallback: обновляем через 55 минут (токен живёт 1 час)
-      _startTimer(const Duration(minutes: 55));
+      // print('⚠️ TokenService: не удалось определить время истечения токена');
+      // Fallback: обновляем через 10 минут
+      // (токен живёт 15 мин per expires_in: 900, безопаснее не ждать все 15)
+      _startTimer(const Duration(minutes: 10));
       return;
     }
 
@@ -182,39 +183,56 @@ class TokenService {
 
   /// Декодирует JWT и возвращает время истечения токена (поле `exp`).
   ///
-  /// JWT структура: header.payload.signature
-  /// Payload содержит `exp` — Unix timestamp истечения токена.
+  /// Sanctum opaque токены (формат "153|abc...") НЕ являются JWT и не могут
+  /// быть декодированы. Для них используется fallback: время истечения читается
+  /// из Hive (ключ `token_expires_at`), куда его сохраняет ApiService.refreshToken()
+  /// и auth_bloc.dart при успешном логине.
   DateTime? _getTokenExpiry(String token) {
+    // Пробуем декодировать как JWT (header.payload.signature)
     try {
       final parts = token.split('.');
-      if (parts.length != 3) return null;
+      if (parts.length == 3) {
+        // Добавляем padding для Base64
+        String payload = parts[1];
+        switch (payload.length % 4) {
+          case 1:
+            payload += '===';
+            break;
+          case 2:
+            payload += '==';
+            break;
+          case 3:
+            payload += '=';
+            break;
+        }
 
-      // Добавляем padding для Base64
-      String payload = parts[1];
-      switch (payload.length % 4) {
-        case 1:
-          payload += '===';
-          break;
-        case 2:
-          payload += '==';
-          break;
-        case 3:
-          payload += '=';
-          break;
+        final decoded = utf8.decode(base64Url.decode(payload));
+        final json = jsonDecode(decoded) as Map<String, dynamic>;
+
+        final exp = json['exp'];
+        if (exp != null) {
+          // exp — Unix timestamp в секундах
+          return DateTime.fromMillisecondsSinceEpoch((exp as int) * 1000);
+        }
       }
-
-      final decoded = utf8.decode(base64Url.decode(payload));
-      final json = jsonDecode(decoded) as Map<String, dynamic>;
-
-      final exp = json['exp'];
-      if (exp == null) return null;
-
-      // exp — Unix timestamp в секундах
-      return DateTime.fromMillisecondsSinceEpoch((exp as int) * 1000);
-    } catch (e) {
-      // print('❌ TokenService: ошибка декодирования JWT: $e');
-      return null;
+    } catch (_) {
+      // Не JWT — это Sanctum opaque token (формат: "153|abc..."), игнорируем
     }
+
+    // Fallback для Sanctum токенов: читаем сохранённое время истечения из Hive.
+    // Значение устанавливается в ApiService.refreshToken() и auth_bloc.dart при логине.
+    final savedExpiresAt = HiveService.getUserData('token_expires_at');
+    if (savedExpiresAt != null) {
+      // Может быть int или String (auth_bloc сохраняет через UserService.saveLocal)
+      final ms = savedExpiresAt is int
+          ? savedExpiresAt
+          : int.tryParse(savedExpiresAt.toString());
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms);
+      }
+    }
+
+    return null;
   }
 
   /// Принудительно обновляет токен (например, после получения 401).

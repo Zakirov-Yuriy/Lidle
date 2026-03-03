@@ -211,8 +211,14 @@ class LidleApp extends StatelessWidget {
                 const SupportServiceScreen(),
             AccountRecovery.routeName: (context) => const AccountRecovery(),
             RegisterScreen.routeName: (context) => const RegisterScreen(),
-            RegisterVerifyScreen.routeName: (context) =>
-                const RegisterVerifyScreen(),
+            RegisterVerifyScreen.routeName: (context) {
+              // Передаём email из arguments в конструктор для надёжной
+              // передачи данных (ModalRoute.of в initState может вернуть null)
+              final args =
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?;
+              return RegisterVerifyScreen(email: args?['email'] as String?);
+            },
             AccountRecoveryCode.routeName: (context) =>
                 const AccountRecoveryCode(),
             AccountRecoveryNewPassword.routeName: (context) =>

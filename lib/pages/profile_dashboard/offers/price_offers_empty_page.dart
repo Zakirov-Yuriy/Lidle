@@ -286,9 +286,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         slug: apiData['slug'] as String?, // ✅ Listing slug (информационный)
         typeSlug:
             typeSlugValue, // ✅ type.slug для URL: /me/offers/received/{typeSlug}/{id}
-        imageUrl:
-            (apiData['thumbnail'] as String?) ??
-            'assets/home_page/apartment1.png',
+        imageUrl: (apiData['thumbnail'] as String?) ?? '',
         title: apiData['name'] as String? ?? 'Объявление',
         description: '', // Нет описания в списке объявлений с предложениями
         originalPrice: apiData['price'] as String? ?? '0',
@@ -317,9 +315,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         advertisementId: model['id']?.toString(), // ✅ ID объявления (товара)
         slug: null, // ✅ Не используем для собственных предложений
         typeSlug: null, // ✅ Не используем для собственных предложений
-        imageUrl:
-            (model['thumbnail'] as String?) ??
-            'assets/home_page/apartment1.png',
+        imageUrl: (model['thumbnail'] as String?) ?? '',
         title: model['name'] as String? ?? 'Объявление',
         description: apiData['message'] as String? ?? '',
         originalPrice: model['price'] as String? ?? '0',
@@ -345,11 +341,17 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
 
   @override
   Widget build(BuildContext context) {
-    // Выбираем какой список отображать, исключая уже обработанные объявления
-    final rawList = isMyOffersSelected ? _myOffers : _offersToMe;
-    final offersToDisplay = rawList
-        .where((o) => !_handledAdvertIds.contains(o.advertisementId ?? o.id))
-        .toList();
+    // Для "Мои предложения" показываем ВСЕ предложения без фильтра —
+    // пользователь видит свои предложения в любом статусе (pending/accepted/rejected).
+    // Для "Предложения мне" фильтруем: скрываем объявления без новых предложений
+    // (_handledAdvertIds = blacklist объявлений где все предложения уже обработаны).
+    final offersToDisplay = isMyOffersSelected
+        ? _myOffers
+        : _offersToMe
+              .where(
+                (o) => !_handledAdvertIds.contains(o.advertisementId ?? o.id),
+              )
+              .toList();
     final isLoading = isMyOffersSelected
         ? _isLoadingMyOffers
         : _isLoadingOffersToMe;

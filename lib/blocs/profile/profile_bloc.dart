@@ -113,8 +113,12 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       await UserService.saveLocal('lastName', profile.lastName);
       await UserService.saveLocal('email', profile.email);
       await UserService.saveLocal('phone', profile.phone ?? '');
-      // Извлекаем userId из JWT токена (из claim 'sub')
-      final userIdString = AuthService.extractUserIdFromToken(token);
+      // Берём userId из ответа API (profile.id).
+      // Fallback на JWT-декодирование только если API вернул null
+      // (Sanctum opaque токены не содержат sub, поэтому extractUserIdFromToken → '0').
+      final userIdString = profile.id != null
+          ? profile.id.toString()
+          : AuthService.extractUserIdFromToken(token);
       await UserService.saveLocal('userId', userIdString);
       await UserService.saveLocal('profileImage', profile.avatar);
       await UserService.saveLocal('username', profile.name);
