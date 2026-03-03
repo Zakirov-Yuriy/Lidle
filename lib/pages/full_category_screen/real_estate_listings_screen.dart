@@ -10,7 +10,7 @@ import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen
 import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
@@ -110,7 +110,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         });
       }
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // Используем переданные параметры как есть:
       // - Если catalogId передан → используем для фильтрации по каталогу

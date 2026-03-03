@@ -1,11 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'company_messages_event.dart';
 import 'company_messages_state.dart';
-import 'package:lidle/core/cache/cacheable_bloc.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 
 class CompanyMessagesBloc
     extends Bloc<CompanyMessagesEvent, CompanyMessagesState> {
-  static const String _cacheKey = 'company_messages_data';
+  /// TTL для корп. сообщений — только L1 (RAM), 1 минута.
   static const Duration _cacheTTL = Duration(minutes: 1);
 
   CompanyMessagesBloc() : super(CompanyMessagesInitial()) {
@@ -28,9 +29,10 @@ class CompanyMessagesBloc
   ) {
     // 📖 Проверяем кеш если это не принудительное обновление
     if (!event.forceRefresh) {
-      final cached = CacheManager().get<Map<String, dynamic>>(_cacheKey);
+      final cached = AppCacheService().get<Map<String, dynamic>>(
+        CacheKeys.companyMessagesData,
+      );
       if (cached != null) {
-        // print('✅ Используем кешированные данные корп. сообщений (TTL: 1 мин)');
         emit(
           CompanyMessagesLoaded(
             mainMessages: List.from(cached['main'] ?? []),
@@ -41,8 +43,8 @@ class CompanyMessagesBloc
       }
     }
 
-    // 💾 Сохраняем в кеш с TTL
-    CacheManager().set<Map<String, dynamic>>(_cacheKey, {
+    // 💾 Сохраняем в L1 (RAM) с TTL 1 мин
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.companyMessagesData, {
       'main': List.from(mainMessages),
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
@@ -74,8 +76,8 @@ class CompanyMessagesBloc
       }
     }
 
-    // 💾 Обновляем кеш
-    CacheManager().set<Map<String, dynamic>>(_cacheKey, {
+    // 💾 Обновляем кеш L1
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.companyMessagesData, {
       'main': List.from(mainMessages),
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
@@ -107,8 +109,8 @@ class CompanyMessagesBloc
       }
     }
 
-    // 💾 Обновляем кеш
-    CacheManager().set<Map<String, dynamic>>(_cacheKey, {
+    // 💾 Обновляем кеш L1
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.companyMessagesData, {
       'main': List.from(mainMessages),
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
@@ -121,4 +123,3 @@ class CompanyMessagesBloc
     );
   }
 }
-

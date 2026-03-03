@@ -53,6 +53,13 @@ class TokenService {
     // print('✅ TokenService: инициализирован');
   }
 
+  /// Синхронно возвращает текущий токен из локального хранилища.
+  ///
+  /// Используйте в UI-слое когда нет доступа к [AuthBloc].
+  /// Страницы должны импортировать только [TokenService], не [HiveService].
+  static String? get currentToken =>
+      HiveService.getUserData('token') as String?;
+
   /// Останавливает таймер (при logout).
   void dispose() {
     _refreshTimer?.cancel();

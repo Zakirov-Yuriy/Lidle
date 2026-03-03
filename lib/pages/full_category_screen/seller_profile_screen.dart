@@ -6,8 +6,10 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
-import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 
 // Navigation targets used by bottom navigation
 import 'package:lidle/pages/home_page.dart';
@@ -52,12 +54,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = false;
   String? _error;
 
-  /// Статический кэш объявлений: ключ — userId, значение — список объявлений.
-  /// Живёт в рамках процесса приложения, сбрасывается при перезапуске.
-  static final Map<String, List<Map<String, dynamic>>> _cache = {};
+  /// TTL кеша объявлений продавца — 5 минут.
+  static const _cacheTtl = Duration(minutes: 5);
 
   /// Сбросить кэш для конкретного продавца (например, после pull-to-refresh).
-  static void invalidateCache(String userId) => _cache.remove(userId);
+  static void invalidateCache(String userId) =>
+      AppCacheService().invalidate(CacheKeys.sellerProfileKey(userId));
 
   @override
   void initState() {
@@ -81,14 +83,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     final userId = widget.userId!;
 
-    // Возвращаем кэш, если есть и не требуется обновление
-    if (!forceRefresh && _cache.containsKey(userId)) {
-      print('📦 SellerProfileScreen: загружено из кэша для userId=$userId');
-      setState(() {
-        _sellerListings = _cache[userId]!;
-        _isLoading = false;
-      });
-      return;
+    // Возвращаем кэш, если есть и не требуется обновление (AppCacheService сам проверяет TTL)
+    if (!forceRefresh) {
+      final cachedList = AppCacheService().get<List<Map<String, dynamic>>>(
+        CacheKeys.sellerProfileKey(userId),
+      );
+      if (cachedList != null) {
+        setState(() {
+          _sellerListings = cachedList;
+          _isLoading = false;
+        });
+        return;
+      }
     }
 
     print('✅ SellerProfileScreen: загрузка с API');
@@ -100,7 +106,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     });
 
     try {
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
         throw Exception('Токен авторизации не найден');
       }
@@ -209,8 +215,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
       print('✅ Трансформировано ${listings.length} объявлений');
 
-      // Сохраняем в кэш — следующее открытие экрана отдаст данные мгновенно
-      _cache[userId] = listings;
+      // 💾 Сохраняем в AppCacheService (TTL 5 мин) — следующее открытие экрана
+      // отдаст данные мгновенно без обращения к API
+      AppCacheService().set<List<Map<String, dynamic>>>(
+        CacheKeys.sellerProfileKey(userId),
+        listings,
+        ttl: _cacheTtl,
+      );
 
       setState(() {
         _sellerListings = listings;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
@@ -865,12 +865,12 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   void initState() {
     super.initState();
 
-    _isFavorited = HiveService.isFavorite(widget.listing.id);
+    _isFavorited = FavoritesService.isFavorite(widget.listing.id);
   }
 
   void _toggleFavorite() {
     setState(() {
-      _isFavorited = HiveService.toggleFavorite(widget.listing.id);
+      _isFavorited = FavoritesService.toggleFavorite(widget.listing.id);
     });
   }
 

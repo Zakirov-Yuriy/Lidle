@@ -5,7 +5,7 @@ import 'package:lidle/pages/add_listing/universal_category_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости"
@@ -40,7 +40,7 @@ class _RealEstateSubcategoriesScreenState
         _error = null;
       });
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       // print();
 
       final catalogWithCategories = await ApiService.getCatalog(

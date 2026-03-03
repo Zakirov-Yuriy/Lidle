@@ -7,7 +7,8 @@ import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
-import '../../hive_service.dart';
+import '../../services/token_service.dart';
+import '../../services/user_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Конструктор AuthBloc.
@@ -41,9 +42,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           response['access_token'] ??
           response['token'];
       if (token != null) {
-        await HiveService.saveUserData('token', token);
+        await UserService.saveLocal('token', token);
 
-        // Сохраняем возможные данные пользователя из ответа сразу в Hive
+        // Сохраняем возможные данные пользователя из ответа сразу локально
         final data = response['data'] ?? response;
         Map<String, dynamic>? userData;
         if (data is Map<String, dynamic>) {
@@ -57,25 +58,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         if (userData != null) {
           if (userData.containsKey('name')) {
-            await HiveService.saveUserData('name', userData['name'] ?? '');
+            await UserService.saveLocal('name', userData['name'] ?? '');
           }
           if (userData.containsKey('email')) {
-            await HiveService.saveUserData('email', userData['email'] ?? '');
+            await UserService.saveLocal('email', userData['email'] ?? '');
           }
           if (userData.containsKey('phone')) {
-            await HiveService.saveUserData('phone', userData['phone'] ?? '');
+            await UserService.saveLocal('phone', userData['phone'] ?? '');
           }
           if (userData.containsKey('id')) {
-            await HiveService.saveUserData('userId', '${userData['id']}');
+            await UserService.saveLocal('userId', '${userData['id']}');
           }
           if (userData.containsKey('username')) {
-            await HiveService.saveUserData(
-              'username',
-              userData['username'] ?? '',
-            );
+            await UserService.saveLocal('username', userData['username'] ?? '');
           }
           if (userData.containsKey('avatar')) {
-            await HiveService.saveUserData(
+            await UserService.saveLocal(
               'profileImage',
               userData['avatar'] ?? '',
             );
@@ -129,11 +127,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           response['access_token'] ??
           response['token'];
       if (token != null) {
-        await HiveService.saveUserData('token', token);
+        await UserService.saveLocal('token', token);
         // ⚠️ ВАЖНО: Сохраняем флаг что email еще не верифицирован при регистрации
-        await HiveService.saveUserData('isEmailVerified', 'false');
+        await UserService.saveLocal('isEmailVerified', 'false');
 
-        // Сохраняем возможные данные пользователя из ответа сразу в Hive
+        // Сохраняем возможные данные пользователя из ответа сразу локально
         final data = response['data'] ?? response;
         Map<String, dynamic>? userData;
         if (data is Map<String, dynamic>) {
@@ -147,25 +145,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         if (userData != null) {
           if (userData.containsKey('name')) {
-            await HiveService.saveUserData('name', userData['name'] ?? '');
+            await UserService.saveLocal('name', userData['name'] ?? '');
           }
           if (userData.containsKey('email')) {
-            await HiveService.saveUserData('email', userData['email'] ?? '');
+            await UserService.saveLocal('email', userData['email'] ?? '');
           }
           if (userData.containsKey('phone')) {
-            await HiveService.saveUserData('phone', userData['phone'] ?? '');
+            await UserService.saveLocal('phone', userData['phone'] ?? '');
           }
           if (userData.containsKey('id')) {
-            await HiveService.saveUserData('userId', '${userData['id']}');
+            await UserService.saveLocal('userId', '${userData['id']}');
           }
           if (userData.containsKey('username')) {
-            await HiveService.saveUserData(
-              'username',
-              userData['username'] ?? '',
-            );
+            await UserService.saveLocal('username', userData['username'] ?? '');
           }
           if (userData.containsKey('avatar')) {
-            await HiveService.saveUserData(
+            await UserService.saveLocal(
               'profileImage',
               userData['avatar'] ?? '',
             );
@@ -269,11 +264,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       await AuthService.logout();
-      await HiveService.deleteUserData('token');
+      await UserService.deleteLocal('token');
       emit(AuthLoggedOut());
     } catch (e) {
       // Даже если logout на сервере не удался, очищаем локальный токен
-      await HiveService.deleteUserData('token');
+      await UserService.deleteLocal('token');
       emit(AuthLoggedOut());
     }
   }
@@ -286,7 +281,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       if (token != null && token.isNotEmpty) {
         emit(AuthAuthenticated(token: token));
       } else {
@@ -313,7 +308,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Игнорируем ошибки сервера — всё равно очищаем локально
     }
     // Очищаем токен из локального хранилища
-    await HiveService.deleteUserData('token');
+    await UserService.deleteLocal('token');
     // print('🔐 AuthBloc: токен удалён, переходим на экран входа');
     emit(AuthTokenExpired());
   }

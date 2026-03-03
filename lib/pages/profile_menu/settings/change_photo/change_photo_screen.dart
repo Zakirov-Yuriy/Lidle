@@ -11,7 +11,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
 
 class ChangePhotoScreen extends StatefulWidget {
@@ -328,8 +328,8 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
       );
 
       try {
-        // Получаем токен из Hive
-        final token = HiveService.getUserData('token') as String?;
+        // Получаем токен
+        final token = TokenService.currentToken;
         if (token == null) {
           if (mounted) Navigator.pop(context); // Закрываем loading
           if (mounted) {
@@ -463,9 +463,8 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         try {
-                          // Получаем токен из Hive
-                          final token =
-                              HiveService.getUserData('token') as String?;
+                          // Получаем токен
+                          final token = TokenService.currentToken;
                           if (token == null) {
                             if (mounted) {
                               Navigator.pop(context);

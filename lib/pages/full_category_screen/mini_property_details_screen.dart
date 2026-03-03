@@ -4,7 +4,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/favorites_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/services/api_service.dart';
@@ -173,7 +174,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     });
 
     try {
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
         // print('❌ Токен не найден для загрузки похожих объявлений');
         return;
@@ -216,7 +217,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     });
 
     try {
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
         // Пользователь не авторизован - пропускаем загрузку
         return;
@@ -1331,12 +1332,12 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
   void initState() {
     super.initState();
 
-    _isFavorited = HiveService.isFavorite(widget.listing.id);
+    _isFavorited = FavoritesService.isFavorite(widget.listing.id);
   }
 
   void _toggleFavorite() {
     setState(() {
-      _isFavorited = HiveService.toggleFavorite(widget.listing.id);
+      _isFavorited = FavoritesService.toggleFavorite(widget.listing.id);
     });
   }
 

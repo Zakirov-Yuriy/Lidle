@@ -4,7 +4,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/widgets/cards/message_card.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/messages_local_service.dart';
 
 class MessagesArchivePage extends StatefulWidget {
   const MessagesArchivePage({super.key});
@@ -31,7 +31,7 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
   }
 
   Future<void> _loadArchivedMessages() async {
-    final messages = HiveService.getArchivedMessages();
+    final messages = MessagesLocalService.getArchivedMessages();
     setState(() {
       archivedMessages = messages;
       selectedMessages = {};
@@ -280,7 +280,7 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
 
                                   if (selectedIndices.isNotEmpty) {
                                     for (final index in selectedIndices) {
-                                      await HiveService.restoreFromArchive(
+                                      await MessagesLocalService.restoreFromArchive(
                                         index,
                                       );
                                     }

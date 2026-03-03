@@ -1,4 +1,3 @@
-import 'package:lidle/models/catalog_category_model.dart' as catalog;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'listings_event.dart';
@@ -6,7 +5,9 @@ import 'listings_state.dart';
 import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
-import '../../hive_service.dart';
+import '../../services/token_service.dart';
+import '../../core/cache/cache_service.dart';
+import '../../core/cache/cache_keys.dart';
 
 /// Bloc для управления состоянием данных объявлений.
 /// Обрабатывает события загрузки, поиска и фильтрации объявлений.
@@ -161,13 +162,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       return;
     }
 
-    // 🔄 Проверяем кеш из Hive, если это не forceRefresh
+    // 🔄 Проверяем кеш (L1 RAM → L2 Hive), если это не forceRefresh
     if (!event.forceRefresh && state is! ListingsLoading) {
-      final cachedListings = HiveService.getListingsCacheIfValid(
-        'listings_data',
-      );
+      final cachedListings = AppCacheService().get<Map>(CacheKeys.listingsData);
       if (cachedListings != null &&
-          cachedListings is Map &&
           cachedListings.containsKey('listings') &&
           cachedListings.containsKey('categories')) {
         // print('✅ ListingsBloc: Восстановили из кеша Hive');
@@ -199,16 +197,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     emit(ListingsLoading());
     try {
-      final startTime = DateTime.now();
-      // print();
-
       // Получаем токен для аутентификации
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
-      final catalogsStart = DateTime.now();
       // Загружаем каталоги (категории) из API
       final catalogsResponse = await ApiService.getCatalogs(token: token);
-      final catalogsDuration = DateTime.now().difference(catalogsStart);
       // print();
 
       final loadedCategories = catalogsResponse.data
@@ -232,7 +225,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       int itemsPerPage = 20;
 
       // 🚀 ПАРАЛЛЕЛЬНАЯ загрузка ПЕРВЫХ 3 СТРАНИЦ: все запросы выполняются одновременно!
-      final advertsStart = DateTime.now();
       // print();
 
       final advertsFutures = <Future<Map<String, dynamic>>>[];
@@ -276,8 +268,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
                 return {
                   'listings': catalogListings,
-                  'lastPage': lastResponse.meta!.lastPage ?? 1,
-                  'perPage': lastResponse.meta!.perPage ?? 20,
+                  'lastPage': lastResponse.meta.lastPage,
+                  'perPage': lastResponse.meta.perPage,
                 };
               })
               .catchError((e) {
@@ -293,7 +285,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Ждём все запросы одновременно
       final allAdvertsResponses = await Future.wait(advertsFutures);
-      final advertsDuration = DateTime.now().difference(advertsStart);
       // print();
 
       // Объединяем результаты всех каталогов
@@ -315,20 +306,23 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(allListings);
 
-      // 💾 Сохраняем в кеш перед отправкой состояния
-      final cacheData = {
+      // 💾 Сохраняем в унифицированный кеш (L1 + L2 Hive, TTL 5 мин)
+      final cacheData = <String, dynamic>{
         'listings': sortedListings.map(_listingToJson).toList(),
         'categories': loadedCategories.map(_categoryToJson).toList(),
         'currentPage': currentPage,
         'totalPages': totalPages,
         'itemsPerPage': itemsPerPage,
       };
-      await HiveService.saveListingsCache('listings_data', cacheData);
+      AppCacheService().set<Map<String, dynamic>>(
+        CacheKeys.listingsData,
+        cacheData,
+        persist: true,
+      );
 
       // ✅ Отмечаем, что первоначальная загрузка завершена
       _isInitialLoadComplete = true;
 
-      final totalDuration = DateTime.now().difference(startTime);
       // print();
 
       emit(
@@ -464,9 +458,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // print('Loading single advert for id ${event.advertId}');
 
     // 🔄 Проверяем кеш перед запросом к API
-    final cacheKey = 'advert_${event.advertId}';
-    final cachedAdvert = HiveService.getListingsCacheIfValid(cacheKey);
-    if (cachedAdvert != null && cachedAdvert is Map<String, dynamic>) {
+    final cacheKey = CacheKeys.advertKey(event.advertId);
+    final cachedAdvert = AppCacheService().get<Map<String, dynamic>>(cacheKey);
+    if (cachedAdvert != null) {
       try {
         // print('✅ ListingsBloc: Восстановили объявление из кеша');
         final listing = _jsonToListing(cachedAdvert);
@@ -480,7 +474,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     emit(ListingsLoading());
     try {
       // Получаем токен для аутентификации
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // Загружаем полные данные объявления из API
       final advert = await ApiService.getAdvert(
@@ -495,8 +489,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // print('Converted to listing with ${listing.images.length} images');
 
-      // 💾 Сохраняем в кеш
-      await HiveService.saveListingsCache(cacheKey, _listingToJson(listing));
+      // 💾 Сохраняем в унифицированный кеш (L1 + L2 Hive)
+      AppCacheService().set<Map<String, dynamic>>(
+        cacheKey,
+        _listingToJson(listing),
+        persist: true,
+      );
 
       emit(AdvertLoaded(listing: listing));
     } catch (e) {
@@ -531,7 +529,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     try {
       // Получаем токен для аутентификации
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // Загружаем объявления следующей страницы из каталога 1 (все категории)
       final advertsResponse = await ApiService.getAdverts(
@@ -552,8 +550,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final allListings = [...currentState.listings, ...newListings];
 
       // Извлекаем информацию о пагинации
-      final totalPages = advertsResponse.meta?.lastPage ?? 1;
-      final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
+      final totalPages = advertsResponse.meta.lastPage;
+      final itemsPerPage = advertsResponse.meta.perPage;
 
       // Испускаем новое состояние с объединенными объявлениями
       emit(
@@ -597,7 +595,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     try {
       // Получаем токен для аутентификации
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // Загружаем объявления конкретной страницы из каталога 1 (все категории)
       final advertsResponse = await ApiService.getAdverts(
@@ -618,8 +616,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final sortedListings = _sortListingsByDate(listings);
 
       // Извлекаем информацию о пагинации
-      final totalPages = advertsResponse.meta?.lastPage ?? 1;
-      final itemsPerPage = advertsResponse.meta?.perPage ?? 10;
+      final totalPages = advertsResponse.meta.lastPage;
+      final itemsPerPage = advertsResponse.meta.perPage;
 
       // Испускаем новое состояние с объявлениями указанной страницы
       emit(
@@ -744,7 +742,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     return {
       'id': category.id,
       'title': category.title,
-      'color': category.color.value,
+      'color': category.color.toARGB32(),
       'imagePath': category.imagePath,
       'isCatalog': category.isCatalog,
     };

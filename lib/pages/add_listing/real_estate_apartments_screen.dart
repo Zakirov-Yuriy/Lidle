@@ -4,7 +4,7 @@ import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
@@ -58,7 +58,7 @@ class _RealEstateApartmentsScreenState
         _error = null;
       });
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // Получаем категорию по ID для получения её детей
       final category = await ApiService.getCategory(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'navigation_event.dart';
 import 'navigation_state.dart';
-import '../../hive_service.dart';
+import '../../services/token_service.dart';
 import '../../pages/auth/sign_in_screen.dart';
 import '../../pages/profile_dashboard/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
@@ -46,7 +46,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     emit(const NavigationToProfile());
 
     // Проверяем, авторизован ли пользователь
-    final token = await HiveService.getUserData('token');
+    final token = TokenService.currentToken;
     if (token != null && token.isNotEmpty) {
       // Пользователь авторизован - переходим в профиль
       _navigateToProfile();
@@ -114,7 +114,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _navigateToHome();
     } else {
       // Для остальных разделов проверяем авторизацию
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       if (token != null && token.isNotEmpty) {
         // Авторизован - выполняем соответствующую навигацию
         switch (event.index) {
@@ -211,7 +211,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
 
   /// Выполняет навигацию к профилю или странице входа.
   Future<void> _executeProfileNavigation(BuildContext context) async {
-    final token = await HiveService.getUserData('token');
+    final token = TokenService.currentToken;
     if (!context.mounted) return;
 
     if (token != null && token.isNotEmpty) {

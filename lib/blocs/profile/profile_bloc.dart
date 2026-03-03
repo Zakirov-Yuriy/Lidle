@@ -1,9 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'profile_event.dart';
 import 'profile_state.dart';
-import '../../hive_service.dart';
+import '../../services/token_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
+import '../../core/cache/cache_service.dart';
+import '../../core/cache/cache_keys.dart';
 
 /// Bloc для управления состоянием профиля пользователя.
 /// Обрабатывает события загрузки, обновления и выхода из профиля.
@@ -23,7 +25,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     Emitter<ProfileState> emit,
   ) async {
     try {
-      final token = HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       // print('🔑 Token from Hive: $token');
       if (token == null) {
         // print('❌ Токен не найден!');
@@ -39,29 +41,49 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // Если forceRefresh = true, сразу показываем загрузку
       if (event.forceRefresh) {
-        // print('🔄 Принудительное обновление профиля (forceRefresh=true)');
+        // Инвалидируем L1-кеш профиля при принудительном обновлении
+        AppCacheService().invalidate(CacheKeys.profileData);
         emit(const ProfileLoading());
       } else {
+        // 📖 Сначала проверяем L1-кеш (быстрее, чем читать из Hive)
+        final cachedProfile = AppCacheService().get<Map<String, dynamic>>(
+          CacheKeys.profileData,
+        );
+        if (cachedProfile != null) {
+          emit(
+            ProfileLoaded(
+              name: cachedProfile['name'] as String? ?? 'Пользователь',
+              lastName: cachedProfile['lastName'] as String? ?? '',
+              email: cachedProfile['email'] as String? ?? '',
+              userId: cachedProfile['userId'] as String? ?? 'ID: 0',
+              phone: cachedProfile['phone'] as String? ?? '',
+              profileImage: cachedProfile['profileImage'],
+              username: cachedProfile['username'] as String? ?? '@User',
+              about: cachedProfile['about'],
+              qrCode: cachedProfile['qrCode'],
+            ),
+          );
+          return;
+        }
+        // L1 пуст — читаем из Hive (fallback).
         // Иначе показываем данные из Hive (если есть)
-        final cachedName = HiveService.getUserData('name') ?? 'Пользователь';
-        final cachedLastName = HiveService.getUserData('lastName') ?? '';
-        final cachedEmail =
-            HiveService.getUserData('email') ?? 'user@example.com';
+        final cachedName = UserService.getLocal('name') ?? 'Пользователь';
+        final cachedLastName = UserService.getLocal('lastName') ?? '';
+        final cachedEmail = UserService.getLocal('email') ?? 'user@example.com';
         final cachedPhone =
-            HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
-        // Получаем userId из Hive с дефолтом ID: 0
-        final cachedUserIdRaw = HiveService.getUserData('userId');
+            UserService.getLocal('phone') ?? '+7 (999) 123-45-67';
+        // Получаем userId из локального хранилища с дефолтом ID: 0
+        final cachedUserIdRaw = UserService.getLocal('userId');
         final cachedUserId =
             cachedUserIdRaw != null && cachedUserIdRaw.isNotEmpty
             ? 'ID: $cachedUserIdRaw'
             : 'ID: 0';
-        final cachedProfileImage = HiveService.getUserData('profileImage');
-        final cachedUsername = HiveService.getUserData('username') ?? '@User';
-        final cachedAbout = HiveService.getUserData('about');
+        final cachedProfileImage = UserService.getLocal('profileImage');
+        final cachedUsername = UserService.getLocal('username') ?? '@User';
+        final cachedAbout = UserService.getLocal('about');
 
-        // Если есть кэшированные данные - показываем их сразу
+        // Если есть данные в Hive — показываем их
         if (cachedName.isNotEmpty && cachedName != 'Пользователь') {
-          // print('📖 Показываем кэшированные данные из Hive: $cachedName');
           emit(
             ProfileLoaded(
               name: cachedLastName.isNotEmpty
@@ -77,7 +99,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
             ),
           );
         } else {
-          // Если нет кэша - показываем загрузку
           emit(const ProfileLoading());
         }
       }
@@ -87,29 +108,42 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final profile = await UserService.getProfile(token: token);
       // print('✅ Профиль загружен: ${profile.name} ${profile.lastName}');
 
-      // Сохраняем данные в Hive
-      await HiveService.saveUserData('name', profile.name);
-      await HiveService.saveUserData('lastName', profile.lastName);
-      await HiveService.saveUserData('email', profile.email);
-      await HiveService.saveUserData('phone', profile.phone ?? '');
+      // Сохраняем данные локально
+      await UserService.saveLocal('name', profile.name);
+      await UserService.saveLocal('lastName', profile.lastName);
+      await UserService.saveLocal('email', profile.email);
+      await UserService.saveLocal('phone', profile.phone ?? '');
       // Извлекаем userId из JWT токена (из claim 'sub')
       final userIdString = AuthService.extractUserIdFromToken(token);
-      await HiveService.saveUserData('userId', userIdString);
-      await HiveService.saveUserData('profileImage', profile.avatar);
-      await HiveService.saveUserData('username', profile.name);
-      await HiveService.saveUserData('about', profile.about ?? '');
+      await UserService.saveLocal('userId', userIdString);
+      await UserService.saveLocal('profileImage', profile.avatar);
+      await UserService.saveLocal('username', profile.name);
+      await UserService.saveLocal('about', profile.about ?? '');
 
       // Извлекаем base64 QR код из ответа API
       String? qrCodeBase64;
       if (profile.qrCode != null && profile.qrCode is Map<String, dynamic>) {
         qrCodeBase64 = profile.qrCode!['value'] as String?;
         if (qrCodeBase64 != null) {
-          await HiveService.saveUserData('qrCode', qrCodeBase64);
+          await UserService.saveLocal('qrCode', qrCodeBase64);
           // print('✅ QR код сохранен в Hive');
         }
       }
 
       // print('💾 Данные сохранены в Hive');
+
+      // 💾 Сохраняем свежие данные в L1-кеш профиля (TTL 5 мин)
+      AppCacheService().set<Map<String, dynamic>>(CacheKeys.profileData, {
+        'name': '${profile.name} ${profile.lastName}',
+        'lastName': profile.lastName,
+        'email': profile.email,
+        'userId': 'ID: $userIdString',
+        'phone': profile.phone ?? '',
+        'profileImage': profile.avatar,
+        'username': '@${profile.name}',
+        'about': profile.about,
+        'qrCode': qrCodeBase64,
+      });
 
       // Показываем свежие данные
       final userIdDisplay = 'ID: $userIdString';
@@ -137,16 +171,16 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       // print('❌ Ошибка загрузки профиля: $e');
       // print('📍 Stack trace: ${StackTrace.current}');
 
-      // Fallback to Hive data if API fails
-      final name = HiveService.getUserData('name') ?? 'Пользователь';
-      final lastName = HiveService.getUserData('lastName') ?? '';
-      final email = HiveService.getUserData('email') ?? 'user@example.com';
-      final phone = HiveService.getUserData('phone') ?? '+7 (999) 123-45-67';
-      final userId = HiveService.getUserData('userId') ?? 'ID: 0';
-      final profileImage = HiveService.getUserData('profileImage');
-      final username = HiveService.getUserData('username') ?? '@User';
-      final about = HiveService.getUserData('about');
-      final qrCode = HiveService.getUserData('qrCode');
+      // Fallback to local data if API fails
+      final name = UserService.getLocal('name') ?? 'Пользователь';
+      final lastName = UserService.getLocal('lastName') ?? '';
+      final email = UserService.getLocal('email') ?? 'user@example.com';
+      final phone = UserService.getLocal('phone') ?? '+7 (999) 123-45-67';
+      final userId = UserService.getLocal('userId') ?? 'ID: 0';
+      final profileImage = UserService.getLocal('profileImage');
+      final username = UserService.getLocal('username') ?? '@User';
+      final about = UserService.getLocal('about');
+      final qrCode = UserService.getLocal('qrCode');
 
       // print('📖 Fallback: Используем данные из Hive: $name $lastName');
 
@@ -176,17 +210,17 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
     emit(const ProfileLoading());
     try {
-      // Сохраняем данные в Hive
-      await HiveService.saveUserData('name', event.name);
-      await HiveService.saveUserData('lastName', event.lastName);
-      await HiveService.saveUserData('email', event.email);
-      await HiveService.saveUserData('phone', event.phone);
-      await HiveService.saveUserData('profileImage', event.profileImage);
+      // Сохраняем данные локально
+      await UserService.saveLocal('name', event.name);
+      await UserService.saveLocal('lastName', event.lastName);
+      await UserService.saveLocal('email', event.email);
+      await UserService.saveLocal('phone', event.phone);
+      await UserService.saveLocal('profileImage', event.profileImage);
       if (event.username != null) {
-        await HiveService.saveUserData('username', event.username);
+        await UserService.saveLocal('username', event.username);
       }
       if (event.about != null) {
-        await HiveService.saveUserData('about', event.about);
+        await UserService.saveLocal('about', event.about);
       }
 
       // Имитация успешного обновления
@@ -223,13 +257,17 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     emit(const ProfileLoading());
     try {
       await AuthService.logout();
-      await HiveService.deleteUserData('token');
+      await UserService.deleteLocal('token');
+      // Очищаем кеши профиля и объявлений при выходе
+      AppCacheService().invalidate(CacheKeys.profileData);
+      AppCacheService().invalidate(CacheKeys.profileListingsCounts);
+      await AppCacheService().invalidateByPrefix(CacheKeys.advertsPrefix);
       emit(const ProfileLoggedOut());
     } catch (e) {
-      // Даже если logout на сервере не удался, очищаем локальный токен
-      await HiveService.deleteUserData('token');
+      // Даже если logout на сервере не удался, очищаем локальный токен и кеш
+      await UserService.deleteLocal('token');
+      AppCacheService().invalidate(CacheKeys.profileData);
       emit(const ProfileLoggedOut());
     }
   }
 }
-

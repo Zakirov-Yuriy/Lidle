@@ -18,8 +18,9 @@ import '../../../services/user_service.dart';
 import '../../../services/attribute_resolver.dart';
 import '../../../models/filter_models.dart';
 import '../../../models/create_advert_model.dart';
-import '../../../hive_service.dart';
-import 'package:lidle/core/cache/cacheable_bloc.dart';
+import '../../../services/token_service.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
 import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 
@@ -239,7 +240,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // print('   - widget.categoryId: ${widget.categoryId}');
       // print('   - Using categoryId: $categoryId');
       // print('   Loading attributes for category: $categoryId');
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // ИСПОЛЬЗУЕМ /adverts/create ВМЕСТО /meta/filters
       // Этот endpoint возвращает правильные ID атрибутов для конкретной категории
@@ -395,7 +396,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     try {
       setState(() => _isLoadingEditData = true);
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       final advertId = widget.advertId!;
 
       // Получаем полные данные объявления через публичный эндпоинт
@@ -541,7 +542,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _loadRegions() async {
     try {
       // print('📍 Loading regions from API...');
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       final regions = await ApiService.getRegions(token: token);
 
@@ -572,7 +573,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return;
       }
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       // print('📦 Loading category info for ID: ${widget.categoryId}');
 
       // Get category info by ID
@@ -599,7 +600,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   Future<void> _loadUserContacts() async {
     try {
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       // print('📱 Token obtained, loading user contacts...');
       if (token == null) {
         // print('❌ Token is null, cannot load contacts');
@@ -750,7 +751,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     if (_selectedRegionId == null) return;
 
     try {
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       String searchQuery = 'по'; // Default search term
 
       if (_selectedRegion.isNotEmpty) {
@@ -798,7 +799,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     if (_selectedCityId == null) return;
 
     try {
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       String searchQuery = 'у';
 
       if (_selectedCity.isNotEmpty) {
@@ -1415,7 +1416,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       if (_selectedCity.isNotEmpty && _selectedStreet.isNotEmpty) {
         try {
-          final token = await HiveService.getUserData('token');
+          final token = TokenService.currentToken;
           if (token != null) {
             // print('🔍 Starting 3-step address search...');
 
@@ -1579,7 +1580,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return;
       }
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       if (token == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1770,8 +1771,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // print('✅ Объявление отправлено в админку');
       // print('Response: ${response['message']}');
 
-      // 🗑️ Инвалидируем кеш объявлений в профиле (счетчики обновятся при возврате)
-      CacheManager().clear('profile_listings_counts');
+      // 🗑️ Инвалидируем кеш объявлений и счётчиков профиля после публикации
+      AppCacheService().invalidate(CacheKeys.profileListingsCounts);
+      await AppCacheService().invalidateByPrefix(CacheKeys.advertsPrefix);
       // print('🗑️ Кеш профиля инвалидирован - счетчики обновятся при возврате');
 
       // Show moderation dialog
@@ -2216,9 +2218,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         // Load cities for selected region
                         if (_cities.isEmpty && _selectedRegionId != null) {
                           try {
-                            final token = await HiveService.getUserData(
-                              'token',
-                            );
+                            final token = TokenService.currentToken;
                             // Get the region name to use as search query
                             // API requires q parameter to be at least 3 characters
                             String searchQuery = 'по'; // Default search term
@@ -2376,9 +2376,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         // Load streets for selected city
                         if (_streets.isEmpty && _selectedCityId != null) {
                           try {
-                            final token = await HiveService.getUserData(
-                              'token',
-                            );
+                            final token = TokenService.currentToken;
                             // Get the city name to use as search query
                             // API requires q parameter to be at least 3 characters
                             String searchQuery = 'ул'; // Default search term

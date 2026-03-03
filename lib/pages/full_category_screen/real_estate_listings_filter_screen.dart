@@ -5,7 +5,7 @@ import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/services/attribute_resolver.dart';
 
@@ -99,7 +99,7 @@ class _RealEstateListingsFilterScreenState
       });
 
       // Получить токен из хранилища
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
 
       print('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
       print('📥 Loading filters for category: ${widget.categoryId}');
@@ -1867,7 +1867,7 @@ class _RealEstateListingsFilterScreenState
   Future<void> _loadRegions() async {
     try {
       print('📍 Загрузка регионов...');
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       final regions = await ApiService.getRegions(token: token);
 
@@ -1907,7 +1907,7 @@ class _RealEstateListingsFilterScreenState
       print('🔍 Regions count: ${regions.length}');
       print('🔍 ═══════════════════════════════════════');
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       final Map<int, Map<String, dynamic>> citiesMap = {};
 
@@ -2001,7 +2001,7 @@ class _RealEstateListingsFilterScreenState
   Future<void> _loadCitiesForRegion(int regionId, String regionName) async {
     try {
       print('🔍 Загрузка городов для области: "$regionName" (ID: $regionId)');
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       // Подготовить поисковый запрос
       String searchQuery = regionName;

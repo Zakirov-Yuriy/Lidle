@@ -26,7 +26,9 @@ import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/services/api_service.dart';
-import 'package:lidle/core/cache/cacheable_bloc.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -59,69 +61,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   bool _isLoadingListings = true;
   bool _isLoadingPriceOffers = false;
 
-  static const String _cacheKeyListings = 'profile_listings_counts';
-  static const String _cacheKeyPriceOffers = 'profile_price_offers_count';
+  static const String _cacheKeyListings = CacheKeys.profileListingsCounts;
+  static const String _cacheKeyPriceOffers = CacheKeys.profilePriceOffersCount;
 
-  /// Статический кэш счётчиков объявлений: { activeCount, inactiveCount, timestamp }
-  /// Данные считаются свежими 60 секунд.
-  static final Map<String, dynamic> _listingsCache = {};
-  static const int _cacheValiditySeconds = 60;
+  /// TTL кэша счётчиков — 60 секунд.
+  static const Duration _cacheTtl = Duration(seconds: 60);
 
-  /// Проверить, есть ли в кэше свежие данные
-  static bool _isCacheValid() {
-    if (!_listingsCache.containsKey('timestamp')) return false;
-    final timestamp = _listingsCache['timestamp'] as DateTime;
-    final age = DateTime.now().difference(timestamp).inSeconds;
-    return age < _cacheValiditySeconds;
-  }
+  /// Инвалидировать кэш счётчиков объявлений (например, после удаления объявления).
+  static void invalidateListingsCache() =>
+      AppCacheService().invalidate(CacheKeys.profileListingsCounts);
 
-  /// Получить данные из кэша
-  static Map<String, int> _getCachedCounts() {
-    return {
-      'activeCount': _listingsCache['activeCount'] as int? ?? 0,
-      'inactiveCount': _listingsCache['inactiveCount'] as int? ?? 0,
-    };
-  }
-
-  /// Сохранить данные в кэш
-  static void _saveCacheData(int activeCount, int inactiveCount) {
-    _listingsCache['activeCount'] = activeCount;
-    _listingsCache['inactiveCount'] = inactiveCount;
-    _listingsCache['timestamp'] = DateTime.now();
-  }
-
-  /// Инвалидировать кэш (вызывается после добавления/удаления объявления)
-  static void invalidateListingsCache() {
-    _listingsCache.clear();
-  }
-
-  /// Статический кэш счётчиков предложений цен: { count, timestamp }
-  /// Данные считаются свежими 60 секунд.
-  static final Map<String, dynamic> _priceOffersCache = {};
-
-  /// Проверить, есть ли в кэше свежие данные для предложений цен
-  static bool _isPriceOffersCacheValid() {
-    if (!_priceOffersCache.containsKey('timestamp')) return false;
-    final timestamp = _priceOffersCache['timestamp'] as DateTime;
-    final age = DateTime.now().difference(timestamp).inSeconds;
-    return age < _cacheValiditySeconds;
-  }
-
-  /// Получить количество предложений из кэша
-  static int _getCachedPriceOffersCount() {
-    return _priceOffersCache['count'] as int? ?? 0;
-  }
-
-  /// Сохранить количество предложений в кэш
-  static void _savePriceOffersCacheData(int count) {
-    _priceOffersCache['count'] = count;
-    _priceOffersCache['timestamp'] = DateTime.now();
-  }
-
-  /// Инвалидировать кэш предложений цен
-  static void invalidatePriceOffersCache() {
-    _priceOffersCache.clear();
-  }
+  /// Инвалидировать кэш предложений цен.
+  static void invalidatePriceOffersCache() =>
+      AppCacheService().invalidate(CacheKeys.profilePriceOffersCount);
 
   @override
   void initState() {
@@ -158,49 +110,30 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// [useCache] = false: всегда загружать со свежими указанными данными
   Future<void> _loadListingsCounts({bool useCache = false}) async {
     try {
-      // Шаг 1: Если кэш разрешён и данные свежие — показать их мгновенно
-      if (useCache && _isCacheValid()) {
-        print('📦 ProfileDashboard: загружено из кэша (${DateTime.now()})');
-        final cached = _getCachedCounts();
-        if (mounted) {
-          setState(() {
-            _activeListingsCount = cached['activeCount'] ?? 0;
-            _inactiveListingsCount = cached['inactiveCount'] ?? 0;
-            _isLoadingListings = false;
-          });
+      // Проверяем AppCacheService (L1 RAM, TTL 60с)
+      if (useCache) {
+        final cached = AppCacheService().get<Map<String, dynamic>>(
+          CacheKeys.profileListingsCounts,
+        );
+        if (cached != null) {
+          if (mounted) {
+            setState(() {
+              _activeListingsCount = cached['activeCount'] as int? ?? 0;
+              _inactiveListingsCount = cached['inactiveCount'] as int? ?? 0;
+              _isLoadingListings = false;
+            });
+          }
+          return;
         }
-        return; // Данные свежие — не загружаем с API
       }
 
-      // Шаг 2: Если нужен кэш но он устарел ИЛИ кэш не нужен — показать loading
-      // и загрузить с API
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
-        print('❌ Нет токена!');
-        if (mounted) {
-          setState(() => _isLoadingListings = false);
-        }
+        if (mounted) setState(() => _isLoadingListings = false);
         return;
       }
 
-      // Если кэш существует (но устарел) и мы не показали загрузку — показываем старые данные
-      // пока загружаем новые
-      if (useCache && _listingsCache.containsKey('activeCount')) {
-        final cached = _getCachedCounts();
-        if (mounted) {
-          setState(() {
-            _activeListingsCount = cached['activeCount'] ?? 0;
-            _inactiveListingsCount = cached['inactiveCount'] ?? 0;
-            // _isLoadingListings остаётся true чтобы показать refresh
-          });
-        }
-        print('🔄 ProfileDashboard: обновляем фоновые данные из API');
-      } else {
-        print('✅ ProfileDashboard: загрузка с API (данных в кэше нет)');
-        if (mounted) {
-          setState(() => _isLoadingListings = true);
-        }
-      }
+      if (mounted) setState(() => _isLoadingListings = true);
 
       // Статусы: 1=Active, 2=Inactive, 3=Moderation, 8=Archived
       final statuses = [1, 2, 3, 8];
@@ -237,8 +170,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       final totalCount = allAdverts.length;
 
-      // Сохраняем в кэш
-      _saveCacheData(totalCount, 0);
+      // 💾 Сохраняем в AppCacheService (TTL 60с)
+      AppCacheService().set<Map<String, dynamic>>(
+        CacheKeys.profileListingsCounts,
+        {'activeCount': totalCount, 'inactiveCount': 0},
+        ttl: _cacheTtl,
+      );
 
       if (mounted) {
         setState(() {
@@ -262,56 +199,40 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// [useCache] = false: всегда загружать со свежими указанными данными
   Future<void> _loadPriceOffersCount({bool useCache = false}) async {
     try {
-      // Шаг 1: Если кэш разрешён и данные свежие — показать их мгновенно
-      if (useCache && _isPriceOffersCacheValid()) {
-        print(
-          '📦 ProfileDashboard: количество предложений цен загружено из кэша',
+      // Проверяем AppCacheService (L1 RAM, TTL 60с)
+      if (useCache) {
+        final cachedCount = AppCacheService().get<int>(
+          CacheKeys.profilePriceOffersCount,
         );
-        final count = _getCachedPriceOffersCount();
-        if (mounted) {
-          setState(() {
-            _priceOffersCount = count;
-            _isLoadingPriceOffers = false;
-          });
+        if (cachedCount != null) {
+          if (mounted) {
+            setState(() {
+              _priceOffersCount = cachedCount;
+              _isLoadingPriceOffers = false;
+            });
+          }
+          return;
         }
-        return; // Данные свежие — не загружаем с API
       }
 
-      // Шаг 2: Если нужен кэш но он устарел ИЛИ кэш не нужен — загрузить с API
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
-        print('❌ Нет токена для загрузки предложений цен!');
-        if (mounted) {
-          setState(() => _isLoadingPriceOffers = false);
-        }
+        if (mounted) setState(() => _isLoadingPriceOffers = false);
         return;
       }
 
-      // Показываем старые данные из кэша пока загружаем новые
-      if (useCache && _priceOffersCache.containsKey('count')) {
-        final cachedCount = _getCachedPriceOffersCount();
-        if (mounted) {
-          setState(() {
-            _priceOffersCount = cachedCount;
-            // _isLoadingPriceOffers остаётся true чтобы показать update
-          });
-        }
-        print(
-          '🔄 ProfileDashboard: обновляем количество предложений цен из API',
-        );
-      } else {
-        print('✅ ProfileDashboard: загружаем количество предложений цен с API');
-        if (mounted) {
-          setState(() => _isLoadingPriceOffers = true);
-        }
-      }
+      if (mounted) setState(() => _isLoadingPriceOffers = true);
 
       // Загружаем список предложений цен (мои предложения)
       final offersData = await ApiService.getMyOffers(token: token);
       final count = offersData.length;
 
-      // Сохраняем в кэш
-      _savePriceOffersCacheData(count);
+      // 💾 Сохраняем в AppCacheService (TTL 60с)
+      AppCacheService().set<int>(
+        CacheKeys.profilePriceOffersCount,
+        count,
+        ttl: _cacheTtl,
+      );
 
       if (mounted) {
         setState(() {

@@ -8,7 +8,8 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/auth_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/user_service.dart';
 
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
@@ -58,7 +59,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         _errorMessage = null;
       });
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       if (token == null) {
         throw Exception('Токен не найден');
       }
@@ -118,7 +119,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
   List<Map<String, dynamic>> _getSavedContactsFromLocal() {
     // Используем ключ с привязкой к userId: 'savedContacts_<userId>'
     final key = 'savedContacts_$_currentUserId';
-    final contactsJson = HiveService.getUserData(key);
+    final contactsJson = UserService.getLocal(key);
     if (contactsJson == null) return [];
     try {
       final List<dynamic> decoded = jsonDecode(contactsJson);
@@ -137,7 +138,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     final savedContacts = _getSavedContactsFromLocal();
     if (!savedContacts.any((c) => c['user_id'] == userId)) {
       savedContacts.add({'user_id': userId, 'phone': phone});
-      HiveService.saveUserData(key, jsonEncode(savedContacts));
+      UserService.saveLocal(key, jsonEncode(savedContacts));
       // print('💾 Контакт сохранен для userId $_currentUserId: user_id=$userId');
     }
   }
@@ -242,7 +243,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   Future<void> _addContact(int userId) async {
     try {
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
       if (token == null) return;
 
       showDialog(
@@ -460,9 +461,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
       savedContacts.removeWhere((c) => c['user_id'] == userId);
 
       if (savedContacts.isEmpty) {
-        HiveService.deleteUserData(key);
+        UserService.deleteLocal(key);
       } else {
-        HiveService.saveUserData(key, jsonEncode(savedContacts));
+        UserService.saveLocal(key, jsonEncode(savedContacts));
       }
 
       await _loadContacts();
@@ -770,4 +771,3 @@ class _ContactUserCard extends StatelessWidget {
     return 'был(а) $lastSeen';
   }
 }
-

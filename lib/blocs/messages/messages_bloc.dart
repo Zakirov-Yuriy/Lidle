@@ -1,10 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'messages_event.dart';
 import 'messages_state.dart';
-import 'package:lidle/core/cache/cacheable_bloc.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 
 class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
-  static const String _cacheKey = 'messages_data';
+  /// TTL для сообщений — только L1 (RAM), 1 минута.
   static const Duration _cacheTTL = Duration(minutes: 1);
 
   MessagesBloc() : super(MessagesInitial()) {
@@ -29,9 +30,10 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
   void _onLoadMessages(LoadMessages event, Emitter<MessagesState> emit) {
     // 📖 Проверяем кеш если это не принудительное обновление
     if (!event.forceRefresh) {
-      final cached = CacheManager().get<Map<String, dynamic>>(_cacheKey);
+      final cached = AppCacheService().get<Map<String, dynamic>>(
+        CacheKeys.messagesData,
+      );
       if (cached != null) {
-        // print('✅ Используем кешированные данные сообщений (TTL: 1 мин)');
         emit(
           MessagesLoaded(
             mainMessages: List.from(cached['main'] ?? []),
@@ -42,8 +44,8 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       }
     }
 
-    // 💾 Сохраняем в кеш с TTL
-    CacheManager().set<Map<String, dynamic>>(_cacheKey, {
+    // 💾 Сохраняем в L1 (RAM) с TTL 1 мин
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
       'main': List.from(mainMessages),
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
@@ -72,8 +74,8 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       }
     }
 
-    // 💾 Обновляем кеш
-    CacheManager().set<Map<String, dynamic>>(_cacheKey, {
+    // 💾 Обновляем кеш L1
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
       'main': List.from(mainMessages),
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
@@ -105,8 +107,8 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       }
     }
 
-    // 💾 Обновляем кеш
-    CacheManager().set<Map<String, dynamic>>(_cacheKey, {
+    // 💾 Обновляем кеш L1
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
       'main': List.from(mainMessages),
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
@@ -119,4 +121,3 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     );
   }
 }
-

@@ -7,7 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/contact_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
@@ -45,7 +45,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
 
   Future<void> _loadMainPhoneValue() async {
     try {
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token != null) {
         final phonesResponse = await ContactService.getPhones(token: token);
         if (phonesResponse.data.isNotEmpty) {

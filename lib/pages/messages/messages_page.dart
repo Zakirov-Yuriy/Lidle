@@ -12,7 +12,7 @@ import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/messages_local_service.dart';
 import 'package:lidle/widgets/dialogs/delete_chat_dialog.dart';
 
 class MessagesPage extends StatefulWidget {
@@ -157,7 +157,7 @@ class _MessagesPageState extends State<MessagesPage> {
           },
         )
         .toList();
-    await HiveService.saveCurrentMessages(messageMaps);
+    await MessagesLocalService.saveCurrentMessages(messageMaps);
 
     for (int i = 0; i < messages.length; i++) {
       selectedMessages[i] = false;
@@ -560,19 +560,19 @@ class _MessagesPageState extends State<MessagesPage> {
                                         // Add to archive
                                         for (final messageMap
                                             in selectedMessageMaps) {
-                                          await HiveService.addToArchive(
+                                          await MessagesLocalService.addToArchive(
                                             messageMap,
                                           );
                                         }
 
                                         // Remove from currentMessages
                                         final currentMessages =
-                                            HiveService.getCurrentMessages();
+                                            MessagesLocalService.getCurrentMessages();
                                         currentMessages.removeWhere(
                                           (map) =>
                                               selectedMessageMaps.contains(map),
                                         );
-                                        await HiveService.saveCurrentMessages(
+                                        await MessagesLocalService.saveCurrentMessages(
                                           currentMessages,
                                         );
 

@@ -7,7 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -68,7 +68,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     });
 
     try {
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
         setState(() {
           _errorMessage = 'Токен не найден';
@@ -101,8 +101,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // print('   - profileState.phone = "$phone"');
 
       // Загружаем сохраненные данные из Hive
-      final telegram = HiveService.getUserData('telegram') as String? ?? '';
-      final whatsapp = HiveService.getUserData('whatsapp') as String? ?? '';
+      final telegram = UserService.getLocal('telegram') as String? ?? '';
+      final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
 
       // Извлекаем ID и значения контактов
       String emailValue = email;
@@ -159,7 +159,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     });
 
     try {
-      final token = HiveService.getUserData('token') as String?;
+      final token = TokenService.currentToken;
       if (token == null) {
         setState(() {
           _errorMessage = 'Токен не найден';
@@ -177,7 +177,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         try {
           // print('👤 Updating user name: ${_nameController.text}');
           // Получаем фамилию из Hive или используем пустую строку
-          final lastName = HiveService.getUserData('lastName') as String? ?? '';
+          final lastName = UserService.getLocal('lastName') as String? ?? '';
 
           // print('🔍 DEBUG contact_data_screen._saveContactData():');
           // print();
@@ -195,9 +195,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       }
 
       // Сохраняем в локальное хранилище
-      await HiveService.saveUserData('name', _nameController.text);
-      await HiveService.saveUserData('telegram', _telegramController.text);
-      await HiveService.saveUserData('whatsapp', _whatsappController.text);
+      await UserService.saveLocal('name', _nameController.text);
+      await UserService.saveLocal('telegram', _telegramController.text);
+      await UserService.saveLocal('whatsapp', _whatsappController.text);
 
       // Обновляем или добавляем email
       if (_emailController.text.isNotEmpty) {

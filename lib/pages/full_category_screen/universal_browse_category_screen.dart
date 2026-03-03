@@ -3,7 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
@@ -61,7 +61,7 @@ class _UniversalBrowseCategoryScreenState
         _error = null;
       });
 
-      final token = await HiveService.getUserData('token');
+      final token = TokenService.currentToken;
 
       List<Category> categories = [];
 
@@ -467,5 +467,3 @@ class _CategoryTile extends StatelessWidget {
     );
   }
 }
-
-

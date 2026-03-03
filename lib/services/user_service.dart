@@ -396,6 +396,20 @@ class UserService {
       throw Exception('Ошибка при обновлении имени: $e');
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Локальное хранилище: тонкая обёртка над HiveService для UI-слоя.
+  // Страницы и виджеты импортируют UserService, а не HiveService напрямую.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Синхронно читает значение из локального хранилища по [key].
+  static dynamic getLocal(String key) => HiveService.getUserData(key);
+
+  /// Асинхронно сохраняет [value] в локальное хранилище по [key].
+  static Future<void> saveLocal(String key, dynamic value) =>
+      HiveService.saveUserData(key, value);
+
+  /// Асинхронно удаляет значение из локального хранилища по [key].
+  static Future<void> deleteLocal(String key) =>
+      HiveService.deleteUserData(key);
 }
-
-
