@@ -7,7 +7,6 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/filter_models.dart';
-import 'package:lidle/services/attribute_resolver.dart';
 
 // ============================================================
 // "Динамический экран фильтров для листинга объявлений"
@@ -61,6 +60,7 @@ class _RealEstateListingsFilterScreenState
   List<Map<String, dynamic>> _cities = [];
   Set<String> _selectedRegion = {};
   Set<String> _selectedCity = {};
+  // ignore: unused_field
   int? _selectedRegionId;
   int? _selectedCityId;
   bool _citiesLoading = false; // Индикатор загрузки городов
@@ -69,12 +69,9 @@ class _RealEstateListingsFilterScreenState
   String? _selectedDateSort;
   String? _selectedPriceSort;
 
-  late AttributeResolver _attributeResolver;
-
   @override
   void initState() {
     super.initState();
-    _attributeResolver = AttributeResolver([]);
     _loadFilters();
     _loadRegions();
     // Загрузить применённые фильтры если они есть
@@ -134,7 +131,6 @@ class _RealEstateListingsFilterScreenState
 
         setState(() {
           _attributes = attributes;
-          _attributeResolver = AttributeResolver(attributes);
           _isLoading = false;
         });
 
@@ -292,12 +288,12 @@ class _RealEstateListingsFilterScreenState
         print('⏭️  Skipped: [$key] = false (checkbox not selected)');
       } else if (value != null &&
           value != '' &&
-          (value is! Set || (value as Set).isNotEmpty)) {
+          (value is! Set || value.isNotEmpty)) {
         // Обычные значения (Set, List, String) - это value_selected
         shouldInclude = true;
-        if (value is Set && (value as Set).isNotEmpty) {
+        if (value is Set && value.isNotEmpty) {
           print(
-            '✅ Attribute: [$key] = ${(value as Set).join(", ")} (type: Set<String>, count: ${(value as Set).length})',
+            '✅ Attribute: [$key] = ${value.join(", ")} (type: Set<String>, count: ${value.length})',
           );
         } else {
           print(
@@ -493,6 +489,7 @@ class _RealEstateListingsFilterScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildRegionBlock() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -815,6 +812,7 @@ class _RealEstateListingsFilterScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildCategoryBlock() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1070,8 +1068,6 @@ class _RealEstateListingsFilterScreenState
     String selected = _selectedValues[attr.id] is String
         ? _selectedValues[attr.id] as String
         : '';
-
-    final buttonCount = attr.values.length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1839,8 +1835,6 @@ class _RealEstateListingsFilterScreenState
     // Use styleSingle from API (e.g., E1, H, D1)
     // This is the actual submission style code returned by API
     final displayStyle = attr.styleSingle ?? '';
-    final stylePrefix = 'Style';
-
     if (displayStyle.isEmpty) {
       return const SizedBox.shrink();
     }

@@ -28,6 +28,37 @@ class Offer {
     this.viewed = false,
     this.offeredPricesCount,
   });
+
+  /// Создаёт копию объекта с изменёнными полями
+  Offer copyWith({
+    String? id,
+    String? advertisementId,
+    String? slug,
+    String? typeSlug,
+    String? imageUrl,
+    String? title,
+    String? description,
+    String? originalPrice,
+    String? yourPrice,
+    OfferStatus? status,
+    bool? viewed,
+    int? offeredPricesCount,
+  }) {
+    return Offer(
+      id: id ?? this.id,
+      advertisementId: advertisementId ?? this.advertisementId,
+      slug: slug ?? this.slug,
+      typeSlug: typeSlug ?? this.typeSlug,
+      imageUrl: imageUrl ?? this.imageUrl,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      originalPrice: originalPrice ?? this.originalPrice,
+      yourPrice: yourPrice ?? this.yourPrice,
+      status: status ?? this.status,
+      viewed: viewed ?? this.viewed,
+      offeredPricesCount: offeredPricesCount ?? this.offeredPricesCount,
+    );
+  }
 }
 
 class PriceOfferItem {

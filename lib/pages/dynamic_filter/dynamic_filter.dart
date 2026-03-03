@@ -50,7 +50,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   // =============== Edit Mode ===============
   bool _isEditMode = false; // Режим редактирования
+  // ignore: unused_field
   Map<String, dynamic>? _editAdvertData; // Данные объявления для редактирования
+  // ignore: unused_field
   bool _isLoadingEditData = false; // Загрузка данных объявления
   int? _editAdvertCategoryId; // Категория объявления при редактировании
 
@@ -102,6 +104,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   int? _selectedRegionId;
   int? _selectedCityId;
   int? _selectedStreetId;
+  // ignore: unused_field
   int? _selectedBuildingId;
 
   @override
@@ -266,9 +269,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       // Логируем загруженные атрибуты
-      for (final attr in loadedAttributes) {
-        // print();
-      }
+      // (debug вывод отключён)
 
       // Convert to mutable list and apply Style → Style2 mapping for submission form
       var mutableFilters = List<Attribute>.from(loadedAttributes);
@@ -405,28 +406,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       final response = await ApiService.get('/adverts/$advertId', token: token);
 
-      if (response == null) {
-        throw Exception('Не удалось загрузить данные объявления');
-      }
-
-      // Парсим ответ API
-      Map<String, dynamic> advertData;
-      if (response is Map<String, dynamic>) {
-        // Проверяем есть ли обертка с 'data'
-        if (response.containsKey('data')) {
-          final data = response['data'];
-          if (data is List && data.isNotEmpty) {
-            advertData = data[0] as Map<String, dynamic>;
-          } else if (data is Map<String, dynamic>) {
-            advertData = data;
-          } else {
-            advertData = response;
-          }
+      // Парсим ответ API: response всегда Map<String, dynamic>
+      late final Map<String, dynamic> advertData;
+      if (response.containsKey('data')) {
+        final data = response['data'];
+        if (data is List && data.isNotEmpty) {
+          advertData = data[0] as Map<String, dynamic>;
+        } else if (data is Map<String, dynamic>) {
+          advertData = data;
         } else {
           advertData = response;
         }
       } else {
-        throw Exception('Неожиданный формат ответа от API');
+        advertData = response;
       }
 
       // print('📦 Loaded advert data: ${advertData.keys.toList()}');
@@ -747,6 +739,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   /// Загружает города для выбранного региона при автозаполнении
+  // ignore: unused_element
   Future<void> _loadCitiesForSelectedRegion() async {
     if (_selectedRegionId == null) return;
 
@@ -795,6 +788,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   /// Загружает улицы для выбранного города при автозаполнении
+  // ignore: unused_element
   Future<void> _loadStreetsForSelectedCity() async {
     if (_selectedCityId == null) return;
 
@@ -961,6 +955,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   String _selectedAction = 'publish';
 
+  // ignore: unused_element
   void _togglePersonType(bool isIndividual) {
     setState(() {
       isIndividualSelected = isIndividual;
@@ -1043,17 +1038,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
           // print('   Selected values in Set: $value');
           // print('   Number of values: ${value.length}');
           // print('   All available values for attr 6:');
-          for (final v in attr.values) {
-            // print('      - "${v.value}" (ID=${v.id})');
+          for (final _ in attr.values) {
+            // print('      - "${_.value}" (ID=${_.id})');
           }
           if (value.isNotEmpty) {
-            value.forEach((val) {
-              final matchedValue = attr.values.firstWhere(
-                (v) => v.value == val,
-                orElse: () => const Value(id: 0, value: ''),
-              );
-              // print('   Value="$val" => ID=${matchedValue.id}');
-            });
+            // debug: value contains selected values
           }
         }
       } else if (value is Map) {
@@ -1739,14 +1728,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
           });
 
           final imagePaths = _images.map((file) => file.path).toList();
-          final imageResponse = await ApiService.uploadAdvertImages(
+          await ApiService.uploadAdvertImages(
             advertId,
             imagePaths,
             token: token,
           );
-
-          // print('✅ Images uploaded successfully!');
-          // print('Response: $imageResponse');
         } catch (e) {
           // print('⚠️ Warning: Error uploading images: $e');
           // Don't fail the entire operation if images fail - advert is already created
@@ -2253,16 +2239,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
                               i < response.data.take(3).length;
                               i++
                             ) {
-                              final result = response.data[i];
-                              // print();
+                              // debug: response.data[i] here
                             }
 
                             final uniqueCities =
                                 <String, Map<String, dynamic>>{};
+                            // ignore: unused_local_variable
                             int filtered = 0;
                             for (int i = 0; i < response.data.length; i++) {
                               final result = response.data[i];
                               bool passed = false;
+                              // ignore: unused_local_variable
                               String reason = '';
 
                               // Filter by main_region on client side
@@ -2287,10 +2274,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
                               if (!passed) {
                                 filtered++;
-                                // Попытаемся найти название области для логирования
-                                String mainRegionName =
-                                    result.main_region?.name ?? 'неизвестна';
-                                // print();
                               }
                             }
 
@@ -2679,6 +2662,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     final displayStyle = _isSubmissionMode
         ? (attr.styleSingle ?? '')
         : attr.style;
+    // ignore: unused_local_variable
     final stylePrefix = _isSubmissionMode ? 'Style (submit)' : 'Style (view)';
 
     if (displayStyle.isEmpty) {
@@ -2887,6 +2871,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildAreaRangeField() {
     // Build special field for total area - dynamically get attribute ID
     final areaAttrId = _attributeResolver.getAreaAttributeId();
@@ -3332,8 +3317,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }) {
     if (buttons.isEmpty) return const SizedBox.shrink();
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final padding = 32; // 16px on each side
     final spacing = 10.0;
 
     // For 2 buttons: Row with 50% width each

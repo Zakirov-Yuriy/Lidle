@@ -79,6 +79,20 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
             itemChecked = List<bool>.filled(items.length, false);
             _isLoading = false;
           });
+
+          // ✅ Если все предложения отклонены/приняты (бэкенд вернул данные,
+          // но _parseOffers отфильтровал все non-«Новый» статусы) —
+          // автоматически возвращаемся на предыдущий экран с result=true
+          // чтобы offer_card скрыл это объявление из списка.
+          if (parsed.isEmpty) {
+            print(
+              '⚡ All offers for advert ${widget.offer.advertisementId} are processed '
+              '(non-new status) — auto-popping with result=true',
+            );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) Navigator.of(context).pop(true);
+            });
+          }
         }
       } else {
         if (mounted) {
@@ -86,6 +100,15 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
             items = [];
             itemChecked = [];
             _isLoading = false;
+          });
+
+          // ✅ API вернул пустой список — тоже возвращаемся
+          print(
+            '⚡ No offers returned for advert ${widget.offer.advertisementId} '
+            '— auto-popping with result=true',
+          );
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context).pop(true);
           });
         }
       }
@@ -100,9 +123,18 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
     }
   }
 
-  /// Преобразует API ответ в объекты PriceOfferItem
+  /// Преобразует API ответ в объекты PriceOfferItem.
+  /// Показываем только предложения со статусом «Новый» (id == 1),
+  /// уже принятые/отклонённые скрываем.
   List<PriceOfferItem> _parseOffers(List<Map<String, dynamic>> offersData) {
-    return offersData.map((offer) {
+    final newOffers = offersData.where((offer) {
+      final statusMap = offer['status'] as Map<String, dynamic>?;
+      final statusId = statusMap?['id'] as int?;
+      // null-статус тоже показываем (старые записи без статуса)
+      return statusId == null || statusId == 1;
+    }).toList();
+
+    return newOffers.map((offer) {
       final user = offer['user'] as Map<String, dynamic>? ?? {};
       final model = offer['model'] as Map<String, dynamic>? ?? {};
       final createdAt = offer['created_at'] as String? ?? '';
@@ -452,7 +484,12 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                                       arguments: item,
                                     );
                                     if (result == true) {
-                                      _loadOffers();
+                                      // Ждём завершения загрузки перед проверкой
+                                      await _loadOffers();
+                                      // Если новых предложений нет — возвращаемся к списку объявлений
+                                      if (mounted && items.isEmpty) {
+                                        Navigator.of(context).pop(true);
+                                      }
                                     }
                                   }
                                 },
@@ -536,7 +573,9 @@ class _OfferItem extends StatelessWidget {
                   CircleAvatar(
                     radius: 25,
                     backgroundColor: Colors.black26,
-                    backgroundImage: offerItem.avatar.startsWith('http')
+                    backgroundImage:
+                        offerItem.avatar.startsWith('http://') ||
+                            offerItem.avatar.startsWith('https://')
                         ? NetworkImage(offerItem.avatar) as ImageProvider
                         : AssetImage(offerItem.avatar),
                   ),

@@ -455,7 +455,9 @@ class _OfferCardState extends State<_OfferCard> {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundImage: offerItem.avatar.startsWith('http')
+                    backgroundImage:
+                        offerItem.avatar.startsWith('http://') ||
+                            offerItem.avatar.startsWith('https://')
                         ? NetworkImage(offerItem.avatar) as ImageProvider
                         : AssetImage(offerItem.avatar) as ImageProvider,
                   ),

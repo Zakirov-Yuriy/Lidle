@@ -89,11 +89,6 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 // ============================================================
 
 void main() async {
-  final mainStartTime = DateTime.now();
-  // print(
-  //   '⏱️ [APP START] Приложение запущено в ${mainStartTime.toIso8601String()}',
-  // );
-
   WidgetsFlutterBinding.ensureInitialized();
   // print(
   //   '⏱️ [BINDING] WidgetsFlutterBinding инициализирован за ${DateTime.now().difference(mainStartTime).inMilliseconds}ms',
@@ -103,7 +98,6 @@ void main() async {
   // print('⏱️ [DOTENV] Переменные окружения инициализированы константами');
 
   // Инициализация Hive
-  final hiveStart = DateTime.now();
   if (kIsWeb) {
     await Hive.initFlutter();
   } else {
@@ -111,9 +105,6 @@ void main() async {
     await Hive.initFlutter(appDocumentDir.path);
   }
   await HiveService.init();
-  // print(
-  //   '⏱️ [HIVE] Hive инициализирован за ${DateTime.now().difference(hiveStart).inMilliseconds}ms',
-  // );
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -123,11 +114,6 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-
-  final totalAppInitTime = DateTime.now().difference(mainStartTime);
-  // print(
-  //   '⏱️ [INIT COMPLETE] Полная инициализация главной программы: ${totalAppInitTime.inMilliseconds}ms',
-  // );
 
   runApp(const LidleApp());
 }

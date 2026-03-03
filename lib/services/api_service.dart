@@ -696,7 +696,7 @@ class ApiService {
             value.forEach((attrId, attrValue) {
               if (attrValue is Set) {
                 // Множественный выбор: Set<String> с ID выбранных значений
-                final setList = (attrValue as Set).toList();
+                final setList = attrValue.toList();
                 if (setList.isNotEmpty) {
                   for (int i = 0; i < setList.length; i++) {
                     final paramKey = 'filters[value_selected][$attrId][$i]';
@@ -706,8 +706,8 @@ class ApiService {
                 }
               } else if (attrValue is List) {
                 // Список значений
-                if ((attrValue as List).isNotEmpty) {
-                  for (int i = 0; i < (attrValue as List).length; i++) {
+                if (attrValue.isNotEmpty) {
+                  for (int i = 0; i < attrValue.length; i++) {
                     final paramKey = 'filters[value_selected][$attrId][$i]';
                     queryParams[paramKey] = attrValue[i].toString();
                     print('      ✅ $paramKey = ${attrValue[i].toString()}');
@@ -738,7 +738,7 @@ class ApiService {
                 });
               } else if (attrValue is Set) {
                 // Множественный выбор
-                final setList = (attrValue as Set).toList();
+                final setList = attrValue.toList();
                 if (setList.isNotEmpty) {
                   for (int i = 0; i < setList.length; i++) {
                     final paramKey = 'filters[values][$attrId][$i]';
@@ -748,8 +748,8 @@ class ApiService {
                 }
               } else if (attrValue is List) {
                 // Список значений
-                if ((attrValue as List).isNotEmpty) {
-                  for (int i = 0; i < (attrValue as List).length; i++) {
+                if (attrValue.isNotEmpty) {
+                  for (int i = 0; i < attrValue.length; i++) {
                     final paramKey = 'filters[values][$attrId][$i]';
                     queryParams[paramKey] = attrValue[i].toString();
                     // print('  ✅ $paramKey = ${attrValue[i].toString()}');
@@ -772,7 +772,7 @@ class ApiService {
           } else if (value is Set) {
             // Множественный выбор (Set<String>)
             // ⚠️ ВАЖНО: создаём РАЗНЫЕ ключи для каждого элемента!
-            final setList = (value as Set).toList();
+            final setList = value.toList();
             if (setList.isNotEmpty) {
               for (int i = 0; i < setList.length; i++) {
                 final paramKey = 'filters[$key][$i]';
@@ -783,8 +783,8 @@ class ApiService {
           } else if (value is List) {
             // Список значений
             // ⚠️ ВАЖНО: создаём РАЗНЫЕ ключи для каждого элемента!
-            if ((value as List).isNotEmpty) {
-              for (int i = 0; i < (value as List).length; i++) {
+            if (value.isNotEmpty) {
+              for (int i = 0; i < value.length; i++) {
                 final paramKey = 'filters[$key][$i]';
                 queryParams[paramKey] = value[i].toString();
                 // print('  ✅ $paramKey = ${value[i].toString()}');
@@ -1011,9 +1011,8 @@ class ApiService {
         final filtersList = data['filters'] as List;
         // print('📊 Filters count: ${filtersList.length}');
         for (int i = 0; i < filtersList.length; i++) {
-          final filter = filtersList[i];
-          // print('  [$i] ID=${filter['id']}, Title=${filter['title']}, Values=${filter['values']?.length ?? 0}');
-          // print('       is_title_hidden=${filter['is_title_hidden']}, is_special_design=${filter['is_special_design']}');
+          // print('  [$i] ID=${filtersList[i]['id']}, Title=${filtersList[i]['title']}, Values=${filtersList[i]['values']?.length ?? 0}');
+          // print('       is_title_hidden=${filtersList[i]['is_title_hidden']}, is_special_design=${filtersList[i]['is_special_design']}');
         }
         // Сканируем все фильтры на предмет "Вам предложат цену"
         // print('🔍 Searching for "Вам предложат цену" filter...');
@@ -1484,8 +1483,7 @@ class ApiService {
       // print('📦 getListingsFilterAttributes: Parsing for category $categoryId');
 
       // Если требуется токен и он истёк, обновить и повторить
-      if (response is Map &&
-          response['message'] != null &&
+      if (response['message'] != null &&
           response['message'].toString().contains('Token expired') &&
           token != null) {
         final newToken = await refreshToken(token);
@@ -1500,7 +1498,7 @@ class ApiService {
       // Структура ответа: {"data": [{"type": {...}, "attributes": [...]}]}
       // Берём attributes из первого элемента
       List<dynamic> attributes = [];
-      if (response is Map && response['data'] is List) {
+      if (response['data'] is List) {
         final dataList = response['data'] as List<dynamic>;
         if (dataList.isNotEmpty && dataList[0] is Map) {
           final firstItem = dataList[0] as Map<String, dynamic>;

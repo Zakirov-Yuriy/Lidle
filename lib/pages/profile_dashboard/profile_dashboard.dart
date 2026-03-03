@@ -56,22 +56,28 @@ class ProfileDashboard extends StatefulWidget {
 class _ProfileDashboardState extends State<ProfileDashboard>
     with WidgetsBindingObserver {
   int _activeListingsCount = 0;
+  // ignore: unused_field
   int _inactiveListingsCount = 0;
   int _priceOffersCount = 0;
   bool _isLoadingListings = true;
+  // ignore: unused_field
   bool _isLoadingPriceOffers = false;
 
+  // ignore: unused_field
   static const String _cacheKeyListings = CacheKeys.profileListingsCounts;
+  // ignore: unused_field
   static const String _cacheKeyPriceOffers = CacheKeys.profilePriceOffersCount;
 
   /// TTL кэша счётчиков — 60 секунд.
   static const Duration _cacheTtl = Duration(seconds: 60);
 
   /// Инвалидировать кэш счётчиков объявлений (например, после удаления объявления).
+  // ignore: unused_element
   static void invalidateListingsCache() =>
       AppCacheService().invalidate(CacheKeys.profileListingsCounts);
 
   /// Инвалидировать кэш предложений цен.
+  // ignore: unused_element
   static void invalidatePriceOffersCache() =>
       AppCacheService().invalidate(CacheKeys.profilePriceOffersCount);
 
@@ -844,6 +850,7 @@ class _MessageCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _BarcodeCard extends StatelessWidget {
   const _BarcodeCard();
 
@@ -894,6 +901,7 @@ class _BarcodeCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _PurchaseCard extends StatelessWidget {
   final String productImage;
   final String title;

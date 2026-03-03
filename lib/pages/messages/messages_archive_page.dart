@@ -279,13 +279,16 @@ class _MessagesArchivePageState extends State<MessagesArchivePage> {
                                       .toList();
 
                                   if (selectedIndices.isNotEmpty) {
+                                    // Захватываем Navigator до первого await, чтобы
+                                    // не использовать BuildContext через async gap
+                                    final nav = Navigator.of(context);
                                     for (final index in selectedIndices) {
                                       await MessagesLocalService.restoreFromArchive(
                                         index,
                                       );
                                     }
                                     await _loadArchivedMessages();
-                                    Navigator.pop(context, true);
+                                    nav.pop(true);
                                   }
                                 },
                                 child: const Text(

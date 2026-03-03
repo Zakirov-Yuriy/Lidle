@@ -32,6 +32,13 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   List<Offer> _myOffers = [];
   List<Offer> _offersToMe = [];
 
+  /// ИД объявлений (Предложения мне), все предложения по которым уже обработаны.
+  /// Static — сохраняется на всю сессию приложения, не сбрасывается при
+  /// перестроении виджета или переходе назад/вперёд.
+  /// Бэкенд пока возвращает обработанные объявления, этот фильтр — клиентский
+  /// костыль до исправления new_offers_count на сервере.
+  static final Set<String> _handledAdvertIds = <String>{};
+
   static const backgroundColor = Color(0xFF243241);
   static const accentColor = Color(0xFF00B7FF);
 
@@ -120,8 +127,6 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       }
 
       print('📡 Calling ApiService.getOffersReceivedList()...');
-      // 💡 Используем getOffersReceivedList() вместо getAllReceivedOffers()
-      // чтобы получить объявления пользователя с информацией о количестве предложений
       final listingsWithOffers = await ApiService.getOffersReceivedList(
         token: token,
       );
@@ -129,18 +134,97 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         '📦 API returned ${listingsWithOffers.length} listings with offers',
       );
 
+      // Парсим объявления в объекты Offer
+      final parsedListings = listingsWithOffers.map((data) {
+        print(
+          '🔄 Parsing received listing: ${data['id']} - '
+          'Name: ${data['name']}, '
+          'New offers count: ${data['new_offers_count']}',
+        );
+        return _parseOfferFromApi(data, isReceivedOffer: true);
+      }).toList();
+
+      // ✅ Prefetch: для каждого объявления параллельно загружаем детали
+      // предложений, чтобы сразу скрыть те у которых нет реальных «Новых»
+      // предложений. Это решает проблему когда бэкенд возвращает
+      // new_offers_count > 0, но все предложения уже приняты/отклонены.
+      print(
+        '🔍 Prefetching offer details for ${parsedListings.length} listings...',
+      );
+      final prefetchResults = await Future.wait(
+        parsedListings.map((offer) async {
+          final advertId = int.tryParse(
+            offer.advertisementId ?? offer.id ?? '',
+          );
+          final typeSlug = offer.typeSlug ?? 'adverts';
+          // -1 = ошибка (показываем с оригинальным счётчиком)
+          if (advertId == null) return MapEntry(offer, -1);
+
+          try {
+            final offersData = await ApiService.getPriceOffers(
+              advertId: advertId,
+              advertSlug: typeSlug,
+              token: token,
+            );
+            // Считаем ТОЧНОЕ количество предложений со статусом «Новый»
+            // (id==1 или null — старые записи без статуса)
+            final newCount = offersData.where((o) {
+              final statusMap = o['status'] as Map<String, dynamic>?;
+              final statusId = statusMap?['id'] as int?;
+              return statusId == null || statusId == 1;
+            }).length;
+            print(
+              '   📊 Advert ${offer.advertisementId}: '
+              '${offersData.length} total, $newCount new',
+            );
+            return MapEntry(offer, newCount);
+          } catch (e) {
+            // При ошибке — показываем объявление, чтобы не скрыть лишнего
+            print(
+              '   ⚠️ Prefetch error for advert ${offer.advertisementId}: $e',
+            );
+            return MapEntry(offer, -1);
+          }
+        }),
+      );
+
+      // Оставляем только объявления где newCount > 0 (или -1 при ошибке).
+      // Обновляем offeredPricesCount точным значением через copyWith.
+      final listingsWithNewOffers = prefetchResults
+          .where((entry) => entry.value != 0)
+          .map((entry) {
+            // -1 = ошибка, оставляем оригинальный счётчик
+            if (entry.value == -1) return entry.key;
+            // Обновляем точным количеством новых предложений
+            return entry.key.copyWith(offeredPricesCount: entry.value);
+          })
+          .toList();
+
+      // Те у которых нет новых — помечаем как обработанные (добавляем в blacklist).
+      // Те у которых есть новые — убираем из blacklist, чтобы показались снова
+      // (например, если по ранее обработанному объявлению пришло новое предложение).
+      for (final entry in prefetchResults) {
+        final id = entry.key.advertisementId ?? entry.key.id;
+        if (id == null) continue;
+
+        if (entry.value == 0) {
+          // Нет новых предложений → скрываем
+          _handledAdvertIds.add(id);
+          print('   🗑️ Marked advert $id as handled (no new offers)');
+        } else {
+          // Есть новые (или ошибка) → убираем из blacklist
+          _handledAdvertIds.remove(id);
+          print(
+            '   ✅ Advert $id has ${entry.value} new offers — removed from blacklist',
+          );
+        }
+      }
+
       if (mounted) {
         setState(() {
-          _offersToMe = listingsWithOffers.map((data) {
-            print(
-              '🔄 Parsing received listing: ${data['id']} - '
-              'Name: ${data['name']}, '
-              'New offers count: ${data['new_offers_count']}',
-            );
-            return _parseOfferFromApi(data, isReceivedOffer: true);
-          }).toList();
+          _offersToMe = listingsWithNewOffers;
           print(
-            '✅ Successfully parsed ${_offersToMe.length} received listings',
+            '✅ Successfully loaded ${_offersToMe.length} listings with new offers',
           );
           _isLoadingOffersToMe = false;
         });
@@ -261,8 +345,11 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
 
   @override
   Widget build(BuildContext context) {
-    // Выбираем какой список отображать
-    final offersToDisplay = isMyOffersSelected ? _myOffers : _offersToMe;
+    // Выбираем какой список отображать, исключая уже обработанные объявления
+    final rawList = isMyOffersSelected ? _myOffers : _offersToMe;
+    final offersToDisplay = rawList
+        .where((o) => !_handledAdvertIds.contains(o.advertisementId ?? o.id))
+        .toList();
     final isLoading = isMyOffersSelected
         ? _isLoadingMyOffers
         : _isLoadingOffersToMe;
@@ -494,7 +581,25 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                         : ListView.builder(
                             itemCount: offersToDisplay.length,
                             itemBuilder: (context, index) {
-                              return OfferCard(offer: offersToDisplay[index]);
+                              final offerItem = offersToDisplay[index];
+                              return OfferCard(
+                                offer: offerItem,
+                                // При обработке всех предложений по этому объявлению:
+                                // 1. запоминаем его ID — чтобы не показывать снова
+                                // 2. перезагружаем список чтобы бэкенд обновил данные
+                                onRefreshNeeded: () {
+                                  final id =
+                                      offerItem.advertisementId ?? offerItem.id;
+                                  setState(() {
+                                    _handledAdvertIds.add(id);
+                                  });
+                                  if (!isMyOffersSelected) {
+                                    _loadOffersToMe();
+                                  } else {
+                                    _loadMyOffers();
+                                  }
+                                },
+                              );
                             },
                           ),
                   ),

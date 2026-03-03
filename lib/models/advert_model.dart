@@ -1,5 +1,4 @@
 import 'package:lidle/models/home_models.dart';
-import 'dart:convert';
 
 class Advert {
   final int id;
@@ -115,7 +114,7 @@ class Advert {
             final id = item['id']?.toString() ?? '';
             if (id.isNotEmpty) {
               // Сохраняем атрибут с его ID как ключ
-              characteristics![id] = {
+              characteristics[id] = {
                 'id': item['id'],
                 'title': item['title'] ?? '',
                 'value': item['value'],
@@ -148,8 +147,8 @@ class Advert {
       print('   ⚠️ NO attributes found in JSON');
     }
 
-    if (characteristics != null && characteristics!.isNotEmpty) {
-      print('   ✅ Parsed characteristics: ${characteristics!.keys.toList()}');
+    if (characteristics != null && characteristics.isNotEmpty) {
+      print('   ✅ Parsed characteristics: ${characteristics.keys.toList()}');
     }
 
     return Advert(

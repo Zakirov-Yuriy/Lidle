@@ -60,7 +60,6 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   // Пагинация
   int _currentPage = 1;
   int _totalPages = 1;
-  int _itemsPerPage = 20;
 
   late final ScrollController _scrollController;
 
@@ -262,7 +261,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           // Если даты одинаковые, сортируем ПО ЦЕНЕ
           if (dateComparison == 0 &&
               sortByPrice != null &&
-              sortByPrice!.isNotEmpty) {
+              sortByPrice.isNotEmpty) {
             final priceA = double.tryParse(a.price) ?? 0;
             final priceB = double.tryParse(b.price) ?? 0;
 
@@ -277,7 +276,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         });
 
         print('🔀 AFTER sorting: ${sortedNewListings.length} listings');
-      } else if (sortByPrice != null && sortByPrice!.isNotEmpty) {
+      } else if (sortByPrice != null && sortByPrice.isNotEmpty) {
         // Если выбрана только сортировка ПО ЦЕНЕ (без даты)
         print('🔀 CLIENT-SIDE SORTING: Price only=$sortByPrice');
         print('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
@@ -307,9 +306,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           _listings = fullListings;
         }
 
-        _currentPage = response.meta?.currentPage ?? 1;
-        _totalPages = response.meta?.lastPage ?? 1;
-        _itemsPerPage = response.meta?.perPage ?? 20;
+        _currentPage = response.meta.currentPage;
+        _totalPages = response.meta.lastPage;
 
         _isLoading = false;
         _isLoadingMore = false;
@@ -940,13 +938,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       valueSelectedMap.forEach((k, v) {
         print('   ├─ Key=$k, Value=$v (type=${v.runtimeType})');
         if (v is Map) {
-          print('   │  └─ Map keys: ${(v as Map).keys.toList()}');
-          (v as Map).forEach((mk, mv) {
+          print('   │  └─ Map keys: ${v.keys.toList()}');
+          v.forEach((mk, mv) {
             print('   │     ├─ $mk: $mv');
           });
         } else if (v is List) {
-          print('   │  └─ List length: ${(v as List).length}');
-          (v as List).forEach((item) {
+          print('   │  └─ List length: ${v.length}');
+          v.forEach((item) {
             print('   │     ├─ $item (type=${item.runtimeType})');
           });
         }
@@ -1029,11 +1027,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     for (int i = 0; i < listings.length && i < 5; i++) {
       final listing = listings[i];
       print('\n   📌 Объявление ID=${listing.id}:');
-      if (listing.characteristics == null || listing.characteristics!.isEmpty) {
+      if (listing.characteristics.isEmpty) {
         print('      ⚠️ БЕЗ ХАРАКТЕРИСТИК!');
       } else {
-        print('      Всего своиств: ${listing.characteristics!.length}');
-        listing.characteristics!.forEach((attrId, value) {
+        print('      Всего своиств: ${listing.characteristics.length}');
+        listing.characteristics.forEach((attrId, value) {
           print('      ├─ Атрибут $attrId: $value');
         });
       }
@@ -1047,7 +1045,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final selectedValueIds = filterEntry.value;
 
         // Получаем значение из characteristics
-        final characteristic = listing.characteristics?[attrIdStr];
+        final characteristic = listing.characteristics[attrIdStr];
 
         // DEBUG для этого конкретного объявления
         if (listing.id == 104 || listing.id == 103) {
@@ -1199,7 +1197,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final filterValue = filterEntry.value;
 
         // Получаем значение из characteristics
-        final characteristic = listing.characteristics?[attrIdStr];
+        final characteristic = listing.characteristics[attrIdStr];
 
         // 🔴 ВАЖНО: Если нет характеристики - ИСКЛЮЧАЕМ объявление
         // Если фильтр активен для диапазона, объавления ДОЛЖНЫ иметь это значение
@@ -1301,7 +1299,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final expectedValue = filterEntry.value;
 
         // Получаем значение из characteristics
-        final characteristic = listing.characteristics?[attrIdStr];
+        final characteristic = listing.characteristics[attrIdStr];
 
         if (characteristic == null) {
           continue;
@@ -1343,53 +1341,6 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     return filtered;
   }
 
-  /// ═══════════════════════════════════════════════════════════════════════════
-  /// ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ПАРСИРОВАНИЯ
-  /// ═══════════════════════════════════════════════════════════════════════════
-
-  /// Извлекает значение из различных форматов характеристик
-  dynamic _extractValue(dynamic value) {
-    if (value == null) return null;
-
-    // Логируем структуру
-    if (value is Map) {
-      print('      EXTRACT: value is Map with keys={${value.keys.toSet()}}');
-      print('      EXTRACT: FULL STRUCTURE: $value'); // 🔥 ВИДИМ ВСЮ СТРУКТУРУ
-
-      // Логируем каждое поле
-      value.forEach((k, v) {
-        print('         ├─ $k: $v (type=${v.runtimeType})');
-      });
-
-      // 🔑 ПРИОРИТЕТ 1: 'value_id' - ID значения в других форматах
-      if (value.containsKey('value_id')) {
-        print(
-          '      EXTRACT: found value_id=${value['value_id']} <- USING THIS',
-        );
-        return value['value_id'];
-      }
-      // 🔑 ПРИОРИТЕТ 2: 'value' - название значения (например, "Река")
-      if (value.containsKey('value')) {
-        print('      EXTRACT: found value=${value['value']} <- USING THIS');
-        return value['value'];
-      }
-      // 🔑 ПРИОРИТЕТ 3: 'id' - может быть ID значения в других случаях
-      if (value.containsKey('id')) {
-        print('      EXTRACT: found id=${value['id']}');
-        return value['id'];
-      }
-      // 🔑 ПРИОРИТЕТ 4: 'title' - название атрибута
-      if (value.containsKey('title')) {
-        print('      EXTRACT: found title=${value['title']}');
-        return value['title'];
-      }
-      // Иначе возвращаем весь объект
-      print('      EXTRACT: returning full object');
-      return value;
-    }
-    return value;
-  }
-
   /// Нормализует значение в Set<String> для сравнения
   /// Приводит всё (ID, названия, числа) к строковому формату
   Set<String> _normalizeToSet(dynamic value) {
@@ -1412,7 +1363,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
     // Если это List - конвертируем все элементы в String
     if (value is List) {
-      final result = (value as List)
+      final result = value
           .map((e) {
             if (e == null) return '';
             return e.toString();

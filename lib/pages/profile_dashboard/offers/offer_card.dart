@@ -7,7 +7,11 @@ import 'package:lidle/pages/profile_dashboard/offers/price_offers_list_page.dart
 class OfferCard extends StatelessWidget {
   final Offer offer;
 
-  const OfferCard({super.key, required this.offer});
+  /// Каллбэк: вызывается когда все предложения по этому объявлению обработаны,
+  /// чтобы родительский экран мог обновить список
+  final VoidCallback? onRefreshNeeded;
+
+  const OfferCard({super.key, required this.offer, this.onRefreshNeeded});
 
   @override
   Widget build(BuildContext context) {
@@ -149,11 +153,15 @@ class OfferCard extends StatelessWidget {
           GestureDetector(
             onTap: () async {
               if (isOfferToMe) {
-                Navigator.pushNamed(
+                // Ожидаем результат: true = все предложения обработаны
+                final result = await Navigator.pushNamed(
                   context,
                   PriceOffersListPage.routeName,
                   arguments: offer,
                 );
+                if (result == true) {
+                  onRefreshNeeded?.call();
+                }
               } else {
                 final result = await Navigator.pushNamed(
                   context,
