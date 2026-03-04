@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'listings_event.dart';
 import 'listings_state.dart';
@@ -158,7 +159,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         !event.forceRefresh &&
         state is ListingsLoaded &&
         state is! ListingsError) {
-      // print('🔄 ListingsBloc: Используем кеш в памяти (уже загружено)');
       return;
     }
 
@@ -168,7 +168,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       if (cachedListings != null &&
           cachedListings.containsKey('listings') &&
           cachedListings.containsKey('categories')) {
-        // print('✅ ListingsBloc: Восстановили из кеша Hive');
         try {
           // Каст JSON обратно в объекты
           final listings = (cachedListings['listings'] as List)
@@ -190,7 +189,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           _isInitialLoadComplete = true;
           return;
         } catch (e) {
-          // print('❌ ListingsBloc: Ошибка при восстановлении из кеша: $e');
+          // Игнорируем ошибку кеша и загружаем заново
         }
       }
     }
@@ -202,7 +201,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // Загружаем каталоги (категории) из API
       final catalogsResponse = await ApiService.getCatalogs(token: token);
-      // print();
 
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
@@ -220,122 +218,90 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Получаем все catalogId
       final catalogIds = catalogsResponse.data.map((c) => c.id).toList();
       final List<home.Listing> allListings = [];
-      int currentPage = 1;
       int totalPages = 1;
       int itemsPerPage = 20;
 
-      // 🚀 ПАРАЛЛЕЛЬНАЯ загрузка ПЕРВЫХ 3 СТРАНИЦ: все запросы выполняются одновременно!
-      // print();
+      // ✅ ОПТИМИЗАЦИЯ: Загружаем только ПЕРВУЮ СТРАНИЦУ (20 объявлений) вместо 3 страниц
+      // и применяем THROTTLING - максимум 3 одновременных запроса, а не все сразу!
+      // Это снижает нагрузку на сеть и UI поток без блокировки основного потока.
 
-      final advertsFutures = <Future<Map<String, dynamic>>>[];
+      const int maxConcurrentRequests = 3; // Ограничиваем одновременные запросы
+      const int advertsLimit = 20; // Загружаем только первую страницу
 
-      // Для каждого каталога загружаем первые 3 страницы параллельно
-      for (final catalogId in catalogIds) {
-        advertsFutures.add(
-          Future.wait([
-                ApiService.getAdverts(
-                  catalogId: catalogId,
-                  token: token,
-                  page: 1,
-                  limit: 50,
-                ),
-                ApiService.getAdverts(
-                  catalogId: catalogId,
-                  token: token,
-                  page: 2,
-                  limit: 50,
-                ),
-                ApiService.getAdverts(
-                  catalogId: catalogId,
-                  token: token,
-                  page: 3,
-                  limit: 50,
-                ),
-              ])
-              .then((pageResponses) {
-                final catalogListings = <home.Listing>[];
-                late AdvertsResponse lastResponse;
-
-                for (final response in pageResponses) {
-                  catalogListings.addAll(
-                    response.data.map((advert) {
-                      // print();
-                      return advert.toListing();
-                    }).toList(),
-                  );
-                  lastResponse = response;
-                }
-
-                return {
-                  'listings': catalogListings,
-                  'lastPage': lastResponse.meta.lastPage,
-                  'perPage': lastResponse.meta.perPage,
-                };
-              })
-              .catchError((e) {
-                // print();
-                return {
-                  'listings': <home.Listing>[],
-                  'lastPage': 1,
-                  'perPage': 20,
-                };
-              }),
+      // Загружаем объявления с throttling
+      for (int i = 0; i < catalogIds.length; i += maxConcurrentRequests) {
+        final batch = catalogIds.sublist(
+          i,
+          (i + maxConcurrentRequests).clamp(0, catalogIds.length),
         );
+
+        // Загружаем batch из двух-трех каталогов параллельно
+        final batchFutures = batch
+            .map(
+              (catalogId) => ApiService.getAdverts(
+                catalogId: catalogId,
+                token: token,
+                page: 1,
+                limit: advertsLimit,
+              ),
+            )
+            .toList();
+
+        final batchResponses = await Future.wait(batchFutures);
+
+        // 🔥 ОПТИМИЗАЦИЯ: Парсинг на ФОНОВОМ потоке через compute()
+        // Это предотвращает блокировку UI при обработке JSON
+        for (final response in batchResponses) {
+          if (response.data.isNotEmpty) {
+            // Парсим объявления в фоне
+            final parsedListings = await compute(
+              _parseAdvertsOnBackgroundThread,
+              response.data,
+            );
+            allListings.addAll(parsedListings);
+
+            // Обновляем информацию пагинации
+            totalPages = response.meta.lastPage;
+            itemsPerPage = response.meta.perPage;
+          }
+        }
       }
-
-      // Ждём все запросы одновременно
-      final allAdvertsResponses = await Future.wait(advertsFutures);
-      // print();
-
-      // Объединяем результаты всех каталогов
-      for (final response in allAdvertsResponses) {
-        final listings = response['listings'] as List<home.Listing>;
-        allListings.addAll(listings);
-
-        // Сохраняем информацию пагинации из ответа
-        totalPages = response['lastPage'] ?? 1;
-        itemsPerPage = response['perPage'] ?? 20;
-      }
-
-      // Устанавливаем текущую страницу на 3 (так как загружали 3 страницы)
-      currentPage = 3;
-
-      // print();
-      // print();
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(allListings);
 
       // 💾 Сохраняем в унифицированный кеш (L1 + L2 Hive, TTL 5 мин)
-      final cacheData = <String, dynamic>{
-        'listings': sortedListings.map(_listingToJson).toList(),
-        'categories': loadedCategories.map(_categoryToJson).toList(),
-        'currentPage': currentPage,
-        'totalPages': totalPages,
-        'itemsPerPage': itemsPerPage,
-      };
-      AppCacheService().set<Map<String, dynamic>>(
-        CacheKeys.listingsData,
-        cacheData,
-        persist: true,
-      );
+      try {
+        final cacheData = <String, dynamic>{
+          'listings': sortedListings.map(_listingToJson).toList(),
+          'categories': loadedCategories.map(_categoryToJson).toList(),
+          'currentPage': 1,
+          'totalPages': totalPages,
+          'itemsPerPage': itemsPerPage,
+        };
+        AppCacheService().set<Map<String, dynamic>>(
+          CacheKeys.listingsData,
+          cacheData,
+          persist: true,
+        );
+      } catch (cacheError) {
+        // Игнорируем ошибки кеширования - они не критичны для функционала
+        print('⚠️  Warning: Failed to cache listings: $cacheError');
+      }
 
       // ✅ Отмечаем, что первоначальная загрузка завершена
       _isInitialLoadComplete = true;
-
-      // print();
 
       emit(
         ListingsLoaded(
           listings: sortedListings,
           categories: loadedCategories,
-          currentPage: currentPage,
+          currentPage: 1,
           totalPages: totalPages,
           itemsPerPage: itemsPerPage,
         ),
       );
     } catch (e) {
-      // print('❌ Error loading listings: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -758,4 +724,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       isCatalog: json['isCatalog'] ?? true,
     );
   }
+}
+
+/// Функция для фонового парсинга объявлений на отдельном потоке.
+/// Это предотвращает блокировку UI при обработке больших объемов JSON.
+///
+/// Используется с compute() для выполнения на изолированном потоке.
+List<home.Listing> _parseAdvertsOnBackgroundThread(List<Advert> adverts) {
+  return adverts.map((advert) => advert.toListing()).toList();
 }

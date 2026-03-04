@@ -143,74 +143,21 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         token: token,
       );
 
-      // 🟡 FALLBACK: Если API вернул 0 результатов с фильтром - загружаем ВСЕ
-      // затем применяем фильтры на клиенте (гибридный approach)
+      // ✅ ОПТИМИЗАЦИЯ: Убрали fallback загрузку 100 объявлений!
+      // Если API вернул 0 результатов - просто показываем это пользователю.
+      // Это предотвращает загрузку огромного количества данных и блокировку UI.
+
+      // Если есть примененные фильтры и нет результатов, предлагаем очистить фильтры
       if (response.data.isEmpty && _appliedFilters.isNotEmpty && !isNextPage) {
-        print('\n⚠️  FALLBACK TRIGGERED: API returned 0 results with filters');
-        print('📥 Fetching ALL listings without API filters...\n');
-
-        response = await ApiService.getAdverts(
-          categoryId: widget.categoryId,
-          catalogId: widget.catalogId,
-          sort: sort,
-          filters: null, // БЕЗ фильтров!
-          page: 1,
-          limit: 100, // Загружаем больше для лучшего выбора на клиенте
-          token: token,
-        );
-
         print(
-          '📊 Fallback Response: ${response.data.length} объявлений загружено БЕЗ фильтров',
+          'ℹ️  No results with applied filters. User should adjust filters.',
         );
-        print('   Будет применена КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ\n');
-
-        // 🔥 ЗАГРУЖАЕМ АТРИБУТЫ для клиентской фильтрации
-        print('📥 Loading attributes for each listing to enable filtering...');
-        if (response.data.isNotEmpty) {
-          final advertIds = response.data.map((advert) => advert.id).toList();
-
-          try {
-            // Загружаем атрибуты пакетами
-            final advertsWithAttributes =
-                await ApiService.getAdvertsWithAttributes(
-                  advertIds,
-                  token: token,
-                );
-
-            print(
-              '✅ Loaded attributes for ${advertsWithAttributes.length} adverts\n',
-            );
-
-            // Заменяем объявления на версии с атрибутами
-            for (int i = 0; i < response.data.length; i++) {
-              final advert = response.data[i];
-              if (advertsWithAttributes.containsKey(advert.id)) {
-                response.data[i] = advertsWithAttributes[advert.id]!;
-              }
-            }
-          } catch (e) {
-            print('⚠️  Failed to load attributes: $e');
-            // Продолжаем без атрибутов
-          }
-        }
       }
 
       // 🔍 КЛИЕНТСКАЯ ФИЛЬТРАЦИЯ
-      // Применяем фильтры локально, если понадобилось
-      // Сначала конвертируем Advert в Listing
+      // Преобразуем Advert в Listing
       final listingsToFilter = response.data.map((advert) {
-        final listing = advert.toListing();
-        // DEBUG: Логируем характеристики
-        if (listing.characteristics.isEmpty) {
-          print(
-            '⚠️  Listing #${listing.id}: NO characteristics (will be skipped in filtering)',
-          );
-        } else {
-          print(
-            '✅ Listing #${listing.id}: ${listing.characteristics.length} characteristics - ${listing.characteristics.keys.toList()}',
-          );
-        }
-        return listing;
+        return advert.toListing();
       }).toList();
 
       var sortedNewListings = _applyClientSideFiltering(
