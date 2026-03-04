@@ -89,6 +89,10 @@ class PriceOfferItem {
   /// а не на экран «Принять / Отклонить».
   final bool isAccepted;
 
+  /// true если предложение отклонено (statusId == 3).
+  /// Используется для отображения красного badge в списке.
+  final bool isRejected;
+
   PriceOfferItem({
     required this.name,
     required this.subtitle,
@@ -102,5 +106,6 @@ class PriceOfferItem {
     this.listingImage,
     this.message,
     this.isAccepted = false,
+    this.isRejected = false,
   });
 }

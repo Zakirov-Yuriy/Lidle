@@ -25,14 +25,14 @@ class CustomCheckbox extends StatelessWidget {
         height: 22,
         decoration: BoxDecoration(
           border: Border.all(color: Colors.white54, width: 2),
-          borderRadius: BorderRadius.zero, // Идеально квадратные углы
+          borderRadius: BorderRadius.circular(5), // Скруглённые углы
         ),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.all(2),
+          margin: const EdgeInsets.all(2.5),
           decoration: BoxDecoration(
             color: value ? const Color(0xFF0EA5E9) : Colors.transparent,
-            borderRadius: BorderRadius.zero, // Идеально квадратные углы
+            borderRadius: BorderRadius.circular(2), // Слегка скруглённые углы
           ),
         ),
       ),

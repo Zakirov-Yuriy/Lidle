@@ -5,6 +5,7 @@ import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/profile_dashboard/offers/offer_card.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
@@ -32,6 +33,14 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   List<Offer> _myOffers = [];
   List<Offer> _offersToMe = [];
 
+  /// Состояние для режима выделения (selection mode)
+  /// Отдельные списки для каждой вкладки
+  late List<bool> itemCheckedMyOffers;
+  late List<bool> itemCheckedOffersToMe;
+  bool selectAllCheckedMyOffers = false;
+  bool selectAllCheckedOffersToMe = false;
+  bool isSelectionMode = false;
+
   /// ИД объявлений (Предложения мне), все предложения по которым уже обработаны.
   /// Static — сохраняется на всю сессию приложения, не сбрасывается при
   /// перестроении виджета или переходе назад/вперёд.
@@ -46,6 +55,8 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    itemCheckedMyOffers = [];
+    itemCheckedOffersToMe = [];
     _loadMyOffers();
     // 📌 Также загружаем предложения мне при инициализации
     _loadOffersToMe();
@@ -96,6 +107,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
             print('🔄 Parsing offer: ${data['id']} - ${data['message']}');
             return _parseOfferFromApi(data);
           }).toList();
+          itemCheckedMyOffers = List<bool>.filled(_myOffers.length, false);
           print('✅ Successfully parsed ${_myOffers.length} offers');
           _isLoadingMyOffers = false;
         });
@@ -220,47 +232,32 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         }),
       );
 
-      // Оставляем только объявления где count > 0 (или -1 при ошибке).
-      // count > 0 означает: есть хотя бы одно новое (pending) или принятое предложение.
-      // Если остались только отклонённые или вообще нет предложений — скрываем.
-      final listingsWithNewOffers = prefetchResults
-          .where((entry) => entry.value['count'] != 0)
-          .map((entry) {
-            final count = entry.value['count'] as int;
-            final allAccepted = entry.value['allAccepted'] as bool;
-            // -1 = ошибка, оставляем оригинальный счётчик и флаг false
-            if (count == -1) return entry.key;
-            // Обновляем точным количеством актуальных предложений + флаг allOffersAccepted
-            return entry.key.copyWith(
-              offeredPricesCount: count,
-              allOffersAccepted: allAccepted,
-            );
-          })
-          .toList();
-
-      // Те у которых нет актуальных (только отклонённые / пустые) — помечаем как обработанные.
-      // Те у которых есть новые или принятые — убираем из blacklist.
-      for (final entry in prefetchResults) {
-        final id = entry.key.advertisementId ?? entry.key.id;
-        if (id == null) continue;
-
+      // ✅ НОВАЯ ЛОГИКА: Показываем ВСЕ объявления, включая отклонённые
+      // count == 0 означает: все предложения отклонены или нет предложений → показываем 0
+      // count > 0 означает: есть новые (pending) или принятые (accepted) предложения → показываем счёт
+      // count == -1 означает: ошибка загрузки → оставляем оригинальный счётчик
+      final listingsWithNewOffers = prefetchResults.map((entry) {
         final count = entry.value['count'] as int;
-        if (count == 0) {
-          // Нет актуальных предложений → скрываем
-          _handledAdvertIds.add(id);
-          print('   🗑️ Marked advert $id as handled (no relevant offers)');
-        } else {
-          // Есть актуальные (new/accepted) или ошибка → убираем из blacklist
-          _handledAdvertIds.remove(id);
-          print(
-            '   ✅ Advert $id has $count relevant offers — removed from blacklist',
-          );
-        }
-      }
+        final allAccepted = entry.value['allAccepted'] as bool;
+        // -1 = ошибка, оставляем оригинальный счётчик и флаг false
+        if (count == -1) return entry.key;
+        // Обновляем точным количеством актуальных предложений (включая 0)
+        // + флаг allOffersAccepted
+        return entry.key.copyWith(
+          offeredPricesCount: count,
+          allOffersAccepted: allAccepted,
+        );
+      }).toList();
+
+      // ✅ Никогда не скрываем объявления — показываем все
+      // (раньше мы добавляли в blacklist объявления где count == 0,
+      // теперь просто показываем их со счётчиком 0)
+      _handledAdvertIds.clear();
 
       if (mounted) {
         setState(() {
           _offersToMe = listingsWithNewOffers;
+          itemCheckedOffersToMe = List<bool>.filled(_offersToMe.length, false);
           print(
             '✅ Successfully loaded ${_offersToMe.length} listings with new offers',
           );
@@ -377,19 +374,110 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
     }
   }
 
+  // ─────────────────────────────────────────────────────
+  // Selection Mode Methods
+  // ─────────────────────────────────────────────────────
+
+  void _toggleSelectAll() {
+    setState(() {
+      if (isMyOffersSelected) {
+        selectAllCheckedMyOffers = !selectAllCheckedMyOffers;
+        for (int i = 0; i < itemCheckedMyOffers.length; i++) {
+          itemCheckedMyOffers[i] = selectAllCheckedMyOffers;
+        }
+        // Exit selection mode if deselecting all
+        if (!selectAllCheckedMyOffers) {
+          isSelectionMode = false;
+        }
+      } else {
+        selectAllCheckedOffersToMe = !selectAllCheckedOffersToMe;
+        for (int i = 0; i < itemCheckedOffersToMe.length; i++) {
+          itemCheckedOffersToMe[i] = selectAllCheckedOffersToMe;
+        }
+        // Exit selection mode if deselecting all
+        if (!selectAllCheckedOffersToMe) {
+          isSelectionMode = false;
+        }
+      }
+    });
+  }
+
+  void _toggleItem(int index) {
+    setState(() {
+      if (isMyOffersSelected) {
+        itemCheckedMyOffers[index] = !itemCheckedMyOffers[index];
+        selectAllCheckedMyOffers = itemCheckedMyOffers.every(
+          (checked) => checked,
+        );
+        // Exit selection mode if no items are checked
+        if (!itemCheckedMyOffers.any((checked) => checked)) {
+          isSelectionMode = false;
+        }
+      } else {
+        itemCheckedOffersToMe[index] = !itemCheckedOffersToMe[index];
+        selectAllCheckedOffersToMe = itemCheckedOffersToMe.every(
+          (checked) => checked,
+        );
+        // Exit selection mode if no items are checked
+        if (!itemCheckedOffersToMe.any((checked) => checked)) {
+          isSelectionMode = false;
+        }
+      }
+    });
+  }
+
+  void _deleteSelected() {
+    setState(() {
+      if (isMyOffersSelected) {
+        for (int i = _myOffers.length - 1; i >= 0; i--) {
+          if (itemCheckedMyOffers[i]) {
+            _myOffers.removeAt(i);
+            itemCheckedMyOffers.removeAt(i);
+          }
+        }
+        selectAllCheckedMyOffers = false;
+      } else {
+        for (int i = _offersToMe.length - 1; i >= 0; i--) {
+          if (itemCheckedOffersToMe[i]) {
+            _offersToMe.removeAt(i);
+            itemCheckedOffersToMe.removeAt(i);
+          }
+        }
+        selectAllCheckedOffersToMe = false;
+      }
+      isSelectionMode = false;
+    });
+  }
+
+  void _enterSelectionMode() {
+    setState(() {
+      isSelectionMode = true;
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      itemCheckedMyOffers = List<bool>.filled(
+        itemCheckedMyOffers.length,
+        false,
+      );
+      itemCheckedOffersToMe = List<bool>.filled(
+        itemCheckedOffersToMe.length,
+        false,
+      );
+      selectAllCheckedMyOffers = false;
+      selectAllCheckedOffersToMe = false;
+      isSelectionMode = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Для "Мои предложения" показываем ВСЕ предложения без фильтра —
-    // пользователь видит свои предложения в любом статусе (pending/accepted/rejected).
-    // Для "Предложения мне" фильтруем: скрываем объявления где нет ни новых,
-    // ни принятых предложений (_handledAdvertIds = blacklist таких объявлений).
-    final offersToDisplay = isMyOffersSelected
-        ? _myOffers
-        : _offersToMe
-              .where(
-                (o) => !_handledAdvertIds.contains(o.advertisementId ?? o.id),
-              )
-              .toList();
+    // Для обеих вкладок показываем ВСЕ объявления без фильтра.
+    // "Мои предложения": показываем все предложения в любом статусе (pending/accepted/rejected).
+    // "Предложения мне": теперь также показываем все объявления (включая отклонённые
+    // и те, где нет актуальных предложений, но со счётчиком 0).
+    final offersToDisplay = isMyOffersSelected ? _myOffers : _offersToMe;
     final isLoading = isMyOffersSelected
         ? _isLoadingMyOffers
         : _isLoadingOffersToMe;
@@ -449,7 +537,11 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                         const Spacer(),
                         TextButton(
                           onPressed: () {
-                            Navigator.pop(context);
+                            if (isSelectionMode) {
+                              _exitSelectionMode();
+                            } else {
+                              Navigator.pop(context);
+                            }
                           },
                           child: const Text(
                             'Отмена',
@@ -535,6 +627,56 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                       ],
                     ),
                   ),
+
+                  // ───── Select all / Delete ─────
+                  if (isSelectionMode)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 25,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          CustomCheckbox(
+                            value: isMyOffersSelected
+                                ? selectAllCheckedMyOffers
+                                : selectAllCheckedOffersToMe,
+                            onChanged: (value) => _toggleSelectAll(),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Выбрать все',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap:
+                                (isMyOffersSelected
+                                        ? itemCheckedMyOffers
+                                        : itemCheckedOffersToMe)
+                                    .contains(true)
+                                ? _deleteSelected
+                                : null,
+                            child: Text(
+                              'Удалить',
+                              style: TextStyle(
+                                color:
+                                    (isMyOffersSelected
+                                            ? itemCheckedMyOffers
+                                            : itemCheckedOffersToMe)
+                                        .contains(true)
+                                    ? const Color(0xFFFF3B30)
+                                    : Colors.white38,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // if (isSelectionMode) const SizedBox(height: 12),
+                  if (isSelectionMode)
+                    const Divider(color: Colors.white24, height: 0),
 
                   Expanded(
                     child: isLoading
@@ -622,8 +764,20 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                             itemCount: offersToDisplay.length,
                             itemBuilder: (context, index) {
                               final offerItem = offersToDisplay[index];
+                              final isChecked = isMyOffersSelected
+                                  ? itemCheckedMyOffers[index]
+                                  : itemCheckedOffersToMe[index];
                               return OfferCard(
                                 offer: offerItem,
+                                isChecked: isChecked,
+                                isSelectionMode: isSelectionMode,
+                                onChanged: () => _toggleItem(index),
+                                onLongPress: () {
+                                  if (!isSelectionMode) {
+                                    _enterSelectionMode();
+                                    _toggleItem(index);
+                                  }
+                                },
                                 // При обработке всех предложений по этому объявлению:
                                 // 1. запоминаем его ID — чтобы не показывать снова
                                 // 2. перезагружаем список чтобы бэкенд обновил данные

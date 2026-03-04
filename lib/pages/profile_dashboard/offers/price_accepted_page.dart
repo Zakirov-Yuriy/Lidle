@@ -425,16 +425,16 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                               ),
                             ),
                             const Spacer(),
-                            GestureDetector(
-                              onTap: _showEditDialog,
-                              child: const Text(
-                                'Изменить',
-                                style: TextStyle(
-                                  color: accentColor,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
+                            // GestureDetector(
+                            //   onTap: _showEditDialog,
+                            //   child: const Text(
+                            //     'Изменить',
+                            //     style: TextStyle(
+                            //       color: accentColor,
+                            //       fontSize: 16,
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ),

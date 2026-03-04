@@ -13,6 +13,12 @@ import '../../pages/messages/messages_page.dart'; // Import MessagesPage
 /// Bloc для управления состоянием навигации.
 /// Обрабатывает события навигации и управляет переходами между страницами.
 class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
+  /// Текущий выбранный индекс в BottomNavigation
+  int _currentNavigationIndex = 0;
+
+  /// Сохраняет текущий индекс в качестве предыдущего перед изменением
+  int _previousNavigationIndex = 0;
+
   /// Конструктор NavigationBloc.
   /// Инициализирует Bloc с начальным состоянием NavigationInitial.
   NavigationBloc() : super(const NavigationInitial()) {
@@ -27,6 +33,12 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToMessagesEvent>(_onNavigateToMessages);
     on<SelectNavigationIndexEvent>(_onSelectNavigationIndex);
   }
+
+  /// Возвращает текущий индекс навигации
+  int get currentNavigationIndex => _currentNavigationIndex;
+
+  /// Возвращает предыдущий индекс навигации
+  int get previousNavigationIndex => _previousNavigationIndex;
 
   /// Обработчик события изменения индекса навигации.
   /// Изменяет выбранный индекс навигации.
@@ -107,6 +119,10 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     SelectNavigationIndexEvent event,
     Emitter<NavigationState> emit,
   ) async {
+    // Сохраняем предыдущий индекс перед изменением
+    _previousNavigationIndex = _currentNavigationIndex;
+    _currentNavigationIndex = event.index;
+
     // Индексы: 0 - Домой, 1 - Избранное, 2 - Добавить, 3 - Мои покупки, 4 - Сообщения, 5 - Профиль
     if (event.index == 0) {
       // Домой всегда доступен

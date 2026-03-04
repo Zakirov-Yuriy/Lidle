@@ -76,13 +76,20 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       if (offersData.isNotEmpty) {
         final parsed = _parseOffers(offersData);
         if (mounted) {
-          // ✅ Если все предложения принят (statusId == 2) и нет ожидающих —
+          // ✅ Если все предложения приняты (statusId == 2) и нет ожидающих —
           // сразу переходим на экран покупателя, минуя список предложений.
           // PriceOffersListPage убирается из стека, чтобы Back вернул
           // пользователя на PriceOffersEmptyPage, а не на список.
-          if (parsed.isNotEmpty && parsed.every((item) => item.isAccepted)) {
+          final activeOffers = parsed
+              .where((item) => !item.isRejected)
+              .toList();
+          final allRemainingSold =
+              activeOffers.isNotEmpty &&
+              activeOffers.every((item) => item.isAccepted);
+
+          if (allRemainingSold) {
             print(
-              '⚡ All offers for advert ${widget.offer.advertisementId} are accepted '
+              '⚡ All active offers for advert ${widget.offer.advertisementId} are accepted '
               '— redirecting directly to /user-account',
             );
             setState(() {
@@ -95,7 +102,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                   (route) =>
                       route.settings.name == PriceOffersEmptyPage.routeName ||
                       route.isFirst,
-                  arguments: parsed.first,
+                  arguments: activeOffers.first,
                 );
               }
             });
@@ -108,14 +115,11 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
             _isLoading = false;
           });
 
-          // ✅ Если все предложения отклонены (бэкенд вернул данные,
-          // но _parseOffers отфильтровал все — остались только rejected / пустой список) —
-          // автоматически возвращаемся на предыдущий экран с result=true
-          // чтобы offer_card скрыл это объявление из списка.
+          // ✅ Если нет никаких предложений вообще — возвращаемся
           if (parsed.isEmpty) {
             print(
-              '⚡ All offers for advert ${widget.offer.advertisementId} are processed '
-              '(non-new status) — auto-popping with result=true',
+              '⚡ No offers returned for advert ${widget.offer.advertisementId} '
+              '— auto-popping with result=true',
             );
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) Navigator.of(context).pop(true);
@@ -152,22 +156,19 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   }
 
   /// Преобразует API ответ в объекты PriceOfferItem.
-  /// Показываем только предложения со статусом «Новый» (id == 1),
-  /// уже принятые/отклонённые скрываем.
+  /// Показываем все предложения независимо от статуса:
+  /// - statusId == 1: новое предложение (жёлтый badge)
+  /// - statusId == 2: принято (зелёный badge)
+  /// - statusId == 3: отклонено (красный badge)
+  /// - statusId == null: старые записи без статуса (жёлтый badge)
   List<PriceOfferItem> _parseOffers(List<Map<String, dynamic>> offersData) {
-    // Включаем: statusId == null (старые записи), 1 (ожидает), 2 (принято).
-    // statusId == 3 (отклонён) — скрываем из списка.
-    final visibleOffers = offersData.where((offer) {
+    return offersData.map((offer) {
       final statusMap = offer['status'] as Map<String, dynamic>?;
       final statusId = statusMap?['id'] as int?;
-      return statusId == null || statusId == 1 || statusId == 2;
-    }).toList();
 
-    return visibleOffers.map((offer) {
-      final statusMap = offer['status'] as Map<String, dynamic>?;
-      final statusId = statusMap?['id'] as int?;
-      // true если предложение принято (id==2) — тап ведёт на /user-account
+      // Определяем флаги статуса
       final isAccepted = statusId == 2;
+      final isRejected = statusId == 3;
 
       final user = offer['user'] as Map<String, dynamic>? ?? {};
       final model = offer['model'] as Map<String, dynamic>? ?? {};
@@ -181,7 +182,9 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       print('   avatar: $userAvatar');
       print('   created_at: $createdAt');
       print('   price: $price');
+      print('   statusId: $statusId');
       print('   isAccepted: $isAccepted');
+      print('   isRejected: $isRejected');
       print('   listing: ${model['name']} (id: ${model['id']})');
 
       return PriceOfferItem(
@@ -197,6 +200,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         listingImage: model['thumbnail'] as String?,
         message: message,
         isAccepted: isAccepted,
+        isRejected: isRejected,
       );
     }).toList();
   }
@@ -522,6 +526,14 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                                         '/user-account',
                                         arguments: item,
                                       );
+                                    } else if (item.isRejected) {
+                                      // Предложение отклонено — переходим на профиль покупателя,
+                                      // но не показываем экран принятия/отклонения.
+                                      await Navigator.pushNamed(
+                                        context,
+                                        '/user-account',
+                                        arguments: item,
+                                      );
                                     } else {
                                       // Предложение ещё не обработано — экран «Принять / Отклонить»
                                       final result = await Navigator.pushNamed(
@@ -655,20 +667,33 @@ class _OfferItem extends StatelessWidget {
                   ),
 
                   // badge
+                  // 🔴 Красный — отклонено (statusId == 3)
+                  // 🟢 Зелёный — принято (statusId == 2)
+                  // 🟡 Жёлтый — новое или ожидает решения
                   Container(
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(9),
                       border: Border.all(
-                        color: PriceOffersListPage.yellowColor,
+                        color: offerItem.isRejected
+                            ? PriceOffersListPage
+                                  .dangerColor // 🔴 Красный
+                            : offerItem.isAccepted
+                            ? Colors.green[400]! // 🟢 Зелёный
+                            : PriceOffersListPage.yellowColor, // 🟡 Жёлтый
                       ),
                     ),
                     child: Center(
                       child: Text(
                         offerItem.badgeCount,
-                        style: const TextStyle(
-                          color: PriceOffersListPage.yellowColor,
+                        style: TextStyle(
+                          color: offerItem.isRejected
+                              ? PriceOffersListPage
+                                    .dangerColor // 🔴 Красный
+                              : offerItem.isAccepted
+                              ? Colors.green[400]! // 🟢 Зелёный
+                              : PriceOffersListPage.yellowColor, // 🟡 Жёлтый
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),

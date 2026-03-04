@@ -162,7 +162,9 @@ class _MessagesPageState extends State<MessagesPage> {
     for (int i = 0; i < messages.length; i++) {
       selectedMessages[i] = false;
     }
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   static const accentColor = Color(0xFF00B7FF);
@@ -171,8 +173,10 @@ class _MessagesPageState extends State<MessagesPage> {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile ||
-            state is NavigationToHome ||
+        if (!mounted) return;
+        // Обрабатываем навигацию при выборе других пунктов меню
+        if (state is NavigationToHome ||
+            state is NavigationToProfile ||
             state is NavigationToFavorites ||
             state is NavigationToAddListing ||
             state is NavigationToMyPurchases) {
@@ -200,7 +204,12 @@ class _MessagesPageState extends State<MessagesPage> {
                 child: Row(
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () {
+                        // Возвращаемся на предыдущий экран через NavigationBloc
+                        final navBloc = context.read<NavigationBloc>();
+                        final previousIndex = navBloc.previousNavigationIndex;
+                        navBloc.add(SelectNavigationIndexEvent(previousIndex));
+                      },
                       child: Row(
                         children: [
                           const Icon(
