@@ -36,6 +36,13 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  // 💾 Кэш данных офферов: ключ = advertisementId, значение = список офферов
+  static final Map<String, List<PriceOfferItem>> _offersCache = {};
+  static final Map<String, DateTime> _cacheTimestamps = {};
+
+  // Время жизни кэша: 5 минут
+  static const Duration _cacheTTL = Duration(minutes: 5);
+
   @override
   void initState() {
     super.initState();
@@ -43,12 +50,56 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
     _loadOffers();
   }
 
+  /// Возвращает ключ кэша для текущего объявления
+  String _getCacheKey() =>
+      '${widget.offer.advertisementId}_${widget.offer.typeSlug}';
+
+  /// Проверяет, существует ли валидный кэш для текущего объявления
+  bool _isCacheValid() {
+    final cacheKey = _getCacheKey();
+    if (!_offersCache.containsKey(cacheKey)) return false;
+
+    final timestamp = _cacheTimestamps[cacheKey];
+    if (timestamp == null) return false;
+
+    // Проверяем не истек ли кэш
+    final isExpired = DateTime.now().difference(timestamp) > _cacheTTL;
+    if (isExpired) {
+      _offersCache.remove(cacheKey);
+      _cacheTimestamps.remove(cacheKey);
+      return false;
+    }
+
+    return true;
+  }
+
   /// Загружает список предложений для объявления пользователя
-  Future<void> _loadOffers() async {
+  Future<void> _loadOffers({bool forceRefresh = false}) async {
     try {
+      final cacheKey = _getCacheKey();
+
+      // Проверяем кэш (если не принудительное обновление)
+      if (!forceRefresh && _isCacheValid()) {
+        print(
+          '💾 Using cached offers for advert: ${widget.offer.advertisementId}',
+        );
+        if (mounted) {
+          setState(() {
+            items = _offersCache[cacheKey] ?? [];
+            itemChecked = List<bool>.filled(items.length, false);
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       print('📡 Loading offers for advert: ${widget.offer.advertisementId}');
       print('   typeSlug: ${widget.offer.typeSlug}');
       print('   slug: ${widget.offer.slug}');
+
+      if (mounted) {
+        setState(() => _isLoading = true);
+      }
 
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
@@ -74,46 +125,20 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       print('📦 Loaded ${offersData.length} offers');
 
       if (offersData.isNotEmpty) {
-        final parsed = _parseOffers(offersData);
+        final parsed = await _parseOffers(offersData);
         if (mounted) {
-          // ✅ Если все предложения приняты (statusId == 2) и нет ожидающих —
-          // сразу переходим на экран покупателя, минуя список предложений.
-          // PriceOffersListPage убирается из стека, чтобы Back вернул
-          // пользователя на PriceOffersEmptyPage, а не на список.
-          final activeOffers = parsed
-              .where((item) => !item.isRejected)
-              .toList();
-          final allRemainingSold =
-              activeOffers.isNotEmpty &&
-              activeOffers.every((item) => item.isAccepted);
-
-          if (allRemainingSold) {
-            print(
-              '⚡ All active offers for advert ${widget.offer.advertisementId} are accepted '
-              '— redirecting directly to /user-account',
-            );
-            setState(() {
-              _isLoading = false;
-            });
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/user-account',
-                  (route) =>
-                      route.settings.name == PriceOffersEmptyPage.routeName ||
-                      route.isFirst,
-                  arguments: activeOffers.first,
-                );
-              }
-            });
-            return;
-          }
-
           setState(() {
             items = parsed;
             itemChecked = List<bool>.filled(items.length, false);
             _isLoading = false;
           });
+
+          // 💾 Сохраняем в кэш
+          _offersCache[_getCacheKey()] = parsed;
+          _cacheTimestamps[_getCacheKey()] = DateTime.now();
+          print(
+            '💾 Cached ${parsed.length} offers for advert ${widget.offer.advertisementId}',
+          );
 
           // ✅ Если нет никаких предложений вообще — возвращаемся
           if (parsed.isEmpty) {
@@ -156,13 +181,56 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   }
 
   /// Преобразует API ответ в объекты PriceOfferItem.
+  /// Загружает контактную информацию пользователя для получения номера телефона.
   /// Показываем все предложения независимо от статуса:
   /// - statusId == 1: новое предложение (жёлтый badge)
   /// - statusId == 2: принято (зелёный badge)
   /// - statusId == 3: отклонено (красный badge)
   /// - statusId == null: старые записи без статуса (жёлтый badge)
-  List<PriceOfferItem> _parseOffers(List<Map<String, dynamic>> offersData) {
-    return offersData.map((offer) {
+  Future<List<PriceOfferItem>> _parseOffers(
+    List<Map<String, dynamic>> offersData,
+  ) async {
+    print(
+      '🔄 _parseOffers: Starting parallel profile loading for ${offersData.length} offers',
+    );
+    final token = HiveService.getUserData('token') as String?;
+
+    // Собираем все futures для параллельной загрузки профилей
+    final profileFutures =
+        <Future<Map<int, Map<String, dynamic>>>>[]; // userId -> profile data
+
+    for (final offer in offersData) {
+      final user = offer['user'] as Map<String, dynamic>? ?? {};
+      final userId = user['id'] as int?;
+
+      if (userId != null && token != null) {
+        profileFutures.add(
+          ApiService.getUserProfile(
+            userId: userId,
+            token: token,
+          ).then((profile) => {userId: profile}).catchError((e) {
+            print('   ⚠️ Error loading profile for userId $userId: $e');
+            return {userId: {}};
+          }),
+        );
+      }
+    }
+
+    // Загружаем все профили параллельно
+    final profileResults = await Future.wait(profileFutures);
+
+    // Объединяем результаты в одну карту для быстрого доступа
+    final profileCache = <int, Map<String, dynamic>>{};
+    for (final result in profileResults) {
+      profileCache.addAll(result);
+    }
+
+    print('✅ Loaded profiles for ${profileCache.length} users in parallel');
+
+    // Теперь парсим офферы, используя закэшированные профили
+    List<PriceOfferItem> result = [];
+
+    for (final offer in offersData) {
       final statusMap = offer['status'] as Map<String, dynamic>?;
       final statusId = statusMap?['id'] as int?;
 
@@ -176,33 +244,52 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       final price = offer['price'] as String? ?? '0';
       final userAvatar = user['avatar'] as String?;
       final message = offer['message'] as String?;
+      final userId = user['id'] as int?;
 
-      print('🔄 Parsing offer:');
-      print('   user: ${user['name']}');
-      print('   avatar: $userAvatar');
-      print('   created_at: $createdAt');
-      print('   price: $price');
-      print('   statusId: $statusId');
-      print('   isAccepted: $isAccepted');
-      print('   isRejected: $isRejected');
-      print('   listing: ${model['name']} (id: ${model['id']})');
+      // Получаем номер телефона и никнейм пользователя из кэша
+      String? userPhone;
+      String? userNickname;
 
-      return PriceOfferItem(
-        name: user['name'] as String? ?? 'Неизвестный пользователь',
-        subtitle: _formatDate(createdAt),
-        price: _formatPrice(price),
-        badgeCount: '1',
-        avatar: _getAvatarUrl(userAvatar),
-        offerId: offer['id']?.toString(),
-        listingId: model['id']?.toString(),
-        listingTitle: model['name'] as String?,
-        listingPrice: model['price'] as String?,
-        listingImage: model['thumbnail'] as String?,
-        message: message,
-        isAccepted: isAccepted,
-        isRejected: isRejected,
+      if (userId != null && profileCache.containsKey(userId)) {
+        final userProfile = profileCache[userId]!;
+        if (userProfile.isNotEmpty) {
+          final userName = userProfile['name'] as String?;
+          userNickname = userName != null ? '@$userName' : '@user';
+
+          // Номер телефона из контактов
+          final contacts = userProfile['contacts'] as Map<String, dynamic>?;
+          if (contacts != null) {
+            final phones = contacts['phones'] as List?;
+            if (phones != null && phones.isNotEmpty) {
+              final firstPhone = phones[0] as Map<String, dynamic>?;
+              userPhone = firstPhone?['phone'] as String?;
+            }
+          }
+        }
+      }
+
+      result.add(
+        PriceOfferItem(
+          name: user['name'] as String? ?? 'Неизвестный пользователь',
+          subtitle: _formatDate(createdAt),
+          price: _formatPrice(price),
+          badgeCount: '1',
+          avatar: _getAvatarUrl(userAvatar),
+          phone: userPhone,
+          nickname: userNickname,
+          offerId: offer['id']?.toString(),
+          listingId: model['id']?.toString(),
+          listingTitle: model['name'] as String?,
+          listingPrice: model['price'] as String?,
+          listingImage: model['thumbnail'] as String?,
+          message: message,
+          isAccepted: isAccepted,
+          isRejected: isRejected,
+        ),
       );
-    }).toList();
+    }
+
+    return result;
   }
 
   /// Возвращает URL аватара или default avatar если avatar не доступен
@@ -403,6 +490,18 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                       ),
                     ),
                     const Spacer(),
+                    // GestureDetector(
+                    //   onTap: () {
+                    //     print('🔄 Manually refreshing offers cache...');
+                    //     _loadOffers(forceRefresh: true);
+                    //   },
+                    //   child: const Icon(
+                    //     Icons.refresh,
+                    //     color: activeIconColor,
+                    //     size: 20,
+                    //   ),
+                    // ),
+                    const SizedBox(width: 16),
                     TextButton(
                       onPressed: () {
                         if (isSelectionMode) {
@@ -516,38 +615,20 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                                   if (isSelectionMode) {
                                     _toggleItem(index);
                                   } else {
-                                    // Ждём результат: true = предложение отклонено,
-                                    // нужно обновить список
-                                    if (item.isAccepted) {
-                                      // Предложение уже принято — переходим на профиль покупателя.
-                                      // Оставляем PriceOffersListPage в стеке: Back вернёт на список.
-                                      await Navigator.pushNamed(
-                                        context,
-                                        '/user-account',
-                                        arguments: item,
-                                      );
-                                    } else if (item.isRejected) {
-                                      // Предложение отклонено — переходим на профиль покупателя,
-                                      // но не показываем экран принятия/отклонения.
-                                      await Navigator.pushNamed(
-                                        context,
-                                        '/user-account',
-                                        arguments: item,
-                                      );
-                                    } else {
-                                      // Предложение ещё не обработано — экран «Принять / Отклонить»
-                                      final result = await Navigator.pushNamed(
-                                        context,
-                                        IncomingPriceOfferPage.routeName,
-                                        arguments: item,
-                                      );
-                                      if (result == true) {
-                                        // Ждём завершения загрузки перед проверкой
-                                        await _loadOffers();
-                                        // Если нет ни новых, ни принятых — возвращаемся к списку объявлений
-                                        if (mounted && items.isEmpty) {
-                                          Navigator.of(context).pop(true);
-                                        }
+                                    // Всегда показываем экран обработки предложения
+                                    // независимо от статуса (новое, принято или отклонено)
+                                    final result = await Navigator.pushNamed(
+                                      context,
+                                      IncomingPriceOfferPage.routeName,
+                                      arguments: item,
+                                    );
+                                    if (result == true) {
+                                      // Ждём завершения загрузки перед проверкой
+                                      // forceRefresh = true чтобы обновить кэш с новыми данными
+                                      await _loadOffers(forceRefresh: true);
+                                      // Если нет ни новых, ни принятых — возвращаемся к списку объявлений
+                                      if (mounted && items.isEmpty) {
+                                        Navigator.of(context).pop(true);
                                       }
                                     }
                                   }

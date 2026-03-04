@@ -15,8 +15,8 @@ class UserService {
 
       // print('📦 UserService: Ответ от API получен');
       // print('📦 UserService: Тип response: ${response.runtimeType}');
-      // print('📦 UserService: Ключи response: ${response.keys.toList()}');
-      // print('📦 UserService: Полный ответ: ${jsonEncode(response)}');
+      print('📦 UserService: Ключи response: ${response.keys.toList()}');
+      print('📦 UserService: Полный ответ: ${jsonEncode(response)}');
 
       final profileResponse = UserProfileResponse.fromJson(response);
       // print('✅ UserService: Профиль распарсен');
@@ -27,7 +27,12 @@ class UserService {
       }
 
       final profile = profileResponse.data[0];
-      // print();
+      print('👤 UserService.getProfile():');
+      print('   - ID: ${profile.id}');
+      print('   - Name: ${profile.name}');
+      print('   - Email: ${profile.email}');
+      print('   - Phone: ${profile.phone}');
+      print('   - Nickname: ${profile.nickname}');
 
       // DEBUG: Детальное логирование полей
       // print('🔍 DEBUG UserService.getProfile() BEFORE FIX:');

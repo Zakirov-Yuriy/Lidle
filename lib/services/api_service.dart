@@ -2003,4 +2003,45 @@ class ApiService {
       rethrow; // Используем rethrow вместо throw Exception для сохранения stacktrace
     }
   }
+
+  /// 👤 Получить информацию о пользователе по ID
+  /// GET /v1/users/{id}
+  /// Возвращает профиль пользователя с контактной информацией
+  static Future<Map<String, dynamic>> getUserProfile({
+    required int userId,
+    String? token,
+  }) async {
+    try {
+      print('👤 Getting user profile for userId: $userId');
+
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final response = await get('/users/$userId', token: effectiveToken);
+
+      print('📦 getUserProfile() response keys: ${response.keys.toList()}');
+
+      if (response['data'] is List && (response['data'] as List).isNotEmpty) {
+        final userData = (response['data'] as List)[0] as Map<String, dynamic>;
+        print('✅ Got user profile for: ${userData['name']}');
+        print('   Fields: name, created_at, avatar, contacts, qrCode');
+        print(
+          '   ⚠️ NOTE: /users/{id} endpoint does NOT include nickname field',
+        );
+        print('   According to docs/api/users_user_profile_report_adverts.md');
+        print('   Using @name as fallback for display name');
+
+        return userData;
+      }
+
+      print('⚠️ No data in user profile response');
+      return {};
+    } catch (e) {
+      print('❌ Error getting user profile: $e');
+      return {};
+    }
+  }
 }

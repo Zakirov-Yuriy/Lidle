@@ -213,24 +213,15 @@ class OfferCard extends StatelessWidget {
               GestureDetector(
                 onTap: () async {
                   if (isOfferToMe) {
-                    // Если все офферы к этому объявлению уже приняты —
-                    // сразу переходим на /user-account, не показывая список предложений
-                    if (offer.allOffersAccepted) {
-                      await Navigator.pushNamed(
-                        context,
-                        '/user-account',
-                        arguments: offer,
-                      );
-                    } else {
-                      // Есть ожидающие офферы — показываем список для принятия/отклонения
-                      final result = await Navigator.pushNamed(
-                        context,
-                        PriceOffersListPage.routeName,
-                        arguments: offer,
-                      );
-                      if (result == true) {
-                        onRefreshNeeded?.call();
-                      }
+                    // Всегда переходим на список предложений цен,
+                    // независимо от того, приняты ли все офферы
+                    final result = await Navigator.pushNamed(
+                      context,
+                      PriceOffersListPage.routeName,
+                      arguments: offer,
+                    );
+                    if (result == true) {
+                      onRefreshNeeded?.call();
                     }
                   } else {
                     final result = await Navigator.pushNamed(

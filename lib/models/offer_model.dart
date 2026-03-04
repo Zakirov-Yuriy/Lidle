@@ -73,6 +73,8 @@ class PriceOfferItem {
   final String price;
   final String badgeCount;
   final String avatar;
+  final String? phone; // Номер телефона пользователя
+  final String? nickname; // Никнейм пользователя (может начинаться с @)
 
   // ID самого предложения (offer['id']) — нужен для PUT /me/offers/received/{id}
   final String? offerId;
@@ -99,6 +101,8 @@ class PriceOfferItem {
     required this.price,
     required this.badgeCount,
     required this.avatar,
+    this.phone,
+    this.nickname,
     this.offerId,
     this.listingId,
     this.listingTitle,

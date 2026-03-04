@@ -38,78 +38,78 @@ class UserAccountPage extends StatelessWidget {
       child: BlocBuilder<NavigationBloc, NavigationState>(
         builder: (context, navigationState) {
           return Scaffold(
-            // extendBody: true,
+            extendBody: true,
             backgroundColor: backgroundColor,
             body: SafeArea(
-              // bottom: false,
-              child: Column(
-                children: [
-                  // ───── Header ─────
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5, right: 23),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [const Header(), const Spacer()],
+              bottom: false,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    // ───── Header ─────
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5, right: 23),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [const Header(), const Spacer()],
+                      ),
                     ),
-                  ),
 
-                  // ───── Back / Cancel ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            size: 16,
-                          ),
-                        ),
-                        const Text(
-                          'Аккаунт пользователя',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                          },
-                          child: const Text(
-                            'Назад',
-                            style: TextStyle(
-                              color: activeIconColor,
-                              fontSize: 16,
+                    // ───── Back / Cancel ─────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: const Icon(
+                              Icons.arrow_back_ios,
+                              color: Color.fromARGB(255, 255, 255, 255),
+                              size: 16,
                             ),
                           ),
-                        ),
-                      ],
+                          const Text(
+                            'Аккаунт пользователя',
+                            style: TextStyle(
+                              color: Color.fromARGB(255, 255, 255, 255),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            child: const Text(
+                              'Назад',
+                              style: TextStyle(
+                                color: activeIconColor,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
 
-                  // const SizedBox(height: 16),
+                    // const SizedBox(height: 16),
 
-                  // ───── Content ─────
-                  Expanded(
-                    child: SingleChildScrollView(
+                    // ───── Content ─────
+                    Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 25),
                       child: Column(
                         children: [
                           _UserCard(),
                           const SizedBox(height: 16),
                           _OfferCard(),
+                          // ───── Bottom space ─────
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
-                  ),
-
-                  // ───── Bottom space ─────
-                  const SizedBox(height: 16),
-                ],
+                  ],
+                ),
               ),
             ),
             bottomNavigationBar: BottomNavigation(
@@ -158,27 +158,67 @@ class _UserCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Аватар с градиентом
+                // Аватар пользователя
                 Container(
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.blue[600]!, Colors.blue[900]!],
-                    ),
+                    color: Colors.grey[300],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'ВП',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+                  child: ClipOval(
+                    child:
+                        offerItem?.avatar != null &&
+                            offerItem!.avatar.isNotEmpty
+                        ? Image.network(
+                            offerItem!.avatar,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.blue[600]!,
+                                      Colors.blue[900]!,
+                                    ],
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    _getInitials(offerItem?.name ?? 'ВП'),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Colors.blue[600]!, Colors.blue[900]!],
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _getInitials(offerItem?.name ?? 'ВП'),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -225,11 +265,18 @@ class _UserCard extends StatelessWidget {
           ),
 
           // const Divider(color: Colors.white24, height: 1),
-          _InfoRow(label: 'Ник в Lidle', value: 'AndrawP', isLink: true),
-          _InfoRow(label: 'Номер', value: '+7 949 456 78 76'),
-          _InfoRow(label: '', value: '+7 949 456 78 76'),
-          _InfoRow(label: 'Телеграмм', value: '@AndrawP', isLink: true),
-          _InfoRow(label: 'WhatsApp', value: '@AndrawP', isLink: true),
+          _InfoRow(
+            label: 'Ник в Lidle',
+            value: offerItem?.nickname ?? '@user',
+            isLink: true,
+          ),
+          _InfoRow(
+            label: 'Номер',
+            value: offerItem?.phone ?? '+7 000 000 00 00',
+          ),
+          // _InfoRow(label: '', value: '+7 949 456 78 76'),
+          _InfoRow(label: 'Max', value: '@AndrawP', isLink: true),
+          // _InfoRow(label: 'WhatsApp', value: '@AndrawP', isLink: true),
           _InfoRow(label: 'VK', value: '@AndrawP', isLink: true),
 
           const Divider(color: Colors.white24, height: 1),
@@ -255,6 +302,18 @@ class _UserCard extends StatelessWidget {
       ),
     );
   }
+
+  /// Получает инициалы из имени пользователя
+  String _getInitials(String name) {
+    List<String> words = name.split(' ');
+    String initials = '';
+    for (var word in words) {
+      if (word.isNotEmpty) {
+        initials += word[0].toUpperCase();
+      }
+    }
+    return initials.length > 2 ? initials.substring(0, 2) : initials;
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -264,6 +323,10 @@ class _UserCard extends StatelessWidget {
 class _OfferCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final offerItem = context
+        .findAncestorWidgetOfExactType<UserAccountPage>()!
+        .offerItem;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -273,33 +336,33 @@ class _OfferCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
+          Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Предлагаемая цена',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-                  '41 000 000 ₽',
-                  style: TextStyle(
+                  offerItem?.price ?? '0 ₽',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                SizedBox(height: 16),
-                Text(
+                const SizedBox(height: 16),
+                const Text(
                   'Сообщение',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
-                SizedBox(height: 6),
+                const SizedBox(height: 6),
                 Text(
-                  'Готов предложить вам торг, так как вижу много косяков по ремонту',
-                  style: TextStyle(
+                  offerItem?.message ?? 'Нет сообщения',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     height: 1.4,
@@ -308,6 +371,7 @@ class _OfferCard extends StatelessWidget {
               ],
             ),
           ),
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: SizedBox(

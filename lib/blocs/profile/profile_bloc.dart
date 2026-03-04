@@ -106,7 +106,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       // Загружаем свежие данные с API
       // print('📡 Загружаем профиль с API...');
       final profile = await UserService.getProfile(token: token);
-      // print('✅ Профиль загружен: ${profile.name} ${profile.lastName}');
+      print(
+        '✅ ProfileBloc: Профиль загружен: ${profile.name} ${profile.lastName}',
+      );
+      print('   - ID: ${profile.id}');
+      print('   - Nickname: ${profile.nickname}');
 
       // Сохраняем данные локально
       await UserService.saveLocal('name', profile.name);
@@ -119,9 +123,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final userIdString = profile.id != null
           ? profile.id.toString()
           : AuthService.extractUserIdFromToken(token);
+      print('   - Final userIdString: $userIdString');
       await UserService.saveLocal('userId', userIdString);
       await UserService.saveLocal('profileImage', profile.avatar);
-      await UserService.saveLocal('username', profile.name);
+      await UserService.saveLocal(
+        'username',
+        profile.nickname ?? '@${profile.name}',
+      );
       await UserService.saveLocal('about', profile.about ?? '');
 
       // Извлекаем base64 QR код из ответа API
@@ -144,10 +152,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         'userId': 'ID: $userIdString',
         'phone': profile.phone ?? '',
         'profileImage': profile.avatar,
-        'username': '@${profile.name}',
+        'username': profile.nickname ?? '@${profile.name}',
         'about': profile.about,
         'qrCode': qrCodeBase64,
       });
+
+      print(
+        '✅ ProfileBloc: Emitting ProfileLoaded с userId: ID: $userIdString',
+      );
 
       // Показываем свежие данные
       final userIdDisplay = 'ID: $userIdString';
@@ -166,7 +178,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
           userId: userIdDisplay,
           phone: profile.phone ?? '+7 (999) 123-45-67',
           profileImage: profile.avatar,
-          username: '@${profile.name}',
+          username: profile.nickname ?? '@${profile.name}',
           about: profile.about,
           qrCode: qrCodeBase64,
         ),

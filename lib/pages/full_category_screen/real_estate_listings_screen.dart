@@ -16,6 +16,7 @@ import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/core/cache/cache_service.dart';
 
 // ============================================================
 // "Универсальный экран объявлений по категориям"
@@ -47,6 +48,11 @@ class RealEstateListingsScreen extends StatefulWidget {
 }
 
 class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
+  static final Map<String, List<Listing>> _listingsCache = {}; // Кеш объявлений
+  static final Map<String, DateTime> _cacheTimestamps =
+      {}; // Время создания кеша
+  static const Duration _cacheTTL = Duration(minutes: 5); // 5 минут TTL
+
   int _selectedIndex = 0;
   List<Listing> _listings = [];
   Set<String> _selectedSortOptions = {};
@@ -80,6 +86,21 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     super.dispose();
   }
 
+  /// Генерирует ключ кеша на основе параметров фильтрации
+  String _getCacheKey({String? sort}) {
+    final filters = _appliedFilters.entries
+        .map((e) => '${e.key}=${e.value}')
+        .join('&');
+    return 'listings_${widget.categoryId}_${widget.catalogId}_${sort ?? _currentSort}_$filters';
+  }
+
+  /// Проверяет является ли кеш валидным
+  bool _isCacheValid(String key) {
+    if (!_cacheTimestamps.containsKey(key)) return false;
+    final age = DateTime.now().difference(_cacheTimestamps[key]!);
+    return age < _cacheTTL;
+  }
+
   void _updateSelectedIndex() {
     // На этом экране всегда все иконки белые, так как это подэкран
     _selectedIndex = -1;
@@ -95,7 +116,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     }
   }
 
-  Future<void> _loadAdverts({String? sort, bool isNextPage = false}) async {
+  Future<void> _loadAdverts({
+    String? sort,
+    bool isNextPage = false,
+    bool forceRefresh = false,
+  }) async {
     try {
       if (!isNextPage) {
         setState(() {
@@ -110,6 +135,24 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       }
 
       final token = TokenService.currentToken;
+
+      // 💾 КЕШИРОВАНИЕ: Проверяем кеш перед API запросом (только для первой страницы)
+      if (!isNextPage && !forceRefresh) {
+        final cacheKey = _getCacheKey(sort: sort);
+        if (_isCacheValid(cacheKey)) {
+          print('✅ CACHE HIT: Using cached listings for key=$cacheKey');
+          final cachedListings = _listingsCache[cacheKey] ?? [];
+          setState(() {
+            _listings = cachedListings;
+            _isLoading = false;
+          });
+          return;
+        } else {
+          print('⏱️ Cache miss or expired for key=$cacheKey');
+        }
+      } else if (forceRefresh) {
+        print('🔄 FORCE REFRESH: Bypassing cache');
+      }
 
       // Используем переданные параметры как есть:
       // - Если catalogId передан → используем для фильтрации по каталогу
@@ -245,6 +288,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       }
 
       final fullListings = sortedNewListings;
+
+      // 💾 КЕШИРОВАНИЕ: Сохраняем результаты в кеш (только первую страницу)
+      if (!isNextPage) {
+        final cacheKey = _getCacheKey(sort: sort);
+        _listingsCache[cacheKey] = fullListings;
+        _cacheTimestamps[cacheKey] = DateTime.now();
+        print(
+          '💾 CACHED: Saved ${fullListings.length} listings to cache (key=$cacheKey)',
+        );
+      }
 
       setState(() {
         if (isNextPage) {
@@ -687,6 +740,12 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // 🔄 Кнопка refresh для очистки кеша
+          // IconButton(
+          //   icon: const Icon(Icons.refresh, color: Colors.white),
+          //   onPressed: () => _loadAdverts(forceRefresh: true),
+          //   tooltip: 'Обновить',
+          // ),
           _buildFilterDropdown(
             label: _selectedSortOptions.isEmpty
                 ? 'Сначала'
