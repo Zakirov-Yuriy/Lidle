@@ -48,6 +48,26 @@ class ApiService {
   /// все остальные ждут его завершения вместо того чтобы запускать параллельные refresh.
   static Completer<String?>? _tokenRefreshCompleter;
 
+  /// Возвращает true если прямо сейчас выполняется refresh токена через _retryRequest.
+  /// Используется TokenService для предотвращения race condition при одновременном
+  /// обновлении токена: timer-based (TokenService) и reactive (401 handler).
+  static bool get isRefreshingToken => _tokenRefreshCompleter != null;
+
+  /// Ожидает завершения текущего refresh-запроса, если он выполняется.
+  ///
+  /// Возвращает новый access_token если refresh успешен, иначе null.
+  /// TokenService вызывает этот метод вместо запуска собственного refresh,
+  /// чтобы не использовать один и тот же refresh_token дважды.
+  static Future<String?> waitForPendingRefresh() async {
+    final completer = _tokenRefreshCompleter;
+    if (completer == null) return null;
+    try {
+      return await completer.future;
+    } catch (_) {
+      return null;
+    }
+  }
+
   //   Accept: application/json
   // X-App-Client: mobile
   // X-Client-Platform: web

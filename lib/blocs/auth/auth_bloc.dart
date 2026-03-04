@@ -267,7 +267,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   /// Обработчик события проверки статуса аутентификации.
-  /// Проверяет, сохранен ли токен пользователя.
+  ///
+  /// При запуске приложения проверяет наличие токена в локальном хранилище.
+  /// Если токен существует — эмит [AuthAuthenticated], после чего
+  /// [TokenService] (через BlocListener в main.dart) немедленно проверит
+  /// актуальность токена и обновит его если нужно.
   Future<void> _onCheckAuthStatus(
     CheckAuthStatusEvent event,
     Emitter<AuthState> emit,
@@ -276,6 +280,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final token = TokenService.currentToken;
       if (token != null && token.isNotEmpty) {
+        // Сначала эмитируем AuthAuthenticated — это запустит TokenService.init()
+        // через BlocListener в main.dart. TokenService.init() вызовет
+        // _scheduleRefresh(), который немедленно обновит токен если он истёк.
         emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthInitial());

@@ -10,9 +10,9 @@ import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
 
 class UserAccountPage extends StatelessWidget {
-  final PriceOfferItem offerItem;
+  final PriceOfferItem? offerItem;
 
-  const UserAccountPage({super.key, required this.offerItem});
+  const UserAccountPage({super.key, this.offerItem});
 
   static const routeName = '/user-account';
 
@@ -25,7 +25,13 @@ class UserAccountPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
-        if (state is NavigationToProfile || state is NavigationToHome || state is NavigationToFavorites || state is NavigationToAddListing || state is NavigationToMyPurchases || state is NavigationToMessages || state is NavigationToSignIn) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
@@ -75,7 +81,10 @@ class UserAccountPage extends StatelessWidget {
                           },
                           child: const Text(
                             'Назад',
-                            style: TextStyle(color: activeIconColor, fontSize: 16),
+                            style: TextStyle(
+                              color: activeIconColor,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
                       ],
@@ -105,10 +114,15 @@ class UserAccountPage extends StatelessWidget {
             ),
             bottomNavigationBar: BottomNavigation(
               onItemSelected: (index) {
-                if (index == 3) { // Shopping cart icon
-                  context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+                if (index == 3) {
+                  // Shopping cart icon
+                  context.read<NavigationBloc>().add(
+                    NavigateToMyPurchasesEvent(),
+                  );
                 } else {
-                  context.read<NavigationBloc>().add(SelectNavigationIndexEvent(index));
+                  context.read<NavigationBloc>().add(
+                    SelectNavigationIndexEvent(index),
+                  );
                 }
               },
             ),
@@ -126,7 +140,9 @@ class UserAccountPage extends StatelessWidget {
 class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final offerItem = context.findAncestorWidgetOfExactType<UserAccountPage>()!.offerItem;
+    final offerItem = context
+        .findAncestorWidgetOfExactType<UserAccountPage>()!
+        .offerItem;
 
     return Container(
       width: double.infinity,
@@ -142,26 +158,60 @@ class _UserCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundImage: AssetImage(offerItem.avatar),
+                // Аватар с градиентом
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Colors.blue[600]!, Colors.blue[900]!],
+                    ),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'ВП',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        offerItem.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              offerItem?.name ?? 'Виталий Покрышкин',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'В сети',
+                            style: TextStyle(
+                              color: Colors.green[400],
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        offerItem.subtitle,
+                        offerItem?.subtitle ?? 'На Lidle с 12.12.2025',
                         style: const TextStyle(
                           color: Colors.white54,
                           fontSize: 12,
@@ -170,19 +220,11 @@ class _UserCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Text(
-                  'В сети',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
               ],
             ),
           ),
 
-          const Divider(color: Colors.white24, height: 1),
-
+          // const Divider(color: Colors.white24, height: 1),
           _InfoRow(label: 'Ник в Lidle', value: 'AndrawP', isLink: true),
           _InfoRow(label: 'Номер', value: '+7 949 456 78 76'),
           _InfoRow(label: '', value: '+7 949 456 78 76'),
@@ -199,18 +241,12 @@ class _UserCard extends StatelessWidget {
               children: [
                 Text(
                   'Город',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 SizedBox(height: 6),
                 Text(
                   'Мариуполь',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ],
             ),
@@ -244,10 +280,7 @@ class _OfferCard extends StatelessWidget {
               children: [
                 Text(
                   'Предлагаемая цена',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 SizedBox(height: 6),
                 Text(
@@ -261,10 +294,7 @@ class _OfferCard extends StatelessWidget {
                 SizedBox(height: 16),
                 Text(
                   'Сообщение',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
                 SizedBox(height: 6),
                 Text(
@@ -338,18 +368,13 @@ class _InfoRow extends StatelessWidget {
           if (label.isNotEmpty)
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           if (label.isNotEmpty) const SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(
-              color: isLink
-                  ? UserAccountPage.accentColor
-                  : Colors.white,
+              color: isLink ? UserAccountPage.accentColor : Colors.white,
               fontSize: 14,
             ),
           ),

@@ -159,8 +159,14 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
             offer.advertisementId ?? offer.id ?? '',
           );
           final typeSlug = offer.typeSlug ?? 'adverts';
-          // -1 = ошибка (показываем с оригинальным счётчиком)
-          if (advertId == null) return MapEntry(offer, -1);
+          // null = ошибка (показываем с оригинальным счётчиком)
+          if (advertId == null) {
+            return MapEntry(offer, {
+              'count': -1,
+              'allAccepted': false,
+              'offersData': [],
+            });
+          }
 
           try {
             final offersData = await ApiService.getPriceOffers(
@@ -174,36 +180,61 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
             // — statusId == null — старые записи без статуса
             // Скрываем объявление только когда остались ТОЛЬКО отклонённые (id == 3)
             // или совсем нет предложений.
-            final relevantCount = offersData.where((o) {
+            final relevantOffers = offersData.where((o) {
               final statusMap = o['status'] as Map<String, dynamic>?;
               final statusId = statusMap?['id'] as int?;
               return statusId == null || statusId == 1 || statusId == 2;
-            }).length;
+            }).toList();
+
+            // Проверяем: все ли офферы приняты (statusId == 2)?
+            final allAccepted =
+                relevantOffers.isNotEmpty &&
+                relevantOffers.every((o) {
+                  final statusMap = o['status'] as Map<String, dynamic>?;
+                  final statusId = statusMap?['id'] as int?;
+                  return statusId == 2;
+                });
+
+            final relevantCount = relevantOffers.length;
             print(
               '   📊 Advert ${offer.advertisementId}: '
-              '${offersData.length} total, $relevantCount relevant (new + accepted)',
+              '${offersData.length} total, $relevantCount relevant (new + accepted), '
+              'allAccepted=$allAccepted',
             );
-            return MapEntry(offer, relevantCount);
+            return MapEntry(offer, {
+              'count': relevantCount,
+              'allAccepted': allAccepted,
+              'offersData': offersData,
+            });
           } catch (e) {
             // При ошибке — показываем объявление, чтобы не скрыть лишнего
             print(
               '   ⚠️ Prefetch error for advert ${offer.advertisementId}: $e',
             );
-            return MapEntry(offer, -1);
+            return MapEntry(offer, {
+              'count': -1,
+              'allAccepted': false,
+              'offersData': [],
+            });
           }
         }),
       );
 
-      // Оставляем только объявления где relevantCount > 0 (или -1 при ошибке).
-      // relevantCount > 0 означает: есть хотя бы одно новое (pending) или принятое предложение.
+      // Оставляем только объявления где count > 0 (или -1 при ошибке).
+      // count > 0 означает: есть хотя бы одно новое (pending) или принятое предложение.
       // Если остались только отклонённые или вообще нет предложений — скрываем.
       final listingsWithNewOffers = prefetchResults
-          .where((entry) => entry.value != 0)
+          .where((entry) => entry.value['count'] != 0)
           .map((entry) {
-            // -1 = ошибка, оставляем оригинальный счётчик
-            if (entry.value == -1) return entry.key;
-            // Обновляем точным количеством актуальных предложений
-            return entry.key.copyWith(offeredPricesCount: entry.value);
+            final count = entry.value['count'] as int;
+            final allAccepted = entry.value['allAccepted'] as bool;
+            // -1 = ошибка, оставляем оригинальный счётчик и флаг false
+            if (count == -1) return entry.key;
+            // Обновляем точным количеством актуальных предложений + флаг allOffersAccepted
+            return entry.key.copyWith(
+              offeredPricesCount: count,
+              allOffersAccepted: allAccepted,
+            );
           })
           .toList();
 
@@ -213,7 +244,8 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         final id = entry.key.advertisementId ?? entry.key.id;
         if (id == null) continue;
 
-        if (entry.value == 0) {
+        final count = entry.value['count'] as int;
+        if (count == 0) {
           // Нет актуальных предложений → скрываем
           _handledAdvertIds.add(id);
           print('   🗑️ Marked advert $id as handled (no relevant offers)');
@@ -221,7 +253,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
           // Есть актуальные (new/accepted) или ошибка → убираем из blacklist
           _handledAdvertIds.remove(id);
           print(
-            '   ✅ Advert $id has ${entry.value} relevant offers — removed from blacklist',
+            '   ✅ Advert $id has $count relevant offers — removed from blacklist',
           );
         }
       }

@@ -13,6 +13,9 @@ class Offer {
   final OfferStatus status;
   final bool viewed;
   final int? offeredPricesCount; // Added for "Offers to me" card
+  /// true если все офферы к этому объявлению приняты (statusId == 2).
+  /// При нажатии "Просмотреть" сразу переходим на /user-account, минуя PriceOffersListPage.
+  final bool allOffersAccepted;
 
   Offer({
     required this.id,
@@ -27,6 +30,7 @@ class Offer {
     required this.status,
     this.viewed = false,
     this.offeredPricesCount,
+    this.allOffersAccepted = false,
   });
 
   /// Создаёт копию объекта с изменёнными полями
@@ -43,6 +47,7 @@ class Offer {
     OfferStatus? status,
     bool? viewed,
     int? offeredPricesCount,
+    bool? allOffersAccepted,
   }) {
     return Offer(
       id: id ?? this.id,
@@ -57,6 +62,7 @@ class Offer {
       status: status ?? this.status,
       viewed: viewed ?? this.viewed,
       offeredPricesCount: offeredPricesCount ?? this.offeredPricesCount,
+      allOffersAccepted: allOffersAccepted ?? this.allOffersAccepted,
     );
   }
 }

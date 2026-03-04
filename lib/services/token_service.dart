@@ -5,6 +5,8 @@
 // 1. Проактивное обновление токена (за 5 минут до истечения)
 // 2. Декодирование JWT для получения времени истечения
 // 3. Уведомление AuthBloc об истечении / обновлении токена
+// 4. Обработку жизненного цикла приложения (foreground/background)
+// 5. Защиту от race condition с ApiService._retryRequest()
 // ============================================================
 
 import 'dart:async';
@@ -16,92 +18,110 @@ import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import 'api_service.dart';
 
-/// Сервис управления жизненным циклом JWT-токена.
+/// Сервис управления жизненным циклом токена.
 ///
 /// Принцип работы:
-/// - При старте читает токен из Hive и декодирует время истечения (exp)
-/// - Запускает таймер, который срабатывает за [_refreshBeforeExpireSeconds] до истечения
-/// - При срабатывании таймера вызывает POST /auth/refresh-token
-/// - Если refresh успешен — сохраняет новый токен и перезапускает таймер
-/// - Если refresh не удался — отправляет TokenExpiredEvent в AuthBloc
-class TokenService {
+/// - При старте читает token_expires_at из Hive и планирует refresh
+/// - За [_refreshBeforeExpireSeconds] до истечения вызывает POST /auth/refresh-token
+/// - Если refresh успешен — сохраняет новые токены и перезапускает таймер
+/// - Если refresh не удался — уведомляет AuthBloc об истечении
+/// - Слушает [AppLifecycleState.resumed] и перепроверяет токен при выходе из фона
+/// - Предотвращает race condition: ждёт завершения parallel-refresh из ApiService
+class TokenService with WidgetsBindingObserver {
   /// За сколько секунд до истечения токена делать refresh (5 минут)
   static const int _refreshBeforeExpireSeconds = 5 * 60;
 
   /// Минимальное время жизни токена для запуска таймера (30 секунд)
   static const int _minTokenLifetimeSeconds = 30;
 
-  /// Минимальный интервал между попытками refresh (в секундах) - защита от loop
+  /// Минимальный интервал между попытками refresh (debounce, в секундах)
   static const int _minRefreshIntervalSeconds = 2;
+
+  /// Fallback-таймер когда token_expires_at не найден в Hive:
+  /// Используем короткое время (2 мин) — безопаснее обновить раньше, чем пропустить.
+  static const Duration _fallbackRefreshDelay = Duration(minutes: 2);
 
   Timer? _refreshTimer;
   BuildContext? _context;
   DateTime? _lastRefreshAttempt;
 
-  // Singleton
+  /// Флаг: предотвращает запуск параллельного refresh внутри TokenService.
+  bool _isRefreshing = false;
+
+  /// Singleton
   static final TokenService _instance = TokenService._internal();
   factory TokenService() => _instance;
   TokenService._internal();
 
-  /// Инициализирует сервис и запускает таймер обновления токена.
+  /// Инициализирует сервис: сохраняет context, регистрирует lifecycle observer
+  /// и запускает таймер обновления токена.
   ///
   /// [context] — BuildContext для доступа к AuthBloc.
-  /// Вызывать после успешной авторизации.
+  /// Вызывать после успешной авторизации (когда AuthAuthenticated эмитируется).
   void init(BuildContext context) {
     _context = context;
+    // Снять предыдущую подписку (если была) и добавить новую,
+    // чтобы не накапливать дублирующие слушатели.
+    WidgetsBinding.instance.removeObserver(this);
+    WidgetsBinding.instance.addObserver(this);
     _scheduleRefresh();
-    // print('✅ TokenService: инициализирован');
+  }
+
+  /// Слушаем жизненный цикл приложения.
+  ///
+  /// При переходе в foreground ([AppLifecycleState.resumed]) перепроверяем
+  /// токен — он мог истечь пока приложение было в фоне (Dart изолят приостановлен).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Проверяем и немедленно обновляем токен если нужно
+      _scheduleRefresh();
+    }
   }
 
   /// Синхронно возвращает текущий токен из локального хранилища.
   ///
   /// Используйте в UI-слое когда нет доступа к [AuthBloc].
-  /// Страницы должны импортировать только [TokenService], не [HiveService].
   static String? get currentToken =>
       HiveService.getUserData('token') as String?;
 
-  /// Останавливает таймер (при logout).
+  /// Останавливает таймер и снимает lifecycle observer (при logout).
   void dispose() {
     _refreshTimer?.cancel();
     _refreshTimer = null;
     _context = null;
-    // print('🛑 TokenService: остановлен');
+    _isRefreshing = false;
+    WidgetsBinding.instance.removeObserver(this);
   }
 
-  /// Планирует следующее обновление токена на основе текущего токена из Hive.
+  /// Планирует следующее обновление токена на основе [token_expires_at] из Hive.
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
 
     final token = HiveService.getUserData('token') as String?;
     if (token == null || token.isEmpty) {
-      // print('⚠️ TokenService: токен не найден, таймер не запущен');
+      // Нет токена — возможно выполнен logout, ничего не делаем
       return;
     }
 
     final expiresAt = _getTokenExpiry(token);
     if (expiresAt == null) {
-      // print('⚠️ TokenService: не удалось определить время истечения токена');
-      // Fallback: обновляем через 10 минут
-      // (токен живёт 15 мин per expires_in: 900, безопаснее не ждать все 15)
-      _startTimer(const Duration(minutes: 10));
+      // token_expires_at не найден в Hive — используем короткий fallback.
+      // Лучше обновить раньше срока, чем дать токену истечь незаметно.
+      _startTimer(_fallbackRefreshDelay);
       return;
     }
 
     final now = DateTime.now();
     final timeUntilExpiry = expiresAt.difference(now);
     final timeUntilRefresh =
-        timeUntilExpiry - Duration(seconds: _refreshBeforeExpireSeconds);
-
-    // print('🕐 TokenService: токен истекает в ${expiresAt.toLocal()}');
-    // print('🕐 TokenService: до истечения: ${timeUntilExpiry.inMinutes} мин');
+        timeUntilExpiry - const Duration(seconds: _refreshBeforeExpireSeconds);
 
     if (timeUntilRefresh.isNegative ||
         timeUntilRefresh.inSeconds < _minTokenLifetimeSeconds) {
       // Токен уже истёк или истекает очень скоро — обновляем немедленно
-      // print('⚡ TokenService: токен истекает скоро, обновляем немедленно');
       _doRefresh();
     } else {
-      // print();
       _startTimer(timeUntilRefresh);
     }
   }
@@ -112,29 +132,49 @@ class TokenService {
   }
 
   /// Выполняет запрос на обновление токена.
+  ///
+  /// Содержит защиту от:
+  /// 1. Параллельных вызовов внутри TokenService ([_isRefreshing])
+  /// 2. Слишком частых попыток (debounce [_minRefreshIntervalSeconds])
+  /// 3. Race condition с ApiService._retryRequest() — ожидает уже активный refresh
   Future<void> _doRefresh() async {
-    // print('🔄 TokenService: выполняем refresh токена...');
+    // Защита #1: предотвращаем параллельный refresh внутри TokenService
+    if (_isRefreshing) return;
 
-    // Защита от слишком частых попыток refresh (debounce)
+    // Защита #2: debounce — не запускаем refresh чаще чем раз в N секунд
     final now = DateTime.now();
     final lastAttempt = _lastRefreshAttempt;
     if (lastAttempt != null) {
-      final timeSinceLastAttempt = now.difference(lastAttempt).inSeconds;
-      if (timeSinceLastAttempt < _minRefreshIntervalSeconds) {
-        // print('⏳ TokenService: защита debounce - skip refresh, слишком частые попытки');
-        // Перепланируем на позже
-        _startTimer(
-          Duration(seconds: _minRefreshIntervalSeconds - timeSinceLastAttempt),
-        );
+      final elapsed = now.difference(lastAttempt).inSeconds;
+      if (elapsed < _minRefreshIntervalSeconds) {
+        _startTimer(Duration(seconds: _minRefreshIntervalSeconds - elapsed));
         return;
       }
     }
 
+    // Защита #3: race condition — если ApiService уже выполняет refresh (например,
+    // из-за 401 на API-запросе), ждём его завершения вместо запуска второго refresh.
+    // Без этого оба вызова берут один refresh_token из Hive, первый его ротирует,
+    // второй получает 403 → _notifyTokenExpired() → пользователь выброшен из приложения.
+    if (ApiService.isRefreshingToken) {
+      final newToken = await ApiService.waitForPendingRefresh();
+      if (newToken != null && newToken.isNotEmpty) {
+        // Параллельный refresh уже завершился успешно — используем его результат
+        _notifyTokenRefreshed(newToken);
+        _scheduleRefresh();
+      } else {
+        // Параллельный refresh провалился — повторим сами через 5 секунд
+        _startTimer(const Duration(seconds: 5));
+      }
+      return;
+    }
+
+    _isRefreshing = true;
     _lastRefreshAttempt = now;
 
     final currentToken = HiveService.getUserData('token') as String?;
     if (currentToken == null || currentToken.isEmpty) {
-      // print('❌ TokenService: нет токена для refresh');
+      _isRefreshing = false;
       _notifyTokenExpired();
       return;
     }
@@ -143,21 +183,20 @@ class TokenService {
       final newToken = await ApiService.refreshToken(currentToken);
 
       if (newToken != null && newToken.isNotEmpty) {
-        // print('✅ TokenService: токен успешно обновлён');
-        // Уведомляем AuthBloc о новом токене
+        // Refresh успешен — уведомляем AuthBloc и планируем следующее обновление
         _notifyTokenRefreshed(newToken);
-        // Планируем следующее обновление
         _scheduleRefresh();
       } else {
-        // print('❌ TokenService: refresh вернул пустой токен');
+        // refreshToken() вернул null: refresh_token истёк или невалиден на сервере (401/403).
+        // Это постоянная ошибка — повторные попытки не помогут, нужна повторная авторизация.
         _notifyTokenExpired();
       }
     } catch (e) {
-      // print('❌ TokenService: ошибка при refresh: $e');
-      // При ошибке refresh - не сразу выбрасываем TokenExpiredEvent
-      // Повторим через 30 секунд
-      // print('⏳ TokenService: повторим refresh через 30 секунд');
+      // Сетевая ошибка или таймаут — временная проблема.
+      // НЕ выбрасываем TokenExpiredEvent: повторим через 30 секунд.
       _startTimer(const Duration(seconds: 30));
+    } finally {
+      _isRefreshing = false;
     }
   }
 

@@ -271,10 +271,16 @@ class LidleApp extends StatelessWidget {
                       ModalRoute.of(context)!.settings.arguments
                           as PriceOfferItem,
                 ),
-            UserAccountPage.routeName: (context) => UserAccountPage(
-              offerItem:
-                  ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
-            ),
+            UserAccountPage.routeName: (context) {
+              // Может быть либо PriceOfferItem (из PriceOffersListPage)
+              // либо Offer (из OfferCard), либо null
+              final args = ModalRoute.of(context)?.settings.arguments;
+              PriceOfferItem? offerItem;
+              if (args is PriceOfferItem) {
+                offerItem = args;
+              }
+              return UserAccountPage(offerItem: offerItem);
+            },
             UserAccountOnlyPage.routeName: (context) => UserAccountOnlyPage(
               offerItem:
                   ModalRoute.of(context)!.settings.arguments as PriceOfferItem,
