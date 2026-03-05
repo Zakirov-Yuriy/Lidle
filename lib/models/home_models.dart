@@ -109,20 +109,6 @@ class Listing {
     final Map<String, dynamic> characteristics = {};
 
     // 🔍 DEBUG: Логируем структуру attributes для диагностики
-    if (json['attributes'] != null) {
-      print(
-        '\n🔍 [Listing.fromJson] ID=${json['id']}, attributes type: ${json['attributes'].runtimeType}',
-      );
-      if (json['attributes'] is Map) {
-        final attrs = json['attributes'] as Map;
-        print('   attributes keys: ${attrs.keys.toList()}');
-        attrs.forEach((k, v) {
-          print('   [$k]: ${v.runtimeType} = $v');
-        });
-      } else {
-        print('   attributes is not Map! Value: ${json['attributes']}');
-      }
-    }
 
     if (json['attributes'] != null && json['attributes'] is Map) {
       final attrs = json['attributes'];
@@ -152,14 +138,6 @@ class Listing {
     }
 
     // DEBUG: Показываем финальную структуру characteristics
-    if (characteristics.isNotEmpty) {
-      print('   Final characteristics: ${characteristics.keys.toList()}');
-      characteristics.forEach((k, v) {
-        print('      [$k]: ${v.runtimeType} = $v');
-      });
-    } else {
-      print('   Final characteristics: EMPTY');
-    }
 
     return Listing(
       id:

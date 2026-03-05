@@ -12,8 +12,6 @@ import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/indoor_advertising_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/outdoor_advertising_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_property_details_screen.dart';
-import 'package:lidle/services/catalog_service.dart';
-import 'package:lidle/models/catalog_category_model.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/models/home_models.dart';
@@ -54,8 +52,6 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   List<UserAdvert> _inactiveListings = [];
   List<UserAdvert> _archiveListings = [];
   List<UserAdvert> _moderationListings = [];
-  bool _isLoadingListings = true;
-
   // Пагинация для каждого статуса
   int _activeListingsPage = 1;
   int _inactiveListingsPage = 1;
@@ -128,99 +124,6 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загрузить все объявления разных статусов (первая страница)
-  Future<void> _loadAllListings() async {
-    try {
-      final token = HiveService.getUserData('token') as String?;
-      if (token == null) {
-        if (mounted) {
-          setState(() {
-            _isLoadingListings = false;
-            _errorMessage = 'Токен не найден';
-          });
-        }
-        return;
-      }
-
-      if (mounted) {
-        setState(() => _isLoadingListings = true);
-      }
-
-      // Сбросить пагинацию
-      _activeListingsPage = 1;
-      _inactiveListingsPage = 1;
-      _archiveListingsPage = 1;
-      _moderationListingsPage = 1;
-
-      // Загружаем объявления всех статусов параллельно
-      // ⚠️ limit: 1000 позволяет получить ВСЕ объявления в одном запросе
-      final results = await Future.wait([
-        MyAdvertsService.getMyAdverts(
-          statusId: 1,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-        MyAdvertsService.getMyAdverts(
-          statusId: 2,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-        MyAdvertsService.getMyAdverts(
-          statusId: 3,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-        MyAdvertsService.getMyAdverts(
-          statusId: 8,
-          token: token,
-          page: 1,
-          limit: 1000,
-        ),
-      ]);
-
-      if (mounted) {
-        setState(() {
-          _activeListings = results[0].data;
-          _inactiveListings = results[1].data;
-          _moderationListings = results[2].data;
-          _archiveListings = results[3].data;
-
-          // Сохранить информацию о последней странице
-          _activeIsLastPage = results[0].lastPage != null
-              ? _activeListingsPage >= results[0].lastPage!
-              : true;
-          _inactiveIsLastPage = results[1].lastPage != null
-              ? _inactiveListingsPage >= results[1].lastPage!
-              : true;
-          _moderationIsLastPage = results[2].lastPage != null
-              ? _moderationListingsPage >= results[2].lastPage!
-              : true;
-          _archiveIsLastPage = results[3].lastPage != null
-              ? _archiveListingsPage >= results[3].lastPage!
-              : true;
-
-          _isLoadingListings = false;
-        });
-      }
-    } catch (e) {
-      // print('=== Ошибка загрузки объявлений: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingListings = false;
-          _errorMessage = 'Ошибка загрузки объявлений: $e';
-        });
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_errorMessage ?? 'Ошибка загрузки')),
-        );
-      }
-    }
-  }
-
   /// Загрузить объявления по выбранной категории (все страницы)
   Future<void> _loadListingsByCategory(int categoryId) async {
     try {
@@ -228,7 +131,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       if (token == null) {
         if (mounted) {
           setState(() {
-            _isLoadingListings = false;
+            _isLoadingMetadata = false;
             _errorMessage = 'Токен не найден';
           });
         }
@@ -236,7 +139,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       }
 
       if (mounted) {
-        setState(() => _isLoadingListings = true);
+        setState(() => _isLoadingMetadata = true);
       }
 
       // Сбросить пагинацию
@@ -267,14 +170,14 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _moderationIsLastPage = true;
           _archiveIsLastPage = true;
 
-          _isLoadingListings = false;
+          _isLoadingMore = false;
         });
       }
     } catch (e) {
       // print('=== Ошибка загрузки объявлений: $e');
       if (mounted) {
         setState(() {
-          _isLoadingListings = false;
+          _isLoadingMore = false;
           _errorMessage = 'Ошибка загрузки объявлений: $e';
         });
       }

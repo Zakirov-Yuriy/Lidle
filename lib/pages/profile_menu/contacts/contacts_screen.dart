@@ -79,7 +79,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             token: token,
           );
 
-          if (userResponse != null && userResponse is Map<String, dynamic>) {
+          if (userResponse['data'] != null) {
             final userData =
                 userResponse['data'] != null &&
                     userResponse['data'] is List &&
@@ -260,13 +260,13 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
       if (mounted) Navigator.pop(context);
 
-      if (response != null && response is Map<String, dynamic>) {
+      if (response['data'] != null) {
         final userData =
             response['data'] != null &&
                 response['data'] is List &&
                 response['data'].isNotEmpty
             ? response['data'][0] as Map<String, dynamic>
-            : response as Map<String, dynamic>;
+            : response;
 
         final userName = userData['name'] ?? 'Unknown';
         final userAvatar = userData['avatar'];

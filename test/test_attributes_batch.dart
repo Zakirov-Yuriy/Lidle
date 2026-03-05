@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -68,7 +68,7 @@ Future<void> main() async {
       attrs.forEach((key, value) {
         print('   [$key]: ${value.runtimeType}');
         if (value is Map) {
-          print('       keys: ${(value as Map).keys.toList()}');
+          print('       keys: ${value.keys.toList()}');
         }
       });
     }

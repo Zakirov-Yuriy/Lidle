@@ -1,6 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 void main() {
@@ -8,7 +6,6 @@ void main() {
     /// Тест 1: Проверяем что API возвращает правильный формат для GET /users/{id}/adverts
     test('Формат ответа API для /users/30/adverts', () {
       // ARRANGE - Подготовим тестовые данные
-      final userId = 30;
 
       // ЭТО то, что должен вернуть API согласно документации
       final expectedApiResponse = {

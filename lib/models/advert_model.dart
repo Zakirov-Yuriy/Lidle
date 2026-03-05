@@ -87,21 +87,6 @@ class Advert {
     Map<String, dynamic>? characteristics;
 
     // DEBUG: Логирование структуры JSON
-    print('📊 DEBUG Advert.fromJson for ID=${json['id']}:');
-    print('   Available fields: ${json.keys.toList()}');
-    print('   Has attributes? ${json.containsKey('attributes')}');
-    if (json.containsKey('attributes')) {
-      print('   attributes type: ${json['attributes'].runtimeType}');
-      if (json['attributes'] is Map) {
-        print(
-          '   attributes[Map] keys: ${(json['attributes'] as Map).keys.toList()}',
-        );
-      } else if (json['attributes'] is List) {
-        print(
-          '   attributes[List] length: ${(json['attributes'] as List).length}',
-        );
-      }
-    }
 
     if (json['attributes'] != null) {
       characteristics = {};
@@ -143,12 +128,6 @@ class Advert {
           });
         }
       }
-    } else {
-      print('   ⚠️ NO attributes found in JSON');
-    }
-
-    if (characteristics != null && characteristics.isNotEmpty) {
-      print('   ✅ Parsed characteristics: ${characteristics.keys.toList()}');
     }
 
     return Advert(

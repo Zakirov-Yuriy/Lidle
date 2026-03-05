@@ -67,6 +67,7 @@ UpdateProfileRequest _$UpdateProfileRequestFromJson(
   avatar: json['avatar'] as String?,
 );
 
+// ignore: unused_element
 Map<String, dynamic> _$UpdateProfileRequestToJson(
   UpdateProfileRequest instance,
 ) => <String, dynamic>{

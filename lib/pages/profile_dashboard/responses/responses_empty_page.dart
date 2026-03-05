@@ -148,13 +148,6 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
     });
   }
 
-  void _exitSelectionMode() {
-    setState(() {
-      _isSelectionMode = false;
-      _selectedCards.clear();
-    });
-  }
-
   void _selectAllCards(bool selectAll) {
     setState(() {
       List<ResponseModel> currentResponses;
@@ -188,13 +181,6 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
     setState(() {
       _isArchiveSelectionMode = true;
       _selectedCards[responseId] = true;
-    });
-  }
-
-  void _exitArchiveSelectionMode() {
-    setState(() {
-      _isArchiveSelectionMode = false;
-      _selectedCards.clear();
     });
   }
 

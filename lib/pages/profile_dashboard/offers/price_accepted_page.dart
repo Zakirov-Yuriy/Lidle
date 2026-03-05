@@ -8,7 +8,6 @@ import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'package:lidle/widgets/dialogs/edit_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
@@ -34,23 +33,6 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
     super.initState();
     _currentDescription = widget.offer.description;
     _currentPrice = widget.offer.yourPrice;
-  }
-
-  void _showEditDialog() async {
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (context) => EditPriceDialog(
-        initialPrice: _currentPrice,
-        initialMessage: _currentDescription,
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        _currentPrice = result['price'] ?? _currentPrice;
-        _currentDescription = result['message'] ?? _currentDescription;
-      });
-    }
   }
 
   void _showRejectDialog() async {

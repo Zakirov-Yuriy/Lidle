@@ -50,11 +50,6 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Перезагружаем список каталогов, если состояние CatalogLoaded (от другого экрана)
-    final state = context.read<CatalogBloc>().state;
-    if (state is CatalogLoaded) {
-      context.read<CatalogBloc>().add(LoadCatalogs(forceRefresh: true));
-    }
     return Scaffold(
       backgroundColor: const Color(0xFF1D2835),
       body: Column(

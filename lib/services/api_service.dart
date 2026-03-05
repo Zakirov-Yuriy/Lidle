@@ -265,8 +265,6 @@ class ApiService {
     } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
-      // Логируем реальную ошибку вместо скрытия
-      print('❌ _getWithBodyRequest unexpected error: ${e.runtimeType}: $e');
       rethrow;
     }
   }
@@ -331,13 +329,6 @@ class ApiService {
           ? baseUri.replace(query: queryString)
           : baseUri;
 
-      print('🔗 API REQUEST:');
-      print('   Endpoint: $endpoint');
-      print('   Full URL: ${uri.toString()}');
-      if (queryParams.isNotEmpty) {
-        print('   Query Params: $queryParams');
-      }
-
       final response = await http
           .get(uri, headers: headers)
           .timeout(const Duration(seconds: 10));
@@ -353,7 +344,6 @@ class ApiService {
     } on TimeoutException {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
-      print('❌ _getWithQueryRequest unexpected error: ${e.runtimeType}: $e');
       rethrow;
     }
   }
@@ -410,8 +400,6 @@ class ApiService {
           )
           .timeout(const Duration(seconds: 10));
 
-      print('⚠️ PUT RAW RESPONSE: statusCode=${response.statusCode}');
-      print('⚠️ PUT RESPONSE BODY: ${response.body}');
       return _handleResponse(response);
     } on TokenExpiredException {
       rethrow;
@@ -607,12 +595,6 @@ class ApiService {
     try {
       data = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
-      print(
-        '❌ _handleResponse: не удалось разобрать JSON. Status: ${response.statusCode}',
-      );
-      print(
-        '   Raw body (first 200 chars): ${response.body.substring(0, response.body.length.clamp(0, 200))}',
-      );
       throw Exception(
         'Сервер вернул не JSON ответ (статус ${response.statusCode})',
       );

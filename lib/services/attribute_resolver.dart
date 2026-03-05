@@ -210,6 +210,7 @@ class AttributeResolver {
     // print('$prefix═══════════════════════════════════════════════════');
 
     for (final attr in attributes) {
+      // ignore: unused_local_variable
       final idStr = attr.id.toString().padRight(padLength);
       final flags = [
         if (attr.isRequired) '✓required',
@@ -219,10 +220,13 @@ class AttributeResolver {
         if (attr.isTitleHidden) '✓titleHidden',
       ].join(', ');
 
+      // ignore: unused_local_variable
       final flagsStr = flags.isNotEmpty ? ' [$flags]' : '';
+      // ignore: unused_local_variable
       final dataTypeStr = attr.dataType != null && attr.dataType!.isNotEmpty
           ? ' (${attr.dataType})'
           : '';
+      // ignore: unused_local_variable
       final valuesCount = attr.values.isNotEmpty
           ? ' - ${attr.values.length} values'
           : '';
@@ -231,6 +235,7 @@ class AttributeResolver {
 
       // Логируем значения для атрибутов с предопределенными значениями
       if (attr.values.isNotEmpty && attr.values.length <= 10) {
+        // ignore: unused_local_variable
         for (final val in attr.values) {
           // print('$prefix    • ${val.value} (id=${val.id})');
         }
@@ -244,25 +249,31 @@ class AttributeResolver {
   void debugPrintCriticalAttributes({String prefix = ''}) {
     // print('$prefix🔍 CRITICAL ATTRIBUTES:');
 
+    // ignore: unused_local_variable
     final offerPrice = getOfferPriceAttributeId();
     // print(
     //   '$prefix   Offer Price: ${offerPrice != null ? '✓ ID=$offerPrice' : '✗ NOT FOUND'}',
     // );
 
+    // ignore: unused_local_variable
     final area = getAreaAttributeId();
     // print('$prefix   Area: ${area != null ? '✓ ID=$area' : '✗ NOT FOUND'}');
 
+    // ignore: unused_local_variable
     final rooms = getRoomsAttributeId();
     // print('$prefix   Rooms: ${rooms != null ? '✓ ID=$rooms' : '✗ NOT FOUND'}');
 
+    // ignore: unused_local_variable
     final sellerType = getSellerTypeAttributeId();
     // print(
     //   '$prefix   Seller Type: ${sellerType != null ? '✓ ID=$sellerType' : '✗ NOT FOUND'}',
     // );
 
+    // ignore: unused_local_variable
     final floor = getFloorAttributeId();
     // print('$prefix   Floor: ${floor != null ? '✓ ID=$floor' : '✗ NOT FOUND'}');
 
+    // ignore: unused_local_variable
     final bargain = getBargainAttributeId();
     // print(
     //   '$prefix   Bargain: ${bargain != null ? '✓ ID=$bargain' : '✗ NOT FOUND'}',

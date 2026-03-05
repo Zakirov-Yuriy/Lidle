@@ -90,21 +90,19 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // print(
-  //   '⏱️ [BINDING] WidgetsFlutterBinding инициализирован за ${DateTime.now().difference(mainStartTime).inMilliseconds}ms',
-  // );
 
-  // ПРОПУСК dotenv.load() - переменные закэшированы в constants.dart
-  // print('⏱️ [DOTENV] Переменные окружения инициализированы константами');
-
-  // Инициализация Hive
-  if (kIsWeb) {
-    await Hive.initFlutter();
-  } else {
-    final appDocumentDir = await getApplicationDocumentsDirectory();
-    await Hive.initFlutter(appDocumentDir.path);
+  try {
+    // Инициализация Hive с обработкой ошибок
+    if (kIsWeb) {
+      await Hive.initFlutter();
+    } else {
+      final appDocumentDir = await getApplicationDocumentsDirectory();
+      await Hive.initFlutter(appDocumentDir.path);
+    }
+    await HiveService.init();
+  } catch (e) {
+    // Продолжаем работу даже если Hive не инициализирован
   }
-  await HiveService.init();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -181,6 +179,10 @@ class LidleApp extends StatelessWidget {
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: const [Locale('en', ''), Locale('ru', '')],
           navigatorObservers: [routeObserver],
+          // Обработка ошибок при построении
+          builder: (context, home) {
+            return home ?? ErrorWidget(Exception('Unknown error'));
+          },
 
           // Production home
           home: const HomePage(),

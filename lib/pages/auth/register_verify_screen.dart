@@ -334,77 +334,6 @@ class _CodeField extends StatelessWidget {
 }
 
 // ============================================================
-// "Поле с кнопкой отправки кода"
-// ============================================================
-class _SendCodeField extends StatelessWidget {
-  final String label;
-
-  final String hint;
-
-  final TextEditingController controller;
-
-  final TextInputType keyboard;
-
-  final bool canSend;
-
-  final VoidCallback onSend;
-
-  const _SendCodeField({
-    required this.label,
-    required this.hint,
-    required this.controller,
-    required this.keyboard,
-    required this.canSend,
-    required this.onSend,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final suffix = Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: TextButton(
-        onPressed: canSend ? onSend : null,
-        style: TextButton.styleFrom(
-          minimumSize: const Size(0, 0),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          foregroundColor: canSend ? activeIconColor : Colors.white38,
-        ),
-        child: const Text('Отправить код', style: TextStyle(fontSize: 14)),
-      ),
-    );
-
-    return _Labeled(
-      label: label,
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboard,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(color: textMuted),
-          filled: true,
-          fillColor: secondaryBackground,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 18,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(5),
-            borderSide: BorderSide.none,
-          ),
-          suffixIcon: suffix,
-          suffixIconConstraints: const BoxConstraints(
-            minWidth: 0,
-            minHeight: 0,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================
 // "Текст отображения времени до повторной отправки"
 // ============================================================
 class _CooldownText extends StatelessWidget {
@@ -429,35 +358,6 @@ class _CooldownText extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-// ============================================================
-// "Обертка с меткой для полей формы"
-// ============================================================
-class _Labeled extends StatelessWidget {
-  final String label;
-
-  final Widget child;
-
-  const _Labeled({required this.label, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
-          ),
-          const SizedBox(height: 9),
-          child,
         ],
       ),
     );

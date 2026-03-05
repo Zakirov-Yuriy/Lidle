@@ -72,11 +72,9 @@ Future<void> testGetAdverts(
           if (firstAdvert.containsKey('attributes')) {
             final attrs = firstAdvert['attributes'];
             if (attrs is Map) {
-              print('   attributes.keys: ${(attrs as Map).keys.toList()}');
+              print('   attributes.keys: ${attrs.keys.toList()}');
             } else if (attrs is List) {
-              print(
-                '   attributes - это List с ${(attrs as List).length} элементами',
-              );
+              print('   attributes - это List с ${attrs.length} элементами');
             }
           }
 
@@ -85,11 +83,9 @@ Future<void> testGetAdverts(
           firstAdvert.forEach((key, value) {
             final typeStr = value.runtimeType.toString();
             if (value is Map) {
-              print(
-                '     • $key: Map with keys ${(value as Map).keys.toList()}',
-              );
+              print('     • $key: Map with keys ${value.keys.toList()}');
             } else if (value is List) {
-              print('     • $key: List with ${(value as List).length} items');
+              print('     • $key: List with ${value.length} items');
             } else {
               print(
                 '     • $key: $typeStr = ${value.toString().substring(0, 50)}...',
@@ -147,11 +143,9 @@ Future<void> testGetSingleAdvert(
           if (advertData.containsKey('attributes')) {
             final attrs = advertData['attributes'];
             if (attrs is Map) {
-              print('   attributes.keys: ${(attrs as Map).keys.toList()}');
+              print('   attributes.keys: ${attrs.keys.toList()}');
             } else if (attrs is List) {
-              print(
-                '   attributes - это List с ${(attrs as List).length} элементами',
-              );
+              print('   attributes - это List с ${attrs.length} элементами');
             }
           }
         }

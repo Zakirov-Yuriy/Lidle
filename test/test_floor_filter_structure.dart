@@ -24,7 +24,7 @@ void main() {
   final valuesMap = <String, dynamic>{};
 
   selectedValues.forEach((key, value) {
-    if (value != null && (value is! Set || (value as Set).isNotEmpty)) {
+    if ((value is! Set || value.isNotEmpty)) {
       valuesMap[key.toString()] = value;
     }
   });

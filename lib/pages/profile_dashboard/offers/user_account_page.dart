@@ -171,7 +171,7 @@ class _UserCard extends StatelessWidget {
                         offerItem?.avatar != null &&
                             offerItem!.avatar.isNotEmpty
                         ? Image.network(
-                            offerItem!.avatar,
+                            offerItem.avatar,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) {
                               return Container(
@@ -188,7 +188,7 @@ class _UserCard extends StatelessWidget {
                                 ),
                                 child: Center(
                                   child: Text(
-                                    _getInitials(offerItem?.name ?? 'ВП'),
+                                    _getInitials(offerItem.name),
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,

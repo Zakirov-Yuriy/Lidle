@@ -230,6 +230,63 @@ class _HomePageState extends State<HomePage> {
   /// Включает заголовок "Предложения на LIDLE", кнопку "Смотреть все"
   /// и горизонтальный список карточек категорий.
   Widget _buildCategoriesSection(ListingsState state, AuthState authState) {
+    // Обработка ListingsInitial - показываем skeleton loading
+    if (state is ListingsInitial) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    categoriesTitle,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {},
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    viewAll,
+                    style: TextStyle(
+                      color: activeIconColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20.0),
+            child: SizedBox(
+              height: 85,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  return const CategoryCardSkeleton();
+                },
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (state is ListingsLoading) {
       return Column(
         children: [
@@ -512,6 +569,54 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(vertical: 50),
                 child: const CircularProgressIndicator(),
               ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Обработка ListingsInitial
+    if (state is ListingsInitial) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 110.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                latestTitle,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = (constraints.maxWidth - 12 - 12 - 9) / 2;
+                double tileHeight = 263;
+                if (itemWidth < 170) tileHeight = 275;
+                if (itemWidth < 140) tileHeight = 300;
+
+                return GridView.builder(
+                  padding: const EdgeInsets.only(left: 12, right: 12),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 9,
+                    mainAxisSpacing: 0,
+                    mainAxisExtent: tileHeight,
+                  ),
+                  itemCount: 6,
+                  itemBuilder: (context, index) {
+                    return const ListingCardSkeleton();
+                  },
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                );
+              },
             ),
           ],
         ),

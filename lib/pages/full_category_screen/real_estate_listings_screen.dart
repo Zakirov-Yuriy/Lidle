@@ -16,7 +16,6 @@ import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
-import 'package:lidle/core/cache/cache_service.dart';
 
 // ============================================================
 // "Универсальный экран объявлений по категориям"
@@ -140,41 +139,19 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       if (!isNextPage && !forceRefresh) {
         final cacheKey = _getCacheKey(sort: sort);
         if (_isCacheValid(cacheKey)) {
-          print('✅ CACHE HIT: Using cached listings for key=$cacheKey');
           final cachedListings = _listingsCache[cacheKey] ?? [];
           setState(() {
             _listings = cachedListings;
             _isLoading = false;
           });
           return;
-        } else {
-          print('⏱️ Cache miss or expired for key=$cacheKey');
         }
-      } else if (forceRefresh) {
-        print('🔄 FORCE REFRESH: Bypassing cache');
       }
 
       // Используем переданные параметры как есть:
       // - Если catalogId передан → используем для фильтрации по каталогу
       // - Если categoryId передан (и catalogId == null) → используем для фильтрации по подкатегории
       // - Применённые фильтры передаём в API
-
-      print('\n🔍 ═══════════════════════════════════════');
-      print('🔍 _loadAdverts() - LOADING');
-      print('🔍 ═══════════════════════════════════════');
-      print('🔍 Category: ${widget.categoryName}, ID=${widget.categoryId}');
-      print('🔍 Catalog: ID=${widget.catalogId}');
-      print('🔍 Applied Filters Count: ${_appliedFilters.length}');
-
-      if (_appliedFilters.isNotEmpty) {
-        print('🔍 Applied Filters Details:');
-        _appliedFilters.forEach((key, value) {
-          print('   - [$key] = $value (type: ${value.runtimeType})');
-        });
-      } else {
-        print('🔍 NO FILTERS APPLIED');
-      }
-      print('🔍 ═══════════════════════════════════════\n');
 
       var response = await ApiService.getAdverts(
         categoryId: widget.categoryId,

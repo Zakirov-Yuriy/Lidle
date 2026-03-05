@@ -4,8 +4,6 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/pages/profile_dashboard/offers/incoming_price_offer_page.dart';
-import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart'
-    show PriceOffersEmptyPage;
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
@@ -210,7 +208,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
             token: token,
           ).then((profile) => {userId: profile}).catchError((e) {
             print('   ⚠️ Error loading profile for userId $userId: $e');
-            return {userId: {}};
+            return {userId: <String, dynamic>{}};
           }),
         );
       }

@@ -26,7 +26,7 @@ void main() {
     } else if (value is List) {
       // ✅ ИСПРАВЛЕНИЕ: используем индексированные ключи [0], [1], [2]
       // вместо [] которые перезаписывали друг друга
-      for (int i = 0; i < (value as List).length; i++) {
+      for (int i = 0; i < value.length; i++) {
         final paramKey = 'filters[$key][$i]';
         queryParams[paramKey] = value[i].toString();
         print('  $paramKey = ${value[i].toString()}');

@@ -10,7 +10,6 @@
 // ============================================================
 
 import 'dart:io';
-import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:lidle/blocs/catalog/catalog_bloc.dart';

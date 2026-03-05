@@ -104,13 +104,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       }
 
       // Загружаем свежие данные с API
-      // print('📡 Загружаем профиль с API...');
       final profile = await UserService.getProfile(token: token);
-      print(
-        '✅ ProfileBloc: Профиль загружен: ${profile.name} ${profile.lastName}',
-      );
-      print('   - ID: ${profile.id}');
-      print('   - Nickname: ${profile.nickname}');
 
       // Сохраняем данные локально
       await UserService.saveLocal('name', profile.name);
@@ -123,7 +117,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final userIdString = profile.id != null
           ? profile.id.toString()
           : AuthService.extractUserIdFromToken(token);
-      print('   - Final userIdString: $userIdString');
       await UserService.saveLocal('userId', userIdString);
       await UserService.saveLocal('profileImage', profile.avatar);
       await UserService.saveLocal(
@@ -156,10 +149,6 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         'about': profile.about,
         'qrCode': qrCodeBase64,
       });
-
-      print(
-        '✅ ProfileBloc: Emitting ProfileLoaded с userId: ID: $userIdString',
-      );
 
       // Показываем свежие данные
       final userIdDisplay = 'ID: $userIdString';

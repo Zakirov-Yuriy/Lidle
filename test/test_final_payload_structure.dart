@@ -6,6 +6,7 @@
 /// 3. Attribute 1127 (Общая площадь) is range type, goes in attributes.values
 
 void main() {
+  // ignore: unused_local_variable
   final correctPayload = {
     "region_id": 1, // main_region.id
     "address": {

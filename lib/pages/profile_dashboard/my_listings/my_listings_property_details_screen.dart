@@ -36,8 +36,6 @@ class _MyListingsPropertyDetailsScreenState
 
   late Listing _listing;
 
-  final List<Listing> _similarListings = [];
-
   @override
   void initState() {
     super.initState();
@@ -501,7 +499,7 @@ class _MyListingsPropertyDetailsScreenState
           displayValue = value;
         } else if (value is List) {
           // Если value это список
-          displayValue = (value as List).join(', ');
+          displayValue = value.join(', ');
         }
         charWidgets.add(_InfoRow(title: '$title: ', value: displayValue));
       }

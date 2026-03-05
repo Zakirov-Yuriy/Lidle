@@ -73,7 +73,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Future<void> _loadSellerListings({bool forceRefresh = false}) async {
     // Если нет userId, не загружаем
     if (widget.userId == null || widget.userId!.isEmpty) {
-      print('❌ SellerProfileScreen: userId is null or empty');
       setState(() {
         _sellerListings = [];
         _isLoading = false;
@@ -111,10 +110,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         throw Exception('Токен авторизации не найден');
       }
 
-      print('📤 Загружаем объявления продавца');
-      print('   Endpoint: GET /users/$userId/adverts');
-      print('   User ID: $userId');
-
       // API фиксирует per_page=30 и не принимает этот параметр в body.
       // Запрос принимает только: sort (Array) и page (Integer).
       // Чтобы получить все объявления — загружаем страницы последовательно.
@@ -126,7 +121,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'sort': ['new'],
         'page': 1,
       };
-      print('   Request body: $firstPageBody');
 
       final firstResponse = await ApiService.getWithBody(
         '/users/$userId/adverts',
@@ -134,22 +128,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         token: token,
       );
 
-      print('📥 Страница 1 получена. Ключи: ${firstResponse.keys.toList()}');
-
       final firstPageData = firstResponse['data'] as List<dynamic>? ?? [];
       allData.addAll(firstPageData);
 
       // Читаем общее количество страниц из meta
       final meta = firstResponse['meta'] as Map<String, dynamic>?;
       final lastPage = (meta?['last_page'] as num?)?.toInt() ?? 1;
-      final total = (meta?['total'] as num?)?.toInt() ?? firstPageData.length;
-
-      print('📊 Всего объявлений: $total, страниц: $lastPage');
 
       // Шаг 2: загружаем остальные страницы, если они есть
       if (lastPage > 1) {
         for (int page = 2; page <= lastPage; page++) {
-          print('   Загружаем страницу $page/$lastPage...');
           final pageBody = {
             'sort': ['new'],
             'page': page,
@@ -161,24 +149,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           );
           final pageData = pageResponse['data'] as List<dynamic>? ?? [];
           allData.addAll(pageData);
-          print('   Страница $page: +${pageData.length} объявлений');
         }
       }
 
       final data = allData;
 
-      print('   data length: ${data.length}');
-
       if (data.isEmpty) {
-        print('⚠️ API вернул пустой список объявлений');
         setState(() {
           _sellerListings = [];
           _isLoading = false;
         });
         return;
       }
-
-      print('✅ Найдено ${data.length} объявлений (из $total активных)');
 
       // Трансформируем API ответ в формат для Listing.
       // Фильтруем до маппинга — берём только активные (status.id == 1).
@@ -228,7 +210,6 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      print('❌ Ошибка при загрузке объявлений: $e');
       setState(() {
         _error = 'Ошибка при загрузке объявлений: ${e.toString()}';
         _isLoading = false;

@@ -167,9 +167,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       );
       final prefetchResults = await Future.wait(
         parsedListings.map((offer) async {
-          final advertId = int.tryParse(
-            offer.advertisementId ?? offer.id ?? '',
-          );
+          final advertId = int.tryParse(offer.advertisementId ?? '');
           final typeSlug = offer.typeSlug ?? 'adverts';
           // null = ошибка (показываем с оригинальным счётчиком)
           if (advertId == null) {

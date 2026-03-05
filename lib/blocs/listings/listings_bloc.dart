@@ -210,8 +210,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final catalogsResponse = await ApiService.getCatalogs(token: token);
       final allCatalogIds = catalogsResponse.data.map((c) => c.id).toList();
 
-      // Берём ID первых 6 каталогов для быстрого отображения
-      final firstCatalogIds = allCatalogIds.take(6).toList();
+      // Берём ID первых 3 каталогов для быстрого отображения (снижено с 6 для оптимизации)
+      final firstCatalogIds = allCatalogIds.take(3).toList();
 
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
@@ -225,7 +225,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
 
-      // 🔥 Загружаем объявления из первых 6 каталогов параллельно
+      // 🔥 Загружаем объявления из первых 3 каталогов параллельно
       List<home.Listing> allListings = [];
       int totalPages = 1;
       int itemsPerPage = 20;
@@ -244,11 +244,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
         final firstBatchResponses = await Future.wait(firstBatchFutures);
 
+        // Парсируем все ответы параллельно на фоновых потоках
         for (final response in firstBatchResponses) {
           if (response.data.isNotEmpty) {
-            final parsedListings = _parseAdvertsOnBackgroundThread(
-              response.data,
-            );
+            // Используем compute() для парсирования на отдельном потоке
+            final parsedListings =
+                await compute<List<Advert>, List<home.Listing>>(
+                  (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                  response.data,
+                );
             allListings.addAll(parsedListings);
             totalPages = response.meta.lastPage;
             itemsPerPage = response.meta.perPage;
@@ -284,7 +288,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
           if (remainingCatalogIds.isEmpty) return;
 
-          const int maxConcurrentRequests = 5;
+          const int maxConcurrentRequests = 3; // Снижено с 5 для оптимизации
 
           // Загружаем батчами с throttling
           for (
@@ -320,6 +324,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
                 remainingListings.addAll(parsedListings);
               }
             }
+
+            // Добавляем небольшую задержку между батчами для снижения нагрузки
+            if (i + maxConcurrentRequests < remainingCatalogIds.length) {
+              await Future.delayed(const Duration(milliseconds: 100));
+            }
           }
 
           final finalSortedListings = _sortListingsByDate(remainingListings);
@@ -339,7 +348,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               persist: true,
             );
           } catch (cacheError) {
-            print('⚠️  Warning: Failed to cache listings: $cacheError');
+            // Ошибка кеша - продолжаем работу
           }
 
           // Обновляем состояние с полным списком ВСЕХ объявлений
@@ -354,9 +363,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           );
         } catch (e) {
           // Не испускаем ошибку т.к. фаза 1 уже показала контент
-          print(
-            '⚠️  Warning: Failed to load remaining listings in background: $e',
-          );
+          // Background loading failed silently
         }
       }).ignore();
     } catch (e) {

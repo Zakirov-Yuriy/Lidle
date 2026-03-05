@@ -135,7 +135,6 @@ void main() {
         for (final category in catalog.categories) {
           print('\n📍 Категория: ${category.name} (ID: ${category.id})');
           print('   isEndpoint: ${category.isEndpoint}');
-          print('   Type: ${category.type ?? "null"}');
           print('   Slug: ${category.slug}');
 
           expect(category.id, greaterThan(0));

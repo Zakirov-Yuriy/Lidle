@@ -49,10 +49,7 @@ void main() {
     test('verify method should accept correct parameters', () {
       expect(() async {
         try {
-          await AuthService.verify(
-            email: 'test@example.com',
-            code: '123456',
-          );
+          await AuthService.verify(email: 'test@example.com', code: '123456');
         } catch (e) {
           // Expected to fail without proper API
           expect(e, isNotNull);
@@ -74,13 +71,12 @@ void main() {
       }, returnsNormally);
     });
 
-    test('login method should accept optional remember parameter', () {
+    test('login method should handle authentication', () {
       expect(() async {
         try {
           await AuthService.login(
             email: 'test@example.com',
             password: 'password123',
-            remember: false,
           );
         } catch (e) {
           // Expected to fail without proper API

@@ -22,6 +22,7 @@ void main() {
   print('Выбранное значение: 102 (VALUE_ID для "2 комнаты")');
 
   // Вероятная структура в _selectedValues после выбора:
+  // ignore: unused_local_variable
   final selectedValues = {
     6: {'102'}, // Set<String> с ID выбранного значения (как текущий код)
   };
@@ -100,6 +101,7 @@ API Query Parameters:
 
   attributeIds.forEach((type, ids) {
     print('$type:');
+    // ignore: unused_local_variable
     final ranges = ids.asMap().entries;
     var minId = ids.first, maxId = ids.first;
     for (var id in ids) {

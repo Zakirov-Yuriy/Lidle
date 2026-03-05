@@ -10,13 +10,7 @@ class UserService {
   /// Получить профиль текущего пользователя
   static Future<UserProfile> getProfile({required String token}) async {
     try {
-      // print('🔐 UserService: Запрашиваем профиль с токеном...');
       final response = await ApiService.get('/me', token: token);
-
-      // print('📦 UserService: Ответ от API получен');
-      // print('📦 UserService: Тип response: ${response.runtimeType}');
-      print('📦 UserService: Ключи response: ${response.keys.toList()}');
-      print('📦 UserService: Полный ответ: ${jsonEncode(response)}');
 
       final profileResponse = UserProfileResponse.fromJson(response);
       // print('✅ UserService: Профиль распарсен');
@@ -27,12 +21,6 @@ class UserService {
       }
 
       final profile = profileResponse.data[0];
-      print('👤 UserService.getProfile():');
-      print('   - ID: ${profile.id}');
-      print('   - Name: ${profile.name}');
-      print('   - Email: ${profile.email}');
-      print('   - Phone: ${profile.phone}');
-      print('   - Nickname: ${profile.nickname}');
 
       // DEBUG: Детальное логирование полей
       // print('🔍 DEBUG UserService.getProfile() BEFORE FIX:');
@@ -66,12 +54,10 @@ class UserService {
       // Если есть дублирование (например "Юрий Зак Зак"), оставляем только "Юрий"
       // Ищем повторение слов в конце
       if (parts.length > 1) {
-        bool hasDuplicate = false;
         for (int i = 1; i < parts.length - 1; i++) {
           if (parts[i] == parts[parts.length - 1]) {
             // Нашли повторение - берем только первое имя
             firstName = parts.first;
-            hasDuplicate = true;
             // print();
             break;
           }

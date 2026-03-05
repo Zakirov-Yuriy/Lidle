@@ -7,9 +7,6 @@ import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 
 class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
-  /// Флаг для отслеживания, уже ли загружены каталоги
-  bool _isCatalogsLoaded = false;
-
   /// TTL кеша каталогов — 10 минут. Каталоги меняются редко.
   static const Duration _catalogsTtl = Duration(minutes: 10);
 
@@ -30,7 +27,8 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
     if (!event.forceRefresh) {
       final cached = AppCacheService().get<List>(CacheKeys.catalogsData);
       if (cached != null) {
-        _isCatalogsLoaded = true;
+        // Флаг используется для отслеживания загрузки
+        // _isCatalogsLoaded = true;
         emit(CatalogsLoaded(cached.cast()));
         return;
       }
@@ -41,15 +39,15 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
       final token = TokenService.currentToken;
       final response = await ApiService.getCatalogs(token: token);
 
-      // 💾 Сохраняем в L1 + L2 Hive (TTL 10 мин)
+      // 💾 Сохраняем в L1 (RAM) - не персистируем сложные объекты в Hive
       AppCacheService().set<List>(
         CacheKeys.catalogsData,
         response.data,
         ttl: _catalogsTtl,
-        persist: true,
       );
 
-      _isCatalogsLoaded = true;
+      // Флаг заново загруженных каталогов
+      // _isCatalogsLoaded = true;
       emit(CatalogsLoaded(response.data));
     } catch (e) {
       emit(CatalogError(e.toString()));

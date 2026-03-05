@@ -700,7 +700,7 @@ ${widget.listing.title}
           displayValue = value;
         } else if (value is List) {
           // Если value это список
-          displayValue = (value as List).join(', ');
+          displayValue = value.join(', ');
         }
         charWidgets.add(_InfoRow(title: '$title: ', value: displayValue));
       }

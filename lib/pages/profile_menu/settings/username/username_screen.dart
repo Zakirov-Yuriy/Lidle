@@ -32,28 +32,6 @@ class _UsernameScreenState extends State<UsernameScreen> {
     context.read<ProfileBloc>().add(LoadProfileEvent());
   }
 
-  void _confirmUsername() {
-    final username = _usernameController.text.trim();
-    if (username.isNotEmpty) {
-      final currentState = context.read<ProfileBloc>().state;
-      if (currentState is ProfileLoaded) {
-        context.read<ProfileBloc>().add(
-          UpdateProfileEvent(
-            name: currentState.name,
-            lastName: currentState.lastName,
-            email: currentState.email,
-            phone: currentState.phone,
-            profileImage: currentState.profileImage,
-            username: username,
-          ),
-        );
-        // Принудительно перезагружаем профиль с API при возврате
-        context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
-        Navigator.pop(context);
-      }
-    }
-  }
-
   @override
   void dispose() {
     _usernameController.dispose();

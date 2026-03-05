@@ -29,7 +29,6 @@ class ProfileMenuScreen extends StatefulWidget {
 
 class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
   String? _mainPhoneValue;
-  int? _mainPhoneId;
 
   @override
   void didChangeDependencies() {
@@ -50,7 +49,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         final phonesResponse = await ContactService.getPhones(token: token);
         if (phonesResponse.data.isNotEmpty) {
           setState(() {
-            _mainPhoneId = phonesResponse.data.first.id;
+            // _mainPhoneId = phonesResponse.data.first.id;
             // Ensure phone is in correct format with +
             String phone = phonesResponse.data.first.phone;
             if (!phone.startsWith('+')) {
@@ -61,7 +60,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         } else {
           setState(() {
             _mainPhoneValue = null;
-            _mainPhoneId = null;
+            // _mainPhoneId = null;
           });
         }
       }
