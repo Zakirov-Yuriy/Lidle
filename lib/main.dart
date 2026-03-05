@@ -91,8 +91,9 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 🚀 ОПТИМИЗАЦИЯ #1: Быстрая инициализация Hive (обязательна для кеша)
+  // Инициализируем ДО runApp(), но максимально быстро без лишних задержек
   try {
-    // Инициализация Hive с обработкой ошибок
     if (kIsWeb) {
       await Hive.initFlutter();
     } else {
@@ -102,6 +103,7 @@ void main() async {
     await HiveService.init();
   } catch (e) {
     // Продолжаем работу даже если Hive не инициализирован
+    print('⚠️ Hive инициализация ошибка: $e');
   }
 
   SystemChrome.setSystemUIOverlayStyle(

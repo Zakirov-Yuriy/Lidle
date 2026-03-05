@@ -171,34 +171,41 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
 
     // 🔄 Проверяем кеш (L1 RAM → L2 Hive), если это не forceRefresh
+    // Пропускаем при первой загрузке, когда Hive может быть не инициализирован
     if (!event.forceRefresh && state is! ListingsLoading) {
-      final cachedListings = AppCacheService().get<Map>(CacheKeys.listingsData);
-      if (cachedListings != null &&
-          cachedListings.containsKey('listings') &&
-          cachedListings.containsKey('categories')) {
-        try {
-          // Каст JSON обратно в объекты
-          final listings = (cachedListings['listings'] as List)
-              .map((item) => _jsonToListing(item as Map<String, dynamic>))
-              .toList();
-          final categories = (cachedListings['categories'] as List)
-              .map((item) => _jsonToCategory(item as Map<String, dynamic>))
-              .toList();
+      try {
+        final cachedListings = AppCacheService().get<Map>(
+          CacheKeys.listingsData,
+        );
+        if (cachedListings != null &&
+            cachedListings.containsKey('listings') &&
+            cachedListings.containsKey('categories')) {
+          try {
+            // Каст JSON обратно в объекты
+            final listings = (cachedListings['listings'] as List)
+                .map((item) => _jsonToListing(item as Map<String, dynamic>))
+                .toList();
+            final categories = (cachedListings['categories'] as List)
+                .map((item) => _jsonToCategory(item as Map<String, dynamic>))
+                .toList();
 
-          emit(
-            ListingsLoaded(
-              listings: listings,
-              categories: categories,
-              currentPage: cachedListings['currentPage'] ?? 1,
-              totalPages: cachedListings['totalPages'] ?? 1,
-              itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
-            ),
-          );
-          _isInitialLoadComplete = true;
-          return;
-        } catch (e) {
-          // Игнорируем ошибку кеша и загружаем заново
+            emit(
+              ListingsLoaded(
+                listings: listings,
+                categories: categories,
+                currentPage: cachedListings['currentPage'] ?? 1,
+                totalPages: cachedListings['totalPages'] ?? 1,
+                itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
+              ),
+            );
+            _isInitialLoadComplete = true;
+            return;
+          } catch (e) {
+            // Игнорируем ошибку кеша и загружаем заново
+          }
         }
+      } catch (e) {
+        // Hive еще не инициализирован, пропускаем проверку кеша
       }
     }
 
@@ -210,8 +217,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final catalogsResponse = await ApiService.getCatalogs(token: token);
       final allCatalogIds = catalogsResponse.data.map((c) => c.id).toList();
 
-      // Берём ID первых 3 каталогов для быстрого отображения (снижено с 6 для оптимизации)
-      final firstCatalogIds = allCatalogIds.take(3).toList();
+      // 🚀 ОПТИМИЗАЦИЯ #2: Снижено с 3 до 1 каталога для максимально быстрого фрейма
+      // Остальные загружаются в фазе 2 фоне без блокировки UI
+      final firstCatalogIds = allCatalogIds.take(1).toList();
 
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
@@ -247,12 +255,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         // Парсируем все ответы параллельно на фоновых потоках
         for (final response in firstBatchResponses) {
           if (response.data.isNotEmpty) {
-            // Используем compute() для парсирования на отдельном потоке
-            final parsedListings =
-                await compute<List<Advert>, List<home.Listing>>(
-                  (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                  response.data,
-                );
+            // 🚀 ОПТИМИЗАЦИЯ #3: Умный compute() - используем только для 50+ объявлений
+            // Для малых списков синхронное парсирование быстрее
+            List<home.Listing> parsedListings;
+
+            if (response.data.length > 50) {
+              // Для больших списков используем compute() на отдельном потоке
+              parsedListings = await compute<List<Advert>, List<home.Listing>>(
+                (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                response.data,
+              );
+            } else {
+              // Для малых списков синхронное парсирование (быстрее без overhead compute)
+              parsedListings = _parseAdvertsOnBackgroundThread(response.data);
+            }
+
             allListings.addAll(parsedListings);
             totalPages = response.meta.lastPage;
             itemsPerPage = response.meta.perPage;
@@ -261,6 +278,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       }
 
       final sortedListings = _sortListingsByDate(allListings);
+
+      // 🚀 ОПТИМИЗАЦИЯ #4: Гарантируем видимость skeleton минимум 500ms для лучшего UX
+      // Это предотвращает мелькание между skeleton и контентом
+      await Future.delayed(const Duration(milliseconds: 500));
 
       // 🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит контент В ЭТОТ МОМЕНТ!
       emit(
@@ -283,8 +304,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             sortedListings,
           );
 
-          // Оставшиеся каталоги (пропускаем первые 6, которые уже загружены)
-          final remainingCatalogIds = allCatalogIds.skip(6).toList();
+          // Оставшиеся каталоги (пропускаем первый 1, который уже загружен)
+          final remainingCatalogIds = allCatalogIds.skip(1).toList();
 
           if (remainingCatalogIds.isEmpty) return;
 
@@ -316,11 +337,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
             for (final response in batchResponses) {
               if (response.data.isNotEmpty) {
-                final parsedListings =
-                    await compute<List<Advert>, List<home.Listing>>(
-                      (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                      response.data,
-                    );
+                // Используем условный compute() в фазе 2 также
+                List<home.Listing> parsedListings;
+
+                if (response.data.length > 50) {
+                  parsedListings =
+                      await compute<List<Advert>, List<home.Listing>>(
+                        (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                        response.data,
+                      );
+                } else {
+                  parsedListings = _parseAdvertsOnBackgroundThread(
+                    response.data,
+                  );
+                }
+
                 remainingListings.addAll(parsedListings);
               }
             }
@@ -363,10 +394,14 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           );
         } catch (e) {
           // Не испускаем ошибку т.к. фаза 1 уже показала контент
+          print('⚠️ ListingsBloc ФАЗА 2 ошибка (фоновая): $e');
           // Background loading failed silently
         }
       }).ignore();
     } catch (e) {
+      // Логируем ошибку для отладки
+      print('❌ ListingsBloc LoadListingsEvent ошибка: $e');
+      print('Stack trace: ${StackTrace.current}');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -521,11 +556,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // print('Converted to listing with ${listing.images.length} images');
 
       // 💾 Сохраняем в унифицированный кеш (L1 + L2 Hive)
-      AppCacheService().set<Map<String, dynamic>>(
-        cacheKey,
-        _listingToJson(listing),
-        persist: true,
-      );
+      // Обернуто в try-catch т.к. Hive может быть не инициализирован
+      try {
+        AppCacheService().set<Map<String, dynamic>>(
+          cacheKey,
+          _listingToJson(listing),
+          persist: true,
+        );
+      } catch (e) {
+        // Ошибка кеша - продолжаем работу
+      }
 
       emit(AdvertLoaded(listing: listing));
     } catch (e) {
