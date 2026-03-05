@@ -244,7 +244,7 @@ class MyAdvertsService {
     required String token,
   }) async {
     try {
-      await ApiService.delete('/me/adverts/$advertId', token: token);
+      await ApiService.delete('/adverts/$advertId', token: token);
     } catch (e) {
       throw Exception('Ошибка при удалении объявления: $e');
     }

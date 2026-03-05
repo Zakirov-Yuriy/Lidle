@@ -44,7 +44,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // Мета-данные объявлений (только каталоги и категории с объявлениями)
   List<AdvertMetaCatalog> _advertMetaCatalogs = [];
   List<AdvertMetaCategory> _advertMetaCategories = [];
-  bool _isLoadingMetadata = true;
+  bool _isLoadingMetadata = false;
   String? _errorMessage;
 
   // Реальные объявления с API
@@ -66,10 +66,21 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   bool _isLoadingMore = false;
 
+  /// Флаг для отслеживания, загружены ли метаданные данные
+  /// Предотвращает повторную загрузку при переходе между вкладками
+  bool _metadataLoaded = false;
+
+  /// Флаг для отслеживания загрузки объявлений по категориям
+  /// Отдельно от _isLoadingMetadata для избежания конфликтов
+  bool _listingsLoading = false;
+
   @override
   void initState() {
     super.initState();
-    _loadAdvertMetadata();
+    if (!_metadataLoaded) {
+      _isLoadingMetadata = true;
+      _loadAdvertMetadata();
+    }
   }
 
   /// Загрузить мета-информацию объявлений (каталоги и категории с объявлениями)
@@ -105,20 +116,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               }
             }
             _isLoadingMetadata = false;
+            _metadataLoaded = true;
           });
 
-          // После загрузки мета-информации загрузить объявления по первой категории
           if (_selectedCategoryId != null) {
             await _loadListingsByCategory(_selectedCategoryId!);
           }
         }
       }
     } catch (e) {
-      // print('=== Ошибка загрузки мета-информации объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingMetadata = false;
           _errorMessage = 'Ошибка загрузки мета-информации: $e';
+          _metadataLoaded = true;
         });
       }
     }
@@ -131,15 +142,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       if (token == null) {
         if (mounted) {
           setState(() {
-            _isLoadingMetadata = false;
             _errorMessage = 'Токен не найден';
           });
         }
         return;
       }
 
+      // Используем отдельный флаг для загрузки объявлений
       if (mounted) {
-        setState(() => _isLoadingMetadata = true);
+        setState(() => _listingsLoading = true);
       }
 
       // Сбросить пагинацию
@@ -171,6 +182,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _archiveIsLastPage = true;
 
           _isLoadingMore = false;
+          _listingsLoading = false;
         });
       }
     } catch (e) {
@@ -178,6 +190,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       if (mounted) {
         setState(() {
           _isLoadingMore = false;
+          _listingsLoading = false;
           _errorMessage = 'Ошибка загрузки объявлений: $e';
         });
       }
@@ -416,9 +429,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         ),
                       ),
                       onPressed: () {
-                        setState(() {
-                          _deleteSelected();
-                        });
+                        _deleteSelected();
                         Navigator.pop(context);
                       },
                       child: const Text(
@@ -447,411 +458,394 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           context.read<NavigationBloc>().executeNavigation(context);
         }
       },
-      child: BlocBuilder<NavigationBloc, NavigationState>(
-        builder: (context, navigationState) {
-          return Scaffold(
-            extendBody: true,
-            backgroundColor: primaryBackground,
-            body: SafeArea(
-              bottom: false,
-              child: ListView(
-                children: [
-                  // ───── Header ─────
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 20, right: 25),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Header(),
-                        ),
-                        const Spacer(),
-                      ],
+      listenWhen: (previous, current) =>
+          current is NavigationToProfile ||
+          current is NavigationToHome ||
+          current is NavigationToFavorites ||
+          current is NavigationToMessages,
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: primaryBackground,
+        body: SafeArea(
+          bottom: false,
+          child: ListView(
+            children: [
+              // ───── Header ─────
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20, right: 25),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: const Header(),
                     ),
-                  ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
 
-                  // ───── Back / Cancel ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            size: 16,
-                          ),
-                        ),
-                        const Text(
-                          'Активные / Неактивные',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: _showSortDialog,
-                          child: const Icon(
-                            Icons.swap_vert,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
+              // ───── Back / Cancel ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(
+                        Icons.arrow_back_ios,
+                        color: Color.fromARGB(255, 255, 255, 255),
+                        size: 16,
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ───── Catalog ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Каталог',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_isLoadingMetadata)
-                          const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF00B7FF),
-                              ),
-                            ),
-                          )
-                        else if (_advertMetaCatalogs.isEmpty)
-                          const Center(
-                            child: Text(
-                              'Каталоги не найдены',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 14,
-                              ),
-                            ),
-                          )
-                        else
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: List.generate(
-                                _advertMetaCatalogs.length,
-                                (index) => Padding(
-                                  padding: EdgeInsets.only(
-                                    right:
-                                        index < _advertMetaCatalogs.length - 1
-                                        ? 8
-                                        : 0,
-                                  ),
-                                  child: _catalogButton(
-                                    _advertMetaCatalogs[index].name,
-                                    _selectedCatalogIndex == index,
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedCatalogIndex = index;
-                                        _advertMetaCategories =
-                                            _advertMetaCatalogs[index]
-                                                .categories;
-                                        _selectedCategoryIndex = 0;
-                                      });
-                                      // Загрузить объявления первой категории нового каталога
-                                      if (_advertMetaCategories.isNotEmpty) {
-                                        final categoryId =
-                                            _advertMetaCategories[0].categoryId;
-                                        _selectedCategoryId = categoryId;
-                                        _loadListingsByCategory(categoryId);
-                                      }
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                    const Text(
+                      'Активные / Неактивные',
+                      style: TextStyle(
+                        color: Color.fromARGB(255, 255, 255, 255),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // ───── Categories ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Категории',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_isLoadingMetadata)
-                          const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF00B7FF),
-                              ),
-                            ),
-                          )
-                        else if (_advertMetaCategories.isEmpty)
-                          const Center(
-                            child: Text(
-                              'Категории не найдены',
-                              style: TextStyle(
-                                color: Colors.white54,
-                                fontSize: 14,
-                              ),
-                            ),
-                          )
-                        else
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: List.generate(
-                                _advertMetaCategories.length,
-                                (index) => Padding(
-                                  padding: EdgeInsets.only(
-                                    right:
-                                        index < _advertMetaCategories.length - 1
-                                        ? 8
-                                        : 0,
-                                  ),
-                                  child: _catalogButton(
-                                    _advertMetaCategories[index].name,
-                                    _selectedCategoryIndex == index,
-                                    onPressed: () {
-                                      final categoryId =
-                                          _advertMetaCategories[index]
-                                              .categoryId;
-                                      setState(() {
-                                        _selectedCategoryIndex = index;
-                                        // Обновить ID категории для фильтрации
-                                        _selectedCategoryId = categoryId;
-                                      });
-                                      // Загрузить объявления для выбранной категории
-                                      _loadListingsByCategory(categoryId);
-                                    },
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: _showSortDialog,
+                      child: const Icon(Icons.swap_vert, color: Colors.white),
                     ),
-                  ),
+                  ],
+                ),
+              ),
 
-                  const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                  // ───── Tabs ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () => setState(() => _currentTab = 0),
-                                child: Text(
-                                  _activeListings.isEmpty
-                                      ? 'Активные'
-                                      : 'Активные ${_activeListings.length}',
-                                  style: TextStyle(
-                                    color: _currentTab == 0
-                                        ? accentColor
-                                        : Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              GestureDetector(
-                                onTap: () => setState(() => _currentTab = 1),
-                                child: Text(
-                                  _inactiveListings.isEmpty
-                                      ? 'Неактивные'
-                                      : 'Неактивные ${_inactiveListings.length}',
-                                  style: TextStyle(
-                                    color: _currentTab == 1
-                                        ? accentColor
-                                        : Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              GestureDetector(
-                                onTap: () => setState(() => _currentTab = 2),
-                                child: Text(
-                                  _archiveListings.isEmpty
-                                      ? 'Архив'
-                                      : 'Архив ${_archiveListings.length}',
-                                  style: TextStyle(
-                                    color: _currentTab == 2
-                                        ? accentColor
-                                        : Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              GestureDetector(
-                                onTap: () => setState(() => _currentTab = 3),
-                                child: Text(
-                                  _moderationListings.isEmpty
-                                      ? 'На модерации'
-                                      : 'На модерации ${_moderationListings.length}',
-                                  style: TextStyle(
-                                    color: _currentTab == 3
-                                        ? accentColor
-                                        : Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                            ],
+              // ───── Catalog ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Каталог',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_isLoadingMetadata)
+                      const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF00B7FF),
                           ),
                         ),
-                        const SizedBox(height: 9),
-                        Stack(
-                          children: [
-                            Container(
-                              height: 1,
-                              width: double.infinity,
-                              color: Colors.white24,
-                            ),
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 200),
-                              left: _getTabPosition(_currentTab),
-                              child: Container(
-                                height: 2,
-                                width: _getTabWidth(_currentTab),
-                                color: accentColor,
+                      )
+                    else if (_advertMetaCatalogs.isEmpty)
+                      const Center(
+                        child: Text(
+                          'Каталоги не найдены',
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                      )
+                    else
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: List.generate(
+                            _advertMetaCatalogs.length,
+                            (index) => Padding(
+                              padding: EdgeInsets.only(
+                                right: index < _advertMetaCatalogs.length - 1
+                                    ? 8
+                                    : 0,
+                              ),
+                              child: _catalogButton(
+                                _advertMetaCatalogs[index].name,
+                                _selectedCatalogIndex == index,
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedCatalogIndex = index;
+                                    _advertMetaCategories =
+                                        _advertMetaCatalogs[index].categories;
+                                    _selectedCategoryIndex = 0;
+                                  });
+                                  // Загрузить объявления первой категории нового каталога
+                                  if (_advertMetaCategories.isNotEmpty) {
+                                    final categoryId =
+                                        _advertMetaCategories[0].categoryId;
+                                    _selectedCategoryId = categoryId;
+                                    _loadListingsByCategory(categoryId);
+                                  }
+                                },
                               ),
                             ),
-                          ],
+                          ),
                         ),
-                      ],
+                      ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ───── Categories ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Категории',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 12),
+                    if (_isLoadingMetadata)
+                      const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF00B7FF),
+                          ),
+                        ),
+                      )
+                    else if (_advertMetaCategories.isEmpty)
+                      const Center(
+                        child: Text(
+                          'Категории не найдены',
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                      )
+                    else
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: List.generate(
+                            _advertMetaCategories.length,
+                            (index) => Padding(
+                              padding: EdgeInsets.only(
+                                right: index < _advertMetaCategories.length - 1
+                                    ? 8
+                                    : 0,
+                              ),
+                              child: _catalogButton(
+                                _advertMetaCategories[index].name,
+                                _selectedCategoryIndex == index,
+                                onPressed: () {
+                                  final categoryId =
+                                      _advertMetaCategories[index].categoryId;
+                                  setState(() {
+                                    _selectedCategoryIndex = index;
+                                    // Обновить ID категории для фильтрации
+                                    _selectedCategoryId = categoryId;
+                                  });
+                                  // Загрузить объявления для выбранной категории
+                                  _loadListingsByCategory(categoryId);
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
 
-                  const SizedBox(height: 20),
+              const SizedBox(height: 20),
 
-                  // ───── Select all section ─────
-                  if (_isSelectionMode)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
+              // ───── Tabs ─────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          CustomCheckbox(
-                            value: _selectAllChecked,
-                            onChanged: (value) {
-                              setState(() {
-                                _selectAllChecked = value;
-                                if (_selectAllChecked) {
-                                  // Select all listings from current tab
-                                  final currentListings =
-                                      _getCurrentTabListings();
-                                  _selectedListingIds.addAll(
-                                    currentListings.map((l) => l.id),
-                                  );
-                                } else {
-                                  _selectedListingIds.clear();
-                                }
-                              });
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Выбрать все',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Spacer(),
-                          if (_selectedListingIds.isNotEmpty) ...[
-                            if (_currentTab != 3) ...[
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _moveToArchive();
-                                  });
-                                },
-                                child: Text(
-                                  _currentTab == 2 ? 'Из архива' : 'В архив',
-                                  style: const TextStyle(
-                                    color: accentColor,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Container(
-                                width: 1,
-                                height: 19,
-                                color: Colors.grey.withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(width: 10),
-                            ],
-                            GestureDetector(
-                              onTap: () {
-                                _showDeleteMultipleDialog();
-                              },
-                              child: const Text(
-                                'Удалить',
-                                style: TextStyle(
-                                  color: Color(0xFFFF3B30),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                          GestureDetector(
+                            onTap: () => setState(() => _currentTab = 0),
+                            child: Text(
+                              _activeListings.isEmpty
+                                  ? 'Активные'
+                                  : 'Активные ${_activeListings.length}',
+                              style: TextStyle(
+                                color: _currentTab == 0
+                                    ? accentColor
+                                    : Colors.white,
+                                fontSize: 14,
                               ),
                             ),
-                          ],
+                          ),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () => setState(() => _currentTab = 1),
+                            child: Text(
+                              _inactiveListings.isEmpty
+                                  ? 'Неактивные'
+                                  : 'Неактивные ${_inactiveListings.length}',
+                              style: TextStyle(
+                                color: _currentTab == 1
+                                    ? accentColor
+                                    : Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () => setState(() => _currentTab = 2),
+                            child: Text(
+                              _archiveListings.isEmpty
+                                  ? 'Архив'
+                                  : 'Архив ${_archiveListings.length}',
+                              style: TextStyle(
+                                color: _currentTab == 2
+                                    ? accentColor
+                                    : Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () => setState(() => _currentTab = 3),
+                            child: Text(
+                              _moderationListings.isEmpty
+                                  ? 'На модерации'
+                                  : 'На модерации ${_moderationListings.length}',
+                              style: TextStyle(
+                                color: _currentTab == 3
+                                    ? accentColor
+                                    : Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
-
-                  // ───── Content ─────
-                  _buildTabContent(),
-                  SizedBox(
-                    height: bottomNavHeight + bottomNavPaddingBottom + 16,
-                  ),
-                ],
+                    const SizedBox(height: 9),
+                    Stack(
+                      children: [
+                        Container(
+                          height: 1,
+                          width: double.infinity,
+                          color: Colors.white24,
+                        ),
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 200),
+                          left: _getTabPosition(_currentTab),
+                          child: Container(
+                            height: 2,
+                            width: _getTabWidth(_currentTab),
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            bottomNavigationBar: BottomNavigation(
-              onItemSelected: (index) {
-                if (index == 3) {
-                  // Shopping cart icon
-                  context.read<NavigationBloc>().add(
-                    NavigateToMyPurchasesEvent(),
-                  );
-                } else {
-                  context.read<NavigationBloc>().add(
-                    SelectNavigationIndexEvent(index),
-                  );
-                }
-              },
-            ),
-          );
-        },
+
+              const SizedBox(height: 20),
+
+              // ───── Select all section ─────
+              if (_isSelectionMode)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: Row(
+                    children: [
+                      CustomCheckbox(
+                        value: _selectAllChecked,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectAllChecked = value;
+                            if (_selectAllChecked) {
+                              // Select all listings from current tab
+                              final currentListings = _getCurrentTabListings();
+                              _selectedListingIds.addAll(
+                                currentListings.map((l) => l.id),
+                              );
+                            } else {
+                              _selectedListingIds.clear();
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Выбрать все',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_selectedListingIds.isNotEmpty) ...[
+                        if (_currentTab != 3) ...[
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _moveToArchive();
+                              });
+                            },
+                            child: Text(
+                              _currentTab == 2 ? 'Из архива' : 'В архив',
+                              style: const TextStyle(
+                                color: accentColor,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Container(
+                            width: 1,
+                            height: 19,
+                            color: Colors.grey.withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(width: 10),
+                        ],
+                        GestureDetector(
+                          onTap: () {
+                            _showDeleteMultipleDialog();
+                          },
+                          child: const Text(
+                            'Удалить',
+                            style: TextStyle(
+                              color: Color(0xFFFF3B30),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+              // ───── Content ─────
+              _buildTabContent(),
+              SizedBox(height: bottomNavHeight + bottomNavPaddingBottom + 16),
+            ],
+          ),
+        ),
+        bottomNavigationBar: BottomNavigation(
+          onItemSelected: (index) {
+            if (index == 3) {
+              // Shopping cart icon
+              context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+            } else {
+              context.read<NavigationBloc>().add(
+                SelectNavigationIndexEvent(index),
+              );
+            }
+          },
+        ),
       ),
     );
   }
@@ -1619,27 +1613,42 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     });
   }
 
-  void _deleteSelected() {
+  void _deleteSelected() async {
     if (_selectedListingIds.isEmpty) return;
 
-    setState(() {
-      if (_currentTab == 0) {
-        _activeListings.removeWhere((l) => _selectedListingIds.contains(l.id));
-      } else if (_currentTab == 1) {
-        _inactiveListings.removeWhere(
-          (l) => _selectedListingIds.contains(l.id),
-        );
-      } else if (_currentTab == 2) {
-        _archiveListings.removeWhere((l) => _selectedListingIds.contains(l.id));
-      } else if (_currentTab == 3) {
-        _moderationListings.removeWhere(
-          (l) => _selectedListingIds.contains(l.id),
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Токен не найден')));
+        }
+        return;
+      }
+
+      // Удаляем ВСЕ выбранные объявления на сервере
+      for (final advertId in _selectedListingIds) {
+        await MyAdvertsService.deleteAdvert(advertId: advertId, token: token);
+      }
+
+      // После успешного удаления на сервере - перезагружаем список
+      if (_selectedCategoryId != null) {
+        await _loadListingsByCategory(_selectedCategoryId!);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Объявления успешно удалены')),
         );
       }
-      _selectedListingIds.clear();
-      _selectAllChecked = false;
-      _isSelectionMode = false;
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка удаления: $e')));
+      }
+    }
   }
 
   /// Активировать объявление
