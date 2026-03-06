@@ -87,8 +87,8 @@ Map<String, dynamic> _$AdvertStatusToJson(AdvertStatus instance) =>
 
 ContentType _$ContentTypeFromJson(Map<String, dynamic> json) => ContentType(
   id: (json['id'] as num).toInt(),
-  type: json['type'] as String,
-  path: json['path'] as String,
+  type: json['type'] as String?,
+  path: json['path'] as String?,
 );
 
 Map<String, dynamic> _$ContentTypeToJson(ContentType instance) =>
@@ -100,16 +100,18 @@ Map<String, dynamic> _$ContentTypeToJson(ContentType instance) =>
 
 UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
   id: (json['id'] as num).toInt(),
-  name: json['name'] as String,
+  name: json['name'] as String?,
   thumbnail: json['thumbnail'] as String?,
-  price: json['price'] as String,
-  slug: json['slug'] as String,
-  address: json['address'] as String,
-  viewsCount: (json['views_count'] as num).toInt(),
-  clickCount: (json['click_count'] as num).toInt(),
-  shareCount: (json['share_count'] as num).toInt(),
-  createdAt: json['created_at'] as String,
-  type: ContentType.fromJson(json['type'] as Map<String, dynamic>),
+  price: json['price'] as String?,
+  slug: json['slug'] as String?,
+  address: json['address'] as String?,
+  viewsCount: (json['views_count'] as num?)?.toInt(),
+  clickCount: (json['click_count'] as num?)?.toInt(),
+  shareCount: (json['share_count'] as num?)?.toInt(),
+  createdAt: json['created_at'] as String?,
+  type: json['type'] == null
+      ? null
+      : ContentType.fromJson(json['type'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>

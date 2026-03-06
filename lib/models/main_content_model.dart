@@ -97,10 +97,10 @@ class AdvertStatus {
 @JsonSerializable()
 class ContentType {
   final int id;
-  final String type;
-  final String path;
+  final String? type;
+  final String? path;
 
-  ContentType({required this.id, required this.type, required this.path});
+  ContentType({required this.id, this.type, this.path});
 
   factory ContentType.fromJson(Map<String, dynamic> json) =>
       _$ContentTypeFromJson(json);
@@ -111,33 +111,33 @@ class ContentType {
 @JsonSerializable()
 class UserAdvert {
   final int id;
-  final String name;
+  final String? name;
   final String? thumbnail;
-  final String price;
-  final String slug;
-  final String address;
+  final String? price;
+  final String? slug;
+  final String? address;
   @JsonKey(name: 'views_count')
-  final int viewsCount;
+  final int? viewsCount;
   @JsonKey(name: 'click_count')
-  final int clickCount;
+  final int? clickCount;
   @JsonKey(name: 'share_count')
-  final int shareCount;
+  final int? shareCount;
   @JsonKey(name: 'created_at')
-  final String createdAt;
-  final ContentType type;
+  final String? createdAt;
+  final ContentType? type;
 
   UserAdvert({
     required this.id,
-    required this.name,
+    this.name,
     this.thumbnail,
-    required this.price,
-    required this.slug,
-    required this.address,
-    required this.viewsCount,
-    required this.clickCount,
-    required this.shareCount,
-    required this.createdAt,
-    required this.type,
+    this.price,
+    this.slug,
+    this.address,
+    this.viewsCount,
+    this.clickCount,
+    this.shareCount,
+    this.createdAt,
+    this.type,
   });
 
   factory UserAdvert.fromJson(Map<String, dynamic> json) =>

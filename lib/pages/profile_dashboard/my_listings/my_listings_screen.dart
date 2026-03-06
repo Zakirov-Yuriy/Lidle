@@ -108,8 +108,22 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         if (mounted) {
           setState(() {
             _advertMetaCatalogs = metaData.catalogs;
+
+            // 🔧 Найти первый каталог с категориями и объявлениями
+            int catalogIndexWithListings = 0;
+            for (int i = 0; i < _advertMetaCatalogs.length; i++) {
+              if (_advertMetaCatalogs[i].categories.isNotEmpty) {
+                catalogIndexWithListings = i;
+                break;
+              }
+            }
+
+            // Установить выбранный каталог и его категории
+            _selectedCatalogIndex = catalogIndexWithListings;
             if (_advertMetaCatalogs.isNotEmpty) {
-              _advertMetaCategories = _advertMetaCatalogs[0].categories;
+              _advertMetaCategories =
+                  _advertMetaCatalogs[catalogIndexWithListings].categories;
+
               // Установить первую категорию как выбранную для фильтрации
               if (_advertMetaCategories.isNotEmpty) {
                 _selectedCategoryId = _advertMetaCategories[0].categoryId;
@@ -119,8 +133,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             _metadataLoaded = true;
           });
 
-          if (_selectedCategoryId != null) {
-            await _loadListingsByCategory(_selectedCategoryId!);
+          // Загрузить объявления по всему каталогу, без фильтра по категориям
+          final catalogId = _advertMetaCatalogs.isNotEmpty
+              ? _advertMetaCatalogs[_selectedCatalogIndex].catalogId
+              : null;
+          if (catalogId != null) {
+            await _loadListingsByCatalog(catalogId);
           }
         }
       }
@@ -135,7 +153,110 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загрузить объявления по выбранной категории (все страницы)
+  /// Загрузить объявления по всему каталогу (все страницы)
+  Future<void> _loadListingsByCatalog(int catalogId) async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = 'Токен не найден';
+          });
+        }
+        return;
+      }
+
+      // Используем отдельный флаг для загрузки объявлений
+      if (mounted) {
+        setState(() => _listingsLoading = true);
+      }
+
+      // Сбросить пагинацию
+      _activeListingsPage = 1;
+      _inactiveListingsPage = 1;
+      _archiveListingsPage = 1;
+      _moderationListingsPage = 1;
+
+      // Загружаем объявления всех статусов по каталогу параллельно
+      // БЕЗ фильтра по категориям - все объявления из каталога
+      // Подгружаем ВСЕ объявления по всем страницам
+      final results = await Future.wait([
+        _loadAllAdvertsByStatusAndCatalog(1, catalogId, token),
+        _loadAllAdvertsByStatusAndCatalog(2, catalogId, token),
+        _loadAllAdvertsByStatusAndCatalog(3, catalogId, token),
+        _loadAllAdvertsByStatusAndCatalog(8, catalogId, token),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _activeListings = results[0];
+          _inactiveListings = results[1];
+          _moderationListings = results[2];
+          _archiveListings = results[3];
+
+          // Все объявления за один раз - они уже на последней странице
+          _activeIsLastPage = true;
+          _inactiveIsLastPage = true;
+          _moderationIsLastPage = true;
+          _archiveIsLastPage = true;
+
+          _isLoadingMore = false;
+          _listingsLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+          _listingsLoading = false;
+          _errorMessage = 'Ошибка загрузки объявлений: $e';
+        });
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_errorMessage ?? 'Ошибка загрузки')),
+        );
+      }
+    }
+  }
+
+  /// Загрузить ВСЕ объявления для одного статуса по каталогу (все страницы)
+  /// БЕЗ фильтра по категориям - все объявления из каталога
+  Future<List<UserAdvert>> _loadAllAdvertsByStatusAndCatalog(
+    int statusId,
+    int catalogId,
+    String token,
+  ) async {
+    final allAdverts = <UserAdvert>[];
+    int currentPage = 1;
+    int lastPage = 1;
+
+    while (currentPage <= lastPage) {
+      try {
+        final response = await MyAdvertsService.getMyAdverts(
+          statusId: statusId,
+          catalogId: catalogId,
+          // Не указываем categoryId - загружаем все объявления из каталога
+          token: token,
+          page: currentPage,
+          limit: 100, // Стандартный лимит API
+        );
+
+        allAdverts.addAll(response.data);
+
+        // Обновить информацию о количестве страниц
+        lastPage = response.lastPage ?? 1;
+        currentPage++;
+      } catch (e) {
+        // print();
+        break;
+      }
+    }
+
+    return allAdverts;
+  }
+
+  /// Загрузить объявления по выбранной категории (все страницы) - для фильтрации
   Future<void> _loadListingsByCategory(int categoryId) async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -1127,10 +1248,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       images: advert.thumbnail != null
                           ? [advert.thumbnail!]
                           : [],
-                      title: advert.name,
-                      price: advert.price,
-                      location: advert.address,
-                      date: advert.createdAt,
+                      title: advert.name ?? "Без названия",
+                      price: advert.price ?? "0",
+                      location: advert.address ?? "",
+                      date: advert.createdAt ?? "",
                       isFavorited: false,
                       sellerName: "",
                       sellerAvatar: "",
@@ -1185,7 +1306,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        advert.name,
+                        advert.name ?? "Без названия",
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -1196,7 +1317,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${advert.price} ₽',
+                        '${advert.price ?? "0"} ₽',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -1205,7 +1326,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        advert.address,
+                        advert.address ?? "",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
