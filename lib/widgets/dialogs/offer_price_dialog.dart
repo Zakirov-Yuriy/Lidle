@@ -182,6 +182,7 @@ class _OfferPriceDialogState extends State<OfferPriceDialog> {
                 controller: _messageController,
                 hintText: "Сообщение продавцу",
                 maxLines: 5,
+                maxLength: 100,
               ),
               // Вывод ошибки, если есть
               if (_errorMessage != null) ...[
@@ -247,24 +248,44 @@ class _OfferPriceDialogState extends State<OfferPriceDialog> {
     required String hintText,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
+    int? maxLength,
   }) {
     return TextField(
       controller: controller,
       enabled: !_isLoading,
       keyboardType: keyboardType,
       maxLines: maxLines,
+      maxLength: maxLength,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: Colors.white54),
         filled: true,
         fillColor: formBackground,
+        isDense: true,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(5),
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+        counterStyle: const TextStyle(color: Colors.white54, fontSize: 12),
       ),
+      buildCounter: maxLength != null
+          ? (context, {required currentLength, required isFocused, maxLength}) {
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Символов осталось: $currentLength / $maxLength',
+                  style: TextStyle(
+                    color: currentLength > maxLength! * 0.8
+                        ? Colors.orange
+                        : Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+              );
+            }
+          : null,
     );
   }
 }

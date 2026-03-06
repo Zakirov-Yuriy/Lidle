@@ -208,28 +208,24 @@ class _DynamicFilterState extends State<DynamicFilter> {
   /// Получить ID атрибута "Вам предложат цену" безопасно
   /// Гарантирует наличие ID, так как атрибут всегда добавляется в _loadAttributes()
   int? _getOfferPriceAttributeId() {
-    // Сначала пытаемся получить через resolver
+    // Получаем через resolver (уже исправлено чтобы возвращать null для категорий без атрибута)
     var id = _attributeResolver.getOfferPriceAttributeId();
     if (id != null) {
       return id;
     }
 
-    // Fallback: ищем в _attributes по названию
+    // Fallback: ищем в _attributes по названию "Вам предложат цену"
+    // Это только для недвижимости когда метаданные загружены неполно
     try {
       final attr = _attributes.firstWhere(
         (a) => a.title == 'Вам предложат цену',
       );
       return attr.id;
     } catch (_) {
-      // Последний fallback: ищем булевый обязательный атрибут
-      try {
-        final attr = _attributes.firstWhere(
-          (a) => a.dataType == 'boolean' && a.isRequired,
-        );
-        return attr.id;
-      } catch (_) {
-        return null;
-      }
+      // Если не нашли по названию, значит этот атрибут не существует в этой категории
+      // ВАЖНО: НЕ ищем "любой булевый атрибут" - это вызовет ошибку "Attribute doesn't belong to category"
+      // При возврате null, код будет правильно пропускать добавление этого атрибута для Jobs и т.д.
+      return null;
     }
   }
 
@@ -371,6 +367,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
         setState(() {
           _attributes = mutableFilters;
           _isLoading = false;
+
+          // 🔧 CRITICAL FIX: Clean up selected values that don't exist in this category
+          // This prevents sending attributes from another category
+          // (e.g., when editing an advert from one category, then switching to another)
+          final validAttributeIds = mutableFilters.map((a) => a.id).toSet();
+          _selectedValues.removeWhere(
+            (attrId, _) => !validAttributeIds.contains(attrId),
+          );
+
+          // Инициализируем "Вам предложат цену" на true по умолчанию
+          // Только если этот атрибут существует в этой категории
+          if (offerPriceAttrId != null &&
+              mutableFilters.any((a) => a.id == offerPriceAttrId)) {
+            _selectedValues[offerPriceAttrId] = true;
+          }
         });
       }
 
@@ -728,8 +739,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Пользователь должен заполнить форму вручную
 
     // Только инициализируем обязательный атрибут "Вам предложат цену" значением true
+    // Но только если этот атрибут существует в этой категории
     final offerPriceAttrId = _getOfferPriceAttributeId();
-    if (offerPriceAttrId != null) {
+    if (offerPriceAttrId != null &&
+        _attributes.any((a) => a.id == offerPriceAttrId)) {
       _selectedValues[offerPriceAttrId] = true;
       // print('🧪 Auto-fill DISABLED - user must fill form manually');
       // print('   Only initialized required attribute $offerPriceAttrId = true');
@@ -979,20 +992,35 @@ class _DynamicFilterState extends State<DynamicFilter> {
       'values': <String, dynamic>{},
     };
 
-    // print('Selected values: $_selectedValues');
-    // print('📋 Available filters: ${_attributes.map((a) => '${a.id}=${a.title}').join(', ')}');
+    // 🔍 ДИАГНОСТИКА: Начало сбора атрибутов
+    print('');
+    print('═══════════════════════════════════════════════════════');
+    print('🔍 ДИАГНОСТИКА: _collectFormData() Начало');
+    print('═══════════════════════════════════════════════════════');
+    print('📋 Загруженные атрибуты в _attributes:');
+    for (final attr in _attributes) {
+      print(
+        '   - ID ${attr.id}: "${attr.title}" (is_multiple=${attr.isMultiple}, values=${attr.values.length})',
+      );
+    }
+    print('');
+    print('📂 Значения в _selectedValues (к обработке):');
+    _selectedValues.forEach((k, v) {
+      print('   - Key=$k: $v (Type: ${v.runtimeType})');
+    });
+    print('');
 
     _selectedValues.forEach((key, value) {
+      // CRITICAL FIX: Skip attributes that don't exist in the loaded category
+      // This prevents "Attribute does not belong to category" errors
       final attr = _attributes.firstWhere(
         (a) => a.id == key,
         orElse: () => Attribute(id: 0, title: '', order: 0, values: []),
       );
       if (attr.id == 0) {
-        // print('⚠️ WARNING: Filter ID $key not found in loaded attributes!');
-        return;
+        // print('⚠️ WARNING: Filter ID $key not found in loaded attributes! SKIPPING.');
+        return; // Skip this attribute - it doesn't exist in this category
       }
-
-      // print();
 
       if (value is Set<String>) {
         // Multiple selection - but check if attribute allows multiple values
@@ -1256,6 +1284,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
     // print('Collected contacts: $contacts');
 
+    // 🔍 ДИАГНОСТИКА: Результат сбора атрибутов
+    print('');
+    print('✅ Собранные атрибуты для отправки:');
+    print('   value_selected: ${attributes['value_selected']}');
+    print('   values: ${attributes['values']}');
+    print('═══════════════════════════════════════════════════════');
+    print('');
+
     return CreateAdvertRequest(
       name: _titleController.text,
       description: _descriptionController.text,
@@ -1365,14 +1401,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       // Validate special attribute: "Вам предложат цену" (ID varies by category)
-      // This is always required and must be explicitly set
+      // Проверяем только если атрибут существует в этой категории
       final offerPriceAttrId = _getOfferPriceAttributeId();
-      if (offerPriceAttrId == null ||
-          !_selectedValues.containsKey(offerPriceAttrId) ||
-          _selectedValues[offerPriceAttrId] == null) {
-        isValid = false;
-        errorMessage = 'Необходимо согласиться принимать предложения по цене';
+      if (offerPriceAttrId != null) {
+        // Атрибут существует - проверяем, что он установлен в true
+        if (!_selectedValues.containsKey(offerPriceAttrId) ||
+            _selectedValues[offerPriceAttrId] != true) {
+          isValid = false;
+          errorMessage = 'Необходимо согласиться принимать предложения по цене';
+        }
       }
+      // Если атрибут не существует для этой категории - пропускаем валидацию
 
       if (!isValid) {
         ScaffoldMessenger.of(
@@ -1516,9 +1555,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   values.remove('1050');
                   // print('   🗑️ Removed non-map 1050 from values');
                 }
-                // Set correct format: {value: 1}
-                values['$offerPriceAttrId'] = {'value': 1};
-                // print('   ✅ Set $offerPriceAttrId in values as {value: 1}');
+                // 🔧 FIX: Only set offer price attribute if it exists in this category
+                // For Jobs and other categories without this attribute, offerPriceAttrId will be null
+                if (offerPriceAttrId != null) {
+                  values['$offerPriceAttrId'] = {'value': 1};
+                  // print('   ✅ Set $offerPriceAttrId in values as {value: 1}');
+                }
               }
 
               request = CreateAdvertRequest(
@@ -1633,6 +1675,62 @@ class _DynamicFilterState extends State<DynamicFilter> {
             ? 'Обновление объявления...'
             : 'Отправка объявления на модерацию...';
       });
+
+      // 🔍 ДИАГНОСТИКА: Выводим что будет отправлено на API
+      print('═══════════════════════════════════════════════════════');
+      print('📤 ДИАГНОСТИКА: Отправляемые атрибуты');
+      print('═══════════════════════════════════════════════════════');
+      print('✅ Загруженные атрибуты в категории: ${request.categoryId}');
+      print('   Всего атрибутов: ${_attributes.length}');
+      for (final attr in _attributes) {
+        print('   - ID ${attr.id}: ${attr.title}');
+      }
+      print('');
+      print('📋 Отправляемые в API:');
+      print('   value_selected: ${request.attributes['value_selected']}');
+      print(
+        '   values keys: ${(request.attributes['values'] as Map).keys.toList()}',
+      );
+
+      // Показываем какие value_id отправляются
+      final valueIds = request.attributes['value_selected'] as List<int>;
+      if (valueIds.isNotEmpty) {
+        print('');
+        print('📊 Поиск атрибутов для каждого value_id:');
+        for (final valueId in valueIds) {
+          String? foundAttr = '❌ НЕ НАЙДЕНО';
+          for (final attr in _attributes) {
+            final matchingVal = attr.values
+                .where((v) => v.id == valueId)
+                .firstOrNull;
+            if (matchingVal != null) {
+              foundAttr = '✅ ${attr.id}: ${attr.title} = ${matchingVal.value}';
+              break;
+            }
+          }
+          print('   Value ID $valueId → $foundAttr');
+        }
+      }
+
+      // Показываем values
+      final valuesMap = request.attributes['values'] as Map<String, dynamic>;
+      if (valuesMap.isNotEmpty) {
+        print('');
+        print('🔢 Числовые/булевы атрибуты (values):');
+        valuesMap.forEach((attrIdStr, value) {
+          final attrId = int.tryParse(attrIdStr);
+          final attr = _attributes.firstWhere(
+            (a) => a.id == attrId,
+            orElse: () =>
+                Attribute(id: 0, title: 'UNKNOWN', order: 0, values: []),
+          );
+          print(
+            '   Атрибут ID $attrIdStr: ${attr.title} (в категории: ${attr.id != 0 ? "ДА" : "НЕТ"}) = $value',
+          );
+        });
+      }
+      print('═══════════════════════════════════════════════════════');
+      print('');
 
       // Выбираем нужный метод API в зависимости от режима
       final response = _isEditMode && widget.advertId != null
@@ -2014,7 +2112,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 hint:
                     'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
                 minLength: 70,
-                maxLength: 255,
+                maxLength: 1000,
                 maxLines: 4,
                 controller: _descriptionController,
               ),
@@ -3209,11 +3307,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
         GestureDetector(
           onTap: () => setState(() {
             _selectedValues[attr.id] = !selected;
-            // If this is "Возможен торг", also set "предложат цену" to true
-            if (isBargainCheckbox && offerPriceAttrId != null) {
-              _selectedValues[offerPriceAttrId] = !selected;
-              // print();
-            }
+            // "Возможен торг" и "Вам предложат цену" теперь независимы
+            // "Вам предложат цену" всегда true по умолчанию и не меняется
           }),
           child: Row(
             children: [
@@ -3231,11 +3326,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 onChanged: (v) {
                   setState(() {
                     _selectedValues[attr.id] = v;
-                    // If this is "Возможен торг", also set "предложат цену" to true
-                    if (isBargainCheckbox && offerPriceAttrId != null) {
-                      _selectedValues[offerPriceAttrId] = v;
-                      // print();
-                    }
+                    // "Возможен торг" и "Вам предложат цену" теперь независимы
+                    // "Вам предложат цену" всегда true по умолчанию и не меняется
                   });
                 },
               ),
