@@ -8,6 +8,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -28,6 +29,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _phone2Controller;
   late TextEditingController _telegramController;
   late TextEditingController _whatsappController;
+  late TextEditingController _regionController;
+  late TextEditingController _cityController;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -51,11 +54,15 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller = TextEditingController();
     _telegramController = TextEditingController();
     _whatsappController = TextEditingController();
+    _regionController = TextEditingController();
+    _cityController = TextEditingController();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // ignore: avoid_print
+    print('🔵 ContactDataScreen: didChangeDependencies() called');
     // Загружаем профиль пользователя с принудительным обновлением
     context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
     _loadContactData();
@@ -77,23 +84,71 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         return;
       }
 
-      // print('🔐 Token from Hive: ${token.substring(0, 20)}...');
-      // print('🔐 Token length: ${token.length}');
-      // print(
-      //   '🔐 Token starts with: ${token.startsWith('eyJ') ? 'JWT (valid format)' : 'Unknown format'}',
-      // );
-
       // Загружаем телефоны и почты
       final phonesResponse = await ContactService.getPhones(token: token);
       final emailsResponse = await ContactService.getEmails(token: token);
-
-      // print();
 
       // Получаем имя пользователя из ProfileBloc (из API)
       final profileState = context.read<ProfileBloc>().state;
       final name = profileState is ProfileLoaded ? profileState.name : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
+      
+      // Получаем область и город из локального хранилища
+      var region = UserService.getLocal('region') as String? ?? '';
+      var city = UserService.getLocal('city') as String? ?? '';
+      
+      // Если данные не найдены в хранилище, пытаемся получить из первого объявления пользователя
+      if (region.isEmpty || city.isEmpty) {
+        try {
+          // Получаем список объявлений пользователя через API endpoint /me/adverts
+          // statusId: 1 = активные объявления
+          final myAdvertsResponse = await MyAdvertsService.getMyAdverts(
+            statusId: 1,
+            limit: 1,
+            token: token,
+          );
+          
+          // ignore: avoid_print
+          print('📢 MyAdvertsResponse:');
+          // ignore: avoid_print
+          print('   Data count: ${myAdvertsResponse.data.length}');
+          
+          if (myAdvertsResponse.data.isNotEmpty) {
+            final firstAdvert = myAdvertsResponse.data.first;
+            // ignore: avoid_print
+            print('   First advert: name="${firstAdvert.name}", address="${firstAdvert.address}"');
+            
+            // Извлекаем адрес из объявления
+            final advertAddress = firstAdvert.address ?? '';
+            
+            // Парсим область и город из адреса (формат может быть "область, город, улица")
+            // Например: "Донецкая область, Мариуполь, ул. Артёма"
+            if (advertAddress.isNotEmpty) {
+              final addressParts = advertAddress.split(',').map((s) => s.trim()).toList();
+              // ignore: avoid_print
+              print('   Address parts: $addressParts');
+              
+              if (addressParts.length >= 2) {
+                region = addressParts[0]; // Первая часть - область
+                city = addressParts[1];   // Вторая часть - город
+                // ignore: avoid_print
+                print('   ✅ Extracted - region: "$region", city: "$city"');
+              }
+            } else {
+              // ignore: avoid_print
+              print('   ❌ Address is empty or null');
+            }
+          } else {
+            // ignore: avoid_print
+            print('   ❌ No adverts found for user');
+          }
+        } catch (e) {
+          // Если не удаётся получить из объявления, используем сохранённые или пустые значения
+          // ignore: avoid_print
+          print('❌ Error loading address from user advert: $e');
+        }
+      }
 
       // print('🔍 DEBUG contact_data_screen._loadContactData():');
       // print('   - profileState.name = "$name"');
@@ -142,6 +197,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _phone2Controller.text = phone2;
         _telegramController.text = telegram;
         _whatsappController.text = whatsapp;
+        _regionController.text = region;
+        _cityController.text = city;
         _isLoading = false;
       });
     } catch (e) {
@@ -198,6 +255,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       await UserService.saveLocal('name', _nameController.text);
       await UserService.saveLocal('telegram', _telegramController.text);
       await UserService.saveLocal('whatsapp', _whatsappController.text);
+      await UserService.saveLocal('region', _regionController.text);
+      await UserService.saveLocal('city', _cityController.text);
 
       // Обновляем или добавляем email
       if (_emailController.text.isNotEmpty) {
@@ -315,6 +374,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller.dispose();
     _telegramController.dispose();
     _whatsappController.dispose();
+    _regionController.dispose();
+    _cityController.dispose();
     super.dispose();
   }
 
@@ -414,19 +475,27 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
               else ...[
                 // ───── Fields ─────
                 _label('Контактное лицо'),
-                _field(_nameController, ''),
+                _field(_nameController, 'Введите имя контактного лица'),
+
+                _label('Ваша область'),
+                _field(_regionController, 'Введите вашу область'),
+
+                _label('Ваш город'),
+                _field(_cityController, 'Введите ваш город'),
 
                 _label('Электронная почта'),
-                _field(_emailController, ''),
+                _field(_emailController, 'Введите вашу почту'),
 
                 _label('Номер телефона 1'),
-                _field(_phone1Controller, ''),
+                _field(_phone1Controller, 'Введите номер телефона'), 
 
                 _label('Номер телефона 2'),
                 _field(_phone2Controller, 'Введите'),
 
+                
+
                 _label('Ссылка на ваш чат в Max'),
-                _field(_telegramController, ''),
+                _field(_telegramController, 'Введите ссылку на чат'),
 
                 // _label('Ссылка на ваш whatsapp'),
                 // _field(_whatsappController, ''),

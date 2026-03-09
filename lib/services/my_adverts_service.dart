@@ -152,6 +152,13 @@ class MyAdvertsService {
         token: token,
       );
 
+      // ignore: avoid_print
+      print('📢 MyAdvertsService.getMyAdverts() response:');
+      // ignore: avoid_print
+      print('   Response keys: ${response.keys.toList()}');
+      // ignore: avoid_print
+      print('   Full response: $response');
+
       return MyAdvertsResponse.fromJson(response);
     } catch (e) {
       throw Exception('Ошибка при загрузке объявлений: $e');
