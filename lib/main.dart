@@ -26,6 +26,8 @@ import 'package:lidle/blocs/messages/messages_bloc.dart';
 import 'package:lidle/blocs/company_messages/company_messages_bloc.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/blocs/catalog/catalog_bloc.dart';
+import 'package:lidle/blocs/devices/devices_bloc.dart';
+import 'package:lidle/services/device_info_service.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
@@ -106,6 +108,13 @@ void main() async {
     print('⚠️ Hive инициализация ошибка: $e');
   }
 
+  // 🚀 Инициализируем сервис получения информации об устройстве
+  try {
+    await DeviceInfoService.initialize();
+  } catch (e) {
+    print('⚠️ DeviceInfoService инициализация ошибка: $e');
+  }
+
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Color(0xFF232E3C),
@@ -145,6 +154,7 @@ class LidleApp extends StatelessWidget {
         ),
         BlocProvider<CartBloc>(create: (context) => CartBloc()),
         BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
+        BlocProvider<DevicesBloc>(create: (context) => DevicesBloc()),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
