@@ -2,6 +2,9 @@
 
     <!-- Интернет обязателен -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    
+    <!-- Разрешение для телефонных звонков -->
+    <uses-permission android:name="android.permission.CALL_PHONE"/>
 
     <application
         android:label="LIDLE"
@@ -46,6 +49,13 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Телефонные звонки -->
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.CALL"/>
         </intent>
     </queries>
 </manifest>
