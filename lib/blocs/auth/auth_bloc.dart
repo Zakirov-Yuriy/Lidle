@@ -56,19 +56,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           await UserService.saveLocal('refresh_token', refreshToken);
         }
 
-        // Сохраняем время истечения токена для TokenService.
+        // ОБНОВЛЕНО: Сохраняем время истечения access_token И refresh_token для TokenService.
         // Sanctum opaque токены (формат "153|abc...") — не JWT, нельзя декодировать exp.
         // Поэтому сохраняем expires_at из ответа API, чтобы TokenService мог
-        // запустить таймер refresh за 5 минут до истечения.
+        // запустить таймер refresh за 5 минут до истечения access_token.
+        // И за 24 часа до истечения refresh_token (критично для пользователя).
+        
+        // Access token expiry (обычно 900 сек = 15 минут)
         final expiresIn =
             ((response['data']?['expires_in'] ?? response['expires_in'])
                     as num?)
                 ?.toInt() ??
-            900; // expires_in: 900 секунд (15 минут) по документации API
+            900;
         final expiresAtMs = DateTime.now()
             .add(Duration(seconds: expiresIn))
             .millisecondsSinceEpoch;
         await UserService.saveLocal('token_expires_at', '$expiresAtMs');
+
+        // ОБНОВЛЕНО: Refresh token expiry (обычно 1209600 сек = 14 дней)
+        // Это критично! Если refresh_token истечет, пользователь потеряет доступ
+        final refreshExpiresIn =
+            ((response['data']?['refresh_expires_in'] ??
+                    response['refresh_expires_in']) as num?)
+                ?.toInt() ??
+            1209600; // По документации API: 1209600 сек (14 дней)
+        final refreshExpiresAtMs = DateTime.now()
+            .add(Duration(seconds: refreshExpiresIn))
+            .millisecondsSinceEpoch;
+        await UserService.saveLocal('refresh_token_expires_at', '$refreshExpiresAtMs');
+
+        print(
+          '✅ auth_bloc: сохранены токены - access_token действует ${expiresIn ~/ 60}мин, '
+          'refresh_token действует ${refreshExpiresIn ~/ 86400} дней',
+        );
 
         // Сохраняем возможные данные пользователя из ответа сразу локально
         final data = response['data'] ?? response;

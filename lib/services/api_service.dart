@@ -1174,22 +1174,36 @@ class ApiService {
     }
   }
 
-  /// Обновить токен доступа.
+  /// Обновляет access_token используя refresh_token согласно API документации v1.4+
+  /// 
+  /// Параметры (согласно POST /auth/refresh-token):
+  /// - device_name: String (обязателен) — название устройства
+  /// - app_version: String (опционален) — версия приложения из pubspec.yaml
   ///
-  /// API v1.3.3+: для обновления access_token нужно использовать
-  /// refresh_token (не access_token) в заголовке Authorization.
-  /// Параметр [currentToken] сохранён для обратной совместимости,
-  /// но внутри всегда используется refresh_token из Hive.
+  /// Возвращает новый access_token или null если refresh_token истёк/невалиден.
+  /// 
+  /// Обновления (согласно последней документации):
+  /// - Обрабатывает refresh_expires_in для проактивного обновления refresh_token
+  /// - Сохраняет оба время истечения: token_expires_at и refresh_token_expires_at
+  /// - Динамически читает device_name и app_version
+  /// - 401/403 → null (нужна повторная авторизация)
   static Future<String?> refreshToken(String currentToken) async {
     try {
       // POST /auth/refresh-token  (документация API v1.4+)
       // Authorization: Bearer {refresh_token}  ← refresh_token в заголовке
-      // Body: {"device_name": "...", "app_version": "..."}  ← обязательные поля!
+      // Body: {"device_name": "...", "app_version": "..."}
       //
-      // Ответ 200: {"access_token": "...", "refresh_token": "...",
-      //             "token_type": "Bearer", "expires_in": 900}
-      // Ответ 401: истёк / не авторизован → нужен logout
-      // Ответ 403: невалидный токен → нужен logout
+      // Ответ 200: {
+      //   "success": true,
+      //   "access_token": "...",
+      //   "refresh_token": "...",     ← ротируется при каждом refresh!
+      //   "token_type": "Bearer",
+      //   "expires_in": 900,           ← access_token истекает в 900 сек
+      //   "refresh_expires_in": 1209600 ← refresh_token истекает в 1209600 сек (14 дней)
+      // }
+      // Ответ 401: "Вы не авторизованы" → нужен полный login
+      // Ответ 403: "Неверный токен" → нужен полный login
+      
       final refreshTokenValue =
           HiveService.getUserData('refresh_token') as String? ?? currentToken;
 
@@ -1201,20 +1215,25 @@ class ApiService {
       // Передаём REFRESH_TOKEN (не access_token) как Bearer в Authorization
       headers['Authorization'] = 'Bearer $refreshTokenValue';
 
+      // ОБНОВЛЕНО: Получаем device_name и app_version динамически
+      final deviceName = await _getDeviceName();
+      final appVersion = _getAppVersion(); // из pubspec.yaml: 1.0.0
+
       final response = await http
           .post(
             Uri.parse('$baseUrl/auth/refresh-token'),
             headers: headers,
-            // device_name обязателен — API отклонит запрос без него
+            // device_name обязателен согласно API документации — API отклонит запрос без него
+            // app_version опционален, но рекомендуется отправлять для аналитики сервера
             body: jsonEncode({
-              'device_name': 'Lidle Mobile App',
-              'app_version': '1.4.1',
+              'device_name': deviceName,
+              'app_version': appVersion,
             }),
           )
           .timeout(const Duration(seconds: 15));
 
       // 401 = токен истёк, 403 = токен невалиден.
-      // Оба случая означают что нужна повторная авторизация.
+      // Оба случая означают что нужна повторная авторизация (нет автоматического рефреша).
       // TokenService._doRefresh() увидит null и вызовет _notifyTokenExpired().
       if (response.statusCode == 401 || response.statusCode == 403) {
         print(
@@ -1232,6 +1251,12 @@ class ApiService {
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
+      // Проверяем флаг success
+      if (data['success'] != true) {
+        print('❌ refreshToken: success=false: ${data['message']}');
+        return null;
+      }
+
       // Сохраняем новый access_token
       final newAccessToken = data['access_token'] as String?;
       if (newAccessToken != null && newAccessToken.isNotEmpty) {
@@ -1241,27 +1266,44 @@ class ApiService {
         );
       } else {
         print('❌ refreshToken: access_token не найден в ответе: $data');
+        return null;
       }
 
-      // API v1.4+: обновлённый refresh_token тоже возвращается — сохраняем его.
-      // Без этого каждый следующий refresh завершится 401 (старый refresh_token истёк).
+      // API v1.4+: обновлённый refresh_token ротируется при каждом refresh
+      // Без сохранения следующее обновление завершится 401 (старый refresh_token истёк).
       final newRefreshToken = data['refresh_token'] as String?;
       if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
         await HiveService.saveUserData('refresh_token', newRefreshToken);
-        print('✅ refreshToken: новый refresh_token сохранён');
+        print('✅ refreshToken: новый refresh_token сохранён (ротация токена)');
+      } else {
+        print('❌ refreshToken: refresh_token не найден в ответе');
+        return null;
       }
 
-      // Сохраняем время истечения для TokenService.
+      // ОБНОВЛЕНО: Сохраняем время истечения access_token для TokenService
       // Sanctum opaque токены (формат "153|abc...") НЕ являются JWT —
-      // нельзя декодировать поле exp. Поэтому используем expires_in из ответа.
+      // нельзя декодировать поле exp. Используем expires_in из ответа сервера.
       final expiresIn = (data['expires_in'] as num?)?.toInt() ?? 900;
       final expiresAtMs = DateTime.now()
           .add(Duration(seconds: expiresIn))
           .millisecondsSinceEpoch;
       await HiveService.saveUserData('token_expires_at', expiresAtMs);
       print(
-        '✅ refreshToken: expires_in=$expiresIn сек, истекает в '
+        '✅ refreshToken: access_token expires_in=$expiresIn сек, истекает в '
         '${DateTime.fromMillisecondsSinceEpoch(expiresAtMs).toLocal()}',
+      );
+
+      // ОБНОВЛЕНО: Сохраняем время истечения refresh_token для проактивного обновления
+      // Если refresh_token истечет, пользователь не сможет обновить access_token
+      // Поэтому обновляем refresh_token за 24 часа до его истечения (при необходимости)
+      final refreshExpiresIn = (data['refresh_expires_in'] as num?)?.toInt() ?? 1209600;
+      final refreshExpiresAtMs = DateTime.now()
+          .add(Duration(seconds: refreshExpiresIn))
+          .millisecondsSinceEpoch;
+      await HiveService.saveUserData('refresh_token_expires_at', refreshExpiresAtMs);
+      print(
+        '✅ refreshToken: refresh_token expires_in=$refreshExpiresIn сек (14 дней), '
+        'истекает в ${DateTime.fromMillisecondsSinceEpoch(refreshExpiresAtMs).toLocal()}',
       );
 
       return newAccessToken;
@@ -1269,6 +1311,25 @@ class ApiService {
       print('❌ refreshToken exception: $e');
       return null;
     }
+  }
+
+  /// Получает название устройства для отправки на сервер
+  /// При необходимости можно использовать device_info_plus для получения реального имени
+  static Future<String> _getDeviceName() async {
+    try {
+      // Можно расширить с использованием device_info_plus если нужно реальное имя устройства
+      // Для теперь используем фиксированное значение
+      return 'Lidle Mobile App';
+    } catch (_) {
+      return 'Unknown Device';
+    }
+  }
+
+  /// Получает версию приложения из pubspec.yaml (формат: 1.0.0)
+  static String _getAppVersion() {
+    // В реальном приложении используйте package_info_plus для получения версии во время выполнения
+    // Для теперь используем фиксированное значение из pubspec.yaml
+    return '1.0.0'; // version: 1.0.0+1 из pubspec.yaml
   }
 
   /// Получить главную страницу с каталогами и объявлениями

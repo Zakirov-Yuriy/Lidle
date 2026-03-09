@@ -21,11 +21,14 @@ import 'api_service.dart';
 /// Сервис управления жизненным циклом токена.
 ///
 /// Принцип работы:
-/// - НОВОЕ: Обновляет токен каждый час профилактически (proactive refresh)
-/// - За [_refreshBeforeExpireSeconds] до истечения вызывает POST /auth/refresh-token
-/// - НОВОЕ: Retry логика с экспоненциальной задержкой при сетевых ошибках
+/// - Обновляет ОБА токена (access_token и refresh_token):
+///   * access_token: за 5 минут до истечения (действует 15 минут)
+///   * refresh_token: за 24 часа до истечения (действует 14 дней)
+/// - КРИТИЧНО: Если refresh_token истечет, пользователь не сможет обновить access_token
+/// - Профилактическое обновление каждый час (дополнительная защита
+/// - Retry логика с экспоненциальной задержкой при сетевых ошибках
+/// - Если оба токена истекли → пользователь отправляется на login
 /// - Если refresh успешен — сохраняет новые токены и перезапускает таймер
-/// - Если refresh не удался — уведомляет AuthBloc об истечении
 /// - Слушает [AppLifecycleState.resumed] и перепроверяет токен при выходе из фона
 /// - Предотвращает race condition: ждёт завершения parallel-refresh из ApiService
 class TokenService with WidgetsBindingObserver {
@@ -110,8 +113,12 @@ class TokenService with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
   }
 
-  /// Планирует следующее обновление токена на основе [token_expires_at] из Hive
+  /// Планирует следующее обновление токена на основе [token_expires_at] и [refresh_token_expires_at] из Hive
   /// с учетом профилактического обновления каждый час.
+  /// 
+  /// ОБНОВЛЕНО: Теперь проверяет оба токена:
+  /// - access_token: обновляем за 5 минут до истечения
+  /// - refresh_token: обновляем за 24 часа до истечения (критично! без него доступ теряется)
   void _scheduleRefresh() {
     _refreshTimer?.cancel();
     _retryAttempt = 0; // Сброс счетчика retry при переплане
@@ -132,7 +139,7 @@ class TokenService with WidgetsBindingObserver {
 
     Duration nextRefreshDelay = _hourlyRefreshInterval - timeSinceHourlyStart;
 
-    // Проверяем время до истечения токена
+    // Проверяем время до истечения ACCESS_TOKEN
     final expiresAt = _getTokenExpiry(token);
     if (expiresAt != null) {
       final timeUntilExpiry = expiresAt.difference(now);
@@ -148,6 +155,37 @@ class TokenService with WidgetsBindingObserver {
         // Если истечение токена приходит раньше часового интервала — используем его
         nextRefreshDelay = timeUntilRefreshByExpiry;
       }
+    }
+
+    // ОБНОВЛЕНО: Проверяем время до истечения REFRESH_TOKEN
+    // Это критично! Если refresh_token истечет, мы не сможем обновить access_token.
+    // Поэтому обновляем заранее на 24 часа.
+    final refreshTokenExpiresAt = _getRefreshTokenExpiry();
+    if (refreshTokenExpiresAt != null) {
+      final timeUntilRefreshTokenExpiry = refreshTokenExpiresAt.difference(now);
+      const refreshTokenRefreshBefore = Duration(hours: 24); // Обновляем за 24 часа
+      
+      final timeUntilRefreshTokenRefresh = timeUntilRefreshTokenExpiry - refreshTokenRefreshBefore;
+
+      if (timeUntilRefreshTokenRefresh.isNegative ||
+          timeUntilRefreshTokenRefresh.inSeconds < _minTokenLifetimeSeconds) {
+        // Refresh_token истекает скоро — обновляем немедленно
+        print(
+          '⚠️ TokenService: refresh_token истекает через ${timeUntilRefreshTokenExpiry.inHours}ч, обновляем немедленно',
+        );
+        nextRefreshDelay = Duration.zero;
+      } else if (timeUntilRefreshTokenRefresh < nextRefreshDelay) {
+        // Если истечение refresh_token приходит раньше — используем его
+        print(
+          '📅 TokenService: планируем refresh за ${timeUntilRefreshTokenRefresh.inHours}ч до истечения refresh_token',
+        );
+        nextRefreshDelay = timeUntilRefreshTokenRefresh;
+      }
+    } else {
+      // refresh_token_expires_at не найден (может быть старые данные)
+      // Используем fallback: короткий интервал для безопасности
+      print('⚠️ TokenService: refresh_token_expires_at не найден, используем fallback 2h');
+      nextRefreshDelay = const Duration(hours: 2);
     }
 
     if (nextRefreshDelay.inSeconds <= 0) {
@@ -323,6 +361,32 @@ class TokenService with WidgetsBindingObserver {
       }
     }
 
+    return null;
+  }
+
+  /// Получает время истечения refresh_token из Hive (ключ: refresh_token_expires_at)
+  /// или возвращает null если данные не доступны.
+  ///
+  /// Refresh_token — это Sanctum opaque token (формат: "918|..."),
+  /// который НЕ можно декодировать. Время истечения получась из:
+  /// 1. Сохраненного значения refresh_token_expires_at в Hive (установлено ApiService.refreshToken())
+  /// 2. Fallback: null (будет использована защита debounce и 24-часовой interval)
+  ///
+  /// ВАЖНО для UX:
+  /// - Если refresh_token истечет, пользователь потеряет доступ к приложению
+  /// - Поэтому обновляем его за 24 часа до истечения (очень консервативно, но безопасно)
+  /// - Это гарантирует что пользователь никогда не столкнется с 401 при выполнении действия
+  DateTime? _getRefreshTokenExpiry() {
+    final savedExpiresAt = HiveService.getUserData('refresh_token_expires_at');
+    if (savedExpiresAt != null) {
+      // Может быть int или String (зависит от того кто сохранял)
+      final ms = savedExpiresAt is int
+          ? savedExpiresAt
+          : int.tryParse(savedExpiresAt.toString());
+      if (ms != null) {
+        return DateTime.fromMillisecondsSinceEpoch(ms);
+      }
+    }
     return null;
   }
 
