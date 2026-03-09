@@ -115,7 +115,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                     padding: const EdgeInsets.only(
                       left: 25,
                       right: 25,
-                      bottom: 106,
+                      bottom: 0,
                       top: 0,
                     ),
                     child: GridView.builder(
@@ -123,8 +123,8 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
                             childAspectRatio: 120 / 83,
                           ),
                       itemCount: state.catalogs.length,

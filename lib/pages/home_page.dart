@@ -401,8 +401,10 @@ class _HomePageState extends State<HomePage> {
         )
         .toList();
 
-    // Показываем все категории без ограничений
-    final displayCategories = filteredCategories.toList();
+    // Ограничиваем до 3 категорий
+    final displayCategories = filteredCategories.length > 4
+        ? filteredCategories.sublist(0, 4)
+        : filteredCategories.toList();
 
     // Добавляем "Смотреть все" в конец если оно есть в исходном списке
     final viewAllCategory = categories.firstWhere(
