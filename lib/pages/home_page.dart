@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import '../constants.dart';
 import '../models/home_models.dart';
 import '../widgets/components/header.dart';
@@ -62,6 +63,27 @@ class _HomePageState extends State<HomePage> {
     await Future.delayed(const Duration(seconds: 1));
   }
 
+  /// Метод для поделиться приложением.
+  /// Открывает системное меню поделиться с текстом приложения и ссылкой.
+  Future<void> _shareApp() async {
+    try {
+      await Share.share(
+        'Присоединяйся к LIDLE! 🚀\n\n'
+        'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
+        'Скачай приложение и получи эксклюзивные предложения!',
+        subject: 'LIDLE - маркетплейс изделий',
+      );
+    } catch (e) {
+      // Обработка ошибок при поделиться
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Не удалось поделиться приложением'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
@@ -110,8 +132,9 @@ class _HomePageState extends State<HomePage> {
                                           context,
                                           SignInScreen.routeName,
                                         );
+                                      } else {
+                                        _shareApp();
                                       }
-                                      // TODO: реализовать логику поделиться
                                     },
                                     child: SvgPicture.asset(
                                       'assets/home_page/share_outlined.svg',
