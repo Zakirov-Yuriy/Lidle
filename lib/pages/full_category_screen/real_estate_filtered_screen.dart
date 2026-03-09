@@ -7,6 +7,14 @@ import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_filtered_details_screen.dart';
 
+// Navigation
+import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/messages/messages_page.dart';
+import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String messageIconAssetLocal =
     'assets/BottomNavigation/message-circle-01.png';
@@ -467,14 +475,23 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
   Widget _buildNavItem(String iconPath, int index) {
     final isSelected = _selectedIndex == index;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(50),
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Image.asset(
-        iconPath,
-        width: 28,
-        height: 28,
-        color: isSelected ? activeIconColor : inactiveIconColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Image.asset(
+            iconPath,
+            width: 28,
+            height: 28,
+            color: isSelected ? activeIconColor : inactiveIconColor,
+          ),
+        ),
       ),
     );
   }
@@ -482,16 +499,57 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
   Widget _buildCenterAdd(int index) {
     final isSelected = _selectedIndex == index;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
-      onTap: () => setState(() => _selectedIndex = index),
-      child: Image.asset(
-        plusIconAsset,
-        width: 28,
-        height: 28,
-        color: isSelected ? activeIconColor : inactiveIconColor,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Image.asset(
+            plusIconAsset,
+            width: 28,
+            height: 28,
+            color: isSelected ? activeIconColor : inactiveIconColor,
+          ),
+        ),
       ),
     );
+  }
+
+  void _navigateToScreen(int index) {
+    final String routeName;
+    switch (index) {
+      case 0:
+        routeName = HomePage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 1:
+        routeName = FullCategoryScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 2:
+        routeName = AddListingScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 3:
+        routeName = MyPurchasesScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 4:
+        routeName = MessagesPage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 5:
+        routeName = ProfileDashboard.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      default:
+        return;
+    }
   }
 
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {

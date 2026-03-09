@@ -8,6 +8,7 @@ import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
+import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/services/token_service.dart';
@@ -841,13 +842,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 1:
-        // Заглушка - функция еще не реализована
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Эта функция пока не реализована'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        routeName = FullCategoryScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 2:
         routeName = AddListingScreen.routeName;

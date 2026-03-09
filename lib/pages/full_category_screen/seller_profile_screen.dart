@@ -17,6 +17,7 @@ import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 
 // ============================================================
 // "Экран профиля продавца"
@@ -676,12 +677,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 1:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Эта функция пока не реализована'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        routeName = FullCategoryScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 2:
         routeName = AddListingScreen.routeName;

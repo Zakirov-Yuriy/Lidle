@@ -28,6 +28,14 @@ import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_for
 import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_foreign_house_sell_screen.dart';
 import 'package:lidle/pages/full_category_screen/foreign_real_estate/filters_foreign_house_rent_screen.dart';
 
+// Navigation
+import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/messages/messages_page.dart';
+import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+
 // ============================================================
 // "Экран объявлений аренды недвижимости"
 // ============================================================
@@ -657,39 +665,16 @@ class _RealEstateRentListingsScreenState
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          setState(() {
-            final old = _listings[index];
-            _listings[index] = Listing(
-              id: old.id,
-              imagePath: old.imagePath,
-              images: old.images,
-              title: old.title,
-              price: old.price,
-              location: old.location,
-              date: old.date,
-              isFavorited: !old.isFavorited,
-              sellerName: old.sellerName,
-              sellerAvatar: old.sellerAvatar,
-              sellerRegistrationDate: old.sellerRegistrationDate,
-              description: old.description,
-              characteristics: old.characteristics,
-            );
-          });
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
         },
-        child: Container(
-          height: 28,
-          width: 28,
-          decoration: BoxDecoration(
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Image.asset(
+            iconPath,
+            width: 28,
+            height: 28,
             color: isSelected ? activeIconColor : inactiveIconColor,
-            borderRadius: BorderRadius.circular(50),
-          ),
-          child: Center(
-            child: Image.asset(
-              iconPath,
-              color: Colors.white,
-              width: 18,
-              height: 18,
-            ),
           ),
         ),
       ),
@@ -702,21 +687,59 @@ class _RealEstateRentListingsScreenState
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: () => setState(() => _selectedIndex = index),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          child: Image.asset(
-            plusIconAsset,
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          setState(() => _selectedIndex = index);
+          _navigateToScreen(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(13.5),
+          child: Container(
             width: 28,
             height: 28,
-            color: isSelected ? activeIconColor : inactiveIconColor,
+            alignment: Alignment.center,
+            child: Image.asset(
+              plusIconAsset,
+              width: 28,
+              height: 28,
+              color: isSelected ? activeIconColor : inactiveIconColor,
+            ),
           ),
         ),
       ),
     );
+  }
+
+  void _navigateToScreen(int index) {
+    final String routeName;
+    switch (index) {
+      case 0:
+        routeName = HomePage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 1:
+        routeName = FullCategoryScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 2:
+        routeName = AddListingScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 3:
+        routeName = MyPurchasesScreen.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 4:
+        routeName = MessagesPage.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      case 5:
+        routeName = ProfileDashboard.routeName;
+        Navigator.of(context).pushReplacementNamed(routeName);
+        break;
+      default:
+        return;
+    }
   }
 
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {
