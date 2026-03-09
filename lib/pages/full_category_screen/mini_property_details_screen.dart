@@ -1115,16 +1115,7 @@ ${widget.listing.title}
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return const PhoneDialog(
-                      phoneNumbers: ["+7 949 456 56 67", "+7 949 433 33 98"],
-                    );
-                  },
-                );
-              },
+              onTap: _loadAndShowPhoneDialog,
               child: Container(
                 height: 43,
                 decoration: BoxDecoration(
@@ -1159,6 +1150,104 @@ ${widget.listing.title}
         ],
       ),
     );
+  }
+
+  /// 📞 Загрузить номера телефонов владельца объявления и показать диалог
+  Future<void> _loadAndShowPhoneDialog() async {
+    // Проверяем, есть ли userId (sellerId)
+    final userId = _listing.userId;
+    if (userId == null || userId.isEmpty) {
+      // Если нет userId, показываем заглушку с сообщением об ошибке
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Информация о продавце недоступна'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Показываем индикатор загрузки
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => Dialog(
+        backgroundColor: primaryBackground,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Container(
+          decoration: BoxDecoration(
+            color: primaryBackground,
+            borderRadius: BorderRadius.circular(5),
+          ),
+          padding: const EdgeInsets.all(25.0),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 20),
+              CircularProgressIndicator(color: Color(0xFF19D849)),
+              SizedBox(height: 20),
+              Text(
+                'Загрузка номеров...',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Получаем телефоны из API
+      print('📞 Loading phones for seller ID: $userId');
+      final phoneNumbers = await ApiService.getUserPhones(
+        userId: int.parse(userId),
+      );
+
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Если телефонов нет
+      if (phoneNumbers.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Номера телефонов не найдены'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      // Показываем диалог с телефонами
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return PhoneDialog(phoneNumbers: phoneNumbers);
+        },
+      );
+    } catch (e) {
+      print('❌ Error loading phone numbers: $e');
+
+      // Закрываем диалог загрузки
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Показываем ошибку
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка загрузки номеров: $e'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   static Widget _card({required Widget child}) {

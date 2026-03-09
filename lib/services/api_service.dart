@@ -2026,4 +2026,101 @@ class ApiService {
       return {};
     }
   }
+
+  /// 📞 Получить список телефонов пользователя по ID
+  /// Извлекает поле contacts из профиля пользователя и парсит телефоны
+  static Future<List<String>> getUserPhones({
+    required int userId,
+    String? token,
+  }) async {
+    try {
+      print('📞 Getting user phones for userId: $userId');
+
+      final userProfile = await getUserProfile(userId: userId, token: token);
+
+      if (userProfile.isEmpty) {
+        print('⚠️ User profile is empty');
+        return [];
+      }
+
+      // Парсим contacts из профиля
+      final contacts = userProfile['contacts'];
+      if (contacts == null) {
+        print('⚠️ No contacts found in user profile');
+        return [];
+      }
+
+      final phoneNumbers = <String>[];
+
+      // contacts может быть Map с разными типами контактов (phone_numbers, whatsapps, telegrams и т.д.)
+      if (contacts is Map<String, dynamic>) {
+        // Ищем phone_numbers поле
+        final phoneField = contacts['phone_numbers'] ?? contacts['phones'];
+        
+        if (phoneField is List) {
+          for (final phone in phoneField) {
+            if (phone is Map<String, dynamic>) {
+              // Если это объект с полями (например {id: 1, phone: "+79494565667"})
+              final phoneValue = phone['phone'] ?? phone['number'] ?? phone['value'];
+              if (phoneValue != null && phoneValue.toString().isNotEmpty) {
+                phoneNumbers.add(phoneValue.toString());
+              }
+            } else if (phone is String && phone.isNotEmpty) {
+              // Если это просто строка с номером
+              phoneNumbers.add(phone);
+            }
+          }
+        } else if (phoneField is String && phoneField.isNotEmpty) {
+          // Если это одиночный номер в виде строки
+          phoneNumbers.add(phoneField);
+        }
+
+        // Если не нашли phone_numbers, пробуем другие поля contact'а
+        if (phoneNumbers.isEmpty) {
+          final allPhones = <String>[];
+          contacts.forEach((key, value) {
+            if (key.contains('phone') || key == 'phone') {
+              if (value is List) {
+                for (final phone in value) {
+                  final phoneStr = phone is Map 
+                      ? (phone['phone'] ?? phone['number'] ?? phone['value']) 
+                      : phone;
+                  if (phoneStr != null && phoneStr.toString().isNotEmpty) {
+                    allPhones.add(phoneStr.toString());
+                  }
+                }
+              } else if (value is String && value.isNotEmpty) {
+                allPhones.add(value);
+              }
+            }
+          });
+          phoneNumbers.addAll(allPhones);
+        }
+      } else if (contacts is List) {
+        // Если contacts это массив объектов с телефонами
+        for (final contact in contacts) {
+          if (contact is Map<String, dynamic>) {
+            final phone = contact['phone'] ?? contact['number'] ?? contact['value'];
+            if (phone != null && phone.toString().isNotEmpty) {
+              phoneNumbers.add(phone.toString());
+            }
+          } else if (contact is String && contact.isNotEmpty) {
+            phoneNumbers.add(contact);
+          }
+        }
+      }
+
+      // Удаляем дубликаты и пустые значения
+      phoneNumbers.removeWhere((p) => p.isEmpty);
+      final uniquePhones = phoneNumbers.toSet().toList();
+
+      print('✅ Got ${uniquePhones.length} phone numbers for user $userId');
+      uniquePhones.forEach((phone) => print('   📱 $phone'));
+
+      return uniquePhones;
+    } catch (e) {
+      print('❌ Error getting user phones: $e');
+      return [];
+    }
+  }
 }
