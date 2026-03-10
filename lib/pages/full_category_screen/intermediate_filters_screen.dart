@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
+import 'package:lidle/services/address_service.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/selectable_button.dart';
 
@@ -12,12 +15,11 @@ import 'package:lidle/widgets/selectable_button.dart';
 class IntermediateFiltersScreen extends StatefulWidget {
   static const String routeName = "/intermediate-filters";
 
-  final String? displayTitle; // Динамически подтягиваемый заголовок из real_estate_listings_screen
+  final String?
+  displayTitle; // Динамически подтягиваемый заголовок из real_estate_listings_screen
+  final int? catalogId; // ID каталога для загрузки категорий (Недвижимость=1, Работа=2 и т.д.)
 
-  const IntermediateFiltersScreen({
-    super.key,
-    this.displayTitle,
-  });
+  const IntermediateFiltersScreen({super.key, this.displayTitle, this.catalogId});
 
   @override
   State<IntermediateFiltersScreen> createState() =>
@@ -42,33 +44,127 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   Set<String> selectedStreet = {};
   Set<String> selectedCity = {};
 
-  final List<String> cities = [
-    'Киев',
-    'Харьков',
-    'Одесса',
-    'Днепр',
-    'Запорожье',
-    'Львов',
-    'Кривой Рог',
-    'Николаев',
-    'Мариуполь',
-    'Винница',
-    'Херсон',
-    'Полтава',
-    'Черкассы',
-    'Черновцы',
-    'Житомир',
-    'Сумы',
-    'Хмельницкий',
-    'Ровно',
-    'Ивано-Франковск',
-    'Тернополь',
-    'Луцк',
-    'Ужгород',
-  ];
+  // Города загруженные с API (динамически)
+  List<String> apiCities = [];
+  bool isLoadingCities = false;
 
   final TextEditingController priceFrom = TextEditingController();
   final TextEditingController priceTo = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCities(); // Загружаем города с API
+  }
+
+  @override
+  void dispose() {
+    priceFrom.dispose();
+    priceTo.dispose();
+    super.dispose();
+  }
+
+  /// Загружает города с API (динамически)
+  /// Получает все области (регионы) и их города, собирает в единый список
+  Future<void> _loadCities() async {
+    setState(() => isLoadingCities = true);
+    print('🔄 Начинаем загрузку городов с API...');
+    
+    try {
+      // Получаем текущий токен из Hive
+      final token = HiveService.getUserData('token') as String?;
+      print('🔑 Токен получен: ${token != null ? "✅ YES (${token.substring(0, 20)}...)" : "❌ NO"}');
+      
+      // Получаем все области с API
+      final regionsResponse = await AddressService.getRegions(token: token);
+      final regions = regionsResponse.data;
+      print('✅ Загружено ${regions.length} областей');
+      
+      if (regions.isEmpty) {
+        print('⚠️ Регионов не найдено!');
+        if (mounted) {
+          setState(() => apiCities = []);
+        }
+        return;
+      }
+      
+      // Для каждой области получаем города
+      final citiesMap = <String, Map<String, dynamic>>{};
+      
+      for (int i = 0; i < regions.length; i++) {
+        final region = regions[i];
+        final regionName = region.name ?? 'Неизвестная область';
+        
+        print('📍 [$i/${regions.length}] Обрабатываем область: $regionName');
+        
+        try {
+          // Ищем города по названию региона
+          print('   🔍 Запрашиваем города для поиска по названию: "$regionName"...');
+          
+          final response = await AddressService.searchAddresses(
+            query: regionName,
+            token: token,
+            types: ['city'],
+          );
+          
+          print('   ✅ Получено ${response.data.length} результатов поиска');
+          
+          // Получаем города из результатов
+          int addedCount = 0;
+          for (final result in response.data) {
+            if (result.city != null) {
+              final cityId = result.city!.id;
+              final cityName = result.city!.name;
+              
+              if (cityId != null && cityName != null && cityName.isNotEmpty) {
+                // Используем имя города как ключ для избежания дубликатов
+                if (!citiesMap.containsKey(cityName)) {
+                  citiesMap[cityName] = {
+                    'id': cityId,
+                    'name': cityName,
+                  };
+                  addedCount++;
+                  print('   → Добавлен город: $cityName (id: $cityId)');
+                }
+              }
+            }
+          }
+          print('   → Добавлено $addedCount городов в итоговый список');
+        } catch (e) {
+          print('   ❌ Ошибка при загрузке городов для области $regionName: $e');
+        }
+      }
+
+      final allCities = citiesMap.values.map((c) => c['name'] as String).toList();
+      print('✅ ИТОГО загружено уникальных городов: ${allCities.length}');
+      print('🏙️ Полный список городов: ${allCities.toList()}');
+
+      // Сортируем города для удобства
+      allCities.sort();
+
+      if (mounted && allCities.isNotEmpty) {
+        setState(() {
+          apiCities = allCities;
+          print('✅ apiCities обновлены в состояние (${apiCities.length} городов)');
+          print('🏙️ apiCities value: $apiCities');
+        });
+      } else if (mounted) {
+        print('⚠️ Города не найдены (allCities.length = ${allCities.length})');
+        setState(() => apiCities = []);
+      }
+    } catch (e) {
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке городов: $e');
+      print('🔍 Stack: ${StackTrace.current}');
+      if (mounted) {
+        setState(() => apiCities = []);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoadingCities = false);
+        print('✅ Загрузка городов завершена (isLoadingCities = false)');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,56 +184,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildCategoryFilterBlock(),
-
-                    // const SizedBox(height: 18),
-                    // _buildSectionTitle("Выберите категорию"),
-                    // _buildClickableBox(
-                    //   value: "Недвижимость",
-                    //   icon: Icons.close,
-                    //   onTap: () {
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (context) =>
-                    //             const RealEstateFullSubcategoriesScreen(),
-                    //       ),
-                    //     );
-                    //   },
-                    // ),
-
-                    // const SizedBox(height: 18),
-                    // _buildSectionTitle("Выберите город"),
-                    // _buildClickableBox(
-                    //   value: selectedCities.isEmpty
-                    //       ? "Выбрать"
-                    //       : selectedCities.first,
-                    //   icon: Icons.chevron_right,
-                    //   onTap: () {
-                    //     showDialog(
-                    //       context: context,
-                    //       builder: (context) => CitySelectionDialog(
-                    //         title: "Выберите город",
-                    //         options: cities,
-                    //         selectedOptions: selectedCities,
-                    //         onSelectionChanged: (Set<String> newSelection) {
-                    //           setState(() {
-                    //             selectedCities = newSelection;
-                    //           });
-                    //         },
-                    //       ),
-                    //     );
-                    //   },
-                    // ),
-
-                    // const SizedBox(height: 18),
-                    // _buildSectionTitle("Валюта"),
-                    // const SizedBox(height: 18),
-                    // _buildCurrencyButtons(),
-
-                    // const SizedBox(height: 18),
-                    // _buildSectionTitle("Цена"),
-                    // const SizedBox(height: 18),
-                    // _buildPriceFields(),
 
                     const SizedBox(height: 18),
                     _buildSortBlock(),
@@ -190,10 +236,12 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     selectedPriceSort = "";
                     selectedCurrency = "uah";
                     selectedCities.clear();
+                    selectedCity.clear();
                     priceFrom.clear();
                     priceTo.clear();
                     sellerType = "";
                     viewMode = "gallery";
+                    selectedSubcategory = null;
                   });
                 },
                 child: const Text(
@@ -219,102 +267,11 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     );
   }
 
-  Widget _buildClickableBox({
-    required String value,
-    IconData? icon,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        margin: const EdgeInsets.only(top: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1C232D),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                value,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            ),
-            if (icon != null) Icon(icon, color: Colors.white70),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurrencyButtons() {
-    return Row(
-      children: [
-        SelectableButton(
-          text: "₽",
-          isActive: selectedCurrency == "uah",
-          onTap: () => setState(() => selectedCurrency = "uah"),
-          maxWidth: 175,
-        ),
-        // const SizedBox(width: 10),
-        // SelectableButton(
-        //   text: "\$",
-        //   isActive: selectedCurrency == "usd",
-        //   onTap: () => setState(() => selectedCurrency = "usd"),
-        //   maxWidth: 200,
-        // ),
-        // const SizedBox(width: 10),
-        // SelectableButton(
-        //   text: "€",
-        //   isActive: selectedCurrency == "eur",
-        //   onTap: () => setState(() => selectedCurrency = "eur"),
-        //   maxWidth: 200,
-        // ),
-      ],
-    );
-  }
-
-  Widget _buildPriceFields() {
-    return Row(
-      children: [
-        Expanded(child: _buildPriceInput("От", priceFrom)),
-        const SizedBox(width: 10),
-        Expanded(child: _buildPriceInput("До", priceTo)),
-      ],
-    );
-  }
-
-  Widget _buildPriceInput(String hint, TextEditingController controller) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C232D),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Center(
-        child: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: hint,
-            hintStyle: const TextStyle(color: Colors.white54),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSellerTypeButtons() {
     return Column(
       children: [
         Row(
           children: [
-            
             Expanded(
               child: SelectableButton(
                 text: "Все",
@@ -342,12 +299,8 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                 maxWidth: 200,
               ),
             ),
-            
-            
           ],
-          
         ),
-       
       ],
     );
   }
@@ -369,11 +322,19 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
           ),
           onPressed: () {
             // Переход на экран фильтра с подтянутыми данными из промежуточного фильтра
+            final selectedCityName = selectedCity.isNotEmpty ? selectedCity.first : null;
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => RealEstateFullFiltersScreen(
-                  selectedCategory: selectedSubcategory ?? widget.displayTitle ?? 'Недвижимость',
+                  selectedCategory:
+                      selectedSubcategory ??
+                      widget.displayTitle ??
+                      'Недвижимость',
+                  selectedCity: selectedCityName,
+                  selectedDateSort: selectedDateSort.isNotEmpty ? selectedDateSort : null,
+                  selectedPriceSort: selectedPriceSort.isNotEmpty ? selectedPriceSort : null,
+                  selectedSellerType: sellerType.isNotEmpty ? sellerType : null,
                 ),
               ),
             );
@@ -430,19 +391,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
               builder: (_) {
                 return CitySelectionDialog(
                   title: "Выберите город",
-                  options: const [
-                    'Абаза',
-                    'Абакан',
-                    'Абдулино',
-                    'Абинск',
-                    'Агидель',
-                    'Агрыз',
-                    'Адыгейск',
-                    'Азнакаево',
-                    'Бабаево',
-                    'Бабушкин Бавлы',
-                    'Багратионовск',
-                  ],
+                  options: apiCities, // Всегда используем apiCities (с fallback на статичный список)
                   selectedOptions: selectedCity,
                   onSelectionChanged: (v) => setState(() => selectedCity = v),
                 );
@@ -452,14 +401,15 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
           showArrow: true,
         ),
         const SizedBox(height: 16),
-        _buildTitle("Выберите подкатегорию"),
+        _buildTitle("Выберите категорию"),
         GestureDetector(
           onTap: () async {
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) =>
-                    const RealEstateFullSubcategoriesScreen(),
+                builder: (context) => RealEstateFullSubcategoriesScreen(
+                  catalogId: widget.catalogId ?? 1, // Передаём ID каталога, по умолчанию 1 (Недвижимость)
+                ),
               ),
             );
             if (result != null) {
@@ -518,7 +468,8 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   }
 
   String _getCategorySubtitle() {
-    final categoryTitle = widget.displayTitle?.replaceAll('\n', ' ').trim() ?? 'Недвижимость';
+    final categoryTitle =
+        widget.displayTitle?.replaceAll('\n', ' ').trim() ?? 'Недвижимость';
     final subcategoryTitle = selectedSubcategory ?? categoryTitle;
     return '$categoryTitle / $subcategoryTitle';
   }

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/address_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
@@ -13,10 +14,18 @@ import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.d
 
 class RealEstateFullFiltersScreen extends StatefulWidget {
   final String selectedCategory;
+  final String? selectedCity; // Город выбранный на промежуточном экране фильтров
+  final String? selectedDateSort; // Сортировка по дате (new/old)
+  final String? selectedPriceSort; // Сортировка по цене (expensive/cheap)
+  final String? selectedSellerType; // Тип продавца (private/business/all)
 
   const RealEstateFullFiltersScreen({
     super.key,
     required this.selectedCategory,
+    this.selectedCity,
+    this.selectedDateSort,
+    this.selectedPriceSort,
+    this.selectedSellerType,
   });
 
   @override
@@ -42,6 +51,7 @@ class _RealEstateFullFiltersScreenState
   bool isSecondary = true;
 
   bool isPrivate = true;
+  String sellerType = ""; // Тип продавца (private/business/all)
 
   Set<String> selectedCity = {};
   Set<String> selectedStreet = {};
@@ -58,6 +68,15 @@ class _RealEstateFullFiltersScreenState
   Set<String> selectedLandscape = {};
   Set<String> selectedRooms = {};
 
+  // Города загруженные с API (динамически)
+  List<String> apiCities = [];
+  bool isLoadingCities = false;
+  
+  // Улицы загруженные с API (динамически)
+  List<String> apiStreets = [];
+  bool isLoadingStreets = false;
+  String? currentCityId; // ID выбранного города для загрузки улиц
+
   final houseNumberController = TextEditingController();
   final areaController = TextEditingController();
   final kitchenAreaController = TextEditingController();
@@ -65,6 +84,56 @@ class _RealEstateFullFiltersScreenState
   final floorController = TextEditingController();
   final constructionMin = TextEditingController();
   final constructionMax = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Инициализируем выбранный город если он передан с промежуточного экрана
+    if (widget.selectedCity != null && widget.selectedCity!.isNotEmpty) {
+      selectedCity = {widget.selectedCity!};
+      print('🟢 Город инициализирован в RealEstateFullFiltersScreen: ${widget.selectedCity}');
+    }
+    // Инициализируем сортировку если она передана с промежуточного экрана
+    if (widget.selectedDateSort != null && widget.selectedDateSort!.isNotEmpty) {
+      _selectedDateSort = widget.selectedDateSort ?? "";
+      print('🟢 Сортировка по дате инициализирована: ${widget.selectedDateSort}');
+    }
+    if (widget.selectedPriceSort != null && widget.selectedPriceSort!.isNotEmpty) {
+      _selectedPriceSort = widget.selectedPriceSort ?? "";
+      print('🟢 Сортировка по цене инициализирована: ${widget.selectedPriceSort}');
+    }
+    // Инициализируем тип продавца если он передан с промежуточного экрана
+    if (widget.selectedSellerType != null && widget.selectedSellerType!.isNotEmpty) {
+      sellerType = widget.selectedSellerType!;
+      if (sellerType == "private") {
+        isPrivate = true;
+        print('🟢 Тип продавца инициализирован: Частное лицо');
+      } else if (sellerType == "business") {
+        isPrivate = false;
+        print('🟢 Тип продавца инициализирован: Бизнес');
+      } else if (sellerType == "all") {
+        // Для опции "Все" показываем обе кнопки активными
+        print('🟢 Тип продавца инициализирован: Все');
+      }
+    }
+    _loadCities(); // Загружаем города с API
+    // Загружаем улицы для выбранного города
+    if (selectedCity.isNotEmpty) {
+      _loadStreetsForCity(selectedCity.first);
+    }
+  }
+
+  @override
+  void dispose() {
+    houseNumberController.dispose();
+    areaController.dispose();
+    kitchenAreaController.dispose();
+    floorsController.dispose();
+    floorController.dispose();
+    constructionMin.dispose();
+    constructionMax.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,35 +199,37 @@ class _RealEstateFullFiltersScreenState
               // ),
               const SizedBox(height: 10),
 
+              // _buildTitle("Выберите город"),
+              // _buildSelector(
+              //   selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
+              //   onTap: () {
+              //     showDialog(
+              //       context: context,
+              //       builder: (_) {
+              //         return CitySelectionDialog(
+              //           title: "Выберите город",
+              //           options: apiCities.isNotEmpty ? apiCities : const ['Загружаю города...'],
+              //           selectedOptions: selectedCity,
+              //           onSelectionChanged: (v) => setState(() => selectedCity = v),
+              //         );
+              //       },
+              //     );
+              //   },
+              //   showArrow: true,
+              // ),
+
               _buildTitle("Выберите улицу"),
               _buildSelector(
-                selectedStreet.isEmpty ? "Центр" : selectedStreet.join(", "),
+                selectedStreet.isEmpty ? "Выберите улицу" : selectedStreet.first,
                 onTap: () {
                   showDialog(
                     context: context,
                     builder: (_) {
-                      return StreetSelectionDialog(
+                      return CitySelectionDialog(
                         title: "Улица",
-                        groupedOptions: const {
-                          'Центральный район': [
-                            'Аэродромная улица',
-                            'Бахмутская улица',
-                            'бул. Богдана Хмельницкого',
-                            'бул. Шевченко Георгиевская',
-                            'ул. Гранитная улица Греческая',
-                            'ул. Евпаторийская улица',
-                            'ул. Заводская',
-                            'Запорожское шоссе',
-                          ],
-                          'Приморский район': [
-                            'ул. Амурская',
-                            'Бердянский переулок',
-                            'ул. Большая Азовская',
-                          ],
-                        },
+                        options: apiStreets.isNotEmpty ? apiStreets : const ['Загружаю улицы...'],
                         selectedOptions: selectedStreet,
-                        onSelectionChanged: (v) =>
-                            setState(() => selectedStreet = v),
+                        onSelectionChanged: (v) => setState(() => selectedStreet = v),
                       );
                     },
                   );
@@ -620,6 +691,147 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
+  /// Загружает города с API (динамически)
+  /// Получает все области (регионы) и их города, собирает в единый список
+  Future<void> _loadCities() async {
+    setState(() => isLoadingCities = true);
+    print('🔄 Начинаем загрузку городов с API (real_estate_full_filters_screen)...');
+    
+    try {
+      // Получаем текущий токен из Hive
+      final token = HiveService.getUserData('token') as String?;
+      print('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
+      
+      // Получаем все области с API
+      final regionsResponse = await AddressService.getRegions(token: token);
+      final regions = regionsResponse.data;
+      print('✅ Загружено ${regions.length} областей');
+      
+      if (regions.isEmpty) {
+        print('⚠️ Регионов не найдено!');
+        if (mounted) {
+          setState(() => apiCities = []);
+        }
+        return;
+      }
+      
+      // Для каждой области получаем города
+      final citiesMap = <String, Map<String, dynamic>>{};
+      
+      for (int i = 0; i < regions.length; i++) {
+        final region = regions[i];
+        final regionName = region.name ?? 'Неизвестная область';
+        
+        try {
+          // Ищем города по названию региона
+          final response = await AddressService.searchAddresses(
+            query: regionName,
+            token: token,
+            types: ['city'],
+          );
+          
+          // Получаем города из результатов
+          for (final result in response.data) {
+            if (result.city != null) {
+              final cityId = result.city!.id;
+              final cityName = result.city!.name;
+              
+              if (cityId != null && cityName != null && cityName.isNotEmpty) {
+                if (!citiesMap.containsKey(cityName)) {
+                  citiesMap[cityName] = {
+                    'id': cityId,
+                    'name': cityName,
+                  };
+                }
+              }
+            }
+          }
+        } catch (e) {
+          print('   ❌ Ошибка при загрузке городов для области $regionName: $e');
+        }
+      }
+
+      final allCities = citiesMap.values.map((c) => c['name'] as String).toList();
+      allCities.sort();
+
+      if (mounted && allCities.isNotEmpty) {
+        setState(() {
+          apiCities = allCities;
+          print('✅ apiCities обновлены в real_estate_full_filters_screen (${apiCities.length} городов)');
+        });
+      } else if (mounted) {
+        print('⚠️ Города не найдены');
+        setState(() => apiCities = []);
+      }
+    } catch (e) {
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке городов: $e');
+      if (mounted) {
+        setState(() => apiCities = []);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoadingCities = false);
+      }
+    }
+  }
+
+  /// Загружает улицы для выбранного города с API
+  Future<void> _loadStreetsForCity(String cityName) async {
+    setState(() => isLoadingStreets = true);
+    print('🔄 Начинаем загрузку улиц для города: $cityName (real_estate_full_filters_screen)...');
+    
+    try {
+      // Получаем текущий токен из Hive
+      final token = HiveService.getUserData('token') as String?;
+      print('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
+      
+      // Ищем улицы по названию города
+      final response = await AddressService.searchAddresses(
+        query: cityName,
+        token: token,
+        types: ['street'],
+      );
+      
+      print('✅ Загружено ${response.data.length} результатов поиска');
+      
+      // Собираем уникальные улицы
+      final streetsMap = <String, String>{};
+      
+      for (final result in response.data) {
+        if (result.street != null && result.street!.name != null) {
+          final streetName = result.street!.name!;
+          if (!streetsMap.containsKey(streetName)) {
+            streetsMap[streetName] = streetName;
+          }
+        }
+      }
+      
+      final allStreets = streetsMap.values.toList();
+      allStreets.sort(); // Сортируем алфавитно
+      
+      if (mounted && allStreets.isNotEmpty) {
+        setState(() {
+          apiStreets = allStreets;
+          print('✅ apiStreets обновлены для города "$cityName" (${apiStreets.length} улиц)');
+        });
+      } else if (mounted) {
+        print('⚠️ Улицы не найдены для города "$cityName"');
+        setState(() => apiStreets = []);
+      }
+    } catch (e) {
+      print('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке улиц: $e');
+      print('🔍 Stack: ${StackTrace.current}');
+      if (mounted) {
+        setState(() => apiStreets = []);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoadingStreets = false);
+        print('✅ Загрузка улиц завершена (isLoadingStreets = false)');
+      }
+    }
+  }
+
   Widget _buildHeader() {
     return Row(
       children: [
@@ -647,8 +859,8 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  String? selectedDateSort = "new";
-  String? selectedPriceSort;
+  String _selectedDateSort = ""; // Новые или Старые
+  String _selectedPriceSort = ""; // Дорогие или Дешевые
 
   Widget _buildCategoryFilterBlock() {
     return Column(
@@ -672,36 +884,30 @@ class _RealEstateFullFiltersScreenState
           verticalPadding: 6,
         ),
         const SizedBox(height: 21),
-        _buildTitle("Выберите город"),
-        _buildSelector(
-          selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (_) {
-                return CitySelectionDialog(
-                  title: "Выберите город",
-                  options: const [
-                    'Абаза',
-                    'Абакан',
-                    'Абдулино',
-                    'Абинск',
-                    'Агидель',
-                    'Агрыз',
-                    'Адыгейск',
-                    'Азнакаево',
-                    'Бабаево',
-                    'Бабушкин Бавлы',
-                    'Багратионовск',
-                  ],
-                  selectedOptions: selectedCity,
-                  onSelectionChanged: (v) => setState(() => selectedCity = v),
-                );
-              },
-            );
-          },
-          showArrow: true,
-        ),
+       _buildTitle("Выберите город"),
+              _buildSelector(
+                selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) {
+                      return CitySelectionDialog(
+                        title: "Выберите город",
+                        options: apiCities.isNotEmpty ? apiCities : const ['Загружаю города...'],
+                        selectedOptions: selectedCity,
+                        onSelectionChanged: (v) {
+                          setState(() => selectedCity = v);
+                          // Загружаем улицы для выбранного города
+                          if (v.isNotEmpty) {
+                            _loadStreetsForCity(v.first);
+                          }
+                        },
+                      );
+                    },
+                  );
+                },
+                showArrow: true,
+              ),
         const SizedBox(height: 16),
         _buildTitle("Выберите категорию"),
         GestureDetector(
@@ -792,17 +998,17 @@ class _RealEstateFullFiltersScreenState
 
   Widget _sortButton(String label, String key) {
     final bool isActive = (key == "new" || key == "old")
-        ? selectedDateSort == key
-        : selectedPriceSort == key;
+        ? _selectedDateSort == key
+        : _selectedPriceSort == key;
 
     return Expanded(
       child: GestureDetector(
         onTap: () {
           setState(() {
             if (key == "new" || key == "old") {
-              selectedDateSort = key;
+              _selectedDateSort = key;
             } else if (key == "expensive" || key == "cheap") {
-              selectedPriceSort = key;
+              _selectedPriceSort = key;
             }
           });
         },

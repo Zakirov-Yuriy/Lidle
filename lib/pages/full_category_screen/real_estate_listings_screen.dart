@@ -633,6 +633,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                     MaterialPageRoute(
                       builder: (_) => IntermediateFiltersScreen(
                         displayTitle: widget.categoryName ?? 'Недвижимость',
+                        catalogId: widget.catalogId,
                       ),
                     ),
                   );
