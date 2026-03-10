@@ -540,10 +540,12 @@ class ApiService {
         try {
           final currentToken = HiveService.getUserData('token') as String?;
           if (currentToken == null || currentToken.isEmpty) {
-            completer.completeError(
-              TokenExpiredException('No saved token to refresh'),
-            );
-            throw TokenExpiredException('No saved token to refresh');
+            // Нет сохраненного токена - пользователь не авторизован
+            // Не пробуем refresh, просто рапортуем об истечении
+            print('🔒 ApiService: нет сохраненного токена для обновления');
+            final error = TokenExpiredException('No saved token to refresh');
+            completer.completeError(error);
+            throw error;
           }
 
           final newToken = await refreshToken(currentToken);
@@ -1546,6 +1548,7 @@ class ApiService {
   }
 
   /// Получить список регионов
+  /// Может работать с токеном или без (параллельно для анонимных пользователей)
   static Future<List<Map<String, dynamic>>> getRegions({String? token}) async {
     try {
       final headers = {...defaultHeaders};
@@ -1561,7 +1564,7 @@ class ApiService {
 
       final response = await http
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 30)); // Увеличен timeout для регионов
 
       // print('✅ API Response status: ${response.statusCode}');
 
@@ -1575,9 +1578,17 @@ class ApiService {
           );
         }
         return [];
+      } else if (response.statusCode == 401 && token != null) {
+        // Токен истёк, но это non-critical эндпоинт
+        // Не пробуем refresh, просто возвращаем пустой список
+        // Пользователь сможет повторить позже
+        print('⚠️ getRegions: 401 Unauthorized (token expired, skipping refresh)');
+        return [];
       } else {
         throw Exception('Failed to get regions: ${response.statusCode}');
       }
+    } on TimeoutException {
+      throw Exception('Timeout при загрузке регионов (превышено 30 сек)');
     } catch (e) {
       // print('❌ Error getting regions: $e');
       throw Exception('Error getting regions: $e');

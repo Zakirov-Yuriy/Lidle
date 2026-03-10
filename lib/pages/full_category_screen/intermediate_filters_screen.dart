@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
+import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/selectable_button.dart';
 
@@ -11,7 +12,12 @@ import 'package:lidle/widgets/selectable_button.dart';
 class IntermediateFiltersScreen extends StatefulWidget {
   static const String routeName = "/intermediate-filters";
 
-  const IntermediateFiltersScreen({super.key});
+  final String? displayTitle; // Динамически подтягиваемый заголовок из real_estate_listings_screen
+
+  const IntermediateFiltersScreen({
+    super.key,
+    this.displayTitle,
+  });
 
   @override
   State<IntermediateFiltersScreen> createState() =>
@@ -19,15 +25,22 @@ class IntermediateFiltersScreen extends StatefulWidget {
 }
 
 class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
-  String selectedSort = "recommended";
+  String selectedDateSort = ""; // Новые или Старые
+  String selectedPriceSort = ""; // Дорогие или Дешевые
 
   String selectedCurrency = "uah";
 
-  String sellerType = "business";
+  String sellerType = "";
 
   String viewMode = "gallery";
 
+  // Выбранная категория и тип апартамента
+  String? selectedSubcategory;
+  String? selectedApartmentType;
+
   Set<String> selectedCities = {};
+  Set<String> selectedStreet = {};
+  Set<String> selectedCity = {};
 
   final List<String> cities = [
     'Киев',
@@ -74,60 +87,60 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle("Сортировка"),
-                    const SizedBox(height: 18),
+                    _buildCategoryFilterBlock(),
 
-                    _buildSortButtons(),
+                    // const SizedBox(height: 18),
+                    // _buildSectionTitle("Выберите категорию"),
+                    // _buildClickableBox(
+                    //   value: "Недвижимость",
+                    //   icon: Icons.close,
+                    //   onTap: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) =>
+                    //             const RealEstateFullSubcategoriesScreen(),
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
+
+                    // const SizedBox(height: 18),
+                    // _buildSectionTitle("Выберите город"),
+                    // _buildClickableBox(
+                    //   value: selectedCities.isEmpty
+                    //       ? "Выбрать"
+                    //       : selectedCities.first,
+                    //   icon: Icons.chevron_right,
+                    //   onTap: () {
+                    //     showDialog(
+                    //       context: context,
+                    //       builder: (context) => CitySelectionDialog(
+                    //         title: "Выберите город",
+                    //         options: cities,
+                    //         selectedOptions: selectedCities,
+                    //         onSelectionChanged: (Set<String> newSelection) {
+                    //           setState(() {
+                    //             selectedCities = newSelection;
+                    //           });
+                    //         },
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
+
+                    // const SizedBox(height: 18),
+                    // _buildSectionTitle("Валюта"),
+                    // const SizedBox(height: 18),
+                    // _buildCurrencyButtons(),
+
+                    // const SizedBox(height: 18),
+                    // _buildSectionTitle("Цена"),
+                    // const SizedBox(height: 18),
+                    // _buildPriceFields(),
 
                     const SizedBox(height: 18),
-                    _buildSectionTitle("Выберите категорию"),
-                    _buildClickableBox(
-                      value: "Недвижимость",
-                      icon: Icons.close,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const RealEstateFullSubcategoriesScreen(),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 18),
-                    _buildSectionTitle("Выберите город"),
-                    _buildClickableBox(
-                      value: selectedCities.isEmpty
-                          ? "Выбрать"
-                          : selectedCities.first,
-                      icon: Icons.chevron_right,
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => CitySelectionDialog(
-                            title: "Выберите город",
-                            options: cities,
-                            selectedOptions: selectedCities,
-                            onSelectionChanged: (Set<String> newSelection) {
-                              setState(() {
-                                selectedCities = newSelection;
-                              });
-                            },
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 18),
-                    _buildSectionTitle("Валюта"),
-                    const SizedBox(height: 18),
-                    _buildCurrencyButtons(),
-
-                    const SizedBox(height: 18),
-                    _buildSectionTitle("Цена"),
-                    const SizedBox(height: 18),
-                    _buildPriceFields(),
+                    _buildSortBlock(),
 
                     const SizedBox(height: 18),
                     _buildSectionTitle("Частное лицо / Бизнес"),
@@ -173,18 +186,19 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    selectedSort = "recommended";
+                    selectedDateSort = "";
+                    selectedPriceSort = "";
                     selectedCurrency = "uah";
                     selectedCities.clear();
                     priceFrom.clear();
                     priceTo.clear();
-                    sellerType = "business";
+                    sellerType = "";
                     viewMode = "gallery";
                   });
                 },
                 child: const Text(
-                  "ОЧИСТИТЬ ВСЕ",
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  "Сбросить",
+                  style: TextStyle(color: activeIconColor, fontSize: 16),
                 ),
               ),
             ],
@@ -202,30 +216,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         fontSize: 16,
         fontWeight: FontWeight.w600,
       ),
-    );
-  }
-
-  Widget _buildSortButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: SelectableButton(
-            text: "Рекомендованное вам",
-            isActive: selectedSort == "recommended",
-            onTap: () => setState(() => selectedSort = "recommended"),
-            maxWidth: 200,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SelectableButton(
-            text: "Самые новые",
-            isActive: selectedSort == "newest",
-            onTap: () => setState(() => selectedSort = "newest"),
-            maxWidth: 200,
-          ),
-        ),
-      ],
     );
   }
 
@@ -320,25 +310,44 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   }
 
   Widget _buildSellerTypeButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: SelectableButton(
-            text: "Бизнес",
-            isActive: sellerType == "business",
-            onTap: () => setState(() => sellerType = "business"),
-            maxWidth: 200,
-          ),
+        Row(
+          children: [
+            
+            Expanded(
+              child: SelectableButton(
+                text: "Все",
+                isActive: sellerType == "all",
+                onTap: () => setState(() => sellerType = "all"),
+                maxWidth: double.infinity,
+              ),
+            ),
+
+            const SizedBox(width: 10),
+            Expanded(
+              child: SelectableButton(
+                text: "Частное лицо",
+                isActive: sellerType == "private",
+                onTap: () => setState(() => sellerType = "private"),
+                maxWidth: 200,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SelectableButton(
+                text: "Бизнес",
+                isActive: sellerType == "business",
+                onTap: () => setState(() => sellerType = "business"),
+                maxWidth: 200,
+              ),
+            ),
+            
+            
+          ],
+          
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: SelectableButton(
-            text: "Частное",
-            isActive: sellerType == "private",
-            onTap: () => setState(() => sellerType = "private"),
-            maxWidth: 200,
-          ),
-        ),
+       
       ],
     );
   }
@@ -359,7 +368,15 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             ),
           ),
           onPressed: () {
-            // TODO: Реализовать навигацию к применению фильтров
+            // Переход на экран фильтра с подтянутыми данными из промежуточного фильтра
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RealEstateFullFiltersScreen(
+                  selectedCategory: selectedSubcategory ?? widget.displayTitle ?? 'Недвижимость',
+                ),
+              ),
+            );
           },
           child: const Text(
             "Применить",
@@ -370,6 +387,264 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// ════════════════════════════════════════════════════════════
+  /// Методы-помощники для блока категорий (как в real_estate_full_filters_screen.dart)
+  /// ════════════════════════════════════════════════════════════
+
+  Widget _buildCategoryFilterBlock() {
+    // Форматируем заголовок: убираем переносы строк и очищаем текст
+    final displayCategoryTitle =
+        widget.displayTitle?.replaceAll('\n', ' ').trim() ?? 'Недвижимость';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Категории",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _buildSelectedBox(
+          displayCategoryTitle,
+          showRemove: false,
+          backgroundColor: const Color(0xFF6B7280),
+          textColor: Colors.black,
+          fitWidth: true,
+          verticalPadding: 6,
+        ),
+        const SizedBox(height: 21),
+        _buildTitle("Выберите город"),
+        _buildSelector(
+          selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) {
+                return CitySelectionDialog(
+                  title: "Выберите город",
+                  options: const [
+                    'Абаза',
+                    'Абакан',
+                    'Абдулино',
+                    'Абинск',
+                    'Агидель',
+                    'Агрыз',
+                    'Адыгейск',
+                    'Азнакаево',
+                    'Бабаево',
+                    'Бабушкин Бавлы',
+                    'Багратионовск',
+                  ],
+                  selectedOptions: selectedCity,
+                  onSelectionChanged: (v) => setState(() => selectedCity = v),
+                );
+              },
+            );
+          },
+          showArrow: true,
+        ),
+        const SizedBox(height: 16),
+        _buildTitle("Выберите подкатегорию"),
+        GestureDetector(
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    const RealEstateFullSubcategoriesScreen(),
+              ),
+            );
+            if (result != null) {
+              setState(() {
+                selectedSubcategory = result;
+              });
+            }
+          },
+          child: Container(
+            height: 60,
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        selectedSubcategory ??
+                            widget.displayTitle?.replaceAll('\n', ' ').trim() ??
+                            'Недвижимость',
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _getCategorySubtitle(),
+                        style: const TextStyle(
+                          color: Color(0xFF7A7A7A),
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Text(
+                  'Выбрать',
+                  style: TextStyle(color: Colors.lightBlue, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getCategorySubtitle() {
+    final categoryTitle = widget.displayTitle?.replaceAll('\n', ' ').trim() ?? 'Недвижимость';
+    final subcategoryTitle = selectedSubcategory ?? categoryTitle;
+    return '$categoryTitle / $subcategoryTitle';
+  }
+
+  Widget _buildTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 9.0),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedBox(
+    String text, {
+    required bool showRemove,
+    VoidCallback? onRemove,
+    Color? backgroundColor,
+    Color? textColor,
+    bool fitWidth = false,
+    double verticalPadding = 12,
+  }) {
+    return Container(
+      width: fitWidth ? null : double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: 14, vertical: verticalPadding),
+      decoration: BoxDecoration(
+        color: backgroundColor ?? secondaryBackground,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Row(
+        mainAxisSize: fitWidth ? MainAxisSize.min : MainAxisSize.max,
+        children: [
+          Text(text, style: TextStyle(color: textColor ?? Colors.white)),
+          if (showRemove)
+            GestureDetector(
+              onTap: onRemove,
+              child: const Icon(Icons.close, color: Colors.white70),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelector(
+    String text, {
+    VoidCallback? onTap,
+    bool showArrow = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 45,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(text, style: const TextStyle(color: Colors.white)),
+            ),
+            if (showArrow)
+              const Icon(Icons.chevron_right, color: Colors.white70),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Сортировка",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            _sortButton("Новые", "new", "date"),
+            const SizedBox(width: 10),
+            _sortButton("Старые", "old", "date"),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _sortButton("Дорогие", "expensive", "price"),
+            const SizedBox(width: 10),
+            _sortButton("Дешевые", "cheap", "price"),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _sortButton(String label, String value, String sortType) {
+    final isActive = sortType == "date"
+        ? selectedDateSort == value
+        : selectedPriceSort == value;
+
+    return Expanded(
+      child: SelectableButton(
+        text: label,
+        isActive: isActive,
+        onTap: () {
+          setState(() {
+            if (sortType == "date") {
+              selectedDateSort = selectedDateSort == value ? "" : value;
+            } else {
+              selectedPriceSort = selectedPriceSort == value ? "" : value;
+            }
+          });
+        },
+        maxWidth: double.infinity,
       ),
     );
   }

@@ -1863,6 +1863,10 @@ class _RealEstateListingsFilterScreenState
       print('📍 Загрузка регионов...');
       final token = TokenService.currentToken;
 
+      if (token == null) {
+        print('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
+      }
+
       final regions = await ApiService.getRegions(token: token);
 
       if (mounted) {

@@ -7,9 +7,16 @@ import 'package:lidle/widgets/components/header.dart';
 // "Полный экран подкатегорий недвижимости"
 // ============================================================
 
-class RealEstateFullSubcategoriesScreen extends StatelessWidget {
+class RealEstateFullSubcategoriesScreen extends StatefulWidget {
   const RealEstateFullSubcategoriesScreen({super.key});
 
+  @override
+  State<RealEstateFullSubcategoriesScreen> createState() =>
+      _RealEstateFullSubcategoriesScreenState();
+}
+
+class _RealEstateFullSubcategoriesScreenState
+    extends State<RealEstateFullSubcategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     final subcategories = [
@@ -107,17 +114,24 @@ class RealEstateFullSubcategoriesScreen extends StatelessWidget {
                             Icons.chevron_right,
                             color: Colors.white70,
                           ),
-                          onTap: () {
+                          onTap: () async {
                             if (subcategories[index] == 'Квартиры') {
-                              Navigator.push(
+                              // Переходим на экран выбора типа апартаментов и ждём результата
+                              final result = await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
                                       const RealEstateFullApartmentsScreen(),
                                 ),
                               );
+                              // Если получили результат, возвращаем его на intermediate_filters_screen.dart
+                              if (result != null && mounted) {
+                                Navigator.pop(context, result);
+                              }
+                            } else {
+                              // Для остальных категорий просто возвращаем название категории
+                              Navigator.pop(context, subcategories[index]);
                             }
-                            
                           },
                         ),
                         if (index < subcategories.length - 1)

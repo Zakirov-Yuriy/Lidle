@@ -631,7 +631,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const IntermediateFiltersScreen(),
+                      builder: (_) => IntermediateFiltersScreen(
+                        displayTitle: widget.categoryName ?? 'Недвижимость',
+                      ),
                     ),
                   );
                 }

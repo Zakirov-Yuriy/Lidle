@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 // ============================================================
@@ -100,13 +99,8 @@ class RealEstateFullApartmentsScreen extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           title: Text(title, style: const TextStyle(color: Colors.white)),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    RealEstateFullFiltersScreen(selectedCategory: title),
-              ),
-            );
+            // Возвращаемся на intermediate_filters_screen с выбранным видом апартаментов
+            Navigator.pop(context, title);
           },
         ),
         const Divider(color: Colors.white24, height: 0.9),

@@ -544,8 +544,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   Future<void> _loadRegions() async {
     try {
-      // print('📍 Loading regions from API...');
       final token = TokenService.currentToken;
+      
+      // Если нет токена, регионы все равно можно загрузить (API поддерживает без токена)
+      // но если есть токен, используем его
+      // Логируем для отладки
+      if (token == null) {
+        print('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
+      }
 
       final regions = await ApiService.getRegions(token: token);
 
@@ -554,10 +560,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _regions = regions;
         });
       }
-      // print('✅ Loaded ${regions.length} regions');
+      print('✅ Loaded ${regions.length} regions');
     } catch (e) {
-      // print('❌ Error loading regions: $e');
-      // Try again after 3 seconds
+      print('❌ Error loading regions: $e');
+      // Retry after 3 seconds
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) _loadRegions();
       });
