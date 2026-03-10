@@ -600,33 +600,10 @@ class _RealEstateListingsFilterScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Выберите город",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () async {
-            print('\n🏙️ ════════════════════════════════════════');
-            print('🏙️ City block tapped');
-            print('🏙️ Cities available: ${_cities.length}');
-            print('🏙️ Is loading: $_citiesLoading');
-
-            if (_cities.isNotEmpty) {
-              print(
-                '🏙️ Opening CitySelectionDialog with ${_cities.length} cities',
-              );
-              print(
-                '🏙️ First city: ${_cities[0]['name']} (ID: ${_cities[0]['id']})',
-              );
-            }
-            print('🏙️ ════════════════════════════════════════\n');
-
-            // Показать диалог выбора города
+        _buildTitle("Выберите город"),
+        _buildSelector(
+          _selectedCity.isEmpty ? "Выберите город" : _selectedCity.first,
+          onTap: () {
             if (_cities.isNotEmpty) {
               showDialog(
                 context: context,
@@ -636,112 +613,47 @@ class _RealEstateListingsFilterScreenState
                     options: _cities.map((c) => c['name'] as String).toList(),
                     selectedOptions: _selectedCity,
                     onSelectionChanged: (Set<String> selected) {
-                      print('\n🟢 ════════════════════════════════════════');
-                      print('🟢 onSelectionChanged CALLED');
-                      print('🟢 Selected options: $selected');
-
                       if (selected.isNotEmpty) {
                         final selectedCityName = selected.first;
-                        print('🟢 Looking for city: "$selectedCityName"');
-                        print('🟢 Total cities in _cities: ${_cities.length}');
-
-                        // Вывести все города для отладки
-                        for (int i = 0; i < _cities.length; i++) {
-                          print(
-                            '   - [${_cities[i]['id']}] "${_cities[i]['name']}"',
-                          );
-                          if (_cities[i]['name'] == selectedCityName) {
-                            print('      ✅ FOUND MATCH at index $i');
-                          }
-                        }
-
                         final cityIndex = _cities.indexWhere(
                           (c) => c['name'] == selectedCityName,
                         );
-                        print('🟢 City index: $cityIndex');
 
                         int? cityId;
                         if (cityIndex >= 0) {
                           cityId = _cities[cityIndex]['id'] as int?;
-                          print('🟢 City ID found: $cityId');
-                        } else {
-                          print('🟢 ⚠️  CITY NOT FOUND in _cities!');
                         }
 
                         setState(() {
                           _selectedCity = selected;
                           _selectedCityId = cityId;
-                          print(
-                            '🟢 SET STATE: _selectedCityId = $_selectedCityId',
-                          );
-                          print('🟢 SET STATE: _selectedCity = $_selectedCity');
                         });
 
-                        print(
-                          '✅ Выбран город: $selectedCityName (ID: $cityId)',
-                        );
-                      } else {
-                        print('🟢 ⚠️  selected is empty!');
+                        print('✅ Выбран город: $selectedCityName (ID: $cityId)');
                       }
-                      print('🟢 ════════════════════════════════════════\n');
-                      // Не вызываем Navigator.pop() здесь - диалог это сделает сам
                     },
                   );
                 },
               );
             } else if (_citiesLoading) {
               if (mounted) {
-                try {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('⏳ Города загружаются...')),
-                  );
-                } catch (e) {
-                  print('⚠️ Cannot show snackbar: $e');
-                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('⏳ Города загружаются...')),
+                );
               }
             } else {
               if (mounted) {
-                try {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        '❌ Города не найдены. Проверьте подключение.',
-                      ),
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      '❌ Города не найдены. Проверьте подключение.',
                     ),
-                  );
-                } catch (e) {
-                  print('⚠️ Cannot show snackbar: $e');
-                }
+                  ),
+                );
               }
             }
           },
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: secondaryBackground,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    _selectedCity.isEmpty
-                        ? "Выберите город"
-                        : _selectedCity.join(', '),
-                    style: TextStyle(
-                      color: _selectedCity.isEmpty
-                          ? Colors.white70
-                          : Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
-              ],
-            ),
-          ),
+          showArrow: true,
         ),
       ],
     );
@@ -1823,6 +1735,33 @@ class _RealEstateListingsFilterScreenState
           color: Colors.white,
           fontSize: 16,
           fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelector(
+    String text, {
+    VoidCallback? onTap,
+    bool showArrow = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 45,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(5),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(text, style: const TextStyle(color: Colors.white)),
+            ),
+            if (showArrow)
+              const Icon(Icons.chevron_right, color: Colors.white70),
+          ],
         ),
       ),
     );
