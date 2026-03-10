@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/address_service.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -78,6 +81,13 @@ class _RealEstateFullFiltersScreenState
   bool isLoadingStreets = false;
   String? currentCityId; // ID выбранного города для загрузки улиц
 
+  // Динамические фильтры из API
+  List<Attribute> _attributes = [];
+  Map<int, dynamic> _selectedValues = {};
+  bool _isLoadingFilters = true;
+  String? _errorMessage;
+  Map<int, TextEditingController> _controllers = {};
+
   final houseNumberController = TextEditingController();
   final areaController = TextEditingController();
   final kitchenAreaController = TextEditingController();
@@ -126,6 +136,7 @@ class _RealEstateFullFiltersScreenState
         print('🟢 Тип продавца инициализирован: Все');
       }
     }
+    _loadDynamicFilters(); // Загружаем динамические фильтры с API
     _loadCities(); // Загружаем города с API
     // Загружаем улицы для выбранного города
     if (selectedCity.isNotEmpty) {
@@ -135,6 +146,10 @@ class _RealEstateFullFiltersScreenState
 
   @override
   void dispose() {
+    // Очистка всех текстовых контроллеров
+    for (var controller in _controllers.values) {
+      controller.dispose();
+    }
     houseNumberController.dispose();
     areaController.dispose();
     kitchenAreaController.dispose();
@@ -231,394 +246,9 @@ class _RealEstateFullFiltersScreenState
               const Divider(color: Colors.white24),
               const SizedBox(height: 10),
 
-              _buildTitle("Валюта: Российский рубль (₽)"),
-              _buildTitle("Цена"),
+              // Динамические фильтры из API
+              _buildDynamicFilters(),
 
-              _buildPriceBlock(),
-
-              const SizedBox(height: 15),
-
-              _buildCheck("Без комиссии", noCommission, (v) {
-                setState(() => noCommission = v);
-              }),
-              const SizedBox(height: 13),
-              _buildCheck("Возможность обмена", exchange, (v) {
-                setState(() => exchange = v);
-              }),
-              const SizedBox(height: 13),
-              _buildCheck("Готов сотрудничать с риэлтором", noCommission, (v) {
-                setState(() => noCommission = v);
-              }),
-              const SizedBox(height: 13),
-              _buildCheck("Срочная продажа", urgent, (v) {
-                setState(() => urgent = v);
-              }),
-              const SizedBox(height: 13),
-              _buildCheck("Пpодажа от застройщика", registrySale, (v) {
-                setState(() => registrySale = v);
-              }),
-              const SizedBox(height: 13),
-              _buildCheck("Учёт в росреестре", realtor, (v) {
-                setState(() => realtor = v);
-              }),
-              const SizedBox(height: 13),
-              _buildCheck("Пpедложить свою цену", buyerOffer, (v) {
-                setState(() => buyerOffer = v);
-              }),
-
-              const SizedBox(height: 16),
-
-              _buildTitle("Ипотека"),
-              const SizedBox(height: 4),
-              _buildToggleYesNo(
-                labelYes: "Да",
-                labelNo: "Нет",
-                selected: mortgageYes,
-                onChange: (v) => setState(() => mortgageYes = v),
-              ),
-
-              const SizedBox(height: 12),
-
-              _buildTitle("Рассрочка"),
-              const SizedBox(height: 4),
-              _buildToggleYesNo(
-                labelYes: "Да",
-                labelNo: "Нет",
-                selected: installmentYes,
-                onChange: (v) => setState(() => installmentYes = v),
-              ),
-
-              const SizedBox(height: 17),
-
-              _buildSelectorDropdown(
-                label: "Тип дома",
-                selected: selectedBuildingTypes,
-                options: const [
-                  'Все объявления',
-                  'Царский дом',
-                  'Сталинка',
-                  'Хрущевка',
-                  'Чешка',
-                  'Гостинка',
-                  'Совмин',
-                  'Общежитие',
-                  'Жилой фонд 80-90-е',
-                  'Жилой фонд 91-2000-е',
-                  'Жилой фонд 2001-2010-е',
-                  'Жилой фонд 2011-2020-е',
-                  'Жилой фонд от 2021 г.',
-                ],
-                onChanged: (v) => setState(() => selectedBuildingTypes = v),
-              ),
-
-              const SizedBox(height: 10),
-              _buildTitle("Название ЖК"),
-
-              _buildInput("Название ЖК", areaController),
-
-              const SizedBox(height: 10),
-              _buildRange("Этаж", floorController, floorsController),
-
-              const SizedBox(height: 10),
-              _buildRange("Этажность", floorController, floorsController),
-
-              const SizedBox(height: 10),
-              _buildSelectorDropdown(
-                label: "Тип сделки",
-                selected: selectedRooms,
-                options: const [
-                  'От застройщика',
-                  'Переуступка',
-                  'Рассрочка от',
-                  'Рассрочка от банка',
-                  'Банковский кредит',
-                  'Лизинг',
-                ],
-                onChanged: (v) => setState(() => selectedRooms = v),
-              ),
-
-              const SizedBox(height: 10),
-
-              _buildRange(
-                "Общая площадь (м²)",
-                floorController,
-                floorsController,
-              ),
-
-              const SizedBox(height: 10),
-              _buildSelectorDropdown(
-                label: "Тип стен",
-                selected: selectedWallTypes,
-                options: const [
-                  'Кирпичный',
-                  'Панельный',
-                  'Монолитный',
-                  'Шлакоблочный',
-                  'Деревянный',
-                  'Газоблок',
-                  'СИП панель',
-                  'Другое',
-                ],
-                onChanged: (v) => setState(() => selectedWallTypes = v),
-              ),
-
-              const SizedBox(height: 15),
-              _buildSelectorDropdown(
-                label: "Класс жилья",
-                selected: selectedComfort,
-                options: const [
-                  'Эконом',
-                  'Комфорт',
-                  'Бизнес',
-                  'Элит',
-                  'Другое',
-                ],
-                onChanged: (v) => setState(() => selectedComfort = v),
-              ),
-
-              const SizedBox(height: 15),
-              _buildSelectorDropdown(
-                label: "Количество комнат",
-                selected: selectedRooms,
-                options: const [
-                  '1 комната',
-                  '2 комнаты',
-                  '3 комнаты',
-                  '4 комнаты',
-                  '5 комнат',
-                  'Другое',
-                ],
-                onChanged: (v) => setState(() => selectedRooms = v),
-              ),
-
-              const SizedBox(height: 15),
-              _buildSelectorDropdown(
-                label: "Планировка",
-                selected: selectedLayout,
-                options: const [
-                  'Смежная, проходная',
-                  'Раздельная',
-                  'Студия',
-                  'Пентхаус',
-                  'Многоуровневая',
-                  'Малосемека, гостинка',
-                ],
-                onChanged: (v) => setState(() => selectedLayout = v),
-              ),
-
-              const SizedBox(height: 15),
-              _buildSelectorDropdown(
-                label: "Санузел",
-                selected: selectedBathrooms,
-                options: const [
-                  'Раздельный',
-                  'Смежный',
-                  '2 и более',
-                  'Санузел отсутствует',
-                ],
-                onChanged: (v) => setState(() => selectedBathrooms = v),
-              ),
-
-              const SizedBox(height: 15),
-              _buildSelectorDropdown(
-                label: "Отопление",
-                selected: selectedHeating,
-                options: const [
-                  'Все объявления',
-                  'Централизованное',
-                  'Собственная котельная',
-                  'Индивидуальное газовое',
-                  'Индивидуальное электро',
-                  'Твердотопленное',
-                  'Тепловой насос',
-                  'Комбинированное',
-                  'Другое',
-                ],
-                onChanged: (v) => setState(() => selectedHeating = v),
-              ),
-
-              const SizedBox(height: 15),
-              _buildSelectorDropdown(
-                label: "Ремонт",
-                selected: selectedRenovation,
-                options: const [
-                  'Аторский проект',
-                  'Евроремонт',
-                  'Косметический ремонт',
-                  'Жилое состояние',
-                  'После строителей',
-                  'Под чистовую отделку',
-                  'Аварийное состояние',
-                ],
-                onChanged: (v) => setState(() => selectedRenovation = v),
-              ),
-
-              const SizedBox(height: 13),
-              _buildTitle("Меблирована"),
-
-              _buildToggleYesNo(
-                labelYes: "С мебелью",
-                labelNo: "Без мебели",
-                selected: mortgageYes,
-                onChange: (v) {},
-              ),
-
-              const SizedBox(height: 12),
-              _buildSelectorDropdown(
-                label: "Бытовая техника",
-                selected: selectedMultimedia,
-                options: const [
-                  'Электрочайник',
-                  'Кофемашина',
-                  'Фен',
-                  'Плита',
-                  'Варочная панель',
-                  'Микроволновая печь',
-                  'Мультиварка',
-                  'Холодильник',
-                  'Посудомоечная машина',
-                  'Стиральная машина',
-                  'Сушильная машина',
-                  'Утюг',
-                  'Пылесос',
-                  'Без бытовой техники',
-                ],
-                onChanged: (v) => setState(() => selectedMultimedia = v),
-              ),
-
-              const SizedBox(height: 12),
-              _buildSelectorDropdown(
-                label: "Мультимедиа",
-                selected: selectedMultimedia,
-                options: const [
-                  'Wi-Fi',
-                  'Скоростной интернет',
-                  'ПК, принтер, сканер',
-                  'Телевизор',
-                  'Кабильное, цифровое ТВ',
-                  'Спутниковое ТВ',
-                  'Домашний кинотеатр',
-                  'X-box, Playstation',
-                  'Без мультимедиа',
-                ],
-                onChanged: (v) => setState(() => selectedMultimedia = v),
-              ),
-
-              const SizedBox(height: 12),
-              _buildSelectorDropdown(
-                label: "Комфорт",
-                selected: selectedComfort,
-                options: const [
-                  'Все объявления',
-                  'Подогрев полов',
-                  'Автоматное отопление',
-                  'Односпальная кровать',
-                  'Двухспальная кровать',
-                  'Доп. спальное место',
-                  'Ванна',
-                  'Душевая кабина',
-                  'Сауна',
-                  'Джакузи',
-                  'Бильярд',
-                  'Кондиционер',
-                  'Утюг, гладильная доска',
-                  'Гардероб',
-                  'Сейф',
-                  'Видеонаблюдение',
-                  'Охраняемая территория',
-                  'Терраса',
-                  'Парковочное место',
-                  'Фитнес-центр, спортзал',
-                  'Бассейн',
-                  'Баня',
-                  'Сауна',
-                  'Хамам',
-                ],
-                onChanged: (v) => setState(() => selectedComfort = v),
-              ),
-
-              const SizedBox(height: 12),
-              _buildSelectorDropdown(
-                label: "Коммуникации",
-                selected: selectedCommunication,
-                options: const [
-                  'Газ',
-                  'Центраный',
-                  'Скважина',
-                  'Электичество',
-                  'Центральная',
-                  'Канализация',
-                  'Вывоз отходов',
-                  'Без коммуникаций',
-                ],
-                onChanged: (v) => setState(() => selectedCommunication = v),
-              ),
-
-              const SizedBox(height: 12),
-              _buildSelectorDropdown(
-                label: "Инфраструктура (до 500 метров)",
-                selected: selectedInfrastructure,
-                options: const [
-                  'Центор города',
-                  'Достопримечательности',
-                  'Исторические места',
-                  'Музеи выставки',
-                  'Парк, зеленая зона',
-                  'Детская площадка',
-                  'Отделения банка, банкомат',
-                  'Супермаркет, магазин',
-                  'Остановка транспорта',
-                  'Стоянка',
-                  'Рынок',
-                  'Горнолыжные трассы',
-                  'Автовокзал',
-                  'ЖД станция',
-                ],
-                onChanged: (v) => setState(() => selectedInfrastructure = v),
-              ),
-
-              const SizedBox(height: 12),
-              _buildRange(
-                "Площадь кухни (м²)",
-                kitchenAreaController,
-                areaController,
-              ),
-
-              const SizedBox(height: 12),
-              _buildTitle("Вид обьекта"),
-              const SizedBox(height: 4),
-              _buildToggleYesNo(
-                labelYes: "Вторичка",
-                labelNo: "Новостройка",
-                selected: mortgageYes,
-                onChange: (v) {},
-              ),
-              const SizedBox(height: 12),
-              _buildRange("Год постройки", constructionMin, constructionMax),
-
-              const SizedBox(height: 12),
-              _buildSelectorDropdown(
-                label: "Ландшафт (до 1 км)",
-                selected: selectedLandscape,
-                options: const [
-                  'Река',
-                  'Водохранилище',
-                  'Водопад',
-                  'Озера',
-                  'Море',
-                  'Океан',
-                  'Острова',
-                  'Холмы',
-                  'Горы',
-                  'Каньоны',
-                  'Парк',
-                  'Пещеры',
-                  'Лес',
-                  'Пляж',
-                  'Город',
-                ],
-                onChanged: (v) => setState(() => selectedLandscape = v),
-              ),
               const SizedBox(height: 24),
               const Divider(color: Colors.white24),
               const SizedBox(height: 14),
@@ -643,6 +273,644 @@ class _RealEstateFullFiltersScreenState
           ),
         ),
       ),
+    );
+  }
+
+  /// Загружает динамические фильтры с API
+  Future<void> _loadDynamicFilters() async {
+    try {
+      setState(() {
+        _isLoadingFilters = true;
+        _errorMessage = null;
+      });
+
+      final token = TokenService.currentToken;
+      print('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
+      print('📂 Category: ${widget.selectedCategory}');
+
+      // Для категории Недвижимость используем categoryId = 1
+      // TODO: Если будут другие категории, добавить маппинг
+      int categoryId = 1;
+      
+      print('🔄 Fetching filters for categoryId: $categoryId');
+
+      final response = await ApiService.getListingsFilterAttributes(
+        categoryId: categoryId,
+        token: token,
+      );
+
+      print('📡 API Response: $response');
+
+      if (response['success'] == true && response['data'] != null) {
+        final List<dynamic> attributesData = response['data'] as List<dynamic>;
+        print('📊 Raw attributes data count: ${attributesData.length}');
+        
+        final attributes = <Attribute>[];
+
+        for (int i = 0; i < attributesData.length; i++) {
+          try {
+            final attr = Attribute.fromJson(
+              attributesData[i] as Map<String, dynamic>,
+            );
+            attributes.add(attr);
+            print('✅ Loaded attribute: ${attr.title}');
+          } catch (e) {
+            print('❌ Error parsing attribute at index $i: $e');
+            print('   Data: ${attributesData[i]}');
+          }
+        }
+
+        setState(() {
+          _attributes = attributes;
+          _isLoadingFilters = false;
+        });
+
+        print('✅ Successfully loaded ${attributes.length} filter attributes');
+      } else {
+        final message = response['message'] ?? 'Unknown error';
+        print('⚠️ API Error - Success: ${response['success']}, Data: ${response['data']}');
+        throw Exception('Failed to load filters: $message');
+      }
+    } catch (e) {
+      print('❌ Error loading filters: $e');
+      print('📍 Stack trace: $e');
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoadingFilters = false;
+      });
+    }
+  }
+
+  /// Отображает динамические фильтры
+  Widget _buildDynamicFilters() {
+    if (_isLoadingFilters) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          children: [
+            const CircularProgressIndicator(color: Colors.lightBlue),
+            const SizedBox(height: 12),
+            const Text(
+              'Загружаю фильтры...',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.red.withOpacity(0.5)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '❌ Ошибка загрузки фильтров:',
+              style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Unknown error',
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _loadDynamicFilters,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.lightBlue,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'Попробовать снова',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_attributes.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        alignment: Alignment.center,
+        child: const Text(
+          'Нет доступных фильтров',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ..._attributes.map((attr) {
+          if (attr.isHidden) {
+            return const SizedBox.shrink();
+          }
+
+          if (attr.title.contains('Вам предложат цену')) {
+            return const SizedBox.shrink();
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [_buildFilterField(attr), const SizedBox(height: 10)],
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  /// Отображает фильтр в зависимости от его типа
+  Widget _buildFilterField(Attribute attr) {
+    // Style F: Popup диалог с чекбоксами
+    if (attr.styleSingle == "F" && attr.values.isNotEmpty) {
+      return _buildStyleFPopupFilter(attr);
+    }
+
+    // Style C: Да/Нет кнопки
+    if (attr.isSpecialDesign) {
+      return _buildSpecialDesignFilter(attr);
+    }
+
+    // Style I: Чекбоксы без popup
+    if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
+      return _buildCheckboxFilter(attr);
+    }
+
+    // Диапазоны от/до
+    if (attr.isRange) {
+      return _buildRangeFilterField(attr);
+    }
+
+    // Текстовое поле
+    if (attr.values.isEmpty) {
+      return _buildTextFilterField(attr);
+    }
+
+    // Style F: Popup диалог с чекбоксами (fallback)
+    if (attr.isPopup && attr.values.isNotEmpty) {
+      return _buildStyleFPopupFilter(attr);
+    }
+
+    // Style D: Multiple select
+    if (attr.isMultiple) {
+      return _buildStyleDMultipleFilter(attr);
+    }
+
+    // Single select dropdown
+    return _buildSingleSelectFilter(attr);
+  }
+
+  /// Style C: Кнопки Да/Нет
+  Widget _buildSpecialDesignFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= '';
+    String selected = _selectedValues[attr.id] is String
+        ? _selectedValues[attr.id] as String
+        : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        Row(
+          children: attr.values.asMap().entries.map((entry) {
+            final index = entry.key;
+            final value = entry.value;
+            final isSelected = selected == value.value;
+
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: index < attr.values.length - 1 ? 8.0 : 0,
+                ),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedValues[attr.id] = isSelected ? '' : value.value;
+                    });
+                  },
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color:
+                          isSelected ? activeIconColor : Colors.transparent,
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(
+                        color: isSelected ? Colors.transparent : Colors.white70,
+                        width: 1,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        value.value,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// Style I: Чекбоксы
+  Widget _buildCheckboxFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= <String>{};
+    Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTitle(attr.title),
+              const SizedBox(height: 8),
+            ],
+          ),
+        Column(
+          children: [
+            ...attr.values.asMap().entries.map((entry) {
+              final index = entry.key;
+              final value = entry.value;
+              final valueId = value.id.toString();
+              final isChecked = selected.contains(valueId);
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isChecked) {
+                      selected.remove(valueId);
+                    } else {
+                      selected.add(valueId);
+                    }
+                    _selectedValues[attr.id] = selected;
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index < attr.values.length - 1 ? 12.0 : 0,
+                  ),
+                  child: Row(
+                    children: [
+                      CustomCheckbox(
+                        value: isChecked,
+                        onChanged: (_) {
+                          setState(() {
+                            if (isChecked) {
+                              selected.remove(valueId);
+                            } else {
+                              selected.add(valueId);
+                            }
+                            _selectedValues[attr.id] = selected;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          value.value,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Текстовое поле
+  Widget _buildTextFilterField(Attribute attr) {
+    final controller = _controllers.putIfAbsent(
+      attr.id,
+      () => TextEditingController(text: _selectedValues[attr.id] ?? ''),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: secondaryBackground,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: TextField(
+            controller: controller,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: attr.title,
+              hintStyle: const TextStyle(color: Colors.white70),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _selectedValues[attr.id] = value;
+              });
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Диапазон от/до
+  Widget _buildRangeFilterField(Attribute attr) {
+    _selectedValues[attr.id] ??= {'min': '', 'max': ''};
+    Map<String, dynamic> range = _selectedValues[attr.id] is Map
+        ? _selectedValues[attr.id] as Map<String, dynamic>
+        : {'min': '', 'max': ''};
+
+    final minKey = attr.id * 2;
+    final maxKey = attr.id * 2 + 1;
+
+    final minController = _controllers.putIfAbsent(
+      minKey,
+      () => TextEditingController(text: range['min'] ?? ''),
+    );
+
+    final maxController = _controllers.putIfAbsent(
+      maxKey,
+      () => TextEditingController(text: range['max'] ?? ''),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _buildRangeInput('От', minController, (value) {
+                setState(() {
+                  range['min'] = value;
+                  _selectedValues[attr.id] = range;
+                });
+              }),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildRangeInput('До', maxController, (value) {
+                setState(() {
+                  range['max'] = value;
+                  _selectedValues[attr.id] = range;
+                });
+              }),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Инпут для диапазона
+  Widget _buildRangeInput(
+    String hint,
+    TextEditingController controller,
+    ValueChanged<String> onChanged,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white70),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 12,
+          ),
+        ),
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  /// Одиночный выбор dropdown
+  Widget _buildSingleSelectFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= '';
+    String selected = _selectedValues[attr.id] is String
+        ? _selectedValues[attr.id] as String
+        : '';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => SelectionDialog(
+                title: attr.title,
+                options: attr.values.map((v) => v.value).toList(),
+                selectedOptions: selected.isEmpty ? {} : {selected},
+                onSelectionChanged: (selectedSet) {
+                  setState(() {
+                    _selectedValues[attr.id] =
+                        selectedSet.isEmpty ? '' : selectedSet.first;
+                  });
+                },
+                allowMultipleSelection: false,
+              ),
+            );
+          },
+          child: Container(
+            height: 45,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    selected.isEmpty ? 'Выбрать' : selected,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Style F: Popup с чекбоксами для множественного выбора
+  Widget _buildStyleFPopupFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= <String>{};
+    Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => SelectionDialog(
+                title: attr.title,
+                options: attr.values.map((v) => v.value).toList(),
+                selectedOptions: selected,
+                onSelectionChanged: (newSelected) {
+                  setState(() {
+                    final selectedIds = <String>{};
+                    for (var value in attr.values) {
+                      if (newSelected.contains(value.value)) {
+                        selectedIds.add(value.id.toString());
+                      }
+                    }
+                    _selectedValues[attr.id] = selectedIds;
+                  });
+                },
+                allowMultipleSelection: true,
+              ),
+            );
+          },
+          child: Container(
+            height: 45,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    selected.isEmpty ? 'Выбрать' : '${selected.length} выбрано',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Style D: Multiple select с popup
+  Widget _buildStyleDMultipleFilter(Attribute attr) {
+    _selectedValues[attr.id] ??= <String>{};
+    Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!attr.isTitleHidden) _buildTitle(attr.title),
+        if (!attr.isTitleHidden) const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (_) => SelectionDialog(
+                title: attr.title,
+                options: attr.values.map((v) => v.value).toList(),
+                selectedOptions: selected,
+                onSelectionChanged: (newSelected) {
+                  setState(() {
+                    final selectedIds = <String>{};
+                    for (var value in attr.values) {
+                      if (newSelected.contains(value.value)) {
+                        selectedIds.add(value.id.toString());
+                      }
+                    }
+                    _selectedValues[attr.id] = selectedIds;
+                  });
+                },
+                allowMultipleSelection: true,
+              ),
+            );
+          },
+          child: Container(
+            height: 45,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    selected.isEmpty ? 'Выбрать' : '${selected.length} выбрано',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                    ),
+                  ),
+                ),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
