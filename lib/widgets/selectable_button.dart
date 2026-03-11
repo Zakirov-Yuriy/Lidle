@@ -7,6 +7,7 @@ class SelectableButton extends StatelessWidget {
   final VoidCallback onTap;
   final double? width;
   final double? maxWidth;
+  final double? height;
   final EdgeInsetsGeometry? padding;
   final double borderRadius;
 
@@ -17,6 +18,7 @@ class SelectableButton extends StatelessWidget {
     required this.onTap,
     this.width,
     this.maxWidth,
+    this.height,
     this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     this.borderRadius = 5.0,
   });
@@ -27,6 +29,7 @@ class SelectableButton extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: width,
+        height: height,
         padding: padding,
         decoration: BoxDecoration(
           color: isActive ? activeIconColor : primaryBackground,

@@ -272,36 +272,71 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       children: [
         Row(
           children: [
-            Expanded(
-              child: SelectableButton(
+            Flexible(
+              flex: 1,
+              child: _choiceButton(
                 text: "Все",
-                isActive: sellerType == "all",
+                selected: sellerType == "all",
                 onTap: () => setState(() => sellerType = "all"),
-                maxWidth: double.infinity,
               ),
             ),
-
             const SizedBox(width: 10),
-            Expanded(
-              child: SelectableButton(
+            Flexible(
+              flex: 2,
+              child: _choiceButton(
                 text: "Частное лицо",
-                isActive: sellerType == "private",
+                selected: sellerType == "private",
                 onTap: () => setState(() => sellerType = "private"),
-                maxWidth: 200,
               ),
             ),
             const SizedBox(width: 10),
-            Expanded(
-              child: SelectableButton(
+            Flexible(
+              flex: 2,
+              child: _choiceButton(
                 text: "Бизнес",
-                isActive: sellerType == "business",
+                selected: sellerType == "business",
                 onTap: () => setState(() => sellerType = "business"),
-                maxWidth: 200,
               ),
             ),
           ],
         ),
       ],
+    );
+  }
+
+  /// Вспомогательный метод для создания кнопки выбора типа продавца
+  /// Стилизован согласно filters_screen.dart
+  Widget _choiceButton({
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final bg = selected ? activeIconColor : Colors.transparent;
+    final fg = selected ? Colors.white : Colors.white70;
+    final border = selected
+        ? Border.all(color: Colors.transparent)
+        : Border.all(color: const Color(0x80FFFFFF));
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: Container(
+        height: 35,
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(5),
+          border: border,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: fg,
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 
