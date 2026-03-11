@@ -284,6 +284,44 @@ class HiveService {
       // print('❌ HiveService: Ошибка при очистке всех кешей: $e');
     }
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Методы для сохранения и загрузки фильтров категорий
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Сохраняет фильтры категории.
+  /// [categoryId] - ID категории, для которой сохраняются фильтры.
+  /// [filters] - Map с фильтрами для сохранения.
+  static Future<void> saveCategoryFilters(
+    int categoryId,
+    Map<String, dynamic> filters,
+  ) async {
+    final key = 'category_filters_$categoryId';
+    await settingsBox.put(key, filters);
+    print('💾 Фильтры сохранены для категории $categoryId');
+  }
+
+  /// Загружает сохраненные фильтры категории.
+  /// [categoryId] - ID категории, для которой загружаются фильтры.
+  /// Возвращает Map с фильтрами или пустую Map, если фильтры не найдены.
+  static Map<String, dynamic> getCategoryFilters(int categoryId) {
+    final key = 'category_filters_$categoryId';
+    final filters = settingsBox.get(key, defaultValue: <String, dynamic>{});
+    if (filters is Map) {
+      print('📖 Фильтры загружены для категории $categoryId: $filters');
+      return Map<String, dynamic>.from(filters);
+    }
+    print('⚠️  Фильтры не найдены для категории $categoryId');
+    return <String, dynamic>{};
+  }
+
+  /// Удаляет сохраненные фильтры категории.
+  /// [categoryId] - ID категории, фильтры которой нужно удалить.
+  static Future<void> deleteCategoryFilters(int categoryId) async {
+    final key = 'category_filters_$categoryId';
+    await settingsBox.delete(key);
+    print('🗑️  Фильтры удалены для категории $categoryId');
+  }
 }
 
 

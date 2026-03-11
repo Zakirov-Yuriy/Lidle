@@ -742,27 +742,21 @@ class ApiService {
           // 🟢 СПЕЦИАЛЬНАЯ ОБРАБОТКА для filters[value_selected] (для атрибутов выбранных значений, ID < 1000)
           if (key == 'value_selected' && value is Map<String, dynamic>) {
             print('   📍 Processing value_selected:');
-            // filters[value_selected][attr_id][0], [1] и т.д. - выбранные ID значений
+            // � FIX: API ожидает БЕЗ индексов, но поддерживает множественные значения через List!
+            // getWithQuery() будет перевести List в: filters[value_selected][6]=40&filters[value_selected][6]=41
             value.forEach((attrId, attrValue) {
               if (attrValue is Set) {
-                // Множественный выбор: Set<String> с ID выбранных значений
-                final setList = attrValue.toList();
-                if (setList.isNotEmpty) {
-                  for (int i = 0; i < setList.length; i++) {
-                    final paramKey = 'filters[value_selected][$attrId][$i]';
-                    queryParams[paramKey] = setList[i].toString();
-                    print('      ✅ $paramKey = ${setList[i].toString()}');
-                  }
-                }
+                // 🟢 FIX: Преобразуем Set в List чтобы getWithQuery() создал несколько параметров
+                final paramKey = 'filters[value_selected][$attrId]';
+                final listValue = (attrValue as Set).toList().cast<String>();
+                queryParams[paramKey] = listValue;
+                print(
+                    '      ✅ $paramKey = ${listValue.toList()} (as List for multiple params)');
               } else if (attrValue is List) {
                 // Список значений
-                if (attrValue.isNotEmpty) {
-                  for (int i = 0; i < attrValue.length; i++) {
-                    final paramKey = 'filters[value_selected][$attrId][$i]';
-                    queryParams[paramKey] = attrValue[i].toString();
-                    print('      ✅ $paramKey = ${attrValue[i].toString()}');
-                  }
-                }
+                final paramKey = 'filters[value_selected][$attrId]';
+                queryParams[paramKey] = attrValue;
+                print('      ✅ $paramKey = ${attrValue.toList()}');
               } else {
                 // Простое значение
                 final paramKey = 'filters[value_selected][$attrId]';
@@ -878,9 +872,16 @@ class ApiService {
         token: token,
       );
 
-      // � Успешно получен ответ от API
-      // Клиентская фильтрация будет применена на уровне RealEstateListingsScreen
-      // если необходимо (fallback стратегия)
+      // DEBUG: Show filters being sent to server
+      if (filters != null && filters.isNotEmpty) {
+        print('DEBUG: Filters sent = ' + filters.toString());
+      }
+
+      // DEBUG: Check how many results came back
+      if (response is Map && response['data'] is List) {
+        final count = (response['data'] as List).length;
+        print('DEBUG: API returned ' + count.toString() + ' listings');
+      }
 
       return AdvertsResponse.fromJson(response);
     } catch (e) {
@@ -1177,13 +1178,13 @@ class ApiService {
   }
 
   /// Обновляет access_token используя refresh_token согласно API документации v1.4+
-  /// 
+  ///
   /// Параметры (согласно POST /auth/refresh-token):
   /// - device_name: String (обязателен) — название устройства
   /// - app_version: String (опционален) — версия приложения из pubspec.yaml
   ///
   /// Возвращает новый access_token или null если refresh_token истёк/невалиден.
-  /// 
+  ///
   /// Обновления (согласно последней документации):
   /// - Обрабатывает refresh_expires_in для проактивного обновления refresh_token
   /// - Сохраняет оба время истечения: token_expires_at и refresh_token_expires_at
@@ -1205,7 +1206,7 @@ class ApiService {
       // }
       // Ответ 401: "Вы не авторизованы" → нужен полный login
       // Ответ 403: "Неверный токен" → нужен полный login
-      
+
       final refreshTokenValue =
           HiveService.getUserData('refresh_token') as String? ?? currentToken;
 
@@ -1298,11 +1299,15 @@ class ApiService {
       // ОБНОВЛЕНО: Сохраняем время истечения refresh_token для проактивного обновления
       // Если refresh_token истечет, пользователь не сможет обновить access_token
       // Поэтому обновляем refresh_token за 24 часа до его истечения (при необходимости)
-      final refreshExpiresIn = (data['refresh_expires_in'] as num?)?.toInt() ?? 1209600;
+      final refreshExpiresIn =
+          (data['refresh_expires_in'] as num?)?.toInt() ?? 1209600;
       final refreshExpiresAtMs = DateTime.now()
           .add(Duration(seconds: refreshExpiresIn))
           .millisecondsSinceEpoch;
-      await HiveService.saveUserData('refresh_token_expires_at', refreshExpiresAtMs);
+      await HiveService.saveUserData(
+        'refresh_token_expires_at',
+        refreshExpiresAtMs,
+      );
       print(
         '✅ refreshToken: refresh_token expires_in=$refreshExpiresIn сек (14 дней), '
         'истекает в ${DateTime.fromMillisecondsSinceEpoch(refreshExpiresAtMs).toLocal()}',
@@ -1564,7 +1569,9 @@ class ApiService {
 
       final response = await http
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 30)); // Увеличен timeout для регионов
+          .timeout(
+            const Duration(seconds: 30),
+          ); // Увеличен timeout для регионов
 
       // print('✅ API Response status: ${response.statusCode}');
 
@@ -1582,7 +1589,9 @@ class ApiService {
         // Токен истёк, но это non-critical эндпоинт
         // Не пробуем refresh, просто возвращаем пустой список
         // Пользователь сможет повторить позже
-        print('⚠️ getRegions: 401 Unauthorized (token expired, skipping refresh)');
+        print(
+          '⚠️ getRegions: 401 Unauthorized (token expired, skipping refresh)',
+        );
         return [];
       } else {
         throw Exception('Failed to get regions: ${response.statusCode}');
@@ -2128,12 +2137,13 @@ class ApiService {
       if (contacts is Map<String, dynamic>) {
         // Ищем phone_numbers поле
         final phoneField = contacts['phone_numbers'] ?? contacts['phones'];
-        
+
         if (phoneField is List) {
           for (final phone in phoneField) {
             if (phone is Map<String, dynamic>) {
               // Если это объект с полями (например {id: 1, phone: "+79494565667"})
-              final phoneValue = phone['phone'] ?? phone['number'] ?? phone['value'];
+              final phoneValue =
+                  phone['phone'] ?? phone['number'] ?? phone['value'];
               if (phoneValue != null && phoneValue.toString().isNotEmpty) {
                 phoneNumbers.add(phoneValue.toString());
               }
@@ -2154,8 +2164,8 @@ class ApiService {
             if (key.contains('phone') || key == 'phone') {
               if (value is List) {
                 for (final phone in value) {
-                  final phoneStr = phone is Map 
-                      ? (phone['phone'] ?? phone['number'] ?? phone['value']) 
+                  final phoneStr = phone is Map
+                      ? (phone['phone'] ?? phone['number'] ?? phone['value'])
                       : phone;
                   if (phoneStr != null && phoneStr.toString().isNotEmpty) {
                     allPhones.add(phoneStr.toString());
@@ -2172,7 +2182,8 @@ class ApiService {
         // Если contacts это массив объектов с телефонами
         for (final contact in contacts) {
           if (contact is Map<String, dynamic>) {
-            final phone = contact['phone'] ?? contact['number'] ?? contact['value'];
+            final phone =
+                contact['phone'] ?? contact['number'] ?? contact['value'];
             if (phone != null && phone.toString().isNotEmpty) {
               phoneNumbers.add(phone.toString());
             }

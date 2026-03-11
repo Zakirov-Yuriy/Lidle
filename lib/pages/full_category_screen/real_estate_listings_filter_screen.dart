@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -78,6 +79,8 @@ class _RealEstateListingsFilterScreenState
     if (widget.appliedFilters != null) {
       _loadAppliedFilters();
     }
+    // Загрузить сохраненные фильтры для этой категории
+    _loadSavedCategoryFilters();
   }
 
   @override
@@ -188,6 +191,189 @@ class _RealEstateListingsFilterScreenState
     });
 
     print('🔄 ═══════════════════════════════════════\n');
+  }
+
+  /// Загружает сохраненные фильтры для текущей категории из Hive
+  void _loadSavedCategoryFilters() {
+    final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
+
+    if (savedFilters.isEmpty) {
+      print('⚠️  Сохраненных фильтров для категории ${widget.categoryId} не найдено');
+      return;
+    }
+
+    print('\n💾 ═══════════════════════════════════════');
+    print('💾 _loadSavedCategoryFilters() - RESTORING SAVED FILTERS');
+    print('💾 Категория: ${widget.categoryId}');
+    print('💾 Количество ключей: ${savedFilters.length}');
+    
+    savedFilters.forEach((key, value) {
+      print('   Ключ: "$key" (type=${key.runtimeType})');
+      if (value is Map) {
+        print('   └─ Value: Map (${value.length} items) -> ${value.toString()}');
+      } else if (value is List) {
+        print('   └─ Value: List (${value.length} items) -> ${value.toString()}');
+      } else if (value is Set) {
+        print('   └─ Value: Set (${value.length} items) -> ${value.toString()}');
+      } else {
+        print('   └─ Value: ${value.runtimeType} -> $value');
+      }
+    });
+    print('💾 ═══════════════════════════════════════');
+
+    setState(() {
+      // Восстанавливаем сортировку
+      if (savedFilters.containsKey('sort_date')) {
+        _selectedDateSort = savedFilters['sort_date'] as String?;
+        print('✅ Восстановлена сортировка по дате: $_selectedDateSort');
+      }
+      if (savedFilters.containsKey('sort_price')) {
+        _selectedPriceSort = savedFilters['sort_price'] as String?;
+        print('✅ Восстановлена сортировка по цене: $_selectedPriceSort');
+      }
+
+      // Восстанавливаем город
+      if (savedFilters.containsKey('city_id') && savedFilters['city_id'] is int) {
+        _selectedCityId = savedFilters['city_id'] as int;
+        if (savedFilters.containsKey('city_name')) {
+          _selectedCity = {savedFilters['city_name'] as String};
+        }
+        print('✅ Восстановлен город: $_selectedCity (ID: $_selectedCityId)');
+      }
+
+      // Восстанавливаем атрибуты фильтров
+      for (final entry in savedFilters.entries) {
+        final key = entry.key;
+        final value = entry.value;
+
+        // Пропускаем специальные ключи
+        if (key == 'sort_date' ||
+            key == 'sort_price' ||
+            key == 'city_id' ||
+            key == 'city_name') {
+          continue;
+        }
+
+        // Пытаемся распарсить ключ как ID атрибута
+        final attrId = int.tryParse(key);
+        if (attrId != null) {
+          // 🔍 ВАЖНО: Проверяем и нормализуем структуру данных
+          dynamic restoredValue = value;
+          
+          // Если это Map (диапазон) - убеждаемся что 'min' и 'max' это строки
+          if (value is Map) {
+            final normalizedMap = <String, dynamic>{};
+            value.forEach((k, v) {
+              // Преобразуем ключи и значения в нужный формат
+              normalizedMap[k.toString()] = v?.toString() ?? '';
+            });
+            restoredValue = normalizedMap;
+            print('✅ Восстановлен ДИАПАЗОН атрибут: $key = min:${normalizedMap['min']}, max:${normalizedMap['max']}');
+          } 
+          // Если это List (был Set, конвертирован в List при сохранении) - преобразуем обратно в Set
+          else if (value is List) {
+            restoredValue = (value as List).cast<String>().toSet();
+            print('✅ Восстановлен SET (из List) атрибут: $key = ${restoredValue.toString()}');
+          }
+          // Если это Set (выбранные значения)
+          else if (value is Set) {
+            restoredValue = value;
+            print('✅ Восстановлен SET атрибут: $key = ${value.toList()}');
+          }
+          // Если это boolean
+          else if (value is bool) {
+            restoredValue = value;
+            print('✅ Восстановлен BOOL атрибут: $key = $value');
+          }
+          // Обычная строка
+          else {
+            restoredValue = value;
+            print('✅ Восстановлен атрибут: $key = $value (type=${value.runtimeType})');
+          }
+          
+          _selectedValues[attrId] = restoredValue;
+          
+          // 🔍 Если это диапазон - инициализируем TextEditingControllers сразу
+          if (restoredValue is Map) {
+            final minKey = attrId * 2;
+            final maxKey = attrId * 2 + 1;
+            
+            final minValue = restoredValue['min']?.toString() ?? '';
+            final maxValue = restoredValue['max']?.toString() ?? '';
+            
+            // Инициализируем контролллеры для диапазонов
+            _controllers[minKey] = TextEditingController(text: minValue);
+            _controllers[maxKey] = TextEditingController(text: maxValue);
+            
+            print('   ├─ TextEditingController[$minKey] = "$minValue"');
+            print('   └─ TextEditingController[$maxKey] = "$maxValue"');
+          }
+        }
+      }
+    });
+
+    print('💾 ═══════════════════════════════════════\n');
+  }
+
+  /// Сохраняет текущее состояние фильтров для восстановления при следующих посещениях
+  Future<void> _saveFilterState() async {
+    final stateToSave = <String, dynamic>{};
+
+    // Сохраняем сортировку
+    if (_selectedDateSort != null) {
+      stateToSave['sort_date'] = _selectedDateSort;
+    }
+    if (_selectedPriceSort != null) {
+      stateToSave['sort_price'] = _selectedPriceSort;
+    }
+
+    // Сохраняем город
+    if (_selectedCityId != null) {
+      stateToSave['city_id'] = _selectedCityId;
+      if (_selectedCity.isNotEmpty) {
+        stateToSave['city_name'] = _selectedCity.first;
+      }
+    }
+
+    // Сохраняем все атрибуты из _selectedValues
+    _selectedValues.forEach((key, value) {
+      // Пропускаем пустые диапазоны
+      if (value is Map) {
+        final minEmpty = (value['min']?.toString().isEmpty ?? true);
+        final maxEmpty = (value['max']?.toString().isEmpty ?? true);
+        if (minEmpty && maxEmpty) return;
+      }
+      // Пропускаем пустые Set'ы
+      if (value is Set && value.isEmpty) return;
+      // Пропускаем false boolean'ы
+      if (value is bool && !value) return;
+      // Пропускаем пустые строки и null
+      if (value == '' || value == null) return;
+
+      // ✅ ИСПРАВЛЕНИЕ: Конвертируем Set в List для Hive (Set не поддерживается без адаптера)
+      if (value is Set) {
+        stateToSave[key.toString()] = value.toList();
+      } else {
+        stateToSave[key.toString()] = value;
+      }
+    });
+
+    print('\n💾 ═══════════════════════════════════════');
+    print('💾 SAVING FILTER STATE TO HIVE');
+    print('💾 Category: ${widget.categoryId}');
+    print('💾 Items to save: ${stateToSave.length}');
+    stateToSave.forEach((k, v) {
+      if (v is Map) {
+        print('   ├─ $k: Map ${v.toString()}');
+      } else if (v is List) {
+        print('   ├─ $k: List ${v.toString()}');
+      } else {
+        print('   ├─ $k: $v (type=${v.runtimeType})');
+      }
+    });
+    print('💾 ═══════════════════════════════════════\n');
+
+    await HiveService.saveCategoryFilters(widget.categoryId, stateToSave);
   }
 
   Map<String, dynamic> _collectFilters() {
@@ -315,6 +501,10 @@ class _RealEstateListingsFilterScreenState
     if (valueSelectedMap.isNotEmpty) {
       filters['value_selected'] = valueSelectedMap;
       print('✅ value_selected attributes added to filters[value_selected]');
+      print('📋 value_selected content:');
+      valueSelectedMap.forEach((k, v) {
+        print('   [$k] = ${v is Set ? '{Set: ${v.toList()}}' : '{Type: ${v.runtimeType}, Value: $v}'}');
+      });
     }
 
     // Если есть атрибуты диапазонов, добавляем их в filters[values]
@@ -443,12 +633,28 @@ class _RealEstateListingsFilterScreenState
         ),
         const Spacer(),
         GestureDetector(
-          onTap: () {
+          onTap: () async {
+            print('\n🔴 ════════════════════════════════════════');
+            print('🔴 RESET BUTTON TAPPED');
+            print('🔴 ════════════════════════════════════════');
+            
             setState(() {
+              // Очищаем все фильтры
               _selectedValues.clear();
               _selectedDateSort = null;
               _selectedPriceSort = null;
+              _selectedCity.clear();
+              _selectedCityId = null;
+              _selectedRegion.clear();
+              _selectedRegionId = null;
+              
+              print('🔴 Cleared: date sort, price sort, city, region, all attributes');
             });
+            
+            // Удалить сохраненные фильтры для этой категории
+            await HiveService.deleteCategoryFilters(widget.categoryId);
+            print('🔴 Deleted saved filters from Hive for category ${widget.categoryId}');
+            print('🔴 ════════════════════════════════════════\n');
           },
           child: const Text(
             "Сбросить",
@@ -981,6 +1187,16 @@ class _RealEstateListingsFilterScreenState
         ? _selectedValues[attr.id] as String
         : '';
 
+    // Найти текстовое значение по сохраненному ID для отображения
+    String displayText = '';
+    if (selected.isNotEmpty) {
+      final matchingValue = attr.values.firstWhere(
+        (v) => v.id.toString() == selected || v.value == selected,
+        orElse: () => const Value(id: 0, value: ''),
+      );
+      displayText = matchingValue.value;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -993,7 +1209,8 @@ class _RealEstateListingsFilterScreenState
           children: attr.values.asMap().entries.map((entry) {
             final index = entry.key;
             final value = entry.value;
-            final isSelected = selected == value.value;
+            // Сравниваем по ID, а не по текстовому значению
+            final isSelected = selected == value.id.toString();
 
             return Expanded(
               child: Padding(
@@ -1003,7 +1220,12 @@ class _RealEstateListingsFilterScreenState
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
-                      _selectedValues[attr.id] = isSelected ? '' : value.value;
+                      // 🟢 Сохраняем ID, не текстовое значение!
+                      _selectedValues[attr.id] =
+                          isSelected ? '' : value.id.toString();
+                      print(
+                        '✅ Special Design: "${value.value}" → ID=${value.id}',
+                      );
                     });
                   },
                   child: Container(
@@ -1170,14 +1392,39 @@ class _RealEstateListingsFilterScreenState
     final minKey = attr.id * 2;
     final maxKey = attr.id * 2 + 1;
 
+    // 🔍 ДИАГНОСТИКА: Логируем состояние при построении
+    print('\n🎨 Building RANGE field:');
+    print('   Attribute ID: ${attr.id}, Title: "${attr.title}"');
+    print('   Range value: $range (type=${range.runtimeType})');
+    print('   Is controller for min (key=$minKey) already exists? ${_controllers.containsKey(minKey)}');
+    print('   Is controller for max (key=$maxKey) already exists? ${_controllers.containsKey(maxKey)}');
+
+    // Если контроллеры уже существуют, обновляем их текст из текущих значений
+    if (_controllers.containsKey(minKey)) {
+      _controllers[minKey]!.text = (range['min'] ?? '').toString();
+      print('   ✅ Updated existing minController: "${_controllers[minKey]!.text}"');
+    }
+    if (_controllers.containsKey(maxKey)) {
+      _controllers[maxKey]!.text = (range['max'] ?? '').toString();
+      print('   ✅ Updated existing maxController: "${_controllers[maxKey]!.text}"');
+    }
+
     final minController = _controllers.putIfAbsent(
       minKey,
-      () => TextEditingController(text: range['min'] ?? ''),
+      () {
+        final controller = TextEditingController(text: (range['min'] ?? '').toString());
+        print('   ✅ Created NEW minController with text: "${controller.text}"');
+        return controller;
+      },
     );
 
     final maxController = _controllers.putIfAbsent(
       maxKey,
-      () => TextEditingController(text: range['max'] ?? ''),
+      () {
+        final controller = TextEditingController(text: (range['max'] ?? '').toString());
+        print('   ✅ Created NEW maxController with text: "${controller.text}"');
+        return controller;
+      },
     );
 
     return Column(
@@ -1246,6 +1493,16 @@ class _RealEstateListingsFilterScreenState
         ? _selectedValues[attr.id] as String
         : '';
 
+    // Найти текстовое значение по сохраненному ID/значению для отображения
+    String displayText = selected;
+    if (selected.isNotEmpty) {
+      final matchingValue = attr.values.firstWhere(
+        (v) => v.id.toString() == selected || v.value == selected,
+        orElse: () => const Value(id: 0, value: ''),
+      );
+      displayText = matchingValue.value;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1260,12 +1517,27 @@ class _RealEstateListingsFilterScreenState
               builder: (_) => SelectionDialog(
                 title: attr.title,
                 options: attr.values.map((v) => v.value).toList(),
-                selectedOptions: selected.isEmpty ? {} : {selected},
-                onSelectionChanged: (selected) {
+                selectedOptions: displayText.isEmpty ? {} : {displayText},
+                onSelectionChanged: (newSelected) {
                   setState(() {
-                    _selectedValues[attr.id] = selected.isEmpty
-                        ? ''
-                        : selected.first;
+                    if (newSelected.isEmpty) {
+                      _selectedValues[attr.id] = '';
+                    } else {
+                      // 🔴 ВАЖНО: Преобразуем текстовое значение в ID!
+                      final selectedText = newSelected.first;
+                      final matchingValue = attr.values.firstWhere(
+                        (v) => v.value == selectedText,
+                        orElse: () => const Value(id: 0, value: ''),
+                      );
+                      if (matchingValue.id != 0) {
+                        _selectedValues[attr.id] = matchingValue.id.toString();
+                        print(
+                          '✅ Single Select: "${selectedText}" → ID=${matchingValue.id}',
+                        );
+                      } else {
+                        _selectedValues[attr.id] = '';
+                      }
+                    }
                   });
                   // Не вызываем Navigator.pop() здесь - диалог это сделает сам
                 },
@@ -1285,10 +1557,10 @@ class _RealEstateListingsFilterScreenState
               children: [
                 Expanded(
                   child: Text(
-                    selected.isEmpty ? 'Выбрать' : selected,
+                    displayText.isEmpty ? 'Выбрать' : displayText,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                      color: displayText.isEmpty ? Colors.white70 : Colors.white,
                     ),
                   ),
                 ),
@@ -1309,6 +1581,16 @@ class _RealEstateListingsFilterScreenState
     Set<String> selected = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
+
+    // Преобразуем сохраненные IDы в текстовые значения для отображения
+    List<String> displayValues = <String>[];
+    if (selected.isNotEmpty) {
+      for (var attrValue in attr.values) {
+        if (selected.contains(attrValue.id.toString())) {
+          displayValues.add(attrValue.value);
+        }
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1333,7 +1615,7 @@ class _RealEstateListingsFilterScreenState
               children: [
                 Expanded(
                   child: Text(
-                    selected.isEmpty ? 'Выбрать' : '${selected.length} выбрано',
+                    selected.isEmpty ? 'Выбрать' : displayValues.join(', '),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: selected.isEmpty ? Colors.white70 : Colors.white,
@@ -1354,12 +1636,29 @@ class _RealEstateListingsFilterScreenState
   /// isMultiple=true указывает на этот стиль
   Widget _buildStyleDMultipleFilter(Attribute attr) {
     _selectedValues[attr.id] ??= <String>{};
-    Set<String> selected = _selectedValues[attr.id] is Set
+    Set<String> storedIds = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
 
+    // 🔴 FIX #1: Преобразуем сохраненные IDы в текстовые значения для отображения в диалоге
+    // SelectionDialog ожидает текстовых значений (value.value), но мы храним IDы (value.id)
+    Set<String> displaySelected = <String>{};
+    List<String> displayValues = <String>[]; // Для отображения в поле выбора
+    
+    if (storedIds.isNotEmpty) {
+      for (var attrValue in attr.values) {
+        if (storedIds.contains(attrValue.id.toString())) {
+          displaySelected.add(attrValue.value);
+          displayValues.add(attrValue.value);
+          print(
+            '   🔄 Display conversion: ID=${attrValue.id} ("${attrValue.value}") is selected',
+          );
+        }
+      }
+    }
+
     print(
-      '🎨 StyleD Filter Built: ID=${attr.id}, Title="${attr.title}", Current selected: $selected',
+      '🎨 StyleD Filter Built: ID=${attr.id}, Title="${attr.title}", Current selected IDs: $storedIds, Display text: $displaySelected',
     );
 
     return Column(
@@ -1372,14 +1671,14 @@ class _RealEstateListingsFilterScreenState
         GestureDetector(
           onTap: () {
             print(
-              '🎯 StyleD Dialog opened: ID=${attr.id}, Title="${attr.title}"',
+              '🎯 StyleD Dialog opened: ID=${attr.id}, Title="${attr.title}", Current stored IDs: $storedIds',
             );
             showDialog(
               context: context,
               builder: (_) => SelectionDialog(
                 title: attr.title,
                 options: attr.values.map((v) => v.value).toList(),
-                selectedOptions: selected,
+                selectedOptions: displaySelected,  // ✅ FIX #1: Передаем текстовые значения, не IDы
                 onSelectionChanged: (newSelected) {
                   print(
                     '✅ StyleD Selection changed: ID=${attr.id}, newSelected=$newSelected',
@@ -1418,10 +1717,12 @@ class _RealEstateListingsFilterScreenState
               children: [
                 Expanded(
                   child: Text(
-                    selected.isEmpty ? 'Выбрать' : '${selected.length} выбрано',
+                    storedIds.isEmpty 
+                      ? 'Выбрать' 
+                      : displayValues.join(', '),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                      color: storedIds.isEmpty ? Colors.white70 : Colors.white,
                     ),
                   ),
                 ),
@@ -1688,7 +1989,7 @@ class _RealEstateListingsFilterScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: () {
+            onPressed: () async {
               print('\n🔵 ════════════════════════════════════════');
               print('🔵 BUTTON "Применить фильтры" PRESSED');
               print('🔵 ════════════════════════════════════════');
@@ -1699,7 +2000,13 @@ class _RealEstateListingsFilterScreenState
               print('🔵 Filters to return: $filters');
               print('🔵 ════════════════════════════════════════\n');
 
-              Navigator.pop(context, filters);
+              // 💾 ВАЖНО: Сохраняем СОСТОЯНИЕ фильтров (из _selectedValues), а не преобразованные фильтры
+              // Это позволяет правильно восстановить все значения при следующем открытии экрана
+              await _saveFilterState();
+
+              if (mounted) {
+                Navigator.pop(context, filters);
+              }
             },
             child: const Text(
               "Применить фильтры",
