@@ -1683,11 +1683,14 @@ class ApiService {
     String? token,
   }) async {
     try {
+      print('🔵 [ApiService.getListingsFilterAttributes] START - categoryId=$categoryId, token=${token != null ? 'YES' : 'NO'}');
+      
       final response = await getWithQuery('/adverts/create', {
         'category_id': categoryId,
       }, token: token);
 
-      // print('📦 getListingsFilterAttributes: Parsing for category $categoryId');
+      print('🔵 [ApiService] Raw response: $response');
+      print('🔵 [ApiService] Response data type: ${response['data'].runtimeType}');
 
       // Если требуется токен и он истёк, обновить и повторить
       if (response['message'] != null &&
@@ -1707,20 +1710,29 @@ class ApiService {
       List<dynamic> attributes = [];
       if (response['data'] is List) {
         final dataList = response['data'] as List<dynamic>;
+        print('🔵 [ApiService] dataList length: ${dataList.length}');
         if (dataList.isNotEmpty && dataList[0] is Map) {
           final firstItem = dataList[0] as Map<String, dynamic>;
+          print('🔵 [ApiService] firstItem keys: ${firstItem.keys.toList()}');
           attributes = firstItem['attributes'] as List<dynamic>? ?? [];
+          print('🔵 [ApiService] Extracted ${attributes.length} attributes');
+        } else {
+          print('🔵 [ApiService] dataList is empty or first item is not Map');
         }
+      } else {
+        print('🔵 [ApiService] response[data] is not List, it is: ${response['data'].runtimeType}');
       }
 
       // Вернуть весь ответ
+      print('🔵 [ApiService.getListingsFilterAttributes] SUCCESS - returning ${attributes.length} attributes');
       return {
         'success': true,
         'data': attributes,
         'message': response['message'],
       };
     } catch (e) {
-      // print('❌ getListingsFilterAttributes error: $e');
+      print('🔴 [ApiService.getListingsFilterAttributes] ERROR: $e');
+      print('🔴 [ApiService] Stack: ${StackTrace.current}');
       return {'success': false, 'data': [], 'message': e.toString()};
     }
   }

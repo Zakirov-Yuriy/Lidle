@@ -17,6 +17,7 @@ import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.d
 
 class RealEstateFullFiltersScreen extends StatefulWidget {
   final String selectedCategory;
+  final int categoryId; // ID конечной категории для загрузки фильтров
   final String?
   selectedCity; // Город выбранный на промежуточном экране фильтров
   final String? selectedDateSort; // Сортировка по дате (new/old)
@@ -26,6 +27,7 @@ class RealEstateFullFiltersScreen extends StatefulWidget {
   const RealEstateFullFiltersScreen({
     super.key,
     required this.selectedCategory,
+    this.categoryId = 1, // По умолчанию 1, но должна быть конечная категория
     this.selectedCity,
     this.selectedDateSort,
     this.selectedPriceSort,
@@ -99,6 +101,8 @@ class _RealEstateFullFiltersScreenState
   @override
   void initState() {
     super.initState();
+    print('🚀 RealEstateFullFiltersScreen.initState() called');
+    
     // Инициализируем выбранный город если он передан с промежуточного экрана
     if (widget.selectedCity != null && widget.selectedCity!.isNotEmpty) {
       selectedCity = {widget.selectedCity!};
@@ -136,12 +140,15 @@ class _RealEstateFullFiltersScreenState
         print('🟢 Тип продавца инициализирован: Все');
       }
     }
+    print('📍 About to call _loadDynamicFilters()');
     _loadDynamicFilters(); // Загружаем динамические фильтры с API
+    print('📍 _loadDynamicFilters() called, now loading cities');
     _loadCities(); // Загружаем города с API
     // Загружаем улицы для выбранного города
     if (selectedCity.isNotEmpty) {
       _loadStreetsForCity(selectedCity.first);
     }
+    print('✅ initState() completed');
   }
 
   @override
@@ -183,88 +190,88 @@ class _RealEstateFullFiltersScreenState
 
               const SizedBox(height: 10),
 
-              _buildTitle("Выберите улицу"),
-              _buildSelector(
-                selectedStreet.isEmpty
-                    ? "Выберите улицу"
-                    : selectedStreet.first,
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) {
-                      return CitySelectionDialog(
-                        title: "Улица",
-                        options: apiStreets.isNotEmpty
-                            ? apiStreets
-                            : const ['Загружаю улицы...'],
-                        selectedOptions: selectedStreet,
-                        onSelectionChanged: (v) =>
-                            setState(() => selectedStreet = v),
-                      );
-                    },
-                  );
-                },
-                showArrow: true,
-              ),
+              // _buildTitle("Выберите улицу"),
+              // _buildSelector(
+              //   selectedStreet.isEmpty
+              //       ? "Выберите улицу"
+              //       : selectedStreet.first,
+              //   onTap: () {
+              //     showDialog(
+              //       context: context,
+              //       builder: (_) {
+              //         return CitySelectionDialog(
+              //           title: "Улица",
+              //           options: apiStreets.isNotEmpty
+              //               ? apiStreets
+              //               : const ['Загружаю улицы...'],
+              //           selectedOptions: selectedStreet,
+              //           onSelectionChanged: (v) =>
+              //               setState(() => selectedStreet = v),
+              //         );
+              //       },
+              //     );
+              //   },
+              //   showArrow: true,
+              // ),
 
-              const SizedBox(height: 16),
-              _buildTitle("Номер дома"),
-              _buildInput("12", houseNumberController),
-              const SizedBox(height: 10),
-              const Divider(color: Colors.white24),
+              // const SizedBox(height: 16),
+              // _buildTitle("Номер дома"),
+              // _buildInput("12", houseNumberController),
+              // const SizedBox(height: 10),
+              // const Divider(color: Colors.white24),
 
-              // const SizedBox(height: 12),
-              _buildTitle("Вид сделки"),
-              const SizedBox(height: 4),
-              _buildThreeButtons(
-                labels: const ["Совместная", "Продажа", "Аренда"],
-                selectedIndex: dealType == "joint"
-                    ? 0
-                    : dealType == "sell"
-                    ? 1
-                    : 2,
-                onSelect: (i) {
-                  setState(() {
-                    dealType = i == 0
-                        ? "joint"
-                        : i == 1
-                        ? "sell"
-                        : "rent";
-                  });
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RealEstateSubfiltersScreen(
-                        selectedCategory: widget.selectedCategory,
-                        selectedDealType: dealType,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 10),
-              const Divider(color: Colors.white24),
-              const SizedBox(height: 10),
+              // // const SizedBox(height: 12),
+              // _buildTitle("Вид сделки"),
+              // const SizedBox(height: 4),
+              // _buildThreeButtons(
+              //   labels: const ["Совместная", "Продажа", "Аренда"],
+              //   selectedIndex: dealType == "joint"
+              //       ? 0
+              //       : dealType == "sell"
+              //       ? 1
+              //       : 2,
+              //   onSelect: (i) {
+              //     setState(() {
+              //       dealType = i == 0
+              //           ? "joint"
+              //           : i == 1
+              //           ? "sell"
+              //           : "rent";
+              //     });
+              //     Navigator.push(
+              //       context,
+              //       MaterialPageRoute(
+              //         builder: (context) => RealEstateSubfiltersScreen(
+              //           selectedCategory: widget.selectedCategory,
+              //           selectedDealType: dealType,
+              //         ),
+              //       ),
+              //     );
+              //   },
+              // ),
+              // const SizedBox(height: 10),
+              // const Divider(color: Colors.white24),
+              // const SizedBox(height: 10),
 
               // Динамические фильтры из API
               _buildDynamicFilters(),
 
-              const SizedBox(height: 24),
-              const Divider(color: Colors.white24),
+              // const SizedBox(height: 24),
+              // const Divider(color: Colors.white24),
               const SizedBox(height: 14),
 
-              _buildTitle("Частное лицо / Бизнес"),
-              const SizedBox(height: 4),
-              _buildTwoOption(
-                yes: "Частное лицо",
-                no: "Бизнес",
-                selected: isPrivate,
-                onChange: (v) => setState(() => isPrivate = v),
-              ),
+              // _buildTitle("Частное лицо / Бизнес"),
+              // const SizedBox(height: 4),
+              // _buildTwoOption(
+              //   yes: "Частное лицо",
+              //   no: "Бизнес",
+              //   selected: isPrivate,
+              //   onChange: (v) => setState(() => isPrivate = v),
+              // ),
 
-              const SizedBox(height: 21),
-              const Divider(color: Colors.white24),
-              const SizedBox(height: 21),
+              // const SizedBox(height: 21),
+              // const Divider(color: Colors.white24),
+              // const SizedBox(height: 21),
 
               _buildBottomButtons(),
 
@@ -288,24 +295,23 @@ class _RealEstateFullFiltersScreenState
       print('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
       print('📂 Category: ${widget.selectedCategory}');
 
-      // Для категории Недвижимость используем categoryId = 1
-      // TODO: Если будут другие категории, добавить маппинг
-      int categoryId = 1;
+      // Используем categoryId переданный в конструктор (конечная категория)
+      int categoryId = widget.categoryId; // Должна быть конечная категория (is_endpoint=true)
       
-      print('🔄 Fetching filters for categoryId: $categoryId');
+      print('🔄 Fetching filters for categoryId: $categoryId (from widget)');
 
       final response = await ApiService.getListingsFilterAttributes(
         categoryId: categoryId,
         token: token,
       );
 
-      print('📡 API Response: $response');
+      print('� API Response: $response');
 
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> attributesData = response['data'] as List<dynamic>;
-        print('📊 Raw attributes data count: ${attributesData.length}');
-        
         final attributes = <Attribute>[];
+
+        print('📋 Total attributes in response: ${attributesData.length}');
 
         for (int i = 0; i < attributesData.length; i++) {
           try {
@@ -313,10 +319,11 @@ class _RealEstateFullFiltersScreenState
               attributesData[i] as Map<String, dynamic>,
             );
             attributes.add(attr);
-            print('✅ Loaded attribute: ${attr.title}');
+            print(
+              '  ✅ [$i] ID=${attr.id}, Title="${attr.title}", Style="${attr.style}", IsRange=${attr.isRange}, IsMultiple=${attr.isMultiple}',
+            );
           } catch (e) {
             print('❌ Error parsing attribute at index $i: $e');
-            print('   Data: ${attributesData[i]}');
           }
         }
 
@@ -324,21 +331,132 @@ class _RealEstateFullFiltersScreenState
           _attributes = attributes;
           _isLoadingFilters = false;
         });
+        
+        // Загружаем сохраненные фильтры для этой категории
+        _loadSavedCategoryFilters();
 
         print('✅ Successfully loaded ${attributes.length} filter attributes');
       } else {
-        final message = response['message'] ?? 'Unknown error';
-        print('⚠️ API Error - Success: ${response['success']}, Data: ${response['data']}');
-        throw Exception('Failed to load filters: $message');
+        print('❌ Response success=${response['success']}, data=${response['data']}');
+        throw Exception(response['message'] ?? 'Failed to load filters');
       }
     } catch (e) {
       print('❌ Error loading filters: $e');
-      print('📍 Stack trace: $e');
+      print('   Stack trace: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoadingFilters = false;
       });
     }
+  }
+  
+  /// Загружает сохраненные фильтры для текущей категории из Hive
+  void _loadSavedCategoryFilters() {
+    final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
+
+    if (savedFilters.isEmpty) {
+      print('⚠️  Сохраненных фильтров не найдено');
+      return;
+    }
+
+    print('\n💾 ═══════════════════════════════════════');
+    print('💾 _loadSavedCategoryFilters() - RESTORING FILTERS');
+    print('💾 Количество ключей: ${savedFilters.length}');
+
+    setState(() {
+      // Восстанавливаем атрибуты фильтров
+      for (final entry in savedFilters.entries) {
+        final key = entry.key;
+        final value = entry.value;
+
+        // Пытаемся распарсить ключ как ID атрибута
+        final attrId = int.tryParse(key);
+        if (attrId != null) {
+          dynamic restoredValue = value;
+          
+          // Если это Map (диапазон) - убеждаемся что 'min' и 'max' это строки
+          if (value is Map) {
+            final normalizedMap = <String, dynamic>{};
+            value.forEach((k, v) {
+              normalizedMap[k.toString()] = v?.toString() ?? '';
+            });
+            restoredValue = normalizedMap;
+            print('✅ Restored RANGE атрибут: $key');
+          } 
+          // Если это List (был Set, конвертирован в List при сохранении)
+          else if (value is List) {
+            restoredValue = (value as List).cast<String>().toSet();
+            print('✅ Restored SET атрибут: $key');
+          }
+          // Если это Set (выбранные значения)
+          else if (value is Set) {
+            restoredValue = value;
+            print('✅ Restored SET атрибут: $key');
+          }
+          // Если это boolean
+          else if (value is bool) {
+            restoredValue = value;
+            print('✅ Restored BOOL атрибут: $key');
+          }
+          // Обычная строка
+          else {
+            restoredValue = value;
+            print('✅ Restored атрибут: $key = $value');
+          }
+          
+          _selectedValues[attrId] = restoredValue;
+          
+          // Если это диапазон - инициализируем TextEditingControllers
+          if (restoredValue is Map) {
+            final minKey = attrId * 2;
+            final maxKey = attrId * 2 + 1;
+            
+            final minValue = restoredValue['min']?.toString() ?? '';
+            final maxValue = restoredValue['max']?.toString() ?? '';
+            
+            _controllers[minKey] = TextEditingController(text: minValue);
+            _controllers[maxKey] = TextEditingController(text: maxValue);
+          }
+        }
+      }
+    });
+
+    print('💾 ═══════════════════════════════════════\n');
+  }
+  
+  /// Сохраняет текущее состояние фильтров для восстановления при следующих посещениях
+  Future<void> _saveFilterState() async {
+    final stateToSave = <String, dynamic>{};
+
+    // Сохраняем все атрибуты из _selectedValues
+    _selectedValues.forEach((key, value) {
+      // Пропускаем пустые диапазоны
+      if (value is Map) {
+        final minEmpty = (value['min']?.toString().isEmpty ?? true);
+        final maxEmpty = (value['max']?.toString().isEmpty ?? true);
+        if (minEmpty && maxEmpty) return;
+      }
+      // Пропускаем пустые Set'ы
+      if (value is Set && value.isEmpty) return;
+      // Пропускаем false boolean'ы
+      if (value is bool && !value) return;
+      // Пропускаем пустые строки и null
+      if (value == '' || value == null) return;
+
+      // ВАЖНО: Конвертируем Set в List для Hive
+      if (value is Set) {
+        stateToSave[key.toString()] = value.toList();
+      } else {
+        stateToSave[key.toString()] = value;
+      }
+    });
+
+    print('\n💾 ═══════════════════════════════════════');
+    print('💾 SAVING FILTER STATE TO HIVE');
+    print('💾 Items to save: ${stateToSave.length}');
+    print('💾 ═══════════════════════════════════════\n');
+
+    await HiveService.saveCategoryFilters(widget.categoryId, stateToSave);
   }
 
   /// Отображает динамические фильтры
@@ -400,6 +518,9 @@ class _RealEstateFullFiltersScreenState
     }
 
     if (_attributes.isEmpty) {
+      print(
+        '🔴 _attributes.isEmpty! _isLoadingFilters=$_isLoadingFilters, _errorMessage=$_errorMessage, total: ${_attributes.length}',
+      );
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         alignment: Alignment.center,
@@ -433,51 +554,87 @@ class _RealEstateFullFiltersScreenState
 
   /// Отображает фильтр в зависимости от его типа
   Widget _buildFilterField(Attribute attr) {
-    // Style F: Popup диалог с чекбоксами
+    // Логика определения типа фильтра на основе флагов и документации
+    // Приоритет: styleSingle точное совпадение > isSpecialDesign > (isTitleHidden && isMultiple) > isRange > empty > isPopup > isMultiple > Style B1 > else
+
+    print(
+      '    🎨 _buildFilterField: ID=${attr.id}, Title="${attr.title}", '
+      'values.count=${attr.values.length}, isRange=${attr.isRange}, '
+      'isMultiple=${attr.isMultiple}, isSpecialDesign=${attr.isSpecialDesign}, '
+      'isTitleHidden=${attr.isTitleHidden}, isPopup=${attr.isPopup}, '
+      'styleSingle="${attr.styleSingle ?? ""}"',
+    );
+
+    // Style F: Popup диалог с квадратными чекбоксами - определяется по styleSingle="F"
     if (attr.styleSingle == "F" && attr.values.isNotEmpty) {
+      print('    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - styleSingle="F"');
       return _buildStyleFPopupFilter(attr);
     }
 
-    // Style C: Да/Нет кнопки
+    // Style C: Да/Нет кнопки (Ипотека, Вид сделки)
     if (attr.isSpecialDesign) {
+      print('    -> Rendering as YES/NO BUTTONS (Style C) - isSpecialDesign=true');
       return _buildSpecialDesignFilter(attr);
     }
 
-    // Style I: Чекбоксы без popup
+    // Style I: Чекбоксы без popup (Возможность торга, Без комиссии)
     if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
+      print('    -> Rendering as CHECKBOXES (Style I) - isTitleHidden && isMultiple');
       return _buildCheckboxFilter(attr);
     }
 
-    // Диапазоны от/до
+    // Диапазоны от/до (Style A, E, G)
     if (attr.isRange) {
+      print('    -> Rendering as RANGE (Style A/E/G) - isRange=true');
       return _buildRangeFilterField(attr);
     }
 
-    // Текстовое поле
+    // Текстовое поле (Style H)
     if (attr.values.isEmpty) {
+      print('    -> Rendering as TEXT INPUT (Style H) - no values');
       return _buildTextFilterField(attr);
     }
 
     // Style F: Popup диалог с чекбоксами (fallback)
     if (attr.isPopup && attr.values.isNotEmpty) {
+      print('    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - isPopup=true');
       return _buildStyleFPopupFilter(attr);
     }
 
-    // Style D: Multiple select
+    // Style D: Multiple select (Тип дома)
     if (attr.isMultiple) {
+      print('    -> Rendering as MULTIPLE SELECT POPUP (Style D) - isMultiple=true');
       return _buildStyleDMultipleFilter(attr);
     }
 
+    // Style B1: Одиночный чекбокс
+    if (attr.values.length == 1 && !attr.isRange && !attr.isSpecialDesign && !attr.isPopup) {
+      print('    -> Rendering as SINGLE CHECKBOX (Style B1) - one value only');
+      return _buildStyleB1Filter(attr);
+    }
+
     // Single select dropdown
+    print('    -> Rendering as DROPDOWN SELECT - default single select');
     return _buildSingleSelectFilter(attr);
   }
 
-  /// Style C: Кнопки Да/Нет
+  /// Style C: Кнопки Да/Нет для специального дизайна (Ипотека, Вид сделки)
+  /// Выводит кнопки для выбора одного из вариантов (Да/Нет, Совместная/Продажа/Аренда и т.д)
   Widget _buildSpecialDesignFilter(Attribute attr) {
     _selectedValues[attr.id] ??= '';
     String selected = _selectedValues[attr.id] is String
         ? _selectedValues[attr.id] as String
         : '';
+
+    // Найти текстовое значение по сохраненному ID для отображения
+    String displayText = '';
+    if (selected.isNotEmpty) {
+      final matchingValue = attr.values.firstWhere(
+        (v) => v.id.toString() == selected || v.value == selected,
+        orElse: () => const Value(id: 0, value: ''),
+      );
+      displayText = matchingValue.value;
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -488,7 +645,8 @@ class _RealEstateFullFiltersScreenState
           children: attr.values.asMap().entries.map((entry) {
             final index = entry.key;
             final value = entry.value;
-            final isSelected = selected == value.value;
+            // Сравниваем по ID, а не по текстовому значению
+            final isSelected = selected == value.id.toString();
 
             return Expanded(
               child: Padding(
@@ -498,14 +656,18 @@ class _RealEstateFullFiltersScreenState
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
-                      _selectedValues[attr.id] = isSelected ? '' : value.value;
+                      // 🟢 Сохраняем ID, не текстовое значение!
+                      _selectedValues[attr.id] =
+                          isSelected ? '' : value.id.toString();
+                      print(
+                        '✅ Special Design: "${value.value}" → ID=${value.id}',
+                      );
                     });
                   },
                   child: Container(
                     height: 40,
                     decoration: BoxDecoration(
-                      color:
-                          isSelected ? activeIconColor : Colors.transparent,
+                      color: isSelected ? activeIconColor : Colors.transparent,
                       borderRadius: BorderRadius.circular(5),
                       border: Border.all(
                         color: isSelected ? Colors.transparent : Colors.white70,
@@ -533,7 +695,9 @@ class _RealEstateFullFiltersScreenState
     );
   }
 
-  /// Style I: Чекбоксы
+  /// Style I: Чекбоксы для множественного выбора (Возможность торга, Без комиссии)
+  /// Выводит список чекбоксов с возможностью выбрать несколько вариантов
+  /// isTitleHidden=true скрывает название фильтра
   Widget _buildCheckboxFilter(Attribute attr) {
     _selectedValues[attr.id] ??= <String>{};
     Set<String> selected = _selectedValues[attr.id] is Set
@@ -543,6 +707,7 @@ class _RealEstateFullFiltersScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Если название не скрыто, показываем его
         if (!attr.isTitleHidden)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,6 +716,7 @@ class _RealEstateFullFiltersScreenState
               const SizedBox(height: 8),
             ],
           ),
+        // Чекбоксы
         Column(
           children: [
             ...attr.values.asMap().entries.map((entry) {
@@ -737,6 +903,16 @@ class _RealEstateFullFiltersScreenState
         ? _selectedValues[attr.id] as String
         : '';
 
+    // Найти текстовое значение по сохраненному ID/значению для отображения
+    String displayText = selected;
+    if (selected.isNotEmpty) {
+      final matchingValue = attr.values.firstWhere(
+        (v) => v.id.toString() == selected || v.value == selected,
+        orElse: () => const Value(id: 0, value: ''),
+      );
+      displayText = matchingValue.value;
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -749,11 +925,27 @@ class _RealEstateFullFiltersScreenState
               builder: (_) => SelectionDialog(
                 title: attr.title,
                 options: attr.values.map((v) => v.value).toList(),
-                selectedOptions: selected.isEmpty ? {} : {selected},
-                onSelectionChanged: (selectedSet) {
+                selectedOptions: displayText.isEmpty ? {} : {displayText},
+                onSelectionChanged: (newSelected) {
                   setState(() {
-                    _selectedValues[attr.id] =
-                        selectedSet.isEmpty ? '' : selectedSet.first;
+                    if (newSelected.isEmpty) {
+                      _selectedValues[attr.id] = '';
+                    } else {
+                      // 🔴 ВАЖНО: Преобразуем текстовое значение в ID!
+                      final selectedText = newSelected.first;
+                      final matchingValue = attr.values.firstWhere(
+                        (v) => v.value == selectedText,
+                        orElse: () => const Value(id: 0, value: ''),
+                      );
+                      if (matchingValue.id != 0) {
+                        _selectedValues[attr.id] = matchingValue.id.toString();
+                        print(
+                          '✅ Single Select: "${selectedText}" → ID=${matchingValue.id}',
+                        );
+                      } else {
+                        _selectedValues[attr.id] = '';
+                      }
+                    }
                   });
                 },
                 allowMultipleSelection: false,
@@ -772,10 +964,10 @@ class _RealEstateFullFiltersScreenState
               children: [
                 Expanded(
                   child: Text(
-                    selected.isEmpty ? 'Выбрать' : selected,
+                    displayText.isEmpty ? 'Выбрать' : displayText,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                      color: displayText.isEmpty ? Colors.white70 : Colors.white,
                     ),
                   ),
                 ),
@@ -791,9 +983,19 @@ class _RealEstateFullFiltersScreenState
   /// Style F: Popup с чекбоксами для множественного выбора
   Widget _buildStyleFPopupFilter(Attribute attr) {
     _selectedValues[attr.id] ??= <String>{};
-    Set<String> selected = _selectedValues[attr.id] is Set
+    Set<String> storedIds = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
+
+    // Преобразуем сохраненные IDы в текстовые значения для отображения
+    List<String> displayValues = <String>[];
+    if (storedIds.isNotEmpty) {
+      for (var attrValue in attr.values) {
+        if (storedIds.contains(attrValue.id.toString())) {
+          displayValues.add(attrValue.value);
+        }
+      }
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,12 +1004,22 @@ class _RealEstateFullFiltersScreenState
         if (!attr.isTitleHidden) const SizedBox(height: 8),
         GestureDetector(
           onTap: () {
+            // Преобразуем IDы в текстовые значения для диалога
+            Set<String> displaySelected = <String>{};
+            if (storedIds.isNotEmpty) {
+              for (var attrValue in attr.values) {
+                if (storedIds.contains(attrValue.id.toString())) {
+                  displaySelected.add(attrValue.value);
+                }
+              }
+            }
+            
             showDialog(
               context: context,
               builder: (_) => SelectionDialog(
                 title: attr.title,
                 options: attr.values.map((v) => v.value).toList(),
-                selectedOptions: selected,
+                selectedOptions: displaySelected,
                 onSelectionChanged: (newSelected) {
                   setState(() {
                     final selectedIds = <String>{};
@@ -835,10 +1047,10 @@ class _RealEstateFullFiltersScreenState
               children: [
                 Expanded(
                   child: Text(
-                    selected.isEmpty ? 'Выбрать' : '${selected.length} выбрано',
+                    storedIds.isEmpty ? 'Выбрать' : displayValues.join(', '),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                      color: storedIds.isEmpty ? Colors.white70 : Colors.white,
                     ),
                   ),
                 ),
@@ -854,9 +1066,30 @@ class _RealEstateFullFiltersScreenState
   /// Style D: Multiple select с popup
   Widget _buildStyleDMultipleFilter(Attribute attr) {
     _selectedValues[attr.id] ??= <String>{};
-    Set<String> selected = _selectedValues[attr.id] is Set
+    Set<String> storedIds = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
+
+    // 🔴 FIX: Преобразуем сохраненные IDы в текстовые значения для отображения в диалоге
+    // SelectionDialog ожидает текстовых значений (value.value), но мы храним IDы (value.id)
+    Set<String> displaySelected = <String>{};
+    List<String> displayValues = <String>[]; // Для отображения в поле выбора
+    
+    if (storedIds.isNotEmpty) {
+      for (var attrValue in attr.values) {
+        if (storedIds.contains(attrValue.id.toString())) {
+          displaySelected.add(attrValue.value);
+          displayValues.add(attrValue.value);
+          print(
+            '   🔄 Display conversion: ID=${attrValue.id} ("${attrValue.value}") is selected',
+          );
+        }
+      }
+    }
+
+    print(
+      '🎨 StyleD Filter Built: ID=${attr.id}, Title="${attr.title}", Current selected IDs: $storedIds, Display text: $displaySelected',
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -865,21 +1098,34 @@ class _RealEstateFullFiltersScreenState
         if (!attr.isTitleHidden) const SizedBox(height: 8),
         GestureDetector(
           onTap: () {
+            print(
+              '🎯 StyleD Dialog opened: ID=${attr.id}, Title="${attr.title}", Current stored IDs: $storedIds',
+            );
             showDialog(
               context: context,
               builder: (_) => SelectionDialog(
                 title: attr.title,
                 options: attr.values.map((v) => v.value).toList(),
-                selectedOptions: selected,
+                selectedOptions: displaySelected,  // ✅ FIX: Передаем текстовые значения, не IDы
                 onSelectionChanged: (newSelected) {
+                  print(
+                    '✅ StyleD Selection changed: ID=${attr.id}, newSelected=$newSelected',
+                  );
                   setState(() {
+                    // Преобразуем выбранные значения в их ID
                     final selectedIds = <String>{};
                     for (var value in attr.values) {
                       if (newSelected.contains(value.value)) {
+                        print(
+                          '   🔄 Converting: "${value.value}" (ID=${value.id}) → added to selectedIds',
+                        );
                         selectedIds.add(value.id.toString());
                       }
                     }
                     _selectedValues[attr.id] = selectedIds;
+                    print(
+                      '✅ StyleD Selection saved: _selectedValues[${attr.id}] = $selectedIds',
+                    );
                   });
                 },
                 allowMultipleSelection: true,
@@ -898,16 +1144,74 @@ class _RealEstateFullFiltersScreenState
               children: [
                 Expanded(
                   child: Text(
-                    selected.isEmpty ? 'Выбрать' : '${selected.length} выбрано',
+                    storedIds.isEmpty 
+                      ? 'Выбрать' 
+                      : displayValues.join(', '),
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: selected.isEmpty ? Colors.white70 : Colors.white,
+                      color: storedIds.isEmpty ? Colors.white70 : Colors.white,
                     ),
                   ),
                 ),
                 const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Style B1: Одиночный чекбокс без контейнера (Возможен торг)
+  /// Выводит просто текст с квадратным чекбоксом справа, без фонового контейнера
+  /// Используется для одиночного чекбокса в списке фильтров
+  Widget _buildStyleB1Filter(Attribute attr) {
+    _selectedValues[attr.id] ??= false;
+    bool isChecked =
+        _selectedValues[attr.id] == true ||
+        _selectedValues[attr.id] == attr.values[0].id.toString();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              // Переключаем между false и ID значения
+              _selectedValues[attr.id] = isChecked
+                  ? false
+                  : attr.values[0].id.toString();
+            });
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  attr.title,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 0),
+              // Квадратный чекбокс
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: isChecked ? activeIconColor : Colors.transparent,
+                  border: Border.all(
+                    color: isChecked ? activeIconColor : Colors.white70,
+                    width: 2,
+                  ),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: isChecked
+                    ? const Center(
+                        child: Icon(Icons.check, color: Colors.white, size: 14),
+                      )
+                    : null,
+              ),
+            ],
           ),
         ),
       ],
@@ -1079,7 +1383,29 @@ class _RealEstateFullFiltersScreenState
         ),
         const Spacer(),
         GestureDetector(
-          onTap: () {},
+          onTap: () async {
+            print('\n🔴 ════════════════════════════════════════');
+            print('🔴 RESET BUTTON TAPPED');
+            print('🔴 ════════════════════════════════════════');
+            
+            setState(() {
+              // Очищаем все фильтры
+              _selectedValues.clear();
+              _selectedDateSort = "";
+              _selectedPriceSort = "";
+              selectedCity.clear();
+              selectedStreet.clear();
+              dealType = "sell";
+              isPrivate = null;
+              
+              print('🔴 Cleared: all filters');
+            });
+            
+            // Удалить сохраненные фильтры для этой категории
+            await HiveService.deleteCategoryFilters(widget.categoryId);
+            print('🔴 Deleted saved filters from Hive for category 1');
+            print('🔴 ════════════════════════════════════════\n');
+          },
           child: const Text(
             "Сбросить",
             style: TextStyle(color: Colors.lightBlue, fontSize: 16),
@@ -1250,14 +1576,14 @@ class _RealEstateFullFiltersScreenState
             color: isActive ? activeIconColor : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: isActive ? Colors.transparent : Colors.white70,
+              color: isActive ? Colors.transparent : Colors.white,
             ),
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.white : Colors.white70,
+                color: isActive ? Colors.white : Colors.white,
                 fontSize: 16,
               ),
             ),
@@ -1575,7 +1901,15 @@ class _RealEstateFullFiltersScreenState
               ),
             ),
 
-            onPressed: () {},
+            onPressed: () async {
+              // Сохраняем текущие фильтры в Hive
+              await _saveFilterState();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('✅ Фильтры сохранены')),
+                );
+              }
+            },
             child: const Text(
               "Сохранить настройки фильтра",
               style: TextStyle(color: Colors.red),
@@ -1593,7 +1927,9 @@ class _RealEstateFullFiltersScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: () {},
+            onPressed: () {
+              // TODO: Показать на карте
+            },
             child: const Text(
               "Показать на карте",
               style: TextStyle(color: Colors.white),
@@ -1611,15 +1947,22 @@ class _RealEstateFullFiltersScreenState
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => RealEstateFilteredScreen(
-                    selectedCategory: widget.selectedCategory,
+            onPressed: () async {
+              // Сохраняем фильтры перед переходом на экран результатов
+              await _saveFilterState();
+              
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RealEstateFilteredScreen(
+                      selectedCategory: widget.selectedCategory,
+                      categoryId: widget.categoryId,
+                      selectedCity: widget.selectedCity,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             },
             child: const Text(
               "Показать",

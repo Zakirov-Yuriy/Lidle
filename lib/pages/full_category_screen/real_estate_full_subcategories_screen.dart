@@ -185,6 +185,7 @@ class _RealEstateFullSubcategoriesScreenState
                                             builder: (context) => RealEstateFullApartmentsScreen(
                                               selectedCategory: categoryName,
                                               categoryChildren: category.children,
+                                              parentCategoryId: category.id, // Передаём ID родительской категории
                                             ),
                                           ),
                                         );

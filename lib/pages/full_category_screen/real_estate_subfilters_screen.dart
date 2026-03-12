@@ -1381,6 +1381,7 @@ class _RealEstateSubfiltersScreen extends State<RealEstateSubfiltersScreen> {
                 MaterialPageRoute(
                   builder: (context) => RealEstateFilteredScreen(
                     selectedCategory: widget.selectedCategory,
+                    categoryId: 2, // Default category ID for real estate
                   ),
                 ),
               );

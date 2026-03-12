@@ -5,6 +5,7 @@ import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/selectable_button.dart';
 
@@ -38,7 +39,9 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
 
   // Выбранная категория и тип апартамента
   String? selectedSubcategory;
+  int selectedSubcategoryId = 1; // По умолчанию используем 1, но переписывается при выборе
   String? selectedApartmentType;
+  bool showCategoryError = false; // Показывает ошибку если категория не выбрана
 
   Set<String> selectedCities = {};
   Set<String> selectedStreet = {};
@@ -47,6 +50,9 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   // Города загруженные с API (динамически)
   List<String> apiCities = [];
   bool isLoadingCities = false;
+  
+  // Категории недвижимости для маппинга названия на ID
+  List<dynamic> realEstateCategories = [];
 
   final TextEditingController priceFrom = TextEditingController();
   final TextEditingController priceTo = TextEditingController();
@@ -55,6 +61,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   void initState() {
     super.initState();
     _loadCities(); // Загружаем города с API
+    _loadRealEstateCategories(); // Загружаем категории для маппинга
   }
 
   @override
@@ -62,6 +69,51 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     priceFrom.dispose();
     priceTo.dispose();
     super.dispose();
+  }
+
+  /// Загружает категории недвижимости для маппинга имён на IDs
+  Future<void> _loadRealEstateCategories() async {
+    try {
+      final token = TokenService.currentToken;
+      final catalog = await ApiService.getCatalog(1, token: token); // catalogId = 1 для Недвижимости
+      
+      if (mounted) {
+        setState(() {
+          realEstateCategories = catalog.categories;
+          print('Loaded ${realEstateCategories.length} real estate categories');
+        });
+      }
+    } catch (e) {
+      print('Error loading real estate categories: $e');
+    }
+  }
+
+  /// Находит ID категории по её названию
+  int _findCategoryIdByName(String categoryName) {
+    try {
+      for (var cat in realEstateCategories) {
+        // Пытаемся получить id и name обычным способом
+        try {
+          // Если это Map
+          if (cat is Map) {
+            if (cat['name'] == categoryName) {
+              return cat['id'] as int;
+            }
+          } else {
+            // Если это объект с полями id и name
+            if (cat.name == categoryName) {
+              return cat.id as int;
+            }
+          }
+        } catch (e) {
+          // Пропускаем если не удалось обработать элемент
+          continue;
+        }
+      }
+    } catch (e) {
+      print('Error finding category ID: $e');
+    }
+    return 1; // Fallback к ID=1 если не найдено
   }
 
   /// Загружает города с API (динамически)
@@ -242,6 +294,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     sellerType = "";
                     viewMode = "gallery";
                     selectedSubcategory = null;
+                    showCategoryError = false;
                   });
                 },
                 child: const Text(
@@ -356,8 +409,17 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             ),
           ),
           onPressed: () {
+            // Проверяем что категория выбрана
+            if (selectedSubcategory == null || selectedSubcategory!.isEmpty) {
+              setState(() {
+                showCategoryError = true;
+              });
+              return; // Прерываем навигацию
+            }
+            
             // Переход на экран фильтра с подтянутыми данными из промежуточного фильтра
             final selectedCityName = selectedCity.isNotEmpty ? selectedCity.first : null;
+            
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -366,6 +428,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                       selectedSubcategory ??
                       widget.displayTitle ??
                       'Недвижимость',
+                  categoryId: selectedSubcategoryId,
                   selectedCity: selectedCityName,
                   selectedDateSort: selectedDateSort.isNotEmpty ? selectedDateSort : null,
                   selectedPriceSort: selectedPriceSort.isNotEmpty ? selectedPriceSort : null,
@@ -449,7 +512,19 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             );
             if (result != null) {
               setState(() {
-                selectedSubcategory = result;
+                // result теперь может быть либо String (для категорий без детей), либо Map {'name': String, 'id': int}
+                if (result is Map) {
+                  selectedSubcategory = result['name'] as String?;
+                  selectedSubcategoryId = result['id'] as int? ?? 1;
+                  print('Selected subcategory: ${result['name']} (ID: ${result['id']})');
+                  showCategoryError = false;
+                } else if (result is String) {
+                  // Fallback для старого формата
+                  selectedSubcategory = result;
+                  selectedSubcategoryId = _findCategoryIdByName(result);
+                  print('Selected subcategory: $result (ID: $selectedSubcategoryId)');
+                  showCategoryError = false;
+                }
               });
             }
           },
@@ -498,6 +573,19 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             ),
           ),
         ),
+        // Сообщение об ошибке если категория не выбрана
+        if (showCategoryError)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Выберите категорию',
+              style: const TextStyle(
+                color: Color(0xFFFF4444), // Красный цвет как на скриншоте
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
       ],
     );
   }

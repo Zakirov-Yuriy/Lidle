@@ -9,11 +9,13 @@ import 'package:lidle/widgets/components/header.dart';
 class RealEstateFullApartmentsScreen extends StatefulWidget {
   final String selectedCategory;
   final List<dynamic>? categoryChildren;
+  final int? parentCategoryId; // ID родительской категории (например, ID Квартир)
 
   const RealEstateFullApartmentsScreen({
     super.key,
     this.selectedCategory = 'Недвижимость',
     this.categoryChildren,
+    this.parentCategoryId,
   });
 
   @override
@@ -123,8 +125,50 @@ class _RealEstateFullApartmentsScreenState
           contentPadding: EdgeInsets.zero,
           title: Text(title, style: const TextStyle(color: Colors.white)),
           onTap: () {
-            // Возвращаемся на intermediate_filters_screen с выбранным видом апартаментов
-            Navigator.pop(context, title);
+            // Ищем ID этого дочернего элемента в categoryChildren
+            int childId = widget.parentCategoryId ?? 1; // Fallback
+            dynamic selectedChild;
+            
+            if (widget.categoryChildren != null) {
+              for (var child in widget.categoryChildren!) {
+                if (child.name == title) {
+                  childId = child.id as int;
+                  selectedChild = child;
+                  break;
+                }
+              }
+            }
+            
+            print('🔍 [_buildOptionTile] title="$title", childId=$childId');
+            print('   hasChildren=${selectedChild?.children != null && selectedChild.children!.isNotEmpty}');
+            if (selectedChild?.children != null) {
+              print('   children.length=${selectedChild.children.length}');
+              for (int i = 0; i < selectedChild.children.length; i++) {
+                print('      [$i] ${selectedChild.children[i].name} (id=${selectedChild.children[i].id})');
+              }
+            }
+            
+            // ВАЖНО: Проверяем, есть ли у выбранной опции ещё дети
+            // Если да, то это не конечная категория, нужен ещё один уровень
+            if (selectedChild != null && selectedChild.children != null && selectedChild.children!.isNotEmpty) {
+              print('ℹ️ "$title" имеет ${selectedChild.children!.length} подкатегорий, переходим на следующий уровень');
+              // Переходим на следующий уровень
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RealEstateFullApartmentsScreen(
+                    selectedCategory: title, // Используем текущую как заголовок
+                    categoryChildren: selectedChild.children,
+                    parentCategoryId: childId, // ID текущей категории как parent
+                  ),
+                ),
+              );
+              return;
+            }
+            
+            // Если это конечная категория (нет детей), возвращаемся с ID
+            print('✅ "$title" - конечная категория (ID: $childId), возвращаем result');
+            Navigator.pop(context, {'name': title, 'id': childId});
           },
         ),
         const Divider(color: Colors.white24, height: 0.9),

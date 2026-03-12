@@ -1364,6 +1364,7 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
                 MaterialPageRoute(
                   builder: (context) => RealEstateFilteredScreen(
                     selectedCategory: widget.selectedCategory,
+                    categoryId: 3, // Default category ID for real estate rent
                   ),
                 ),
               );

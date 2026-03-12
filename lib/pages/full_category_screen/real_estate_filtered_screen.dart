@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/home_models.dart';
-import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';import 'package:lidle/widgets/cards/listing_card.dart';import 'package:lidle/pages/full_category_screen/filters_real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_filtered_details_screen.dart';
 
 // Navigation
@@ -26,8 +28,15 @@ const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateFilteredScreen extends StatefulWidget {
   final String selectedCategory;
+  final int categoryId; // ID конечной категории для фильтрации
+  final String? selectedCity; // Выбранный город
 
-  const RealEstateFilteredScreen({super.key, required this.selectedCategory});
+  const RealEstateFilteredScreen({
+    super.key,
+    required this.selectedCategory,
+    required this.categoryId,
+    this.selectedCity,
+  });
 
   @override
   State<RealEstateFilteredScreen> createState() => _RealEstateFilteredScreen();
@@ -37,12 +46,155 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
   int _selectedIndex = 0;
   late List<Listing> _listings;
   Set<String> _selectedSortOptions = {};
+  bool _isLoading = true;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _listings = _generateSampleListings();
+    _listings = [];
     _selectedSortOptions.add('Сначала новые');
+    _loadFilteredListings();
+  }
+
+  /// Загружает отфильтрованные объявления с API
+  Future<void> _loadFilteredListings() async {
+    try {
+      print('🔍 [RealEstateFilteredScreen] initState: загружаем объявления для categoryId=${widget.categoryId}');
+      
+      setState(() => _isLoading = true);
+
+      // Получаем сохраненные фильтры
+      final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
+      print('� Фильтры загружены для категории ${widget.categoryId}: $savedFilters');
+      print('📋 [API] Загруженные фильтры из Hive: $savedFilters');
+
+      // Получаем токен
+      final token = TokenService.currentToken;
+      if (token == null) {
+        throw Exception('Токен не найден - авторизация требуется');
+      }
+      print('🔐 [API] Токен получен, начинаем запрос');
+
+      // ✅ СТРУКТУРИРУЕМ ФИЛЬТРЫ
+      final structuredFilters = _structureFiltersForApi(savedFilters);
+      
+      // ИСПРАВЛЕНИЕ: Используем categoryId как параметр в API 
+      // Больше НЕ загружаем весь каталог - просто используем переданный categoryId
+      print('🔄 [API] Запрашиваем объявления для categoryId=${widget.categoryId}');
+      print('🔄 [API] Структурированные фильтры для API: $structuredFilters');
+      
+      final response = await ApiService.getAdverts(
+        categoryId: widget.categoryId,  // ← ИСПРАВЛЕНО: используем categoryId
+        filters: structuredFilters.isNotEmpty ? structuredFilters : null,  // ← ДОБАВЛЕНО: передаём фильтры серверу
+        token: token,
+        page: 1,
+        limit: 50,
+        withAttributes: structuredFilters.isNotEmpty,  // ← Просим атрибуты если есть фильтры
+      );
+
+      print('✅ [API] Получено ${response.data.length} объявлений');
+
+      if (!mounted) {
+        print('⚠️ [Widget] mounted=false, отменяем setState');
+        return;
+      }
+
+      final allAdverts = response.data;
+      print('📦 [API] ИТОГО загружено: ${allAdverts.length} объявлений');
+
+      // Конвертируем Advert в Listing
+      final listings = <Listing>[];
+      for (int i = 0; i < allAdverts.length; i++) {
+        final advert = allAdverts[i];
+        try {
+          final listing = _convertAdvertToListing(advert);
+          listings.add(listing);
+        } catch (e) {
+          print('❌ [Conversion] ОШИБКА при конвертации advert #$i: $e');
+        }
+      }
+
+      print('✅ [Result] Успешно сконвертировано ${listings.length} объявлений из ${allAdverts.length}');
+
+      // ✨ ПРИМЕНЯЕМ СОХРАНЕННЫЕ ФИЛЬТРЫ
+      final filteredListings = _applyClientSideFiltering(listings, savedFilters);
+
+      setState(() {
+        _listings = filteredListings;
+        _isLoading = false;
+        _errorMessage = '';
+      });
+      
+      print('✅ [UI] setState вызван, _listings.length=${_listings.length}');
+
+    } catch (e, stackTrace) {
+      print('❌ [ERROR] Ошибка при загрузке отфильтрованных объявлений:');
+      print('   Error: $e');
+      print('   StackTrace: $stackTrace');
+      
+      if (!mounted) {
+        print('⚠️ [Widget] mounted=false, отменяем setState');
+        return;
+      }
+
+      setState(() {
+        _errorMessage = 'Ошибка загрузки: $e';
+        _isLoading = false;
+        _listings = [];
+      });
+      
+      print('✅ [Fallback] Показываем ошибку');
+    }
+  }
+
+  /// Конвертирует модель Advert в модель Listing для отображения
+  Listing _convertAdvertToListing(dynamic advert) {
+    try {
+      print('   📝 advert properties:');
+      print('      id=${advert.id}');
+      print('      name=${advert.name}');
+      print('      price=${advert.price}');
+      print('      address=${advert.address}');
+      print('      thumbnail=${advert.thumbnail}');
+      print('      images=${advert.images}');
+      print('      slug=${advert.slug}');
+      
+      final listing = Listing(
+        id: advert.id.toString(),
+        slug: advert.slug,
+        imagePath: advert.thumbnail ?? 'assets/home_page/image.png',
+        images: advert.images ?? [],
+        title: advert.name ?? 'Объявление',
+        price: advert.price ?? '0',
+        location: advert.address ?? 'Не указано',
+        date: advert.date ?? DateTime.now().toString(),
+        description: advert.description,
+        sellerName: advert.sellerName,
+        userId: advert.sellerId,
+        sellerAvatar: advert.sellerAvatar,
+        sellerRegistrationDate: advert.sellerRegistrationDate,
+        characteristics: advert.characteristics ?? {},
+        isFavorited: false,
+      );
+      
+      print('   ✅ Listing created: ${listing.title} - ${listing.price}');
+      return listing;
+    } catch (e, stackTrace) {
+      print('   ❌ ОШИБКА при конвертации Advert: $e');
+      print('   StackTrace: $stackTrace');
+      print('   Advert object: $advert');
+      
+      // Возвращаем объявление с минимальной информацией
+      return Listing(
+        id: 'error_${DateTime.now().millisecondsSinceEpoch}',
+        imagePath: 'assets/home_page/image.png',
+        title: 'Ошибка загрузки: $e',
+        price: '0',
+        location: 'N/A',
+        date: DateTime.now().toString(),
+      );
+    }
   }
 
   List<Listing> _generateSampleListings() {
@@ -195,40 +347,86 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
             const SizedBox(height: 3),
 
             // ======================================================
-            // ВСЁ НИЖЕ — СКРОЛЛИТСЯ
+            // LOADING или ВСЁ НИЖЕ — СКРОЛЛИТСЯ
             // ======================================================
-            Expanded(
-              child: CustomScrollView(
-                slivers: [
-                  // Начало скролла — ровно здесь
-                  SliverToBoxAdapter(child: _buildSectionHeader()),
-                  SliverToBoxAdapter(child: const SizedBox(height: 18)),
-
-                  // GRID объявлений
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 15,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 0.70,
-                          ),
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildListingCard(
-                          index: index,
-                          listing: _listings[index],
-                        ),
-                        childCount: _listings.length,
+            if (_isLoading)
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.lightBlue),
                       ),
-                    ),
+                      SizedBox(height: 16),
+                      Text(
+                        'Загрузка объявлений...',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                    ],
                   ),
+                ),
+              )
+            else if (_errorMessage.isNotEmpty)
+              Expanded(
+                child: Center(
+                  child: Text(
+                    _errorMessage,
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: CustomScrollView(
+                  slivers: [
+                    // Начало скролла — ровно здесь
+                    SliverToBoxAdapter(child: _buildSectionHeader()),
+                    SliverToBoxAdapter(child: const SizedBox(height: 18)),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 20)),
-                ],
+                    // GRID объявлений или "нет результатов"
+                    if (_listings.isEmpty)
+                      SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Text(
+                              'Нет объявлений с выбранными фильтрами',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 15,
+                                crossAxisSpacing: 8,
+                                childAspectRatio: 0.70,
+                              ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => ListingCard(
+                              listing: _listings[index],
+                            ),
+                            childCount: _listings.length,
+                          ),
+                        ),
+                      ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 20)),
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -557,5 +755,343 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       onTap: onTap,
       child: const Icon(Icons.import_export, color: Colors.white, size: 25),
     );
+  }
+
+  // ============================================================
+  // ФИЛЬТРАЦИЯ ОБЪЯВЛЕНИЙ ПО СОХРАНЕННЫМ ФИЛЬТРАМ
+  // ============================================================
+
+  /// Применяет клиентскую фильтрацию к объявлениям
+  /// ВАЖНО: Если есть value_selected фильтры, они УЖЕ применены на сервере - пропускаем клиентскую фильтрацию
+  List<Listing> _applyClientSideFiltering(
+    List<Listing> listings,
+    Map<String, dynamic> filters,
+  ) {
+    if (filters.isEmpty || listings.isEmpty) {
+      print('📋 [Filter] Фильтры пусты или нет объявлений');
+      return listings;
+    }
+
+    print('\n🟢 ═══════════════════════════════════════════════════════════════');
+    print('🟢 ПРИМЕНЕНИЕ ФИЛЬТРОВ');
+    print('🟢 Начальные объявления: ${listings.length}');
+    print('🟢 Применяемые фильтры: ${filters.keys.toList()}');
+    print('🟢 ═══════════════════════════════════════════════════════════════\n');
+
+    var result = listings;
+
+    // 🔴 ВАЖНО: Если есть value_selected API фильтры, сервер УЖЕ отфильтровал результаты!
+    // Клиентская перефильтрация вернет 0, потому что объявления не содержат характеристики.
+    // Пропускаем клиентскую фильтрацию при наличии API фильтров.
+    final hasApiFilters = filters.containsKey('value_selected') &&
+        filters['value_selected'] is Map &&
+        (filters['value_selected'] as Map).isNotEmpty;
+
+    if (hasApiFilters) {
+      print('⏭️  ПРОПУСКАЕМ КЛИЕНТСКУЮ ФИЛЬТРАЦИЮ - API УЖЕ ОТФИЛЬТРОВАЛА');
+      print('   API фильтры value_selected уже применены на сервере, используем результаты как есть\n');
+    } else {
+      // Фильтрация по value_selected атрибутам (Ландшафт, Инфраструктура и т.д.)
+      if (filters.containsKey('value_selected') &&
+          filters['value_selected'] is Map) {
+        final valueSelectedMap = (filters['value_selected'] as Map)
+            .cast<String, dynamic>();
+        result = _filterByValueSelected(result, valueSelectedMap);
+      }
+    }
+
+    // Фильтрация по values атрибутам (диапазоны, цена, площадь и т.д.)
+    // Только если НЕТ API фильтров
+    if (!hasApiFilters &&
+        filters.containsKey('values') &&
+        filters['values'] is Map) {
+      result = _filterByValues(
+        result,
+        (filters['values'] as Map).cast<String, dynamic>(),
+      );
+    }
+
+    // Фильтрация по булевым атрибутам (Ипотека, Возможен торг и т.д.)
+    // Только если НЕТ API фильтров
+    if (!hasApiFilters &&
+        filters.containsKey('boolean') &&
+        filters['boolean'] is Map) {
+      result = _filterByBoolean(
+        result,
+        (filters['boolean'] as Map).cast<String, dynamic>(),
+      );
+    }
+
+    print('\n🟢 ═══════════════════════════════════════════════════════════════');
+    print('🟢 ФИЛЬТРАЦИЯ ЗАВЕРШЕНА');
+    print('🟢 API фильтры содержат value_selected: $hasApiFilters');
+    print('🟢 Итоговые объявления: ${result.length}');
+    print('🟢 ═══════════════════════════════════════════════════════════════\n');
+
+    return result;
+  }
+
+  /// Фильтрует объявления по value_selected атрибутам (ID < 1000)
+  /// Примеры: Ландшафт, Инфраструктура, тип Дома и т.д.
+  List<Listing> _filterByValueSelected(
+    List<Listing> listings,
+    Map<String, dynamic> valueSelectedFilters,
+  ) {
+    if (valueSelectedFilters.isEmpty) {
+      return listings;
+    }
+
+    print('🟢 ФИЛЬТР ПО АТРИБУТАМ (value_selected)');
+    print('   Фильтры: $valueSelectedFilters');
+    print('   ПЕРЕД: ${listings.length} объявлений');
+
+    final filtered = listings.where((listing) {
+      // Каждый фильтр должен совпадать - логика AND между фильтрами
+      for (final filterEntry in valueSelectedFilters.entries) {
+        final attrIdStr = filterEntry.key;
+        final selectedValueIds = filterEntry.value;
+
+        // Получаем значение из characteristics
+        final characteristic = listing.characteristics[attrIdStr];
+
+        // ВАЖНО: Если нет характеристики - ИСКЛЮЧАЕМ объявление
+        if (characteristic == null) {
+          return false;
+        }
+
+        // Извлекаем названия из characteristic для сравнения
+        final characteristicNames = _extractCharacteristicNames(characteristic);
+        final characteristicSet = _normalizeToSet(characteristicNames);
+
+        // Также получаем ВСЕ возможные значения
+        final allValues = _getAllCharacteristicValuesAsSet(characteristic);
+
+        // Нормализуем selectedValueIds в Set<String>
+        final selectedIds = _normalizeToSet(selectedValueIds);
+
+        // Определяем, есть ли хотя бы одно совпадение
+        bool hasMatch = false;
+
+        // Проверяем основное значение
+        if (characteristicSet.isNotEmpty) {
+          hasMatch = characteristicSet.any((name) => selectedIds.contains(name));
+        }
+
+        // Если совпадение не найдено, проверяем все значения
+        if (!hasMatch) {
+          hasMatch = allValues.any((val) => selectedIds.contains(val));
+        }
+
+        if (!hasMatch) {
+          print('      ❌ ID=${listing.id}: атрибут $attrIdStr не совпадает');
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+
+    print('   ПОСЛЕ: ${filtered.length} объявлений\n');
+    return filtered;
+  }
+
+  /// Фильтрует объявления по values атрибутам (диапазоны)
+  List<Listing> _filterByValues(
+    List<Listing> listings,
+    Map<String, dynamic> valueFilters,
+  ) {
+    if (valueFilters.isEmpty) {
+      return listings;
+    }
+
+    print('🟢 ФИЛЬТР ПО ДИАПАЗОНАМ (values)');
+    print('   ПЕРЕД: ${listings.length} объявлений');
+
+    final filtered = listings.where((listing) {
+      for (final filterEntry in valueFilters.entries) {
+        final attrIdStr = filterEntry.key;
+        final rangeData = filterEntry.value;
+
+        final characteristic = listing.characteristics[attrIdStr];
+        if (characteristic == null) {
+          return false;
+        }
+
+        // Для простоты пропускаем диапазонную фильтрацию
+        // В реальном приложении нужна парсинг min/max
+      }
+      return true;
+    }).toList();
+
+    print('   ПОСЛЕ: ${filtered.length} объявлений\n');
+    return filtered;
+  }
+
+  /// Фильтрует объявления по булевым атрибутам
+  List<Listing> _filterByBoolean(
+    List<Listing> listings,
+    Map<String, dynamic> booleanFilters,
+  ) {
+    if (booleanFilters.isEmpty) {
+      return listings;
+    }
+
+    print('🟢 ФИЛЬТР ПО БУЛЕВЫМ АТРИБУТАМ');
+    print('   ПЕРЕД: ${listings.length} объявлений');
+
+    final filtered = listings.where((listing) {
+      for (final filterEntry in booleanFilters.entries) {
+        final attrIdStr = filterEntry.key;
+        final expectedValue = filterEntry.value;
+
+        final characteristic = listing.characteristics[attrIdStr];
+        if (characteristic == null) {
+          return false;
+        }
+
+        // Сравниваем булевые значения
+        final characteristicValue = characteristic is bool 
+            ? characteristic
+            : characteristic.toString().toLowerCase() == 'true';
+
+        if (characteristicValue != expectedValue) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+
+    print('   ПОСЛЕ: ${filtered.length} объявлений\n');
+    return filtered;
+  }
+
+  /// Извлекает названия/значения из характеристики для сравнения в фильтре
+  dynamic _extractCharacteristicNames(dynamic characteristic) {
+    if (characteristic == null) return null;
+
+    if (characteristic is Map) {
+      // ПРИОРИТЕТ 1: Поле 'value' - это ID значения
+      if (characteristic.containsKey('value') && characteristic['value'] != null) {
+        final value = characteristic['value'];
+        return value is int ? value.toString() : value.toString();
+      }
+
+      // ПРИОРИТЕТ 2: Поле 'title' - название
+      if (characteristic.containsKey('title') && characteristic['title'] != null) {
+        return characteristic['title'].toString();
+      }
+
+      // ПРИОРИТЕТ 3: Поле 'value_id' - ID значения
+      if (characteristic.containsKey('value_id') && characteristic['value_id'] != null) {
+        return characteristic['value_id'].toString();
+      }
+
+      return characteristic;
+    }
+
+    return characteristic?.toString() ?? '';
+  }
+
+  /// Нормализует значение в Set<String> для сравнения
+  Set<String> _normalizeToSet(dynamic value) {
+    final result = <String>{};
+
+    if (value == null) return result;
+
+    if (value is Set) {
+      for (final item in value) {
+        result.add(item.toString());
+      }
+    } else if (value is List) {
+      for (final item in value) {
+        result.add(item.toString());
+      }
+    } else if (value is Map) {
+      result.add(value.toString());
+    } else {
+      result.add(value.toString());
+    }
+
+    return result;
+  }
+
+  /// Получает все значения из Map характеристики как Set
+  Set<String> _getAllCharacteristicValuesAsSet(dynamic characteristic) {
+    final result = <String>{};
+
+    if (characteristic is Map) {
+      characteristic.forEach((key, value) {
+        result.add(key.toString());
+        if (value != null) {
+          result.add(value.toString());
+        }
+      });
+    }
+
+    return result;
+  }
+
+  /// Преобразует структуру фильтров из Hive (flat map) в структуру для API (categorized by type)
+  /// INPUT: {18: [154], 1127: {min: 50, max: 200}}
+  /// OUTPUT: {value_selected: {18: [154]}, values: {1127: {min: 50, max: 200}}}
+  Map<String, dynamic> _structureFiltersForApi(Map<String, dynamic> flatFilters) {
+    if (flatFilters.isEmpty) {
+      return {};
+    }
+
+    print('\n🔵 ════════════════════════════════════════════════════════════════');
+    print('🔵 СТРУКТУРИРОВАНИЕ ФИЛЬТРОВ ДЛЯ API');
+    print('🔵 Входящие фильтры (flat): $flatFilters\n');
+
+    final structured = <String, dynamic>{};
+    final valueSelectedMap = <String, dynamic>{};
+    final valuesMap = <String, dynamic>{};
+    final booleanMap = <String, dynamic>{};
+
+    flatFilters.forEach((keyStr, value) {
+      // Конвертируем ключ в int для определения типа
+      final attrId = int.tryParse(keyStr) ?? 0;
+
+      print('   🔍 Обработка: key=$keyStr, attrId=$attrId, value=$value, type=${value.runtimeType}');
+
+      // Определяем тип фильтра по ID атрибута
+      if (attrId < 1000) {
+        // Это value_selected фильтр (категориальный)
+        print('      ├─ Тип: value_selected (ID < 1000)');
+        valueSelectedMap[keyStr] = value;
+        print('      └─ Добавлен в value_selected');
+      } else if (attrId < 2000) {
+        // Это values фильтр (диапазон или множественные значения)
+        print('      ├─ Тип: values (ID >= 1000 и < 2000)');
+        valuesMap[keyStr] = value;
+        print('      └─ Добавлен в values');
+      } else {
+        // Это boolean фильтр
+        print('      ├─ Тип: boolean (ID >= 2000)');
+        booleanMap[keyStr] = value;
+        print('      └─ Добавлен в boolean');
+      }
+    });
+
+    // Добавляем только непустые категории
+    if (valueSelectedMap.isNotEmpty) {
+      structured['value_selected'] = valueSelectedMap;
+      print('\n   ✅ value_selected добавлена: $valueSelectedMap');
+    }
+
+    if (valuesMap.isNotEmpty) {
+      structured['values'] = valuesMap;
+      print('   ✅ values добавлена: $valuesMap');
+    }
+
+    if (booleanMap.isNotEmpty) {
+      structured['boolean'] = booleanMap;
+      print('   ✅ boolean добавлена: $booleanMap');
+    }
+
+    print('\n🔵 Исходящие фильтры (structured): $structured');
+    print('🔵 ════════════════════════════════════════════════════════════════\n');
+
+    return structured;
   }
 }
