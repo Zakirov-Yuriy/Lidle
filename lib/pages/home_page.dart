@@ -28,6 +28,7 @@ import '../pages/full_category_screen/full_category_screen.dart';
 import '../pages/full_category_screen/real_estate_listings_screen.dart';
 import 'profile_menu/profile_menu_screen.dart';
 import '../pages/auth/sign_in_screen.dart';
+import '../main.dart'; // Для доступа к routeObserver
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу
 /// приложения с использованием Bloc для управления состоянием.
@@ -41,10 +42,21 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteAware {
+  /// Контроллер для сохранения позиции скролла
+  late ScrollController _scrollController;
+  
+  /// Глобальное хранилище позиции скролла
+  static double _globalScrollPosition = 0.0;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Инициализируем ScrollController
+    _scrollController = ScrollController();
+    
     // 🔄 Кеширование: загружаем данные только если их ещё нет и нет ошибок
     final currentState = context.read<ListingsBloc>().state;
 
@@ -53,6 +65,68 @@ class _HomePageState extends State<HomePage> {
     if (currentState is ListingsInitial || currentState is ListingsError) {
       context.read<ListingsBloc>().add(LoadListingsEvent());
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // 📍 Подписываемся на RouteObserver для отслеживания маршрутов
+    routeObserver.subscribe(this, ModalRoute.of(context) as PageRoute<dynamic>);
+    
+    // Восстанавливаем позицию скролла при возврате на эту страницу
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_globalScrollPosition > 0 && _scrollController.hasClients) {
+        _scrollController.jumpTo(_globalScrollPosition);
+        print('📍 Восстановлена глобальная позиция скролла: $_globalScrollPosition');
+      }
+    });
+  }
+
+  @override
+  void deactivate() {
+    // Отписываемся от RouteObserver при деактивации
+    routeObserver.unsubscribe(this);
+    super.deactivate();
+  }
+
+  @override
+  void didPopNext() {
+    // Вызывается когда экран вернулся на передний план (Navigator.pop был вызван)
+    super.didPopNext();
+    print('⬅️ Вернулись на HomePage');
+    
+    // Восстанавливаем позицию скролла
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_globalScrollPosition > 0 && _scrollController.hasClients) {
+        _scrollController.jumpTo(_globalScrollPosition);
+        print('📍 Восстановлена позиция после didPopNext: $_globalScrollPosition');
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Сохраняем позицию скролла перед паузой
+    if (state == AppLifecycleState.paused) {
+      if (_scrollController.hasClients) {
+        _globalScrollPosition = _scrollController.position.pixels;
+        print('💾 Сохранена позиция скролла при паузе: $_globalScrollPosition');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    
+    // 💾 Сохраняем позицию скролла в глобальной переменной
+    if (_scrollController.hasClients) {
+      _globalScrollPosition = _scrollController.position.pixels;
+      print('💾 Сохранена глобальная позиция скролла при dispose: $_globalScrollPosition');
+    }
+    _scrollController.dispose();
+    super.dispose();
   }
 
   /// Метод для обработки pull-to-refresh.
@@ -198,21 +272,50 @@ class _HomePageState extends State<HomePage> {
                               onRefresh: _onRefresh,
                               color: accentColor,
                               backgroundColor: formBackground,
-                              child: SingleChildScrollView(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildCategoriesSection(
-                                      listingsState,
-                                      authState,
-                                    ),
-                                    _buildLatestSection(
-                                      listingsState,
-                                      authState,
-                                    ),
-                                    SizedBox(height: 10),
-                                  ],
+                              child: NotificationListener<ScrollNotification>(
+                                onNotification: (ScrollNotification scrollInfo) {
+                                  // 🔍 Проверяем достигнут ли конец списка
+                                  // Используем небольшой threshold (50px) вместо точного == для надежности
+                                  final isNearEnd = scrollInfo.metrics.pixels >=
+                                      (scrollInfo.metrics.maxScrollExtent - 100);
+
+                                  if (isNearEnd) {
+                                    final state = context.read<ListingsBloc>().state;
+                                    
+                                    if (state is ListingsLoaded) {
+                                      // 📌 ИСПРАВЛЕНИЕ: Проверяем по количеству объявлений, а не по страницам
+                                      // Это надежнее, т.к. мы не знаем точное количество страниц
+                                      final canLoadMore = state.listings.length < 500;
+                                      
+                                      if (canLoadMore) {
+                                        print('📥 Конец достигнут, загружаем еще... (текущих: ${state.listings.length})');
+                                        context.read<ListingsBloc>().add(LoadNextPageEvent());
+                                      }
+                                    }
+                                  }
+                                  return false;
+                                },
+                                child: PageStorage(
+                                  bucket: PageStorageBucket(),
+                                  child: SingleChildScrollView(
+                                    key: const PageStorageKey<String>('home_page_scroll'),
+                                    controller: _scrollController,
+                                    physics: const AlwaysScrollableScrollPhysics(),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                      _buildCategoriesSection(
+                                        listingsState,
+                                        authState,
+                                      ),
+                                      _buildLatestSection(
+                                        listingsState,
+                                        authState,
+                                      ),
+                                      SizedBox(height: 10),
+                                    ],
+                                  ),
+                                ),
                                 ),
                               ),
                             ),
@@ -789,37 +892,30 @@ class _HomePageState extends State<HomePage> {
 
               return Column(
                 children: [
-                  NotificationListener<ScrollNotification>(
-                    onNotification: (ScrollNotification scrollInfo) {
-                      // Проверяем достигнут ли конец списка
-                      if (scrollInfo.metrics.pixels ==
-                          scrollInfo.metrics.maxScrollExtent) {
-                        // Загружаем следующую страницу если есть еще страницы
-                        if (state is ListingsLoaded &&
-                            state.currentPage < state.totalPages) {
-                          context.read<ListingsBloc>().add(LoadNextPageEvent());
-                        }
-                      }
-                      return false;
-                    },
-                    child: GridView.builder(
-                      padding: const EdgeInsets.only(left: 12, right: 12),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 9,
-                        mainAxisSpacing: 0,
-                        mainAxisExtent: tileHeight,
-                      ),
-                      itemCount: listings.length,
-                      itemBuilder: (context, index) {
-                        return ListingCard(
-                          listing: listings[index],
-                          authState: authState,
-                        );
-                      },
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
+                  GridView.builder(
+                    padding: const EdgeInsets.only(left: 12, right: 12),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 9,
+                      mainAxisSpacing: 0,
+                      mainAxisExtent: tileHeight,
                     ),
+                    itemCount: listings.length,
+                    itemBuilder: (context, index) {
+                      return ListingCard(
+                        listing: listings[index],
+                        authState: authState,
+                        onBeforeNavigate: () {
+                          // 💾 Сохраняем позицию скролла перед навигацией
+                          if (_scrollController.hasClients) {
+                            _globalScrollPosition = _scrollController.position.pixels;
+                            print('💾 Сохранена позиция перед навигацией: $_globalScrollPosition');
+                          }
+                        },
+                      );
+                    },
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                   ),
                 ],
               );

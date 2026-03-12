@@ -14,8 +14,14 @@ import 'package:lidle/pages/auth/sign_in_screen.dart';
 class ListingCard extends StatefulWidget {
   final Listing listing;
   final AuthState? authState;
+  final VoidCallback? onBeforeNavigate;
 
-  const ListingCard({super.key, required this.listing, this.authState});
+  const ListingCard({
+    super.key, 
+    required this.listing, 
+    this.authState,
+    this.onBeforeNavigate,
+  });
 
   @override
   State<ListingCard> createState() => _ListingCardState();
@@ -61,6 +67,10 @@ class _ListingCardState extends State<ListingCard> {
               Navigator.pushNamed(context, SignInScreen.routeName);
               return;
             }
+            
+            // 💾 Вызываем callback для сохранения позиции скролла
+            widget.onBeforeNavigate?.call();
+            
             // Переходим к деталям объявления
             Navigator.push(
               context,

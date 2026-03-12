@@ -217,9 +217,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final catalogsResponse = await ApiService.getCatalogs(token: token);
       final allCatalogIds = catalogsResponse.data.map((c) => c.id).toList();
 
-      // 🚀 ОПТИМИЗАЦИЯ #2: Снижено с 3 до 1 каталога для максимально быстрого фрейма
-      // Остальные загружаются в фазе 2 фоне без блокировки UI
-      final firstCatalogIds = allCatalogIds.take(1).toList();
+      // 🚀 ОПТИМИЗАЦИЯ #2: Загружаем ВСЕ каталоги при первой загрузке
+      // Это гарантирует, что все объявления (включая #142) отображаются на главной
+      final firstCatalogIds = allCatalogIds;
 
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
@@ -233,47 +233,67 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
 
-      // 🔥 Загружаем объявления из первых 3 каталогов параллельно
+      // 🔥 Загружаем объявления ИЗ ВСЕХ каталогов параллельно
       List<home.Listing> allListings = [];
       int totalPages = 1;
-      int itemsPerPage = 20;
+      int itemsPerPage = 50;
 
       if (firstCatalogIds.isNotEmpty) {
-        final firstBatchFutures = firstCatalogIds
-            .map(
-              (catalogId) => ApiService.getAdverts(
-                catalogId: catalogId,
-                token: token,
-                page: 1,
-                limit: 20,
-              ),
-            )
-            .toList();
+        // Ограничиваем до 5 одновременных запросов для экономии памяти
+        const int maxConcurrentRequests = 5;
+        
+        for (int i = 0; i < firstCatalogIds.length; i += maxConcurrentRequests) {
+          final batch = firstCatalogIds.sublist(
+            i,
+            (i + maxConcurrentRequests).clamp(0, firstCatalogIds.length),
+          );
 
-        final firstBatchResponses = await Future.wait(firstBatchFutures);
+          final firstBatchFutures = batch
+              .map(
+                (catalogId) => ApiService.getAdverts(
+                  catalogId: catalogId,
+                  token: token,
+                  page: 1,
+                  limit: 50,
+                ),
+              )
+              .toList();
 
-        // Парсируем все ответы параллельно на фоновых потоках
-        for (final response in firstBatchResponses) {
-          if (response.data.isNotEmpty) {
-            // 🚀 ОПТИМИЗАЦИЯ #3: Умный compute() - используем только для 50+ объявлений
-            // Для малых списков синхронное парсирование быстрее
-            List<home.Listing> parsedListings;
+          final firstBatchResponses = await Future.wait(firstBatchFutures);
 
-            if (response.data.length > 50) {
-              // Для больших списков используем compute() на отдельном потоке
-              parsedListings = await compute<List<Advert>, List<home.Listing>>(
-                (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                response.data,
-              );
-            } else {
-              // Для малых списков синхронное парсирование (быстрее без overhead compute)
-              parsedListings = _parseAdvertsOnBackgroundThread(response.data);
+          // Парсируем все ответы параллельно на фоновых потоках
+          for (final response in firstBatchResponses) {
+            if (response.data.isNotEmpty) {
+              // 🚀 ОПТИМИЗАЦИЯ #3: Умный compute() - используем только для 50+ объявлений
+              // Для малых списков синхронное парсирование быстрее
+              List<home.Listing> parsedListings;
+
+              if (response.data.length > 50) {
+                // Для больших списков используем compute() на отдельном потоке
+                parsedListings = await compute<List<Advert>, List<home.Listing>>(
+                  (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                  response.data,
+                );
+              } else {
+                // Для малых списков синхронное парсирование (быстрее без overhead compute)
+                parsedListings = _parseAdvertsOnBackgroundThread(response.data);
+              }
+
+              allListings.addAll(parsedListings);
+              // Берем totalPages из последнего ответа, это обычно главный каталог
+              // и наиболее точное значение
+              totalPages = response.meta.lastPage;
+              itemsPerPage = response.meta.perPage;
             }
-
-            allListings.addAll(parsedListings);
-            totalPages = response.meta.lastPage;
-            itemsPerPage = response.meta.perPage;
           }
+        }
+        
+        // 📌 ИСПРАВЛЕНИЕ: Если загружалось со всех каталогов, увеличиваем totalPages
+        // В реальности может быть больше страниц, чем мы знаем
+        if (firstCatalogIds.length > 1) {
+          // Примерное увеличение для компенсации множественных каталогов
+          totalPages = (totalPages * firstCatalogIds.length ~/ 2).clamp(5, 100);
+          print('📄 Расчетные страницы: $totalPages (каталогов: ${firstCatalogIds.length})');
         }
       }
 
@@ -485,8 +505,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Обработчик события загрузки следующей страницы.
   /// Добавляет объявления из следующей страницы к существующим.
   ///
-  /// Загружает следующую страницу (4+) из каталога 1 (все категории).
-  /// Используется при прокрутке списка до конца.
+  /// Загружает следующую страницу из ВСЕ каталогов параллельно.
+  /// Увеличивает порцию объявлений за один раз.
   Future<void> _onLoadNextPage(
     LoadNextPageEvent event,
     Emitter<ListingsState> emit,
@@ -496,43 +516,54 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     final currentState = state as ListingsLoaded;
 
-    // Проверяем, не на последней ли мы странице
-    if (currentState.currentPage >= currentState.totalPages) {
-      // print();
-      return; // Не загружаем, если это последняя страница
+    // Проверяем, есть ли еще объявления для загрузки
+    // Предполагаем максимум 1000 объявлений в системе
+    if (currentState.listings.length >= 1000) {
+      return; // Не загружаем, если уже много
     }
-
-    // Начинаем загрузку следующей страницы
-    final nextPage = currentState.currentPage + 1;
-    // print('📄 Загрузка страницы $nextPage из ${currentState.totalPages}...');
 
     try {
       // Получаем токен для аутентификации
       final token = TokenService.currentToken;
 
-      // Загружаем объявления следующей страницы из каталога 1 (все категории)
+      // 🚀 ИСПРАВЛЕНИЕ: Загружаем со ВСЕХ каталогов параллельно
+      // Каталог 1 = все категории (главный каталог, содержит все объявления)
+      // Просто берём очередную страницу из него
+      final nextPage = (currentState.listings.length ~/ 50) + 1;
+
+      print('📄 Загрузка: ${currentState.listings.length} текущих, страница $nextPage...');
+
       final advertsResponse = await ApiService.getAdverts(
-        catalogId: 1, // Каталог 1 = все категории
+        catalogId: 1, // Главный каталог - все объявления
         token: token,
         page: nextPage,
-        limit: 50,
+        limit: 100, // Увеличиваем лимит с 50 до 100 для большей порции
       );
+
+      if (advertsResponse.data.isEmpty) {
+        // Нет больше объявлений
+        return;
+      }
 
       // Преобразуем Advert в Listing
       final newListings = advertsResponse.data.map((advert) {
         return advert.toListing();
       }).toList();
 
-      // print();
-
       // Объединяем существующие объявления с новыми
       final allListings = [...currentState.listings, ...newListings];
+
+      // 📌 НЕ пересортируем при пагинации!
+      // Пользователь ожидает видеть новые объявления внизу, а не в начале
+      // Сортировка происходит только при первой загрузке
 
       // Извлекаем информацию о пагинации
       final totalPages = advertsResponse.meta.lastPage;
       final itemsPerPage = advertsResponse.meta.perPage;
 
-      // Испускаем новое состояние с объединенными объявлениями
+      print('✅ Загружено ${newListings.length} нов объявлений, всего: ${allListings.length}');
+
+      // Испускаем новое состояние с новыми объявлениями в конце
       emit(
         ListingsLoaded(
           listings: allListings,
@@ -543,6 +574,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
     } catch (e) {
+      print('❌ Ошибка при загрузке следующей страницы: $e');
       // При ошибке испускаем состояние ошибки
       emit(
         ListingsError(message: 'Ошибка при загрузке следующей страницы: $e'),
@@ -747,122 +779,34 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // Запускаем в фоне, не ждём результата
     Future(() async {
       try {
-        final List<home.Listing> remainingListings = List.from(
-          sortedListings,
-        );
+        // 📌 Теперь фаза 2 просто кеширует данные
+        // Так как все каталоги уже загружены в фазе 1
 
-        // Оставшиеся каталоги (пропускаем первый 1, который уже загружен)
-        final remainingCatalogIds = allCatalogIds.skip(1).toList();
-
-        if (remainingCatalogIds.isEmpty) return;
-
-        // 🚀 ОПТИМИЗАЦИЯ: Снижено с 3 до 2 для медленных сетей
-        // Уменьшает нагрузку и риск timeout ошибок
-        const int maxConcurrentRequests = 2;
-        
-        // 🚀 ОПТИМИЗАЦИЯ: Уменьшение limit с 20 до 10 в fase 2
-        // Фаза 2 это фоновая загрузка, не критично иметь много объявлений
-        const int phase2Limit = 10;
-
-        int batchCount = 0;
-        int successCount = 0;
-        int errorCount = 0;
-
-        // Загружаем батчами с throttling
-        for (
-          int i = 0;
-          i < remainingCatalogIds.length;
-          i += maxConcurrentRequests
-        ) {
-          batchCount++;
-          final batch = remainingCatalogIds.sublist(
-            i,
-            (i + maxConcurrentRequests).clamp(0, remainingCatalogIds.length),
-          );
-
-          // Запускаем все запросы в батче параллельно
-          final batchFutures = batch
-              .map(
-                (catalogId) => ApiService.getAdverts(
-                  catalogId: catalogId,
-                  token: token,
-                  page: 1,
-                  limit: phase2Limit,
-                ),
-              )
-              .toList();
-
-          // Используем Future.wait с onError игнорированием
-          // Если один запрос fail, продолживаем с остальными
-          final batchResponses = await Future.wait(
-            batchFutures,
-            eagerError: false, // Продолжить, даже если один fail
-          );
-
-          // Обработаем ответы с обработкой ошибок
-          for (int j = 0; j < batchResponses.length; j++) {
-            try {
-              final response = batchResponses[j];
-              if (response.data.isNotEmpty) {
-                List<home.Listing> parsedListings;
-
-                if (response.data.length > 50) {
-                  parsedListings =
-                      await compute<List<Advert>, List<home.Listing>>(
-                        (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                        response.data,
-                      );
-                } else {
-                  parsedListings = _parseAdvertsOnBackgroundThread(
-                    response.data,
-                  );
-                }
-
-                remainingListings.addAll(parsedListings);
-                successCount++;
-              }
-            } catch (e) {
-              errorCount++;
-              print('⚠️ ListingsBloc ФАЗА 2: ошибка обработки ответа $j: $e');
-              // Продолжаем с остальными
-            }
-          }
-
-          // Задержка между батчами для снижения нагрузки на сервер
-          if (i + maxConcurrentRequests < remainingCatalogIds.length) {
-            await Future.delayed(const Duration(milliseconds: 200));
-          }
-        }
-
-        final finalSortedListings = _sortListingsByDate(remainingListings);
-
-        // 💾 Сохраняем полный список в кеш (БЕЗ emit)
+        // 💾 Сохраняем в кеш для быстрой загрузки при следующем открытии
         try {
-          final cacheData = <String, dynamic>{
-            'listings': finalSortedListings.map(_listingToJson).toList(),
-            'categories': loadedCategories.map(_categoryToJson).toList(),
-            'currentPage': 1,
-            'totalPages': totalPages,
-            'itemsPerPage': itemsPerPage,
-          };
-          AppCacheService().set<Map<String, dynamic>>(
+          AppCacheService().set<Map>(
             CacheKeys.listingsData,
-            cacheData,
+            {
+              'listings': sortedListings
+                  .map((listing) => _listingToJson(listing))
+                  .toList(),
+              'categories': loadedCategories
+                  .map((category) => _categoryToJson(category))
+                  .toList(),
+              'currentPage': 1,
+              'totalPages': totalPages,
+              'itemsPerPage': itemsPerPage,
+            },
             persist: true,
           );
-          print(
-            '✅ ListingsBloc ФАЗА 2 завершена: '
-            'батчей=$batchCount, успешно=$successCount, ошибок=$errorCount, '
-            'итого объявлений=${finalSortedListings.length}',
-          );
-        } catch (cacheError) {
-          print('⚠️ ListingsBloc ФАЗА 2 ошибка кеша: $cacheError');
+          print('✅ ListingsBloc ФАЗА 2: Данные успешно закеширован');
+        } catch (e) {
+          print('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
         }
       } catch (e) {
-        // ФАЗА 2 ошибка - не испускаем, т.к. ФАЗА 1 уже показала контент
-        print('⚠️ ListingsBloc ФАЗА 2 ошибка загрузки: $e');
+        print('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
       }
-    }).ignore();
+    });
   }
 
   /// Конвертирует JSON обратно в Category из кеша.

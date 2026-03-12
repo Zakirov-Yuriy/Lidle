@@ -56,7 +56,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 20, right: 23, top: 20),
+            padding: const EdgeInsets.only(bottom: 15, right: 23, top: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [const Header()],
@@ -95,7 +95,7 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
             ),
           ),
           const Padding(
-            padding: EdgeInsets.only(bottom: 12, left: 25, top: 7),
+            padding: EdgeInsets.only(bottom: 6, left: 25, top: 6),
             child: Text(
               'Выберите категории публикации',
               style: TextStyle(
