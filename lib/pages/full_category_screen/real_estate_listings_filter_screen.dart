@@ -4,6 +4,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/components/rent_time_widget.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -1066,23 +1067,19 @@ class _RealEstateListingsFilterScreenState
       children: [
         // const SizedBox(height: 16),
         ..._attributes.map((attr) {
+          print(
+            '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
+          );
+
           // Пропустить скрытые поля
           if (attr.isHidden) {
-            print(
-              '  - Skipping hidden field: ID=${attr.id}, Title="${attr.title}"',
-            );
             return const SizedBox.shrink();
           }
 
           // Пропустить поле "Вам предложат цену"
           if (attr.title.contains('Вам предложат цену')) {
-            print('  - Skipping field: ID=${attr.id}, Title="${attr.title}"');
             return const SizedBox.shrink();
           }
-
-          print(
-            '  - Rendering field: ID=${attr.id}, Title="${attr.title}", Style="${attr.style}"',
-          );
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1111,6 +1108,33 @@ class _RealEstateListingsFilterScreenState
         '    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - styleSingle="F"',
       );
       return _buildStyleFPopupFilter(attr);
+    }
+
+    // Style B1: Одиночный чекбокс - определяется по styleSingle="B1"
+    // Высокий приоритет, так как API явно указывает этот стиль
+    if (attr.styleSingle == "B1") {
+      print(
+        '    -> Rendering as SINGLE CHECKBOX (Style B1) - styleSingle="B1"',
+      );
+      return _buildB1Field(attr);
+    }
+
+    // Style I: Список чекбоксов - определяется по styleSingle="I"
+    // Высокий приоритет, так как API явно указывает этот стиль
+    if (attr.styleSingle == "I") {
+      print(
+        '    -> Rendering as MULTIPLE CHECKBOXES (Style I) - styleSingle="I"',
+      );
+      return _buildStyleIField(attr);
+    }
+
+    // Style J1: Календарь с выбором даты и времени - определяется по styleSingle="J1"
+    // Высокий приоритет, так как API явно указывает этот стиль
+    if (attr.styleSingle == "J1") {
+      print(
+        '    -> Rendering as CALENDAR DATE/TIME (Style J1) - styleSingle="J1"',
+      );
+      return _buildStyleJ1Field(attr);
     }
 
     // Style C: Да/Нет кнопки (Ипотека, Вид сделки)
@@ -1161,16 +1185,6 @@ class _RealEstateListingsFilterScreenState
         '    -> Rendering as MULTIPLE SELECT POPUP (Style D) - isMultiple=true',
       );
       return _buildStyleDMultipleFilter(attr);
-    }
-
-    // Style B1: Одиночный чекбокс (Возможен торг)
-    // Если есть ровно одно значение и это не специальный дизайн/range/popup
-    if (attr.values.length == 1 &&
-        !attr.isRange &&
-        !attr.isSpecialDesign &&
-        !attr.isPopup) {
-      print('    -> Rendering as SINGLE CHECKBOX (Style B1) - one value only');
-      return _buildStyleB1Filter(attr);
     }
 
     // Single select dropdown (неиспользуемый в текущей документации)
@@ -1976,6 +1990,188 @@ class _RealEstateListingsFilterScreenState
     );
   }
 
+  /// Style B1: Одиночный чекбокс с просмотром фильтров (Возможен торг)
+  /// Выводит чекбокс с надписью слева и квадратным чекбоксом справа
+  Widget _buildB1Field(Attribute attr) {
+    _selectedValues[attr.id] ??= false;
+    bool isChecked = _selectedValues[attr.id] == true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedValues[attr.id] = !isChecked;
+            });
+          },
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  attr.title,
+                  style: const TextStyle(color: textPrimary, fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 12),
+              CustomCheckbox(
+                value: isChecked,
+                onChanged: (v) {
+                  setState(() {
+                    _selectedValues[attr.id] = v;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Style I: Список чекбоксов для множественного выбора (Раздельный выбор)
+  /// Выводит название поля и список чекбоксов в вертикальном порядке
+  Widget _buildStyleIField(Attribute attr) {
+    _selectedValues[attr.id] ??= <String>{};
+    Set<String> selected = _selectedValues[attr.id] is Set
+        ? (_selectedValues[attr.id] as Set).cast<String>()
+        : <String>{};
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        // Название поля
+        if (attr.title.isNotEmpty)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                attr.title + (attr.isRequired ? '*' : ''),
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        // Список чекбоксов
+        Column(
+          children: [
+            ...attr.values.asMap().entries.map((entry) {
+              final index = entry.key;
+              final value = entry.value;
+              final valueId = value.id.toString();
+              final isChecked = selected.contains(valueId);
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (isChecked) {
+                      selected.remove(valueId);
+                    } else {
+                      selected.add(valueId);
+                    }
+                    _selectedValues[attr.id] = selected;
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index < attr.values.length - 1 ? 12.0 : 0,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          value.value,
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      CustomCheckbox(
+                        value: isChecked,
+                        onChanged: (_) {
+                          setState(() {
+                            if (isChecked) {
+                              selected.remove(valueId);
+                            } else {
+                              selected.add(valueId);
+                            }
+                            _selectedValues[attr.id] = selected;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Style J1: Календарь с выбором даты и времени (Аренда)
+  /// Использует RentTimeWidget для отображения диапазона дат и времени
+  Widget _buildStyleJ1Field(Attribute attr) {
+    // Initialize storage for date/time values
+    _selectedValues[attr.id] ??= {
+      'dateFrom': null,
+      'timeFrom': null,
+      'dateTo': null,
+      'timeTo': null,
+    };
+
+    Map<String, dynamic> timeData = _selectedValues[attr.id] is Map
+        ? _selectedValues[attr.id] as Map<String, dynamic>
+        : {
+            'dateFrom': null,
+            'timeFrom': null,
+            'dateTo': null,
+            'timeTo': null,
+          };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        // Название поля
+        if (!attr.isTitleHidden)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                attr.title + (attr.isRequired ? '*' : ''),
+                style: const TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 9),
+            ],
+          ),
+        // Виджет выбора даты/времени
+        RentTimeWidget(
+          dateFrom: timeData['dateFrom'] as String?,
+          timeFrom: timeData['timeFrom'] as String?,
+          dateTo: timeData['dateTo'] as String?,
+          timeTo: timeData['timeTo'] as String?,
+          onEditFrom: () {
+            // TODO: Implement date/time picker for "От"
+          },
+          onEditTo: () {
+            // TODO: Implement date/time picker for "До"
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionButtons() {
     return Column(
       children: [
@@ -2089,15 +2285,15 @@ class _RealEstateListingsFilterScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Показывает стили над полями для отладки и валидации
-        // Text(
-        //   '$stylePrefix: $displayStyle',
-        //   style: const TextStyle(
-        //     color: Color(0xFFFF1744), // Red color for debug visibility
-        //     fontSize: 12,
-        //     fontWeight: FontWeight.w600,
-        //     letterSpacing: 0.3,
-        //   ),
-        // ),
+        Text(
+          'Style2: $displayStyle',
+          style: const TextStyle(
+            color: Color(0xFFFF1744), // Red color for debug visibility
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+          ),
+        ),
         const SizedBox(height: 4),
       ],
     );

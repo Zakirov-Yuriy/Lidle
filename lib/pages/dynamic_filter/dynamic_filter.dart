@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/components/rent_time_widget.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
@@ -2161,7 +2162,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Container(
+                  Container(  
                     decoration: BoxDecoration(
                       color: formBackground,
                       borderRadius: BorderRadius.circular(6),
@@ -2766,27 +2767,24 @@ class _DynamicFilterState extends State<DynamicFilter> {
     final displayStyle = _isSubmissionMode
         ? (attr.styleSingle ?? '')
         : attr.style;
-    // ignore: unused_local_variable
-    final stylePrefix = _isSubmissionMode ? 'Style (submit)' : 'Style (view)';
+    final stylePrefix = _isSubmissionMode ? 'Style2' : 'Style';
 
-    if (displayStyle.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
+    // ALWAYS show style for debugging - remove isEmpty check
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Показывает стили над полями для отладки и валидации правильности отображения
-        // Text(
-        //   '$stylePrefix: $displayStyle',
-        //   style: const TextStyle(
-        //     color: Color(0xFFFF1744), // Red color for debug visibility
-        //     fontSize: 12,
-        //     fontWeight: FontWeight.w600,
-        //     letterSpacing: 0.3,
-        //   ),
-        // ),
-        const SizedBox(height: 4),
+        if (displayStyle.isNotEmpty)
+          Text(
+            '$stylePrefix: $displayStyle',
+            style: const TextStyle(
+              color: Color(0xFFFF1744), // Red color for debug visibility
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+        if (displayStyle.isNotEmpty) const SizedBox(height: 4),
       ],
     );
   }
@@ -3036,9 +3034,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // );
 
     // Also print all field names in a compact way to find the exact "За месяц" name
-    // print(
-    //   '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
-    // );
+    print(
+      '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
+    );
 
     // Special logging for "За месяц" field to debug its parameters
     // Check multiple variations of the field name
@@ -3094,12 +3092,55 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return _buildCheckboxField(attr);
     }
 
+    // Случай 1.5.5: Стиль A1 (текстовое поле с валютой)
+    // Флаги: styleSingle='A1'
+    // Пример: Цена, Средний чек (числовое поле с суффиксом валюты)
+    if (attr.styleSingle == 'A1') {
+      // print();
+      return _buildA1Field(attr);
+    }
+
+    // Случай 1.5.6: Стиль B1 (одиночный чекбокс - SUBMISSION MODE)
+    // Флаги: styleSingle='B1'
+    // Пример: Возможен торг, Без комиссии, Возможность обмена (при подаче объявления)
+    if (attr.styleSingle == 'B1') {
+      // print();
+      return _buildB1Field(attr);
+    }
+
     // Случай 1.6: Специальное числовое поле (styleSingle=G1)
     // Флаги: styleSingle='G1'
     // Пример: Общее площадь, Жилая площадь (одиночное числовое поле)
     if (attr.styleSingle == 'G1') {
       // print();
       return _buildG1Field(attr);
+    }
+
+    // Случай 1.7: Стиль F - Множественный выбор в popUp (styleSingle=F - SUBMISSION MODE)
+    // Флаги: styleSingle='F' 
+    // Пример: Множественный выбор, Инфраструктура (много опций в popUp)
+    // ВАЖНО: F это ВСЕГДА множественный выбор с SQUARE CHECKBOXES
+    if (attr.styleSingle == 'F') {
+      // print();
+      // Гарантируем isMultiple=true для множественного выбора с чекбоксами
+      Attribute fAttr = attr.copyWith(isMultiple: true);
+      return _buildMultipleSelectPopup(fAttr);
+    }
+
+    // Случай 1.8: Стиль E1 - Диапазон (styleSingle=E1 - SUBMISSION MODE)
+    // Флаги: styleSingle='E1'
+    // Пример: Этажи, Площадь (диапазон при подаче объявления)
+    if (attr.styleSingle == 'E1') {
+      // print();
+      return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
+    }
+
+    // Случай 1.9: Стиль J1 - Календарь выбора дат и времени (styleSingle=J1 - SUBMISSION MODE)
+    // Флаги: styleSingle='J1'
+    // Пример: Календарь аренды, Время и дата для услуг (виджет с двумя датами/временем)
+    if (attr.styleSingle == 'J1') {
+      // print();
+      return _buildJ1Field(attr);
     }
 
     // Случай 2: Простой чекбокс (Style B)
@@ -3289,6 +3330,49 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
   }
 
+  // Style B1: Single checkbox (SUBMISSION MODE)
+  Widget _buildB1Field(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
+    bool selected = _selectedValues[attr.id] is bool
+        ? _selectedValues[attr.id]
+        : false;
+
+    // StyleSingle B1: Display as single checkbox with label
+    // Example: Возможен торг, Без комиссии, Возможность обмена (submission mode)
+    // Shows label text left and checkbox right in a row
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        GestureDetector(
+          onTap: () => setState(() {
+            _selectedValues[attr.id] = !selected;
+          }),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  attr.title + (attr.isRequired ? '*' : ''),
+                  style: const TextStyle(color: textPrimary, fontSize: 16),
+                ),
+              ),
+              const SizedBox(width: 12),
+              CustomCheckbox(
+                value: selected,
+                onChanged: (v) {
+                  setState(() {
+                    _selectedValues[attr.id] = v;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   // Style B: Single checkbox
   Widget _buildCheckboxField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
@@ -3339,6 +3423,125 @@ class _DynamicFilterState extends State<DynamicFilter> {
               ),
             ],
           ),
+        ),
+      ],
+    );
+  }
+
+  // Style J1: Rent time widget (calendar with date and time selection)
+  Widget _buildJ1Field(Attribute attr) {
+    // Initialize storage for date/time values
+    _selectedValues[attr.id] ??= {
+      'dateFrom': null,
+      'timeFrom': null,
+      'dateTo': null,
+      'timeTo': null,
+    };
+
+    Map<String, dynamic> timeData = _selectedValues[attr.id] is Map
+        ? _selectedValues[attr.id] as Map<String, dynamic>
+        : {
+            'dateFrom': null,
+            'timeFrom': null,
+            'dateTo': null,
+            'timeTo': null,
+          };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        if (!attr.isTitleHidden)
+          Text(
+            attr.title + (attr.isRequired ? '*' : ''),
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
+        if (!attr.isTitleHidden) const SizedBox(height: 9),
+        RentTimeWidget(
+          dateFrom: timeData['dateFrom'] as String?,
+          timeFrom: timeData['timeFrom'] as String?,
+          dateTo: timeData['dateTo'] as String?,
+          timeTo: timeData['timeTo'] as String?,
+          onEditFrom: () {
+            // TODO: Implement date/time picker for "От"
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   const SnackBar(content: Text('Date picker for "От" not implemented yet')),
+            // );
+          },
+          onEditTo: () {
+            // TODO: Implement date/time picker for "До"
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   const SnackBar(content: Text('Date picker for "До" not implemented yet')),
+            // );
+          },
+        ),
+      ],
+    );
+  }
+
+  // Style A1: Numeric field with currency (price field)
+  Widget _buildA1Field(Attribute attr) {
+    _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
+    final controller = _controllers.putIfAbsent(attr.id, () {
+      final value = _selectedValues[attr.id];
+      final textValue = value is String ? value : (value?.toString() ?? '');
+      return TextEditingController(text: textValue);
+    });
+
+    // StyleSingle A1: Display as single numeric input field with currency suffix
+    // Example: Цена, Средний чек
+    // Shows number input with ₽ (ruble) symbol in separate container
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        Text(
+          attr.title + (attr.isRequired ? '*' : ''),
+          style: const TextStyle(color: textPrimary, fontSize: 16),
+        ),
+        const SizedBox(height: 9),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: textPrimary, fontSize: 16),
+                  decoration: const InputDecoration(
+                    hintText: '1 000 000',
+                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
+                    filled: false,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                  onChanged: (value) => _selectedValues[attr.id] = value.trim(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              width: 53,
+              height: 48,
+              alignment: Alignment.center,
+              child: const Text(
+                '₽',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -3632,7 +3835,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Center(
+                child: Text(
+                  'Из',
+                  style: const TextStyle(
+                    color: textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
