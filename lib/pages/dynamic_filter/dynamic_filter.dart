@@ -3430,22 +3430,28 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   // Style J1: Rent time widget (calendar with date and time selection)
   Widget _buildJ1Field(Attribute attr) {
-    // Initialize storage for date/time values
-    _selectedValues[attr.id] ??= {
-      'dateFrom': null,
-      'timeFrom': null,
-      'dateTo': null,
-      'timeTo': null,
-    };
+    // Initialize storage for date/time values with proper type safety
+    // Use a local variable to ensure consistency within this build method
+    final attrId = attr.id;
+    
+    // Гарантируем, что значение инициализировано как Map
+    if (_selectedValues[attrId] is! Map) {
+      _selectedValues[attrId] = {
+        'dateFrom': null,
+        'timeFrom': null,
+        'dateTo': null,
+        'timeTo': null,
+      };
+    }
 
-    Map<String, dynamic> timeData = _selectedValues[attr.id] is Map
-        ? _selectedValues[attr.id] as Map<String, dynamic>
-        : {
-            'dateFrom': null,
-            'timeFrom': null,
-            'dateTo': null,
-            'timeTo': null,
-          };
+    // Получаем ссылку на Map и гарантируем его наличие
+    Map<String, dynamic> timeData = _selectedValues[attrId] as Map<String, dynamic>;
+    
+    // Убеждаемся, что все ключи существуют
+    timeData.putIfAbsent('dateFrom', () => null);
+    timeData.putIfAbsent('timeFrom', () => null);
+    timeData.putIfAbsent('dateTo', () => null);
+    timeData.putIfAbsent('timeTo', () => null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3462,17 +3468,53 @@ class _DynamicFilterState extends State<DynamicFilter> {
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,
           timeTo: timeData['timeTo'] as String?,
-          onEditFrom: () {
-            // TODO: Implement date/time picker for "От"
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   const SnackBar(content: Text('Date picker for "От" not implemented yet')),
-            // );
+          onDateFromSelected: (date) {
+            setState(() {
+              // Создаём новый Map вместо изменения существующего
+              // Это гарантирует правильную типизацию
+              if (_selectedValues.containsKey(attrId)) {
+                final existing = _selectedValues[attrId];
+                if (existing is Map) {
+                  _selectedValues[attrId] = {
+                    'dateFrom': date,
+                    'timeFrom': existing['timeFrom'] ?? null,
+                    'dateTo': existing['dateTo'] ?? null,
+                    'timeTo': existing['timeTo'] ?? null,
+                  };
+                } else {
+                  _selectedValues[attrId] = {
+                    'dateFrom': date,
+                    'timeFrom': null,
+                    'dateTo': null,
+                    'timeTo': null,
+                  };
+                }
+              }
+            });
           },
-          onEditTo: () {
-            // TODO: Implement date/time picker for "До"
-            // ScaffoldMessenger.of(context).showSnackBar(
-            //   const SnackBar(content: Text('Date picker for "До" not implemented yet')),
-            // );
+          onDateToSelected: (date) {
+            setState(() {
+              // Создаём новый Map вместо изменения существующего
+              // Это гарантирует правильную типизацию
+              if (_selectedValues.containsKey(attrId)) {
+                final existing = _selectedValues[attrId];
+                if (existing is Map) {
+                  _selectedValues[attrId] = {
+                    'dateFrom': existing['dateFrom'] ?? null,
+                    'timeFrom': existing['timeFrom'] ?? null,
+                    'dateTo': date,
+                    'timeTo': existing['timeTo'] ?? null,
+                  };
+                } else {
+                  _selectedValues[attrId] = {
+                    'dateFrom': null,
+                    'timeFrom': null,
+                    'dateTo': date,
+                    'timeTo': null,
+                  };
+                }
+              }
+            });
           },
         ),
       ],
