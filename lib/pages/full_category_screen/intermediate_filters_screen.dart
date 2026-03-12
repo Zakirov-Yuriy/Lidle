@@ -53,6 +53,8 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   
   // Категории недвижимости для маппинга названия на ID
   List<dynamic> realEstateCategories = [];
+  
+  bool _isNavigating = false; // Флаг для предотвращения множественных навигаций
 
   final TextEditingController priceFrom = TextEditingController();
   final TextEditingController priceTo = TextEditingController();
@@ -502,30 +504,42 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         _buildTitle("Выберите категорию"),
         GestureDetector(
           onTap: () async {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => RealEstateFullSubcategoriesScreen(
-                  catalogId: widget.catalogId ?? 1, // Передаём ID каталога, по умолчанию 1 (Недвижимость)
+            // Защита от множественных нажатий
+            if (_isNavigating) {
+              print('🛑 Already navigating to category selection, ignoring tap');
+              return;
+            }
+            
+            _isNavigating = true;
+            
+            try {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => RealEstateFullSubcategoriesScreen(
+                    catalogId: widget.catalogId ?? 1, // Передаём ID каталога, по умолчанию 1 (Недвижимость)
+                  ),
                 ),
-              ),
-            );
-            if (result != null) {
-              setState(() {
-                // result теперь может быть либо String (для категорий без детей), либо Map {'name': String, 'id': int}
-                if (result is Map) {
-                  selectedSubcategory = result['name'] as String?;
-                  selectedSubcategoryId = result['id'] as int? ?? 1;
-                  print('Selected subcategory: ${result['name']} (ID: ${result['id']})');
-                  showCategoryError = false;
-                } else if (result is String) {
-                  // Fallback для старого формата
-                  selectedSubcategory = result;
-                  selectedSubcategoryId = _findCategoryIdByName(result);
-                  print('Selected subcategory: $result (ID: $selectedSubcategoryId)');
-                  showCategoryError = false;
-                }
-              });
+              );
+              if (result != null) {
+                setState(() {
+                  // result теперь может быть либо String (для категорий без детей), либо Map {'name': String, 'id': int}
+                  if (result is Map) {
+                    selectedSubcategory = result['name'] as String?;
+                    selectedSubcategoryId = result['id'] as int? ?? 1;
+                    print('Selected subcategory: ${result['name']} (ID: ${result['id']})');
+                    showCategoryError = false;
+                  } else if (result is String) {
+                    // Fallback для старого формата
+                    selectedSubcategory = result;
+                    selectedSubcategoryId = _findCategoryIdByName(result);
+                    print('Selected subcategory: $result (ID: $selectedSubcategoryId)');
+                    showCategoryError = false;
+                  }
+                });
+              }
+            } finally {
+              _isNavigating = false;
             }
           },
           child: Container(

@@ -24,6 +24,7 @@ class _RealEstateFullSubcategoriesScreenState
   List<dynamic> apiSubcategories = [];
   bool isLoadingSubcategories = false;
   String catalogName = 'Загружаю...'; // Название каталога для отображения
+  bool _isNavigating = false; // Флаг для предотвращения множественных навигаций
 
   @override
   void initState() {
@@ -177,25 +178,41 @@ class _RealEstateFullSubcategoriesScreenState
                                       color: Colors.white70,
                                     ),
                                     onTap: () async {
-                                      // Если у категории есть подкатегории (дети), переходим на экран выбора
-                                      if (hasChildren) {
-                                        final result = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => RealEstateFullApartmentsScreen(
-                                              selectedCategory: categoryName,
-                                              categoryChildren: category.children,
-                                              parentCategoryId: category.id, // Передаём ID родительской категории
+                                      // Защита от множественных нажатий
+                                      if (_isNavigating) {
+                                        print('🛑 Already navigating in subcategories, ignoring tap on "$categoryName"');
+                                        return;
+                                      }
+                                      
+                                      _isNavigating = true;
+                                      
+                                      try {
+                                        // Если у категории есть подкатегории (дети), переходим на экран выбора
+                                        if (hasChildren) {
+                                          print('🟡 [RealEstateFullSubcategoriesScreen] Pushing to RealEstateFullApartmentsScreen for category: $categoryName');
+                                          final result = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) => RealEstateFullApartmentsScreen(
+                                                selectedCategory: categoryName,
+                                                categoryChildren: category.children,
+                                                parentCategoryId: category.id, // Передаём ID родительской категории
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                        // Если получили результат, возвращаем его на intermediate_filters_screen.dart
-                                        if (result != null && mounted) {
-                                          Navigator.pop(context, result);
+                                          );
+                                          print('🟡 [RealEstateFullSubcategoriesScreen] Returned from RealEstateFullApartmentsScreen with result: $result');
+                                          // Если получили результат, возвращаем его на intermediate_filters_screen.dart
+                                          if (result != null && mounted) {
+                                            print('🟡 [RealEstateFullSubcategoriesScreen] Popping back to intermediate_filters_screen with: $result');
+                                            Navigator.pop(context, result);
+                                          }
+                                        } else {
+                                          // Для категорий без подкатегорий просто возвращаем название
+                                          print('🟡 [RealEstateFullSubcategoriesScreen] No children for category: $categoryName, returning directly');
+                                          Navigator.pop(context, categoryName);
                                         }
-                                      } else {
-                                        // Для категорий без подкатегорий просто возвращаем название
-                                        Navigator.pop(context, categoryName);
+                                      } finally {
+                                        _isNavigating = false;
                                       }
                                     },
                                   ),
