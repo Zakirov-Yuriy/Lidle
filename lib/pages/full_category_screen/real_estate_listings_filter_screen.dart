@@ -4,7 +4,8 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
-import 'package:lidle/widgets/components/rent_time_widget.dart';
+import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
+import 'package:lidle/widgets/components/k_calendar/k_calendar_widget.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -1137,6 +1138,15 @@ class _RealEstateListingsFilterScreenState
       return _buildStyleJ1Field(attr);
     }
 
+    // Style K1/K: Календарь с выбором даты и времени (K-Calendar) - определяется по styleSingle="K1" или "K"
+    // Высокий приоритет, так как API явно указывает этот стиль
+    if (attr.styleSingle == "K1" || attr.styleSingle == "K") {
+      print(
+        '    -> Rendering as K-CALENDAR DATE/TIME (Style K1) - styleSingle="${attr.styleSingle}"',
+      );
+      return _buildStyleK1Field(attr);
+    }
+
     // Style C: Да/Нет кнопки (Ипотека, Вид сделки)
     // Флаг isSpecialDesign=true указывает на кнопки для выбора уникального значения
     if (attr.isSpecialDesign) {
@@ -2163,6 +2173,107 @@ class _RealEstateListingsFilterScreenState
           ),
         // Виджет выбора даты/времени
         RentTimeWidget(
+          dateFrom: timeData['dateFrom'] as String?,
+          timeFrom: timeData['timeFrom'] as String?,
+          dateTo: timeData['dateTo'] as String?,
+          timeTo: timeData['timeTo'] as String?,
+          onDateFromSelected: (date) {
+            setState(() {
+              // Создаём новый Map вместо изменения существующего
+              // Это гарантирует правильную типизацию
+              if (_selectedValues.containsKey(attrId)) {
+                final existing = _selectedValues[attrId];
+                if (existing is Map) {
+                  _selectedValues[attrId] = {
+                    'dateFrom': date,
+                    'timeFrom': existing['timeFrom'] ?? null,
+                    'dateTo': existing['dateTo'] ?? null,
+                    'timeTo': existing['timeTo'] ?? null,
+                  };
+                } else {
+                  _selectedValues[attrId] = {
+                    'dateFrom': date,
+                    'timeFrom': null,
+                    'dateTo': null,
+                    'timeTo': null,
+                  };
+                }
+              }
+            });
+          },
+          onDateToSelected: (date) {
+            setState(() {
+              // Создаём новый Map вместо изменения существующего
+              // Это гарантирует правильную типизацию
+              if (_selectedValues.containsKey(attrId)) {
+                final existing = _selectedValues[attrId];
+                if (existing is Map) {
+                  _selectedValues[attrId] = {
+                    'dateFrom': existing['dateFrom'] ?? null,
+                    'timeFrom': existing['timeFrom'] ?? null,
+                    'dateTo': date,
+                    'timeTo': existing['timeTo'] ?? null,
+                  };
+                } else {
+                  _selectedValues[attrId] = {
+                    'dateFrom': null,
+                    'timeFrom': null,
+                    'dateTo': date,
+                    'timeTo': null,
+                  };
+                }
+              }
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Style K1/K: K-Camera с выбором даты и времени (Аренда - Style K)
+  /// Использует KRentTimeWidget для отображения диапазона дат и времени компактной формой
+  Widget _buildStyleK1Field(Attribute attr) {
+    // Initialize storage for date/time values with proper type safety
+    // Use a local variable to ensure consistency within this build method
+    final attrId = attr.id;
+    
+    // Гарантируем, что значение инициализировано как Map
+    if (_selectedValues[attrId] is! Map) {
+      _selectedValues[attrId] = {
+        'dateFrom': null,
+        'timeFrom': null,
+        'dateTo': null,
+        'timeTo': null,
+      };
+    }
+
+    // Получаем ссылку на Map и гарантируем его наличие
+    Map<String, dynamic> timeData = _selectedValues[attrId] as Map<String, dynamic>;
+    
+    // Убеждаемся, что все ключи существуют
+    timeData.putIfAbsent('dateFrom', () => null);
+    timeData.putIfAbsent('timeFrom', () => null);
+    timeData.putIfAbsent('dateTo', () => null);
+    timeData.putIfAbsent('timeTo', () => null);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        // Название поля
+        if (!attr.isTitleHidden)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                attr.title + (attr.isRequired ? '*' : ''),
+                style: const TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 9),
+            ],
+          ),
+        // K-Calendar виджет выбора даты/времени
+        KRentTimeWidget(
           dateFrom: timeData['dateFrom'] as String?,
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,

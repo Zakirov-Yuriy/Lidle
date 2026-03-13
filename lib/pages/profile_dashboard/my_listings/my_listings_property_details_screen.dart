@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
@@ -226,7 +227,13 @@ class _MyListingsPropertyDetailsScreenState
                         ),
                         const Spacer(),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () => Share.share(
+                            '${_listing.title}\n'
+                            'Цена: ${_listing.price}\n'
+                            'Адрес: ${_listing.location}\n\n'
+                            'Присоединяйся к LIDLE!\n'
+                            'https://dev.lidle.io/ru',
+                          ),
                           child: SvgPicture.asset(
                             'assets/home_page/share_outlined.svg',
                             colorFilter: const ColorFilter.mode(

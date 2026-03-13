@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/models/home_models.dart';
@@ -150,7 +151,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             BlendMode.srcIn,
                           ),
                         ),
-                        onPressed: () {},
+                        onPressed: () => Share.share(
+                          'Присоединяйся к LIDLE! 🚀\n\n'
+                          'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
+                          'Скачай приложение и получи эксклюзивные предложения!\n\n'
+                          'https://dev.lidle.io/ru',
+                        ),
                       ),
                     ],
                   ),

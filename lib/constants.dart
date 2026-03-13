@@ -25,7 +25,7 @@ const Color accentColor = Color(0xFF00B7FF);
 // ============================================================
 
 const double defaultPadding = 25.0;
-const double headerTopPadding = 19.0;
+const double headerTopPadding = 10.0;
 const double headerBottomPadding = 12.0;
 const double headerLeftPadding = 25.0;
 

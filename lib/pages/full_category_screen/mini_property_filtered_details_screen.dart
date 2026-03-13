@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/models/home_models.dart';
@@ -154,7 +155,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                             BlendMode.srcIn,
                           ),
                         ),
-                        onPressed: () => _showShareBottomSheet(context),
+                        onPressed: () => Share.share(
+                          '${widget.listing.title}\n'
+                          'Цена: ${widget.listing.price}\n'
+                          'Адрес: ${widget.listing.location}\n\n'
+                          'Присоединяйся к LIDLE!\n'
+                          'https://dev.lidle.io/ru',
+                        ),
                       ),
                     ],
                   ),

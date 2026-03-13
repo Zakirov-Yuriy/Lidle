@@ -102,7 +102,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 25, right: 23, top: 20),
+            padding: const EdgeInsets.only(bottom: 10, right: 23, top: 20),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [const Header()],
@@ -191,8 +191,8 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
                             childAspectRatio: 120 / 83,
                           ),
                       itemCount: _catalogs.length,

@@ -1,10 +1,12 @@
 // ============================================================
-//  "Виджет выбора времени и даты для аренды"
+//  "J-Calendar Widget - Виджет выбора времени и даты для аренды"
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../constants.dart';
+import '../../../constants.dart';
+import 'date_picker.dart';
+import 'time_picker.dart';
 
 class RentTimeWidget extends StatefulWidget {
   final String? dateFrom;
@@ -37,8 +39,8 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
   late String _timeFrom;
   late String _dateTo;
   late String _timeTo;
-  late DateTime? _selectedDateFrom;
-  late DateTime? _selectedDateTo;
+  late DateTime _selectedDateFrom;
+  late DateTime _selectedDateTo;
 
   @override
   void initState() {
@@ -47,25 +49,85 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
     _timeFrom = widget.timeFrom ?? '00:00';
     _dateTo = widget.dateTo ?? 'Выбрать дату';
     _timeTo = widget.timeTo ?? '00:00';
-    _selectedDateFrom = null;
-    _selectedDateTo = null;
+    
+    // Инициализируем даты с текущего дня
+    _selectedDateFrom = DateTime.now();
+    _selectedDateTo = DateTime.now();
+  }
+
+  /// Парсит дату из строки формата "ПН, 13 Марта"
+  DateTime? _parseDateFromString(String dateStr) {
+    if (dateStr == 'Выбрать дату') return null;
+    try {
+      // Пытаемся создать дату на основе текущего года
+      // Это временное решение, так как формат не содержит года
+      final now = DateTime.now();
+      return DateTime(now.year, now.month, now.day);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Показ диалога для выбора времени "От"
+  Future<void> _selectTimeFrom() async {
+    final result = await showCustomTimePicker(
+      context,
+      initialTime: _timeFrom,
+      title: 'Выберите время и дату',
+      subtitle: 'Дата и время вашей аренды',
+      fromDate: _selectedDateFrom,
+      toDate: _selectedDateTo,
+      isSelectingDateTo: false,
+      fromTime: _timeFrom,
+      toTime: _timeTo,
+    );
+
+    if (result != null) {
+      setState(() {
+        _timeFrom = result;
+      });
+    }
+  }
+
+  /// Показ диалога для выбора времени "До"
+  Future<void> _selectTimeTo() async {
+    final result = await showCustomTimePicker(
+      context,
+      initialTime: _timeTo,
+      title: 'Выберите время и дату',
+      subtitle: 'Дата и время вашей аренды',
+      fromDate: _selectedDateFrom,
+      toDate: _selectedDateTo,
+      isSelectingDateTo: true,
+      fromTime: _timeFrom,
+      toTime: _timeTo,
+    );
+
+    if (result != null) {
+      setState(() {
+        _timeTo = result;
+      });
+    }
   }
 
   /// Показ диалога календаря с выбором даты
   Future<void> _selectDateFrom() async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateFrom ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      locale: const Locale('ru', 'RU'),
+    final result = await showCustomDatePicker(
+      context,
+      initialDate: _selectedDateFrom,
+      otherDate: _selectedDateTo,
+      isSelectingDateTo: false,
+      title: 'Выберите время и дату',
+      subtitle: 'Дата и время вашей аренды',
+      fromTime: _timeFrom,
+      toTime: _timeTo,
     );
 
-    if (pickedDate != null) {
-      final formatted = DateFormat('EEE, d MMMM', 'ru_RU').format(pickedDate);
-      final formattedDate = formatted[0].toUpperCase() + formatted.substring(1);
+    if (result != null) {
+      final selectedDateTime = result['date'] as DateTime;
+      final formattedDate = result['formatted'] as String;
       setState(() {
-        _selectedDateFrom = pickedDate;
+        _selectedDateFrom = selectedDateTime;
         _dateFrom = formattedDate;
       });
       // Вызываем callback с выбранной датой
@@ -76,19 +138,22 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
 
   /// Показ диалога календаря с выбором даты "До"
   Future<void> _selectDateTo() async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDateTo ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      locale: const Locale('ru', 'RU'),
+    final result = await showCustomDatePicker(
+      context,
+      initialDate: _selectedDateTo,
+      otherDate: _selectedDateFrom,
+      isSelectingDateTo: true,
+      title: 'Выберите время и дату',
+      subtitle: 'Дата и время вашей аренды',
+      fromTime: _timeFrom,
+      toTime: _timeTo,
     );
 
-    if (pickedDate != null) {
-      final formatted = DateFormat('EEE, d MMMM', 'ru_RU').format(pickedDate);
-      final formattedDate = formatted[0].toUpperCase() + formatted.substring(1);
+    if (result != null) {
+      final selectedDateTime = result['date'] as DateTime;
+      final formattedDate = result['formatted'] as String;
       setState(() {
-        _selectedDateTo = pickedDate;
+        _selectedDateTo = selectedDateTime;
         _dateTo = formattedDate;
       });
       // Вызываем callback с выбранной датой
@@ -117,6 +182,7 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
                     label: 'От',
                     date: _dateFrom,
                     time: _timeFrom,
+                    onTimePressed: _selectTimeFrom,
                   ),
                 ),
               ),
@@ -128,6 +194,7 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
                     label: 'До',
                     date: _dateTo,
                     time: _timeTo,
+                    onTimePressed: _selectTimeTo,
                   ),
                 ),
               ),
@@ -143,11 +210,13 @@ class _TimeColumn extends StatelessWidget {
   final String label;
   final String date;
   final String time;
+  final VoidCallback? onTimePressed;
 
   const _TimeColumn({
     required this.label,
     required this.date,
     required this.time,
+    this.onTimePressed,
   });
 
   @override
@@ -159,7 +228,7 @@ class _TimeColumn extends StatelessWidget {
           label,
           style: const TextStyle(
             color: textSecondary,
-            fontSize: 14,
+            fontSize: 16,
           ),
         ),
         const SizedBox(width: 8),
@@ -174,20 +243,28 @@ class _TimeColumn extends StatelessWidget {
                   fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Container(
                 height: 1,
                 color: Colors.white24,
               ),
-              Text(
-                time,
-                style: const TextStyle(
-                  color: textSecondary,
-                  fontSize: 16,
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: GestureDetector(
+                  onTap: onTimePressed,
+                  child: Text(
+                    time,
+                    style: const TextStyle(
+                      color: textSecondary,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
               ),
             ],
+            
           ),
+          
         ),
       ],
     );

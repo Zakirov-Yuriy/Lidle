@@ -6,7 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
-import 'package:lidle/widgets/components/rent_time_widget.dart';
+import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
+import 'package:lidle/widgets/components/k_calendar/k_calendar_widget.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
@@ -3143,6 +3144,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return _buildJ1Field(attr);
     }
 
+    // Случай 1.10: Стиль K1/K - K-Calendar выбора дат и времени (styleSingle=K1 или K - SUBMISSION MODE)
+    // Флаги: styleSingle='K1' или styleSingle='K'
+    // Пример: K-Calendar аренда, Время и дата для услуг (компактный формат)
+    if (attr.styleSingle == 'K1' || attr.styleSingle == 'K') {
+      // print();
+      return _buildK1Field(attr);
+    }
+
     // Случай 2: Простой чекбокс (Style B)
     // Флаги: НЕ is_multiple (или is_multiple=false), есть values
     // Но НЕ is_title_hidden
@@ -3464,6 +3473,99 @@ class _DynamicFilterState extends State<DynamicFilter> {
           ),
         if (!attr.isTitleHidden) const SizedBox(height: 9),
         RentTimeWidget(
+          dateFrom: timeData['dateFrom'] as String?,
+          timeFrom: timeData['timeFrom'] as String?,
+          dateTo: timeData['dateTo'] as String?,
+          timeTo: timeData['timeTo'] as String?,
+          onDateFromSelected: (date) {
+            setState(() {
+              // Создаём новый Map вместо изменения существующего
+              // Это гарантирует правильную типизацию
+              if (_selectedValues.containsKey(attrId)) {
+                final existing = _selectedValues[attrId];
+                if (existing is Map) {
+                  _selectedValues[attrId] = {
+                    'dateFrom': date,
+                    'timeFrom': existing['timeFrom'] ?? null,
+                    'dateTo': existing['dateTo'] ?? null,
+                    'timeTo': existing['timeTo'] ?? null,
+                  };
+                } else {
+                  _selectedValues[attrId] = {
+                    'dateFrom': date,
+                    'timeFrom': null,
+                    'dateTo': null,
+                    'timeTo': null,
+                  };
+                }
+              }
+            });
+          },
+          onDateToSelected: (date) {
+            setState(() {
+              // Создаём новый Map вместо изменения существующего
+              // Это гарантирует правильную типизацию
+              if (_selectedValues.containsKey(attrId)) {
+                final existing = _selectedValues[attrId];
+                if (existing is Map) {
+                  _selectedValues[attrId] = {
+                    'dateFrom': existing['dateFrom'] ?? null,
+                    'timeFrom': existing['timeFrom'] ?? null,
+                    'dateTo': date,
+                    'timeTo': existing['timeTo'] ?? null,
+                  };
+                } else {
+                  _selectedValues[attrId] = {
+                    'dateFrom': null,
+                    'timeFrom': null,
+                    'dateTo': date,
+                    'timeTo': null,
+                  };
+                }
+              }
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  // Style K1/K: K-Calendar with date and time selection (compact format)
+  Widget _buildK1Field(Attribute attr) {
+    // Initialize storage for date/time values with proper type safety
+    // Use a local variable to ensure consistency within this build method
+    final attrId = attr.id;
+    
+    // Гарантируем, что значение инициализировано как Map
+    if (_selectedValues[attrId] is! Map) {
+      _selectedValues[attrId] = {
+        'dateFrom': null,
+        'timeFrom': null,
+        'dateTo': null,
+        'timeTo': null,
+      };
+    }
+
+    // Получаем ссылку на Map и гарантируем его наличие
+    Map<String, dynamic> timeData = _selectedValues[attrId] as Map<String, dynamic>;
+    
+    // Убеждаемся, что все ключи существуют
+    timeData.putIfAbsent('dateFrom', () => null);
+    timeData.putIfAbsent('timeFrom', () => null);
+    timeData.putIfAbsent('dateTo', () => null);
+    timeData.putIfAbsent('timeTo', () => null);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildStyleHeader(attr),
+        if (!attr.isTitleHidden)
+          Text(
+            attr.title + (attr.isRequired ? '*' : ''),
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
+        if (!attr.isTitleHidden) const SizedBox(height: 9),
+        KRentTimeWidget(
           dateFrom: timeData['dateFrom'] as String?,
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,

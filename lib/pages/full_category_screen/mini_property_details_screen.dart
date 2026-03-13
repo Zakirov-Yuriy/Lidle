@@ -361,7 +361,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 20.0),
+                    padding: const EdgeInsets.only(bottom: 00.0),
                     child: const Header(),
                   ),
                   Padding(
@@ -404,12 +404,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           ),
                           onPressed: () {
                             final textToShare =
-                                '''
-${widget.listing.title}
-Цена: ${widget.listing.price}
-Адрес: ${widget.listing.location}
-Дата: ${widget.listing.date}
-                            ''';
+                                '${widget.listing.title}\n'
+                                'Цена: ${widget.listing.price}\n'
+                                'Адрес: ${widget.listing.location}\n\n'
+                                'Присоединяйся к LIDLE!\n'
+                                'https://dev.lidle.io/ru';
 
                             Share.share(textToShare);
                           },
@@ -422,7 +421,7 @@ ${widget.listing.title}
                       padding: const EdgeInsets.only(
                         right: 25,
                         left: 25,
-                        top: 20,
+                        top: 0,
                       ),
                       children: [
                         _buildImageCarousel(),

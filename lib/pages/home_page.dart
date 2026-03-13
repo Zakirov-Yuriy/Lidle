@@ -48,6 +48,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
   
   /// Глобальное хранилище позиции скролла
   static double _globalScrollPosition = 0.0;
+  
+  /// Защита от двойного клика на кнопку поделиться
+  bool _isShareInProgress = false;
 
   @override
   void initState() {
@@ -140,11 +143,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
   /// Метод для поделиться приложением.
   /// Открывает системное меню поделиться с текстом приложения и ссылкой.
   Future<void> _shareApp() async {
+    _isShareInProgress = true;
     try {
       await Share.share(
         'Присоединяйся к LIDLE! 🚀\n\n'
         'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
-        'Скачай приложение и получи эксклюзивные предложения!',
+        'Скачай приложение и получи эксклюзивные предложения!\n\n'
+        'https://dev.lidle.io/ru',
         subject: 'LIDLE - маркетплейс изделий',
       );
     } catch (e) {
@@ -155,6 +160,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
           duration: Duration(seconds: 2),
         ),
       );
+    } finally {
+      // Даём небольшую задержку перед сбросом флага
+      await Future.delayed(const Duration(milliseconds: 500));
+      _isShareInProgress = false;
     }
   }
 
@@ -188,7 +197,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(
-                              bottom: 21,
+                              bottom: 10,
                               right: 23,
                             ),
                             child: Row(
@@ -197,9 +206,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
                               children: [
                                 const Header(),
                                 Padding(
-                                  padding: const EdgeInsets.only(top: 19.0),
+                                  padding: const EdgeInsets.only(top: 10.0),
                                   child: GestureDetector(
                                     onTap: () {
+                                      // Защита от двойного клика
+                                      if (_isShareInProgress) return;
+                                      
                                       // Проверяем авторизацию перед поделиться
                                       if (authState is! AuthAuthenticated) {
                                         Navigator.pushNamed(
@@ -550,7 +562,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
             padding: const EdgeInsets.only(
               left: 12,
               right: 25,
-              top: 15,
+              top: 10,
               bottom: 10,
             ),
             child: Row(
@@ -590,7 +602,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
           ),
           // const SizedBox(height: 10),
           Padding(
-            padding: const EdgeInsets.only(bottom: 19.0),
+            padding: const EdgeInsets.only(bottom: 5.0),
             child: SizedBox(
               height: 85,
               child: displayCategories.isEmpty

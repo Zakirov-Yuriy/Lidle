@@ -314,7 +314,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
           ),
           onPressed: () {
-            Share.share('Поделиться профилем продавца ${widget.sellerName}');
+            Share.share(
+              'Профиль продавца: ${widget.sellerName}\n\n'
+              'Присоединяйся к LIDLE! 🚀\n\n'
+              'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
+              'https://dev.lidle.io/ru',
+            );
           },
         ),
       ],

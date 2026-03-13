@@ -60,7 +60,7 @@ class ChatSettingsScreen extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 25),
               child: Text(
-                'Введите ссылку вашего телеграмм чата для настройки',
+                'Введите ссылку вашего Мах чата для настройки',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -76,7 +76,7 @@ class ChatSettingsScreen extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 25),
               child: Text(
-                'Введите ссылку на чат телеграмм',
+                'Введите ссылку на чат Мах',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,

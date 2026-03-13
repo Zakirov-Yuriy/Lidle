@@ -48,7 +48,7 @@ class _AddListingScreenState extends State<AddListingScreen> {
               Row(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 3, bottom: 20),
+                    padding: const EdgeInsets.only(left: 3, bottom: 10),
                     child: SvgPicture.asset(logoAsset, height: logoHeight),
                   ),
                   const Spacer(),

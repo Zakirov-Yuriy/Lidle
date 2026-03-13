@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -33,10 +34,18 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
                   const Header(),
                   Padding(
                     padding: const EdgeInsets.only(top: 19.0),
-                    child: SvgPicture.asset(
-                      'assets/home_page/share_outlined.svg',
-                      width: 24,
-                      height: 24,
+                    child: GestureDetector(
+                      onTap: () => Share.share(
+                        'Присоединяйся к LIDLE! 🚀\n\n'
+                        'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
+                        'Скачай приложение и получи эксклюзивные предложения!\n\n'
+                        'https://dev.lidle.io/ru',
+                      ),
+                      child: SvgPicture.asset(
+                        'assets/home_page/share_outlined.svg',
+                        width: 24,
+                        height: 24,
+                      ),
                     ),
                   ),
                 ],

@@ -523,7 +523,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           children: [
             // ---------------- FIXED HEADER (не скроллится) ----------------
             Padding(
-              padding: const EdgeInsets.only(right: 12, top: 0, bottom: 16),
+              padding: const EdgeInsets.only(right: 12, top: 0, bottom: 10),
               child: const Header(),
             ),
             _buildSearchField(context),
@@ -541,9 +541,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                 controller: _scrollController,
                 slivers: [
                   // ---- СКРОЛЛ СТАРТУЕТ ЗДЕСЬ ----
-                  SliverToBoxAdapter(child: SizedBox(height: 13)),
+                  SliverToBoxAdapter(child: SizedBox(height: 10)),
                   SliverToBoxAdapter(child: _buildSectionHeader()),
-                  SliverToBoxAdapter(child: SizedBox(height: 13)),
+                  SliverToBoxAdapter(child: SizedBox(height: 10)),
 
                   // ------------ CONTENT ------------
                   if (_isLoading)
