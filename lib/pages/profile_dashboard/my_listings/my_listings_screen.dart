@@ -1552,13 +1552,14 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
+          padding: EdgeInsets.symmetric(horizontal: 8),
         ),
         onPressed: onPressed ?? () {},
         child: Text(
           title,
           style: TextStyle(
             color: color,
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w600,
           ),
         ),

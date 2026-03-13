@@ -139,34 +139,60 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: GestureDetector(
-                                  onTap: isFirstItem
-                                      ? () async {
-                                          final uri = Uri.parse(linkUrl);
-                                          if (await canLaunchUrl(uri)) {
-                                            await launchUrl(uri);
+                                child: isFirstItem
+                                    ? InkWell(
+                                        onTap: () async {
+                                          try {
+                                            final uri = Uri.parse(linkUrl);
+                                            await launchUrl(
+                                              uri,
+                                              mode: LaunchMode.externalApplication,
+                                            );
+                                          } catch (e) {
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Не удалось открыть ссылку')),
+                                              );
+                                            }
                                           }
-                                        }
-                                      : null,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(13),
-                                    decoration: BoxDecoration(
-                                      color: formBackground,
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          displayText,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 14,
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(13),
+                                          decoration: BoxDecoration(
+                                            color: formBackground,
+                                            borderRadius: BorderRadius.circular(5),
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Text(
+                                                displayText,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
+                                      )
+                                    : Container(
+                                        padding: const EdgeInsets.all(13),
+                                        decoration: BoxDecoration(
+                                          color: formBackground,
+                                          borderRadius: BorderRadius.circular(5),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              displayText,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                               ),
                             ],
                           ),
