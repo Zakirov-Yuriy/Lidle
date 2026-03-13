@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -115,43 +116,62 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
                   children: [
                     ...List.generate(
                       5,
-                      (index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.asset(
-                                'assets/home_page/ozon.png',
-                                width: 45,
-                                height: 45,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(13),
-                                decoration: BoxDecoration(
-                                  color: formBackground,
-                                  borderRadius: BorderRadius.circular(5),
+                      (index) {
+                        final isFirstItem = index == 0;
+                        final imageAsset = isFirstItem
+                            ? 'assets/home_page/click.png'
+                            : 'assets/home_page/ozon.png';
+                        final linkUrl = 'https://click.ru/ref/6ea890b0a61974fe';
+                        final displayText = isFirstItem ? 'Click.ru' : 'Ссылка';
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: Image.asset(
+                                  imageAsset,
+                                  width: 45,
+                                  height: 45,
+                                  fit: BoxFit.cover,
                                 ),
-                                child: const Row(
-                                  children: [
-                                    Text(
-                                      'Ссылка',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                      ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: isFirstItem
+                                      ? () async {
+                                          final uri = Uri.parse(linkUrl);
+                                          if (await canLaunchUrl(uri)) {
+                                            await launchUrl(uri);
+                                          }
+                                        }
+                                      : null,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(13),
+                                    decoration: BoxDecoration(
+                                      color: formBackground,
+                                      borderRadius: BorderRadius.circular(5),
                                     ),
-                                  ],
+                                    child: Row(
+                                      children: [
+                                        Text(
+                                          displayText,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -160,34 +180,34 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
             ),
 
             // ───── Publish Button ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: SizedBox(
-                height: 48,
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accentColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Реклама опубликована')),
-                    );
-                  },
-                  child: const Text(
-                    'Опубликовать',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 25),
+            //   child: SizedBox(
+            //     height: 48,
+            //     width: double.infinity,
+            //     child: ElevatedButton(
+            //       style: ElevatedButton.styleFrom(
+            //         backgroundColor: accentColor,
+            //         shape: RoundedRectangleBorder(
+            //           borderRadius: BorderRadius.circular(8),
+            //         ),
+            //       ),
+            //       onPressed: () {
+            //         ScaffoldMessenger.of(context).showSnackBar(
+            //           const SnackBar(content: Text('Реклама опубликована')),
+            //         );
+            //       },
+            //       child: const Text(
+            //         'Опубликовать',
+            //         style: TextStyle(
+            //           color: Colors.white,
+            //           fontSize: 16,
+            //           fontWeight: FontWeight.w600,
+            //         ),
+            //       ),
+            //     ),
+            //   ),
+            // ),
 
             const SizedBox(height: 20),
           ],

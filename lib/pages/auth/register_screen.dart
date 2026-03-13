@@ -216,25 +216,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       value: agreeTerms,
                       text: RichText(
                         text: const TextSpan(
-                          text: 'Я соглашаюсь с ',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          text: 'Я ознакомлен и согласен с ',
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
                           children: [
                             TextSpan(
                               text: 'Пользовательским \nсоглашением ',
                               style: TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 16,
+                                fontSize: 14,
                               ),
                             ),
                             TextSpan(
-                              text: 'и ',
+                              text: 'и даю согласие на обработку персональных данных на условиях ',
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
-                              text: 'Политикой \nконфиденциальности',
+                              text: 'политики \nконфиденциальности',
                               style: TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 16,
+                                fontSize: 14,
                               ),
                             ),
                           ],
@@ -248,13 +248,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       text: RichText(
                         text: const TextSpan(
                           text: 'Я соглашаюсь на ',
-                          style: TextStyle(color: Colors.white70, fontSize: 16),
+                          style: TextStyle(color: Colors.white70, fontSize: 14),
                           children: [
                             TextSpan(
                               text: 'Рекламную \n',
                               style: TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 16,
+                                fontSize: 14,
                               ),
                             ),
                             TextSpan(
@@ -265,7 +265,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               text: 'Информационную рассылку',
                               style: TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 16,
+                                fontSize: 15,
                               ),
                             ),
                           ],
