@@ -50,12 +50,21 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- Телефонные звонки -->
+        <!-- Télефонные звонки -->
         <intent>
             <action android:name="android.intent.action.DIAL"/>
         </intent>
         <intent>
             <action android:name="android.intent.action.CALL"/>
+        </intent>
+        <!-- Открытие URL в браузере -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="http"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
         </intent>
     </queries>
 </manifest>

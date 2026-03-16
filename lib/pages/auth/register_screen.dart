@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -58,6 +60,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
             (formData['passwordConfirmation'] as String?)?.trim() ?? '',
       ),
     );
+  }
+
+  // ============================================================
+  // "Метод открытия ссылок в браузере"
+  // ============================================================
+  Future<void> _openURL(String urlString) async {
+    try {
+      final Uri url = Uri.parse(urlString);
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Не удалось открыть ссылку')),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Ошибка при открытии ссылки: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ошибка при открытии ссылки')),
+        );
+      }
+    }
   }
 
   // ============================================================
@@ -215,27 +242,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildCheckBox(
                       value: agreeTerms,
                       text: RichText(
-                        text: const TextSpan(
+                        text: TextSpan(
                           text: 'Я ознакомлен и согласен с ',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
                           children: [
                             TextSpan(
                               text: 'Пользовательским \nсоглашением ',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 14,
+                                fontSize: 13,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL('https://dev.lidle.io/documents/user-agreement.pdf'),
+                            ),
+                            const TextSpan(
+                              text: 'и даю ',
+                              style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
-                              text: 'и даю согласие на обработку персональных данных на условиях ',
+                              text: 'согласие',
+                              style: const TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 13,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL('https://dev.lidle.io/documents/consent.pdf'),
+                            ),
+                            const TextSpan(
+                              text: ' на обработку персональных данных на условиях ',
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
                               text: 'политики \nконфиденциальности',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 14,
+                                fontSize: 13,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL('https://dev.lidle.io/documents/privacy-policy.pdf'),
                             ),
                           ],
                         ),
@@ -246,27 +290,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     _buildCheckBox(
                       value: agreeMarketing,
                       text: RichText(
-                        text: const TextSpan(
+                        text: TextSpan(
                           text: 'Я соглашаюсь на ',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
+                          style: const TextStyle(color: Colors.white70, fontSize: 13),
                           children: [
                             TextSpan(
                               text: 'Рекламную \n',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 14,
+                                fontSize: 13,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL('https://dev.lidle.io/documents/mailing.pdf'),
                             ),
-                            TextSpan(
+                            const TextSpan(
                               text: 'и ',
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
                               text: 'Информационную рассылку',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Color(0xFF38BDF8),
-                                fontSize: 15,
+                                fontSize: 13,
                               ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL('https://dev.lidle.io/documents/mailing.pdf'),
                             ),
                           ],
                         ),
