@@ -123,6 +123,21 @@ class Listing {
   });
 
   factory Listing.fromJson(Map<String, dynamic> json) {
+    // DEBUG: Логируем полный JSON адреса
+    print('');
+    print('═' * 80);
+    print('[🔍 PARSING LISTING FROM API]');
+    print('Listing ID: ${json['id']}');
+    print('Full json address object:');
+    print('  json["address"]: ${json['address']}');
+    print('  json["location"]: ${json['location']}');
+    print('  json["full_address"]: ${json['full_address']}');
+    if (json['address'] is Map) {
+      print('  address is Map with keys: ${(json['address'] as Map).keys.toList()}');
+      (json['address'] as Map).forEach((k, v) => print('    $k: $v'));
+    }
+    print('═' * 80);
+    print('');
     // Парсим характеристики из attributes (возвращаемых API, в формате структуры attributes)
     final Map<String, dynamic> characteristics = {};
 
@@ -156,6 +171,24 @@ class Listing {
     }
 
     // DEBUG: Показываем финальную структуру characteristics
+    
+    // Получаем строку адреса для парсинга компонентов
+    String addressString = '';
+    if (json['address'] is String) {
+      addressString = json['address'];
+    } else if (json['full_address'] is String) {
+      addressString = json['full_address'];
+    } else if (json['location'] is String) {
+      addressString = json['location'];
+    }
+    
+    // Парсим адрес если нет явных компонентов
+    final parsedAddress = _parseAddressString(addressString);
+    print('[🔍 PARSED ADDRESS FROM STRING]');
+    print('  Original: $addressString');
+    print('  Parsed city: ${parsedAddress['city']}');
+    print('  Parsed street: ${parsedAddress['street']}');
+    print('  Parsed buildingNumber: ${parsedAddress['buildingNumber']}');
 
     return Listing(
       id:
@@ -174,9 +207,9 @@ class Listing {
           json['full_address'] ??
           'Unknown Location', // Assuming 'address' corresponds to 'location'
       region: json['address']?['region']?.toString() ?? json['region'],
-      city: json['address']?['city']?.toString() ?? json['city'],
-      street: json['address']?['street']?.toString() ?? json['street'],
-      buildingNumber: json['address']?['building_number']?.toString() ?? json['building_number'],
+      city: _extractAddressField(json['address']?['city']) ?? json['city'] ?? parsedAddress['city'],
+      street: _extractAddressField(json['address']?['street']) ?? json['street'] ?? parsedAddress['street'],
+      buildingNumber: json['address']?['building_number']?.toString() ?? json['building_number'] ?? parsedAddress['buildingNumber'],
       // Извлекаем адресные компоненты из API в соответствии с документацией
       mainRegion: json['address']?['main_region']?['name']?.toString() ?? 
                   json['address']?['region_name']?.toString() ??
@@ -217,6 +250,50 @@ class Listing {
 
   /// Helper метод для парсинга значений атрибутов
   /// Обрабатывает разные форматы: Map, простые значения, List
+  /// Парсит строку адреса на компоненты (город, улица, номер дома)
+  static Map<String, String?> _parseAddressString(String? addressStr) {
+    if (addressStr == null || addressStr.isEmpty) {
+      return {'city': null, 'street': null, 'buildingNumber': null};
+    }
+
+    // Разбиваем на части по запятой
+    final parts = addressStr.split(',').map((p) => p.trim()).toList();
+    
+    String? city, street, buildingNumber;
+    
+    for (var part in parts) {
+      if (part.isEmpty) continue;
+      
+      // Определяем по префиксу
+      if (part.startsWith('г.') || part.startsWith('город')) {
+        city = part;
+      } else if (part.startsWith('ул.') || part.startsWith('улица') || part.startsWith('пр.') || part.startsWith('проспект')) {
+        street = part;
+      } else if (part.startsWith('д.') || part.startsWith('дом') || part.startsWith('№')) {
+        buildingNumber = part;
+      }
+    }
+    
+    return {'city': city, 'street': street, 'buildingNumber': buildingNumber};
+  }
+
+  /// Извлекает название адреса из объекта или строки
+  static String? _extractAddressField(dynamic field) {
+    if (field == null) return null;
+    
+    if (field is Map) {
+      // Если это объект с name - извлекаем name
+      if (field.containsKey('name')) {
+        return field['name']?.toString();
+      }
+      // Иначе преобразуем всё в строку
+      return field.toString();
+    }
+    
+    // Если это строка - возвращаем как есть
+    return field.toString();
+  }
+
   /// Возвращает нормализованное значение для фильтрации
   static dynamic _parseAttributeValue(dynamic valueObj) {
     if (valueObj == null) {

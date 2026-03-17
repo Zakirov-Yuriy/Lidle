@@ -449,6 +449,16 @@ class _MyListingsPropertyDetailsScreenState
     // Формируем полный адрес из всех доступных компонентов в соответствии с API
     String fullAddress = '';
     
+    // DEBUG: Логируем компоненты адреса
+    print('[📍 ADDRESS COMPONENTS]');
+    print('  mainRegion: ${_listing.mainRegion}');
+    print('  subRegion: ${_listing.subRegion}');
+    print('  district: ${_listing.district}');
+    print('  city: ${_listing.city}');
+    print('  street: ${_listing.street}');
+    print('  buildingNumber: ${_listing.buildingNumber}');
+    print('  location (fallback): ${_listing.location}');
+    
     // Собираем адрес в порядке: mainRegion (область) → subRegion (район) → district (район города) → city (город) → street (улица) → buildingNumber (номер дома)
     if (_listing.mainRegion != null && _listing.mainRegion!.isNotEmpty) {
       fullAddress += _listing.mainRegion!;
@@ -473,6 +483,8 @@ class _MyListingsPropertyDetailsScreenState
       if (fullAddress.isNotEmpty) fullAddress += ', ';
       fullAddress += _listing.buildingNumber!;
     }
+    
+    print('[✅ ASSEMBLED ADDRESS]: $fullAddress');
 
     // Если нет отдельных компонентов, используем location как fallback
     final displayAddress = fullAddress.isNotEmpty ? fullAddress : _listing.location;

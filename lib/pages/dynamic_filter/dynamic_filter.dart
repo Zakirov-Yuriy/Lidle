@@ -91,6 +91,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
   final TextEditingController _phone2Controller = TextEditingController();
   final TextEditingController _telegramController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
+  final TextEditingController _regionController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _streetController = TextEditingController();
   final TextEditingController _buildingController = TextEditingController();
 
   // Address data from API
@@ -137,11 +140,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Инициализация для создания нового объявления
   Future<void> _initializeForCreation() async {
-    _loadAttributes();
-    _loadUserContacts();
-    _loadRegions();
+    // ✅ Load attributes and support data concurrently
+    await Future.wait([
+      _loadAttributes(),
+      _loadUserContacts(),
+      _loadRegions(),
+    ]);
 
-    // Автозаполнение для тестирования
+    // Автозаполнение для тестирования (after all data loaded)
     Future.delayed(const Duration(milliseconds: 500), () {
       _autoFillFormForTesting();
     });
@@ -149,31 +155,37 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Инициализация для редактирования объявления
   Future<void> _initializeForEditing() async {
-    print('📝 [EDIT MODE] Step 1: Loading attributes FIRST...');
+    print('📝 [EDIT MODE] Step 1: Loading advert data FIRST to get category...');
     
-    // 1️⃣ СНАЧАЛА загружаем атрибуты категории (они нужны для парсинга значений)
-    final attributesLoadFuture = _loadAttributes();
+    // 1️⃣ СНАЧАЛА загружаем только ID категории из объявления
+    // НЕ заполняем данные в контроллеры еще - им нужны атрибуты
+    await _loadAdvertCategoryOnly();
     
-    // 2️⃣ Ждем загрузки атрибутов + задержка для setState()
-    await Future.delayed(const Duration(milliseconds: 1000));
+    print('📝 [EDIT MODE] Step 2: Now loading attributes for category $_editAdvertCategoryId...');
     
-    print('📝 [EDIT MODE] Step 2: Attributes loaded, now loading advert data...');
+    // 2️⃣ Теперь загружаем атрибуты для ПРАВИЛЬНОЙ категории
+    await _loadAttributes();
     
-    // 3️⃣ ПОТОМ загружаем данные объявления (используем уже загруженные атрибуты)
+    print('📝 [EDIT MODE] Step 3: Attributes loaded. Now loading full advert data...');
+    
+    // ✅ Add delay for setState() to process attribute changes in UI
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    // 3️⃣ ПОТОМ загружаем все данные объявления (используем правильные атрибуты)
     await _loadAdvertDataForEditing();
     
-    print('📝 [EDIT MODE] Step 3: Repopulating controllers after attributes + advert data loaded...');
+    print('📝 [EDIT MODE] Step 4: Repopulating controllers after attributes + advert data loaded...');
     
     // 4️⃣ Пересоздаем контроллеры с правильными значениями
     if (_isEditMode && _editAdvertData != null) {
       _repopulateControllersAfterAttributesLoaded();
     }
 
-    print('📝 [EDIT MODE] Step 4: Loading contacts and regions...');
+    print('📝 [EDIT MODE] Step 5: Loading contacts and regions...');
     
     // 5️⃣ Загружаем вспомогательные данные
-    _loadUserContacts();
-    _loadRegions();
+    await _loadUserContacts();
+    await _loadRegions();
 
     print('📝 [EDIT MODE] Initialization complete!');
   }
@@ -416,6 +428,75 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
   }
 
+  /// 🔍 Загружает ТОЛЬКО ID категории из объявления
+  /// Используется при редактировании для определения правильной категории перед загрузкой атрибутов
+  Future<void> _loadAdvertCategoryOnly() async {
+    if (widget.advertId == null) return;
+
+    try {
+      final token = TokenService.currentToken;
+      final advertId = widget.advertId!;
+
+      print('📂 [CATEGORY] Loading category ID from advert $advertId...');
+
+      final response = await ApiService.get('/adverts/$advertId', token: token);
+
+      // Парсим ответ API
+      late final Map<String, dynamic> advertData;
+      if (response.containsKey('data')) {
+        final data = response['data'];
+        if (data is List && data.isNotEmpty) {
+          advertData = data[0] as Map<String, dynamic>;
+        } else if (data is Map<String, dynamic>) {
+          advertData = data;
+        } else {
+          advertData = response;
+        }
+      } else {
+        advertData = response;
+      }
+
+      // ✅ ИЗВЛЕКАЕМ КАТЕГОРИЮ ИЗ ОБЪЯВЛЕНИЯ
+      int? extractedCategoryId;
+
+      // Вариант 1: category_id
+      if (advertData.containsKey('category_id') &&
+          advertData['category_id'] != null) {
+        extractedCategoryId = advertData['category_id'] as int;
+        print('   ✅ Found category_id = $extractedCategoryId');
+      }
+
+      // Вариант 2: если category это Map с id
+      if (extractedCategoryId == null &&
+          advertData.containsKey('category') &&
+          advertData['category'] is Map) {
+        final categoryData = advertData['category'] as Map<String, dynamic>;
+        if (categoryData.containsKey('id')) {
+          extractedCategoryId = categoryData['id'] as int;
+          print('   ✅ Found category.id = $extractedCategoryId');
+        }
+      }
+
+      // Вариант 3: Если это передано как widget.categoryId (параметр навигации)
+      if (extractedCategoryId == null && widget.categoryId != null) {
+        extractedCategoryId = widget.categoryId;
+        print('   ✅ Using widget.categoryId = $extractedCategoryId (fallback)');
+      }
+
+      // Установляем найденную категорию
+      if (extractedCategoryId != null) {
+        _editAdvertCategoryId = extractedCategoryId;
+        print('   ✅ SET _editAdvertCategoryId = $_editAdvertCategoryId');
+      } else {
+        print('   ⚠️ Could not find category ID, will use default = 2');
+        _editAdvertCategoryId = 2; // Default fallback
+      }
+    } catch (e) {
+      print('   ❌ Error loading category ID: $e');
+      _editAdvertCategoryId = 2; // Fallback
+    }
+  }
+
   /// Загрузить данные объявления для редактирования
   Future<void> _loadAdvertDataForEditing() async {
     if (widget.advertId == null) return;
@@ -450,50 +531,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // print('📦 Loaded advert data: ${advertData.keys.toList()}');
       // print('📦 Full advert type data: ${advertData['type']}');
 
-      // DEBUG: Вывести все можно используемые поля для идентификации категории
-      // print('📦 DEBUG - All relevant fields:');
-      // print('   - type: ${advertData['type']}');
-      // print('   - category_id: ${advertData['category_id']}');
-      // print('   - category: ${advertData['category']}');
-      // print('   - attributes: ${(advertData['attributes'] is List) ? 'List of ${(advertData['attributes'] as List).length}' : advertData['attributes']}');
-
-      // ✅ ИЗВЛЕКАЕМ КАТЕГОРИЮ ИЗ ОБЪЯВЛЕНИЯ
-      // ВАЖНО: type.id это ID типа (2=adverts), НЕ категория!
-      // Нужно найти реальный ID категории
-      int? extractedCategoryId;
-
-      // Вариант 1: category_id
-      if (advertData.containsKey('category_id') &&
-          advertData['category_id'] != null) {
-        extractedCategoryId = advertData['category_id'] as int;
-        // print('📂 Found category_id = $extractedCategoryId');
-      }
-
-      // Вариант 2: если category это Map с id
-      if (extractedCategoryId == null &&
-          advertData.containsKey('category') &&
-          advertData['category'] is Map) {
-        final categoryData = advertData['category'] as Map<String, dynamic>;
-        if (categoryData.containsKey('id')) {
-          extractedCategoryId = categoryData['id'] as int;
-          // print('📂 Found category.id = $extractedCategoryId');
-        }
-      }
-
-      // Вариант 3: Если это передано как widget.categoryId (параметр навигации)
-      if (extractedCategoryId == null && widget.categoryId != null) {
-        extractedCategoryId = widget.categoryId;
-        // print('📂 Using widget.categoryId = $extractedCategoryId (fallback)');
-      }
-
-      // Установляем найденную категорию
-      if (extractedCategoryId != null) {
-        _editAdvertCategoryId = extractedCategoryId;
-        // print('✅ SET _editAdvertCategoryId = $_editAdvertCategoryId');
-      } else {
-        // print('⚠️ Could not find category ID, will use default = 2');
-        _editAdvertCategoryId = 2; // Default fallback
-      }
+      // 🔄 КАТЕГОРИЯ УЖЕ ЗАГРУЖЕНА В _loadAdvertCategoryOnly()
+      // Используем это значение для правильного парсинга атрибутов
+      // print('   Using _editAdvertCategoryId = $_editAdvertCategoryId from previous load');
 
       if (mounted) {
         setState(() {
@@ -525,8 +565,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       if (advertData.containsKey('address')) {
-        _buildingController.text = advertData['address'] as String? ?? '';
-        // print('✅ Filled address: ${advertData['address']}');
+        final fullAddress = advertData['address'] as String? ?? '';
+        
+        // 🔧 Парсим адрес при редактировании
+        // API возвращает адрес как строка: "г. Донецк, ул. Бутовская" или "Область, г. Донецк, ул. Бутовская, д. 70"
+        await _populateAddressFieldsFromEdit(fullAddress);
+        // print('✅ Filled address: $fullAddress');
       }
 
       // Заполняем контакты если есть (может быть в разных местах)
@@ -563,6 +607,400 @@ class _DynamicFilterState extends State<DynamicFilter> {
           context,
         ).showSnackBar(SnackBar(content: Text('Ошибка загрузки данных: $e')));
       }
+    }
+  }
+
+  /// 🔧 Заполняет все поля адреса при редактировании объявления
+  /// Парсит адрес и заполняет контроллеры: область, город, улица, номер дома
+  /// Также вызывает загрузку данных для каждого уровня иерархии
+  Future<void> _populateAddressFieldsFromEdit(String fullAddress) async {
+    try {
+      if (fullAddress.isEmpty) {
+        print('⚠️ Empty address provided');
+        return;
+      }
+
+      print('🔍 Populating address fields from: $fullAddress');
+
+      // Адрес может быть в разных форматах:
+      // 1. "г. Донецк, ул. Донецкая" - 2 части (город, улица)
+      // 2. "г. Донецк, ул. Донецкая, д. 70" - 3 части (город, улица, дом)
+      // 3. "Донецкая Народная респ., г. Донецк, ул. Донецкая, д. 70" - 4 части (область, город, улица, дом)
+      
+      final parts = fullAddress.split(',').map((p) => p.trim()).toList();
+      
+      print('   Parts: $parts (${parts.length} parts)');
+
+      if (parts.isEmpty) return;
+
+      // ✅ ВАРИАНТ 1: 4 части - полный адрес с областью
+      if (parts.length == 4) {
+        print('   📍 Full address with region detected');
+        await _selectAddressFromParts(
+          region: parts[0],
+          city: parts[1],
+          street: parts[2],
+          building: parts[3],
+        );
+      }
+      // ✅ ВАРИАНТ 2: 3 части - адрес с номером дома (без области)
+      else if (parts.length == 3) {
+        print('   📍 Address with building detected');
+        await _selectAddressFromParts(
+          city: parts[0],
+          street: parts[1],
+          building: parts[2],
+        );
+      }
+      // ✅ ВАРИАНТ 3: 2 части - только город и улица
+      else if (parts.length == 2) {
+        print('   📍 Address without building detected');
+        await _selectAddressFromParts(
+          city: parts[0],
+          street: parts[1],
+        );
+      }
+
+      print('✅ Address fields populated successfully');
+    } catch (e) {
+      print('❌ Error populating address fields: $e');
+    }
+  }
+
+  /// 🔧 Выбирает адрес из составляющих частей
+  /// Заполняет контроллеры и _selected* переменные
+  Future<void> _selectAddressFromParts({
+    String? region,
+    String? city,
+    String? street,
+    String? building,
+  }) async {
+    try {
+      // ✅ ЗАПОЛНЯЕМ КОНТРОЛЛЕРЫ СРАЗУ
+      if (region != null && region.isNotEmpty) {
+        setState(() => _regionController.text = region);
+        print('   ✅ Set _regionController = "$region"');
+      }
+      
+      if (city != null && city.isNotEmpty) {
+        setState(() => _cityController.text = city);
+        print('   ✅ Set _cityController = "$city"');
+      }
+      
+      if (street != null && street.isNotEmpty) {
+        setState(() => _streetController.text = street);
+        print('   ✅ Set _streetController = "$street"');
+      }
+      
+      if (building != null && building.isNotEmpty) {
+        setState(() => _buildingController.text = building);
+        print('   ✅ Set _buildingController = "$building"');
+      }
+
+      // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ РЕГИОН (если он указан)
+      if (region != null && region.isNotEmpty) {
+        await _selectRegionByName(region);
+        
+        // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ ГОРОД (если регион выбран)
+        if (city != null && city.isNotEmpty && _selectedRegionId != null) {
+          await _selectCityByName(city);
+          
+          // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ УЛИЦУ (если город выбран)
+          if (street != null && street.isNotEmpty && _selectedCityId != null) {
+            await _selectStreetByName(street);
+            
+            // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ НОМ ЕР ДОМА (если улица выбрана)
+            if (building != null && building.isNotEmpty && _selectedStreetId != null) {
+              await _selectBuildingByName(building);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Error selecting address from parts: $e');
+    }
+  }
+
+  /// 🔍 找ет и выбирает регион по названию
+  Future<void> _selectRegionByName(String regionName) async {
+    try {
+      final token = TokenService.currentToken;
+      
+      // Загружаем все регионы если их нет
+      if (_regions.isEmpty) {
+        final response = await AddressService.searchAddresses(
+          query: 'р',
+          token: token,
+          types: ['region'],
+        );
+
+        final uniqueRegions = <String, int>{};
+        for (final result in response.data) {
+          if (result.main_region != null) {
+            uniqueRegions[result.main_region!.name] = result.main_region!.id;
+          }
+        }
+
+        setState(() {
+          _regions = uniqueRegions.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+        });
+        print('   📦 Loaded ${_regions.length} regions from API');
+      }
+
+      // Ищем регион по названию (точное совпадение или частичное)
+      final region = _regions.firstWhere(
+        (r) => (r['name'] as String).toLowerCase() == regionName.toLowerCase(),
+        orElse: () {
+          // Если точного совпадения нет, ищем по началу строки
+          return _regions.firstWhere(
+            (r) => (r['name'] as String).toLowerCase().contains(regionName.toLowerCase()),
+            orElse: () => {},
+          );
+        },
+      );
+
+      if (region.isNotEmpty) {
+        setState(() {
+          _selectedRegionId = region['id'] as int;
+          _selectedRegion.clear();
+          _selectedRegion.add(region['name'] as String);
+        });
+        print('   ✅ Selected region: ${region['name']} (ID: ${region['id']})');
+      } else {
+        print('   ⚠️ Region "$regionName" not found in list');
+      }
+    } catch (e) {
+      print('   ❌ Error selecting region: $e');
+    }
+  }
+
+  /// 🔍 Ищет и выбирает город по названию
+  Future<void> _selectCityByName(String cityName) async {
+    try {
+      if (_selectedRegionId == null) {
+        print('   ⚠️ Cannot select city: no region selected');
+        return;
+      }
+
+      final token = TokenService.currentToken;
+
+      // Загружаем города для выбранного региона
+      final response = await AddressService.searchAddresses(
+        query: 'по',
+        token: token,
+        types: ['city'],
+      );
+
+      final uniqueCities = <String, int>{};
+      for (final result in response.data) {
+        if (result.main_region?.id == _selectedRegionId && result.city != null) {
+          uniqueCities[result.city!.name] = result.city!.id;
+        }
+      }
+
+      setState(() {
+        _cities = uniqueCities.entries
+            .map((e) => {'name': e.key, 'id': e.value})
+            .toList();
+      });
+      print('   📦 Loaded ${_cities.length} cities for region');
+
+      // Ищем город по названию
+      final city = _cities.firstWhere(
+        (c) => (c['name'] as String).toLowerCase() == cityName.toLowerCase(),
+        orElse: () {
+          // Если точного совпадения нет, ищем по началу строки
+          return _cities.firstWhere(
+            (c) => (c['name'] as String).toLowerCase().contains(cityName.toLowerCase()),
+            orElse: () => {},
+          );
+        },
+      );
+
+      if (city.isNotEmpty) {
+        setState(() {
+          _selectedCityId = city['id'] as int;
+          _selectedCity.clear();
+          _selectedCity.add(city['name'] as String);
+        });
+        print('   ✅ Selected city: ${city['name']} (ID: ${city['id']})');
+      } else {
+        print('   ⚠️ City "$cityName" not found in list');
+      }
+    } catch (e) {
+      print('   ❌ Error selecting city: $e');
+    }
+  }
+
+  /// 🔍 Ищет и выбирает улицу по названию
+  Future<void> _selectStreetByName(String streetName) async {
+    try {
+      if (_selectedCityId == null) {
+        print('   ⚠️ Cannot select street: no city selected');
+        return;
+      }
+
+      final token = TokenService.currentToken;
+
+      // Загружаем улицы для выбранного города
+      final response = await AddressService.searchAddresses(
+        query: 'у',
+        token: token,
+        types: ['street'],
+      );
+
+      final uniqueStreets = <String, int>{};
+      for (final result in response.data) {
+        if (result.city?.id == _selectedCityId && result.street != null) {
+          uniqueStreets[result.street!.name] = result.street!.id;
+        }
+      }
+
+      setState(() {
+        _streets = uniqueStreets.entries
+            .map((e) => {'name': e.key, 'id': e.value})
+            .toList();
+      });
+      print('   📦 Loaded ${_streets.length} streets for city');
+
+      // Ищем улицу по названию
+      final street = _streets.firstWhere(
+        (s) => (s['name'] as String).toLowerCase() == streetName.toLowerCase(),
+        orElse: () {
+          // Если точного совпадения нет, ищем по началу строки
+          return _streets.firstWhere(
+            (s) => (s['name'] as String).toLowerCase().contains(streetName.toLowerCase()),
+            orElse: () => {},
+          );
+        },
+      );
+
+      if (street.isNotEmpty) {
+        setState(() {
+          _selectedStreetId = street['id'] as int;
+          _selectedStreet.clear();
+          _selectedStreet.add(street['name'] as String);
+        });
+        print('   ✅ Selected street: ${street['name']} (ID: ${street['id']})');
+      } else {
+        print('   ⚠️ Street "$streetName" not found in list');
+      }
+    } catch (e) {
+      print('   ❌ Error selecting street: $e');
+    }
+  }
+
+  /// 🔍 Ищет и выбирает номер дома по названию
+  Future<void> _selectBuildingByName(String buildingName) async {
+    try {
+      if (_selectedStreetId == null) {
+        print('   ⚠️ Cannot select building: no street selected');
+        return;
+      }
+
+      final token = TokenService.currentToken;
+
+      // Загружаем номера домов для выбранной улицы
+      final response = await AddressService.searchAddresses(
+        query: '1',
+        token: token,
+        types: ['building'],
+      );
+
+      final uniqueBuildings = <String, int>{};
+      for (final result in response.data) {
+        if (result.street?.id == _selectedStreetId && result.building != null) {
+          uniqueBuildings[result.building!.name] = result.building!.id;
+        }
+      }
+
+      setState(() {
+        _buildings = uniqueBuildings.entries
+            .map((e) => {'name': e.key, 'id': e.value})
+            .toList();
+      });
+      print('   📦 Loaded ${_buildings.length} buildings for street');
+
+      // Ищем номер дома по названию
+      final building = _buildings.firstWhere(
+        (b) => (b['name'] as String).toLowerCase() == buildingName.toLowerCase(),
+        orElse: () {
+          // Если точного совпадения нет, ищем по началу строки
+          return _buildings.firstWhere(
+            (b) => (b['name'] as String).toLowerCase().contains(buildingName.toLowerCase()),
+            orElse: () => {},
+          );
+        },
+      );
+
+      if (building.isNotEmpty) {
+        setState(() {
+          _selectedBuilding.clear();
+          _selectedBuilding.add(building['name'] as String);
+        });
+        print('   ✅ Selected building: ${building['name']}');
+      } else {
+        print('   ⚠️ Building "$buildingName" not found in list');
+      }
+    } catch (e) {
+      print('   ❌ Error selecting building: $e');
+    }
+  }
+
+  /// 🔧 Парсит адрес из API при редактировании объявления
+  /// API возвращает адрес строкой: "г. Донецк, ул. Бутовская" или "г. Донецк, ул. Бутовская, 1А"
+  /// Нужно распарсить и выделить номер дома в _selectedBuilding
+  void _parseAddressForEdit(String fullAddress) {
+    try {
+      if (fullAddress.isEmpty) return;
+
+      // Адрес имеет формат: "город, улица[, номер_дома]"
+      // Примеры:
+      // "г. Донецк, ул. Бутовская" - БЕЗ номера дома
+      // "г. Донецк, пр-кт 301-й Донецкой дивизии, 1А" - С номером дома
+      
+      final parts = fullAddress.split(',').map((p) => p.trim()).toList();
+      
+      print('🔍 Parsing address: $fullAddress');
+      print('   Parts: $parts (${parts.length} parts)');
+
+      if (parts.isEmpty) return;
+
+      // Логика парсинга:
+      // [0] = город (г. Донецк)
+      // [1] = улица (ул. Бутовская) 
+      // [2] = номер дома (1А) - ОПЦИОНАЛЬНО
+
+      String? buildingNumber;
+      
+      if (parts.length >= 3) {
+        // Если 3+ части, последняя - это номер дома
+        buildingNumber = parts.last;
+        print('   ✅ Found building number: "$buildingNumber" (last part)');
+      } else if (parts.length == 2) {
+        // Только 2 части - нет номера дома в API
+        print('   ⚠️ No building number in address (only 2 parts)');
+        // Это нормально, может быть просто "г. Донецк, ул. Бутовская"
+      }
+
+      // Заполняем _selectedBuilding если найден номер дома
+      if (buildingNumber != null && buildingNumber.isNotEmpty) {
+        setState(() {
+          _selectedBuilding.clear();
+          _selectedBuilding.add(buildingNumber!); // ! для force unwrap, так как проверили что not null
+        });
+        print('   ✅ Set _selectedBuilding = {"$buildingNumber"}');
+      } else {
+        // Если номера дома нет, делаем _selectedBuilding пустым
+        setState(() {
+          _selectedBuilding.clear();
+        });
+        print('   ℹ️ _selectedBuilding cleared (no building number)');
+      }
+    } catch (e) {
+      print('❌ Error parsing address: $e');
     }
   }
 
@@ -1842,7 +2280,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       name: _titleController.text,
       description: _descriptionController.text,
       price: _priceController.text,
-      categoryId: widget.categoryId ?? 2,
+      categoryId: _editAdvertCategoryId ?? widget.categoryId ?? 2,
       regionId:
           mainRegionId ??
           1, // Use mainRegionId (top-level region), not address.region_id
@@ -2009,9 +2447,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
               errorMessage = 'Пожалуйста, выберите улицу';
               throw Exception('Street not selected');
             }
-            if (_selectedBuilding.isEmpty || _buildingController.text.isEmpty) {
-              errorMessage = 'Пожалуйста, введите номер дома';
-              throw Exception('Building number required');
+            
+            // 🔧 При редактировании адреса без номера дома, это нормально
+            // Проверяем либо _selectedBuilding (новое объявление), либо _buildingController (редактирование)
+            // В режиме редактирования _buildingController содержит полный адрес
+            if (_isEditMode) {
+              // Для редактирования - проверяем что _buildingController заполнен (это полный адрес)
+              if (_buildingController.text.isEmpty) {
+                errorMessage = 'Пожалуйста, заполните адрес';
+                throw Exception('Address required');
+              }
+            } else {
+              // Для нового объявления - проверяем наличие номера дома
+              if (_selectedBuilding.isEmpty || _buildingController.text.isEmpty) {
+                errorMessage = 'Пожалуйста, введите номер дома';
+                throw Exception('Building number required');
+              }
             }
 
             // Extract region.id (subregion) from selected city/street/building
@@ -2048,8 +2499,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
             address['region_id'] = addressRegionId;
             address['city_id'] = _selectedCityId;
             address['street_id'] = _selectedStreetId;
+            
+            // 🔧 Получаем номер дома либо из _selectedBuilding (новое), либо парсим из _buildingController (редактирование)
+            String buildingNumber = '';
+            if (_selectedBuilding.isNotEmpty) {
+              buildingNumber = _selectedBuilding.first;
+            } else if (_buildingController.text.isNotEmpty && _isEditMode) {
+              // При редактировании, если _selectedBuilding пуст, получаем номер из парсинга
+              // из _buildingController (который содержит полный адрес)
+              final parts = _buildingController.text.split(',').map((p) => p.trim()).toList();
+              if (parts.length >= 3) {
+                buildingNumber = parts.last; // последний элемент - номер дома
+              }
+            }
+            
             // Не отправляем building_id, так как номер дома вводится вручную
-            address['building_number'] = _selectedBuilding.first;
+            address['building_number'] = buildingNumber;
             
             // Формируем полный адрес для отображения
             String fullAddress = '';
@@ -2064,9 +2529,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
               if (fullAddress.isNotEmpty) fullAddress += ', ';
               fullAddress += _selectedStreet.first;
             }
-            if (_selectedBuilding.isNotEmpty) {
+            if (buildingNumber.isNotEmpty) {
               if (fullAddress.isNotEmpty) fullAddress += ', ';
-              fullAddress += _selectedBuilding.first;
+              fullAddress += buildingNumber;
             }
             address['full_address'] = fullAddress;
             
@@ -2075,7 +2540,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             address['region'] = _selectedRegion.isNotEmpty ? _selectedRegion.first : null;
             address['city'] = _selectedCity.isNotEmpty ? _selectedCity.first : null;
             address['street'] = _selectedStreet.isNotEmpty ? _selectedStreet.first : null;
-            address['building_number'] = _selectedBuilding.isNotEmpty ? _selectedBuilding.first : null;
+            address['building_number'] = buildingNumber.isNotEmpty ? buildingNumber : null;
             
             // Добавляем вложенные объекты для main_region, region, district в соответствии с API
             if (_selectedRegion.isNotEmpty && _selectedRegionId != null) {
@@ -2099,10 +2564,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
               };
             }
             
-            if (_selectedBuilding.isNotEmpty) {
+            if (buildingNumber.isNotEmpty) {
               address['building'] = {
                 'id': _selectedBuildingId,
-                'name': _selectedBuilding.first
+                'name': buildingNumber
               };
             }
 
@@ -2190,19 +2655,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // print('⚠️ City or street not selected, address will be empty');
       }
 
-      // print('📋 Final address for request: $address');
-      // print('');
-      // print('🔍 Validating address data types:');
-      // print(
-      //   '   region_id type: ${address['region_id'].runtimeType}, value: ${address['region_id']}',
-      // );
-      // print(
-      //   '   city_id type: ${address['city_id'].runtimeType}, value: ${address['city_id']}',
-      // );
-      // print(
-      //   '   street_id type: ${address['street_id'].runtimeType}, value: ${address['street_id']}',
-      // );
-      // print('   building_number: ${address['building_number']}');
+      print('═══════════════════════════════════════════════════════');
+      print('📋 АДРЕС ПЕРЕД ОТПРАВКОЙ В API (4 параметра):');
+      print('═══════════════════════════════════════════════════════');
+      print('   1️⃣  region: ${address['region']}');
+      print('   2️⃣  city: ${address['city']}');
+      print('   3️⃣  street: ${address['street']}');
+      print('   4️⃣  building_number: ${address['building_number']}');
+      print('');
+      print('📊 IDs для адреса (если используются):');
+      print('   region_id: ${address['region_id']}');
+      print('   city_id: ${address['city_id']}');
+      print('   street_id: ${address['street_id']}');
+      print('═══════════════════════════════════════════════════════');
 
       if (request.contacts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2229,17 +2694,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
       });
 
       // Log final request before sending
-      // print('════════════════════════════════════════════════════════');
-      // print('📋 FINAL REQUEST BEFORE API CALL:');
-      // print('   name: ${request.name}');
-      // print('   price: ${request.price}');
-      // print('   categoryId: ${request.categoryId}');
-      // print('   regionId: ${request.regionId}');
-      // print('   address: ${request.address}');
-      // print('   contacts: ${request.contacts}');
-      // print('   attributes.value_selected: ${request.attributes['value_selected']}');
-      // print('   attributes.values: ${request.attributes['values']}');
-      // print('════════════════════════════════════════════════════════');
+      print('════════════════════════════════════════════════════════');
+      print('📤 ФИНАЛЬНЫЙ ЗАПРОС В API:');
+      print('   name: ${request.name}');
+      print('   price: ${request.price}');
+      print('   categoryId: ${request.categoryId}');
+      print('   АДРЕС (address):');
+      print('      ├─ region: ${request.address['region']}');
+      print('      ├─ city: ${request.address['city']}');
+      print('      ├─ street: ${request.address['street']}');
+      print('      └─ building_number: ${request.address['building_number']}');
+      print('   attributes.value_selected: ${request.attributes['value_selected']}');
+      print('   attributes.values keys: ${request.attributes['values'].keys.toList()}');
+      print('================================================================');
 
       // VERIFY address has region_id and city_id
       if (!request.address.containsKey('region_id') ||
