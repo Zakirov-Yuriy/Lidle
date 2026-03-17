@@ -115,7 +115,7 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ...List.generate(
-                      5,
+                      1,
                       (index) {
                         final isFirstItem = index == 0;
                         final imageAsset = isFirstItem
