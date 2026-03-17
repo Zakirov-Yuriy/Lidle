@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
@@ -146,23 +149,33 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Инициализация для редактирования объявления
   Future<void> _initializeForEditing() async {
-    // print('📝 [EDIT MODE] Step 1: Loading advert data...');
-    // 1. Загружаем данные объявления ДО загрузки атрибутов
+    print('📝 [EDIT MODE] Step 1: Loading attributes FIRST...');
+    
+    // 1️⃣ СНАЧАЛА загружаем атрибуты категории (они нужны для парсинга значений)
+    final attributesLoadFuture = _loadAttributes();
+    
+    // 2️⃣ Ждем загрузки атрибутов + задержка для setState()
+    await Future.delayed(const Duration(milliseconds: 1000));
+    
+    print('📝 [EDIT MODE] Step 2: Attributes loaded, now loading advert data...');
+    
+    // 3️⃣ ПОТОМ загружаем данные объявления (используем уже загруженные атрибуты)
     await _loadAdvertDataForEditing();
+    
+    print('📝 [EDIT MODE] Step 3: Repopulating controllers after attributes + advert data loaded...');
+    
+    // 4️⃣ Пересоздаем контроллеры с правильными значениями
+    if (_isEditMode && _editAdvertData != null) {
+      _repopulateControllersAfterAttributesLoaded();
+    }
 
-    // После загрузки проверяем установилась ли категория
-    // print();
-
-    // print();
-    // 2. Загружаем атрибуты для категории объявления
-    _loadAttributes();
-
-    // print('📝 [EDIT MODE] Step 3: Loading user contacts and regions...');
-    // 3. Загружаем вспомогательные данные (контакты, регионы)
+    print('📝 [EDIT MODE] Step 4: Loading contacts and regions...');
+    
+    // 5️⃣ Загружаем вспомогательные данные
     _loadUserContacts();
     _loadRegions();
 
-    // print('📝 [EDIT MODE] Initialization complete!');
+    print('📝 [EDIT MODE] Initialization complete!');
   }
 
   @override
@@ -532,6 +545,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // print('✅ Filled contact name: $contactName');
       }
 
+      // ✅ ЗАПОЛНЯЕМ АТРИБУТЫ ИЗ ОБЪЯВЛЕНИЯ
+      _populateAttributesFromAdvert(advertData);
+      
+      // ✅ ЗАГРУЖАЕМ ИЗОБРАЖЕНИЯ ИЗ ОБЪЯВЛЕНИЯ
+      await _loadAdvertImages(advertData);
+      
+      // ✅ ЗАПОЛНЯЕМ КОНТАКТЫ ИЗ ОБЪЯВЛЕНИЯ
+      _populateContactsFromAdvert(advertData);
+
       // print('✅ Advert data loaded successfully');
     } catch (e) {
       // print('❌ Error loading advert data: $e');
@@ -541,6 +563,442 @@ class _DynamicFilterState extends State<DynamicFilter> {
           context,
         ).showSnackBar(SnackBar(content: Text('Ошибка загрузки данных: $e')));
       }
+    }
+  }
+
+  /// 🔧 Заполняет атрибуты формы из загруженного объявления
+  /// Парсит структуру attributes из API ответа и заполняет _selectedValues
+  void _populateAttributesFromAdvert(Map<String, dynamic> advertData) {
+    if (!advertData.containsKey('attributes')) {
+      print('ℹ️ No attributes found in advert data');
+      return;
+    }
+
+    try {
+      final attributesData = advertData['attributes'];
+      
+      if (attributesData is Map<String, dynamic>) {
+        print('🔍 Populating attributes from advert...');
+        
+        // ✅ Обратное маппирование value_selected - найти к каким атрибутам относятся ID значений
+        if (attributesData.containsKey('value_selected')) {
+          final valueSelected = attributesData['value_selected'];
+          if (valueSelected is List && _attributes.isNotEmpty) {
+            print('   value_selected IDs: $valueSelected');
+            
+            // Для каждого ID значения найти атрибут по его значениям
+            for (final valueId in valueSelected) {
+              // Поищем в _attributes, какой атрибут содержит это значение
+              for (final attr in _attributes) {
+                final matchingValue = attr.values.firstWhere(
+                  (val) => val.id == valueId,
+                  orElse: () => const Value(id: 0, value: ''),
+                );
+                
+                if (matchingValue.id != 0) {
+                  // Нашли! Добавляем это значение в selectedValues для этого атрибута
+                  setState(() {
+                    if (_selectedValues[attr.id] is Set<String>) {
+                      (_selectedValues[attr.id] as Set<String>).add(matchingValue.value);
+                    } else {
+                      _selectedValues[attr.id] = {matchingValue.value};
+                    }
+                  });
+                  print('   ✅ Attr ${attr.id} "${attr.title}": added value "${matchingValue.value}"');
+                  break; // Found, move to next value ID
+                }
+              }
+            }
+          }
+        }
+
+        // ✅ Заполняем values - это числовые/строковые атрибуты с поддержкой диапазонов
+        if (attributesData.containsKey('values')) {
+          final values = attributesData['values'];
+          if (values is Map<String, dynamic>) {
+            print('   values: $values');
+            
+            values.forEach((attrIdStr, valueData) {
+              try {
+                final attrId = int.parse(attrIdStr);
+                final attr = _attributes.firstWhere(
+                  (a) => a.id == attrId,
+                  orElse: () => Attribute(
+                    id: 0,
+                    title: '',
+                    order: 0,
+                    values: [],
+                  ),
+                );
+
+                if (attr.id != 0) {
+                  // Найден атрибут
+                  if (valueData is Map<String, dynamic>) {
+                    // Проверяем есть ли это диапазон (max_value) или просто значение
+                    if (valueData.containsKey('max_value')) {
+                      // Это диапазон (e.g. пол, площадь)
+                      setState(() {
+                        _selectedValues[attrId] = {
+                          'min': valueData['value'],
+                          'max': valueData['max_value'],
+                        };
+                      });
+                      print('   ✅ Attr $attrId: range value=${valueData['value']}, max=${valueData['max_value']}');
+                    } else if (valueData.containsKey('value')) {
+                      // Простое числовое значение
+                      final value = valueData['value'];
+                      
+                      // Для булевских атрибутов (like оферт 1048)
+                      if (attr.dataType == 'boolean') {
+                        setState(() {
+                          _selectedValues[attrId] = (value == 1 || value == true);
+                        });
+                        print('   ✅ Attr $attrId: boolean value=$value');
+                      } else {
+                        // Для текстовых атрибутов сохраняем в controller
+                        if (_controllers[attrId] != null) {
+                          _controllers[attrId]!.text = value.toString();
+                        } else {
+                          setState(() {
+                            _selectedValues[attrId] = value;
+                          });
+                        }
+                        print('   ✅ Attr $attrId: value=$value');
+                      }
+                    }
+                  } else {
+                    // Простое значение без структуры
+                    setState(() {
+                      _selectedValues[attrId] = valueData;
+                    });
+                    print('   ✅ Attr $attrId: simple value=$valueData');
+                  }
+                } else {
+                  print('   ⚠️ Attribute ID $attrId not found in loaded attributes');
+                }
+              } catch (e) {
+                print('   ⚠️ Error parsing attribute "$attrIdStr": $e');
+              }
+            });
+          }
+        }
+
+        print('✅ Attributes population complete');
+      } else if (attributesData is List) {
+        print('ℹ️ Attributes returned as list format');
+        print('   List length: ${(attributesData as List).length}');
+        
+        // Обработка List формата: [{id, value, max_value, values_id}, ...]
+        try {
+          final attributesList = attributesData as List<dynamic>;
+          final tempSelectedValues = Map<int, dynamic>.from(_selectedValues);
+          
+          print('   _attributes available: ${_attributes.length}');
+          if (_attributes.isEmpty) {
+            print('   ⚠️ WARNING: _attributes is empty! Cannot process values');
+            return;
+          }
+          
+          for (final attrItem in attributesList) {
+            if (attrItem is Map<String, dynamic> && attrItem.containsKey('id')) {
+              final attrId = attrItem['id'] as int?;
+              if (attrId == null) continue;
+              
+              // Найти атрибут в loaded _attributes
+              final attr = _attributes.firstWhere(
+                (a) => a.id == attrId,
+                orElse: () => Attribute(id: 0, title: '', order: 0, values: []),
+              );
+              
+              if (attr.id == 0) {
+                print('   ⚠️ Attr $attrId not found in _attributes');
+                continue;
+              }
+              
+              print('   Processing Attr $attrId "${attr.title}"...');
+              
+              // ✅ CASE 1: values_id - для множественных выборов (D1, F типы)
+              if (attrItem.containsKey('values_id')) {
+                final valuesId = attrItem['values_id'];
+                if (valuesId is List && valuesId.isNotEmpty) {
+                  print('      ✅ Has values_id: $valuesId');
+                  
+                  final selectedSet = <String>{};
+                  for (final valueId in valuesId) {
+                    final valueInt = valueId is int ? valueId : (int.tryParse(valueId.toString()) ?? 0);
+                    
+                    // Найти value по ID в attr.values
+                    final matchingValue = attr.values.firstWhere(
+                      (val) => val.id == valueInt,
+                      orElse: () => const Value(id: 0, value: ''),
+                    );
+                    
+                    if (matchingValue.id != 0) {
+                      selectedSet.add(matchingValue.value);
+                    }
+                  }
+                  
+                  if (selectedSet.isNotEmpty) {
+                    tempSelectedValues[attrId] = selectedSet;
+                    print('      ✅ Added to tempSelectedValues: $selectedSet');
+                  }
+                }
+              }
+              
+              // ✅ CASE 2: value + max_value - для диапазонов (E1 типы)
+              if (attrItem.containsKey('max_value') && attrItem['max_value'] != null) {
+                final minVal = attrItem['value'];
+                final maxVal = attrItem['max_value'];
+                
+                tempSelectedValues[attrId] = {
+                  'min': minVal,
+                  'max': maxVal,
+                };
+                print('      ✅ Range: $minVal - $maxVal');
+              }
+              // ✅ CASE 3: value - для простых значений (G1, H типы)
+              else if (attrItem.containsKey('value') && attrItem['value'] != null) {
+                final value = attrItem['value'];
+                tempSelectedValues[attrId] = value;
+                print('      ✅ Value: $value (type: ${value.runtimeType})');
+              }
+            }
+          }
+          
+          print('   tempSelectedValues prepared: ${tempSelectedValues.length} items');
+          print('   Content: $tempSelectedValues');
+          
+          // 🔄 Один раз setState() с ВСЕ значения
+          if (tempSelectedValues.isNotEmpty) {
+            setState(() {
+              _selectedValues = tempSelectedValues;
+            });
+            print('✅ setState() called. _selectedValues now has ${_selectedValues.length} items');
+          }
+          
+          print('✅ List format attributes processed');
+        } catch (e) {
+          print('❌ Error processing list format: $e');
+        }
+      }
+    } catch (e) {
+      print('❌ Error populating attributes: $e');
+    }
+  }
+
+  /// � Пересоздает контроллеры с правильными значениями ПОСЛЕ загрузки атрибутов
+  /// Это нужно для того чтобы UI отобразил предзаполненные значения
+  void _repopulateControllersAfterAttributesLoaded() {
+    try {
+      print('🔄 Repopulating controllers after attributes loaded...');
+      print('   _selectedValues: $_selectedValues');
+      print('   _attributes count: ${_attributes.length}');
+      
+      // НЕ очищаем контроллеры! Просто обновляем их текст
+      // Потому что они уже используются в UI через putIfAbsent
+      
+      for (final attr in _attributes) {
+        if (_selectedValues.containsKey(attr.id)) {
+          final value = _selectedValues[attr.id];
+          
+          print('   Updating attr ${attr.id} "${attr.title}": value=$value');
+          
+          // Обновляем текстовые контроллеры
+          if (value is String) {
+            // Простое текстовое значение
+            if (_controllers.containsKey(attr.id)) {
+              _controllers[attr.id]!.text = value;
+              print('     ✅ Updated text controller with "$value"');
+            } else {
+              // Контроллер еще не создан, создаем его
+              _controllers[attr.id] = TextEditingController(text: value);
+              print('     ✅ Created text controller with "$value"');
+            }
+          } else if (value is Map && (value.containsKey('min') || value.containsKey('max'))) {
+            // Диапазон - обновляем оба контроллера
+            final minVal = (value['min'] ?? '').toString();
+            final maxVal = (value['max'] ?? '').toString();
+            final minKey = attr.id * 2;
+            final maxKey = attr.id * 2 + 1;
+            
+            if (_controllers.containsKey(minKey)) {
+              _controllers[minKey]!.text = minVal;
+            } else {
+              _controllers[minKey] = TextEditingController(text: minVal);
+            }
+            
+            if (_controllers.containsKey(maxKey)) {
+              _controllers[maxKey]!.text = maxVal;
+            } else {
+              _controllers[maxKey] = TextEditingController(text: maxVal);
+            }
+            
+            print('     ✅ Updated range controllers: min=$minVal, max=$maxVal');
+          } else if (value is num) {
+            // Числовое значение
+            if (_controllers.containsKey(attr.id)) {
+              _controllers[attr.id]!.text = value.toString();
+            } else {
+              _controllers[attr.id] = TextEditingController(text: value.toString());
+            }
+            print('     ✅ Updated numeric controller with $value');
+          }
+        }
+      }
+      
+      // � Установка значений по умолчанию при редактировании объявления
+      if (_isEditMode) {
+        // Атрибут "Вам предложат цену" (1048) - по умолчанию ВСЕГДА true
+        _selectedValues[1048] = true;
+        print('   ✅ Set attribute 1048 "Вам предложат цену" to TRUE by default');
+      }
+      
+      // �🔔 ВАЖНО: Вызываем setState() чтобы UI пересчитался
+      if (mounted) {
+        setState(() {
+          // Контроллеры обновлены выше, setState будет пересчитан UI
+        });
+      }
+      
+      print('✅ Controllers repopulation complete');
+    } catch (e) {
+      print('❌ Error repopulating controllers: $e');
+    }
+  }
+
+  /// �📸 Загружает изображения объявления из API
+  /// Скачивает каждое изображение и сохраняет локально
+  Future<void> _loadAdvertImages(Map<String, dynamic> advertData) async {
+    try {
+      // Ищем изображения в разных возможных местах API ответа
+      List<dynamic> imageUrls = [];
+      
+      if (advertData.containsKey('media') && advertData['media'] is List) {
+        imageUrls = advertData['media'];
+      } else if (advertData.containsKey('images') && advertData['images'] is List) {
+        imageUrls = advertData['images'];
+      } else if (advertData.containsKey('photos') && advertData['photos'] is List) {
+        imageUrls = advertData['photos'];
+      }
+
+      if (imageUrls.isEmpty) {
+        print('ℹ️ No images found in advert data');
+        return;
+      }
+
+      print('📸 Found ${imageUrls.length} images, downloading...');
+
+      final tempDir = await getTemporaryDirectory();
+      final List<File> downloadedImages = [];
+
+      for (int i = 0; i < imageUrls.length; i++) {
+        try {
+          final imageData = imageUrls[i];
+          String? imageUrl;
+
+          // Парсим URL из разных форматов
+          if (imageData is String) {
+            imageUrl = imageData;
+          } else if (imageData is Map<String, dynamic>) {
+            imageUrl = imageData['url'] ??
+                imageData['link'] ??
+                imageData['path'] ??
+                imageData['image'];
+          }
+
+          if (imageUrl == null || imageUrl.isEmpty) {
+            print('⚠️ Image $i has no URL');
+            continue;
+          }
+
+          // Убедимся что URL полный
+          if (!imageUrl.startsWith('http')) {
+            imageUrl = 'https://dev-api.lidle.io' + (imageUrl.startsWith('/') ? '' : '/') + imageUrl;
+          }
+
+          // Скачиваем изображение
+          print('  ↓ Downloading image $i: $imageUrl');
+          final response = await http.get(Uri.parse(imageUrl)).timeout(
+            const Duration(seconds: 15),
+            onTimeout: () {
+              print('  ⏱️ Timeout downloading image $i');
+              throw TimeoutException('Timeout loading image $i');
+            },
+          );
+
+          if (response.statusCode == 200) {
+            // Сохраняем в временную директорию
+            final fileName = 'advert_image_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+            final file = File('${tempDir.path}/$fileName');
+            await file.writeAsBytes(response.bodyBytes);
+            
+            downloadedImages.add(file);
+            print('  ✅ Saved image $i: $fileName');
+          } else {
+            print('  ❌ Failed to download image $i: ${response.statusCode}');
+          }
+        } catch (e) {
+          print('  ❌ Error downloading image $i: $e');
+          // Продолжаем загружать остальные изображения
+          continue;
+        }
+      }
+
+      if (downloadedImages.isNotEmpty && mounted) {
+        setState(() {
+          _images.addAll(downloadedImages);
+        });
+        print('✅ Images loaded successfully: ${downloadedImages.length}/${imageUrls.length}');
+      }
+    } catch (e) {
+      print('❌ Error loading advert images: $e');
+    }
+  }
+
+  /// 📞 Заполняет контактные поля из объявления
+  /// Берет контакты из объявления (не из профиля пользователя)
+  /// Это важно для редактирования - показать исходные контакты, а не текущие
+  void _populateContactsFromAdvert(Map<String, dynamic> advertData) {
+    try {
+      // Заполняем телефон
+      if (advertData.containsKey('phone') && advertData['phone'] != null) {
+        final phone = advertData['phone'].toString();
+        if (phone.isNotEmpty) {
+          _phone1Controller.text = phone;
+          print('✅ Filled phone: $phone');
+        }
+      }
+
+      // Заполняем email
+      if (advertData.containsKey('email') && advertData['email'] != null) {
+        final email = advertData['email'].toString();
+        if (email.isNotEmpty) {
+          _emailController.text = email;
+          print('✅ Filled email: $email');
+        }
+      }
+
+      // Заполняем telegram
+      if (advertData.containsKey('telegram') && advertData['telegram'] != null) {
+        final telegram = advertData['telegram'].toString();
+        if (telegram.isNotEmpty) {
+          _telegramController.text = telegram;
+          print('✅ Filled telegram: $telegram');
+        }
+      }
+
+      // Заполняем whatsapp
+      if (advertData.containsKey('whatsapp') && advertData['whatsapp'] != null) {
+        final whatsapp = advertData['whatsapp'].toString();
+        if (whatsapp.isNotEmpty) {
+          _whatsappController.text = whatsapp;
+          print('✅ Filled whatsapp: $whatsapp');
+        }
+      }
+
+      print('✅ Contacts population complete');
+    } catch (e) {
+      print('❌ Error populating contacts: $e');
     }
   }
 
@@ -3694,11 +4152,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
   // Style G1: Special numeric field (single numeric input)
   Widget _buildG1Field(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
+    
+    // 🔧 При редактировании: если контроллер уже существует с предзаполненным значением, используем его
+    // При создании: создаем новый контроллер с пустым значением
     final controller = _controllers.putIfAbsent(attr.id, () {
       final value = _selectedValues[attr.id];
+      print('🔍 Creating G1 controller for attr ${attr.id} "${attr.title}"');
+      print('   value from _selectedValues: $value (type: ${value.runtimeType})');
+      
       final textValue = value is String ? value : (value?.toString() ?? '');
+      print('   textValue: "$textValue"');
+      
       return TextEditingController(text: textValue);
     });
+    
+    // DEBUG: проверяем что контроллер имеет правильное значение
+    print('   Current controller text: "${controller.text}" for attr ${attr.id}');
 
     // StyleSingle G1: Display as single numeric input field
     // Example: Общее площадь, Жилая площадь
@@ -4029,6 +4498,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
     Set<String> selected = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
+
+    print('🔍 Building multiple select popup for attr ${attr.id} "${attr.title}"');
+    print('   selected values: ${selected.toList()}');
+    print('   available options: ${attr.values.map((v) => v.value).toList()}');
 
     // According to documentation:
     // Style F: Always popup with checkboxes
