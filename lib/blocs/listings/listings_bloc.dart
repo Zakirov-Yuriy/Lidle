@@ -293,7 +293,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         if (firstCatalogIds.length > 1) {
           // Примерное увеличение для компенсации множественных каталогов
           totalPages = (totalPages * firstCatalogIds.length ~/ 2).clamp(5, 100);
-          print('📄 Расчетные страницы: $totalPages (каталогов: ${firstCatalogIds.length})');
+          // print('📄 Расчетные страницы: $totalPages (каталогов: ${firstCatalogIds.length})');
         }
       }
 
@@ -328,8 +328,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       );
     } catch (e) {
       // Логируем ошибку для отладки
-      print('❌ ListingsBloc LoadListingsEvent ошибка: $e');
-      print('Stack trace: ${StackTrace.current}');
+      // print('❌ ListingsBloc LoadListingsEvent ошибка: $e');
+      // print('Stack trace: ${StackTrace.current}');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -531,7 +531,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Просто берём очередную страницу из него
       final nextPage = (currentState.listings.length ~/ 50) + 1;
 
-      print('📄 Загрузка: ${currentState.listings.length} текущих, страница $nextPage...');
+      // print('📄 Загрузка: ${currentState.listings.length} текущих, страница $nextPage...');
 
       final advertsResponse = await ApiService.getAdverts(
         catalogId: 1, // Главный каталог - все объявления
@@ -561,7 +561,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final totalPages = advertsResponse.meta.lastPage;
       final itemsPerPage = advertsResponse.meta.perPage;
 
-      print('✅ Загружено ${newListings.length} нов объявлений, всего: ${allListings.length}');
+      // print('✅ Загружено ${newListings.length} нов объявлений, всего: ${allListings.length}');
 
       // Испускаем новое состояние с новыми объявлениями в конце
       emit(
@@ -574,7 +574,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
     } catch (e) {
-      print('❌ Ошибка при загрузке следующей страницы: $e');
+      // print('❌ Ошибка при загрузке следующей страницы: $e');
       // При ошибке испускаем состояние ошибки
       emit(
         ListingsError(message: 'Ошибка при загрузке следующей страницы: $e'),

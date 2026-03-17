@@ -446,6 +446,37 @@ class _MyListingsPropertyDetailsScreenState
   }
 
   Widget _buildLocationCard() {
+    // Формируем полный адрес из всех доступных компонентов в соответствии с API
+    String fullAddress = '';
+    
+    // Собираем адрес в порядке: mainRegion (область) → subRegion (район) → district (район города) → city (город) → street (улица) → buildingNumber (номер дома)
+    if (_listing.mainRegion != null && _listing.mainRegion!.isNotEmpty) {
+      fullAddress += _listing.mainRegion!;
+    }
+    if (_listing.subRegion != null && _listing.subRegion!.isNotEmpty) {
+      if (fullAddress.isNotEmpty) fullAddress += ', ';
+      fullAddress += _listing.subRegion!;
+    }
+    if (_listing.district != null && _listing.district!.isNotEmpty) {
+      if (fullAddress.isNotEmpty) fullAddress += ', ';
+      fullAddress += _listing.district!;
+    }
+    if (_listing.city != null && _listing.city!.isNotEmpty) {
+      if (fullAddress.isNotEmpty) fullAddress += ', ';
+      fullAddress += _listing.city!;
+    }
+    if (_listing.street != null && _listing.street!.isNotEmpty) {
+      if (fullAddress.isNotEmpty) fullAddress += ', ';
+      fullAddress += _listing.street!;
+    }
+    if (_listing.buildingNumber != null && _listing.buildingNumber!.isNotEmpty) {
+      if (fullAddress.isNotEmpty) fullAddress += ', ';
+      fullAddress += _listing.buildingNumber!;
+    }
+
+    // Если нет отдельных компонентов, используем location как fallback
+    final displayAddress = fullAddress.isNotEmpty ? fullAddress : _listing.location;
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,7 +494,7 @@ class _MyListingsPropertyDetailsScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            _listing.location,
+            displayAddress,
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 3),

@@ -59,6 +59,17 @@ class Listing {
   /// Местоположение объекта объявления.
   final String location;
 
+  /// Отдельные компоненты адреса для детального отображения
+  final String? region;
+  final String? city;
+  final String? street;
+  final String? buildingNumber;
+  
+  // Новые поля для хранения адресных компонентов из API
+  final String? mainRegion; // Область/регион верхнего уровня
+  final String? subRegion;  // Район/область второго уровня
+  final String? district;   // Район города
+
   /// Дата публикации или обновления объявления.
   final String date;
 
@@ -102,6 +113,13 @@ class Listing {
     this.description,
     this.characteristics =
         const {}, // 🔥 NOTE: This creates immutable map - will be replaced with mutable later if needed
+    this.region,
+    this.city,
+    this.street,
+    this.buildingNumber,
+    this.mainRegion,
+    this.subRegion,
+    this.district,
   });
 
   factory Listing.fromJson(Map<String, dynamic> json) {
@@ -153,7 +171,25 @@ class Listing {
       price: json['price'] ?? '0',
       location:
           json['address'] ??
+          json['full_address'] ??
           'Unknown Location', // Assuming 'address' corresponds to 'location'
+      region: json['address']?['region']?.toString() ?? json['region'],
+      city: json['address']?['city']?.toString() ?? json['city'],
+      street: json['address']?['street']?.toString() ?? json['street'],
+      buildingNumber: json['address']?['building_number']?.toString() ?? json['building_number'],
+      // Извлекаем адресные компоненты из API в соответствии с документацией
+      mainRegion: json['address']?['main_region']?['name']?.toString() ?? 
+                  json['address']?['region_name']?.toString() ??
+                  json['main_region']?.toString() ??
+                  json['region_name']?.toString(),
+      subRegion: json['address']?['region']?['name']?.toString() ?? 
+                 json['address']?['sub_region']?.toString() ??
+                 json['region']?.toString() ??
+                 json['sub_region']?.toString(),
+      district: json['address']?['district']?['name']?.toString() ?? 
+                json['address']?['district_name']?.toString() ??
+                json['district']?.toString() ??
+                json['district_name']?.toString(),
       date: json['date'] ?? 'Unknown Date',
       isFavorited: json['isFavorited'] ?? false,
       // API detail endpoint returns seller info under 'user' key,

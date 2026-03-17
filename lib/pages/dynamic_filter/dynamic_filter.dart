@@ -1349,7 +1349,52 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
   }
 
-  /// Загружает номера домов для выбранной улицы при автозаполнении
+  /// Загружает номера домов для выбранной улицы
+  Future<void> _loadBuildingsForSelectedStreet() async {
+    if (_selectedStreetId == null) return;
+
+    try {
+      final token = TokenService.currentToken;
+      String searchQuery = '1'; // Default search term
+
+      if (_selectedStreet.isNotEmpty) {
+        final streetName = _selectedStreet.first;
+        if (streetName.length >= 3) {
+          searchQuery = streetName.length > 50
+              ? streetName.substring(0, 50)
+              : streetName;
+        } else {
+          searchQuery = streetName + '   ';
+        }
+      }
+
+      final response = await AddressService.searchAddresses(
+        query: searchQuery,
+        token: token,
+        types: ['building'],
+      );
+
+      // print();
+
+      final uniqueBuildings = <String, int>{};
+      for (final result in response.data) {
+        if (result.street?.id == _selectedStreetId && result.building != null) {
+          uniqueBuildings[result.building!.name] = result.building!.id;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _buildings = uniqueBuildings.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+        });
+        // print('✅ Auto-loaded ${_buildings.length} buildings');
+      }
+    } catch (e) {
+      // print('❌ Error auto-loading buildings: $e');
+    }
+  }
 
   int? mainRegionId = 1; // Track main_region.id for top-level region_id
   List<File> _images = [];
@@ -2005,6 +2050,61 @@ class _DynamicFilterState extends State<DynamicFilter> {
             address['street_id'] = _selectedStreetId;
             // Не отправляем building_id, так как номер дома вводится вручную
             address['building_number'] = _selectedBuilding.first;
+            
+            // Формируем полный адрес для отображения
+            String fullAddress = '';
+            if (_selectedRegion.isNotEmpty) {
+              fullAddress += _selectedRegion.first;
+            }
+            if (_selectedCity.isNotEmpty) {
+              if (fullAddress.isNotEmpty) fullAddress += ', ';
+              fullAddress += _selectedCity.first;
+            }
+            if (_selectedStreet.isNotEmpty) {
+              if (fullAddress.isNotEmpty) fullAddress += ', ';
+              fullAddress += _selectedStreet.first;
+            }
+            if (_selectedBuilding.isNotEmpty) {
+              if (fullAddress.isNotEmpty) fullAddress += ', ';
+              fullAddress += _selectedBuilding.first;
+            }
+            address['full_address'] = fullAddress;
+            
+            // Добавляем отдельные компоненты адреса в соответствии с API документацией
+            // API ожидает структуру с вложенными объектами для каждого уровня адреса
+            address['region'] = _selectedRegion.isNotEmpty ? _selectedRegion.first : null;
+            address['city'] = _selectedCity.isNotEmpty ? _selectedCity.first : null;
+            address['street'] = _selectedStreet.isNotEmpty ? _selectedStreet.first : null;
+            address['building_number'] = _selectedBuilding.isNotEmpty ? _selectedBuilding.first : null;
+            
+            // Добавляем вложенные объекты для main_region, region, district в соответствии с API
+            if (_selectedRegion.isNotEmpty && _selectedRegionId != null) {
+              address['main_region'] = {
+                'id': _selectedRegionId,
+                'name': _selectedRegion.first
+              };
+            }
+            
+            if (_selectedCity.isNotEmpty && _selectedCityId != null) {
+              address['city'] = {
+                'id': _selectedCityId,
+                'name': _selectedCity.first
+              };
+            }
+            
+            if (_selectedStreet.isNotEmpty && _selectedStreetId != null) {
+              address['street'] = {
+                'id': _selectedStreetId,
+                'name': _selectedStreet.first
+              };
+            }
+            
+            if (_selectedBuilding.isNotEmpty) {
+              address['building'] = {
+                'id': _selectedBuildingId,
+                'name': _selectedBuilding.first
+              };
+            }
 
             // print('✅ Address prepared from selections:');
             // print('   region_id (for address): ${address['region_id']}');
@@ -3055,48 +3155,57 @@ class _DynamicFilterState extends State<DynamicFilter> {
               ),
               const SizedBox(height: 9),
 
-              // Building number field - простой ввод текста
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Номер дома*',
-                    style: TextStyle(color: textPrimary, fontSize: 16),
-                  ),
-                  const SizedBox(height: 9),
-                  TextField(
-                    controller: _buildingController,
-                    readOnly: _selectedStreetId == null,
-                    enabled: _selectedStreetId != null,
-                    decoration: InputDecoration(
-                      hintText: _selectedStreetId == null
-                          ? 'Выберите улицу'
-                          : 'Введите номер дома (например: 45, 45А, 45/2)',
-                      hintStyle: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 14,
-                      ),
-                      filled: true,
-                      fillColor: _selectedStreetId == null
-                          ? formBackground
-                          : formBackground,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 12,
-                      ),
-                    ),
-                    style: const TextStyle(color: textPrimary),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedBuilding = {value};
-                      });
-                    },
-                  ),
-                ],
+              // Building number field - dropdown selection
+              _buildDropdown(
+                label: 'Номер дома*',
+                hint: _selectedBuilding.isEmpty
+                    ? 'Выберите номер дома'
+                    : _selectedBuilding.join(', '),
+                icon: const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: textSecondary,
+                ),
+                onTap: _selectedStreetId == null
+                    ? null
+                    : () async {
+                        // Load buildings for selected street
+                        if (_buildings.isEmpty && _selectedStreetId != null) {
+                          await _loadBuildingsForSelectedStreet();
+                        }
+
+                        if (_buildings.isNotEmpty) {
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return SelectionDialog(
+                                title: 'Выберите номер дома',
+                                options: _buildings
+                                    .map((b) => b['name'] as String)
+                                    .toList(),
+                                selectedOptions: _selectedBuilding,
+                                onSelectionChanged: (Set<String> selected) {
+                                  if (selected.isNotEmpty) {
+                                    final selectedBuildingName = selected.first;
+                                    final buildingIndex = _buildings.indexWhere(
+                                      (b) => b['name'] == selectedBuildingName,
+                                    );
+                                    int? buildingId;
+                                    if (buildingIndex >= 0) {
+                                      buildingId = _buildings[buildingIndex]['id'] as int?;
+                                    }
+                                    setState(() {
+                                      _selectedBuilding = selected;
+                                      _selectedBuildingId = buildingId;
+                                      _buildingController.text = selectedBuildingName;
+                                    });
+                                  }
+                                },
+                                allowMultipleSelection: false,
+                              );
+                            },
+                          );
+                        }
+                      },
               ),
               const SizedBox(height: 9),
 

@@ -153,11 +153,11 @@ class MyAdvertsService {
       );
 
       // ignore: avoid_print
-      print('📢 MyAdvertsService.getMyAdverts() response:');
+      // print('📢 MyAdvertsService.getMyAdverts() response:');
       // ignore: avoid_print
-      print('   Response keys: ${response.keys.toList()}');
+      // print('   Response keys: ${response.keys.toList()}');
       // ignore: avoid_print
-      print('   Full response: $response');
+      // print('   Full response: $response');
 
       return MyAdvertsResponse.fromJson(response);
     } catch (e) {

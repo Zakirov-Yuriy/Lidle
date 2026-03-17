@@ -845,7 +845,7 @@ class ApiService {
 
       // print('📋 Query Parameters:');
       queryParams.forEach((key, value) {
-        print('  📋 $key: $value');
+        // print('  📋 $key: $value');
       });
 
       // 🟢 ТЕСТИРОВАНИЕ: Сначала пытаемся БЕЗ параметра with=attributes
@@ -860,11 +860,11 @@ class ApiService {
         // queryParams['with'] = 'attributes'; // Вариант 2: with
       }
 
-      print('\n🔗 FULL REQUEST URL:');
-      print(
-        '   GET /adverts?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}').join('&')}',
-      );
-      print('');
+      // print('\n🔗 FULL REQUEST URL:');
+      // print(
+      //   '   GET /adverts?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}').join('&')}',
+      // );
+      // print('');
 
       final response = await getWithQuery(
         '/adverts',
@@ -874,13 +874,13 @@ class ApiService {
 
       // DEBUG: Show filters being sent to server
       if (filters != null && filters.isNotEmpty) {
-        print('DEBUG: Filters sent = ' + filters.toString());
+        // print('DEBUG: Filters sent = ' + filters.toString());
       }
 
       // DEBUG: Check how many results came back
       if (response is Map && response['data'] is List) {
         final count = (response['data'] as List).length;
-        print('DEBUG: API returned ' + count.toString() + ' listings');
+        // print('DEBUG: API returned ' + count.toString() + ' listings');
       }
 
       return AdvertsResponse.fromJson(response);
@@ -1210,10 +1210,6 @@ class ApiService {
       final refreshTokenValue =
           HiveService.getUserData('refresh_token') as String? ?? currentToken;
 
-      print(
-        '🔄 refreshToken: используем refresh_token: ${refreshTokenValue.substring(0, refreshTokenValue.length.clamp(0, 20))}...',
-      );
-
       final headers = {...defaultHeaders};
       // Передаём REFRESH_TOKEN (не access_token) как Bearer в Authorization
       headers['Authorization'] = 'Bearer $refreshTokenValue';
@@ -1239,16 +1235,16 @@ class ApiService {
       // Оба случая означают что нужна повторная авторизация (нет автоматического рефреша).
       // TokenService._doRefresh() увидит null и вызовет _notifyTokenExpired().
       if (response.statusCode == 401 || response.statusCode == 403) {
-        print(
-          '🔒 refreshToken: токен истёк/невалиден (${response.statusCode}): ${response.body}',
-        );
+        // print(
+        //   '🔒 refreshToken: токен истёк/невалиден (${response.statusCode}): ${response.body}',
+        // );
         return null;
       }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        print(
-          '❌ refreshToken: сервер вернул ${response.statusCode}: ${response.body}',
-        );
+        // print(
+        //   '❌ refreshToken: сервер вернул ${response.statusCode}: ${response.body}',
+        // );
         return null;
       }
 
@@ -1256,7 +1252,7 @@ class ApiService {
 
       // Проверяем флаг success
       if (data['success'] != true) {
-        print('❌ refreshToken: success=false: ${data['message']}');
+        // print('❌ refreshToken: success=false: ${data['message']}');
         return null;
       }
 
@@ -1268,7 +1264,7 @@ class ApiService {
           '✅ refreshToken: новый access_token сохранён: ${newAccessToken.substring(0, newAccessToken.length.clamp(0, 20))}...',
         );
       } else {
-        print('❌ refreshToken: access_token не найден в ответе: $data');
+        // print('❌ refreshToken: access_token не найден в ответе: $data');
         return null;
       }
 
@@ -1279,7 +1275,7 @@ class ApiService {
         await HiveService.saveUserData('refresh_token', newRefreshToken);
         print('✅ refreshToken: новый refresh_token сохранён (ротация токена)');
       } else {
-        print('❌ refreshToken: refresh_token не найден в ответе');
+        // print('❌ refreshToken: refresh_token не найден в ответе');
         return null;
       }
 
@@ -1315,7 +1311,7 @@ class ApiService {
 
       return newAccessToken;
     } catch (e) {
-      print('❌ refreshToken exception: $e');
+      // print('❌ refreshToken exception: $e');
       return null;
     }
   }
@@ -1856,16 +1852,16 @@ class ApiService {
           (response['data'] as List).whereType<Map<String, dynamic>>(),
         );
 
-        print('📊 getMyOffers() returned ${offers.length} offers');
+        // print('📊 getMyOffers() returned ${offers.length} offers');
         if (offers.isNotEmpty) {
-          print('   First offer structure:');
-          offers.first.forEach((key, value) {
-            if (value is Map || value is List) {
-              print('      $key: [object with keys]');
-            } else {
-              print('      $key: $value (${value.runtimeType})');
-            }
-          });
+          // print('   First offer structure:');
+          // offers.first.forEach((key, value) {
+          //   if (value is Map || value is List) {
+          //     print('      $key: [object with keys]');
+          //   } else {
+          //     print('      $key: $value (${value.runtimeType})');
+          //   }
+          // });
         }
 
         return offers;
