@@ -691,7 +691,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // Обработка List формата: [{id, value, max_value, values_id}, ...]
         try {
           final attributesList = attributesData as List<dynamic>;
-          final tempSelectedValues = Map<int, dynamic>.from(_selectedValues);
+          // ⚠️ НЕ переносим старые значения! Начинаем с чистого листа
+          final tempSelectedValues = <int, dynamic>{};
           
           print('   _attributes available: ${_attributes.length}');
           if (_attributes.isEmpty) {
@@ -699,10 +700,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
             return;
           }
           
+          // Отслеживаем какие атрибуты обработаны
+          final processedAttrIds = <int>{};
+          
           for (final attrItem in attributesList) {
             if (attrItem is Map<String, dynamic> && attrItem.containsKey('id')) {
               final attrId = attrItem['id'] as int?;
               if (attrId == null) continue;
+              
+              processedAttrIds.add(attrId);
               
               // Найти атрибут в loaded _attributes
               final attr = _attributes.firstWhere(
@@ -739,14 +745,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   }
                   
                   if (selectedSet.isNotEmpty) {
-                    tempSelectedValues[attrId] = selectedSet;
-                    print('      ✅ Added to tempSelectedValues: $selectedSet');
+                    // 🔧 SPECIAL: Если это чекбокс (I тип) - преобразовать в boolean
+                    if (attr.styleSingle == 'I') {
+                      tempSelectedValues[attrId] = true;  // Если значение есть - true
+                      print('      ✅ I-type checkbox: Set to TRUE');
+                    } else {
+                      // C1, D1, F типы - оставить как Set
+                      tempSelectedValues[attrId] = selectedSet;
+                      print('      ✅ Added to tempSelectedValues: $selectedSet');
+                    }
+                  } else {
+                    print('      ⚠️ values_id пусто или не найдено в values - пропускаем');
                   }
+                } else {
+                  print('      ⚠️ values_id отсутствует или пусто - пропускаем');
                 }
               }
               
               // ✅ CASE 2: value + max_value - для диапазонов (E1 типы)
-              if (attrItem.containsKey('max_value') && attrItem['max_value'] != null) {
+              else if (attrItem.containsKey('max_value') && attrItem['max_value'] != null) {
                 final minVal = attrItem['value'];
                 final maxVal = attrItem['max_value'];
                 
@@ -765,6 +782,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             }
           }
           
+          print('   Processed ${processedAttrIds.length} attributes from API');
           print('   tempSelectedValues prepared: ${tempSelectedValues.length} items');
           print('   Content: $tempSelectedValues');
           
@@ -801,21 +819,37 @@ class _DynamicFilterState extends State<DynamicFilter> {
         if (_selectedValues.containsKey(attr.id)) {
           final value = _selectedValues[attr.id];
           
-          print('   Updating attr ${attr.id} "${attr.title}": value=$value');
+          print('   Updating attr ${attr.id} "${attr.title}": value=$value (styleSingle: ${attr.styleSingle})');
           
-          // Обновляем текстовые контроллеры
-          if (value is String) {
-            // Простое текстовое значение
+          // CASE 1: Множество (Set) - для C1 и F типов
+          if (value is Set) {
+            if (value.isEmpty) {
+              print('     ℹ️ Empty set for attr ${attr.id} - skip');
+              continue;
+            }
+            
+            // ✅ Для C1 (single choice) и F (multiple select) - берем первый элемент
+            final firstValue = value.first.toString();
+            if (_controllers.containsKey(attr.id)) {
+              _controllers[attr.id]!.text = firstValue;
+              print('     ✅ Updated Controller (from set) with "$firstValue"');
+            } else {
+              _controllers[attr.id] = TextEditingController(text: firstValue);
+              print('     ✅ Created Controller (from set) with "$firstValue"');
+            }
+          }
+          // CASE 2: Простое текстовое значение
+          else if (value is String) {
             if (_controllers.containsKey(attr.id)) {
               _controllers[attr.id]!.text = value;
               print('     ✅ Updated text controller with "$value"');
             } else {
-              // Контроллер еще не создан, создаем его
               _controllers[attr.id] = TextEditingController(text: value);
               print('     ✅ Created text controller with "$value"');
             }
-          } else if (value is Map && (value.containsKey('min') || value.containsKey('max'))) {
-            // Диапазон - обновляем оба контроллера
+          }
+          // CASE 3: Диапазон (E1) - обновляем оба контроллера
+          else if (value is Map && (value.containsKey('min') || value.containsKey('max'))) {
             final minVal = (value['min'] ?? '').toString();
             final maxVal = (value['max'] ?? '').toString();
             final minKey = attr.id * 2;
@@ -834,8 +868,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
             }
             
             print('     ✅ Updated range controllers: min=$minVal, max=$maxVal');
-          } else if (value is num) {
-            // Числовое значение
+          }
+          // CASE 4: Числовое значение
+          else if (value is num) {
             if (_controllers.containsKey(attr.id)) {
               _controllers[attr.id]!.text = value.toString();
             } else {
@@ -3610,6 +3645,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return _buildK1Field(attr);
     }
 
+    // Случай 1.11: Стиль C1 - Кнопки (styleSingle=C1 - SUBMISSION MODE)
+    // Флаги: styleSingle='C1'
+    // Пример: Меблированная, Вид объекта, Ипотека (кнопки при подаче объявления)
+    // ВАЖНО: это одиночный выбор в виде кнопок (как D1 для dropdown, E1 для range)
+    if (attr.styleSingle == 'C1') {
+      // print();
+      return _buildSpecialDesignField(attr);
+    }
+
     // Случай 2: Простой чекбокс (Style B)
     // Флаги: НЕ is_multiple (или is_multiple=false), есть values
     // Но НЕ is_title_hidden
@@ -4188,15 +4232,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  // Style C: Special design (button group with variable number of options)
+  // Style C / C1: Special design (button group with variable number of options)
   Widget _buildSpecialDesignField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
-    String selected = _selectedValues[attr.id] is String
-        ? _selectedValues[attr.id]
-        : '';
+    
+    // ✅ Обработка различных типов значений (String или Set)
+    String selected = '';
+    final value = _selectedValues[attr.id];
+    
+    if (value is String) {
+      selected = value;
+    } else if (value is Set<String> && value.isNotEmpty) {
+      // Если значение это Set - берем первый элемент (одиночный выбор для C1)
+      selected = value.first;
+      print('   ✅ C1/C field: Extracted value from Set: $selected');
+    }
 
     // According to documentation:
     // Style C with is_special_design=true: Show as button group
+    // Style C1 (styleSingle=C1): Show as button group (submission mode)
     // Can have 2, 3, or more button options (Да/Нет, Совместная/Продажа/Аренда, etc.)
 
     return Column(
