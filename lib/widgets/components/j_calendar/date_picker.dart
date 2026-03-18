@@ -117,9 +117,43 @@ class _CustomDatePickerState extends State<CustomDatePicker> {
     return formatted[0].toUpperCase() + formatted.substring(1);
   }
 
+  /// Проверка, можно ли выбрать день
+  bool _canSelectDay(int day) {
+    final selectedDay = DateTime(_displayedMonth.year, _displayedMonth.month, day);
+    
+    // Если выбираем дату "До", проверяем что она не меньше дня "От"
+    if (widget.isSelectingDateTo && widget.otherDate != null) {
+      return selectedDay.isAfter(widget.otherDate!) || 
+             (selectedDay.year == widget.otherDate!.year && 
+              selectedDay.month == widget.otherDate!.month && 
+              selectedDay.day == widget.otherDate!.day);
+    }
+    
+    // Если выбираем дату "От", то любая дата разрешена
+    return true;
+  }
+
   void _selectDay(int day) {
+    final selectedDay = DateTime(_displayedMonth.year, _displayedMonth.month, day);
+    
+    // Проверяем валидность выбора
+    if (!_canSelectDay(day)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.isSelectingDateTo 
+              ? 'Дата "До" должна быть позже даты "От"'
+              : 'Дата "От" должна быть раньше даты "До"',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+    
     setState(() {
-      _selectedDate = DateTime(_displayedMonth.year, _displayedMonth.month, day);
+      _selectedDate = selectedDay;
     });
   }
 
@@ -292,16 +326,17 @@ class _CustomDatePickerState extends State<CustomDatePicker> {
                         _displayedMonth.month == DateTime.now().month &&
                         _displayedMonth.year == DateTime.now().year;
                     final isWeekend = (index % 7 == 5) || (index % 7 == 6); // СБ и ВС
+                    final canSelect = _canSelectDay(day);
 
                     return GestureDetector(
-                      onTap: () => _selectDay(day),
+                      onTap: canSelect ? () => _selectDay(day) : null,
                       child: Container(
                         decoration: BoxDecoration(
                           color: isSelected
                               ? activeIconColor
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(30),
-                          border: isToday
+                          border: isToday && canSelect
                               ? Border.all(color: Colors.grey, width: 1)
                               : null,
                         ),
@@ -311,9 +346,11 @@ class _CustomDatePickerState extends State<CustomDatePicker> {
                             style: TextStyle(
                               color: isSelected
                                   ? Colors.white
-                                  : isWeekend
-                                      ? const Color(0xFFFF4444)
-                                      : Colors.white,
+                                  : !canSelect
+                                      ? const Color(0xFF555555) // Серый цвет для недоступных дней
+                                      : isWeekend
+                                          ? const Color(0xFFFF4444)
+                                          : Colors.white,
                               fontSize: 14,
                               fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                             ),

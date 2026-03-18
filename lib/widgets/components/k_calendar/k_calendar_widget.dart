@@ -93,7 +93,7 @@ class _KRentTimeWidgetState extends State<KRentTimeWidget> {
   Future<void> _selectTimeTo() async {
     final result = await showKCustomTimePicker(
       context,
-      initialTime: _timeTo,
+      initialTime: _timeFrom, // По умолчанию устанавливаем время "От"
       title: 'Выберите время и дату',
       subtitle: 'Дата и время вашей аренды',
       fromDate: _selectedDateFrom,
@@ -140,7 +140,7 @@ class _KRentTimeWidgetState extends State<KRentTimeWidget> {
   Future<void> _selectDateTo() async {
     final result = await showKCustomDatePicker(
       context,
-      initialDate: _selectedDateTo,
+      initialDate: _selectedDateFrom, // По умолчанию устанавливаем дату "От"
       otherDate: _selectedDateFrom,
       isSelectingDateTo: true,
       title: 'Выберите время и дату',

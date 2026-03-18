@@ -68,6 +68,28 @@ class _KCustomTimePickerState extends State<KCustomTimePicker> {
 
   void _confirm() {
     final formattedTime = '${_selectedHour.toString().padLeft(2, '0')}:${_selectedMinute.toString().padLeft(2, '0')}';
+    
+    // Если выбираем время "До", проверяем что оно не меньше времени "От"
+    if (widget.isSelectingDateTo && widget.fromTime != null) {
+      final fromParts = widget.fromTime!.split(':');
+      final fromHour = int.tryParse(fromParts[0]) ?? 0;
+      final fromMinute = int.tryParse(fromParts[1]) ?? 0;
+      
+      final selectedTotalMinutes = _selectedHour * 60 + _selectedMinute;
+      final fromTotalMinutes = fromHour * 60 + fromMinute;
+      
+      if (selectedTotalMinutes < fromTotalMinutes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Время "До" должно быть позже или равно времени "От"'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+    }
+    
     Navigator.of(context).pop(formattedTime);
   }
 
@@ -76,6 +98,40 @@ class _KCustomTimePickerState extends State<KCustomTimePicker> {
     final formatted = formatter.format(date);
     // Капитализируем первый символ дня недели
     return formatted[0].toUpperCase() + formatted.substring(1);
+  }
+
+  /// Проверка доступности часа при выборе времени "До"
+  bool _canSelectHour(int hour) {
+    // Если выбираем время "От", любой час доступен
+    if (!widget.isSelectingDateTo) return true;
+    
+    // Если выбираем время "До", проверяем что оно не меньше времени "От"
+    if (widget.fromTime != null) {
+      final fromParts = widget.fromTime!.split(':');
+      final fromHour = int.tryParse(fromParts[0]) ?? 0;
+      return hour >= fromHour;
+    }
+    
+    return true;
+  }
+
+  /// Проверка доступности минуты при выборе времени "До"
+  bool _canSelectMinute(int minute) {
+    // Если выбираем время "От", любая минута доступна
+    if (!widget.isSelectingDateTo) return true;
+    
+    // Если выбираем время "До" и выбранный час равен часу "От", проверяем минуты
+    if (widget.fromTime != null && _selectedHour >= 0) {
+      final fromParts = widget.fromTime!.split(':');
+      final fromHour = int.tryParse(fromParts[0]) ?? 0;
+      final fromMinute = int.tryParse(fromParts[1]) ?? 0;
+      
+      if (_selectedHour == fromHour) {
+        return minute >= fromMinute;
+      }
+    }
+    
+    return true;
   }
 
   @override
@@ -217,20 +273,25 @@ class _KCustomTimePickerState extends State<KCustomTimePicker> {
                           physics: const FixedExtentScrollPhysics(),
                           children: List<Widget>.generate(
                             24,
-                            (index) => Center(
-                              child: Text(
-                                index.toString().padLeft(2, '0'),
-                                style: TextStyle(
-                                  color: index == _selectedHour
-                                      ? Colors.white
-                                      : textSecondary,
-                                  fontSize: 18,
-                                  fontWeight: index == _selectedHour
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
+                            (index) {
+                              final canSelect = _canSelectHour(index);
+                              return Center(
+                                child: Text(
+                                  index.toString().padLeft(2, '0'),
+                                  style: TextStyle(
+                                    color: index == _selectedHour
+                                        ? Colors.white
+                                        : !canSelect
+                                            ? const Color(0xFF555555)
+                                            : textSecondary,
+                                    fontSize: 18,
+                                    fontWeight: index == _selectedHour
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ),
                         // Полоски вверху и внизу для часов
@@ -288,20 +349,25 @@ class _KCustomTimePickerState extends State<KCustomTimePicker> {
                           physics: const FixedExtentScrollPhysics(),
                           children: List<Widget>.generate(
                             60,
-                            (index) => Center(
-                              child: Text(
-                                index.toString().padLeft(2, '0'),
-                                style: TextStyle(
-                                  color: index == _selectedMinute
-                                      ? Colors.white
-                                      : textSecondary,
-                                  fontSize: 18,
-                                  fontWeight: index == _selectedMinute
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
+                            (index) {
+                              final canSelect = _canSelectMinute(index);
+                              return Center(
+                                child: Text(
+                                  index.toString().padLeft(2, '0'),
+                                  style: TextStyle(
+                                    color: index == _selectedMinute
+                                        ? Colors.white
+                                        : !canSelect
+                                            ? const Color(0xFF555555)
+                                            : textSecondary,
+                                    fontSize: 18,
+                                    fontWeight: index == _selectedMinute
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ),
                         // Полоски вверху и внизу для минут

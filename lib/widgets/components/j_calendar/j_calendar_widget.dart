@@ -140,7 +140,7 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
   Future<void> _selectDateTo() async {
     final result = await showCustomDatePicker(
       context,
-      initialDate: _selectedDateTo,
+      initialDate: _selectedDateFrom, // По умолчанию устанавливаем дату "От"
       otherDate: _selectedDateFrom,
       isSelectingDateTo: true,
       title: 'Выберите время и дату',
