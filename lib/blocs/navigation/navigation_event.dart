@@ -22,6 +22,9 @@ class NavigateToFavoritesEvent extends NavigationEvent {}
 /// Событие навигации к добавлению объявления.
 class NavigateToAddListingEvent extends NavigationEvent {}
 
+/// Событие навигации к выбору категории объявления.
+class NavigateToCategorySelectionEvent extends NavigationEvent {}
+
 /// Событие навигации к Моим покупкам.
 class NavigateToMyPurchasesEvent extends NavigationEvent {}
 

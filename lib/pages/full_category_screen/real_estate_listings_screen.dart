@@ -14,7 +14,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/home_page.dart';
-import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
@@ -1197,8 +1197,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 2:
-        routeName = AddListingScreen.routeName;
-        Navigator.of(context).pushReplacementNamed(routeName);
+        routeName = CategorySelectionScreen.routeName;
+        Navigator.of(context).pushNamed(routeName);
         break;
       case 3:
         routeName = MyPurchasesScreen.routeName;

@@ -142,9 +142,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           const Padding(
             padding: EdgeInsets.only(left: 25, right: 25, top: 7),
             child: Text(
-              'Выберите категории публикации',
+              'Выберите категорию, чтобы создать объявление',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),

@@ -8,7 +8,7 @@ import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/favorites_screen.dart';
-import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 
 class BottomNavigation extends StatelessWidget {
@@ -27,7 +27,7 @@ class BottomNavigation extends StatelessWidget {
           return 0;
         case FavoritesScreen.routeName:
           return 1;
-        case AddListingScreen.routeName:
+        case CategorySelectionScreen.routeName:
           return 2;
         case MyPurchasesScreen.routeName:
           return 3;
@@ -137,7 +137,7 @@ class BottomNavigation extends StatelessWidget {
         routeName = FavoritesScreen.routeName;
         break;
       case 2:
-        routeName = AddListingScreen.routeName;
+        routeName = CategorySelectionScreen.routeName;
         break;
       case 3:
         routeName = MyPurchasesScreen.routeName;
@@ -152,7 +152,7 @@ class BottomNavigation extends StatelessWidget {
         return;
     }
 
-    // Для AddListingScreen (index 2) используем pushNamed вместо pushReplacementNamed,
+    // Для CategorySelectionScreen (index 2) используем pushNamed вместо pushReplacementNamed,
     // чтобы можно было вернуться назад на предыдущий экран по кнопке "крестик"
     if (index == 2) {
       Navigator.of(context).pushNamed(routeName);

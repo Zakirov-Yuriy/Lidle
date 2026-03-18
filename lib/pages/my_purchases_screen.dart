@@ -55,6 +55,7 @@ class MyPurchasesScreen extends StatelessWidget {
         if (state is NavigationToProfile ||
             state is NavigationToHome ||
             state is NavigationToFavorites ||
+            state is NavigationToCategorySelection ||
             state is NavigationToMessages) {
           context.read<NavigationBloc>().executeNavigation(context);
         }

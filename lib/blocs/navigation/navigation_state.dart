@@ -38,6 +38,11 @@ class NavigationToAddListing extends NavigationState {
   const NavigationToAddListing() : super(2);
 }
 
+/// Состояние навигации к выбору категории объявления.
+class NavigationToCategorySelection extends NavigationState {
+  const NavigationToCategorySelection() : super(2);
+}
+
 /// Состояние навигации к Моим покупкам.
 class NavigationToMyPurchases extends NavigationState {
   const NavigationToMyPurchases() : super(3);

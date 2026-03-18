@@ -7,6 +7,7 @@ import '../../pages/auth/sign_in_screen.dart';
 import '../../pages/profile_dashboard/profile_dashboard.dart';
 import '../../pages/favorites_screen.dart';
 import '../../pages/add_listing/add_listing_screen.dart';
+import '../../pages/add_listing/category_selection_screen.dart';
 import '../../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 import '../../pages/messages/messages_page.dart'; // Import MessagesPage
 
@@ -27,6 +28,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     on<NavigateToHomeEvent>(_onNavigateToHome);
     on<NavigateToFavoritesEvent>(_onNavigateToFavorites);
     on<NavigateToAddListingEvent>(_onNavigateToAddListing);
+    on<NavigateToCategorySelectionEvent>(_onNavigateToCategorySelection);
     on<NavigateToMyPurchasesEvent>(
       _onNavigateToMyPurchases,
     ); // Handle new event
@@ -86,6 +88,15 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     _navigateToFavorites();
   }
 
+  /// Обработчик события навигации к выбору категории объявления.
+  void _onNavigateToCategorySelection(
+    NavigateToCategorySelectionEvent event,
+    Emitter<NavigationState> emit,
+  ) {
+    emit(const NavigationToCategorySelection());
+    _navigateToCategorySelection();
+  }
+
   /// Обработчик события навигации к добавлению объявления.
   void _onNavigateToAddListing(
     NavigateToAddListingEvent event,
@@ -139,8 +150,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             _navigateToFavorites();
             break;
           case 2:
-            emit(const NavigationToAddListing());
-            _navigateToAddListing();
+            emit(const NavigationToCategorySelection());
+            _navigateToCategorySelection();
             break;
           case 3: // Мои покупки
             emit(const NavigationToMyPurchases());
@@ -190,6 +201,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     // Навигация будет выполнена в UI через BlocListener
   }
 
+  /// Приватный метод для навигации к выбору категории объявления.
+  void _navigateToCategorySelection() {
+    // Навигация будет выполнена в UI через BlocListener
+  }
+
   /// Приватный метод для навигации к добавлению объявления.
   void _navigateToAddListing() {
     // Навигация будет выполнена в UI через BlocListener
@@ -216,6 +232,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeFavoritesNavigation(context);
     } else if (state is NavigationToAddListing) {
       _executeAddListingNavigation(context);
+    } else if (state is NavigationToCategorySelection) {
+      _executeCategorySelectionNavigation(context);
     } else if (state is NavigationToMyPurchases) {
       _executeMyPurchasesNavigation(context); // Handle MyPurchases navigation
     } else if (state is NavigationToMessages) {
@@ -261,6 +279,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   /// Выполняет навигацию к добавлению объявления.
   void _executeAddListingNavigation(BuildContext context) {
     Navigator.of(context).pushNamed(AddListingScreen.routeName);
+  }
+
+  /// Выполняет навигацию к выбору категории объявления.
+  void _executeCategorySelectionNavigation(BuildContext context) {
+    Navigator.of(context).pushNamed(CategorySelectionScreen.routeName);
   }
 
   /// Выполняет навигацию к Моим покупкам.

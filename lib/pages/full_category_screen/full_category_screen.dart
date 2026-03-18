@@ -97,9 +97,9 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
           const Padding(
             padding: EdgeInsets.only(bottom: 6, left: 25, top: 6),
             child: Text(
-              'Выберите категории публикации',
+              'Выберите категорию для просмотра объявления',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
