@@ -45,7 +45,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
       ),
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
-        constraints: BoxConstraints(maxHeight: 359.0),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -140,31 +142,36 @@ class _SelectionDialogState extends State<SelectionDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                if (widget.allowMultipleSelection) {
-                  if (_tempSelectedOptions.contains(title)) {
-                    _tempSelectedOptions.remove(title);
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (widget.allowMultipleSelection) {
+                    if (_tempSelectedOptions.contains(title)) {
+                      _tempSelectedOptions.remove(title);
+                    } else {
+                      _tempSelectedOptions.add(title);
+                    }
                   } else {
-                    _tempSelectedOptions.add(title);
+                    // For single selection (Style D1), clear existing and add new
+                    if (_tempSelectedOptions.contains(title)) {
+                      _tempSelectedOptions.remove(title);
+                    } else {
+                      _tempSelectedOptions.clear();
+                      _tempSelectedOptions.add(title);
+                    }
                   }
-                } else {
-                  // For single selection (Style D1), clear existing and add new
-                  if (_tempSelectedOptions.contains(title)) {
-                    _tempSelectedOptions.remove(title);
-                  } else {
-                    _tempSelectedOptions.clear();
-                    _tempSelectedOptions.add(title);
-                  }
-                }
-              });
-            },
-            child: Text(
-              title,
-              style: const TextStyle(color: textPrimary, fontSize: 16),
+                });
+              },
+              child: Text(
+                title,
+                style: const TextStyle(color: textPrimary, fontSize: 16),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
             ),
           ),
+          const SizedBox(width: 12),
           if (widget.allowMultipleSelection)
             // 🔲 Множественный выбор - CHECKBOXES (квадратные)
             CustomCheckbox(

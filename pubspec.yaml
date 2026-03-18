@@ -99,15 +99,15 @@ flutter:
 # Конфигурация нативного экрана загрузки Flutter
 flutter_native_splash:
   # Общий цвет для всех платформ (кроме Android 12+)
-  color: "#232E3C"
-  color_dark: "#232E3C"
+  color: "#17212B"
+  color_dark: "#17212B"
 
   # Общее изображение для всех платформ (кроме Android 12+)
-  image: assets/home_page/logo.png
-  image_dark: assets/home_page/logo.png
+  image: assets/home_page/logo_new.png
+  image_dark: assets/home_page/logo_new.png
 
   # Выравнивание изображения
-  android_gravity: fill_horizontal|center_vertical
+  android_gravity: center
   ios_content_mode: scaleAspectFit
   web_image_mode: center
 
@@ -117,12 +117,12 @@ flutter_native_splash:
   # Конфигурация для Android 12+
   android_12:
     # Цвет фона
-    color: "#232E3C"
-    color_dark: "#232E3C"
+    color: "#17212B"
+    color_dark: "#17212B"
 
     # Центрированный логотип - для Android 12+ изображение должно быть 1152x1152 px для полного кругового отображения
-    image: assets/home_page/logo.png
-    image_dark: assets/home_page/logo.png
+    image: assets/home_page/logo_new.png
+    image_dark: assets/home_page/logo_new.png
 
     # Цвет фона центрированного логотипа (закомментировано для полного отображения изображения)
     # icon_background_color: "#232E3C"

@@ -1783,7 +1783,9 @@ class _RealEstateListingsFilterScreenState
               ),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
-                constraints: const BoxConstraints(maxHeight: 359.0),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,

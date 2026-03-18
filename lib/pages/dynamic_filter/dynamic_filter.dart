@@ -403,11 +403,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
             (attrId, _) => !validAttributeIds.contains(attrId),
           );
 
-          // Инициализируем "Вам предложат цену" на true по умолчанию
-          // Только если этот атрибут существует в этой категории
+          // Инициализируем "Вам предложат цену" на false по умолчанию
+          // Значение остаётся false до тех пор, пока пользователь не нажмёт чекбокс
           if (offerPriceAttrId != null &&
               mutableFilters.any((a) => a.id == offerPriceAttrId)) {
-            _selectedValues[offerPriceAttrId] = true;
+            _selectedValues[offerPriceAttrId] = false;
           }
         });
       }
@@ -3246,11 +3246,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 ...(List<Attribute>.from(_attributes)
                       ..sort((a, b) => a.order.compareTo(b.order)))
                     .where((attr) {
-                      final offerPriceAttrId = _attributeResolver
-                          .getOfferPriceAttributeId();
-                      return attr.title.isNotEmpty &&
-                          attr.id !=
-                              offerPriceAttrId; // Exclude "Вам предложат цену" - hidden but always true
+                      return attr.title.isNotEmpty;
                     })
                     .map(
                       (attr) => Column(
