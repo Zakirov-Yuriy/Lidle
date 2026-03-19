@@ -55,13 +55,8 @@ class SupportScreen extends StatelessWidget {
                             size: 16,
                           ),
                         ),
-                        const Text(
-                          'Поддержка Lidle',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        Text.rich(
+                          TextSpan(children: getSupportTitleSpans()),
                         ),
                         const Spacer(),
                         TextButton(
@@ -96,7 +91,7 @@ class SupportScreen extends StatelessWidget {
                           imagePath: 'assets/support/support.png',
                           iconBg: Color(0xFF4DA3FF),
                           title: 'Поддержка',
-                          subtitle: 'Все вопросы про Lidle \nможете задать тут',
+                          subtitle: 'Все вопросы про  ЛИДЛ Lidle \nможете задать тут',
                           onTap: () => Navigator.pushNamed(context, '/support-chat'),
                         ),
                       ],

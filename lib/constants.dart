@@ -41,9 +41,9 @@ const double bottomNavPaddingBottom = 0.0;
 //  Текстовые строки
 // ============================================================
 
-const String appTitle = 'LIDLE';
+const String appTitle = 'ЛИДЛ LIDLE';
 const String searchPlaceholder = 'Поиск';
-const String categoriesTitle = 'Предложения на LIDLE';
+const String categoriesTitle = 'Предложения на ЛИДЛ LIDLE';
 const String viewAll = 'Смотреть все';
 const String latestTitle = 'Самое новое';
 
@@ -51,7 +51,7 @@ const String latestTitle = 'Самое новое';
 //  Пути к ассетам
 // ============================================================
 
-const String logoAsset = 'assets/home_page/logo.svg';
+const String logoAsset = 'assets/home_page/logo2.svg';
 const String settingsIconAsset = 'assets/home_page/settings.svg';
 const String homeIconAsset = 'assets/BottomNavigation/home-02.png';
 const String heartIconAsset = 'assets/BottomNavigation/heart-rounded.png';
@@ -65,6 +65,98 @@ const String userIconAsset = 'assets/BottomNavigation/user-01.png';
 // ============================================================
 //  Вспомогательные функции
 // ============================================================
+
+/// Возвращает List<TextSpan> для форматирования заголовка возможностей
+/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
+List<TextSpan> getCapabilitiesTitleSpans() {
+  return [
+    const TextSpan(
+      text: 'Возможности ЛИДЛ ',
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+    const TextSpan(
+      text: 'LIDLE',
+      style: TextStyle(
+        color: activeIconColor,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+  ];
+}
+
+/// Возвращает List<TextSpan> для форматирования заголовка приложения
+/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
+List<TextSpan> getAppTitleSpans() {
+  return [
+    const TextSpan(
+      text: 'ЛИДЛ ',
+      style: TextStyle(
+        color: textPrimary,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+    const TextSpan(
+      text: 'LIDLE',
+      style: TextStyle(
+        color: activeIconColor,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+  ];
+}
+
+/// Возвращает List<TextSpan> для форматирования заголовка поддержки
+/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
+List<TextSpan> getSupportTitleSpans() {
+  return [
+    const TextSpan(
+      text: 'Поддержка ЛИДЛ ',
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 18,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+    const TextSpan(
+      text: 'LIDLE',
+      style: TextStyle(
+        color: activeIconColor,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  ];
+}
+
+/// Возвращает List<TextSpan> для форматирования заголовка с категориями
+/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
+List<TextSpan> getCategoriesTitleSpans() {
+  return [
+    const TextSpan(
+      text: 'Предложения на ЛИДЛ ',
+      style: TextStyle(
+        color: textPrimary,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+    const TextSpan(
+      text: 'LIDLE',
+      style: TextStyle(
+        color: activeIconColor,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
+      ),
+    ),
+  ];
+}
 
 /// Возвращает Widget для отображения изображения профиля
 /// Если imagePath это URL (начинается с http), использует Image.network

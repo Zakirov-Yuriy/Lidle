@@ -202,25 +202,24 @@ class Listing {
       images: List<String>.from(json['images'] ?? []),
       title: json['title'] ?? 'No Title',
       price: json['price'] ?? '0',
-      location:
-          json['address'] ??
+      location: _convertAddressToString(json['address']) ??
           json['full_address'] ??
           'Unknown Location', // Assuming 'address' corresponds to 'location'
-      region: json['address']?['region']?.toString() ?? json['region'],
-      city: _extractAddressField(json['address']?['city']) ?? json['city'] ?? parsedAddress['city'],
-      street: _extractAddressField(json['address']?['street']) ?? json['street'] ?? parsedAddress['street'],
-      buildingNumber: json['address']?['building_number']?.toString() ?? json['building_number'] ?? parsedAddress['buildingNumber'],
+      region: _extractAddressField(_getAddressFieldValue(json['address'], 'region')) ?? json['region'],
+      city: _extractAddressField(_getAddressFieldValue(json['address'], 'city')) ?? json['city'] ?? parsedAddress['city'],
+      street: _extractAddressField(_getAddressFieldValue(json['address'], 'street')) ?? json['street'] ?? parsedAddress['street'],
+      buildingNumber: _extractAddressField(_getAddressFieldValue(json['address'], 'building_number')) ?? json['building_number'] ?? parsedAddress['buildingNumber'],
       // Извлекаем адресные компоненты из API в соответствии с документацией
-      mainRegion: json['address']?['main_region']?['name']?.toString() ?? 
-                  json['address']?['region_name']?.toString() ??
+      mainRegion: _extractAddressField(_getAddressFieldValue(json['address'], 'main_region')) ?? 
+                  _extractAddressField(_getAddressFieldValue(json['address'], 'region_name')) ??
                   json['main_region']?.toString() ??
                   json['region_name']?.toString(),
-      subRegion: json['address']?['region']?['name']?.toString() ?? 
-                 json['address']?['sub_region']?.toString() ??
+      subRegion: _extractAddressField(_getAddressFieldValue(json['address'], 'region')) ?? 
+                 _extractAddressField(_getAddressFieldValue(json['address'], 'sub_region')) ??
                  json['region']?.toString() ??
                  json['sub_region']?.toString(),
-      district: json['address']?['district']?['name']?.toString() ?? 
-                json['address']?['district_name']?.toString() ??
+      district: _extractAddressField(_getAddressFieldValue(json['address'], 'district')) ?? 
+                _extractAddressField(_getAddressFieldValue(json['address'], 'district_name')) ??
                 json['district']?.toString() ??
                 json['district_name']?.toString(),
       date: json['date'] ?? 'Unknown Date',
@@ -275,6 +274,63 @@ class Listing {
     }
     
     return {'city': city, 'street': street, 'buildingNumber': buildingNumber};
+  }
+
+  /// Безопасно конвертирует адрес в строку
+  /// Обрабатывает случаи когда address может быть String, Map или List
+  static String? _convertAddressToString(dynamic address) {
+    if (address == null) return null;
+    
+    // Если это уже строка - возвращаем как есть
+    if (address is String) {
+      return address;
+    }
+    
+    // Если это Map - пытаемся собрать строку из компонентов
+    if (address is Map) {
+      final parts = <String>[];
+      if (address['main_region'] != null) parts.add(address['main_region'].toString());
+      if (address['region'] != null) parts.add(address['region'].toString());
+      if (address['city'] != null) parts.add(address['city'].toString());
+      if (address['street'] != null) parts.add(address['street'].toString());
+      if (address['building_number'] != null) parts.add(address['building_number'].toString());
+      
+      if (parts.isNotEmpty) {
+        return parts.join(', ');
+      }
+      return null;
+    }
+    
+    // Если это List - пытаемся собрать строку из элементов
+    if (address is List) {
+      final parts = address.map((e) => e?.toString()).whereType<String>().toList();
+      if (parts.isNotEmpty) {
+        return parts.join(', ');
+      }
+      return null;
+    }
+    
+    // В остальных случаях пытаемся преобразовать в строку
+    return address.toString();
+  }
+
+  /// Безопасно извлекает значение поля из JSON адреса
+  /// Обрабатывает случаи когда address может быть Map или List
+  static dynamic _getAddressFieldValue(dynamic address, String fieldName) {
+    if (address == null) return null;
+    
+    // Если address это Map - безопасно получаем значение
+    if (address is Map) {
+      return address[fieldName];
+    }
+    
+    // Если address это List - возвращаем null (невозможно извлечь по имени)
+    if (address is List) {
+      return null;
+    }
+    
+    // В остальных случаях возвращаем null
+    return null;
   }
 
   /// Извлекает название адреса из объекта или строки

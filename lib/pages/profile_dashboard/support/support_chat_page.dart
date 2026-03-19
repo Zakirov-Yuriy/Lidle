@@ -80,16 +80,28 @@ class SupportChatPage extends StatelessWidget {
                         child: const Icon(Icons.person, color: Colors.white24),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Поддержка LIDLE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(
+                                    text: 'Поддержка ',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    children: getAppTitleSpans(),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             SizedBox(height: 4),
@@ -116,21 +128,22 @@ class SupportChatPage extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
-                children: const [
-                  SizedBox(height: 16),
+                children: [
+                  const SizedBox(height: 16),
 
-                  Center(
+                  const Center(
                     child: Text(
                       '8 февраля',
                       style: TextStyle(color: Colors.white38, fontSize: 12),
                     ),
                   ),
 
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
                   _IncomingMessage(
-                    text: 'Вас приветствует поддержка приложения LIDLE',
+                    text: 'Вас приветствует поддержка приложения ',
                     time: '20:21',
+                    textSpans: getAppTitleSpans(),
                   ),
                 ],
               ),
@@ -143,8 +156,8 @@ class SupportChatPage extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: const [
-                  _QuickChip(title: 'Что такое LIDLE'),
-                  _QuickChip(title: 'Что может LIDLE'),
+                  _QuickChip(title: 'Что такое ЛИДЛ'),
+                  _QuickChip(title: 'Что может ЛИДЛ'),
                   _QuickChip(title: 'Как вернуть деньги'),
                   _QuickChip(title: 'Как забрать товар'),
                 ],
@@ -193,8 +206,13 @@ class SupportChatPage extends StatelessWidget {
 class _IncomingMessage extends StatelessWidget {
   final String text;
   final String time;
+  final List<TextSpan>? textSpans;
 
-  const _IncomingMessage({required this.text, required this.time});
+  const _IncomingMessage({
+    required this.text,
+    required this.time,
+    this.textSpans,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -210,14 +228,30 @@ class _IncomingMessage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                height: 1.4,
-              ),
-            ),
+            textSpans != null
+                ? Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            height: 1.4,
+                          ),
+                        ),
+                        ...textSpans!,
+                      ],
+                    ),
+                  )
+                : Text(
+                    text,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      height: 1.4,
+                    ),
+                  ),
             const SizedBox(height: 6),
             Text(
               time,

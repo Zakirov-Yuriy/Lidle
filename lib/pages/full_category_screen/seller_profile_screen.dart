@@ -348,7 +348,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 Row(
                   children: const [
                     Text(
-                      "На VSEUT с 2024 г.",
+                      "На ЛИДЛ с 2024 г.",
                       style: TextStyle(color: textSecondary, fontSize: 13),
                     ),
                     SizedBox(width: 10),

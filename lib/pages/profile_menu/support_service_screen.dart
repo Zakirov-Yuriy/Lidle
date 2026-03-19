@@ -69,16 +69,30 @@ class SupportServiceScreen extends StatelessWidget {
             const SizedBox(height: 15),
 
             // ───── Text block ─────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 25),
-              child: Text(
-                'Здравствуйте! Спасибо, что обратились в службу поддержки VSETUT. '
-                'Мы здесь, чтобы помочь вам с любыми вопросами или проблемами, '
-                'связанными с нашим приложением.',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  height: 1.5,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Здравствуйте! Спасибо, что обратились в службу поддержки ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                    ...getAppTitleSpans(),
+                    const TextSpan(
+                      text: '. Мы здесь, чтобы помочь вам с любыми вопросами или проблемами, '
+                          'связанными с нашим приложением.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

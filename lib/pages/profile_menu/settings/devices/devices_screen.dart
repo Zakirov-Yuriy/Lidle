@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
+import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/devices/devices_bloc.dart';
 import 'package:lidle/blocs/devices/devices_event.dart';
@@ -79,14 +80,31 @@ class _DevicesScreenState extends State<DevicesScreen> {
             const SizedBox(height: 16),
 
             // ───── Description ─────
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 25),
-              child: Text(
-                'Вы можете зайти в приложение LIDLE с помощью QR-кода.',
-                style: TextStyle(
-                  color: Color.fromARGB(255, 255, 255, 255),
-                  fontSize: 16,
-                  height: 1.4,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Вы можете зайти в приложение ',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.4,
+                      ),
+                    ),
+                    TextSpan(
+                      children: getAppTitleSpans(),
+                    ),
+                    const TextSpan(
+                      text: ' с помощью QR-кода.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

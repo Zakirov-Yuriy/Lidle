@@ -185,6 +185,9 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                     height: 22,
                   ),
                   'Возможности LIDLE',
+                  textWidget: Text.rich(
+                    TextSpan(children: getCapabilitiesTitleSpans()),
+                  ),
                 ),
               ],
             ),
@@ -345,7 +348,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
     );
   }
 
-  Widget _buildMenuItem(Widget leading, String text, {VoidCallback? onTap}) {
+  Widget _buildMenuItem(Widget leading, String text, {VoidCallback? onTap, Widget? textWidget}) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -354,7 +357,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
           children: [
             leading,
             const SizedBox(width: 14),
-            Text(
+            textWidget ?? Text(
               text,
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),

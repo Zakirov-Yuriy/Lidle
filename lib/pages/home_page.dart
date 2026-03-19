@@ -377,13 +377,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    categoriesTitle,
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  child: Text.rich(
+                    TextSpan(children: getCategoriesTitleSpans()),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -433,13 +428,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    categoriesTitle,
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  child: Text.rich(
+                    TextSpan(children: getCategoriesTitleSpans()),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -568,13 +558,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    categoriesTitle,
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  child: Text.rich(
+                    TextSpan(children: getCategoriesTitleSpans()),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),

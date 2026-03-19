@@ -357,6 +357,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   'Вопросы о LIDLE',
                   onTap: () => Navigator.pushNamed(context, '/faq'),
+                  titleWidget: Row(
+                    children: [
+                      const Text(
+                        'Вопросы о ',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                      Text.rich(
+                        TextSpan(children: getAppTitleSpans()),
+                      ),
+                    ],
+                  ),
                 ),
                 _settingsItem(
                   SvgPicture.asset(
@@ -1054,14 +1065,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // SETTINGS ITEM
   // ─────────────────────────────────────────────
 
-  Widget _settingsItem(Widget icon, String title, {VoidCallback? onTap}) {
+  Widget _settingsItem(Widget icon, String title, {VoidCallback? onTap, Widget? titleWidget}) {
     Widget item = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           icon,
           const SizedBox(width: 12),
-          Text(
+          titleWidget ?? Text(
             title,
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
