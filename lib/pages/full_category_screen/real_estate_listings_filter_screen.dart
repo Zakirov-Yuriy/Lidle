@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
@@ -75,6 +76,16 @@ class _RealEstateListingsFilterScreenState
   @override
   void initState() {
     super.initState();
+    
+    // 🔧 ВАЖНО: Инициализируем _cities сразу с dnrCities (69 городов)
+    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
+    _cities = dnrCities.map((name) => {
+      'name': name,
+      'id': name.hashCode.abs(),
+      'main_region_id': 1,
+    }).toList();
+    print('✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)');
+    
     _loadFilters();
     _loadRegions();
     // Загрузить применённые фильтры если они есть
@@ -2567,6 +2578,26 @@ class _RealEstateListingsFilterScreenState
         }
       }
 
+      // Добавляем города из dnrCities констант (fallback если API не вернул их)
+      print('📦 dnrCities констант имеет ${dnrCities.length} уникальных городов');
+      for (final cityName in dnrCities) {
+        // Проверяем есть ли такой город уже в карте (по имени, без ID)
+        final exists = citiesMap.values.any((c) => c['name'] == cityName);
+        if (!exists) {
+          // Генерируем уникальный ID для города из констант
+          // ID = хеш от имени города (для консистентности)
+          final tempId = cityName.hashCode.abs();
+          citiesMap[tempId] = {
+            'name': cityName,
+            'id': tempId,
+            'main_region_id': 1, // ДНР = регион 1
+            'from_dnr_cities': true, // Отметим что это из констант
+          };
+          print('      + City (from dnrCities): "$cityName" (ID=$tempId)');
+        }
+      }
+      print('   📊 Cities map after dnrCities merge has ${citiesMap.length} total unique cities');
+
       // Обновить состояние с объединённым списком городов
       if (mounted) {
         setState(() {
@@ -2620,18 +2651,37 @@ class _RealEstateListingsFilterScreenState
 
       print('✅ API вернул ${response.data.length} результатов');
 
+      final cities = response.data
+          .where((result) => result.main_region?.id == regionId)
+          .map(
+            (result) => {
+              'name': result.city?.name ?? '',
+              'id': result.city?.id,
+              'main_region_id': result.main_region?.id,
+            },
+          )
+          .toList();
+
+      // Добавляем все 72 города ДНР из констант когда выбран ДНР (ID: 1)
+      if (regionId == 1) {
+        final existingNames = cities.map((c) => c['name']).toSet();
+        for (final cityName in dnrCities) {
+          if (!existingNames.contains(cityName)) {
+            cities.add({
+              'name': cityName,
+              'id': -1, // Используем -1 как плейсхолдер для городов из констант
+              'main_region_id': regionId,
+            });
+          }
+        }
+        print('✅ Добавлены все 72 города ДНР из констант. Итого городов: ${cities.length}');
+        // Сортируем для удобства
+        cities.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+      }
+
       if (mounted) {
         setState(() {
-          _cities = response.data
-              .where((result) => result.main_region?.id == regionId)
-              .map(
-                (result) => {
-                  'name': result.city?.name ?? '',
-                  'id': result.city?.id,
-                  'main_region_id': result.main_region?.id,
-                },
-              )
-              .toList();
+          _cities = cities;
         });
         print(
           '✅ Загружено ${_cities.length} городов для области "$regionName"',

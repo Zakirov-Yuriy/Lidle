@@ -54,7 +54,7 @@ flutter:
   assets:
     - assets/
     - assets/home_page/logo.svg
-    - assets/home_page/logo.png
+    - assets/home_page/logo2.svg
     - assets/home_page/settings.svg
     - assets/BottomNavigation/
     - assets/profile_dashboard/

@@ -17,6 +17,7 @@ import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import '../../../constants.dart';
+import '../../../constants/dnr_cities.dart';
 import '../../../services/api_service.dart';
 import '../../../services/address_service.dart';
 import '../../../services/user_service.dart';
@@ -118,6 +119,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
   @override
   void initState() {
     super.initState();
+    
+    // 🔧 ВАЖНО: Инициализируем _cities сразу с dnrCities (69 городов)
+    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
+    _cities = dnrCities.map((name) => {
+      'name': name,
+      'id': name.hashCode.abs(),
+      'main_region_id': 1,
+      'region_id': 1,
+    }).toList();
+    print('✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)');
 
     // Проверить режим редактирования
     _isEditMode = widget.advertId != null;
@@ -804,6 +815,24 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _cities = uniqueCities.entries
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
+        
+        // 🔧 FALLBACK: закомментирована для тестирования только API
+        // if (_cities.length < 25) {
+        //   print('⚠️ API вернул только ${_cities.length} городов для региона, добавляем dnrCities (${dnrCities.length})');
+        //   final existingNames = <String>{
+        //     for (var city in _cities) city['name'] as String
+        //   };
+        //   
+        //   for (final cityName in dnrCities) {
+        //     if (!existingNames.contains(cityName)) {
+        //       _cities.add({
+        //         'name': cityName,
+        //         'id': cityName.hashCode.abs(),
+        //       });
+        //     }
+        //   }
+        //   print('✅ После merge: _cities.length = ${_cities.length}');
+        // }
       });
       print('   📦 Loaded ${_cities.length} cities for region');
 
@@ -1726,16 +1755,29 @@ class _DynamicFilterState extends State<DynamicFilter> {
         }
       }
 
+      // Добавляем все 72 города ДНР из констант когда выбран ДНР (ID: 1)
+      if (_selectedRegionId == 1) {
+        for (final cityName in dnrCities) {
+          if (!uniqueCities.containsKey(cityName)) {
+            // Используем -1 как ID для городов из констант (они уже есть в API)
+            uniqueCities[cityName] = -1;
+          }
+        }
+        print('✅ Добавлены все 72 города ДНР из констант. Итого городов: ${uniqueCities.length}');
+      }
+
       if (mounted) {
         setState(() {
           _cities = uniqueCities.entries
               .map((e) => {'name': e.key, 'id': e.value})
               .toList();
+          // Сортируем для удобства
+          _cities.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
         });
-        // print('✅ Auto-loaded ${_cities.length} cities');
+        print('✅ Auto-loaded ${_cities.length} cities');
       }
     } catch (e) {
-      // print('❌ Error auto-loading cities: $e');
+      print('❌ Error auto-loading cities: $e');
     }
   }
 
@@ -3444,6 +3486,27 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
                             setState(() {
                               _cities = uniqueCities.values.toList();
+                              
+                              // 🔧 FALLBACK: закомментирована для тестирования только API
+                              // if (_cities.length < 25) {
+                              //   print('⚠️ API вернул только ${_cities.length} городов, добавляем dnrCities (${dnrCities.length})');
+                              //   final existingNames = <String>{
+                              //     for (var city in _cities) city['name'] as String
+                              //   };
+                              //   
+                              //   for (final cityName in dnrCities) {
+                              //     if (!existingNames.contains(cityName)) {
+                              //       _cities.add({
+                              //         'name': cityName,
+                              //         'id': cityName.hashCode.abs(),
+                              //         'main_region_id': 1,
+                              //         'region_id': 1,
+                              //       });
+                              //     }
+                              //   }
+                              //   print('✅ После merge: _cities.length = ${_cities.length}');
+                              // }
+                              
                               // print();
                               for (var i = 0; i < _cities.length; i++) {
                                 // print(
@@ -3456,51 +3519,68 @@ class _DynamicFilterState extends State<DynamicFilter> {
                           }
                         }
 
-                        if (_cities.isNotEmpty) {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return CitySelectionDialog(
-                                title: 'Ваш город',
-                                options: _cities
-                                    .map((c) => c['name'] as String)
-                                    .toList(),
-                                selectedOptions: _selectedCity,
-                                onSelectionChanged: (Set<String> selected) {
-                                  if (selected.isNotEmpty) {
-                                    final selectedCityName = selected.first;
-                                    final cityIndex = _cities.indexWhere(
-                                      (c) => c['name'] == selectedCityName,
-                                    );
-                                    int? cityId;
-                                    int? mainRegionId;
-                                    if (cityIndex >= 0) {
-                                      cityId = _cities[cityIndex]['id'] as int?;
-                                      mainRegionId =
-                                          _cities[cityIndex]['main_region_id']
-                                              as int?;
-                                    }
-                                    setState(() {
-                                      _selectedCity = selected;
-                                      _selectedCityId = cityId;
-                                      _selectedRegionId = mainRegionId;
-                                      _selectedStreet.clear();
-                                      _selectedStreetId = null;
-                                      _streets.clear();
-                                      _selectedBuilding.clear();
-                                      _selectedBuildingId = null;
-                                      _buildings.clear();
-                                    });
-                                    // print('✅ City selected:');
-                                    // print('   Name: $selectedCityName');
-                                    // print('   ID: $cityId');
-                                    // print();
+                        // FALLBACK: закомментирована для тестирования только API
+                        // final List<Map<String, dynamic>> citiesToShow = _cities.isNotEmpty
+                        //     ? _cities
+                        //     : dnrCities.map((name) => {
+                        //       'name': name,
+                        //       'id': name.hashCode.abs(), // Генерируем ID из хеша
+                        //       'main_region_id': 1, // ДНР = регион 1
+                        //       'region_id': 1,
+                        //     }).toList();
+                        
+                        // Используем только API данные БЕЗ fallback
+                        final List<Map<String, dynamic>> citiesToShow = _cities;
+                        
+                        print('\n🟦 dynamic_filter.dart: Открытие диалога города:');
+                        print('   - _cities.length: ${_cities.length}');
+                        print('   - dnrCities.length: ${dnrCities.length}');
+                        print('   - citiesToShow.length: ${citiesToShow.length}');
+                        print('   - Using fallback: ${_cities.isEmpty}');
+                        
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return CitySelectionDialog(
+                              title: 'Ваш город',
+                              options: citiesToShow
+                                  .map((c) => c['name'] as String)
+                                  .toList(),
+                              selectedOptions: _selectedCity,
+                              onSelectionChanged: (Set<String> selected) {
+                                if (selected.isNotEmpty) {
+                                  final selectedCityName = selected.first;
+                                  final cityIndex = citiesToShow.indexWhere(
+                                    (c) => c['name'] == selectedCityName,
+                                  );
+                                  int? cityId;
+                                  int? mainRegionId;
+                                  if (cityIndex >= 0) {
+                                    cityId = citiesToShow[cityIndex]['id'] as int?;
+                                    mainRegionId =
+                                        citiesToShow[cityIndex]['main_region_id']
+                                            as int?;
                                   }
-                                },
-                              );
-                            },
-                          );
-                        }
+                                  setState(() {
+                                    _selectedCity = selected;
+                                    _selectedCityId = cityId;
+                                    _selectedRegionId = mainRegionId;
+                                    _selectedStreet.clear();
+                                    _selectedStreetId = null;
+                                    _streets.clear();
+                                    _selectedBuilding.clear();
+                                    _selectedBuildingId = null;
+                                    _buildings.clear();
+                                  });
+                                  // print('✅ City selected:');
+                                  // print('   Name: $selectedCityName');
+                                  // print('   ID: $cityId');
+                                  // print();
+                                }
+                              },
+                            );
+                          },
+                        );
                       },
               ),
               const SizedBox(height: 9),

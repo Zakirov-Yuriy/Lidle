@@ -37,6 +37,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   void initState() {
     super.initState();
     _currentSelectedOptions = Set<String>.from(widget.selectedOptions);
+    _displayOptions = []; // Инициализируем пустой список
+    print('🔍 CitySelectionDialog initState:');
+    print('   - widget.options.length: ${widget.options.length}');
+    print('   - widget.options значения: ${widget.options}');
     _buildDisplayOptions(widget.options); // Initial build
     _searchController.addListener(_filterOptions);
   }
@@ -64,6 +68,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   }
 
   void _buildDisplayOptions(List<String> cities) {
+    print('🏗️ _buildDisplayOptions called:');
+    print('   - cities.length: ${cities.length}');
+    print('   - cities (first 10): ${cities.take(10).toList()}');
+    
     List<dynamic> newDisplayOptions = [];
     String? currentLetter;
     List<String> mutableCities = List<String>.from(cities);
@@ -86,8 +94,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
       }
       newDisplayOptions.add(city);
     }
+    print('✅ newDisplayOptions.length: ${newDisplayOptions.length}');
     setState(() {
       _displayOptions = newDisplayOptions;
+      print('   📝 После setState: _displayOptions.length = ${_displayOptions.length}');
     });
   }
 
@@ -107,10 +117,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 10, 13, 20),
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+          minHeight: 300,
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             IconButton(
@@ -147,7 +157,7 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
               ),
             ),
             const SizedBox(height: 15),
-            Flexible(
+            Expanded(
               child: ScrollbarTheme(
                 data: ScrollbarThemeData(
                   thumbColor: WidgetStateProperty.all<Color?>(
@@ -159,7 +169,6 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
                 ),
                 child: Scrollbar(
                   child: ListView.builder(
-                    shrinkWrap: true,
                     itemCount: _displayOptions.length,
                     itemBuilder: (context, index) {
                       final item = _displayOptions[index];

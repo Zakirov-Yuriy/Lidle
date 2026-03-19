@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/api_service.dart';
@@ -102,6 +103,11 @@ class _RealEstateFullFiltersScreenState
   void initState() {
     super.initState();
     print('🚀 RealEstateFullFiltersScreen.initState() called');
+    
+    // 🔧 ВАЖНО: Инициализируем apiCities сразу с dnrCities (69 городов)
+    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
+    apiCities = List<String>.from(dnrCities);
+    print('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
     
     // Инициализируем выбранный город если он передан с промежуточного экрана
     if (widget.selectedCity != null && widget.selectedCity!.isNotEmpty) {
@@ -1277,9 +1283,19 @@ class _RealEstateFullFiltersScreenState
         }
       }
 
-      final allCities = citiesMap.values
+      var allCities = citiesMap.values
           .map((c) => c['name'] as String)
           .toList();
+      print('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
+
+      // Добавляем все города ДНР из констант (чтобы не потерять те, которые API не вернул)
+      print('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
+      
+      final dnrSet = <String>{...allCities, ...dnrCities};
+      allCities = dnrSet.toList();
+      print('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
+
+      // Сортируем города для удобства
       allCities.sort();
 
       if (mounted && allCities.isNotEmpty) {
@@ -1288,9 +1304,10 @@ class _RealEstateFullFiltersScreenState
           print(
             '✅ apiCities обновлены в real_estate_full_filters_screen (${apiCities.length} городов)',
           );
+          print('🏙️ apiCities final value: ${apiCities.length} cities - $apiCities');
         });
       } else if (mounted) {
-        print('⚠️ Города не найдены');
+        print('⚠️ Города не найдены (allCities.length = ${allCities.length})');
         setState(() => apiCities = []);
       }
     } catch (e) {
@@ -1444,14 +1461,18 @@ class _RealEstateFullFiltersScreenState
         _buildSelector(
           selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
           onTap: () {
+            // FALLBACK: если города еще не загрузились с API, используем dnrCities сразу
+            final citiesToShow = apiCities.isNotEmpty ? apiCities : dnrCities;
+            print('\n📱 Открытие диалога выбора города (real_estate_full_filters)...');
+            print('   - apiCities.length: ${apiCities.length}');
+            print('   - citiesToShow.length: ${citiesToShow.length}');
+            print('   - Using fallback dnrCities: ${apiCities.isEmpty}');
             showDialog(
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
                   title: "Выберите город",
-                  options: apiCities.isNotEmpty
-                      ? apiCities
-                      : const ['Загружаю города...'],
+                  options: citiesToShow,
                   selectedOptions: selectedCity,
                   onSelectionChanged: (v) {
                     setState(() => selectedCity = v);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
@@ -62,7 +63,12 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCities(); // Загружаем города с API
+    // 🔧 ВАЖНО: Инициализируем apiCities сразу с dnrCities (69 городов)
+    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
+    apiCities = List<String>.from(dnrCities);
+    print('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
+    
+    _loadCities(); // Загружаем города с API и объединяем с dnrCities
     _loadRealEstateCategories(); // Загружаем категории для маппинга
   }
 
@@ -189,9 +195,15 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         }
       }
 
-      final allCities = citiesMap.values.map((c) => c['name'] as String).toList();
-      print('✅ ИТОГО загружено уникальных городов: ${allCities.length}');
-      print('🏙️ Полный список городов: ${allCities.toList()}');
+      var allCities = citiesMap.values.map((c) => c['name'] as String).toList();
+      print('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
+
+      // Добавляем все города ДНР из констант (чтобы не потерять те, которые API не вернул)
+      print('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
+      
+      final dnrSet = <String>{...allCities, ...dnrCities};
+      allCities = dnrSet.toList();
+      print('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
 
       // Сортируем города для удобства
       allCities.sort();
@@ -200,7 +212,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         setState(() {
           apiCities = allCities;
           print('✅ apiCities обновлены в состояние (${apiCities.length} городов)');
-          print('🏙️ apiCities value: $apiCities');
+          print('🏙️ apiCities final value: ${apiCities.length} cities - $apiCities');
         });
       } else if (mounted) {
         print('⚠️ Города не найдены (allCities.length = ${allCities.length})');
@@ -486,12 +498,18 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         _buildSelector(
           selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
           onTap: () {
+            // FALLBACK: если города еще не загрузились с API, используем dnrCities сразу
+            final citiesToShow = apiCities.isNotEmpty ? apiCities : dnrCities;
+            print('\n📱 Открытие диалога выбора города:');
+            print('   - apiCities.length: ${apiCities.length}');
+            print('   - citiesToShow.length: ${citiesToShow.length}');
+            print('   - Using fallback dnrCities: ${apiCities.isEmpty}');
             showDialog(
               context: context,
               builder: (_) {
                 return CitySelectionDialog(
                   title: "Выберите город",
-                  options: apiCities, // Всегда используем apiCities (с fallback на статичный список)
+                  options: citiesToShow,
                   selectedOptions: selectedCity,
                   onSelectionChanged: (v) => setState(() => selectedCity = v),
                 );

@@ -209,6 +209,33 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 10),
+
+                  TextButton(
+                    onPressed: _isResending ? null : _sendEmailCode,
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      foregroundColor: const Color(0xFF60A5FA),
+                      textStyle: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    child: _isResending
+                        ? const SizedBox(
+                            width: 0,
+                            height: 0,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFF60A5FA),
+                              ),
+                            ),
+                          )
+                        : const Text('Отправить код повторно'),
+                  ),
                   const SizedBox(height: 16),
 
                   SizedBox(
@@ -243,32 +270,7 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
                   ),
                   const SizedBox(height: 12),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 40,
-                    child: TextButton(
-                      onPressed: _isResending ? null : _sendEmailCode,
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF60A5FA),
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      child: _isResending
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF60A5FA),
-                                ),
-                              ),
-                            )
-                          : const Text('Отправить код повторно'),
-                    ),
-                  ),
+                  
                 ],
               ),
             ),

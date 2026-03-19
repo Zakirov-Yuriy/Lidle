@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -539,14 +540,7 @@ class _FiltersLandSellScreenenState extends State<FiltersLandSellScreenen> {
               builder: (_) {
                 return CitySelectionDialog(
                   title: 'Ваш город',
-                  options: const [
-                    'Маруполь',
-                    'Москва',
-                    'Санкт-Петербург',
-                    'Новосибирск',
-                    'Екатеринбург',
-                    'Казань',
-                  ],
+                  options: dnrCities,
                   selectedOptions: _selectedCity,
                   onSelectionChanged: (s) {
                     setState(() => _selectedCity = s);

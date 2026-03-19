@@ -98,7 +98,10 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
       if (!mounted) return;
       if (_resendLeft.inSeconds <= 1) {
         t.cancel();
-        setState(() => _resendLeft = Duration.zero);
+        setState(() {
+          _resendLeft = Duration.zero;
+          _canResendCode = true;
+        });
       } else {
         setState(() => _resendLeft -= const Duration(seconds: 1));
       }
@@ -140,6 +143,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthCodeSent) {
+          _startResendTimer();
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Код отправлен')));
