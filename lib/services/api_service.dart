@@ -2214,4 +2214,183 @@ class ApiService {
       return [];
     }
   }
+
+  /// 💬 Получить список всех чатов
+  /// GET /v1/chats
+  static Future<List<Map<String, dynamic>>> getChats({
+    int page = 1,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      print('📥 Загружаем список чатов (страница $page)...');
+
+      final response = await getWithQuery(
+        '/chats',
+        {'page': page.toString()},
+        token: effectiveToken,
+      );
+
+      if (response['data'] != null && response['data'] is List) {
+        final chats = List<Map<String, dynamic>>.from(response['data'] as List);
+        print('✅ Загружено чатов: ${chats.length}');
+        return chats;
+      }
+
+      return [];
+    } catch (e) {
+      print('❌ Ошибка загрузки чатов: $e');
+      rethrow;
+    }
+  }
+
+  /// 💬 Получить сообщения из конкретного чата
+  /// GET /v1/chats/{chatId}/messages
+  static Future<List<Map<String, dynamic>>> getChatMessages(
+    int chatId, {
+    int page = 1,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      print('📥 Загружаем сообщения чата #$chatId (страница $page)...');
+
+      final response = await getWithQuery(
+        '/chats/$chatId/messages',
+        {'page': page.toString()},
+        token: effectiveToken,
+      );
+
+      if (response['data'] != null && response['data'] is List) {
+        final messages =
+            List<Map<String, dynamic>>.from(response['data'] as List);
+        print('✅ Загружено сообщений: ${messages.length}');
+        return messages;
+      }
+
+      return [];
+    } catch (e) {
+      print('❌ Ошибка загрузки сообщений: $e');
+      rethrow;
+    }
+  }
+
+  /// 💬 Отправить сообщение в чат
+  /// POST /v1/chats/{chatId}/messages
+  static Future<Map<String, dynamic>> sendMessage(
+    int chatId,
+    String messageText, {
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      if (messageText.isEmpty) {
+        throw Exception('Сообщение не может быть пустым');
+      }
+
+      print('📤 Отправляем сообщение в чат #$chatId...');
+
+      final response = await post(
+        '/chats/$chatId/messages',
+        {'message': messageText},
+        token: effectiveToken,
+      );
+
+      print('✅ Сообщение отправлено: $response');
+      return response;
+    } catch (e) {
+      print('❌ Ошибка отправки сообщения: $e');
+      rethrow;
+    }
+  }
+
+  /// 💬 Начать новый чат с пользователем
+  /// POST /v1/chats/start
+  static Future<int?> startChat(
+    int userId,
+    String messageText, {
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      if (messageText.isEmpty) {
+        throw Exception('Сообщение не может быть пустым');
+      }
+
+      print('💬 Начинаем чат с пользователем #$userId...');
+
+      final response = await post(
+        '/chats/start',
+        {
+          'user_id': userId,
+          'message': messageText,
+        },
+        token: effectiveToken,
+      );
+
+      print('✅ Чат создан: $response');
+
+      // Пытаемся получить ID чата из ответа
+      if (response['data'] != null && response['data'] is List) {
+        final data = (response['data'] as List).first as Map<String, dynamic>;
+        return data['id'] as int?;
+      }
+
+      return null;
+    } catch (e) {
+      print('❌ Ошибка создания чата: $e');
+      rethrow;
+    }
+  }
+
+  /// ✅ Отметить сообщение как прочитанное
+  /// POST /v1/chats/{chatId}/messages/{messageId}/read
+  static Future<bool> markMessageAsRead(
+    int chatId,
+    int messageId, {
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      print('✅ Отмечаем сообщение #$messageId как прочитанное...');
+
+      final response = await post(
+        '/chats/$chatId/messages/$messageId/read',
+        {},
+        token: effectiveToken,
+      );
+
+      print('✅ Сообщение отмечено как прочитанное: $response');
+      return response['success'] == true;
+    } catch (e) {
+      print('⚠️ Ошибка при отметке сообщения как прочитанного: $e');
+      // Не выбрасываем исключение, так как это не критично
+      return false;
+    }
+  }
 }

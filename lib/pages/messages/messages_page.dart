@@ -13,7 +13,9 @@ import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/services/messages_local_service.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/dialogs/delete_chat_dialog.dart';
+import 'dart:async';
 
 class MessagesPage extends StatefulWidget {
   // Renamed from MessagesEmptyPage
@@ -25,14 +27,26 @@ class MessagesPage extends StatefulWidget {
   State<MessagesPage> createState() => _MessagesPageState(); // Renamed from _MessagesEmptyPageState
 }
 
-class _MessagesPageState extends State<MessagesPage> {
+class _MessagesPageState extends State<MessagesPage>
+    with AutomaticKeepAliveClientMixin {
   bool isInternalChatSelected =
       true; // true для внутреннего чата, false для внешнего
-  bool isCompaniesSelected = true; // true для компаний, false для юзеров
+  bool isCompaniesSelected = false; // 👤 false для юзеров (по умолчанию)
   bool isCompanyChatInternal =
       true; // true для внутреннего чата с компаниями, false для внешнего
   bool showCheckboxes = false; // Флаг для показа чекбоксов
   List<Message> messages = []; // Заполнитель для сообщений
+  Timer? _updateTimer; // 🔄 Таймер для автоматического обновления счетчика
+  
+  // 🛡️ Защита от параллельных запросов и rate limit
+  bool _isLoadingChatsBackground = false; // Флаг для предотвращения параллельных запросов
+  int _rateLimitRetryCount = 0; // Счетчик попыток при rate limit
+  Timer? _rateLimitTimer; // Таймер для восстановления после rate limit
+
+  @override
+  bool get wantKeepAlive => true; // 💾 Кешировать страницу в памяти
+
+  bool _isInitialized = false; // 🔄 Флаг для загрузки только один раз
 
   // Dummy data for messages
   List<Message> dummyMessages = [
@@ -137,15 +151,151 @@ class _MessagesPageState extends State<MessagesPage> {
   @override
   void initState() {
     super.initState();
-    // 🔄 Ленивая загрузка сообщений при переходе на страницу
-    context.read<MessagesBloc>().add(LoadMessages());
-    _loadMessages();
+    //  Загружаем сообщения только при первом открытии экрана
+    if (!_isInitialized) {
+      _isInitialized = true;
+      // 🔄 Ленивая загрузка сообщений при переходе на страницу
+      context.read<MessagesBloc>().add(LoadMessages());
+      _loadMessages();
+      // 🔄 Запускаем таймер для автоматического обновления счетчика сообщений
+      _startAutoUpdate();
+    }
+  }
+
+  @override
+  void dispose() {
+    _updateTimer?.cancel(); // 🔴 Отменяем таймер при закрытии экрана
+    _rateLimitTimer?.cancel(); // 🔴 Отменяем таймер rate limit
+    super.dispose();
+  }
+
+  /// 🔄 Запустить периодическое обновление счетчика сообщений
+  void _startAutoUpdate() {
+    _updateTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        // Загружаем обновленный список чатов с актуальным счетчиком
+        _loadMessagesBackground();
+      }
+    });
+    print('✅ Таймер обновления счетчика сообщений запущен (интервал 15 сек)');
+  }
+
+  /// 💬 Загрузить список чатов в фоне (без показа лоадера)
+  /// 🛡️ С защитой от параллельных запросов и rate limiting
+  Future<void> _loadMessagesBackground() async {
+    // 🛡️ Пропускаем если уже загружаются чаты
+    if (_isLoadingChatsBackground) {
+      print('⏭️  Пропускаем загрузку (уже идет загрузка списка чатов)');
+      return;
+    }
+
+    try {
+      _isLoadingChatsBackground = true;
+      
+      // 📥 Загружаем чаты с API
+      final apiChats = await ApiService.getChats();
+      
+      // Преобразуем API ответ в объекты Message
+      final loadedMessages = <Message>[];
+      for (final chat in apiChats) {
+        final userData = chat['user'] as Map<String, dynamic>;
+        final message = Message(
+          senderName:
+              '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'
+                  .trim(),
+          senderAvatar: userData['avatar'],
+          lastMessageTime: 'сейчас',
+          unreadCount: chat['unread_count'] as int? ?? 0,
+          isInternal: true,
+          isCompany: false,
+          userId: userData['id'].toString(),
+          chatId: chat['id'] as int?,
+        );
+        loadedMessages.add(message);
+      }
+
+      if (mounted && loadedMessages.isNotEmpty) {
+        // только если появились новые непрочитанные сообщения
+        final hasChanges = loadedMessages.length != messages.length ||
+            loadedMessages.asMap().entries.any((entry) =>
+                entry.value.unreadCount !=
+                (entry.key < messages.length ? messages[entry.key].unreadCount : -1));
+
+        if (hasChanges) {
+          print('📨 Счетчик сообщений обновлен');
+          setState(() {
+            messages = loadedMessages;
+          });
+        }
+      }
+      
+      // 🛡️ Сброс счетчика попыток при успехе
+      _rateLimitRetryCount = 0;
+    } catch (e) {
+      // 🛡️ Обработка Rate Limit (429 Too Many Requests)
+      if (e.toString().contains('429') || e.toString().contains('RateLimitException')) {
+        _rateLimitRetryCount++;
+        // Экспоненциальная задержка: 30сек, 60сек, 120сек...
+        final delaySeconds = 30 * (1 << (_rateLimitRetryCount - 1));
+        print('⏸️  Rate limit на списке чатов! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...');
+        
+        // Отменяем текущий таймер
+        _updateTimer?.cancel();
+        
+        // Запускаем новый таймер через задержку
+        _rateLimitTimer = Timer(Duration(seconds: delaySeconds), () {
+          if (mounted) {
+            print('🔄 Восстанавливаем периодическое обновление списка чатов');
+            _startAutoUpdate();
+          }
+        });
+      } else {
+        print('⚠️  Ошибка фонового обновления счетчика: $e');
+        _rateLimitRetryCount = 0;
+      }
+    } finally {
+      _isLoadingChatsBackground = false;
+    }
   }
 
   Future<void> _loadMessages() async {
-    // Always use fresh dummy data to ensure isCompany field is present
-    messages = dummyMessages;
-    final messageMaps = dummyMessages
+    try {
+      // 📥 Загружаем чаты с API
+      final apiChats = await ApiService.getChats();
+      
+      // Преобразуем API ответ в объекты Message
+      final loadedMessages = <Message>[];
+      for (final chat in apiChats) {
+        final userData = chat['user'] as Map<String, dynamic>;
+        final message = Message(
+          senderName:
+              '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'
+                  .trim(),
+          senderAvatar: userData['avatar'],
+          lastMessageTime: 'сейчас',
+          unreadCount: chat['unread_count'] as int? ?? 0,
+          isInternal: true,
+          isCompany: false,
+          userId: userData['id'].toString(),
+          chatId: chat['id'] as int?,
+        );
+        loadedMessages.add(message);
+      }
+
+      // 🔄 Если API не вернул чаты, используем дамми данные
+      if (loadedMessages.isEmpty) {
+        messages = dummyMessages;
+      } else {
+        messages = loadedMessages;
+      }
+    } catch (e) {
+      print('❌ Ошибка загрузки чатов: $e');
+      // Fallback на дамми данные при ошибке
+      messages = dummyMessages;
+    }
+
+    // Сохраняем в локальное хранилище для офлайн режима
+    final messageMaps = messages
         .map(
           (msg) => {
             'senderName': msg.senderName,
@@ -154,6 +304,12 @@ class _MessagesPageState extends State<MessagesPage> {
             'unreadCount': msg.unreadCount,
             'isInternal': msg.isInternal,
             'isCompany': msg.isCompany,
+            'userId': msg.userId,
+            'chatId': msg.chatId,
+            'lastMessage': msg.lastMessage,
+            'advertTitle': msg.advertTitle,
+            'advertImage': msg.advertImage,
+            'advertisementId': msg.advertisementId,
           },
         )
         .toList();
@@ -167,10 +323,75 @@ class _MessagesPageState extends State<MessagesPage> {
     }
   }
 
+  /// Преобразовать карты из локального хранилища в объекты Message
+  List<Message> _convertMapsToMessages(List<Map<String, dynamic>> maps) {
+    return maps.map((map) {
+      return Message(
+        senderName: map['senderName'] ?? '',
+        senderAvatar: map['senderAvatar'],
+        lastMessageTime: map['lastMessageTime'] ?? '',
+        unreadCount: map['unreadCount'] ?? 0,
+        isInternal: map['isInternal'] ?? true,
+        isCompany: map['isCompany'] ?? false,
+        userId: map['userId'],
+        chatId: map['chatId'],
+        lastMessage: map['lastMessage'],
+        advertTitle: map['advertTitle'],
+        advertImage: map['advertImage'],
+        advertPrice: map['advertPrice'],
+        advertisementId: map['advertisementId'],
+      );
+    }).toList();
+  }
+
+  /// Добавить новый чат в список и сохранить его
+  Future<void> _addChatToMessages(Message chatMessage) async {
+    // Проверяем, есть ли уже такой чат
+    final existingIndex = messages.indexWhere((msg) =>
+        msg.senderName == chatMessage.senderName &&
+        msg.userId == chatMessage.userId);
+    
+    if (existingIndex >= 0) {
+      // Обновляем существующий чат
+      messages[existingIndex] = chatMessage;
+    } else {
+      // Добавляем новый чат в начало списка
+      messages.insert(0, chatMessage);
+    }
+    
+    // Сохраняем в локальное хранилище
+    final messageMaps = messages
+        .map(
+          (msg) => {
+            'senderName': msg.senderName,
+            'senderAvatar': msg.senderAvatar,
+            'lastMessageTime': msg.lastMessageTime,
+            'unreadCount': msg.unreadCount,
+            'isInternal': msg.isInternal,
+            'isCompany': msg.isCompany,
+            'userId': msg.userId,
+            'chatId': msg.chatId,
+            'lastMessage': msg.lastMessage,
+            'advertTitle': msg.advertTitle,
+            'advertImage': msg.advertImage,
+            'advertisementId': msg.advertisementId,
+          },
+        )
+        .toList();
+    
+    await MessagesLocalService.saveCurrentMessages(messageMaps);
+    
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   static const accentColor = Color(0xFF00B7FF);
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 💾 Требуется для AutomaticKeepAliveClientMixin
+    
     return BlocListener<NavigationBloc, NavigationState>(
       listener: (context, state) {
         if (!mounted) return;
@@ -703,6 +924,43 @@ class _MessagesPageState extends State<MessagesPage> {
                                           msg.isCompany == isCompaniesSelected,
                                     )
                                     .toList();
+                                
+                                // 📭 Если на вкладке нет сообщений
+                                if (filteredMessages.isEmpty) {
+                                  return Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Image.asset(
+                                          'assets/messages/masseg.png',
+                                          width: 100,
+                                          height: 100,
+                                          // opacity: const AlwaysStoppedAnimation(0.5),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        const Text(
+                                          'Нет сообщений',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const Text(
+                                          'У вас нет сообщений, как только\nвы получите его здесь оно будет \nотображенно',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+                                
                                 return ListView.builder(
                                   itemCount: filteredMessages.length,
                                   itemBuilder: (context, index) {

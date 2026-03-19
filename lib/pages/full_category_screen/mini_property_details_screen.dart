@@ -8,6 +8,7 @@ import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/advert_model.dart';
+import 'package:lidle/models/message_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
@@ -18,6 +19,7 @@ import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/full_category_screen/property_gallery_screen.dart';
+import 'package:lidle/pages/messages/chat_page.dart';
 
 // ============================================================
 // "Мини-экран деталей недвижимости"
@@ -1132,16 +1134,19 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Container(
-              height: 43,
-              decoration: BoxDecoration(
-                color: Colors.blue,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Text(
-                  "Написать",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+            child: GestureDetector(
+              onTap: _openChatWithSeller,
+              child: Container(
+                height: 43,
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    "Написать",
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
               ),
             ),
@@ -1247,6 +1252,50 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         ),
       );
     }
+  }
+
+  /// 💬 Открыть чат с продавцом объявления
+  Future<void> _openChatWithSeller() async {
+    // Проверяем, есть ли информация о продавце
+    final sellerName = _listing.sellerName;
+    final userId = _listing.userId;
+    if (sellerName == null || sellerName.isEmpty || userId == null || userId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Информация о продавце недоступна'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Импортируем необходимые модели
+    // ignore: avoid_relative_lib_imports
+    if (!mounted) return;
+    
+    // Создаем объект Message с информацией о продавце
+    final message = Message(
+      senderName: sellerName,
+      senderAvatar: _listing.sellerAvatar,
+      lastMessageTime: 'сейчас',
+      unreadCount: 0,
+      isInternal: true,
+      isCompany: false,
+      userId: userId,
+      advertTitle: _listing.title,
+      advertImage: _listing.imagePath,
+      advertPrice: _listing.price,
+      advertisementId: _listing.id,
+    );
+
+    // Переходим на экран чата
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChatPage(message: message),
+      ),
+    );
   }
 
   static Widget _card({required Widget child}) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 
@@ -39,7 +40,9 @@ class MessageCard extends StatelessWidget {
               radius: 24,
               backgroundColor: Colors.white10,
               backgroundImage: message.senderAvatar != null
-                  ? AssetImage(message.senderAvatar!)
+                  ? (message.senderAvatar!.startsWith('http')
+                      ? NetworkImage(message.senderAvatar!)
+                      : AssetImage(message.senderAvatar!))
                   : null,
               child: message.senderAvatar == null
                   ? const Icon(Icons.person, color: Colors.white54, size: 28)
@@ -61,7 +64,7 @@ class MessageCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      message.lastMessageTime,
+                      'был(а) недавно',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
@@ -79,14 +82,14 @@ class MessageCard extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFF00B7FF)
-                      : Colors.transparent, // Blue background when selected
+                      ? activeIconColor // 🔵 Используем activeIconColor для консистентности
+                      : Colors.transparent,
                   border: isSelected
                       ? null
                       : Border.all(
                           color: Colors.grey,
                           width: 1,
-                        ), // Gray border when not selected
+                        ),
                   borderRadius: BorderRadius.circular(9),
                 ),
                 child: Text(
@@ -94,8 +97,7 @@ class MessageCard extends StatelessWidget {
                   style: TextStyle(
                     color: isSelected
                         ? Colors.white
-                        : Colors
-                              .grey, // White text when selected, gray when not
+                        : Colors.grey,
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
                   ),

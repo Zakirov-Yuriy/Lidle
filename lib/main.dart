@@ -54,6 +54,7 @@ import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/add_listing/payment_screen.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart'; // Corrected import
@@ -307,6 +308,10 @@ class LidleApp extends StatelessWidget {
                 const ResponsesEmptyPage(),
             ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
             MyListingsScreen.routeName: (context) => const MyListingsScreen(),
+            '/property-details': (context) => PropertyDetailsScreen(
+              advertisementId: 
+                  ModalRoute.of(context)?.settings.arguments as String?,
+            ),
             '/contacts': (context) => const ContactsScreen(),
             '/user_qr': (context) => const UserQrScreen(),
             '/qr_print_templates': (context) => const QrPrintTemplatesScreen(),

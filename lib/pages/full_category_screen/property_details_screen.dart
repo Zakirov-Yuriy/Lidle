@@ -12,7 +12,12 @@ import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 // ============================================================
 
 class PropertyDetailsScreen extends StatefulWidget {
-  const PropertyDetailsScreen({super.key});
+  final String? advertisementId; // 🔗 ID объявления для загрузки
+
+  const PropertyDetailsScreen({
+    super.key, 
+    this.advertisementId,
+  });
 
   @override
   State<PropertyDetailsScreen> createState() => _PropertyDetailsScreenState();
@@ -83,6 +88,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // 🔗 Загружаем данные объявления если указан advertisementId
+    if (widget.advertisementId != null) {
+      print('📥 Загружаем объявление #${widget.advertisementId}');
+      // TODO: Здесь можно добавить загрузку данных с API
+      // _loadAdvertisement(widget.advertisementId!);
+    }
+    
     _pageController.addListener(() {
       int next = _pageController.page!.round();
       if (_currentPage != next) {
