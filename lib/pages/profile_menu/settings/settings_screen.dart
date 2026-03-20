@@ -23,6 +23,13 @@ class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
 
   const SettingsScreen({super.key});
+  
+  /// 🧹 Очищает кеш настроек при logout
+  /// Вызывается из AuthBloc при LogoutEvent
+  static void clearCache() {
+    _SettingsScreenState._lastProfileLoadTime = null;
+    print('🧹 SettingsScreen: кеш очищен при logout');
+  }
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -35,13 +42,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   int? _mainPhoneId; // ID основного номера телефона для обновления
   String? _mainPhoneValue; // Значение основного телефона
+  
+  // 🚀 ОПТИМИЗАЦИЯ: Кеширование данных профиля на 10 минут (как на profile_menu_screen)
+  static DateTime? _lastProfileLoadTime;
+  static const Duration _profileCacheDuration = Duration(minutes: 10);
+
+  bool _shouldRefreshProfile() {
+    if (_lastProfileLoadTime == null) {
+      return true; // Первый запуск - загружаем обязательно
+    }
+    
+    final now = DateTime.now();
+    final timeSinceLastLoad = now.difference(_lastProfileLoadTime!);
+    
+    return timeSinceLastLoad.inMinutes >= _profileCacheDuration.inMinutes;
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Загружаем профиль пользователя с принудительным обновлением
-    // чтобы всегда показывались актуальные данные с API
-    context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
+    
+    // 🧠 ОПТИМИЗАЦИЯ: Загружаем профиль только если кеш старше 10 минут
+    // Это предотвращает ненужные перезагрузки при каждом открытии экрана
+    if (_shouldRefreshProfile()) {
+      context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
+      _lastProfileLoadTime = DateTime.now();
+      print('✅ SettingsScreen: загружен профиль (кеш обновлен)');
+    } else {
+      final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
+      print('⏳ SettingsScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+    }
+    
     _loadMainPhoneId();
   }
 
@@ -174,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             builder: (context, state) {
                               final displayName = state is ProfileLoaded
                                   ? state.name
-                                  : 'Vlad';
+                                  : 'Name';
                               return Text(
                                 displayName,
                                 style: const TextStyle(
@@ -211,7 +242,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ? _mainPhoneValue!
                         : (state is ProfileLoaded && state.phone.isNotEmpty
                               ? state.phone
-                              : '+7 949 545 54 45');
+                              : '+7 000 000 00 00');
                     return _infoItem(
                       title: 'Аккаунт пользователя',
                       value: phoneValue,

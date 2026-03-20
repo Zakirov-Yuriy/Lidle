@@ -12,6 +12,16 @@ class CatalogInitial extends CatalogState {}
 
 class CatalogLoading extends CatalogState {}
 
+class CatalogsLoadingImages extends CatalogState {
+  final List<Catalog> catalogs;
+  final int loadedImagesCount;
+
+  const CatalogsLoadingImages(this.catalogs, this.loadedImagesCount);
+
+  @override
+  List<Object?> get props => [catalogs, loadedImagesCount];
+}
+
 class CatalogsLoaded extends CatalogState {
   final List<Catalog> catalogs;
 

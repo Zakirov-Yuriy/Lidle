@@ -231,9 +231,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       }
 
       // 📥 Загружаем предложения цены из API
+      // ✅AdvertSlug должен быть типом объявления (например "adverts"), а не ID
       final offers = await ApiService.getPriceOffers(
         advertId: advertId,
-        advertSlug: _listing.slug ?? _listing.id,
+        advertSlug: 'adverts', // Тип объявления для недвижимости
         token: token,
       );
 
@@ -425,31 +426,75 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                         left: 25,
                         top: 0,
                       ),
-                      children: [
-                        _buildImageCarousel(),
-                        const SizedBox(height: 16),
-                        _buildMainInfoCard(),
-                        const SizedBox(height: 16),
-                        _OfferPriceButton(
-                          advertId: _listing.id,
-                          advertSlug: _listing.slug ?? _listing.id,
-                        ),
-                        const SizedBox(height: 19),
-                        _buildLocationCard(),
-                        const SizedBox(height: 10),
-                        _buildAboutApartmentCard(),
-                        const SizedBox(height: 10),
-                        _buildDescriptionCard(),
-                        const SizedBox(height: 24),
-                        if (_priceOffers.isNotEmpty) ...[
-                          _buildPriceOffersCard(),
-                          const SizedBox(height: 24),
-                        ],
-                        _buildSellerCard(),
-                        const SizedBox(height: 19),
-                        _buildComplaintButton(),
-                        const SizedBox(height: 85),
-                      ],
+                      children: _isAdvertLoaded
+                          ? [
+                              // ✅ Основной контент (реальные данные)
+                              _buildImageCarousel(),
+                              const SizedBox(height: 16),
+                              _buildMainInfoCard(),
+                              const SizedBox(height: 16),
+                              _OfferPriceButton(
+                                advertId: _listing.id,
+                                advertSlug: _listing.slug ?? _listing.id,
+                              ),
+                              const SizedBox(height: 19),
+                              _buildLocationCard(),
+                              const SizedBox(height: 10),
+                              _buildAboutApartmentCard(),
+                              const SizedBox(height: 10),
+                              _buildDescriptionCard(),
+                              const SizedBox(height: 24),
+                              if (_priceOffers.isNotEmpty) ...[
+                                _buildPriceOffersCard(),
+                                const SizedBox(height: 24),
+                              ],
+                              _buildSellerCard(),
+                              const SizedBox(height: 19),
+                              _buildComplaintButton(),
+                              const SizedBox(height: 85),
+                            ]
+                          : [
+                              // 💀 Скелетоны при загрузке
+                              _buildImageCarousel(),
+                              const SizedBox(height: 16),
+                              _buildMainInfoCardSkeleton(),
+                              const SizedBox(height: 16),
+                              // Skeleton кнопки
+                              Shimmer.fromColors(
+                                baseColor: const Color(0xFF374B5C),
+                                highlightColor: const Color(0xFF4A5C6A),
+                                child: Container(
+                                  height: 47,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF374B5C),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 19),
+                              _buildLocationCardSkeleton(),
+                              const SizedBox(height: 10),
+                              _buildAboutApartmentCardSkeleton(),
+                              const SizedBox(height: 10),
+                              _buildDescriptionCardSkeleton(),
+                              const SizedBox(height: 24),
+                              _buildSellerCardSkeleton(),
+                              const SizedBox(height: 19),
+                              // Skeleton кнопки жалобы
+                              Shimmer.fromColors(
+                                baseColor: const Color(0xFF374B5C),
+                                highlightColor: const Color(0xFF4A5C6A),
+                                child: Container(
+                                  height: 43,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF374B5C),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.red),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 85),
+                            ],
                     ),
                   ),
                 ],
@@ -1294,6 +1339,324 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ChatPage(message: message),
+      ),
+    );
+  }
+
+  /// 💀 Skeleton loaders для компонентов экрана во время загрузки
+  Widget _buildMainInfoCardSkeleton() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Дата и номер
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Shimmer.fromColors(
+                baseColor: const Color(0xFF374B5C),
+                highlightColor: const Color(0xFF4A5C6A),
+                child: Container(
+                  height: 13,
+                  width: 80,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              Shimmer.fromColors(
+                baseColor: const Color(0xFF374B5C),
+                highlightColor: const Color(0xFF4A5C6A),
+                child: Container(
+                  height: 13,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Заголовок
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 18,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Цена
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 22,
+              width: 150,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Цена за м²
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 13,
+              width: 120,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Без скидки
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 12,
+              width: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationCardSkeleton() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Расположение",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 14,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 14,
+              width: 200,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+          ),
+          const SizedBox(height: 3),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAboutApartmentCardSkeleton() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "О квартире",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Несколько строк-скелетонов для характеристик
+          ...List.generate(
+            5,
+            (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Shimmer.fromColors(
+                baseColor: const Color(0xFF374B5C),
+                highlightColor: const Color(0xFF4A5C6A),
+                child: Container(
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionCardSkeleton() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6.0),
+            child: Text(
+              "Описание",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Несколько строк текста
+          ...List.generate(
+            4,
+            (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Shimmer.fromColors(
+                baseColor: const Color(0xFF374B5C),
+                highlightColor: const Color(0xFF4A5C6A),
+                child: Container(
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSellerCardSkeleton() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 6),
+          const Text(
+            "Продавец",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Shimmer.fromColors(
+                baseColor: const Color(0xFF374B5C),
+                highlightColor: const Color(0xFF4A5C6A),
+                child: Container(
+                  width: 71,
+                  height: 71,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Shimmer.fromColors(
+                      baseColor: const Color(0xFF374B5C),
+                      highlightColor: const Color(0xFF4A5C6A),
+                      child: Container(
+                        height: 16,
+                        width: 150,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374B5C),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Shimmer.fromColors(
+                      baseColor: const Color(0xFF374B5C),
+                      highlightColor: const Color(0xFF4A5C6A),
+                      child: Container(
+                        height: 13,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374B5C),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Shimmer.fromColors(
+                      baseColor: const Color(0xFF374B5C),
+                      highlightColor: const Color(0xFF4A5C6A),
+                      child: Container(
+                        height: 13,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374B5C),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 27),
+          Shimmer.fromColors(
+            baseColor: const Color(0xFF374B5C),
+            highlightColor: const Color(0xFF4A5C6A),
+            child: Container(
+              height: 47,
+              decoration: BoxDecoration(
+                color: const Color(0xFF374B5C),
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+        ],
       ),
     );
   }

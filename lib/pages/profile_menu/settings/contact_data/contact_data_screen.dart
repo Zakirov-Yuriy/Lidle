@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
@@ -463,15 +464,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                 ),
 
               if (_isLoading)
-                Padding(
-                  padding: const EdgeInsets.all(25),
-                  child: SizedBox(
-                    height: 200,
-                    child: Center(
-                      child: CircularProgressIndicator(color: accentColor),
-                    ),
-                  ),
-                )
+                // 🧨 ОПТИМИЗАЦИЯ: Skeleton loader вместо простого индикатора загрузки
+                // Показывает структуру экрана заранее для лучшего UX
+                _buildSkeletonFields()
               else ...[
                 // ───── Fields ─────
                 _label('Контактное лицо'),
@@ -573,6 +568,102 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             hintText: hint.isEmpty ? null : hint,
             hintStyle: const TextStyle(color: hintColor),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 🧨 Skeleton loader для экрана контактных данных
+  /// Показывает структуру экрана во время загрузки для лучшего UX
+  Widget _buildSkeletonFields() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFF2F4456),
+      highlightColor: const Color(0xFF3F5567),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Контактное лицо
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Область
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Город
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Email
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Телефон 1
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Телефон 2
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Telegram
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Whatsapp
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 24),
+
+            // Кнопка сохранения
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2F4456),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Skeleton для лейбла (текст поля)
+  Widget _skeletonLabel() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 14, 25, 6),
+      child: Container(
+        height: 14,
+        width: 120,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2F4456),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
+  }
+
+  /// Skeleton для поля ввода
+  Widget _skeletonField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2F4456),
+          borderRadius: BorderRadius.circular(6),
         ),
       ),
     );

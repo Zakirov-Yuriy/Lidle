@@ -9,6 +9,8 @@ import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
 import '../../services/user_service.dart';
+import '../../pages/profile_menu/profile_menu_screen.dart'; // 🧹 Для очистки кеша профиля при logout
+import '../../pages/profile_menu/settings/settings_screen.dart'; // 🧹 Для очистки кеша настроек при logout
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Конструктор AuthBloc.
@@ -272,12 +274,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
+      // 🧹 ОПТИМИЗАЦИЯ: Очищаем кеши экранов при logout
+      ProfileMenuScreen.clearCache();
+      SettingsScreen.clearCache();
+      
       // AuthService.logout() сам удаляет токены из Hive
       await AuthService.logout();
       // Очищаем весь профиль и кеши — следующий пользователь увидит свои данные
       await UserService.clearLocalProfileData();
       emit(AuthLoggedOut());
     } catch (e) {
+      // 🧹 ОПТИМИЗАЦИЯ: Очищаем кеши экранов даже при ошибке
+      ProfileMenuScreen.clearCache();
+      SettingsScreen.clearCache();
+      
       // Даже если logout на сервере не удался, очищаем данные локально
       await UserService.deleteLocal('token');
       await UserService.deleteLocal('refresh_token');

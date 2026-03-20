@@ -22,6 +22,15 @@ class ProfileMenuScreen extends StatefulWidget {
   static const routeName = '/profile-menu';
 
   const ProfileMenuScreen({super.key});
+  
+  /// 🧹 Очищает кеш профиля при logout
+  /// Вызывается из AuthBloc при LogoutEvent
+  static void clearCache() {
+    _ProfileMenuScreenState._lastProfileLoadTime = null;
+    _ProfileMenuScreenState._lastPhoneLoadTime = null;
+    _ProfileMenuScreenState._cachedMainPhone = null;
+    print('🧹 ProfileMenuScreen: кеш очищен при logout');
+  }
 
   @override
   State<ProfileMenuScreen> createState() => _ProfileMenuScreenState();
@@ -29,17 +38,70 @@ class ProfileMenuScreen extends StatefulWidget {
 
 class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
   String? _mainPhoneValue;
+  
+  // 🚀 ОПТИМИЗАЦИЯ: Кеширование данных профиля на 10 минут
+  // Это предотвращает ненужную перезагрузку при каждом переходе на экран
+  static DateTime? _lastProfileLoadTime;
+  static const Duration _profileCacheDuration = Duration(minutes: 10);
+  
+  // 🚀 ОПТИМИЗАЦИЯ: Кеширование телефонов отдельно (также 10 минут)
+  static DateTime? _lastPhoneLoadTime;
+  static const Duration _phoneCacheDuration = Duration(minutes: 10);
+  static String? _cachedMainPhone;
+
+  bool _shouldRefreshProfile() {
+    if (_lastProfileLoadTime == null) {
+      return true; // Первый запуск - загружаем обязательно
+    }
+    
+    final now = DateTime.now();
+    final timeSinceLastLoad = now.difference(_lastProfileLoadTime!);
+    
+    return timeSinceLastLoad.inMinutes >= _profileCacheDuration.inMinutes;
+  }
+
+  bool _shouldRefreshPhones() {
+    if (_lastPhoneLoadTime == null) {
+      return true; // Первый запуск - загружаем обязательно
+    }
+    
+    final now = DateTime.now();
+    final timeSinceLastLoad = now.difference(_lastPhoneLoadTime!);
+    
+    return timeSinceLastLoad.inMinutes >= _phoneCacheDuration.inMinutes;
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Загружаем профиль пользователя с принудительным обновлением
-    // чтобы всегда показывались актуальные данные с API
-    BlocProvider.of<ProfileBloc>(
-      context,
-    ).add(LoadProfileEvent(forceRefresh: true));
-    // Загружаем основной телефон пользователя из API
-    _loadMainPhoneValue();
+    
+    // 🧠 ОПТИМИЗАЦИЯ: Загружаем профиль только если кеш старше 10 минут
+    // Это значительно снижает нагрузку на API и улучшает UX
+    if (_shouldRefreshProfile()) {
+      BlocProvider.of<ProfileBloc>(
+        context,
+      ).add(LoadProfileEvent(forceRefresh: true));
+      _lastProfileLoadTime = DateTime.now();
+      print('✅ ProfileMenuScreen: загружен профиль (кеш обновлен)');
+    } else {
+      final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
+      print('⏳ ProfileMenuScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+    }
+    
+    // 🧠 ОПТИМИЗАЦИЯ: Загружаем телефоны только если кеш старше 10 минут
+    if (_shouldRefreshPhones()) {
+      _loadMainPhoneValue();
+      _lastPhoneLoadTime = DateTime.now();
+    } else {
+      // Используем кешированный телефон
+      if (_cachedMainPhone != null) {
+        setState(() {
+          _mainPhoneValue = _cachedMainPhone;
+        });
+        final timeSinceLastLoad = DateTime.now().difference(_lastPhoneLoadTime!);
+        print('⏳ ProfileMenuScreen: используется кеш телефона (осталось ${_phoneCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+      }
+    }
   }
 
   Future<void> _loadMainPhoneValue() async {
@@ -49,19 +111,21 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         final phonesResponse = await ContactService.getPhones(token: token);
         if (phonesResponse.data.isNotEmpty) {
           setState(() {
-            // _mainPhoneId = phonesResponse.data.first.id;
             // Ensure phone is in correct format with +
             String phone = phonesResponse.data.first.phone;
             if (!phone.startsWith('+')) {
               phone = '+$phone';
             }
             _mainPhoneValue = phone;
+            // 💾 КЕШИРОВАНИЕ: Сохраняем телефон в статический кеш
+            _cachedMainPhone = phone;
           });
+          print('✅ ProfileMenuScreen: загружен телефон (кеш обновлен)');
         } else {
           setState(() {
             _mainPhoneValue = null;
-            // _mainPhoneId = null;
           });
+          _cachedMainPhone = null;
         }
       }
     } catch (e) {
@@ -242,7 +306,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        state is ProfileLoaded ? state.name : 'Vlad',
+                        state is ProfileLoaded ? state.name : 'Name',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 17,
@@ -256,7 +320,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                                       _mainPhoneValue!.isNotEmpty
                                   ? _mainPhoneValue!
                                   : state.phone)
-                            : '+7 949 609 59 28',
+                            : '+7 000 00 00 00',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,

@@ -35,7 +35,8 @@ class ApiService {
   static String get baseUrl => 'https://dev-api.lidle.io/v1';
   static const int _maxRetries = 4;
   static const int _retryDelayMs =
-      1000; // Стартовая задержка перед retry (exponential backoff)
+      2000; // 🚀 ОПТИМИЗАЦИЯ: Увеличена стартовая задержка с 1000ms на 2000ms
+            // Это дает серверу больше времени на восстановление между попытками
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     // Заголовки согласно официальной документации API Lidle

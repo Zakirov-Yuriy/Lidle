@@ -3700,7 +3700,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
               // Building number field - dropdown selection
               _buildDropdown(
-                label: 'Номер дома*',
+                label: 'Номер дома',
                 hint: _selectedBuilding.isEmpty
                     ? 'Выберите номер дома'
                     : _selectedBuilding.join(', '),

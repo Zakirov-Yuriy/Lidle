@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -654,18 +655,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     ),
                     const SizedBox(height: 12),
                     if (_isLoadingMetadata)
-                      const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF00B7FF),
-                          ),
-                        ),
-                      )
+                      _buildCatalogSkeleton()
                     else if (_advertMetaCatalogs.isEmpty)
                       const Center(
                         child: Text(
                           'Каталоги не найдены',
-                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
                         ),
                       )
                     else
@@ -676,9 +674,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                             _advertMetaCatalogs.length,
                             (index) => Padding(
                               padding: EdgeInsets.only(
-                                right: index < _advertMetaCatalogs.length - 1
-                                    ? 8
-                                    : 0,
+                                right:
+                                    index < _advertMetaCatalogs.length - 1
+                                        ? 8
+                                        : 0,
                               ),
                               child: _catalogButton(
                                 _advertMetaCatalogs[index].name,
@@ -687,13 +686,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                   setState(() {
                                     _selectedCatalogIndex = index;
                                     _advertMetaCategories =
-                                        _advertMetaCatalogs[index].categories;
+                                        _advertMetaCatalogs[index]
+                                            .categories;
                                     _selectedCategoryIndex = 0;
                                   });
                                   // Загрузить объявления первой категории нового каталога
                                   if (_advertMetaCategories.isNotEmpty) {
                                     final categoryId =
-                                        _advertMetaCategories[0].categoryId;
+                                        _advertMetaCategories[0]
+                                            .categoryId;
                                     _selectedCategoryId = categoryId;
                                     _loadListingsByCategory(categoryId);
                                   }
@@ -725,18 +726,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     ),
                     const SizedBox(height: 12),
                     if (_isLoadingMetadata)
-                      const Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF00B7FF),
-                          ),
-                        ),
-                      )
+                      _buildCategoriesSkeleton()
                     else if (_advertMetaCategories.isEmpty)
                       const Center(
                         child: Text(
                           'Категории не найдены',
-                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 14,
+                          ),
                         ),
                       )
                     else
@@ -747,16 +745,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                             _advertMetaCategories.length,
                             (index) => Padding(
                               padding: EdgeInsets.only(
-                                right: index < _advertMetaCategories.length - 1
-                                    ? 8
-                                    : 0,
+                                right:
+                                    index <
+                                            _advertMetaCategories.length -
+                                                1
+                                        ? 8
+                                        : 0,
                               ),
                               child: _catalogButton(
                                 _advertMetaCategories[index].name,
                                 _selectedCategoryIndex == index,
                                 onPressed: () {
                                   final categoryId =
-                                      _advertMetaCategories[index].categoryId;
+                                      _advertMetaCategories[index]
+                                          .categoryId;
                                   setState(() {
                                     _selectedCategoryIndex = index;
                                     // Обновить ID категории для фильтрации
@@ -1603,6 +1605,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // ─────────────────────────────────────────────
 
   Widget _buildTabContent() {
+    // Показываем skeleton при загрузке метаданных ИЛИ объявлений
+    if (_isLoadingMetadata || _listingsLoading) {
+      return _buildTabContentSkeleton();
+    }
+
     switch (_currentTab) {
       case 0:
         return _activeTab();
@@ -1863,4 +1870,201 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       ),
     );
   }
+
+  // ─────────────────────────────────────────────
+  // SKELETON LOADERS 💀
+  // ─────────────────────────────────────────────
+
+  /// Skeleton для каталога (горизонтальный список кнопок)
+  Widget _buildCatalogSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Каталог',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(
+              4,
+              (index) => Padding(
+                padding: EdgeInsets.only(right: index < 3 ? 8 : 0),
+                child: Shimmer.fromColors(
+                  baseColor: const Color(0xFF374B5C),
+                  highlightColor: const Color(0xFF4A5C6A),
+                  child: Container(
+                    height: 34,
+                    width: 100 + (index * 15),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF374B5C),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Skeleton для категорий (горизонтальный список кнопок)
+  Widget _buildCategoriesSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Категории',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(
+              4,
+              (index) => Padding(
+                padding: EdgeInsets.only(right: index < 3 ? 8 : 0),
+                child: Shimmer.fromColors(
+                  baseColor: const Color(0xFF374B5C),
+                  highlightColor: const Color(0xFF4A5C6A),
+                  child: Container(
+                    height: 34,
+                    width: 85 + (index * 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF374B5C),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Skeleton для карточки объявления
+  Widget _buildListingCardSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFF374B5C),
+      highlightColor: const Color(0xFF4A5C6A),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image + text block
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image skeleton
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Text skeleton
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Container(
+                        height: 14,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374B5C),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Price
+                      Container(
+                        height: 16,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374B5C),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Address
+                      Container(
+                        height: 12,
+                        width: 150,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF374B5C),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Divider
+            Container(
+              height: 1,
+              color: Colors.white24,
+            ),
+            const SizedBox(height: 12),
+            // Stats skeleton (3 lines)
+            ...List.generate(
+              3,
+              (index) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  height: 13,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374B5C),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Skeleton для содержимого вкладки (список карточек объявлений)
+  Widget _buildTabContentSkeleton() {
+    return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildListingCardSkeleton(),
+        const SizedBox(height: 10),
+        _buildListingCardSkeleton(),
+        const SizedBox(height: 10),
+      ],
+    );
+  }
 }
+

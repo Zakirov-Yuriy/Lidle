@@ -239,8 +239,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       int itemsPerPage = 50;
 
       if (firstCatalogIds.isNotEmpty) {
-        // Ограничиваем до 5 одновременных запросов для экономии памяти
-        const int maxConcurrentRequests = 5;
+        // 🚀 ОПТИМИЗАЦИЯ: Уменьшиваем параллелизм с 5 на 2 для снижения пиковой нагрузки
+        // и избежания RateLimitException (429 Too Many Requests)
+        // При 2 параллельных запросов server восстанавливается между батчами
+        const int maxConcurrentRequests = 2;
         
         for (int i = 0; i < firstCatalogIds.length; i += maxConcurrentRequests) {
           final batch = firstCatalogIds.sublist(
@@ -260,6 +262,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               .toList();
 
           final firstBatchResponses = await Future.wait(firstBatchFutures);
+          
+          // ⏳ ОПТИМИЗАЦИЯ: Добавляем задержку между батчами чтобы не перегружать сервер
+          // 200ms дает серверу время на восстановление между волнами запросов
+          if (i + maxConcurrentRequests < firstCatalogIds.length) {
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
 
           // Парсируем все ответы параллельно на фоновых потоках
           for (final response in firstBatchResponses) {
