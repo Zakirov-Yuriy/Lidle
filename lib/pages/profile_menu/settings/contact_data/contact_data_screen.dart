@@ -18,6 +18,14 @@ class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
 
   const ContactDataScreen({super.key});
+  
+  /// 🧹 Очищает кеш контактных данных при logout
+  /// Вызывается из AuthBloc при LogoutEvent
+  static void clearCache() {
+    _ContactDataScreenState._lastContactDataLoadTime = null;
+    // ignore: avoid_print
+    print('🧹 ContactDataScreen: кеш очищен при logout');
+  }
 
   @override
   State<ContactDataScreen> createState() => _ContactDataScreenState();
@@ -34,12 +42,17 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _cityController;
 
   bool _isLoading = false;
+  bool _isLoadingData = false; // ✅ Флаг чтобы не запускать одновременные загрузки
   String? _errorMessage;
 
   // Храним ID контактов для обновления
   int? _phone1Id;
   int? _phone2Id;
   int? _emailId;
+
+  // 💾 КЕШИРОВАНИЕ: Отслеживаем время последней загрузки
+  static DateTime? _lastContactDataLoadTime;
+  static const Duration _contactDataCacheDuration = Duration(minutes: 10);
 
   static const bgColor = Color(0xFF243241);
   static const fieldColor = Color(0xFF1F2C3A);
@@ -64,9 +77,64 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     super.didChangeDependencies();
     // ignore: avoid_print
     print('🔵 ContactDataScreen: didChangeDependencies() called');
-    // Загружаем профиль пользователя с принудительным обновлением
-    context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
-    _loadContactData();
+    
+    // 💾 КЕШИРОВАНИЕ: Проверяем нужно ли обновлять данные
+    if (_shouldRefreshContactData()) {
+      // ignore: avoid_print
+      print('🔄 ContactDataScreen: Cache expired или первый вход, загружаем свежие данные');
+      _loadContactData();
+      _lastContactDataLoadTime = DateTime.now();
+    } else {
+      // Кеш ещё актуален - восстанавливаем данные из локального хранилища
+      // ignore: avoid_print
+      print('✅ ContactDataScreen: Кеш актуален, восстанавливаем данные');
+      _restoreDataFromCache();
+    }
+  }
+
+  /// ✅ Восстанавливает данные контактов из локального хранилища и ProfileBloc
+  /// Вызывается когда кеш ещё актуален (чтобы не показывать skeleton loader)
+  void _restoreDataFromCache() {
+    try {
+      // Получаем профиль из ProfileBloc (уже загружен)
+      final profileState = context.read<ProfileBloc>().state;
+      final name = profileState is ProfileLoaded ? profileState.name : '';
+      final email = profileState is ProfileLoaded ? profileState.email : '';
+      final phone = profileState is ProfileLoaded ? profileState.phone : '';
+      
+      // Загружаем сохраненные данные из Hive
+      final region = UserService.getLocal('region') as String? ?? '';
+      final city = UserService.getLocal('city') as String? ?? '';
+      final telegram = UserService.getLocal('telegram') as String? ?? '';
+      final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
+
+      setState(() {
+        _nameController.text = name;
+        _emailController.text = email;
+        _phone1Controller.text = phone.isEmpty ? '' : (phone.startsWith('+') ? phone : '+$phone');
+        _phone2Controller.text = '';
+        _telegramController.text = telegram;
+        _whatsappController.text = whatsapp;
+        _regionController.text = region;
+        _cityController.text = city;
+        _isLoading = false;
+      });
+    } catch (e) {
+      // Если восстановление не удалось, загружаем свежие данные
+      // ignore: avoid_print
+      print('❌ Error restoring from cache: $e');
+      _loadContactData();
+      _lastContactDataLoadTime = DateTime.now();
+    }
+  }
+
+  /// 💾 Проверяет нужно ли обновлять кеш контактных данных
+  bool _shouldRefreshContactData() {
+    if (_lastContactDataLoadTime == null) return true;
+    return DateTime.now()
+            .difference(_lastContactDataLoadTime!)
+            .inMinutes >=
+        _contactDataCacheDuration.inMinutes;
   }
 
   Future<void> _loadContactData() async {
@@ -202,6 +270,13 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _cityController.text = city;
         _isLoading = false;
       });
+      
+      // 💾 Сохраняем данные в локальное хранилище для кеширования
+      await UserService.saveLocal('name', name);
+      await UserService.saveLocal('region', region);
+      await UserService.saveLocal('city', city);
+      // ignore: avoid_print
+      print('✅ ContactDataScreen: данные сохранены в локальное хранилище для кеша');
     } catch (e) {
       setState(() {
         _errorMessage = 'Ошибка загрузки: ${e.toString()}';
