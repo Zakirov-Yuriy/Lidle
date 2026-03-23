@@ -53,3 +53,12 @@ class AuthLoggedOut extends AuthState {}
 /// Состояние истечения токена.
 /// Показывает, что токен истёк и refresh не удался — нужна повторная авторизация.
 class AuthTokenExpired extends AuthState {}
+
+/// Состояние неверифицированного email.
+/// Показывает, что пользователь вошел с правильными данными, но email не верифицирован.
+/// Требуется перенаправление на экран верификации.
+class AuthEmailNotVerified extends AuthState {
+  final String email;
+
+  AuthEmailNotVerified({required this.email});
+}

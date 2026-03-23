@@ -10,6 +10,7 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
+import 'register_verify_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 
 // ============================================================
@@ -44,6 +45,12 @@ class _SignInScreenState extends State<SignInScreen> {
             Navigator.of(
               context,
             ).pushReplacementNamed(ProfileDashboard.routeName);
+          } else if (state is AuthEmailNotVerified) {
+            // 📧 Email не верифицирован — перенаправляем на экран верификации
+            Navigator.of(context).pushReplacementNamed(
+              RegisterVerifyScreen.routeName,
+              arguments: {'email': state.email},
+            );
           } else if (state is AuthError) {
             // Показываем ошибку с сервера с типом error
             SnackBarHelper.showError(context, state.message);

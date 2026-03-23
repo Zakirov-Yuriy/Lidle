@@ -350,19 +350,22 @@ class _CooldownText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (!visible) return const SizedBox(height: 20);
-    return RichText(
-      text: TextSpan(
-        style: const TextStyle(fontSize: 14, color: textSecondary),
-        children: [
-          const TextSpan(text: 'Осталось: '),
-          TextSpan(
-            text: text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 14, color: textSecondary),
+          children: [
+            const TextSpan(text: 'Осталось: '),
+            TextSpan(
+              text: text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

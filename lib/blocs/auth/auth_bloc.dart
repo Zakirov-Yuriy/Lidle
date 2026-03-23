@@ -131,10 +131,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         emit(AuthAuthenticated(token: token));
       } else {
-        // success: false — используем сообщение сервера (напр. 423 email_not_verified)
-        final serverMessage =
-            response['message'] as String? ?? 'Неверные учетные данные';
-        emit(AuthError(message: serverMessage));
+        // 📧 Проверяем если это ошибка неверифицированного email (423)
+        if (response['error'] == 'email_not_verified' ||
+            response['error_code'] == 'email_not_verified') {
+          // email не верифицирован — перенаправляем на экран верификации
+          emit(AuthEmailNotVerified(email: event.email));
+        } else {
+          // success: false — используем сообщение сервера
+          final serverMessage =
+              response['message'] as String? ?? 'Неверные учетные данные';
+          emit(AuthError(message: serverMessage));
+        }
       }
     } catch (e) {
       // Специальная обработка TokenExpiredException для неправильных учетных данных
