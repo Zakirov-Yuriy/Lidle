@@ -13,6 +13,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
+import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
@@ -1839,6 +1840,20 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
     setState(() {
       _isFavorited = FavoritesService.toggleFavorite(widget.listing.id);
     });
+    
+    // Синхронизируем с сервером через WishlistBloc
+    final listingId = int.tryParse(widget.listing.id);
+    if (listingId != null && mounted) {
+      if (_isFavorited) {
+        context.read<WishlistBloc>().add(
+          AddToWishlistEvent(listingId: listingId),
+        );
+      } else {
+        context.read<WishlistBloc>().add(
+          RemoveFromWishlistEvent(listingId: listingId),
+        );
+      }
+    }
   }
 
   @override

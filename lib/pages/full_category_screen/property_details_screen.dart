@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/favorites_service.dart';
+import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
@@ -721,6 +723,20 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
     setState(() {
       _isFavorited = FavoritesService.toggleFavorite(widget.listing.id);
     });
+    
+    // Синхронизируем с сервером через WishlistBloc
+    final listingId = int.tryParse(widget.listing.id);
+    if (listingId != null && mounted) {
+      if (_isFavorited) {
+        context.read<WishlistBloc>().add(
+          AddToWishlistEvent(listingId: listingId),
+        );
+      } else {
+        context.read<WishlistBloc>().add(
+          RemoveFromWishlistEvent(listingId: listingId),
+        );
+      }
+    }
   }
 
   @override

@@ -27,6 +27,7 @@ import 'package:lidle/blocs/company_messages/company_messages_bloc.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/blocs/catalog/catalog_bloc.dart';
 import 'package:lidle/blocs/devices/devices_bloc.dart';
+import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/device_info_service.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
@@ -156,6 +157,7 @@ class LidleApp extends StatelessWidget {
         BlocProvider<CartBloc>(create: (context) => CartBloc()),
         BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
         BlocProvider<DevicesBloc>(create: (context) => DevicesBloc()),
+        BlocProvider<WishlistBloc>(create: (context) => WishlistBloc()),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
@@ -163,6 +165,9 @@ class LidleApp extends StatelessWidget {
           if (state is AuthAuthenticated) {
             // Пользователь авторизован — запускаем фоновое обновление токена
             TokenService().init(context);
+            
+            // Загружаем wishlist (избранное) с сервера
+            context.read<WishlistBloc>().add(const LoadWishlistEvent());
           } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
             // Пользователь вышел или токен истёк — останавливаем таймер
             TokenService().dispose();
