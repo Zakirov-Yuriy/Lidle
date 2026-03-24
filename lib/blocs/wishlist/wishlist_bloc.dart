@@ -27,9 +27,6 @@ part 'wishlist_state.dart';
 /// - Локальное (Hive) для быстрого доступа и оптимистичных обновлений
 /// - Серверное (API) как источник истины для состояния после синхронизации
 class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
-  /// Токен авторизации (извлекается из HiveService при необходимости)
-  String? _token;
-
   /// Кеш ID избранных объявлений для отслеживания изменений
   Set<int> _cachedWishlistIds = {};
 
@@ -41,12 +38,18 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
     on<SyncWishlistEvent>(_onSyncWishlist);
   }
 
-  /// Получить токен из HiveService.
+  /// Получить свежий токен из HiveService каждый раз.
   ///
-  /// Кеширует токен чтобы избежать повторного обращения к Hive.
+  /// ⚠️ ВАЖНО: Не кешируем токен! Он может измениться после авторизации.
+  /// Каждый вызов получает актуальное значение из Hive.
   String? _getToken() {
-    _token ??= HiveService.getUserData('token') as String?;
-    return _token;
+    final token = HiveService.getUserData('token') as String?;
+    if (token == null) {
+      print('⚠️ WishlistBloc._getToken(): Токен НЕ НАЙДЕН в Hive!');
+    } else {
+      print('✅ WishlistBloc._getToken(): Токен получен (${token.length} символов)');
+    }
+    return token;
   }
 
   /// Обработчик события LoadWishlistEvent.
@@ -102,37 +105,68 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// Обработчик события AddToWishlistEvent.
   ///
   /// Выполняет оптимистичное обновление локального хранилища,
-  /// затем отправляет запрос на сервер.
+  /// затем отправляет POST запрос на сервер для добавления объявления в wishlist.
+  /// 
+  /// 📤 Шаги:
+  /// 1. Обновляет локальное хранилище (Hive) оптимистично
+  /// 2. Отправляет асинхронный запрос на сервер
+  /// 3. При ошибке откатывает локальное изменение
   Future<void> _onAddToWishlist(
     AddToWishlistEvent event,
     Emitter<WishlistState> emit,
   ) async {
     try {
+      print('🎯 WishlistBloc._onAddToWishlist: START добавляем advertId=${event.listingId}');
+      
       // 1. Оптимистичное обновление локального хранилища
       FavoritesService.toggleFavorite(event.listingId.toString());
       _cachedWishlistIds.add(event.listingId);
+      print('✅ WishlistBloc: Локальное хранилище обновлено, ID: ${event.listingId}');
 
-      // Уведомляем UI об успехе
+      // Уведомляем UI об успехе локального обновления
       emit(WishlistItemAdded(listingId: event.listingId));
 
       // 2. Отправляем на сервер в фоне (асинхронно)
       final token = _getToken();
-      if (token != null) {
-        try {
-          await WishlistService.addToWishlist(
-            listingId: event.listingId,
-            token: token,
-          );
-        } catch (e) {
-          // Если сервер вернул ошибку, откатываем локальное изменение
-          // и уведомляем пользователя
-          FavoritesService.toggleFavorite(event.listingId.toString());
-          _cachedWishlistIds.remove(event.listingId);
+      
+      if (token == null || token.isEmpty) {
+        print('❌ WishlistBloc: Токен НЕ ПЕРЕДАН! Не могу отправить запрос на сервер');
+        print('❌ WishlistBloc: Откатываем локальное изменение т.к. нет токена');
+        FavoritesService.toggleFavorite(event.listingId.toString());
+        _cachedWishlistIds.remove(event.listingId);
+        
+        _emitError(emit, Exception('Токен авторизации не найден. Требуется авторизация.'));
+        return;
+      }
+      
+      try {
+        print('📡 WishlistBloc: Отправляем POST запрос на /me/wishlist/add');
+        print('📡 WishlistBloc: Параметры: advert_id=${event.listingId}, token_length=${token.length}');
+        
+        await WishlistService.addToWishlist(
+          advertId: event.listingId,
+          token: token,
+        );
+        print('✅ WishlistBloc: Сервер подтвердил добавление объявления');
+        
+        // 📡 Обновляем состояние с новыми IDs для синхронизации UI
+        print('📢 WishlistBloc: Эмитим WishlistLoaded с обновленными IDs: $_cachedWishlistIds');
+        emit(WishlistLoaded(
+          wishlistIds: _cachedWishlistIds,
+          syncedAt: DateTime.now(),
+        ));
+      } catch (e) {
+        // Если сервер вернул ошибку, откатываем локальное изменение
+        // и уведомляем пользователя
+        print('⚠️ WishlistBloc: Ошибка при добавлении на сервер: $e');
+        print('⏮️ WishlistBloc: Откатываем локальное изменение');
+        FavoritesService.toggleFavorite(event.listingId.toString());
+        _cachedWishlistIds.remove(event.listingId);
 
-          _emitError(emit, e as Exception);
-        }
+        _emitError(emit, e as Exception);
       }
     } catch (e) {
+      print('❌ WishlistBloc._onAddToWishlist: Непредвиденная ошибка: $e');
       _emitError(emit, e as Exception);
     }
   }
@@ -140,36 +174,67 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// Обработчик события RemoveFromWishlistEvent.
   ///
   /// Выполняет оптимистичное обновление локального хранилища,
-  /// затем отправляет запрос на сервер.
+  /// затем отправляет DELETE запрос на сервер для удаления объявления из wishlist.
+  /// 
+  /// 📤 Шаги:
+  /// 1. Обновляет локальное хранилище (Hive) оптимистично
+  /// 2. Отправляет асинхронный запрос на сервер
+  /// 3. При ошибке откатывает локальное изменение
   Future<void> _onRemoveFromWishlist(
     RemoveFromWishlistEvent event,
     Emitter<WishlistState> emit,
   ) async {
     try {
+      print('🎯 WishlistBloc._onRemoveFromWishlist: START удаляем advertId=${event.listingId}');
+      
       // 1. Оптимистичное обновление локального хранилища
       FavoritesService.toggleFavorite(event.listingId.toString());
       _cachedWishlistIds.remove(event.listingId);
+      print('✅ WishlistBloc: Локальное хранилище обновлено (удалено), ID: ${event.listingId}');
 
-      // Уведомляем UI об успехе
+      // Уведомляем UI об успехе локального обновления
       emit(WishlistItemRemoved(listingId: event.listingId));
 
       // 2. Отправляем на сервер в фоне (асинхронно)
       final token = _getToken();
-      if (token != null) {
-        try {
-          await WishlistService.removeFromWishlist(
-            listingId: event.listingId,
-            token: token,
-          );
-        } catch (e) {
-          // Если сервер вернул ошибку, откатываем локальное изменение
-          FavoritesService.toggleFavorite(event.listingId.toString());
-          _cachedWishlistIds.add(event.listingId);
+      
+      if (token == null || token.isEmpty) {
+        print('❌ WishlistBloc: Токен НЕ ПЕРЕДАН! Не могу отправить запрос на сервер');
+        print('❌ WishlistBloc: Откатываем локальное изменение т.к. нет токена');
+        FavoritesService.toggleFavorite(event.listingId.toString());
+        _cachedWishlistIds.add(event.listingId);
+        
+        _emitError(emit, Exception('Токен авторизации не найден. Требуется авторизация.'));
+        return;
+      }
+      
+      try {
+        print('📡 WishlistBloc: Отправляем DELETE запрос на /me/wishlist/destroy/{advertId}');
+        print('📡 WishlistBloc: Параметры: advert_id=${event.listingId}, token_length=${token.length}');
+        
+        await WishlistService.removeFromWishlist(
+          advertId: event.listingId,
+          token: token,
+        );
+        print('✅ WishlistBloc: Сервер подтвердил удаление объявления');
+        
+        // 📡 Обновляем состояние с новыми IDs для синхронизации UI
+        print('📢 WishlistBloc: Эмитим WishlistLoaded с обновленными IDs: $_cachedWishlistIds');
+        emit(WishlistLoaded(
+          wishlistIds: _cachedWishlistIds,
+          syncedAt: DateTime.now(),
+        ));
+      } catch (e) {
+        // Если сервер вернул ошибку, откатываем локальное изменение
+        print('⚠️ WishlistBloc: Ошибка при удалении на сервере: $e');
+        print('⏮️ WishlistBloc: Откатываем локальное изменение');
+        FavoritesService.toggleFavorite(event.listingId.toString());
+        _cachedWishlistIds.add(event.listingId);
 
-          _emitError(emit, e as Exception);
-        }
+        _emitError(emit, e as Exception);
       }
     } catch (e) {
+      print('❌ WishlistBloc._onRemoveFromWishlist: Непредвиденная ошибка: $e');
       _emitError(emit, e as Exception);
     }
   }

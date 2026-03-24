@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
+import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
@@ -31,12 +32,22 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   void initState() {
     super.initState();
     _selectedSortOptions.add('Сначала новые'); // Default sort option
+    // 📱 Загружаем wishlist при открытии экрана
+    Future.microtask(() {
+      context.read<WishlistBloc>().add(const LoadWishlistEvent());
+      print('🔄 FavoritesScreen.initState: Загружаем wishlist');
+    });
   }
 
-  List<Listing> _getFavoritedListings(List<Listing> allListings) {
-    final favoriteIds = HiveService.getFavorites();
+  List<Listing> _getFavoritedListings(List<Listing> allListings, {Set<int>? wishlistIds}) {
+    // Используем ID из WishlistBloc если предоставлены, иначе из Hive
+    final ids = wishlistIds ?? HiveService.getFavorites().map((id) => int.parse(id)).toSet();
     return allListings
-        .where((listing) => favoriteIds.contains(listing.id))
+        .where((listing) {
+          // listing.id может быть String или int, приводим к String для сравнения
+          final listingIdStr = listing.id.toString();
+          return ids.any((id) => id.toString() == listingIdStr);
+        })
         .toList();
   }
 
@@ -128,6 +139,17 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           listener: (context, state) {
             if (state is ListingsLoaded) {
               // Обновляем favorites при изменении listings
+              setState(() {});
+            }
+          },
+        ),
+        BlocListener<WishlistBloc, WishlistState>(
+          listener: (context, state) {
+            // Когда wishlist обновляется, переотчитываемся
+            if (state is WishlistLoaded || 
+                state is WishlistItemAdded || 
+                state is WishlistItemRemoved) {
+              print('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
               setState(() {});
             }
           },
@@ -234,14 +256,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: StreamBuilder(
-                  stream: HiveService.settingsBox.watch(key: 'favorites'),
-                  builder: (context, snapshot) {
+                child: BlocBuilder<WishlistBloc, WishlistState>(
+                  builder: (context, wishlistState) {
                     return BlocBuilder<ListingsBloc, ListingsState>(
-                      builder: (context, state) {
-                        if (state is ListingsLoaded) {
+                      builder: (context, listingsState) {
+                        if (listingsState is ListingsLoaded) {
+                          // Получаем ID избранного из WishlistBloc если есть
+                          Set<int>? wishlistIds;
+                          if (wishlistState is WishlistLoaded) {
+                            wishlistIds = wishlistState.wishlistIds;
+                          }
+                          
                           List<Listing> favoritedListings =
-                              _getFavoritedListings(state.listings);
+                              _getFavoritedListings(listingsState.listings, wishlistIds: wishlistIds);
 
                           // Применяем сортировку если выбрана
                           if (_selectedSortOptions.isNotEmpty) {

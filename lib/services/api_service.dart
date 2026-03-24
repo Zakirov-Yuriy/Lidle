@@ -150,7 +150,7 @@ class ApiService {
     bool skipTokenRefresh = false,
   }) async {
     return _retryRequest(
-      () => _postRequest(endpoint, body, null),
+      () => _postRequest(endpoint, body, token),
       endpoint,
       skipTokenRefresh: skipTokenRefresh,
     );
@@ -171,24 +171,28 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📤 POST REQUEST');
-      // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${effectiveToken != null}');
+      print('═══════════════════════════════════════════════════════');
+      print('📤 POST REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Token provided: ${effectiveToken != null}');
       if (effectiveToken != null) {
-        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
-        // print('Token type: JWT');
+        print('Token preview: ${effectiveToken.substring(0, 30)}...');
+        print('Token type: JWT');
       }
-      // print('Headers:');
+      print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          // print('  $key: Bearer [HIDDEN]');
+          print('  $key: Bearer [HIDDEN]');
         } else {
-          // print('  $key: $value');
+          print('  $key: $value');
         }
       });
-      // print('Body: $body');
-      // print('═══════════════════════════════════════════════════════');
+      print('Body: $body');
+      print('Body keys: ${body.keys.toList()}');
+      body.forEach((key, value) {
+        print('  $key: $value (type: ${value.runtimeType})');
+      });
+      print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .post(
@@ -197,6 +201,9 @@ class ApiService {
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
+
+      print('📥 Response status: ${response.statusCode}');
+      print('📥 Response body: ${response.body}');
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -356,7 +363,7 @@ class ApiService {
     Map<String, dynamic> body, {
     String? token,
   }) async {
-    return _retryRequest(() => _putRequest(endpoint, body, null), endpoint);
+    return _retryRequest(() => _putRequest(endpoint, body, token), endpoint);
   }
 
   /// Внутренний метод для PUT запроса
@@ -425,7 +432,7 @@ class ApiService {
     String? token,
     Map<String, dynamic>? body,
   }) async {
-    return _retryRequest(() => _deleteRequest(endpoint, null, body), endpoint);
+    return _retryRequest(() => _deleteRequest(endpoint, token, body), endpoint);
   }
 
   /// Внутренний метод для DELETE запроса

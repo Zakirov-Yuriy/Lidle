@@ -16,43 +16,58 @@ import 'api_service.dart';
 class WishlistService {
   /// Добавить объявление в избранное на сервере.
   ///
-  /// [listingId] - ID объявления для добавления
+  /// POST /v1/me/wishlist/add
+  /// Тело: {"advert_id": int}
+  ///
+  /// [advertId] - ID объявления для добавления
   /// [token] - токен авторизации
   ///
-  /// Возвращает ответ сервера или выбрасывает исключение.
+  /// Возвращает ответ сервера или выбрасывает исключение при ошибке.
   static Future<Map<String, dynamic>> addToWishlist({
-    required int listingId,
+    required int advertId,
     required String token,
   }) async {
     try {
-      final body = {'listing_id': listingId};
+      print('📤 WishlistService.addToWishlist(): Добавляем advert_id=$advertId');
+      
+      final body = {'advert_id': advertId};
       final response = await ApiService.post(
         '/me/wishlist/add',
         body,
         token: token,
       );
+      
+      print('✅ WishlistService.addToWishlist(): Успешно добавлено, ответ: $response');
       return response;
     } catch (e) {
+      print('❌ WishlistService.addToWishlist(): Ошибка: $e');
       throw Exception('Ошибка при добавлении в избранное: $e');
     }
   }
 
   /// Удалить объявление из избранного на сервере.
   ///
-  /// [listingId] - ID объявления в wishlist для удаления
+  /// DELETE /v1/me/wishlist/destroy/{advert_id}
+  ///
+  /// [advertId] - ID объявления для удаления из wishlist
   /// [token] - токен авторизации
   ///
   /// Выбрасывает исключение при ошибке.
   static Future<void> removeFromWishlist({
-    required int listingId,
+    required int advertId,
     required String token,
   }) async {
     try {
+      print('📤 WishlistService.removeFromWishlist(): Удаляем advert_id=$advertId');
+      
       await ApiService.delete(
-        '/me/wishlist/destroy/$listingId',
+        '/me/wishlist/destroy/$advertId',
         token: token,
       );
+      
+      print('✅ WishlistService.removeFromWishlist(): Успешно удалено');
     } catch (e) {
+      print('❌ WishlistService.removeFromWishlist(): Ошибка: $e');
       throw Exception('Ошибка при удалении из избранного: $e');
     }
   }
