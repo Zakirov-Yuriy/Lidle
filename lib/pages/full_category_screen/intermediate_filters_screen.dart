@@ -133,7 +133,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     try {
       // Получаем текущий токен из Hive
       final token = HiveService.getUserData('token') as String?;
-      print('🔑 Токен получен: ${token != null ? "✅ YES (${token.substring(0, 20)}...)" : "❌ NO"}');
+      print('🔑 Токен получен: ${token != null ? "✅ YES ($token)" : "❌ NO"}');
       
       // Получаем все области с API
       final regionsResponse = await AddressService.getRegions(token: token);
