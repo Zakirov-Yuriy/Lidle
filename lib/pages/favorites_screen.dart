@@ -42,13 +42,19 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   List<Listing> _getFavoritedListings(List<Listing> allListings, {Set<int>? wishlistIds}) {
     // Используем ID из WishlistBloc если предоставлены, иначе из Hive
     final ids = wishlistIds ?? HiveService.getFavorites().map((id) => int.parse(id)).toSet();
-    return allListings
+    
+    // Фильтруем объявления, которые есть в избранном
+    final favorited = allListings
         .where((listing) {
           // listing.id может быть String или int, приводим к String для сравнения
           final listingIdStr = listing.id.toString();
           return ids.any((id) => id.toString() == listingIdStr);
         })
         .toList();
+    
+    print('📊 FavoritesScreen._getFavoritedListings: Всего объявлений: ${allListings.length}, Избранных: ${favorited.length}, IDs избранного: $ids');
+    
+    return favorited;
   }
 
   List<Listing> _sortListingsFunc(

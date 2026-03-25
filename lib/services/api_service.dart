@@ -2401,4 +2401,35 @@ class ApiService {
       return false;
     }
   }
+
+  /// 🗑️ Удалить объявление из избранного
+  /// DELETE /v1/me/wishlist/destroy/{advertId}
+  /// Параметры:
+  /// - advertId: ID объявления для удаления из избранного
+  /// - token: Bearer токен пользователя
+  static Future<Map<String, dynamic>> removeFromWishlist({
+    required int advertId,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      print('🗑️ Удаляем объявление #$advertId из избранного...');
+
+      final response = await delete(
+        '/me/wishlist/destroy/$advertId',
+        token: effectiveToken,
+      );
+
+      print('✅ Ответ от API: $response');
+      return response;
+    } catch (e) {
+      print('❌ Ошибка удаления из избранного: $e');
+      rethrow;
+    }
+  }
 }

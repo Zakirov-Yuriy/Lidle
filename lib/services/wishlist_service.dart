@@ -52,20 +52,21 @@ class WishlistService {
   /// [advertId] - ID объявления для удаления из wishlist
   /// [token] - токен авторизации
   ///
-  /// Выбрасывает исключение при ошибке.
-  static Future<void> removeFromWishlist({
+  /// Возвращает ответ сервера или выбрасывает исключение при ошибке.
+  static Future<Map<String, dynamic>> removeFromWishlist({
     required int advertId,
     required String token,
   }) async {
     try {
       print('📤 WishlistService.removeFromWishlist(): Удаляем advert_id=$advertId');
       
-      await ApiService.delete(
+      final response = await ApiService.delete(
         '/me/wishlist/destroy/$advertId',
         token: token,
       );
       
-      print('✅ WishlistService.removeFromWishlist(): Успешно удалено');
+      print('✅ WishlistService.removeFromWishlist(): Успешно удалено, ответ: $response');
+      return response;
     } catch (e) {
       print('❌ WishlistService.removeFromWishlist(): Ошибка: $e');
       throw Exception('Ошибка при удалении из избранного: $e');
