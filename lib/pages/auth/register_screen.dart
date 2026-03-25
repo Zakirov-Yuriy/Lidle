@@ -327,14 +327,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       height: 53,
                       child: ElevatedButton(
-                        onPressed: (agreeTerms && state is! AuthLoading)
-                            ? _trySubmit
-                            : null,
+                        onPressed: ((agreeTerms && agreeMarketing) && state is! AuthLoading)
+                          ? _trySubmit
+                          : null,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: state is AuthLoading
-                              ? primaryBlue
-                              : primaryBlue,
-                          disabledBackgroundColor: primaryBlue,
+                          // Активный цвет кнопки
+                          backgroundColor: primaryBlue,
+                          // Неактивный цвет (когда чекбокс не отмечен или кнопка disabled)
+                          disabledBackgroundColor: const Color(0xFF0E71A0),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(

@@ -195,10 +195,44 @@ class _MessagesPageState extends State<MessagesPage>
       // 📥 Загружаем чаты с API
       final apiChats = await ApiService.getChats();
       
-      // Преобразуем API ответ в объекты Message
+      // Преобразуем API ответ в объекты Message, фильтруя локально удалённые чаты
       final loadedMessages = <Message>[];
+      final deletedMap = MessagesLocalService.getDeletedChats();
       for (final chat in apiChats) {
         final userData = chat['user'] as Map<String, dynamic>;
+
+        final userIdKey = userData['id']?.toString();
+        final chatIdKey = chat['id']?.toString();
+        final deletedIso = (userIdKey != null && deletedMap.containsKey(userIdKey))
+            ? deletedMap[userIdKey]
+            : (chatIdKey != null ? deletedMap[chatIdKey] : null);
+
+        // Если чат помечен как локально удалённый — проверяем, пришло ли новое сообщение позже удаления
+        if (deletedIso != null) {
+          final unread = chat['unread_count'] as int? ?? 0;
+          // Если есть непрочитанные — показываем
+          if (unread <= 0) {
+            String? lastMsgAt;
+            if (chat['last_message'] != null && chat['last_message'] is Map) {
+              lastMsgAt = (chat['last_message'] as Map)['created_at'] as String?;
+            }
+            lastMsgAt ??= chat['updated_at'] as String?;
+
+            var show = false;
+            if (lastMsgAt != null) {
+              try {
+                final lm = DateTime.parse(lastMsgAt);
+                final del = DateTime.parse(deletedIso);
+                if (lm.isAfter(del)) show = true;
+              } catch (e) {
+                // Если не получилось распарсить дату — показываем чат
+                show = true;
+              }
+            }
+            if (!show) continue; // фильтруем этот чат
+          }
+        }
+
         final message = Message(
           senderName:
               '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'
@@ -263,10 +297,41 @@ class _MessagesPageState extends State<MessagesPage>
       // 📥 Загружаем чаты с API
       final apiChats = await ApiService.getChats();
       
-      // Преобразуем API ответ в объекты Message
+      // Преобразуем API ответ в объекты Message, фильтруя локально удалённые чаты
       final loadedMessages = <Message>[];
+      final deletedMap = MessagesLocalService.getDeletedChats();
       for (final chat in apiChats) {
         final userData = chat['user'] as Map<String, dynamic>;
+
+        final userIdKey = userData['id']?.toString();
+        final chatIdKey = chat['id']?.toString();
+        final deletedIso = (userIdKey != null && deletedMap.containsKey(userIdKey))
+            ? deletedMap[userIdKey]
+            : (chatIdKey != null ? deletedMap[chatIdKey] : null);
+
+        if (deletedIso != null) {
+          final unread = chat['unread_count'] as int? ?? 0;
+          if (unread <= 0) {
+            String? lastMsgAt;
+            if (chat['last_message'] != null && chat['last_message'] is Map) {
+              lastMsgAt = (chat['last_message'] as Map)['created_at'] as String?;
+            }
+            lastMsgAt ??= chat['updated_at'] as String?;
+
+            var show = false;
+            if (lastMsgAt != null) {
+              try {
+                final lm = DateTime.parse(lastMsgAt);
+                final del = DateTime.parse(deletedIso);
+                if (lm.isAfter(del)) show = true;
+              } catch (e) {
+                show = true;
+              }
+            }
+            if (!show) continue;
+          }
+        }
+
         final message = Message(
           senderName:
               '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'
@@ -346,6 +411,12 @@ class _MessagesPageState extends State<MessagesPage>
 
   /// Добавить новый чат в список и сохранить его
   Future<void> _addChatToMessages(Message chatMessage) async {
+    // Если этот чат ранее был помечен как локально удалённый — снимаем метку,
+    // т.к. пришло новое сообщение от этого пользователя/чата.
+    final idKey = chatMessage.userId ?? (chatMessage.chatId?.toString());
+    if (idKey != null) {
+      await MessagesLocalService.removeDeletedChat(idKey);
+    }
     // Проверяем, есть ли уже такой чат
     final existingIndex = messages.indexWhere((msg) =>
         msg.senderName == chatMessage.senderName &&
@@ -856,31 +927,62 @@ class _MessagesPageState extends State<MessagesPage>
                                           context: context,
                                           builder: (BuildContext context) {
                                             return DeleteChatDialog(
-                                              onConfirm: () {
-                                                setState(() {
-                                                  // Remove selected messages from the list
-                                                  selectedIndices.sort(
-                                                    (a, b) => b.compareTo(a),
-                                                  ); // Sort in descending order
-                                                  for (final index
-                                                      in selectedIndices) {
-                                                    messages.removeAt(index);
-                                                    selectedMessages.remove(
-                                                      index,
-                                                    );
+                                              onConfirm: () async {
+                                                // Помечаем чат(ы) локально и отправляем запрос на сервер
+                                                final nowIso = DateTime.now().toIso8601String();
+
+                                                // Сортируем индексы по убыванию чтобы корректно удалять
+                                                selectedIndices.sort((a, b) => b.compareTo(a));
+
+                                                // Текущие сохранённые чаты
+                                                final currentMessages = MessagesLocalService.getCurrentMessages();
+
+                                                for (final index in selectedIndices) {
+                                                  if (index < 0 || index >= messages.length) continue;
+                                                  final msg = messages[index];
+
+                                                  // Попытка удалить чат на сервере, если есть chatId
+                                                  try {
+                                                    if (msg.chatId != null) {
+                                                      await ApiService.deleteChat(msg.chatId!);
+                                                      print('✅ Chat ${msg.chatId} deleted on server');
+                                                    }
+                                                  } catch (e) {
+                                                    print('⚠️ Failed to delete chat on server: $e');
+                                                    // Продолжаем — пометим локально, чтобы скрыть чат
                                                   }
+
+                                                  // Помечаем локально удаление (ключ — userId если есть, иначе chatId)
+                                                  final idKey = msg.userId ?? (msg.chatId?.toString());
+                                                  if (idKey != null) {
+                                                    await MessagesLocalService.addDeletedChat(idKey, nowIso);
+                                                  }
+
+                                                  // Убираем из локального списка currentMessages
+                                                  currentMessages.removeWhere((map) {
+                                                    final mid = map['userId'] ?? map['chatId']?.toString();
+                                                    return mid != null && idKey != null && mid.toString() == idKey.toString();
+                                                  });
+                                                }
+
+                                                // Сохраняем обновлённый локальный список
+                                                await MessagesLocalService.saveCurrentMessages(currentMessages);
+
+                                                // Обновляем UI
+                                                setState(() {
+                                                  for (final index in selectedIndices) {
+                                                    if (index >= 0 && index < messages.length) {
+                                                      messages.removeAt(index);
+                                                    }
+                                                    selectedMessages.remove(index);
+                                                  }
+
                                                   // Reindex selectedMessages
-                                                  final newSelected =
-                                                      <int, bool>{};
-                                                  for (
-                                                    int i = 0;
-                                                    i < messages.length;
-                                                    i++
-                                                  ) {
+                                                  final newSelected = <int, bool>{};
+                                                  for (int i = 0; i < messages.length; i++) {
                                                     newSelected[i] = false;
                                                   }
-                                                  selectedMessages =
-                                                      newSelected;
+                                                  selectedMessages = newSelected;
                                                   showCheckboxes = false;
                                                 });
                                               },

@@ -2371,6 +2371,34 @@ class ApiService {
     }
   }
 
+  /// 🗑️ Удалить чат
+  /// DELETE /v1/chats/{chatId}
+  static Future<bool> deleteChat(
+    int chatId, {
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      print('🗑️ Удаляем чат #$chatId...');
+
+      final response = await delete(
+        '/chats/$chatId',
+        token: effectiveToken,
+      );
+
+      print('✅ Ответ удаления чата: $response');
+      return response['success'] == true || response['data'] != null;
+    } catch (e) {
+      print('❌ Ошибка удаления чата: $e');
+      rethrow;
+    }
+  }
+
   /// ✅ Отметить сообщение как прочитанное
   /// POST /v1/chats/{chatId}/messages/{messageId}/read
   static Future<bool> markMessageAsRead(

@@ -166,6 +166,37 @@ class HiveService {
     await settingsBox.put('currentMessages', messages);
   }
 
+  /// Сохраняет карту помеченных как удалённые чатов.
+  /// Ключи — `userId` или `chatId`, значения — ISO строка времени удаления.
+  static Future<void> saveDeletedChats(Map<String, String> deleted) async {
+    await settingsBox.put('deletedChats', deleted);
+  }
+
+  /// Возвращает карту помеченных как удалённые чатов.
+  static Map<String, String> getDeletedChats() {
+    final raw = settingsBox.get('deletedChats', defaultValue: {});
+    if (raw is Map) {
+      return raw.map((key, value) => MapEntry(key.toString(), value.toString()));
+    }
+    return <String, String>{};
+  }
+
+  /// Добавляет запись о локально удалённом чате.
+  static Future<void> addDeletedChat(String id, String isoTimestamp) async {
+    final current = getDeletedChats();
+    current[id] = isoTimestamp;
+    await saveDeletedChats(current);
+  }
+
+  /// Удаляет запись о локально удалённом чате.
+  static Future<void> removeDeletedChat(String id) async {
+    final current = getDeletedChats();
+    if (current.containsKey(id)) {
+      current.remove(id);
+      await saveDeletedChats(current);
+    }
+  }
+
   /// Получает текущие сообщения.
   static List<Map<String, dynamic>> getCurrentMessages() {
     final raw = settingsBox.get('currentMessages', defaultValue: []);

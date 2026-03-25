@@ -38,4 +38,17 @@ class MessagesLocalService {
   /// Восстанавливает сообщение из архива по индексу [archiveIndex].
   static Future<void> restoreFromArchive(int archiveIndex) =>
       HiveService.restoreFromArchive(archiveIndex);
+
+  // ─── Удалённые чаты (локально помеченные) ─────────────────────────────────
+
+  /// Возвращает карту локально удалённых чатов: id -> ISO timestamp
+  static Map<String, String> getDeletedChats() => HiveService.getDeletedChats();
+
+  /// Пометить чат как локально удалённый (сохранить timestamp)
+  static Future<void> addDeletedChat(String id, String isoTimestamp) =>
+      HiveService.addDeletedChat(id, isoTimestamp);
+
+  /// Удалить пометку локально удалённого чата
+  static Future<void> removeDeletedChat(String id) =>
+      HiveService.removeDeletedChat(id);
 }
