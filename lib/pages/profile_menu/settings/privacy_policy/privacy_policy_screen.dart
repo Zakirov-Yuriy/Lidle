@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
   static const routeName = '/privacy_policy';
@@ -44,7 +45,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     ),
                   ),
                   const Text(
-                    'Политика конфидициальности',
+                    'Документы',
                     style: TextStyle(
                       color: Color.fromARGB(255, 255, 255, 255),
                       fontSize: 18,
@@ -58,76 +59,92 @@ class PrivacyPolicyScreen extends StatelessWidget {
             const SizedBox(height: 16),
             const Divider(color: dividerColor, height: 0),
 
-            // ───── Content ─────
+            // ───── Content (menu list like on the screenshot) ─────
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
-                  vertical: 20,
+                  vertical: 0,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    // ───── Section 1 ─────
-                    Text(
-                      'Отказ от ответственности',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Материалы и услуги этого сайта предоставляются «как есть» '
-                      'без каких-либо гарантий. Розетка не гарантирует точности и '
-                      'полноты материалов, программ и услуг, предоставляемых на '
-                      'этом Сайте. В любое время без уведомления может вносить '
-                      'изменения в материалы и услуги, предоставляемые на этом '
-                      'Сайте, а также в упомянутые в них продукты и цены. В случае '
-                      'устаревания материалов и услуг на этом Сайте Розетка не '
-                      'обязуется обновлять их. Розетка ни при каких обстоятельствах '
-                      'не несет ответственности за любой ущерб (включая, но не '
-                      'ограничиваясь ущербом от потери прибыли, данных или от '
-                      'прерывания деловой активности), возникший вследствие '
-                      'использования, невозможности использования или результатов '
-                      'использования этого сайта.',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
-                    ),
+                  children: [
+                    // local builder for menu item
+                    Builder(
+                      builder: (context) {
+                        Widget menuItem(String title, {String? url}) {
+                          return InkWell(
+                            onTap: () async {
+                              if (url != null) {
+                                final uri = Uri.parse(url);
+                                try {
+                                  await launchUrl(
+                                    uri,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                } catch (_) {}
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 16.0,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      style: const TextStyle(
+                                        color: textPrimary,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    color: textPrimary,
+                                    size: 25,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
 
-                    SizedBox(height: 24),
-
-                    // ───── Section 2 ─────
-                    Text(
-                      'Первичная документация',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    SizedBox(height: 18),
-                    Divider(color: dividerColor),
-                    SizedBox(height: 14),
-                    Text(
-                      'При разработке технической документации на проект это стоит '
-                      'обязательно учитывать, так как интерфейс нагляден и на его '
-                      'основе проще проводить разделение проекта на разделы. Да и '
-                      'сама модель предметной области очень хорошо описывается '
-                      'интерфейсом — в ней необходимо учитывать в основном те '
-                      'данные (и их производные), которые вводятся пользователем, '
-                      'отображаются на экране и управляют его поведением. '
-                      'Бизнес-сценарии также напрямую завязаны на поведение '
-                      'пользовательского интерфейса.',
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            menuItem(
+                              'Пользовательское соглашение',
+                              url:
+                                  'https://dev.lidle.io/documents/user-agreement.pdf',
+                            ),
+                            const Divider(color: dividerColor, height: 0),
+                            menuItem(
+                              'Оферта',
+                              url:
+                                  'https://dev.lidle.io/documents/public-offer.pdf',
+                            ),
+                            const Divider(color: dividerColor, height: 0),
+                            menuItem(
+                              'Согласие на обработку персональных данных',
+                              url: 'https://dev.lidle.io/documents/consent.pdf',
+                            ),
+                            const Divider(color: dividerColor, height: 0),
+                            menuItem(
+                              'Политика конфиденциальности',
+                              url:
+                                  'https://dev.lidle.io/documents/privacy-policy.pdf',
+                            ),
+                            const Divider(color: dividerColor, height: 0),
+                            menuItem(
+                              'Согласие получение сообщений рекламного и информационного характера',
+                              url: 'https://dev.lidle.io/documents/mailing.pdf',
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

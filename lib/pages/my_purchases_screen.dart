@@ -14,36 +14,41 @@ class MyPurchasesScreen extends StatelessWidget {
   static const String routeName = '/my-purchases'; // Define route name
   MyPurchasesScreen({super.key});
 
-  // Dummy data for purchases
-  final List<Listing> dummyPurchases = [
-    Listing(
-      id: '1',
-      imagePath: 'assets/product_card/image1.png',
-      title: 'Диван раскладной...',
-      price: '31 627',
-      location: 'Москва, ул. Куусинена, 21А',
-      date: 'Сегодня',
-      isFavorited: true,
-    ),
-    Listing(
-      id: '2',
-      imagePath: 'assets/product_card/image2.png',
-      title: 'Лайфмебель Стулья...',
-      price: '21 000',
-      location: 'Москва, ул. Казакова, 7',
-      date: '29.08.2024',
-      isFavorited: false,
-    ),
-    Listing(
-      id: '3',
-      imagePath: 'assets/product_card/image3.png',
-      title: 'Лайфмебель Стулья...',
-      price: '16 000',
-      location: 'Москва, Отрадная ул., 11',
-      date: '29.08.2024',
-      isFavorited: true,
-    ),
-  ];
+// Скрытые обьявления статические для демонстрации состояния "Нет покупок" — оставляем список пустым.
+  //  // Dummy data for purchases
+  // final List<Listing> dummyPurchases = [
+  //   Listing(
+  //     id: '1',
+  //     imagePath: 'assets/product_card/image1.png',
+  //     title: 'Диван раскладной...',
+  //     price: '31 627',
+  //     location: 'Москва, ул. Куусинена, 21А',
+  //     date: 'Сегодня',
+  //     isFavorited: true,
+  //   ),
+  //   Listing(
+  //     id: '2',
+  //     imagePath: 'assets/product_card/image2.png',
+  //     title: 'Лайфмебель Стулья...',
+  //     price: '21 000',
+  //     location: 'Москва, ул. Казакова, 7',
+  //     date: '29.08.2024',
+  //     isFavorited: false,
+  //   ),
+  //   Listing(
+  //     id: '3',
+  //     imagePath: 'assets/product_card/image3.png',
+  //     title: 'Лайфмебель Стулья...',
+  //     price: '16 000',
+  //     location: 'Москва, Отрадная ул., 11',
+  //     date: '29.08.2024',
+  //     isFavorited: true,
+  //   ),
+  // ];
+
+  // Dummy data for purchases (temporarily hidden)
+  // Чтобы временно показать состояние "Нет покупок" — оставляем список пустым.
+  final List<Listing> dummyPurchases = [];
 
   @override
   Widget build(BuildContext context) {
