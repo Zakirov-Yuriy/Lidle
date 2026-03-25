@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
 
 class PropertyGalleryScreen extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
+  final String? listingId;
 
   const PropertyGalleryScreen({
     super.key,
     required this.images,
     this.initialIndex = 0,
+    this.listingId,
   });
 
   @override
@@ -16,6 +21,16 @@ class PropertyGalleryScreen extends StatefulWidget {
 }
 
 class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
+    bool _isFavorite = false;
+
+    void _toggleFavorite() {
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+      if (widget.listingId != null) {
+        HiveService.toggleFavorite(widget.listingId!);
+      }
+    }
   late final PageController _controller;
   late int _currentIndex;
 
@@ -24,6 +39,10 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _controller = PageController(initialPage: _currentIndex);
+    // Инициализируем состояние избранного на основе HiveService
+    if (widget.listingId != null) {
+      _isFavorite = HiveService.getFavorites().contains(widget.listingId);
+    }
   }
 
   @override
@@ -125,14 +144,28 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.share, color: Colors.white),
+                    icon: SvgPicture.asset(
+                      'assets/home_page/share_outlined.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: const ColorFilter.mode(
+                        textPrimary,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    onPressed: () {
+                      final textToShare =
+                          'Фото объявления\n'
+                          'Присоединяйся к LIDLE!\n'
+                          'https://dev.lidle.io/ru';
+                      Share.share(textToShare);
+                    },
                   ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(
-                      Icons.favorite_border,
-                      color: Colors.white,
+                  GestureDetector(
+                    onTap: _toggleFavorite,
+                    child: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: _isFavorite ? Colors.red : textPrimary,
                     ),
                   ),
                 ],

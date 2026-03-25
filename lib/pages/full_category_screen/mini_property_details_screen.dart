@@ -551,6 +551,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                         builder: (context) => PropertyGalleryScreen(
                           images: images,
                           initialIndex: _currentPage,
+                          listingId: widget.listing.id,
                         ),
                       ),
                     );
