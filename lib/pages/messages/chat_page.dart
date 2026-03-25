@@ -10,8 +10,9 @@ import 'dart:async';
 
 class ChatPage extends StatefulWidget {
   final Message message;
+  final bool openedFromAdvertScreen;
 
-  const ChatPage({super.key, required this.message});
+  const ChatPage({super.key, required this.message, this.openedFromAdvertScreen = false});
 
   static const String routeName = '/chat';
 
@@ -597,146 +598,152 @@ class _ChatPageState extends State<ChatPage> {
             ),
 
             // User's announcement времмено закоментируем  табличку с обьявлением 
-            // Padding(
-            //   padding: const EdgeInsets.symmetric(horizontal: 25),
-            //   child: ClipRRect(
-            //     borderRadius: BorderRadius.circular(3),
-            //     child: Container(
-            //       decoration: BoxDecoration(color: formBackground),
-            //       padding: const EdgeInsets.all(12),
-            //       child: Row(
-            //         children: [
-            //           // Image
-            //           ClipRRect(
-            //             borderRadius: BorderRadius.circular(8),
-            //             child: widget.message.advertImage != null
-            //                 ? (widget.message.advertImage!.startsWith('http')
-            //                     ? Image.network(
-            //                         widget.message.advertImage!,
-            //                         height: 66,
-            //                         width: 86,
-            //                         fit: BoxFit.cover,
-            //                         errorBuilder:
-            //                             (context, error, stackTrace) {
-            //                           return Container(
-            //                             color: const Color(0xFF374B5C),
-            //                             height: 66,
-            //                             width: 86,
-            //                             child: const Icon(Icons.image,
-            //                                 color: Colors.white54, size: 30),
-            //                           );
-            //                         },
-            //                       )
-            //                     : Image.asset(
-            //                         widget.message.advertImage!,
-            //                         height: 66,
-            //                         width: 86,
-            //                         fit: BoxFit.cover,
-            //                         errorBuilder:
-            //                             (context, error, stackTrace) {
-            //                           return Container(
-            //                             color: const Color(0xFF374B5C),
-            //                             height: 66,
-            //                             width: 86,
-            //                             child: const Icon(Icons.image,
-            //                                 color: Colors.white54, size: 30),
-            //                           );
-            //                         },
-            //                       ))
-            //                 : Container(
-            //                     height: 66,
-            //                     width: 86,
-            //                     color: const Color(0xFF374B5C),
-            //                     child: const Icon(Icons.image,
-            //                         color: Colors.white54, size: 30),
-            //                   ),
-            //           ),
-            //           const SizedBox(width: 12),
-            //           // Content
-            //           Expanded(
-            //             child: Column(
-            //               crossAxisAlignment: CrossAxisAlignment.start,
-            //               children: [
-            //                 Text(
-            //                   widget.message.advertTitle
-            //                           ?.isNotEmpty ==
-            //                       true
-            //                       ? widget.message.advertTitle!
-            //                       : '3-к. квартира, 125.5 м², 5/17 эт.',
-            //                   style: const TextStyle(
-            //                     color: Colors.white,
-            //                     fontSize: 15,
-            //                     fontWeight: FontWeight.w600,
-            //                     height: 1.3,
-            //                   ),
-            //                   maxLines: 2,
-            //                   overflow: TextOverflow.ellipsis,
-            //                 ),
-            //                 const SizedBox(height: 2),
-            //                 Text(
-            //                   '${widget.message.advertPrice ?? 'Цена не указана'} ₽',
-            //                   style: const TextStyle(
-            //                     color: Color.fromARGB(255, 255, 255, 255),
-            //                     fontSize: 16,
-            //                     fontWeight: FontWeight.w700,
-            //                   ),
-            //                 ),
-            //                 const SizedBox(height: 2),
-            //                 GestureDetector(
-            //                   onTap: () {
-            //                     // 🔗 Переход на объявление по ID с защитой от множественных тапов
-            //                     if (_isNavigatingToProperty || widget.message.advertisementId == null) {
-            //                       return;
-            //                     }
-                                
-            //                     _isNavigatingToProperty = true;
-            //                     print('🔗 Переходим на объявление #${widget.message.advertisementId}');
-                                
-            //                     Navigator.push(
-            //                       context,
-            //                       MaterialPageRoute(
-            //                         builder: (context) => PropertyDetailsScreen(
-            //                           advertisementId: widget.message.advertisementId,
-            //                         ),
-            //                       ),
-            //                     ).then((_) {
-            //                       // ✅ Возвращаемся из PropertyDetailsScreen
-            //                       if (mounted) {
-            //                         print('✅ Вернулись из PropertyDetailsScreen');
-            //                         setState(() {
-            //                           _isNavigatingToProperty = false;
-            //                         });
-            //                       }
-            //                     });
-            //                   },
-            //                   child: Row(
-            //                     mainAxisSize: MainAxisSize.min,
-            //                     children: [
-            //                       const Text(
-            //                         'Перейти',
-            //                         style: TextStyle(
-            //                           color: const Color(0xFF00B7FF),
-            //                           fontSize: 14,
-            //                           fontWeight: FontWeight.w600,
-            //                         ),
-            //                       ),
-            //                       const SizedBox(width: 4),
-            //                       Icon(
-            //                         Icons.arrow_forward_ios,
-            //                         color: const Color(0xFF00B7FF),
-            //                         size: 14,
-            //                       ),
-            //                     ],
-            //                   ),
-            //                 ),
-            //               ],
-            //             ),
-            //           ),
-            //         ],
-            //       ),
-            //     ),
-            //   ),
-            // ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: Container(
+                  decoration: BoxDecoration(color: formBackground),
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      // Image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: widget.message.advertImage != null
+                            ? (widget.message.advertImage!.startsWith('http')
+                                ? Image.network(
+                                    widget.message.advertImage!,
+                                    height: 66,
+                                    width: 86,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) {
+                                      return Container(
+                                        color: const Color(0xFF374B5C),
+                                        height: 66,
+                                        width: 86,
+                                        child: const Icon(Icons.image,
+                                            color: Colors.white54, size: 30),
+                                      );
+                                    },
+                                  )
+                                : Image.asset(
+                                    widget.message.advertImage!,
+                                    height: 66,
+                                    width: 86,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) {
+                                      return Container(
+                                        color: const Color(0xFF374B5C),
+                                        height: 66,
+                                        width: 86,
+                                        child: const Icon(Icons.image,
+                                            color: Colors.white54, size: 30),
+                                      );
+                                    },
+                                  ))
+                            : Container(
+                                height: 66,
+                                width: 86,
+                                color: const Color(0xFF374B5C),
+                                child: const Icon(Icons.image,
+                                    color: Colors.white54, size: 30),
+                              ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.message.advertTitle
+                                      ?.isNotEmpty ==
+                                  true
+                                  ? widget.message.advertTitle!
+                                  : '3-к. квартира, 125.5 м², 5/17 эт.',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                height: 1.3,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${widget.message.advertPrice ?? 'Цена не указана'} ₽',
+                              style: const TextStyle(
+                                color: Color.fromARGB(255, 255, 255, 255),
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            GestureDetector(
+                              onTap: () {
+                                // 🔗 Переход на объявление по ID с защитой от множественных тапов
+                                if (_isNavigatingToProperty || widget.message.advertisementId == null) {
+                                  return;
+                                }
+
+                                // Если чат был открыт с экрана объявления — просто возвращаемся назад
+                                if (widget.openedFromAdvertScreen && Navigator.canPop(context)) {
+                                  Navigator.pop(context);
+                                  return;
+                                }
+
+                                _isNavigatingToProperty = true;
+                                print('🔗 Переходим на объявление #${widget.message.advertisementId}');
+
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PropertyDetailsScreen(
+                                      advertisementId: widget.message.advertisementId,
+                                    ),
+                                  ),
+                                ).then((_) {
+                                  // ✅ Возвращаемся из PropertyDetailsScreen
+                                  if (mounted) {
+                                    print('✅ Вернулись из PropertyDetailsScreen');
+                                    setState(() {
+                                      _isNavigatingToProperty = false;
+                                    });
+                                  }
+                                });
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text(
+                                    'Перейти',
+                                    style: TextStyle(
+                                      color: const Color(0xFF00B7FF),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: const Color(0xFF00B7FF),
+                                    size: 14,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
 
             // const SizedBox(height: 10),
 
@@ -826,6 +833,11 @@ class _ChatPageState extends State<ChatPage> {
                           Expanded(
                             child: TextField(
                               controller: _messageController,
+                              // Разрешаем многострочный ввод: Enter добавляет новую строку
+                              keyboardType: TextInputType.multiline,
+                              textInputAction: TextInputAction.newline,
+                              minLines: 1,
+                              maxLines: 6,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 16,

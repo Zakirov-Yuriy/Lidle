@@ -1331,7 +1331,8 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       isCompany: false,
       userId: userId,
       advertTitle: _listing.title,
-      advertImage: _listing.imagePath,
+      // Используем первую картинку из списка изображений, если она доступна
+      advertImage: _listing.images.isNotEmpty ? _listing.images.first : _listing.imagePath,
       advertPrice: _listing.price,
       advertisementId: _listing.id,
     );
@@ -1340,7 +1341,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatPage(message: message),
+        builder: (context) => ChatPage(message: message, openedFromAdvertScreen: true),
       ),
     );
   }
