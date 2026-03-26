@@ -7,6 +7,7 @@ import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
+import '../../services/loading_timer_service.dart';
 import '../../core/cache/cache_service.dart';
 import '../../core/cache/cache_keys.dart';
 
@@ -161,12 +162,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     LoadListingsEvent event,
     Emitter<ListingsState> emit,
   ) async {
+    // � ТАЙМЕР: Запускаем измерение времени загрузки
+    const operationKey = 'listings_load';
+    LoadingTimerService().startLoadingTimer(operationKey);
+    
     // 🔄 Кеширование: если данные уже загружены и это не принудительная загрузка (фреш),
     // и нет ошибок, просто вернёмся к сохранённому состоянию
     if (_isInitialLoadComplete &&
         !event.forceRefresh &&
         state is ListingsLoaded &&
         state is! ListingsError) {
+      LoadingTimerService().resetTimer(operationKey);
       return;
     }
 
@@ -188,6 +194,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             final categories = (cachedListings['categories'] as List)
                 .map((item) => _jsonToCategory(item as Map<String, dynamic>))
                 .toList();
+
+            // 🔥 ТАЙМЕР: Зафиксируем время загрузки из кеша
+            final cacheTimer = LoadingTimerService().stopLoadingTimer(
+              operationKey,
+              label: 'Listings (из кеша)',
+            );
 
             emit(
               ListingsLoaded(
@@ -314,6 +326,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       await Future.delayed(const Duration(milliseconds: 200));
 
       // 🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит контент В ЭТОТ МОМЕНТ!
+      final loadTimer = LoadingTimerService().stopLoadingTimer(
+        operationKey,
+        label: 'Listings (полная загрузка)',
+      );
+      
       emit(
         ListingsLoaded(
           listings: sortedListings,
@@ -337,6 +354,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         itemsPerPage,
       );
     } catch (e) {
+      // 🔥 ТАЙМЕР: Зафиксируем время загрузки перед ошибкой
+      LoadingTimerService().stopLoadingTimer(
+        operationKey,
+        label: 'Listings (ошибка при загрузке)',
+      );
+      
       // Логируем ошибку для отладки
       // print('❌ ListingsBloc LoadListingsEvent ошибка: $e');
       // print('Stack trace: ${StackTrace.current}');
