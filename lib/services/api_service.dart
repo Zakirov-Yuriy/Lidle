@@ -547,6 +547,7 @@ class ApiService {
             // print('⏳ Ожидаем завершения активного refresh...');
             await existingCompleter.future;
             // Токен обновлён другим запросом, повторяем свой запрос.
+            // КРИТИЧНО: Не пробуем еще один refresh - используем токен что обновил параллельный запрос
             continue;
           } catch (_) {
             // Refresh завершился ошибкой — пробрасываем как TokenExpired.
@@ -575,9 +576,19 @@ class ApiService {
 
           if (newToken != null && newToken.isNotEmpty) {
             // print('✅ ApiService: токен обновлён');
-            completer.complete(newToken);
-            // Повторяем исходный запрос с новым токеном (из Hive).
-            continue;
+            // КРИТИЧНО: Проверяем что токен действительно сохранен в Hive перед тем как продолжить
+            final savedToken = HiveService.getUserData('token') as String?;
+            if (savedToken == newToken || (savedToken != null && savedToken.isNotEmpty)) {
+              completer.complete(newToken);
+              // Повторяем исходный запрос с новым токеном (из Hive).
+              continue;
+            } else {
+              final error = TokenExpiredException(
+                'Token was not properly saved to Hive after refresh',
+              );
+              completer.completeError(error);
+              throw error;
+            }
           } else {
             final error = TokenExpiredException(
               'Token refresh returned empty token',
@@ -1322,7 +1333,7 @@ class ApiService {
           '✅ refreshToken: новый access_token сохранён: ${newAccessToken.substring(0, newAccessToken.length.clamp(0, 20))}...',
         );
       } else {
-        // print('❌ refreshToken: access_token не найден в ответе: $data');
+        print('❌ refreshToken: access_token не найден или пуст в ответе: $data');
         return null;
       }
 
@@ -1333,7 +1344,7 @@ class ApiService {
         await HiveService.saveUserData('refresh_token', newRefreshToken);
         print('✅ refreshToken: новый refresh_token сохранён (ротация токена)');
       } else {
-        // print('❌ refreshToken: refresh_token не найден в ответе');
+        print('❌ refreshToken: refresh_token не найден или пуст в ответе');
         return null;
       }
 
@@ -1367,6 +1378,14 @@ class ApiService {
         'истекает в ${DateTime.fromMillisecondsSinceEpoch(refreshExpiresAtMs).toLocal()}',
       );
 
+      // КРИТИЧНО: Перед возвратом проверяем что токен действительно сохранен в Hive
+      final savedToken = HiveService.getUserData('token') as String?;
+      if (savedToken == null || savedToken.isEmpty) {
+        print('❌ refreshToken: КРИТИЧЕСКАЯ ОШИБКА - токен не был сохранен в Hive!');
+        return null;
+      }
+      
+      print('✅ refreshToken: токен успешно сохранен и готов к возврату');
       return newAccessToken;
     } catch (e) {
       // print('❌ refreshToken exception: $e');

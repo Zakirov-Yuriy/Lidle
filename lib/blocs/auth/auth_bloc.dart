@@ -64,6 +64,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // Поэтому сохраняем expires_at из ответа API, чтобы TokenService мог
         // запустить таймер refresh за 5 минут до истечения access_token.
         // И за 24 часа до истечения refresh_token (критично для пользователя).
+        // ИСПРАВЛЕНИЕ: Сохраняем как INT (миллисекунды), как и в apiService.refreshToken()
+        // Это обеспечивает консистентность типов и избегает ошибок приведения типов
         
         // Access token expiry (обычно 900 сек = 15 минут)
         final expiresIn =
@@ -74,7 +76,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final expiresAtMs = DateTime.now()
             .add(Duration(seconds: expiresIn))
             .millisecondsSinceEpoch;
-        await UserService.saveLocal('token_expires_at', '$expiresAtMs');
+        await UserService.saveLocal('token_expires_at', expiresAtMs);
 
         // ОБНОВЛЕНО: Refresh token expiry (обычно 1209600 сек = 14 дней)
         // Это критично! Если refresh_token истечет, пользователь потеряет доступ
@@ -86,7 +88,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final refreshExpiresAtMs = DateTime.now()
             .add(Duration(seconds: refreshExpiresIn))
             .millisecondsSinceEpoch;
-        await UserService.saveLocal('refresh_token_expires_at', '$refreshExpiresAtMs');
+        await UserService.saveLocal('refresh_token_expires_at', refreshExpiresAtMs);
 
         print(
           '✅ auth_bloc: сохранены токены - access_token действует ${expiresIn ~/ 60}мин, '
@@ -328,14 +330,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (token != null && token.isNotEmpty) {
         // 🚀 ОПТИМИЗАЦИЯ: Проверяем TTL перед обновлением
         // Если токен еще валиден более чем на 5 минут - не обновляем
-        final tokenExpiresAtStr = await UserService.getLocal('token_expires_at') as String?;
+        final tokenExpiresAtData = await UserService.getLocal('token_expires_at');
         final refreshThresholdMs = 5 * 60 * 1000; // 5 минут в миллисекундах
         
         bool shouldRefresh = true; // По умолчанию обновляем
         
-        if (tokenExpiresAtStr != null) {
+        if (tokenExpiresAtData != null) {
           try {
-            final tokenExpiresAtMs = int.parse(tokenExpiresAtStr);
+            // Обрабатываем оба типа: int (новый формат) и String (старый формат)
+            final tokenExpiresAtMs = tokenExpiresAtData is int
+                ? tokenExpiresAtData
+                : int.parse(tokenExpiresAtData.toString());
             final nowMs = DateTime.now().millisecondsSinceEpoch;
             final timeUntilExpiryMs = tokenExpiresAtMs - nowMs;
             
