@@ -2,17 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/message_model.dart';
+import 'package:lidle/models/chat_message_model.dart';
+import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/messages_local_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'dart:async';
 
 class ChatPage extends StatefulWidget {
   final Message message;
   final bool openedFromAdvertScreen;
+  final Listing? initialListing; // ✅ Объявление для отправки как первое сообщение
 
-  const ChatPage({super.key, required this.message, this.openedFromAdvertScreen = false});
+  const ChatPage({
+    super.key,
+    required this.message,
+    this.openedFromAdvertScreen = false,
+    this.initialListing,
+  });
 
   static const String routeName = '/chat';
 
@@ -32,12 +41,13 @@ class _ChatPageState extends State<ChatPage> {
   String? _topAdvertImage;
   String? _topAdvertPrice;
   String? _topAdvertId;
-  
+
   // 🛡️ Защита от параллельных запросов и rate limit
-  bool _isLoadingMessagesBackground = false; // Флаг для предотвращения параллельных запросов
+  bool _isLoadingMessagesBackground =
+      false; // Флаг для предотвращения параллельных запросов
   int _rateLimitRetryCount = 0; // Счетчик попыток при rate limit
   Timer? _rateLimitTimer; // Таймер для восстановления после rate limit
-  
+
   // 🔗 Защита от множественных нажатий на "Перейти"
   bool _isNavigatingToProperty = false;
 
@@ -77,10 +87,12 @@ class _ChatPageState extends State<ChatPage> {
     // 🔄 Если chatId не передан, пытаемся найти существующий чат по userId
     if (_chatId == null && widget.message.userId != null) {
       try {
-        print('🔍 Ищем существующий чат для пользователя #${widget.message.userId}...');
+        print(
+          '🔍 Ищем существующий чат для пользователя #${widget.message.userId}...',
+        );
         final chats = await ApiService.getChats();
         final userId = int.tryParse(widget.message.userId!);
-        
+
         // 🔍 Ищем чат с этим пользователем
         for (final chat in chats) {
           final userData = chat['user'] as Map<String, dynamic>?;
@@ -98,7 +110,6 @@ class _ChatPageState extends State<ChatPage> {
     await _saveChat();
     await _loadMessages();
     // Убедимся, что если чат связан с объявлением, то превью объявления показано
-    await _ensureAdvertPreviewPresent();
     // 🔄 Запускаем таймер для автоматического обновления сообщений (каждые 2 сек)
     _startAutoUpdate();
   }
@@ -106,76 +117,7 @@ class _ChatPageState extends State<ChatPage> {
   /// Если чат связан с объявлением, но в списке сообщений нет данных об объявлении,
   /// пытаемся загрузить объявление из API и вставить превью в начало ленты.
   Future<void> _ensureAdvertPreviewPresent() async {
-    try {
-      final adIdStr = widget.message.advertisementId;
-      if (adIdStr == null || adIdStr.isEmpty) return;
-
-      // Если уже есть сообщение с этим advert id или с меткой превью — ничего не делаем
-      final hasAdvert = _messages.any((m) {
-        if (m == null) return false;
-        if (m['is_advert_preview'] == true) return true;
-        final aid = m['advertisementId'];
-        if (aid == null) return false;
-        return aid.toString() == adIdStr.toString();
-      });
-      if (hasAdvert) return;
-
-      final adId = int.tryParse(adIdStr);
-      if (adId == null) return;
-
-      print('🔍 Loading advert $adId for chat preview...');
-      final advert = await ApiService.getAdvert(adId);
-
-      if (advert != null) {
-        final image = (advert.images.isNotEmpty) ? advert.images.first : advert.thumbnail;
-        final advertPreview = {
-          'id': -1,
-          'is_me': false,
-          'created_at': DateTime.now().toString(),
-          'is_advert_preview': true,
-          'advertTitle': advert.name,
-          'advertPrice': advert.price,
-          'advertImage': image,
-          'advertisementId': advert.id.toString(),
-          'message': ''
-        };
-
-        if (mounted) {
-          setState(() {
-            _messages.insert(0, advertPreview);
-          });
-        }
-
-        // Обновим локальный список чатов чтобы превью было видно в списке сообщений
-        final current = MessagesLocalService.getCurrentMessages();
-        final existingIndex = current.indexWhere((m) => m['userId'] == widget.message.userId && m['senderName'] == widget.message.senderName);
-        final messageMap = {
-          'senderName': widget.message.senderName,
-          'senderAvatar': widget.message.senderAvatar,
-          'lastMessageTime': 'сейчас',
-          'unreadCount': 0,
-          'isInternal': widget.message.isInternal,
-          'isCompany': widget.message.isCompany,
-          'userId': widget.message.userId,
-          'chatId': _chatId,
-          'lastMessage': widget.message.lastMessage,
-          'advertTitle': advert.name,
-          'advertImage': image,
-          'advertPrice': advert.price,
-          'advertisementId': advert.id.toString(),
-        };
-
-        if (existingIndex >= 0) {
-          current[existingIndex] = messageMap;
-        } else {
-          current.insert(0, messageMap);
-        }
-        await MessagesLocalService.saveCurrentMessages(current);
-        print('✅ Advert preview inserted for chat');
-      }
-    } catch (e) {
-      print('⚠️ Error ensuring advert preview: $e');
-    }
+    // Удалена логика динамического добавления превью
   }
 
   /// 🔄 Запустить периодическое обновление сообщений
@@ -218,28 +160,33 @@ class _ChatPageState extends State<ChatPage> {
 
         // Если появились новые сообщения - обновляем и прокручиваем вниз
         if (newMessagesCount > oldMessagesCount) {
-          print('📨 Получены новые сообщения: $newMessagesCount (было: $oldMessagesCount)');
+          print(
+            '📨 Получены новые сообщения: $newMessagesCount (было: $oldMessagesCount)',
+          );
           setState(() {
             _messages = messages;
           });
           // Автоскролл вниз при появлении новых сообщений
           _scrollToBottom();
         }
-        
+
         // 🛡️ Сброс счетчика попыток при успехе
         _rateLimitRetryCount = 0;
       }
     } catch (e) {
       // 🛡️ Обработка Rate Limit (429 Too Many Requests)
-      if (e.toString().contains('429') || e.toString().contains('RateLimitException')) {
+      if (e.toString().contains('429') ||
+          e.toString().contains('RateLimitException')) {
         _rateLimitRetryCount++;
         // Экспоненциальная задержка: 30сек, 60сек, 120сек...
         final delaySeconds = 30 * (1 << (_rateLimitRetryCount - 1));
-        print('⏸️  Rate limit! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...');
-        
+        print(
+          '⏸️  Rate limit! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...',
+        );
+
         // Отменяем текущий таймер
         _updateTimer?.cancel();
-        
+
         // Запускаем новый таймер через задержку
         _rateLimitTimer = Timer(Duration(seconds: delaySeconds), () {
           if (mounted) {
@@ -268,19 +215,18 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       print('📥 Загружаем сообщения чата #$_chatId...');
-      final messages = await ApiService.getChatMessages(
-        _chatId!,
-      );
+      final messages = await ApiService.getChatMessages(_chatId!);
 
       if (mounted) {
         // 🔄 Сортируем сообщения: старые вверху, новые внизу
-        // Сортируем по ID в возрастающем порядке (старые имеют меньший ID)
         messages.sort((a, b) {
           final idA = a['id'] as int? ?? 0;
           final idB = b['id'] as int? ?? 0;
           return idA.compareTo(idB);
         });
 
+        // ✅ Просто сохраняем сообщения как есть (без добавления превью)
+        // Превью объявления будет добавлено при рендере если это необходимо
         setState(() {
           _messages = messages;
           _isLoading = false;
@@ -293,11 +239,13 @@ class _ChatPageState extends State<ChatPage> {
           for (final m in messages) {
             if (m == null) continue;
             // Проверяем несколько возможных ключей
-            if (m.containsKey('advertisementId') && m['advertisementId'] != null) {
+            if (m.containsKey('advertisementId') &&
+                m['advertisementId'] != null) {
               foundAdId = m['advertisementId'].toString();
               break;
             }
-            if (m.containsKey('advertisement_id') && m['advertisement_id'] != null) {
+            if (m.containsKey('advertisement_id') &&
+                m['advertisement_id'] != null) {
               foundAdId = m['advertisement_id'].toString();
               break;
             }
@@ -313,7 +261,9 @@ class _ChatPageState extends State<ChatPage> {
             if (adId != null) {
               final advert = await ApiService.getAdvert(adId);
               if (advert != null) {
-                final image = advert.images.isNotEmpty ? advert.images.first : advert.thumbnail;
+                final image = advert.images.isNotEmpty
+                    ? advert.images.first
+                    : advert.thumbnail;
                 if (mounted) {
                   setState(() {
                     _topAdvertTitle = advert.name;
@@ -325,7 +275,11 @@ class _ChatPageState extends State<ChatPage> {
 
                 // Обновим локальный список чатов чтобы превью появилось в списке сообщений
                 final current = MessagesLocalService.getCurrentMessages();
-                final existingIndex = current.indexWhere((m) => m['userId'] == widget.message.userId && m['senderName'] == widget.message.senderName);
+                final existingIndex = current.indexWhere(
+                  (m) =>
+                      m['userId'] == widget.message.userId &&
+                      m['senderName'] == widget.message.senderName,
+                );
                 final messageMap = {
                   'senderName': widget.message.senderName,
                   'senderAvatar': widget.message.senderAvatar,
@@ -351,12 +305,14 @@ class _ChatPageState extends State<ChatPage> {
             }
           }
         } catch (e) {
-          print('⚠️ Ошибка при подгрузке превью объявления после загрузки сообщений: $e');
+          print(
+            '⚠️ Ошибка при подгрузке превью объявления после загрузки сообщений: $e',
+          );
         }
-        
+
         // ✅ Отмечаем все входящие сообщения как прочитанные
         _markIncomingMessagesAsRead(messages);
-        
+
         // Прокручиваем вниз к последнему сообщению
         _scrollToBottom();
       }
@@ -372,7 +328,8 @@ class _ChatPageState extends State<ChatPage> {
 
   /// ✅ Отметить все входящие сообщения как прочитанные
   Future<void> _markIncomingMessagesAsRead(
-      List<Map<String, dynamic>> messages) async {
+    List<Map<String, dynamic>> messages,
+  ) async {
     try {
       if (_chatId == null) return;
 
@@ -380,7 +337,8 @@ class _ChatPageState extends State<ChatPage> {
       final unreadIncomingMessages = messages.where((msg) {
         final isMe = msg['is_me'] as bool? ?? false;
         final readAt = msg['read_at'] as String?;
-        return !isMe && readAt == null; // От другого пользователя и не прочитано
+        return !isMe &&
+            readAt == null; // От другого пользователя и не прочитано
       }).toList();
 
       if (unreadIncomingMessages.isEmpty) {
@@ -388,16 +346,15 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
-      print('📨 Отмечаем ${unreadIncomingMessages.length} сообщений как прочитанные...');
+      print(
+        '📨 Отмечаем ${unreadIncomingMessages.length} сообщений как прочитанные...',
+      );
 
       // Отмечаем каждое сообщение как прочитанное
       for (final msg in unreadIncomingMessages) {
         final messageId = msg['id'] as int?;
         if (messageId != null) {
-          await ApiService.markMessageAsRead(
-            _chatId!,
-            messageId,
-          );
+          await ApiService.markMessageAsRead(_chatId!, messageId);
         }
       }
 
@@ -428,12 +385,14 @@ class _ChatPageState extends State<ChatPage> {
 
     // Загружаем текущие сообщения
     final currentMessages = MessagesLocalService.getCurrentMessages();
-    
+
     // Проверяем, есть ли уже такой чат
-    final existingIndex = currentMessages.indexWhere((msg) =>
-        msg['senderName'] == widget.message.senderName &&
-        msg['userId'] == widget.message.userId);
-    
+    final existingIndex = currentMessages.indexWhere(
+      (msg) =>
+          msg['senderName'] == widget.message.senderName &&
+          msg['userId'] == widget.message.userId,
+    );
+
     if (existingIndex >= 0) {
       // Обновляем существующий чат
       currentMessages[existingIndex] = messageMap;
@@ -441,7 +400,7 @@ class _ChatPageState extends State<ChatPage> {
       // Добавляем новый чат
       currentMessages.insert(0, messageMap);
     }
-    
+
     // Сохраняем в локальное хранилище
     await MessagesLocalService.saveCurrentMessages(currentMessages);
   }
@@ -462,7 +421,9 @@ class _ChatPageState extends State<ChatPage> {
           throw Exception('Информация о продавце недоступна');
         }
 
-        print('💬 Начинаем новый чат с пользователем #${widget.message.userId}...');
+        print(
+          '💬 Начинаем новый чат с пользователем #${widget.message.userId}...',
+        );
         chatId = await ApiService.startChat(
           int.parse(widget.message.userId!),
           messageText,
@@ -473,7 +434,7 @@ class _ChatPageState extends State<ChatPage> {
           print('⚠️ chatId null, пытаемся найти существующий чат...');
           final chats = await ApiService.getChats();
           final userId = int.tryParse(widget.message.userId!);
-          
+
           // 🔍 Ищем чат с этим пользователем
           for (final chat in chats) {
             final userData = chat['user'] as Map<String, dynamic>?;
@@ -497,11 +458,8 @@ class _ChatPageState extends State<ChatPage> {
       } else {
         // ✅ Обычная отправка сообщения в существующий чат
         print('📤 Отправляем сообщение в чат #$chatId...');
-        
-        await ApiService.sendMessage(
-          chatId,
-          messageText,
-        );
+
+        await ApiService.sendMessage(chatId, messageText);
       }
 
       // Перезагружаем сообщения чтобы показать новое
@@ -524,13 +482,15 @@ class _ChatPageState extends State<ChatPage> {
   /// 📅 Вытянуть дату из created_at в формате "yyyy-MM-dd"
   String _extractDate(String? createdAt) {
     if (createdAt == null || createdAt.isEmpty) {
-      return DateTime.now().toString().split(' ')[0]; // Возвращаем сегодня если нет даты
+      return DateTime.now().toString().split(
+        ' ',
+      )[0]; // Возвращаем сегодня если нет даты
     }
-    
+
     try {
       // Ожидаем формат "15.03.2026 18:32:17" или "2026-03-15T18:32:17"
       DateTime dateTime;
-      
+
       if (createdAt.contains('.')) {
         // Формат "15.03.2026 18:32:17"
         final parts = createdAt.split(' ');
@@ -554,7 +514,7 @@ class _ChatPageState extends State<ChatPage> {
       } else {
         dateTime = DateTime.now();
       }
-      
+
       // Возвращаем дату в формате "yyyy-MM-dd"
       return dateTime.toString().split(' ')[0];
     } catch (e) {
@@ -568,11 +528,11 @@ class _ChatPageState extends State<ChatPage> {
     if (createdAt == null || createdAt.isEmpty) {
       return 'Сегодня';
     }
-    
+
     try {
       // Парсируем дату из создания сообщения
       DateTime messageDate;
-      
+
       if (createdAt.contains('.')) {
         // Формат "15.03.2026 18:32:17"
         final parts = createdAt.split(' ');
@@ -596,12 +556,16 @@ class _ChatPageState extends State<ChatPage> {
       } else {
         return 'Сегодня';
       }
-      
+
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final yesterday = today.subtract(const Duration(days: 1));
-      final messageDateNormalized = DateTime(messageDate.year, messageDate.month, messageDate.day);
-      
+      final messageDateNormalized = DateTime(
+        messageDate.year,
+        messageDate.month,
+        messageDate.day,
+      );
+
       // Сравниваем даты
       if (messageDateNormalized == today) {
         return 'Сегодня';
@@ -636,7 +600,7 @@ class _ChatPageState extends State<ChatPage> {
       'ноября',
       'декабря',
     ];
-    
+
     if (month >= 1 && month <= 12) {
       return monthNames[month - 1];
     }
@@ -698,8 +662,8 @@ class _ChatPageState extends State<ChatPage> {
                     backgroundColor: Colors.white10,
                     backgroundImage: widget.message.senderAvatar != null
                         ? (widget.message.senderAvatar!.startsWith('http')
-                            ? NetworkImage(widget.message.senderAvatar!)
-                            : AssetImage(widget.message.senderAvatar!))
+                              ? NetworkImage(widget.message.senderAvatar!)
+                              : AssetImage(widget.message.senderAvatar!))
                         : null,
                     child: widget.message.senderAvatar == null
                         ? const Icon(
@@ -762,46 +726,61 @@ class _ChatPageState extends State<ChatPage> {
                         // Image
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: (_topAdvertImage ?? widget.message.advertImage) != null
-                              ? ((_topAdvertImage ?? widget.message.advertImage)!.startsWith('http')
-                                  ? Image.network(
-                                      (_topAdvertImage ?? widget.message.advertImage)!,
-                                      height: 66,
-                                      width: 86,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        return Container(
-                                          color: const Color(0xFF374B5C),
-                                          height: 66,
-                                          width: 86,
-                                          child: const Icon(Icons.image,
-                                              color: Colors.white54, size: 30),
-                                        );
-                                      },
-                                    )
-                                  : Image.asset(
-                                      (_topAdvertImage ?? widget.message.advertImage)!,
-                                      height: 66,
-                                      width: 86,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (context, error, stackTrace) {
-                                        return Container(
-                                          color: const Color(0xFF374B5C),
-                                          height: 66,
-                                          width: 86,
-                                          child: const Icon(Icons.image,
-                                              color: Colors.white54, size: 30),
-                                        );
-                                      },
-                                    ))
+                          child:
+                              (_topAdvertImage ?? widget.message.advertImage) !=
+                                  null
+                              ? ((_topAdvertImage ??
+                                            widget.message.advertImage)!
+                                        .startsWith('http')
+                                    ? Image.network(
+                                        (_topAdvertImage ??
+                                            widget.message.advertImage)!,
+                                        height: 66,
+                                        width: 86,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                color: const Color(0xFF374B5C),
+                                                height: 66,
+                                                width: 86,
+                                                child: const Icon(
+                                                  Icons.image,
+                                                  color: Colors.white54,
+                                                  size: 30,
+                                                ),
+                                              );
+                                            },
+                                      )
+                                    : Image.asset(
+                                        (_topAdvertImage ??
+                                            widget.message.advertImage)!,
+                                        height: 66,
+                                        width: 86,
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                              return Container(
+                                                color: const Color(0xFF374B5C),
+                                                height: 66,
+                                                width: 86,
+                                                child: const Icon(
+                                                  Icons.image,
+                                                  color: Colors.white54,
+                                                  size: 30,
+                                                ),
+                                              );
+                                            },
+                                      ))
                               : Container(
                                   height: 66,
                                   width: 86,
                                   color: const Color(0xFF374B5C),
-                                  child: const Icon(Icons.image,
-                                      color: Colors.white54, size: 30),
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: Colors.white54,
+                                    size: 30,
+                                  ),
                                 ),
                         ),
                         const SizedBox(width: 12),
@@ -814,9 +793,10 @@ class _ChatPageState extends State<ChatPage> {
                                 // Показываем превью из состояния, если есть, иначе из переданного сообщения
                                 _topAdvertTitle?.isNotEmpty == true
                                     ? _topAdvertTitle!
-                                    : (widget.message.advertTitle?.isNotEmpty == true
-                                        ? widget.message.advertTitle!
-                                        : '3-к. квартира, 125.5 м², 5/17 эт.'),
+                                    : (widget.message.advertTitle?.isNotEmpty ==
+                                              true
+                                          ? widget.message.advertTitle!
+                                          : '3-к. квартира, 125.5 м², 5/17 эт.'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -839,30 +819,41 @@ class _ChatPageState extends State<ChatPage> {
                               GestureDetector(
                                 onTap: () {
                                   // 🔗 Переход на объявление по ID с защитой от множественных тапов
-                                  if (_isNavigatingToProperty || (_topAdvertId == null && widget.message.advertisementId == null)) {
+                                  if (_isNavigatingToProperty ||
+                                      (_topAdvertId == null &&
+                                          widget.message.advertisementId ==
+                                              null)) {
                                     return;
                                   }
 
                                   // Если чат был открыт с экрана объявления — просто возвращаемся назад
-                                  if (widget.openedFromAdvertScreen && Navigator.canPop(context)) {
+                                  if (widget.openedFromAdvertScreen &&
+                                      Navigator.canPop(context)) {
                                     Navigator.pop(context);
                                     return;
                                   }
 
                                   _isNavigatingToProperty = true;
-                                  print('🔗 Переходим на объявление #${_topAdvertId ?? widget.message.advertisementId}');
+                                  print(
+                                    '🔗 Переходим на объявление #${_topAdvertId ?? widget.message.advertisementId}',
+                                  );
 
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => PropertyDetailsScreen(
-                                        advertisementId: _topAdvertId ?? widget.message.advertisementId,
-                                      ),
+                                      builder: (context) =>
+                                          PropertyDetailsScreen(
+                                            advertisementId:
+                                                _topAdvertId ??
+                                                widget.message.advertisementId,
+                                          ),
                                     ),
                                   ).then((_) {
                                     // ✅ Возвращаемся из PropertyDetailsScreen
                                     if (mounted) {
-                                      print('✅ Вернулись из PropertyDetailsScreen');
+                                      print(
+                                        '✅ Вернулись из PropertyDetailsScreen',
+                                      );
                                       setState(() {
                                         _isNavigatingToProperty = false;
                                       });
@@ -908,103 +899,109 @@ class _ChatPageState extends State<ChatPage> {
                         color: Color(0xFF00B7FF),
                       ),
                     )
-                  : Builder(builder: (context) {
-                      // Формируем список для отображения: при открытии из объявления
-                      // добавляем превью объявления как первое сообщение
-                      final List<Map<String, dynamic>> messagesToDisplay = List.from(_messages);
-                      if (widget.openedFromAdvertScreen) {
-                        // Если чат открыт из объявления и в загруженных сообщениях
-                        // нет информации об этом объявлении — добавляем превью сверху.
-                        final hasAdvertInMessages = messagesToDisplay.any((m) {
-                          if (m == null) return false;
-                          if (m['is_advert_preview'] == true) return true;
-                          final aid = m['advertisementId'];
-                          if (aid == null) return false;
-                          return aid.toString() == (widget.message.advertisementId ?? '').toString();
-                        });
-
-                        if (!hasAdvertInMessages) {
-                          final advertPreview = {
+                  : Builder(
+                      builder: (context) {
+                        // Формируем список для отображения
+                        final List<Map<String, dynamic>> messagesToDisplay =
+                            List.from(_messages);
+                        
+                        // ✅ Если открыт с экрана объявления и передано объявление
+                        // добавляем его как первое "сообщение" типа advert
+                        if (widget.openedFromAdvertScreen && 
+                            widget.initialListing != null &&
+                            !messagesToDisplay.any((m) => m['is_advert_preview'] == true)) {
+                          
+                          final advertMessage = {
                             'id': -1,
                             'is_me': false,
-                            'created_at': DateTime.now().toString(),
                             'is_advert_preview': true,
-                            'advertTitle': widget.message.advertTitle,
-                            'advertPrice': widget.message.advertPrice,
-                            'advertImage': widget.message.advertImage,
-                            'advertisementId': widget.message.advertisementId,
-                            'message': ''
+                            'created_at': DateTime.now().toString(),
+                            'message': '',
+                            'advert': widget.initialListing, // ✅ Объект Listing
                           };
-                          messagesToDisplay.insert(0, advertPreview);
+                          // Вставляем объявление в начало как первое сообщение
+                          messagesToDisplay.insert(0, advertMessage);
                         }
-                      }
 
-                      if (messagesToDisplay.isEmpty) {
-                        return Center(
-                          child: Text(
-                            'Нет сообщений',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 16,
+                        if (messagesToDisplay.isEmpty) {
+                          return Center(
+                            child: Text(
+                              'Нет сообщений',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                        );
-                      }
+                          );
+                        }
 
-                      return ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 25),
-                        itemCount: messagesToDisplay.length,
-                        itemBuilder: (context, index) {
-                          final msg = messagesToDisplay[index];
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 25),
+                          itemCount: messagesToDisplay.length,
+                          itemBuilder: (context, index) {
+                            final msg = messagesToDisplay[index];
 
-                          // 📅 Проверяем показывать ли разделитель даты
-                          bool showDateSeparator = true;
-                          if (index > 0) {
-                            final prevMsg = messagesToDisplay[index - 1];
-                            final prevDate = _extractDate(prevMsg['created_at'] as String?);
-                            final currentDate = _extractDate(msg['created_at'] as String?);
-                            showDateSeparator = prevDate != currentDate;
-                          }
+                            // 📅 Проверяем показывать ли разделитель даты
+                            bool showDateSeparator = true;
+                            if (index > 0) {
+                              final prevMsg = messagesToDisplay[index - 1];
+                              final prevDate = _extractDate(
+                                prevMsg['created_at'] as String?,
+                              );
+                              final currentDate = _extractDate(
+                                msg['created_at'] as String?,
+                              );
+                              showDateSeparator = prevDate != currentDate;
+                            }
 
-                          return Column(
-                            children: [
-                              // 📅 Разделитель даты
-                              if (showDateSeparator) ...[
-                                const SizedBox(height: 10),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 0),
-                                  child: Text(
-                                    _getDateLabel(msg['created_at'] as String?),
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.5),
-                                      fontSize: 14,
+                            return Column(
+                              children: [
+                                // 📅 Разделитель даты
+                                if (showDateSeparator) ...[
+                                  const SizedBox(height: 10),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 0,
+                                    ),
+                                    child: Text(
+                                      _getDateLabel(
+                                        msg['created_at'] as String?,
+                                      ),
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.5),
+                                        fontSize: 14,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 10),
-                              ],
+                                  const SizedBox(height: 10),
+                                ],
 
-                              // 💬 Если это превью объявления — показываем специальную карточку
-                              if (msg['is_advert_preview'] == true)
-                                _buildAdvertPreviewBubble(
-                                  image: msg['advertImage'] as String?,
-                                  title: msg['advertTitle'] as String?,
-                                  price: msg['advertPrice'] as String?,
-                                  advertisementId: msg['advertisementId'] as String?,
-                                )
-                              else
-                                // Обычное сообщение
-                                _buildMessageBubble(
-                                  msg['message'] as String,
-                                  isMe: msg['is_me'] as bool? ?? false,
-                                  createdAt: msg['created_at'] as String?,
-                                ),
-                            ],
-                          );
-                        },
-                      );
-                    }),
+                                // 💬 Если это превью объявления — показываем специальную карточку
+                                if (msg['is_advert_preview'] == true) ...[
+                                  const SizedBox(height: 8),
+                                  _buildAdvertMessageCard(
+                                    listing: msg['advert'] as Listing?,
+                                    advertTitle: msg['advertTitle'] as String?,
+                                    advertPrice: msg['advertPrice'] as String?,
+                                    advertImage: msg['advertImage'] as String?,
+                                    advertisementId: msg['advertisementId'] as String?,
+                                  ),
+                                  const SizedBox(height: 8),
+                                ] else ...[
+                                  // Обычное сообщение
+                                  _buildMessageBubble(
+                                    msg['message'] as String,
+                                    isMe: msg['is_me'] as bool? ?? false,
+                                    createdAt: msg['created_at'] as String?,
+                                  ),
+                                ]
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
             ),
 
             // Message input
@@ -1096,10 +1093,10 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     // Цвет сообщения зависит от того кто его отправил
-    final bubbleColor = isMe 
-        ? activeIconColor  // Синий для моих сообщений
-        : formBackground;  // Темный для чужих
-    
+    final bubbleColor = isMe
+        ? activeIconColor // Синий для моих сообщений
+        : formBackground; // Темный для чужих
+
     final textColor = Colors.white;
 
     return Column(
@@ -1148,143 +1145,152 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  /// Карточка-превью объявления внутри чата (используется как первое сообщение)
-  Widget _buildAdvertPreviewBubble({
-    String? image,
-    String? title,
-    String? price,
+  /// 🎖️ Карточка с объявлением как сообщение (для отправки объявления как первого сообщения)
+  Widget _buildAdvertMessageCard({
+    Listing? listing,
+    String? advertTitle,
+    String? advertPrice,
+    String? advertImage,
     String? advertisementId,
   }) {
+    // Если передано объявление как объект, используем его, иначе используем переданные параметры
+    final title = listing?.title ?? advertTitle ?? 'Объявление';
+    final price = listing?.price ?? advertPrice ?? 'Цена не указана';
+    final image = listing?.images.isNotEmpty == true
+        ? listing!.images.first
+        : (listing?.imagePath ?? advertImage);
+    final adId = listing?.id ?? advertisementId;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
+        GestureDetector(
+          onTap: () {
+            if (_isNavigatingToProperty || adId == null) return;
+
+            _isNavigatingToProperty = true;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => listing != null
+                    ? MiniPropertyDetailsScreen(listing: listing)
+                    : PropertyDetailsScreen(advertisementId: adId),
+              ),
+            ).then((_) {
+              if (mounted) {
+                setState(() {
+                  _isNavigatingToProperty = false;
+                });
+              }
+            });
+          },
           child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
+            margin: const EdgeInsets.symmetric(vertical: 4),
             padding: const EdgeInsets.all(12),
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.85,
-            ),
             decoration: BoxDecoration(
               color: formBackground,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white12, width: 1),
             ),
             child: Row(
               children: [
+                // 📸 Изображение
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: image != null
                       ? (image.startsWith('http')
                           ? Image.network(
                               image,
-                              height: 66,
-                              width: 86,
+                              height: 70,
+                              width: 70,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: const Color(0xFF374B5C),
-                                  height: 66,
-                                  width: 86,
-                                  child: const Icon(Icons.image,
-                                      color: Colors.white54, size: 30),
+                                  height: 70,
+                                  width: 70,
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: Colors.white54,
+                                    size: 30,
+                                  ),
                                 );
                               },
                             )
                           : Image.asset(
                               image,
-                              height: 66,
-                              width: 86,
+                              height: 70,
+                              width: 70,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: const Color(0xFF374B5C),
-                                  height: 66,
-                                  width: 86,
-                                  child: const Icon(Icons.image,
-                                      color: Colors.white54, size: 30),
+                                  height: 70,
+                                  width: 70,
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: Colors.white54,
+                                    size: 30,
+                                  ),
                                 );
-                              }))
+                              },
+                            ))
                       : Container(
-                          height: 66,
-                          width: 86,
+                          height: 70,
+                          width: 70,
                           color: const Color(0xFF374B5C),
-                          child: const Icon(Icons.image,
-                              color: Colors.white54, size: 30),
+                          child: const Icon(
+                            Icons.image,
+                            color: Colors.white54,
+                            size: 30,
+                          ),
                         ),
                 ),
                 const SizedBox(width: 12),
+
+                // 📝 Информация об объявлении
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        title?.isNotEmpty == true
-                            ? title!
-                            : 'Объявление',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${price ?? 'Цена не указана'} ₽',
+                        '$price ₽',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () {
-                          if (_isNavigatingToProperty || advertisementId == null) return;
-
-                          // Если чат был открыт с экрана объявления — возвращаемся назад
-                          if (widget.openedFromAdvertScreen && Navigator.canPop(context)) {
-                            Navigator.pop(context);
-                            return;
-                          }
-
-                          _isNavigatingToProperty = true;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => PropertyDetailsScreen(
-                                advertisementId: advertisementId,
-                              ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: const [
+                          Text(
+                            'Подробнее',
+                            style: TextStyle(
+                              color: activeIconColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
-                          ).then((_) {
-                            if (mounted) {
-                              setState(() {
-                                _isNavigatingToProperty = false;
-                              });
-                            }
-                          });
-                        },
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Text(
-                              'Перейти',
-                              style: TextStyle(
-                                color: Color(0xFF00B7FF),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              color: Color(0xFF00B7FF),
-                              size: 14,
-                            ),
-                          ],
-                        ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            color: activeIconColor,
+                            size: 11,
+                          ),
+                        ],
                       ),
                     ],
                   ),

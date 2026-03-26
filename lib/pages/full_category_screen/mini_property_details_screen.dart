@@ -9,6 +9,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/message_model.dart';
+import 'package:lidle/models/chat_message_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
@@ -1317,8 +1318,6 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       return;
     }
 
-    // Импортируем необходимые модели
-    // ignore: avoid_relative_lib_imports
     if (!mounted) return;
     
     // Создаем объект Message с информацией о продавце
@@ -1337,11 +1336,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       advertisementId: _listing.id,
     );
 
-    // Переходим на экран чата
+    // Переходим на экран чата с флагом что открыт с экрана объявления
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ChatPage(message: message, openedFromAdvertScreen: true),
+        builder: (context) => ChatPage(
+          message: message,
+          openedFromAdvertScreen: true,
+          initialListing: _listing, // ✅ Передаем объявление для отправки как сообщение
+        ),
       ),
     );
   }
