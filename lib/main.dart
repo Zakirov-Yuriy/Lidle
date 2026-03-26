@@ -312,7 +312,15 @@ class LidleApp extends StatelessWidget {
             ResponsesEmptyPage.routeName: (context) =>
                 const ResponsesEmptyPage(),
             ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
-            MyListingsScreen.routeName: (context) => const MyListingsScreen(),
+            MyListingsScreen.routeName: (context) {
+              // Обработка параметров для перехода из dynamic_filter при публикации
+              final args = ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+              return MyListingsScreen(
+                categoryId: args?['categoryId'] as int?,
+                tabIndex: args?['tabIndex'] as int?,
+              );
+            },
             '/property-details': (context) => PropertyDetailsScreen(
               advertisementId: 
                   ModalRoute.of(context)?.settings.arguments as String?,

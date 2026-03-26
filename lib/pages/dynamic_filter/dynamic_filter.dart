@@ -29,6 +29,7 @@ import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
 import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
@@ -2490,22 +2491,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
               throw Exception('Street not selected');
             }
             
-            // 🔧 При редактировании адреса без номера дома, это нормально
-            // Проверяем либо _selectedBuilding (новое объявление), либо _buildingController (редактирование)
-            // В режиме редактирования _buildingController содержит полный адрес
-            if (_isEditMode) {
-              // Для редактирования - проверяем что _buildingController заполнен (это полный адрес)
-              if (_buildingController.text.isEmpty) {
-                errorMessage = 'Пожалуйста, заполните адрес';
-                throw Exception('Address required');
-              }
-            } else {
-              // Для нового объявления - проверяем наличие номера дома
-              if (_selectedBuilding.isEmpty || _buildingController.text.isEmpty) {
-                errorMessage = 'Пожалуйста, введите номер дома';
-                throw Exception('Building number required');
-              }
-            }
+            // 🔧 Номер дома не требуется - поле необязательное
+            // Пользователь может оставить его пустым как при создании, так и при редактировании
 
             // Extract region.id (subregion) from selected city/street/building
             int? addressRegionId;
@@ -3021,7 +3008,23 @@ class _DynamicFilterState extends State<DynamicFilter> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Go back to previous screen
+                
+                // Получить ID категории
+                final categoryId = widget.categoryId ?? _editAdvertCategoryId;
+                
+                // Навигировать на my_listings_screen с параметрами
+                if (categoryId != null) {
+                  Navigator.of(context).pushReplacementNamed(
+                    MyListingsScreen.routeName,
+                    arguments: {
+                      'categoryId': categoryId,
+                      'tabIndex': 3, // Вкладка "На модерации"
+                    },
+                  );
+                } else {
+                  // Если нет categoryId, просто вернуться
+                  Navigator.of(context).pop();
+                }
               },
               child: const Text('OK'),
             ),

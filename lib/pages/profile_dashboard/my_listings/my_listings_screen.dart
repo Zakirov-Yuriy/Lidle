@@ -21,7 +21,14 @@ import 'package:lidle/hive_service.dart';
 class MyListingsScreen extends StatefulWidget {
   static const routeName = '/my-listings';
 
-  const MyListingsScreen({super.key});
+  final int? categoryId;
+  final int? tabIndex; // 0: Активные, 1: Неактивные, 2: Архив, 3: На модерации
+
+  const MyListingsScreen({
+    super.key,
+    this.categoryId,
+    this.tabIndex,
+  });
 
   @override
   State<MyListingsScreen> createState() => _MyListingsScreenState();
@@ -80,7 +87,49 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     super.initState();
     if (!_metadataLoaded) {
       _isLoadingMetadata = true;
-      _loadAdvertMetadata();
+      _loadAdvertMetadata().then((_) {
+        // После загрузки метаданных установить категорию и вкладку из параметров
+        if (widget.categoryId != null) {
+          _setInitialCategoryAndTab();
+        }
+      });
+    }
+  }
+
+  /// Установить начальную категорию и вкладку из параметров конструктора
+  void _setInitialCategoryAndTab() {
+    try {
+      final categoryId = widget.categoryId;
+      final tabIndex = widget.tabIndex ?? 3; // По умолчанию вкладка "На модерации"
+
+      if (categoryId == null) return;
+
+      // Найти категорию в загруженных метаданных
+      for (int catalogIdx = 0;
+          catalogIdx < _advertMetaCatalogs.length;
+          catalogIdx++) {
+        final catalog = _advertMetaCatalogs[catalogIdx];
+        for (int catIdx = 0; catIdx < catalog.categories.length; catIdx++) {
+          final category = catalog.categories[catIdx];
+          if (category.categoryId == categoryId) {
+            // Нашли нужную категорию
+            if (mounted) {
+              setState(() {
+                _selectedCatalogIndex = catalogIdx;
+                _advertMetaCategories = catalog.categories;
+                _selectedCategoryIndex = catIdx;
+                _selectedCategoryId = categoryId;
+                _currentTab = tabIndex;
+              });
+            }
+            // Загрузить объявления для этой категории
+            _loadListingsByCategory(categoryId);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      // print('Error setting initial category and tab: $e');
     }
   }
 

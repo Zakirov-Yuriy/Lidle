@@ -379,7 +379,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                         iconPath:
                                             'assets/profile_dashboard/shopping-cart-01.svg',
                                         title: 'Покупки',
-                                        subtitle: '2 товаров',
+                                        subtitle: '0 товаров',
                                         onTap: () =>
                                             Navigator.of(context).pushNamed(
                                               MyPurchasesScreen.routeName,
