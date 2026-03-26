@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/api_request_queue.dart';
+import 'package:lidle/services/price_offers_cache.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -162,13 +164,20 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       // — Только отклонённые (id==3) или пустой список → скрываем
       // Это решает проблему когда бэкенд возвращает new_offers_count > 0,
       // но все предложения уже приняты/отклонены.
+      //
+      // 🚀 УЛУЧШЕНИЕ: Используем ApiRequestQueue вместо Future.wait()
+      // Это ограничивает количество одновременных запросов до 3,
+      // предотвращая 429 (Rate Limit) ошибки.
       print(
-        '🔍 Prefetching offer details for ${parsedListings.length} listings...',
+        '🔍 Prefetching offer details for ${parsedListings.length} listings (max 3 concurrent)...',
       );
-      final prefetchResults = await Future.wait(
-        parsedListings.map((offer) async {
+      
+      // Создаем список функций запросов для очереди
+      final requestFunctions = parsedListings.map((offer) {
+        return () async {
           final advertId = int.tryParse(offer.advertisementId ?? '');
           final typeSlug = offer.typeSlug ?? 'adverts';
+          
           // null = ошибка (показываем с оригинальным счётчиком)
           if (advertId == null) {
             return MapEntry(offer, {
@@ -179,11 +188,18 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
           }
 
           try {
-            final offersData = await ApiService.getPriceOffers(
+            // 💾 Используем кеш чтобы избежать дублирующихся запросов
+            final offersData = await PriceOffersCache.instance.getOffers(
               advertId: advertId,
               advertSlug: typeSlug,
               token: token,
+              onMiss: () => ApiService.getPriceOffers(
+                advertId: advertId,
+                advertSlug: typeSlug,
+                token: token,
+              ),
             );
+            
             // Считаем количество «актуальных» предложений:
             // — statusId == 1 (Новый) — ещё не обработаны
             // — statusId == 2 (Принят) — сделка состоялась, объявление нужно оставить
@@ -227,8 +243,16 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
               'offersData': [],
             });
           }
-        }),
+        };
+      }).toList();
+      
+      // 🚀 Используем очередь чтобы ограничить параллельные запросы
+      final prefetchResults = await ApiRequestQueue.instance.queueBatch(
+        requestFunctions,
+        batchSize: 3, // Максимум 3 одновременных запроса
       );
+      
+      print('✅ Prefetch завершен: ${ApiRequestQueue.instance.stats}');
 
       // ✅ НОВАЯ ЛОГИКА: Показываем ВСЕ объявления, включая отклонённые
       // count == 0 означает: все предложения отклонены или нет предложений → показываем 0

@@ -10,6 +10,7 @@ import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/api_request_queue.dart';
 import 'package:lidle/hive_service.dart';
 
 class PriceOffersListPage extends StatefulWidget {
@@ -185,25 +186,30 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   /// - statusId == 2: принято (зелёный badge)
   /// - statusId == 3: отклонено (красный badge)
   /// - statusId == null: старые записи без статуса (жёлтый badge)
+  /// 
+  /// 🚀 УЛУЧШЕНИЕ: Используем ApiRequestQueue вместо Future.wait()
+  /// Это ограничивает параллельные запросы до 3 одновременно
   Future<List<PriceOfferItem>> _parseOffers(
     List<Map<String, dynamic>> offersData,
   ) async {
     print(
-      '🔄 _parseOffers: Starting parallel profile loading for ${offersData.length} offers',
+      '🔄 _parseOffers: Starting parallel profile loading for ${offersData.length} offers (max 3 concurrent)',
     );
     final token = HiveService.getUserData('token') as String?;
 
-    // Собираем все futures для параллельной загрузки профилей
-    final profileFutures =
-        <Future<Map<int, Map<String, dynamic>>>>[]; // userId -> profile data
+    // Собираем функции запросов для загрузки профилей
+    // 🚀 Используем ApiRequestQueue вместо Future.wait()
+    final profileRequestFunctions = <Future<Map<int, Map<String, dynamic>>> Function()>[];
+    final userIds = <int>[];
 
     for (final offer in offersData) {
       final user = offer['user'] as Map<String, dynamic>? ?? {};
       final userId = user['id'] as int?;
 
       if (userId != null && token != null) {
-        profileFutures.add(
-          ApiService.getUserProfile(
+        userIds.add(userId);
+        profileRequestFunctions.add(
+          () => ApiService.getUserProfile(
             userId: userId,
             token: token,
           ).then((profile) => {userId: profile}).catchError((e) {
@@ -214,8 +220,14 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       }
     }
 
-    // Загружаем все профили параллельно
-    final profileResults = await Future.wait(profileFutures);
+    // Загружаем профили используя очередь (ограничиваем до 3 одновременных)
+    // Это предотвращает Rate Limit ошибки при большом количестве пользователей
+    final profileResults = profileRequestFunctions.isEmpty
+        ? <Map<int, Map<String, dynamic>>>[]
+        : await ApiRequestQueue.instance.queueBatch(
+            profileRequestFunctions,
+            batchSize: 3, // Максимум 3 одновременных запроса
+          );
 
     // Объединяем результаты в одну карту для быстрого доступа
     final profileCache = <int, Map<String, dynamic>>{};
@@ -223,7 +235,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       profileCache.addAll(result);
     }
 
-    print('✅ Loaded profiles for ${profileCache.length} users in parallel');
+    print('✅ Loaded profiles for ${profileCache.length} users (${ApiRequestQueue.instance.stats})');
 
     // Теперь парсим офферы, используя закэшированные профили
     List<PriceOfferItem> result = [];
