@@ -27,16 +27,23 @@ class FavoritesScreen extends StatefulWidget {
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
   Set<String> _selectedSortOptions = {}; // New state for selected sort options
+  bool _wishlistLoadedOnce = false; // Флаг для предотвращения множественной загрузки
 
   @override
   void initState() {
     super.initState();
     _selectedSortOptions.add('Сначала новые'); // Default sort option
-    // 📱 Загружаем wishlist при открытии экрана
-    Future.microtask(() {
-      context.read<WishlistBloc>().add(const LoadWishlistEvent());
-      print('🔄 FavoritesScreen.initState: Загружаем wishlist');
-    });
+    
+    // 📱 Загружаем wishlist при открытии экрана (только один раз)
+    if (!_wishlistLoadedOnce) {
+      _wishlistLoadedOnce = true; // Устанавливаем флаг ДО async операции
+      Future.microtask(() {
+        if (mounted) {
+          context.read<WishlistBloc>().add(const LoadWishlistEvent());
+          print('🔄 FavoritesScreen.initState: Загружаем wishlist');
+        }
+      });
+    }
   }
 
   List<Listing> _getFavoritedListings(List<Listing> allListings, {Set<int>? wishlistIds}) {

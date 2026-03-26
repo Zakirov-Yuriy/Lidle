@@ -223,7 +223,7 @@ class _OfferCardState extends State<OfferCard> {
                 ],
               ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 0),
             const Divider(color: Color(0xFF474747), height: 9),
             // ───── View button ─────
             if (!widget.isSelectionMode)

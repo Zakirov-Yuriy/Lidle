@@ -248,9 +248,9 @@ class _ObjectCard extends StatelessWidget {
         },
         child: Column(
           children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
               children: [
                 // Фото объявления
                 Container(

@@ -36,6 +36,10 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// Пример: {147 -> 201} означает что товар 147 имеет wishlist entry ID 201
   Map<int, int> _wishlistIdMapping = {};
 
+  /// Дебоунс правилл: предотвращает множественные LoadWishlistEvent в короткий промежуток
+  DateTime? _lastLoadWishlistTime;
+  static const Duration _loadWishlistDebounce = Duration(seconds: 2);
+
   /// Конструктор WishlistBloc.
   WishlistBloc() : super(const WishlistInitial()) {
     on<LoadWishlistEvent>(_onLoadWishlist);
@@ -62,10 +66,26 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   ///
   /// Загружает список избранного с сервера и синхронизирует
   /// с локальным хранилищем (Hive).
+  /// 
+  /// ⏱️ Дебоунс: Игнорирует событие если последний запрос был менее 2 секунд назад
+  /// Это предотвращает слишком частые запросы при Hot Reload или множественных
+  /// срабатываниях listenerов.
   Future<void> _onLoadWishlist(
     LoadWishlistEvent event,
     Emitter<WishlistState> emit,
   ) async {
+    // 🔐 Проверяем дебоунс: если последний запрос был недавно, пропускаем
+    final now = DateTime.now();
+    if (_lastLoadWishlistTime != null) {
+      final timeSinceLastLoad = now.difference(_lastLoadWishlistTime!);
+      if (timeSinceLastLoad < _loadWishlistDebounce) {
+        print('⏱️ WishlistBloc: LoadWishlistEvent дебоунсен (последний запрос ${timeSinceLastLoad.inMilliseconds}ms назад)');
+        // НЕ эмитим ничего, просто пропускаем событие
+        return;
+      }
+    }
+    _lastLoadWishlistTime = now;
+
     emit(const WishlistLoading());
     print('🎯 WishlistBloc: LoadWishlistEvent запущен');
 
@@ -484,13 +504,21 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
     final message = e.toString();
     String code = 'unknown';
 
-    if (message.contains('Требуется авторизация')) {
+    // 🔍 Проверяем тип ошибки
+    if (e.runtimeType.toString().contains('RateLimitException')) {
+      code = 'rate_limit';
+      print('⚠️ WishlistBloc: Обнаружена RateLimitException - API возвращает 429');
+      print('   ApiService будет автоматически повторять запрос с exponential backoff');
+      print('   Макс попыток: 4, задержка: 2s, 4s, 8s, 16s');
+    } else if (message.contains('Требуется авторизация')) {
       code = 'auth';
-    } else if (message.contains('network')) {
+    } else if (message.contains('network') || message.contains('Network')) {
       code = 'network';
-    } else if (message.contains('timeout')) {
+    } else if (message.contains('timeout') || message.contains('Timeout')) {
       code = 'timeout';
-    } else if (message.contains('rate')) {
+    } else if (message.contains('rate') || message.contains('Rate')) {
+      code = 'rate_limit';
+    } else if (message.contains('429')) {
       code = 'rate_limit';
     } else if (message.contains('404')) {
       code = 'not_found';

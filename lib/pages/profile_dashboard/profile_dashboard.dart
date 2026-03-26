@@ -466,7 +466,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   ),
                                   _MenuItem(
                                     title: 'Отклики',
-                                    count: 4,
+                                    count: 0,
                                     trailingChevron: true,
                                     onTap: () => Navigator.of(
                                       context,
