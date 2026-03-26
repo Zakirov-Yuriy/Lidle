@@ -244,8 +244,18 @@ class TokenService with WidgetsBindingObserver {
     _lastRefreshAttempt = now;
 
     final currentToken = HiveService.getUserData('token') as String?;
+    final refreshToken = HiveService.getUserData('refresh_token') as String?;
+    
     if (currentToken == null || currentToken.isEmpty) {
       _isRefreshing = false;
+      print('❌ TokenService: access_token не найден в Hive');
+      _notifyTokenExpired();
+      return;
+    }
+    
+    if (refreshToken == null || refreshToken.isEmpty) {
+      _isRefreshing = false;
+      print('❌ TokenService: refresh_token не найден в Hive - невозможно обновить токен!');
       _notifyTokenExpired();
       return;
     }
@@ -262,7 +272,7 @@ class TokenService with WidgetsBindingObserver {
       } else {
         // refreshToken() вернул null: refresh_token истёк или невалиден на сервере (401/403).
         // Это постоянная ошибка — повторные попытки не помогут, нужна повторная авторизация.
-        print('❌ TokenService: refresh_token невалиден (401/403 на сервере)');
+        print('❌ TokenService: refresh_token невалиден на сервере (401/403) - требуется повторная авторизация');
         _notifyTokenExpired();
       }
     } catch (e) {

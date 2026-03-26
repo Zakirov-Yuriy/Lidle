@@ -1226,6 +1226,9 @@ class ApiService {
   /// - Сохраняет оба время истечения: token_expires_at и refresh_token_expires_at
   /// - Динамически читает device_name и app_version
   /// - 401/403 → null (нужна повторная авторизация)
+  ///
+  /// КРИТИЧНО: Метод ИГНОРИРУЕТ параметр currentToken и используем ТОЛЬКО refresh_token из Hive.
+  /// Передача access_token вместо refresh_token приведет к 401 от сервера!
   static Future<String?> refreshToken(String currentToken) async {
     try {
       // POST /auth/refresh-token  (документация API v1.4+)
@@ -1243,8 +1246,17 @@ class ApiService {
       // Ответ 401: "Вы не авторизованы" → нужен полный login
       // Ответ 403: "Неверный токен" → нужен полный login
 
+      // ИСПРАВЛЕНИЕ: Используем ТОЛЬКО refresh_token из Hive, никогда не используем currentToken
       final refreshTokenValue =
-          HiveService.getUserData('refresh_token') as String? ?? currentToken;
+          HiveService.getUserData('refresh_token') as String?;
+      
+      // Если refresh_token не найден - это критическая ошибка
+      if (refreshTokenValue == null || refreshTokenValue.isEmpty) {
+        print(
+          '❌ refreshToken: refresh_token не найден в Hive, невозможно обновить токен',
+        );
+        return null;
+      }
 
       final headers = {...defaultHeaders};
       // Передаём REFRESH_TOKEN (не access_token) как Bearer в Authorization

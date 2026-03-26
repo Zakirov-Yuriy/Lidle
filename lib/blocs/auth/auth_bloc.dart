@@ -331,6 +331,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           '🔍 AuthBloc: проверка статуса авторизации, пытаемся обновить токен...',
         );
 
+        // ИСПРАВЛЕНИЕ: Передаем refresh_token вместо access_token для обновления.
+        // ApiService.refreshToken() использует refresh_token из Hive, но мы проверяем его первым.
+        final refreshToken = await UserService.getLocal('refresh_token') as String?;
+        if (refreshToken == null || refreshToken.isEmpty) {
+          print(
+            '⚠️  AuthBloc: refresh_token не найден, отправляем на авторизацию (первый запуск?)',
+          );
+          await AuthService.logout();
+          await UserService.deleteLocal('token');
+          await UserService.deleteLocal('refresh_token');
+          await UserService.clearLocalProfileData();
+          emit(AuthInitial());
+          return;
+        }
+
         final newToken = await ApiService.refreshToken(token);
         if (newToken != null && newToken.isNotEmpty) {
           // Успешно обновили токен — эмитируем AuthAuthenticated
