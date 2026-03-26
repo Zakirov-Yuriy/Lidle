@@ -49,26 +49,46 @@ class WishlistService {
   ///
   /// DELETE /v1/me/wishlist/destroy/{advert_id}
   ///
-  /// [advertId] - ID объявления для удаления из wishlist
+  /// [advertId] - ID объявления для удаления из wishlist (INTEGER)
   /// [token] - токен авторизации
   ///
   /// Возвращает ответ сервера или выбрасывает исключение при ошибке.
+  ///
+  /// ⚠️ ВАЖНО: advertId ДОЛЖЕН БЫТЬ INTEGER (не String)!
+  /// API Parameter: DELETE /me/wishlist/destroy/{advert_id}
+  /// Пример: DELETE /me/wishlist/destroy/92
   static Future<Map<String, dynamic>> removeFromWishlist({
     required int advertId,
     required String token,
   }) async {
     try {
-      print('📤 WishlistService.removeFromWishlist(): Удаляем advert_id=$advertId');
+      print('╔════════════════════════════════════════════════════════');
+      print('📤 WishlistService.removeFromWishlist(): Начало');
+      print('   endpoint: /me/wishlist/destroy/$advertId');
+      print('   advertId type: ${advertId.runtimeType}');
+      print('   advertId value: $advertId');
+      print('   token provided: ${token.isNotEmpty}');
+      print('╚════════════════════════════════════════════════════════');
       
       final response = await ApiService.delete(
         '/me/wishlist/destroy/$advertId',
         token: token,
       );
       
-      print('✅ WishlistService.removeFromWishlist(): Успешно удалено, ответ: $response');
+      print('╔════════════════════════════════════════════════════════');
+      print('✅ WishlistService.removeFromWishlist(): Успешно');
+      print('   Ответ: $response');
+      print('   Success: ${response['success']}');
+      print('   Message: ${response['message']}');
+      print('╚════════════════════════════════════════════════════════');
+      
       return response;
     } catch (e) {
-      print('❌ WishlistService.removeFromWishlist(): Ошибка: $e');
+      print('╔════════════════════════════════════════════════════════');
+      print('❌ WishlistService.removeFromWishlist(): Ошибка');
+      print('   advertId: $advertId');
+      print('   Error: $e');
+      print('╚════════════════════════════════════════════════════════');
       throw Exception('Ошибка при удалении из избранного: $e');
     }
   }

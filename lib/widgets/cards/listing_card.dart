@@ -39,34 +39,31 @@ class _ListingCardState extends State<ListingCard> {
   }
 
   void _toggleFavorite() {
-    // Проверяем текущее состояние в Hive перед изменением
+    // Проверяем текущее состояние перед изменением
     final currentFavorite = HiveService.isFavorite(widget.listing.id);
+    final newState = !currentFavorite;
     
+    // Только обновляем UI локально для оптимистичного отображения
     setState(() {
-      _isFavorite = !currentFavorite;
+      _isFavorite = newState;
     });
     
-    // Обновляем локальное хранилище (Hive) только если состояние изменилось
-    if (_isFavorite != currentFavorite) {
-      HiveService.toggleFavorite(widget.listing.id);
-      
-      // 🔄 Отправляем запрос на сервер через WishlistBloc
-      // Преобразуем ID объявления из String в int
-      final advertId = int.tryParse(widget.listing.id);
-      if (advertId != null) {
-        if (_isFavorite) {
-          // Добавляем в wishlist на сервере
-          print('💗 ListingCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
-          context.read<WishlistBloc>().add(
-            AddToWishlistEvent(listingId: advertId),
-          );
-        } else {
-          // Удаляем из wishlist на сервере
-          print('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
-          context.read<WishlistBloc>().add(
-            RemoveFromWishlistEvent(listingId: advertId),
-          );
-        }
+    // 🔄 Отправляем событие в WishlistBloc для обработки API запроса
+    // WishlistBloc сам обновит Hive ПОСЛЕ успешного ответа с сервера
+    final advertId = int.tryParse(widget.listing.id);
+    if (advertId != null) {
+      if (newState) {
+        // Добавляем в wishlist на сервере
+        print('💗 ListingCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
+        context.read<WishlistBloc>().add(
+          AddToWishlistEvent(listingId: advertId),
+        );
+      } else {
+        // Удаляем из wishlist на сервере
+        print('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
+        context.read<WishlistBloc>().add(
+          RemoveFromWishlistEvent(listingId: advertId),
+        );
       }
     }
   }

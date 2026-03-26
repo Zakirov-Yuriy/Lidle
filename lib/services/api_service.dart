@@ -450,26 +450,26 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('🗑️ DELETE REQUEST');
-      // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${effectiveToken != null}');
+      print('═══════════════════════════════════════════════════════');
+      print('🗑️ DELETE REQUEST');
+      print('URL: $baseUrl$endpoint');
+      print('Token provided: ${effectiveToken != null}');
       if (effectiveToken != null) {
-        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
-        // print('Token type: JWT');
+        print('Token preview: ${effectiveToken.substring(0, 30)}...');
+        print('Token type: JWT');
       }
-      // print('Headers:');
+      print('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          // print('  $key: Bearer [HIDDEN]');
+          print('  $key: Bearer [HIDDEN]');
         } else {
-          // print('  $key: $value');
+          print('  $key: $value');
         }
       });
       if (body != null) {
-        // print('Body: $body');
+        print('Body: $body');
       }
-      // print('═══════════════════════════════════════════════════════');
+      print('═══════════════════════════════════════════════════════');
 
       final response = await http
           .delete(
@@ -478,6 +478,13 @@ class ApiService {
             body: body != null ? jsonEncode(body) : null,
           )
           .timeout(const Duration(seconds: 10));
+      
+      print('📥 DELETE RESPONSE received:');
+      print('   Status: ${response.statusCode}');
+      print('   Body length: ${response.body.length}');
+      if (response.body.isNotEmpty) {
+        print('   Body: ${response.body}');
+      }
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -599,14 +606,28 @@ class ApiService {
 
   /// Обрабатывает ответ от сервера.
   static Map<String, dynamic> _handleResponse(http.Response response) {
+    // ✅ Обработка пустого ответа (204 No Content или пустое тело при 2xx)
+    if (response.body.isEmpty && response.statusCode >= 200 && response.statusCode < 300) {
+      print('✅ ApiService._handleResponse: Успешный пустой ответ (${response.statusCode})');
+      return {'success': true, 'message': 'Success', 'data': null};
+    }
+
     // Пробуем разобрать тело ответа как JSON
     // Если сервер вернул HTML (например, 404 страница), бросаем понятное исключение
     Map<String, dynamic> data;
     try {
       data = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
+      // ❌ Если статус 2xx но JSON парсинг не удался - это ошибка API
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        print('⚠️ ApiService._handleResponse: Статус ${response.statusCode} но не валидный JSON');
+        print('   Тело ответа: "${response.body}"');
+        // Возвращаем успешный ответ с пустыми данными
+        return {'success': true, 'message': 'Success', 'data': null};
+      }
+      
       throw Exception(
-        'Сервер вернул не JSON ответ (статус ${response.statusCode})',
+        'Сервер вернул не JSON ответ (статус ${response.statusCode}). Тело: "${response.body}"',
       );
     }
 
@@ -649,10 +670,17 @@ class ApiService {
       // print('❌ 500 Server Error');
       // print('Error message: ${data['message'] ?? 'Server error'}');
       throw Exception(data['message'] ?? 'Ошибка сервера');
+    } else if (response.statusCode >= 400 && response.statusCode < 500) {
+      // 4xx ошибки (404, 400, 403, и т.д.) - выбрасываем исключение
+      // Не возвращаем data, потому что это ошибка клиента
+      print('❌ Error with status ${response.statusCode}');
+      print('   Message: ${data['message'] ?? 'Ошибка сервера'}');
+      throw Exception('${data['message'] ?? 'Ошибка запроса'} (статус ${response.statusCode})');
     } else {
-      // print('❌ Error with status ${response.statusCode}');
-      // print('Error response: ${data['message'] ?? 'Ошибка сервера'}');
-      return data; // Return the response so caller can handle it
+      // Остальные статусы (не обработанные выше)
+      print('❌ Error with status ${response.statusCode}');
+      print('   Message: ${data['message'] ?? 'Ошибка сервера'}');
+      throw Exception('${data['message'] ?? 'Ошибка сервера'} (статус ${response.statusCode})');
     }
   }
 

@@ -10,6 +10,8 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
+import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
 // ============================================================
@@ -948,8 +950,24 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
 
   void _toggleFavorite() {
     setState(() {
-      _isFavorited = HiveService.toggleFavorite(widget.listing.id);
+      _isFavorited = FavoritesService.toggleFavorite(widget.listing.id);
     });
+    
+    // Синхронизируем с сервером через WishlistBloc
+    final listingId = int.tryParse(widget.listing.id);
+    if (listingId != null && mounted) {
+      if (_isFavorited) {
+        print('💗 _SimilarOfferCard: Отправляем AddToWishlistEvent для advert_id=$listingId');
+        context.read<WishlistBloc>().add(
+          AddToWishlistEvent(listingId: listingId),
+        );
+      } else {
+        print('💔 _SimilarOfferCard: Отправляем RemoveFromWishlistEvent для advert_id=$listingId');
+        context.read<WishlistBloc>().add(
+          RemoveFromWishlistEvent(listingId: listingId),
+        );
+      }
+    }
   }
 
   @override

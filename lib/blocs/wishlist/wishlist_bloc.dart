@@ -29,6 +29,12 @@ part 'wishlist_state.dart';
 class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// Кеш ID избранных объявлений для отслеживания изменений
   Set<int> _cachedWishlistIds = {};
+  
+  /// Маппинг ID товаров (advertId) к ID wishlist entries
+  /// Используется для DELETE операции - нужно отправить ID wishlist entry, а не ID товара
+  /// Структура: {advertId -> wishlistEntryId}
+  /// Пример: {147 -> 201} означает что товар 147 имеет wishlist entry ID 201
+  Map<int, int> _wishlistIdMapping = {};
 
   /// Конструктор WishlistBloc.
   WishlistBloc() : super(const WishlistInitial()) {
@@ -140,13 +146,28 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       }
       
       try {
-        print('📡 WishlistBloc: Отправляем POST запрос на /me/wishlist/add');
-        print('📡 WishlistBloc: Параметры: advert_id=${event.listingId}, token_length=${token.length}');
+        print('═══════════════════════════════════════════════════════');
+        print('📤 WishlistBloc: Отправляем POST запрос на /me/wishlist/add');
+        print('   Параметры: advert_id=${event.listingId}, token_length=${token.length}');
+        print('═══════════════════════════════════════════════════════');
         
-        await WishlistService.addToWishlist(
+        final response = await WishlistService.addToWishlist(
           advertId: event.listingId,
           token: token,
         );
+        
+        // ⚠️ Проверяем success в ответе add
+        print('🔍 WishlistBloc: Проверяем ответ сервера для add:');
+        print('   success: ${response['success']}');
+        print('   message: ${response['message']}');
+        
+        if (response['success'] != true) {
+          // Любое значение, не true = ошибка
+          print('❌ WishlistBloc: Сервер вернул ошибку при add!');
+          print('   ${response['message'] ?? 'Неизвестная ошибка'}');
+          throw Exception('${response['message'] ?? 'Ошибка при добавлении в избранное'}');
+        }
+        
         print('✅ WishlistBloc: Сервер подтвердил добавление объявления');
         
         // 📡 Обновляем состояние с новыми IDs для синхронизации UI
@@ -178,7 +199,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// 
   /// 📤 Шаги:
   /// 1. Обновляет локальное хранилище (Hive) оптимистично
-  /// 2. Отправляет асинхронный запрос на сервер
+  /// 2. Отправляет асинхронный DELETE запрос на сервер
   /// 3. При ошибке откатывает локальное изменение
   Future<void> _onRemoveFromWishlist(
     RemoveFromWishlistEvent event,
@@ -186,6 +207,15 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   ) async {
     try {
       print('🎯 WishlistBloc._onRemoveFromWishlist: START удаляем advertId=${event.listingId}');
+      
+      // 🛡️ Получаем токен перед началом операции
+      final token = _getToken();
+      
+      if (token == null || token.isEmpty) {
+        print('❌ WishlistBloc: Токен НЕ ПЕРЕДАН! Не могу отправить запрос на сервер');
+        _emitError(emit, Exception('Токен авторизации не найден. Требуется авторизация.'));
+        return;
+      }
       
       // 1. Оптимистичное обновление локального хранилища
       final wasFavorite = FavoritesService.isFavorite(event.listingId.toString());
@@ -198,27 +228,46 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         emit(WishlistItemRemoved(listingId: event.listingId));
 
         // 2. Отправляем на сервер в фоне (асинхронно)
-        final token = _getToken();
-        
-        if (token == null || token.isEmpty) {
-          print('❌ WishlistBloc: Токен НЕ ПЕРЕДАН! Не могу отправить запрос на сервер');
-          print('❌ WishlistBloc: Откатываем локальное изменение т.к. нет токена');
-          FavoritesService.toggleFavorite(event.listingId.toString());
-          _cachedWishlistIds.add(event.listingId);
-          
-          _emitError(emit, Exception('Токен авторизации не найден. Требуется авторизация.'));
-          return;
-        }
-        
         try {
-          print('📡 WishlistBloc: Отправляем DELETE запрос на /me/wishlist/destroy/{advertId}');
-          print('📡 WishlistBloc: Параметры: advert_id=${event.listingId}, token_length=${token.length}');
+          // 🔗 Получаем ID wishlist entry из маппинга
+          final wishlistEntryId = _wishlistIdMapping[event.listingId];
+          final deleteId = wishlistEntryId ?? event.listingId;
           
-          await WishlistService.removeFromWishlist(
-            advertId: event.listingId,
+          if (wishlistEntryId == null) {
+            print('⚠️ WishlistBloc: Маппинг не найден для advertId=${event.listingId}');
+            print('   Доступные маппинги: $_wishlistIdMapping');
+            print('   Используем fallback: отправляем advertId=${event.listingId}');
+          } else {
+            print('🔗 WishlistBloc: Найден маппинг: advertId=${event.listingId} -> wishlistEntryId=$wishlistEntryId');
+          }
+          
+          print('═══════════════════════════════════════════════════════');
+          print('📡 WishlistBloc: Отправляем DELETE запрос на /me/wishlist/destroy/$deleteId');
+          print('   Параметры: delete_id=$deleteId, token_length=${token.length}');
+          print('═══════════════════════════════════════════════════════');
+          
+          final response = await WishlistService.removeFromWishlist(
+            advertId: deleteId,
             token: token,
           );
+          
+          // ⚠️ КРИТИЧНО: Проверяем success в ответе
+          // API может вернуть 200 но success: false (товара нет на сервере, уже удален, нет доступа и т.д.)
+          print('🔍 WishlistBloc: Проверяем ответ сервера:');
+          print('   success: ${response['success']}');
+          print('   message: ${response['message']}');
+          
+          if (response['success'] != true) {
+            // Любое значение, не true (false, null, что угодно) = ошибка
+            print('❌ WishlistBloc: Сервер вернул ошибку при delete!');
+            print('   ${response['message'] ?? 'Неизвестная ошибка'}');
+            throw Exception('${response['message'] ?? 'Ошибка при удалении из избранного'}');
+          }
+          
           print('✅ WishlistBloc: Сервер подтвердил удаление объявления');
+          
+          // Удаляем из маппинга
+          _wishlistIdMapping.remove(event.listingId);
           
           // 📡 Обновляем состояние с новыми IDs для синхронизации UI
           print('📢 WishlistBloc: Эмитим WishlistLoaded с обновленными IDs: $_cachedWishlistIds');
@@ -227,16 +276,63 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
             syncedAt: DateTime.now(),
           ));
         } catch (e) {
-          // Если сервер вернул ошибку, откатываем локальное изменение
+          // ⚠️ ВАЖНО: Если ошибка (любая), товар всё равно ОСТАЕТСЯ удаленным из Hive
+          // Причины:
+          // 1. Если 404 - товара нет на сервере, нечего откатывать
+          // 2. Если сеть - лучше пересинхронизировать при следующей загрузке
+          // 3. Если 500 - и сервер и клиент согласны что удаления не было, загрузим при синхронизации
+          
           print('⚠️ WishlistBloc: Ошибка при удалении на сервере: $e');
-          print('⏮️ WishlistBloc: Откатываем локальное изменение');
-          FavoritesService.toggleFavorite(event.listingId.toString());
-          _cachedWishlistIds.add(event.listingId);
-
+          print('🔄 WishlistBloc: Товар ОСТАЕТСЯ удаленным из локального хранилища (фиксированное состояние)');
+          print('💡 WishlistBloc: При следующей синхронизации состояние будет согласовано с серверм');
+          
+          // НЕ откатываем Hive - товар остается удаленным!
+          // Синхронизация при LoadWishlistEvent уточнит реальное состояние на сервере
+          
           _emitError(emit, e as Exception);
         }
       } else {
-        print('⚠️ WishlistBloc: Объявление ${event.listingId} уже удалено из избранного, пропускаем');
+        // Object не в избранном локально, но все равно пытаемся удалить с сервера
+        // (может быть рассинхронизация между локальным и серверным состоянием)
+        print('⚠️ WishlistBloc: Объявление ${event.listingId} не в локальном избранном, пытаемся удалить с сервера...');
+        
+        try {
+          // 🔗 Получаем ID wishlist entry из маппинга для fallback пути
+          final wishlistEntryId = _wishlistIdMapping[event.listingId];
+          final deleteId = wishlistEntryId ?? event.listingId;
+          
+          if (wishlistEntryId == null) {
+            print('⚠️ WishlistBloc (fallback): Маппинг не найден для advertId=${event.listingId}');
+            print('   Используем fallback ID из события');
+          } else {
+            print('🔗 WishlistBloc (fallback): Найден маппинг: advertId=${event.listingId} -> wishlistEntryId=$wishlistEntryId');
+          }
+          
+          print('📡 WishlistBloc: Отправляем DELETE запрос (fallback) на /me/wishlist/destroy/$deleteId');
+          
+          final response = await WishlistService.removeFromWishlist(
+            advertId: deleteId,
+            token: token,
+          );
+          
+          // ⚠️ Проверяем success даже в fallback ветке
+          print('🔍 WishlistBloc: Проверяем ответ fallback delete: success=${response['success']}');
+          if (response['success'] != true) {
+            print('❌ WishlistBloc: Fallback delete вернул ошибку: ${response['message']}');
+            throw Exception('${response['message'] ?? 'Ошибка при удалении'}');
+          }
+          
+          print('✅ WishlistBloc: Fallback delete подтвержден сервером');
+          
+          // Обновляем состояние
+          emit(WishlistLoaded(
+            wishlistIds: _cachedWishlistIds,
+            syncedAt: DateTime.now(),
+          ));
+        } catch (e) {
+          print('⚠️ WishlistBloc: Ошибка при fallback delete: $e');
+          _emitError(emit, e as Exception);
+        }
       }
     } catch (e) {
       print('❌ WishlistBloc._onRemoveFromWishlist: Непредвиденная ошибка: $e');
@@ -286,6 +382,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// Извлекает все ID объявлений из поля 'wishable.id'.
   Set<int> _parseWishlistIds(Map<String, dynamic> response) {
     final ids = <int>{};
+    _wishlistIdMapping.clear(); // Очищаем старое маппинг перед заполнением
     
     print('🔍 _parseWishlistIds: Входная response: $response');
 
@@ -297,17 +394,30 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         if (item is Map<String, dynamic>) {
           // Получаем wishable объект (сам объявление)
           final wishable = item['wishable'];
+          final wishlistEntryId = item['id']; // ID wishlist entry (201)
           print('  → Элемент: $item, wishable=$wishable');
           
           if (wishable is Map<String, dynamic>) {
-            final id = wishable['id'];
+            final id = wishable['id']; // ID товара (147)
             print('    ID из wishable.id: $id (тип: ${id.runtimeType})');
+            print('    ID wishlist entry: $wishlistEntryId (тип: ${wishlistEntryId.runtimeType})');
             
             if (id is int) {
               ids.add(id);
+              // 🔗 Сохраняем маппинг: товар 147 -> wishlist entry 201
+              if (wishlistEntryId is int) {
+                _wishlistIdMapping[id] = wishlistEntryId;
+                print('    ✅ Маппинг добавлен: $id -> $wishlistEntryId');
+              }
             } else if (id is String) {
               final parsed = int.tryParse(id);
-              if (parsed != null) ids.add(parsed);
+              if (parsed != null) {
+                ids.add(parsed);
+                if (wishlistEntryId is int) {
+                  _wishlistIdMapping[parsed] = wishlistEntryId;
+                  print('    ✅ Маппинг добавлен: $parsed -> $wishlistEntryId');
+                }
+              }
             }
           }
         }
@@ -317,6 +427,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
     }
 
     print('✨ _parseWishlistIds: Итоговый набор IDs (ID объявлений): $ids');
+    print('🔗 _parseWishlistIds: Маппинг (advertId -> wishlistEntryId): $_wishlistIdMapping');
     return ids;
   }
 
@@ -324,21 +435,26 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   ///
   /// Обновляет список избранных ID в Hive так чтобы он соответствовал
   /// серверному состоянию.
+  /// 
+  /// Решает проблему рассинхронизации:
+  /// - Если товар на сервере но не локально → добавляет в Hive
+  /// - Если товар локально но не на сервере → удаляет из Hive
   Future<void> _syncLocalWishlist(Set<int> serverIds) async {
     print('🔄 _syncLocalWishlist: Начало синхронизации');
+    print('╔════════════════════════════════════════════════════════');
     
     final localIds = FavoritesService.getFavorites();
     print('📱 _syncLocalWishlist: Локальные IDs из Hive: $localIds');
     
     final localIdSet = localIds.map((id) => int.tryParse(id)).whereType<int>().toSet();
     print('📱 _syncLocalWishlist: Локальные IDs (int): $localIdSet');
-    print('📱 _syncLocalWishlist: Серверные IDs: $serverIds');
+    print('🌐 _syncLocalWishlist: Серверные IDs: $serverIds');
 
     // Добавляем IDs которые есть на сервере но нет локально
     int addedCount = 0;
     for (final id in serverIds) {
       if (!localIdSet.contains(id)) {
-        print('➕ _syncLocalWishlist: Добавляем ID $id (нет локально)');
+        print('➕ _syncLocalWishlist: Добавляем ID $id (есть на сервере, нет локально)');
         FavoritesService.toggleFavorite(id.toString());
         addedCount++;
       }
@@ -348,15 +464,19 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
     int removedCount = 0;
     for (final id in localIdSet) {
       if (!serverIds.contains(id)) {
-        print('➖ _syncLocalWishlist: Удаляем ID $id (нет на сервере)');
+        print('➖ _syncLocalWishlist: Удаляем ID $id (есть локально, нет на сервере)');
+        print('   ⚠️ Причина: товар был удален на сервере (другой клиент/веб) или не был добавлен');
         FavoritesService.toggleFavorite(id.toString());
         removedCount++;
       }
     }
     
     final updatedLocal = FavoritesService.getFavorites();
-    print('✅ _syncLocalWishlist: Синхронизация завершена (добавлено: $addedCount, удалено: $removedCount)');
-    print('✅ _syncLocalWishlist: Финальное состояние Hive: $updatedLocal');
+    print('✅ _syncLocalWishlist: Синхронизация завершена');
+    print('   Добавлено: $addedCount товаров');
+    print('   Удалено: $removedCount товаров');
+    print('   Финальное состояние Hive: $updatedLocal');
+    print('╚════════════════════════════════════════════════════════');
   }
 
   /// Эмитит состояние ошибки и логирует её.

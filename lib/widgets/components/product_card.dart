@@ -6,6 +6,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/features/cart/domain/entities/cart_screen.dart';
 import 'package:lidle/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
+import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 
 class ProductCard extends StatefulWidget {
   final Listing listing;
@@ -29,10 +30,36 @@ class _ProductCardState extends State<ProductCard> {
   }
 
   void _toggleFavorite() {
+    // Проверяем текущее состояние в Hive перед изменением
+    final currentFavorite = HiveService.isFavorite(widget.listing.id);
+    
     setState(() {
-      _isFavorite = !_isFavorite;
+      _isFavorite = !currentFavorite;
     });
-    HiveService.toggleFavorite(widget.listing.id);
+    
+    // Обновляем локальное хранилище (Hive)
+    if (_isFavorite != currentFavorite) {
+      HiveService.toggleFavorite(widget.listing.id);
+      
+      // 🔄 Отправляем запрос на сервер через WishlistBloc
+      // Преобразуем ID объявления из String в int
+      final advertId = int.tryParse(widget.listing.id);
+      if (advertId != null) {
+        if (_isFavorite) {
+          // Добавляем в wishlist на сервере
+          print('💗 ProductCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
+          context.read<WishlistBloc>().add(
+            AddToWishlistEvent(listingId: advertId),
+          );
+        } else {
+          // Удаляем из wishlist на сервере
+          print('💔 ProductCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
+          context.read<WishlistBloc>().add(
+            RemoveFromWishlistEvent(listingId: advertId),
+          );
+        }
+      }
+    }
   }
 
   @override
