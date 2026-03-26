@@ -179,8 +179,36 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                     color: formBackground,
                     borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Column(
-                    children: [
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      // Создание Listing объекта из данных предложения
+                      final listing = Listing(
+                        id:
+                            widget.offer.advertisementId ??
+                            widget.offer.id,
+                        imagePath: widget.offer.imageUrl,
+                        title: widget.offer.title,
+                        price: widget.offer.originalPrice,
+                        location:
+                            '', // Не требуется для инициального включения
+                        date:
+                            '', // Не требуется для инициального включения
+                      );
+
+                      // Навигация на экран деталей объявления
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              MiniPropertyDetailsScreen(
+                                listing: listing,
+                              ),
+                        ),
+                      );
+                    },
+                    child: Column(
+                      children: [
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: Row(
@@ -270,33 +298,8 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 15),
                         child: Center(
-                          child: GestureDetector(
-                            onTap: () {
-                              // Создание Listing объекта из данных предложения
-                              final listing = Listing(
-                                id:
-                                    widget.offer.advertisementId ??
-                                    widget.offer.id,
-                                imagePath: widget.offer.imageUrl,
-                                title: widget.offer.title,
-                                price: widget.offer.originalPrice,
-                                location:
-                                    '', // Не требуется для инициального включения
-                                date:
-                                    '', // Не требуется для инициального включения
-                              );
-
-                              // Навигация на экран деталей объявления
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      MiniPropertyDetailsScreen(
-                                        listing: listing,
-                                      ),
-                                ),
-                              );
-                            },
+                          child: Container(
+                            alignment: Alignment.center,
                             child: Text(
                               'Перейти',
                               style: TextStyle(
@@ -308,7 +311,8 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                           ),
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),

@@ -141,7 +141,7 @@ class IncomingPriceOfferPage extends StatelessWidget {
                     child: _OfferCard(),
                   ),
 
-                  const SizedBox(height: 21),
+                  const SizedBox(height: 5),
 
                   // const Spacer(),
 
@@ -227,8 +227,27 @@ class _ObjectCard extends StatelessWidget {
         color: formBackground,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Column(
-        children: [
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // Создаём Listing из данных объявления и переходим на экран деталей
+          final listing = Listing(
+            id: offerItem.listingId ?? '',
+            imagePath: offerItem.listingImage ?? '',
+            title: offerItem.listingTitle ?? 'Объявление',
+            price: offerItem.listingPrice ?? '0',
+            location: '',
+            date: '',
+          );
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MiniPropertyDetailsScreen(listing: listing),
+            ),
+          );
+        },
+        child: Column(
+          children: [
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -284,37 +303,21 @@ class _ObjectCard extends StatelessWidget {
             ),
           ),
           const Divider(color: Colors.white24, height: 1),
-          GestureDetector(
-            onTap: () {
-              // Создаём Listing из данных объявления и переходим на экран деталей
-              final listing = Listing(
-                id: offerItem.listingId ?? '',
-                imagePath: offerItem.listingImage ?? '',
-                title: offerItem.listingTitle ?? 'Объявление',
-                price: offerItem.listingPrice ?? '0',
-                location: '',
-                date: '',
-              );
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => MiniPropertyDetailsScreen(listing: listing),
-                ),
-              );
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              child: Text(
-                'Перейти',
-                style: TextStyle(
-                  color: IncomingPriceOfferPage.accentColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            alignment: Alignment.center,
+            child: Text(
+              'Перейти',
+              style: TextStyle(
+                color: IncomingPriceOfferPage.accentColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -513,7 +516,7 @@ class _OfferCardState extends State<_OfferCard> {
           ),
           const Divider(color: Colors.white24, height: 1),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -530,7 +533,7 @@ class _OfferCardState extends State<_OfferCard> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 const Text(
                   'Сообщение',
                   style: TextStyle(color: Colors.white54, fontSize: 12),

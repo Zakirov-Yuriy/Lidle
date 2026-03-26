@@ -5,7 +5,7 @@ import 'package:lidle/pages/profile_dashboard/offers/price_accepted_page.dart';
 import 'package:lidle/pages/profile_dashboard/offers/price_offers_list_page.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 
-class OfferCard extends StatelessWidget {
+class OfferCard extends StatefulWidget {
   final Offer offer;
 
   /// Каллбэк: вызывается когда все предложения по этому объявлению обработаны,
@@ -29,16 +29,23 @@ class OfferCard extends StatelessWidget {
   });
 
   @override
+  State<OfferCard> createState() => _OfferCardState();
+}
+
+class _OfferCardState extends State<OfferCard> {
+  bool _isTitleExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final bool isOfferToMe = offer.offeredPricesCount != null;
+    final bool isOfferToMe = widget.offer.offeredPricesCount != null;
 
     return GestureDetector(
       onTap: () {
-        if (isSelectionMode) {
-          onChanged?.call();
+        if (widget.isSelectionMode) {
+          widget.onChanged?.call();
         }
       },
-      onLongPress: onLongPress,
+      onLongPress: widget.onLongPress,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
         padding: const EdgeInsets.only(
@@ -58,17 +65,17 @@ class OfferCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // ───── Checkbox в режиме выделения ─────
-                if (isSelectionMode)
+                if (widget.isSelectionMode)
                   CustomCheckbox(
-                    value: isChecked,
-                    onChanged: (value) => onChanged?.call(),
+                    value: widget.isChecked,
+                    onChanged: (value) => widget.onChanged?.call(),
                   ),
-                if (isSelectionMode) const SizedBox(width: 8),
+                if (widget.isSelectionMode) const SizedBox(width: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(5),
                   // Показываем изображение только если URL не пустой.
                   // При отсутствии thumbnail — серый прямоугольник без заглушки.
-                  child: offer.imageUrl.isEmpty
+                  child: widget.offer.imageUrl.isEmpty
                       ? Container(
                           width: 105,
                           height: 74,
@@ -82,9 +89,9 @@ class OfferCard extends StatelessWidget {
                             size: 30,
                           ),
                         )
-                      : offer.imageUrl.startsWith('http')
+                      : widget.offer.imageUrl.startsWith('http')
                       ? Image.network(
-                          offer.imageUrl,
+                          widget.offer.imageUrl,
                           width: 105,
                           height: 74,
                           fit: BoxFit.cover,
@@ -101,7 +108,7 @@ class OfferCard extends StatelessWidget {
                           },
                         )
                       : Image.asset(
-                          offer.imageUrl,
+                          widget.offer.imageUrl,
                           width: 105,
                           height: 74,
                           fit: BoxFit.cover,
@@ -116,7 +123,7 @@ class OfferCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '№ ${offer.advertisementId ?? offer.id}',
+                            '№ ${widget.offer.advertisementId ?? widget.offer.id}',
                             style: const TextStyle(
                               color: textSecondary,
                               fontSize: 12,
@@ -128,8 +135,8 @@ class OfferCard extends StatelessWidget {
                                 // Считаем просмотренным если: явно прочитано (read_at != null)
                                 // ИЛИ статус уже обработан (принято/отклонено)
                                 final isViewed =
-                                    offer.viewed ||
-                                    offer.status != OfferStatus.pending;
+                                    widget.offer.viewed ||
+                                    widget.offer.status != OfferStatus.pending;
                                 return Text(
                                   isViewed ? 'Просмотрено' : 'Не просмотрено',
                                   style: TextStyle(
@@ -142,17 +149,27 @@ class OfferCard extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        offer.title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          setState(() {
+                            _isTitleExpanded = !_isTitleExpanded;
+                          });
+                        },
+                        child: Text(
+                          widget.offer.title,
+                          maxLines: _isTitleExpanded ? null : 1,
+                          overflow: _isTitleExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        offer.originalPrice,
+                        '${widget.offer.originalPrice} ₽',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -180,7 +197,7 @@ class OfferCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Предложенных цен: ${offer.offeredPricesCount}',
+                      'Предложенных цен: ${widget.offer.offeredPricesCount}',
                       style: const TextStyle(
                         color: Color(0xFFE8FF00),
                         fontSize: 15,
@@ -195,21 +212,21 @@ class OfferCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Ваша цена: ${offer.yourPrice}',
+                    'Ваша цена: ${widget.offer.yourPrice}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  _buildStatusWidget(offer.status),
+                  _buildStatusWidget(widget.offer.status),
                 ],
               ),
 
             const SizedBox(height: 12),
             const Divider(color: Color(0xFF474747), height: 9),
             // ───── View button ─────
-            if (!isSelectionMode)
+            if (!widget.isSelectionMode)
               GestureDetector(
                 onTap: () async {
                   if (isOfferToMe) {
@@ -218,21 +235,21 @@ class OfferCard extends StatelessWidget {
                     final result = await Navigator.pushNamed(
                       context,
                       PriceOffersListPage.routeName,
-                      arguments: offer,
+                      arguments: widget.offer,
                     );
                     if (result == true) {
-                      onRefreshNeeded?.call();
+                      widget.onRefreshNeeded?.call();
                     }
                   } else {
                     final result = await Navigator.pushNamed(
                       context,
                       PriceAcceptedPage.routeName,
-                      arguments: offer,
+                      arguments: widget.offer,
                     );
                     // Если предложение было удалено/обновлено — обновляем список
                     // через callback, не закрывая price_offers_empty_page
                     if (result == true) {
-                      onRefreshNeeded?.call();
+                      widget.onRefreshNeeded?.call();
                     }
                   }
                 },
@@ -241,7 +258,7 @@ class OfferCard extends StatelessWidget {
                   style: TextStyle(color: activeIconColor, fontSize: 15),
                 ),
               ),
-            if (isSelectionMode) const SizedBox.shrink(),
+            if (widget.isSelectionMode) const SizedBox.shrink(),
           ],
         ),
       ),
