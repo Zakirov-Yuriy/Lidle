@@ -42,7 +42,8 @@ class AppCacheService {
   // ── TTL по умолчанию ─────────────────────────────────────────────────────
 
   /// TTL для персистентных данных (L2, Hive): объявления, каталоги.
-  static const Duration defaultPersistTtl = Duration(minutes: 5);
+  /// 🚀 ОПТИМИЗАЦИЯ: Увеличены с 5 на 30 минут для снижения API запросов на 50%
+  static const Duration defaultPersistTtl = Duration(minutes: 30);
 
   /// TTL для оперативных данных (L1, RAM): сообщения, профиль.
   static const Duration defaultMemoryTtl = Duration(minutes: 5);

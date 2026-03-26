@@ -310,9 +310,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Обработчик события проверки статуса авторизации при запуске приложения.
   ///
   /// При запуске приложения проверяет наличие токена в локальном хранилище.
-  /// НОВОЕ: Сразу же пытается обновить токен (профилактический refresh).
-  /// Если токен обновился успешно — эмит [AuthAuthenticated].
-  /// Если refresh не сработал — эмит [AuthTokenExpired] для отправки на авторизацию.
+  /// 🚀 ОПТИМИЗАЦИЯ: Проверяет TTL токена перед профилактическим refresh.
+  /// Если токен еще действителен более чем на 5 минут, refresh пропускается.
+  /// Если токен истекает в ближайшие 5 минут - выполняется условный refresh.
+  /// Если токен полностью истек - отправляем на авторизацию.
   ///
   /// Это критично для пользователей, закрывших приложение на ночь:
   /// токен мог истечь за ночь, и мы должны это узнать ДО того как начнут
@@ -325,45 +326,78 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final token = TokenService.currentToken;
       if (token != null && token.isNotEmpty) {
-        // Сразу же пытаемся обновить токен — это профилактический refresh
-        // перед тем как начинать загружать основные данные приложения.
-        print(
-          '🔍 AuthBloc: проверка статуса авторизации, пытаемся обновить токен...',
-        );
-
-        // ИСПРАВЛЕНИЕ: Передаем refresh_token вместо access_token для обновления.
-        // ApiService.refreshToken() использует refresh_token из Hive, но мы проверяем его первым.
-        final refreshToken = await UserService.getLocal('refresh_token') as String?;
-        if (refreshToken == null || refreshToken.isEmpty) {
-          print(
-            '⚠️  AuthBloc: refresh_token не найден, отправляем на авторизацию (первый запуск?)',
-          );
-          await AuthService.logout();
-          await UserService.deleteLocal('token');
-          await UserService.deleteLocal('refresh_token');
-          await UserService.clearLocalProfileData();
-          emit(AuthInitial());
-          return;
+        // 🚀 ОПТИМИЗАЦИЯ: Проверяем TTL перед обновлением
+        // Если токен еще валиден более чем на 5 минут - не обновляем
+        final tokenExpiresAtStr = await UserService.getLocal('token_expires_at') as String?;
+        final refreshThresholdMs = 5 * 60 * 1000; // 5 минут в миллисекундах
+        
+        bool shouldRefresh = true; // По умолчанию обновляем
+        
+        if (tokenExpiresAtStr != null) {
+          try {
+            final tokenExpiresAtMs = int.parse(tokenExpiresAtStr);
+            final nowMs = DateTime.now().millisecondsSinceEpoch;
+            final timeUntilExpiryMs = tokenExpiresAtMs - nowMs;
+            
+            if (timeUntilExpiryMs > refreshThresholdMs) {
+              // Токен еще действителен более чем на 5 минут - не обновляем
+              shouldRefresh = false;
+              final minutesRemaining = timeUntilExpiryMs ~/ (60 * 1000);
+              print('✅ AuthBloc: токен еще действителен, обновление пропущено ($minutesRemaining мин осталось)');
+            } else if (timeUntilExpiryMs > 0) {
+              // Токен истекает в ближайшие 5 минут - обновляем профилактически
+              print('⚠️  AuthBloc: токен истекает скоро, выполняем профилактический refresh');
+              shouldRefresh = true;
+            } else {
+              // Токен полностью истек - обновляем обязательно
+              print('❌ AuthBloc: токен полностью истек');
+              shouldRefresh = true;
+            }
+          } catch (_) {
+            // Ошибка парсинга - по умолчанию обновляем
+            shouldRefresh = true;
+          }
         }
 
-        final newToken = await ApiService.refreshToken(token);
-        if (newToken != null && newToken.isNotEmpty) {
-          // Успешно обновили токен — эмитируем AuthAuthenticated
-          // Это запустит TokenService.init() в BlocListener, который будет
-          // периодически обновлять токен согласно его таймеру.
-          print('✅ AuthBloc: токен успешно обновлен при запуске приложения');
-          emit(AuthAuthenticated(token: newToken));
+        // Если обновление требуется
+        if (shouldRefresh) {
+          // ИСПРАВЛЕНИЕ: Передаем refresh_token вместо access_token для обновления.
+          // ApiService.refreshToken() использует refresh_token из Hive, но мы проверяем его первым.
+          final refreshToken = await UserService.getLocal('refresh_token') as String?;
+          if (refreshToken == null || refreshToken.isEmpty) {
+            print(
+              '⚠️  AuthBloc: refresh_token не найден, отправляем на авторизацию (первый запуск?)',
+            );
+            await AuthService.logout();
+            await UserService.deleteLocal('token');
+            await UserService.deleteLocal('refresh_token');
+            await UserService.clearLocalProfileData();
+            emit(AuthInitial());
+            return;
+          }
+
+          final newToken = await ApiService.refreshToken(token);
+          if (newToken != null && newToken.isNotEmpty) {
+            // Успешно обновили токен — эмитируем AuthAuthenticated
+            // Это запустит TokenService.init() в BlocListener, который будет
+            // периодически обновлять токен согласно его таймеру.
+            print('✅ AuthBloc: токен успешно обновлен при запуске приложения');
+            emit(AuthAuthenticated(token: newToken));
+          } else {
+            // Refresh не сработал (401/403 на сервере) — refresh_token истёк
+            // или невалиден. Отправляем пользователя на авторизацию.
+            print(
+              '❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию',
+            );
+            await AuthService.logout();
+            await UserService.deleteLocal('token');
+            await UserService.deleteLocal('refresh_token');
+            await UserService.clearLocalProfileData();
+            emit(AuthTokenExpired());
+          }
         } else {
-          // Refresh не сработал (401/403 на сервере) — refresh_token истёк
-          // или невалиден. Отправляем пользователя на авторизацию.
-          print(
-            '❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию',
-          );
-          await AuthService.logout();
-          await UserService.deleteLocal('token');
-          await UserService.deleteLocal('refresh_token');
-          await UserService.clearLocalProfileData();
-          emit(AuthTokenExpired());
+          // Токен еще валиден - продолжаем работу
+          emit(AuthAuthenticated(token: token));
         }
       } else {
         // Нет сохраненного токена — первый запуск или logout
