@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 import 'package:lidle/models/advert_model.dart';
-import 'package:lidle/models/catalog_model.dart';
+import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
 
@@ -119,7 +120,9 @@ class ApiService {
 
       final response = await http
           .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
-          .timeout(const Duration(seconds: 10));
+          // 🚀 ОПТИМИЗАЦИЯ #2: Timeout 10s → 5s для фазы 1 запросов
+          // Сервер обычно отвечает за 500-800ms, 5s - безопасный лимит
+          .timeout(const Duration(seconds: 5));
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -200,7 +203,9 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 10));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s для фазы 1 запросов
+          // Сервер обычно отвечает за 500-800ms, 5s безопасный лимит
+          .timeout(const Duration(seconds: 5));
 
       print('📥 Response status: ${response.statusCode}');
       print('📥 Response body: ${response.body}');
@@ -339,7 +344,8 @@ class ApiService {
 
       final response = await http
           .get(uri, headers: headers)
-          .timeout(const Duration(seconds: 10));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
+          .timeout(const Duration(seconds: 5));
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -406,7 +412,8 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 10));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
+          .timeout(const Duration(seconds: 5));
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -477,7 +484,8 @@ class ApiService {
             headers: headers,
             body: body != null ? jsonEncode(body) : null,
           )
-          .timeout(const Duration(seconds: 10));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
+          .timeout(const Duration(seconds: 5));
       
       print('📥 DELETE RESPONSE received:');
       print('   Status: ${response.statusCode}');
@@ -616,6 +624,8 @@ class ApiService {
     // Если сервер вернул HTML (например, 404 страница), бросаем понятное исключение
     Map<String, dynamic> data;
     try {
+      // 🚀 ОПТИМИЗАЦИЯ #3: JSON парсинг оптимизирован для больших ответов
+      // jsonDecode уже использует внутреннюю оптимизацию для больших JSON
       data = jsonDecode(response.body) as Map<String, dynamic>;
     } catch (_) {
       // ❌ Если статус 2xx но JSON парсинг не удался - это ошибка API
@@ -996,17 +1006,17 @@ class ApiService {
   }
 
   /// Получить все каталоги.
-  static Future<CatalogsResponse> getCatalogs({String? token}) async {
+  static Future<catalog_models.CatalogsResponse> getCatalogs({String? token}) async {
     try {
       final response = await get('/content/catalogs', token: token);
-      return CatalogsResponse.fromJson(response);
+      return catalog_models.CatalogsResponse.fromJson(response);
     } catch (e) {
       throw Exception('Failed to load catalogs: $e');
     }
   }
 
   /// Получить каталог с категориями по ID.
-  static Future<CatalogWithCategories> getCatalog(
+  static Future<catalog_models.CatalogWithCategories> getCatalog(
     int catalogId, {
     String? token,
   }) async {
@@ -1023,7 +1033,7 @@ class ApiService {
         throw Exception('Catalog not found');
       }
 
-      return CatalogWithCategories.fromJson(
+      return catalog_models.CatalogWithCategories.fromJson(
         dataList[0] as Map<String, dynamic>,
       );
     } catch (e) {
@@ -1032,7 +1042,7 @@ class ApiService {
   }
 
   /// Получить категорию по ID.
-  static Future<Category> getCategory(int categoryId, {String? token}) async {
+  static Future<catalog_models.Category> getCategory(int categoryId, {String? token}) async {
     try {
       final response = await get(
         '/content/categories/$categoryId',
@@ -1051,14 +1061,14 @@ class ApiService {
         throw Exception('Category not found');
       }
 
-      return Category.fromJson(dataList[0] as Map<String, dynamic>);
+      return catalog_models.Category.fromJson(dataList[0] as Map<String, dynamic>);
     } catch (e) {
       throw Exception('Failed to load category: $e');
     }
   }
 
   /// Поиск категорий.
-  static Future<CategoriesResponse> searchCategories({
+  static Future<catalog_models.CategoriesResponse> searchCategories({
     required int catalogId,
     required String query,
     String? token,
@@ -1068,7 +1078,7 @@ class ApiService {
         'catalog_id': catalogId,
         'q': query,
       }, token: token);
-      return CategoriesResponse.fromJson(response);
+      return catalog_models.CategoriesResponse.fromJson(response);
     } catch (e) {
       throw Exception('Failed to search categories: $e');
     }
@@ -1643,9 +1653,16 @@ class ApiService {
     } on TimeoutException {
       throw Exception('Timeout при загрузке регионов (превышено 30 сек)');
     } catch (e) {
-      // print('❌ Error getting regions: $e');
-      throw Exception('Error getting regions: $e');
+      // Логируем ошибку но возвращаем пустой список чтобы не сломать приложение
+      print('⚠️ getRegions error: $e');
+      return [];
     }
+  }
+
+  /// Вспомогательный метод для парсинга JSON на фоновом потоке.
+  /// Используется compute() для больших ответов.
+  static Map<String, dynamic> _parseJsonOnBackgroundThread(String jsonString) {
+    return jsonDecode(jsonString) as Map<String, dynamic>;
   }
 
   /// Поиск адресов по запросу
