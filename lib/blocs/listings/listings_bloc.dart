@@ -229,10 +229,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final catalogsResponse = await ApiService.getCatalogs(token: token);
       final allCatalogIds = catalogsResponse.data.map((c) => c.id).toList();
 
-      // 🚀 ОПТИМИЗАЦИЯ #2: Загружаем ВСЕ каталоги при первой загрузке
-      // Это гарантирует, что все объявления (включая #142) отображаются на главной
-      final firstCatalogIds = allCatalogIds;
-
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
           .toList();
@@ -245,25 +241,28 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
 
-      // 🔥 Загружаем объявления ИЗ ВСЕХ каталогов параллельно
-      List<home.Listing> allListings = [];
+      // 🚀 НОВАЯ ОПТИМИЗАЦИЯ: Фазовая загрузка объявлений
+      // Фаза 1: Загружаем ТОЛЬКО первые 2-3 каталога для быстрого показа
+      // Это обычно содержит 12+ самых свежих объявлений
+      const int initialCatalogsToLoad = 3; // Загружаем 3 первых каталога
+      final firstBatchCatalogIds = allCatalogIds.take(initialCatalogsToLoad).toList();
+      final remainingCatalogIds = allCatalogIds.skip(initialCatalogsToLoad).toList();
+
+      // 🔥 Загружаем объявления из ПЕРВЫХ каталогов параллельно
+      List<home.Listing> initialListings = [];
       int totalPages = 1;
       int itemsPerPage = 50;
 
-      if (firstCatalogIds.isNotEmpty) {
-        // 🚀 ОПТИМИЗАЦИЯ: Увеличиваем параллелизм с 2 на 4 для ускорения загрузки
-        // 📊 УЛУЧШЕНО: Теперь 4 каталога загружаются параллельно (вместо 2)
-        // и избежания RateLimitException (429 Too Many Requests)
-        // API стабилен при 4 параллельных запросах
-        const int maxConcurrentRequests = 4;
+      if (firstBatchCatalogIds.isNotEmpty) {
+        const int maxConcurrentRequests = 3;
         
-        for (int i = 0; i < firstCatalogIds.length; i += maxConcurrentRequests) {
-          final batch = firstCatalogIds.sublist(
+        for (int i = 0; i < firstBatchCatalogIds.length; i += maxConcurrentRequests) {
+          final batch = firstBatchCatalogIds.sublist(
             i,
-            (i + maxConcurrentRequests).clamp(0, firstCatalogIds.length),
+            (i + maxConcurrentRequests).clamp(0, firstBatchCatalogIds.length),
           );
 
-          final firstBatchFutures = batch
+          final batchFutures = batch
               .map(
                 (catalogId) => ApiService.getAdverts(
                   catalogId: catalogId,
@@ -274,66 +273,43 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               )
               .toList();
 
-          final firstBatchResponses = await Future.wait(firstBatchFutures);
-          
-          // ⏳ ОПТИМИЗАЦИЯ: Добавляем задержку между батчами чтобы не перегружать сервер
-          // 200ms дает серверу время на восстановление между волнами запросов
-          if (i + maxConcurrentRequests < firstCatalogIds.length) {
-            await Future.delayed(const Duration(milliseconds: 200));
-          }
+          final batchResponses = await Future.wait(batchFutures);
 
-          // Парсируем все ответы параллельно на фоновых потоках
-          for (final response in firstBatchResponses) {
+          // Парсируем ответы
+          for (final response in batchResponses) {
             if (response.data.isNotEmpty) {
-              // 🚀 ОПТИМИЗАЦИЯ #3: Умный compute() - используем только для 50+ объявлений
-              // Для малых списков синхронное парсирование быстрее
               List<home.Listing> parsedListings;
 
               if (response.data.length > 50) {
-                // Для больших списков используем compute() на отдельном потоке
                 parsedListings = await compute<List<Advert>, List<home.Listing>>(
                   (adverts) => _parseAdvertsOnBackgroundThread(adverts),
                   response.data,
                 );
               } else {
-                // Для малых списков синхронное парсирование (быстрее без overhead compute)
                 parsedListings = _parseAdvertsOnBackgroundThread(response.data);
               }
 
-              allListings.addAll(parsedListings);
-              // Берем totalPages из последнего ответа, это обычно главный каталог
-              // и наиболее точное значение
+              initialListings.addAll(parsedListings);
               totalPages = response.meta.lastPage;
               itemsPerPage = response.meta.perPage;
             }
           }
         }
-        
-        // 📌 ИСПРАВЛЕНИЕ: Если загружалось со всех каталогов, увеличиваем totalPages
-        // В реальности может быть больше страниц, чем мы знаем
-        if (firstCatalogIds.length > 1) {
-          // Примерное увеличение для компенсации множественных каталогов
-          totalPages = (totalPages * firstCatalogIds.length ~/ 2).clamp(5, 100);
-          // print('📄 Расчетные страницы: $totalPages (каталогов: ${firstCatalogIds.length})');
-        }
       }
 
-      final sortedListings = _sortListingsByDate(allListings);
+      // Сортируем и берем ПЕРВЫЕ 12 объявлений для быстрого показа
+      final allSortedListings = _sortListingsByDate(initialListings);
+      final firstBatchListings = allSortedListings.take(12).toList();
 
-      // 🚀 ОПТИМИЗАЦИЯ #4: Гарантируем видимость skeleton минимум 200ms для лучшего UX
-      // 📊 УЛУЧШЕНО: Уменьшено с 500ms на 200ms без видимого мерцания
-      // Это предотвращает мелькание между skeleton и контентом
-      await Future.delayed(const Duration(milliseconds: 200));
-
-      // 🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит контент В ЭТОТ МОМЕНТ!
-      final loadTimer = LoadingTimerService().stopLoadingTimer(
+      // 🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит первые 12 объявлений почти сразу!
+      LoadingTimerService().stopLoadingTimer(
         operationKey,
-        label: 'Listings (полная загрузка)',
+        label: 'Listings (первые 12 объявлений)',
       );
       
       emit(
         ListingsLoaded(
-          listings: sortedListings,
+          listings: firstBatchListings,
           categories: loadedCategories,
           currentPage: 1,
           totalPages: totalPages,
@@ -343,16 +319,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       _isInitialLoadComplete = true;
 
-      // 🔄 ФАЗА 2: Загружаем остальные каталоги БЕЗ блокировки UI
-      // Запускаем загрузку в фоне БЕЗ emit (только обновляем кеш)
-      _loadPhase2InBackground(
-        allCatalogIds,
-        token,
-        loadedCategories,
-        sortedListings,
-        totalPages,
-        itemsPerPage,
-      );
+      // 🔄 ФАЗА 2: Загружаем ОСТАЛЬНЫЕ каталоги в фоне БЕЗ блокировки UI
+      // Результат придет в виде обновленного состояния с полным списком
+      if (remainingCatalogIds.isNotEmpty) {
+        _loadPhase2AndUpdateUI(
+          remainingCatalogIds,
+          token,
+          loadedCategories,
+          allSortedListings, // Передаем уже загруженные объявления
+          operationKey,
+        );
+      }
     } catch (e) {
       // 🔥 ТАЙМЕР: Зафиксируем время загрузки перед ошибкой
       LoadingTimerService().stopLoadingTimer(
@@ -360,9 +337,6 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         label: 'Listings (ошибка при загрузке)',
       );
       
-      // Логируем ошибку для отладки
-      // print('❌ ListingsBloc LoadListingsEvent ошибка: $e');
-      // print('Stack trace: ${StackTrace.current}');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -801,6 +775,131 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// 3. Обновляет только кеш - НЕ вызывает emit()
   /// 4. При следующей загрузке приложения, данные придут из кеша
   /// 5. Использует консервативные настройки для медленных сетей
+  /// ФАЗА 2: Загружает остальные каталоги в фоне и обновляет список объявлений.
+  /// Этот метод работает асинхронно и вызывает emit() когда данные готовы.
+  ///
+  /// Параметры:
+  /// - [remainingCatalogIds] - ID каталогов для загрузки
+  /// - [token] - токен авторизации
+  /// - [loadedCategories] - уже загруженные категории
+  /// - [initialListings] - объявления из первой фазы
+  /// - [operationKey] - ключ для таймера операции
+  void _loadPhase2AndUpdateUI(
+    List<int> remainingCatalogIds,
+    String? token,
+    List<home.Category> loadedCategories,
+    List<home.Listing> initialListings,
+    String operationKey,
+  ) {
+    // Запускаем в фоне, не ждём результата в основном обработчике события
+    Future(() async {
+      try {
+        // 🚀 ТАЙМЕР: Запускаем таймер для фазы 2
+        const phase2OperationKey = 'listings_load_phase2';
+        LoadingTimerService().startLoadingTimer(phase2OperationKey);
+
+        // Загружаем остальные каталоги батчами по 2 одновременно
+        // (уменьшено с 4 до 2 для снижения rate limiting)
+        List<home.Listing> additionalListings = [];
+        const int maxConcurrentRequests = 2;
+        
+        for (int i = 0; i < remainingCatalogIds.length; i += maxConcurrentRequests) {
+          final batch = remainingCatalogIds.sublist(
+            i,
+            (i + maxConcurrentRequests).clamp(0, remainingCatalogIds.length),
+          );
+
+          final batchFutures = batch
+              .map(
+                (catalogId) => ApiService.getAdverts(
+                  catalogId: catalogId,
+                  token: token,
+                  page: 1,
+                  limit: 50,
+                ),
+              )
+              .toList();
+
+          try {
+            final batchResponses = await Future.wait(batchFutures);
+            
+            // Задержка между батчами чтобы не перегружать сервер (500ms)
+            if (i + maxConcurrentRequests < remainingCatalogIds.length) {
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+
+            for (final response in batchResponses) {
+              if (response.data.isNotEmpty) {
+                List<home.Listing> parsedListings;
+
+                if (response.data.length > 50) {
+                  parsedListings = await compute<List<Advert>, List<home.Listing>>(
+                    (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                    response.data,
+                  );
+                } else {
+                  parsedListings = _parseAdvertsOnBackgroundThread(response.data);
+                }
+
+                additionalListings.addAll(parsedListings);
+              }
+            }
+          } catch (e) {
+            // Логируем ошибку батча но продолжаем с остальными
+            print('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
+            continue;
+          }
+        }
+
+        // 📊 ОБЪЕДИНЯЕМ: инициальные объявления + новые объявления
+        final allListings = [...initialListings, ...additionalListings];
+        final finalSortedListings = _sortListingsByDate(allListings);
+
+        // 🔥 ТАЙМЕР: Фиксируем полное время загрузки (фаза 2)
+        LoadingTimerService().stopLoadingTimer(
+          phase2OperationKey,
+          label: 'Listings (все каталоги загружены)',
+        );
+
+        // 📢 ОБНОВЛЯЕМ UI с полным списком объявлений
+        emit(
+          ListingsLoaded(
+            listings: finalSortedListings,
+            categories: loadedCategories,
+            currentPage: 1,
+            totalPages: (finalSortedListings.length / 50).ceil(),
+            itemsPerPage: 50,
+          ),
+        );
+
+        // 💾 Сохраняем полный список в кеш для следующего открытия
+        try {
+          AppCacheService().set<Map>(
+            CacheKeys.listingsData,
+            {
+              'listings': finalSortedListings
+                  .map((listing) => _listingToJson(listing))
+                  .toList(),
+              'categories': loadedCategories
+                  .map((category) => _categoryToJson(category))
+                  .toList(),
+              'currentPage': 1,
+              'totalPages': (finalSortedListings.length / 50).ceil(),
+              'itemsPerPage': 50,
+            },
+            persist: true,
+          );
+          print('✅ ListingsBloc ФАЗА 2: Полный список закеширован (${finalSortedListings.length} объявлений)');
+        } catch (e) {
+          print('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
+        }
+      } catch (e) {
+        print('❌ ListingsBloc ФАЗА 2: Ошибка при загрузке остальных каталогов: $e');
+        // UI остается с первыми 12 объявлениями, пользователь может продолжить работу
+      }
+    });
+  }
+
   Future<void> _loadPhase2InBackground(
     List<int> allCatalogIds,
     String? token,
