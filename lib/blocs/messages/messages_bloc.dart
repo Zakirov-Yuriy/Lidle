@@ -12,6 +12,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     on<LoadMessages>(_onLoadMessages);
     on<ArchiveMessages>(_onArchiveMessages);
     on<UnarchiveMessages>(_onUnarchiveMessages);
+    on<RefreshMessages>(_onRefreshMessages);
   }
 
   List<Map<String, dynamic>> mainMessages = [
@@ -113,6 +114,27 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
 
+    emit(
+      MessagesLoaded(
+        mainMessages: List.from(mainMessages),
+        archivedMessages: List.from(archivedMessages),
+      ),
+    );
+  }
+
+  /// Обновить список сообщений (используется для Polling)
+  /// Эмитирует текущее состояние чтобы UI переотрисовалось
+  void _onRefreshMessages(
+    RefreshMessages event,
+    Emitter<MessagesState> emit,
+  ) {
+    // Обновляем кеш L1
+    AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
+      'main': List.from(mainMessages),
+      'archived': List.from(archivedMessages),
+    }, ttl: _cacheTTL);
+
+    // Эмитим новое состояние чтобы UI обновилось
     emit(
       MessagesLoaded(
         mainMessages: List.from(mainMessages),

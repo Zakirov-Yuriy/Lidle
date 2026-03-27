@@ -6,6 +6,16 @@
     <!-- Разрешение для телефонных звонков -->
     <uses-permission android:name="android.permission.CALL_PHONE"/>
 
+    <!-- Разрешение для пуш-уведомлений (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Разрешения для фоновых задач (workmanager) -->
+    <!-- Позволяет приложению запланировать точное пробуждение (для синхронизации) -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    
+    <!-- Позволяет приложению предотвращать переход устройства в спящий режим -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
     <application
         android:label="LIDLE"
         android:name="${applicationName}"

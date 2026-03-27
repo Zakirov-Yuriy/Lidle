@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:workmanager/workmanager.dart';
+import 'package:lidle/services/background_message_service.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/privacy_settings/privacy_settings_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/chat_settings/chat_settings_screen.dart';
@@ -29,6 +31,8 @@ import 'package:lidle/blocs/catalog/catalog_bloc.dart';
 import 'package:lidle/blocs/devices/devices_bloc.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/device_info_service.dart';
+import 'package:lidle/services/notification_service.dart';
+import 'package:lidle/services/message_polling_service.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
@@ -88,12 +92,42 @@ final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
 
 // ============================================================
+//  Callback Dispatcher для фоновых задач workmanager'а
+// Эта функция вызывается в изолированном контексте (вне UI потока)
+// ============================================================
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      if (task == 'backgroundMessageCheck') {
+        // Вызываем функцию проверки сообщений для фонового контекста
+        return await backgroundMessageCheck();
+      }
+      return false;
+    } catch (e, st) {
+      print('❌ Background task ошибка: $e\n$st');
+      return false;
+    }
+  });
+}
+
+// ============================================================
 //  Главная функция
 // Выполняет асинхронную инициализацию необходимых сервисов.
 // ============================================================
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🌙 ИНИЦИАЛИЗАЦИЯ: Workmanager для фоновых задач
+  // Инициализируем callback dispatcher для обработки фоновых задач
+  try {
+    await Workmanager().initialize(
+      callbackDispatcher,
+      isInDebugMode: false, // Set to true for debug logging
+    );
+  } catch (e) {
+    print('⚠️ Workmanager инициализация ошибка: $e');
+  }
 
   // 🚀 ОПТИМИЗАЦИЯ #1: Быстрая инициализация Hive (обязательна для кеша)
   // Инициализируем ДО runApp(), но максимально быстро без лишних задержек
@@ -115,6 +149,18 @@ void main() async {
   // Инициализация запускается без await, работает параллельно с UI отрисовкой
   DeviceInfoService.initialize().catchError((e) {
     print('⚠️ DeviceInfoService инициализация ошибка: $e');
+  });
+
+  // 🔔 ИНИЦИАЛИЗАЦИЯ: NotificationService для локальных пуш-уведомлений
+  // Инициализируется без await, работает в фоне
+  NotificationService().initialize().catchError((e) {
+    print('⚠️ NotificationService инициализация ошибка: $e');
+  });
+
+  // 📩 ИНИЦИАЛИЗАЦИЯ: Загружаем сохранённые ID сообщений из хранилища
+  // для восстановления Polling состояния после рестарта приложения
+  MessagePollingService().loadLastMessageIds().catchError((e) {
+    print('⚠️ MessagePollingService загрузка ID ошибка: $e');
   });
 
   SystemChrome.setSystemUIOverlayStyle(
@@ -168,9 +214,32 @@ class LidleApp extends StatelessWidget {
             
             // Загружаем wishlist (избранное) с сервера
             context.read<WishlistBloc>().add(const LoadWishlistEvent());
+
+            // 🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
+            MessagePollingService().startPolling(
+              interval: const Duration(seconds: 15),
+            );
+            
+            // 🌙 Запускаем BACKGROUND задачу для проверки сообщений
+            // Эта задача запускается периодически даже когда приложение свернуто
+            Workmanager().registerPeriodicTask(
+              'check-messages',
+              'backgroundMessageCheck',
+              frequency: const Duration(minutes: 15),
+              initialDelay: const Duration(seconds: 30),
+            );
+            
+            print('🌙 Запущена фоновая задача проверки сообщений');
           } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
             // Пользователь вышел или токен истёк — останавливаем таймер
             TokenService().dispose();
+            
+            // 🔔 Останавливаем мониторинг новых сообщений (FOREGROUND)
+            MessagePollingService().stopPolling();
+            
+            // 🌙 Отменяем BACKGROUND задачу
+            Workmanager().cancelByTag('check-messages');
+            print('🌙 Отменена фоновая задача проверки сообщений');
           }
 
           // При истечении токена — перенаправляем на экран входа

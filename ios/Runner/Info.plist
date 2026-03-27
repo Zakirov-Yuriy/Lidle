@@ -49,5 +49,7 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSUserNotificationUsageDescription</key>
+		<string>Приложение использует уведомления для оповещения о новых сообщениях в чатах</string>
 	</dict>
 </plist>

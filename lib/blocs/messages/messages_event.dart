@@ -21,3 +21,9 @@ class UnarchiveMessages extends MessagesEvent {
 
   const UnarchiveMessages(this.indices);
 }
+
+/// Event для обновления списка сообщений при получении новых сообщений
+/// Используется MessagePollingService при обнаружении новых сообщений
+class RefreshMessages extends MessagesEvent {
+  const RefreshMessages();
+}
