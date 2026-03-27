@@ -10,6 +10,9 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logger/logger.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -79,13 +82,19 @@ class NotificationService {
   /// - [senderName] - имя отправителя сообщения
   /// - [messageText] - текст сообщения
   /// - [chatId] - ID чата для навигации при клике
-  /// - [senderImage] - опциональный аватар отправителя (не используется в данный момент)
+  /// - [senderImage] - опциональный URL аватара отправителя
   Future<void> showChatMessageNotification({
     required String senderName,
     required String messageText,
     required int chatId,
     String? senderImage,
   }) async {
+    _logger.i('📬 showChatMessageNotification вызван:');
+    _logger.i('  - senderName: $senderName');
+    _logger.i('  - messageText: $messageText');
+    _logger.i('  - chatId: $chatId');
+    _logger.i('  - senderImage: ${senderImage != null ? "$senderImage" : "null"}');
+    
     if (!_isInitialized) {
       _logger.w('⚠️ NotificationService не инициализирован');
       return;
@@ -105,6 +114,28 @@ class NotificationService {
       );
 
       // Android уведомление с красивым стилем
+      // Загружаем и кешируем аватар отправителя если доступен
+      String? largeIconPath;
+      _logger.d('🔍 Проверка avatara: senderImage=$senderImage, isEmpty=${senderImage?.isEmpty}, isNotNull=${senderImage != null}');
+      
+      if (senderImage != null && senderImage.isNotEmpty) {
+        _logger.i('📥 Загрузка аватара: $senderImage');
+        try {
+          largeIconPath = await _downloadAndCacheImage(senderImage);
+          if (largeIconPath != null) {
+            _logger.i('✅ Аватар успешно загружен и применен');
+            _logger.d('   Путь: $largeIconPath');
+          } else {
+            _logger.w('⚠️ _downloadAndCacheImage вернул null');
+          }
+        } catch (e) {
+          _logger.e('❌ Ошибка загрузки аватара: $e');
+          // Продолжаем без аватара если ошибка
+        }
+      } else {
+        _logger.d('ℹ️ Аватар не предоставлен (null или пусто)');
+      }
+      
       final AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
         'chat_messages_channel',
@@ -116,6 +147,9 @@ class NotificationService {
         enableVibration: true,
         vibrationPattern: Int64List.fromList([0, 250, 250, 250]),
         styleInformation: bigTextStyle,
+        // 🎨 Используем аватар отправителя слева от уведомления
+        largeIcon: largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : null,
+        // Log: аватар применен? largeIconPath=$largeIconPath
         // Форматирование как в чате-мессенджере
         showWhen: true,
         ticker: 'Новое сообщение',
@@ -229,4 +263,59 @@ class NotificationService {
       }
     }
   }
+
+  /// Загружает изображение с URL и кеширует в временную папку
+  /// 
+  /// Параметры:
+  /// - [imageUrl] - URL изображения (аватара отправителя)
+  /// 
+  /// Возвращает: путь к сохраненному файлу или null если ошибка
+  Future<String?> _downloadAndCacheImage(String imageUrl) async {
+    _logger.d('🔌 _downloadAndCacheImage начало: imageUrl=$imageUrl');
+    try {
+      if (imageUrl.isEmpty || !imageUrl.startsWith('http')) {
+        _logger.e('❌ ПРОБЛЕМА: Неправильный URL аватара: $imageUrl');
+        return null;
+      }
+      
+      // Скачиваем изображение с таймаутом 5 секунд
+      _logger.d('📡 Скачивание из интернета: $imageUrl');
+      final response = await http.get(Uri.parse(imageUrl)).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw Exception('Timeout при загрузке изображения'),
+      );
+      _logger.d('📡 Получен ответ: statusCode=${response.statusCode}, bytes=${response.bodyBytes.length}');
+      
+      if (response.statusCode != 200) {
+        _logger.e('❌ ПРОБЛЕМА: HTTP ${response.statusCode}: ${response.reasonPhrase}');
+        throw Exception('HTTP ${response.statusCode}: ${response.reasonPhrase}');
+      }
+      
+      // Получаем папку для кеша приложения
+      _logger.d('💾 Получаем temp directory...');
+      final tempDir = await getTemporaryDirectory();
+      _logger.d('💾 Temp directory: ${tempDir.path}');
+      
+      // Генерируем уникальное имя файла на основе URL
+      final fileName = 'avatar_${imageUrl.hashCode.abs()}.jpg';
+      final filePath = '${tempDir.path}/$fileName';
+      _logger.d('💾 Путь файла: $filePath');
+      
+      // Сохраняем файл на диск
+      _logger.d('💾 Сохранение ${response.bodyBytes.length} bytes на диск...');
+      final file = File(filePath);
+      await file.writeAsBytes(response.bodyBytes);
+      _logger.d('💾 Файл успешно сохранен: ${file.existsSync()}');
+      
+      _logger.i('✅ _downloadAndCacheImage успешно завершена');
+      _logger.d('💾 Аватар сохранен: $filePath (${response.bodyBytes.length} bytes)');
+      return filePath;
+      
+    } catch (e, stackTrace) {
+      _logger.e('❌ ПРОБЛЕМА в _downloadAndCacheImage: $e');
+      _logger.e('📍 StackTrace: $stackTrace');
+      return null;  // Возвращаем null вместо выброса исключения
+    }
+  }
+
 }
