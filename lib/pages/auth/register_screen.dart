@@ -183,7 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 10),
                     _buildTextField(
                       'name',
-                      'Ваше имя',
+                      'Ваше имя или название компании ',
                       'Введите',
                       validators: [
                         FormBuilderValidators.required(
@@ -200,6 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           errorText: 'Пожалуйста, введите вашу фамилию',
                         ),
                       ],
+                      subtitle: 'скрыта от пользователей',
                     ),
                     _buildTextField(
                       'email',
@@ -214,6 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           errorText: 'Пожалуйста, введите корректный email',
                         ),
                       ],
+                      subtitle: 'скрыта от пользователей',
                     ),
                     _buildTextField(
                       'phone',
@@ -395,15 +397,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String hint, {
     TextInputType keyboard = TextInputType.text,
     List<FormFieldValidator<String>>? validators,
+    String? subtitle,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+            ],
           ),
           const SizedBox(height: 6),
           FormBuilderTextField(
