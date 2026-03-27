@@ -48,6 +48,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Москва, ул. Кусинена, 21А',
       date: 'Сегодня',
       isFavorited: false,
+      isBargain: false,
     ),
     home.Listing(
       id: 'listing_2',
@@ -58,6 +59,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Брянск, Авиационная ул., 34',
       date: '29.08.2024',
       isFavorited: false,
+      isBargain: false,
     ),
     home.Listing(
       id: 'listing_3',
@@ -68,6 +70,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Москва, Отрадная ул., 11',
       date: '29.08.2024',
       isFavorited: false,
+      isBargain: false,
     ),
     home.Listing(
       id: 'listing_4',
@@ -78,6 +81,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Москва, Варшавское ш., 125',
       date: '11.05.2024',
       isFavorited: false,
+      isBargain: true,
     ),
     home.Listing(
       id: 'listing_5',
@@ -88,6 +92,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Москва, Варшавское ш., 125',
       date: '11.05.2024',
       isFavorited: false,
+      isBargain: false,
     ),
     home.Listing(
       id: 'listing_6',
@@ -101,6 +106,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: 'Москва, Истринская ул., 8к3',
       date: '09.08.2024',
       isFavorited: false,
+      isBargain: true,
     ),
   ];
 
@@ -460,16 +466,24 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // 🔄 Проверяем кеш перед запросом к API
     final cacheKey = CacheKeys.advertKey(event.advertId);
-    final cachedAdvert = AppCacheService().get<Map<String, dynamic>>(cacheKey);
-    if (cachedAdvert != null) {
-      try {
-        // print('✅ ListingsBloc: Восстановили объявление из кеша');
-        final listing = _jsonToListing(cachedAdvert);
-        emit(AdvertLoaded(listing: listing));
-        return;
-      } catch (e) {
-        // print();
+    try {
+      final cachedAdvertRaw = AppCacheService().get<dynamic>(cacheKey);
+      if (cachedAdvertRaw != null && cachedAdvertRaw is Map) {
+        try {
+          // Безопасно преобразуем Dynamic Map в Map<String, dynamic>
+          final cachedAdvert = Map<String, dynamic>.from(cachedAdvertRaw);
+          // print('✅ ListingsBloc: Восстановили объявление из кеша');
+          final listing = _jsonToListing(cachedAdvert);
+          emit(AdvertLoaded(listing: listing));
+          return;
+        } catch (e) {
+          // Если не удалось восстановить из кеша, загружаем заново
+          print('⚠️ ListingsBloc: Ошибка восстановления из кеша: $e');
+        }
       }
+    } catch (e) {
+      // Игнорируем ошибки кеша и продолжаем загрузку
+      print('⚠️ ListingsBloc: Ошибка доступа к кешу: $e');
     }
 
     emit(ListingsLoading());
@@ -493,9 +507,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // 💾 Сохраняем в унифицированный кеш (L1 + L2 Hive)
       // Обернуто в try-catch т.к. Hive может быть не инициализирован
       try {
+        final jsonToCache = _listingToJson(listing);
+        print('💾 Caching listing ${listing.id} with isBargain=${jsonToCache['isBargain']}');
         AppCacheService().set<Map<String, dynamic>>(
           cacheKey,
-          _listingToJson(listing),
+          jsonToCache,
           persist: true,
         );
       } catch (e) {
@@ -719,6 +735,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'location': listing.location,
       'date': listing.date,
       'isFavorited': listing.isFavorited,
+      'isBargain': listing.isBargain,
       'sellerName': listing.sellerName,
       'sellerAvatar': listing.sellerAvatar,
       'sellerRegistrationDate': listing.sellerRegistrationDate,
@@ -746,6 +763,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       location: json['location'] ?? '',
       date: json['date'] ?? '',
       isFavorited: json['isFavorited'] ?? false,
+      isBargain: json['isBargain'] ?? false,
       sellerName: json['sellerName'] ?? '',
       sellerAvatar: json['sellerAvatar'] ?? '',
       sellerRegistrationDate: json['sellerRegistrationDate'] ?? '',

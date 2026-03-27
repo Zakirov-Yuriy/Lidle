@@ -55,6 +55,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     price: '',
     location: '',
     date: '',
+    isBargain: false,
   );
 
   List<Listing> _similarListings = [
@@ -71,6 +72,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, Истринская ул, 8к3",
       date: "09.08.2024",
       isFavorited: false,
+      isBargain: true,
     ),
     Listing(
       id: '2',
@@ -84,6 +86,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      isBargain: false,
     ),
     Listing(
       id: '3',
@@ -94,6 +97,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "11.08.2024",
       isFavorited: false,
+      isBargain: true,
     ),
     Listing(
       id: '4',
@@ -107,6 +111,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      isBargain: false,
     ),
     Listing(
       id: '5',
@@ -120,6 +125,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "11.08.2024",
       isFavorited: false,
+      isBargain: true,
     ),
     Listing(
       id: '6',
@@ -130,6 +136,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      isBargain: false,
     ),
   ];
 
@@ -154,11 +161,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     }
 
     _pageController.addListener(() {
-      int next = _pageController.page!.round();
-      if (_currentPage != next) {
-        setState(() {
-          _currentPage = next;
-        });
+      if (_pageController.hasClients && _pageController.page != null) {
+        int next = _pageController.page!.round();
+        if (_currentPage != next) {
+          setState(() {
+            _currentPage = next;
+          });
+        }
       }
     });
   }
@@ -233,10 +242,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       }
 
       // 📥 Загружаем предложения цены из API
-      // ✅AdvertSlug должен быть типом объявления (например "adverts"), а не ID
+      // Используем slug из listing если он есть, иначе 'adverts' по умолчанию
+      final advertSlug = _listing.slug?.isNotEmpty ?? false 
+          ? _listing.slug! 
+          : 'adverts';
+      
       final offers = await ApiService.getPriceOffers(
         advertId: advertId,
-        advertSlug: 'adverts', // Тип объявления для недвижимости
+        advertSlug: advertSlug,
         token: token,
       );
 
@@ -249,7 +262,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         // print('✅ Загружены предложения цены: ${_priceOffers.length} шт.');
       }
     } catch (e) {
-      // print('❌ Ошибка при загрузке предложений цены: $e');
+      print('⚠️ Ошибка при загрузке предложений цены (это нормально, если объявление не ваше): $e');
       if (mounted) {
         setState(() {
           _isPriceOffersLoading = false;
@@ -344,8 +357,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 description: state.listing.description,
                 characteristics: state.listing.characteristics,
                 userId: state.listing.userId,
+                isBargain: state.listing.isBargain,
               );
             }
+            // 🔍 DEBUG: Логируем значение isBargain после загрузки
+            // print('🔍 DEBUG: Loaded listing ID=${_listing.id}, isBargain=${_listing.isBargain}');
           });
           // Precache images after loading the advert
           _precacheImages();
@@ -435,11 +451,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               const SizedBox(height: 16),
                               _buildMainInfoCard(),
                               const SizedBox(height: 16),
-                              _OfferPriceButton(
-                                advertId: _listing.id,
-                                advertSlug: _listing.slug ?? _listing.id,
-                              ),
-                              const SizedBox(height: 19),
+                              // 💰 Показываем кнопку "Предложить свою цену" 
+                              // Условие: is_bargain == true ИЛИ атрибут 1048 == 1
+                              if (_listing.canShowOfferButton()) ...[
+                                _OfferPriceButton(
+                                  advertId: _listing.id,
+                                  advertSlug: _listing.slug ?? _listing.id,
+                                ),
+                                const SizedBox(height: 19),
+                              ],
                               _buildLocationCard(),
                               const SizedBox(height: 10),
                               _buildAboutApartmentCard(),
@@ -523,10 +543,23 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       );
     }
 
-    // print('Listing ${_listing.id} has ${_listing.images.length} images');
-    final images = _listing.images.isNotEmpty
+    // Безопасный парсинг изображений: images + imagePath
+    final List<String> images = _listing.images.isNotEmpty
         ? _listing.images
-        : [_listing.imagePath];
+        : (_listing.imagePath.isNotEmpty ? [_listing.imagePath] : <String>[]);
+
+    // Если нет изображений, показываем placeholder
+    if (images.isEmpty) {
+      return Container(
+        height: 260,
+        color: const Color(0xFF374B5C),
+        child: Icon(
+          Icons.image_not_supported,
+          color: textMuted,
+          size: 50,
+        ),
+      );
+    }
 
     return Column(
       children: [
@@ -557,53 +590,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                       ),
                     );
                   },
-                  child: images[index].startsWith('http')
-                      ? Image.network(
-                          images[index],
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              color: const Color(0xFF374B5C),
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 30,
-                                  height: 30,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white70,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: const Color(0xFF374B5C),
-                              child: Icon(
-                                Icons.image,
-                                color: textMuted,
-                                size: 50,
-                              ),
-                            );
-                          },
-                        )
-                      : Image.asset(
-                          images[index],
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: const Color(0xFF374B5C),
-                              child: Icon(
-                                Icons.image,
-                                color: textMuted,
-                                size: 50,
-                              ),
-                            );
-                          },
-                        ),
+                  child: _buildImageWidget(images[index]),
                 ),
               ),
             ),
@@ -619,6 +606,92 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         ),
       ],
     );
+  }
+
+  /// Вспомогательный метод для безопасного отображения изображения
+  /// Поддерживает network images, assets и валидирует пустые пути
+  Widget _buildImageWidget(String imagePath) {
+    if (imagePath.isEmpty) {
+      return Container(
+        color: const Color(0xFF374B5C),
+        child: Icon(
+          Icons.image_not_supported,
+          color: textMuted,
+          size: 50,
+        ),
+      );
+    }
+
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: const Color(0xFF374B5C),
+            child: const Center(
+              child: SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Colors.white70,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: const Color(0xFF374B5C),
+            child: Icon(
+              Icons.image,
+              color: textMuted,
+              size: 50,
+            ),
+          );
+        },
+      );
+    } else {
+      return Image.asset(
+        imagePath,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            color: const Color(0xFF374B5C),
+            child: Icon(
+              Icons.image,
+              color: textMuted,
+              size: 50,
+            ),
+          );
+        },
+      );
+    }
+  }
+
+  /// Вспомогательный метод для безопасного отображения аватара продавца
+  Widget _buildSellerAvatar(String? avatarUrl) {
+    final defaultAvatar = 'assets/property_details_screen/Andrey.png';
+    final url = (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : defaultAvatar;
+    
+    if (url.startsWith('http')) {
+      return CircleAvatar(
+        radius: 35.5,
+        backgroundImage: NetworkImage(url),
+        onBackgroundImageError: (exception, stackTrace) {
+          // Fallback to default on error
+        },
+      );
+    } else {
+      return CircleAvatar(
+        radius: 35.5,
+        backgroundImage: AssetImage(url),
+      );
+    }
   }
 
   Widget _buildPageIndicator(bool isActive) {
@@ -718,42 +791,48 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   Widget _buildAboutApartmentCard() {
-    final Map<String, dynamic> chars = _listing.characteristics;
+    // Безопасно получаем характеристики
+    final Map<String, dynamic> chars = _listing.characteristics ?? {};
+    
     // DEBUG: Выводим характеристики в консоль для отладки
     // print('[DEBUG] Характеристики в карточке:');
     // chars.forEach((k, v) => print('  $k: $v'));
 
     // Формируем список виджетов для отображения характеристик
     final List<Widget> charWidgets = [];
-    chars.forEach((key, charData) {
-      if (charData is Map<String, dynamic>) {
-        final title = charData['title'] as String? ?? 'Характеристика';
-        final value = charData['value'];
-        final maxValue = charData['max_value'];
+    
+    // Проверяем что chars не пусто
+    if (chars.isNotEmpty) {
+      chars.forEach((key, charData) {
+        if (charData is Map<String, dynamic>) {
+          final title = charData['title'] as String? ?? 'Характеристика';
+          final value = charData['value'];
+          final maxValue = charData['max_value'];
 
-        String displayValue = '-';
-        if (value is Map && value.containsKey('value')) {
-          // Случай: {"value": ..., "max_value": ...}
-          displayValue = value['value'].toString();
-          if (value.containsKey('max_value')) {
-            displayValue += ' — ' + value['max_value'].toString();
+          String displayValue = '-';
+          if (value is Map && value.containsKey('value')) {
+            // Случай: {"value": ..., "max_value": ...}
+            displayValue = value['value'].toString();
+            if (value.containsKey('max_value')) {
+              displayValue += ' — ' + value['max_value'].toString();
+            }
+          } else if (maxValue != null) {
+            // Диапазон: value и max_value на разных уровнях
+            displayValue = value.toString() + ' — ' + maxValue.toString();
+          } else if (value is bool) {
+            displayValue = value ? 'Да' : 'Нет';
+          } else if (value is num) {
+            displayValue = value.toString();
+          } else if (value is String) {
+            displayValue = value;
+          } else if (value is List) {
+            // Если value это список
+            displayValue = value.join(', ');
           }
-        } else if (maxValue != null) {
-          // Диапазон: value и max_value на разных уровнях
-          displayValue = value.toString() + ' — ' + maxValue.toString();
-        } else if (value is bool) {
-          displayValue = value ? 'Да' : 'Нет';
-        } else if (value is num) {
-          displayValue = value.toString();
-        } else if (value is String) {
-          displayValue = value;
-        } else if (value is List) {
-          // Если value это список
-          displayValue = value.join(', ');
+          charWidgets.add(_InfoRow(title: '$title: ', value: displayValue));
         }
-        charWidgets.add(_InfoRow(title: '$title: ', value: displayValue));
-      }
-    });
+      });
+    }
 
     // Количество строк, показываемых в свёрнутом состоянии
     const int _collapsedCount = 8;
@@ -1070,18 +1149,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           SizedBox(height: 15),
           Row(
             children: [
-              sellerAvatar.startsWith('http')
-                  ? CircleAvatar(
-                      radius: 35.5,
-                      backgroundImage: NetworkImage(sellerAvatar),
-                      onBackgroundImageError: (exception, stackTrace) {
-                        // Fallback to asset image on error
-                      },
-                    )
-                  : CircleAvatar(
-                      radius: 35.5,
-                      backgroundImage: AssetImage(sellerAvatar),
-                    ),
+              _buildSellerAvatar(sellerAvatar),
               const SizedBox(width: 9),
               Expanded(
                 child: Column(
@@ -1254,8 +1322,23 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     try {
       // Получаем телефоны из API
       print('📞 Loading phones for seller ID: $userId');
+      
+      // Безопасный парсинг userId
+      final userIdInt = int.tryParse(userId);
+      if (userIdInt == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Некорректный ID продавца'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        Navigator.of(context).pop();
+        return;
+      }
+      
       final phoneNumbers = await ApiService.getUserPhones(
-        userId: int.parse(userId),
+        userId: userIdInt,
       );
 
       // Закрываем диалог загрузки
@@ -1780,6 +1863,11 @@ class _AllListingsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        // Проверяем что sellerAvatar не пусто
+        if (sellerAvatar.isEmpty) {
+          return;
+        }
+        
         // Создаем ImageProvider в зависимости от типа URL
         ImageProvider avatarProvider;
         if (sellerAvatar.startsWith('http')) {

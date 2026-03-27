@@ -38,6 +38,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, Истринская ул, 8к3",
       date: "09.08.2024",
       isFavorited: false,
+      isBargain: true,
     ),
     Listing(
       id: '2',
@@ -47,6 +48,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      isBargain: false,
     ),
     Listing(
       id: '3',
@@ -56,6 +58,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "11.08.2024",
       isFavorited: false,
+      isBargain: true,
     ),
     Listing(
       id: '4',
@@ -65,6 +68,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      isBargain: false,
     ),
     Listing(
       id: '5',
@@ -74,6 +78,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "11.08.2024",
       isFavorited: false,
+      isBargain: true,
     ),
     Listing(
       id: '6',
@@ -83,6 +88,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       location: "Москва, ул. Коминтерна, 4",
       date: "12.04.2024",
       isFavorited: false,
+      isBargain: false,
     ),
   ];
 

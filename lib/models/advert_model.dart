@@ -23,6 +23,9 @@ class Advert {
   final String? description;
 
   final Map<String, dynamic>? characteristics;
+  
+  /// Возможен торг (показывать кнопку "Предложить свою цену" или нет)
+  final bool isBargain;
 
   Advert({
     required this.id,
@@ -44,10 +47,42 @@ class Advert {
     this.sellerId,
     this.description,
     this.characteristics,
+    this.isBargain = false,
   });
+
+  /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
+  /// Условие: is_bargain == true ИЛИ атрибут 1048 имеет value == 1
+  /// Атрибут 1048 = "Вам предложат цену"
+  bool canShowOfferButton() {
+    // Проверяем флаг is_bargain
+    if (isBargain) {
+      return true;
+    }
+
+    // Проверяем атрибут 1048 "Вам предложат цену"
+    if (characteristics != null && characteristics!.containsKey('1048')) {
+      final attr1048 = characteristics!['1048'];
+      if (attr1048 is Map<String, dynamic>) {
+        final value = attr1048['value'];
+        // value может быть int (1) или string ("1")
+        return value == 1 || value == '1';
+      }
+    }
+
+    return false;
+  }
 
   factory Advert.fromJson(Map<String, dynamic> json) {
     // print('Advert ${json['id']} images in JSON: ${json['images']}');
+
+    // 🔍 DEBUG: Логируем весь JSON для объявления 157
+    if (json['id'] == 157) {
+      print('═══════════════════════════════════════════════════════════');
+      print('🔍 FULL JSON для объявления 157:');
+      print(json.toString());
+      print('All keys: ${json.keys.toList()}');
+      print('═══════════════════════════════════════════════════════════');
+    }
 
     // Парсим информацию о продавце из поля 'user' или 'seller'
     String? sellerName;
@@ -154,6 +189,7 @@ class Advert {
       sellerId: sellerId,
       description: json['description'],
       characteristics: characteristics,
+      isBargain: json['is_bargain'] ?? false,
     );
   }
 }
@@ -324,6 +360,7 @@ extension AdvertToListingExtension on Advert {
       location: address,
       date: date,
       isFavorited: false, // Default, can be updated later
+      isBargain: isBargain,
       sellerName: sellerName,
       sellerAvatar: sellerAvatar,
       sellerRegistrationDate: sellerRegistrationDate,

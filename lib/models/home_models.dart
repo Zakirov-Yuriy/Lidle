@@ -94,6 +94,9 @@ class Listing {
   /// Флаг, указывающий, добавлено ли объявление в избранное.
   final bool isFavorited;
 
+  /// Возможен торг (показывать кнопку "Предложить свою цену" или нет)
+  final bool isBargain;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -106,6 +109,7 @@ class Listing {
     required this.location,
     required this.date,
     this.isFavorited = false,
+    this.isBargain = false,
     this.sellerName,
     this.userId,
     this.sellerAvatar,
@@ -121,6 +125,28 @@ class Listing {
     this.subRegion,
     this.district,
   });
+
+  /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
+  /// Условие: is_bargain == true ИЛИ атрибут 1048 имеет value == 1
+  /// Атрибут 1048 = "Вам предложат цену"
+  bool canShowOfferButton() {
+    // Проверяем флаг is_bargain
+    if (isBargain) {
+      return true;
+    }
+
+    // Проверяем атрибут 1048 "Вам предложат цену"
+    if (characteristics.containsKey('1048')) {
+      final attr1048 = characteristics['1048'];
+      if (attr1048 is Map<String, dynamic>) {
+        final value = attr1048['value'];
+        // value может быть int (1) или string ("1")
+        return value == 1 || value == '1';
+      }
+    }
+
+    return false;
+  }
 
   factory Listing.fromJson(Map<String, dynamic> json) {
     // DEBUG: Логируем полный JSON адреса
@@ -224,6 +250,7 @@ class Listing {
                 json['district_name']?.toString(),
       date: json['date'] ?? 'Unknown Date',
       isFavorited: json['isFavorited'] ?? false,
+      isBargain: json['is_bargain'] ?? false,
       // API detail endpoint returns seller info under 'user' key,
       // while some responses may use 'seller' key.
       sellerName:

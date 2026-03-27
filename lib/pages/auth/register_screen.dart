@@ -247,7 +247,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: const TextStyle(color: Colors.white70, fontSize: 13),
                           children: [
                             TextSpan(
-                              text: 'Пользовательским \nсоглашением ',
+                              text: 'Пользовательским \nсоглашением',
                               style: const TextStyle(
                                 color: Color(0xFF38BDF8),
                                 fontSize: 13,
@@ -256,7 +256,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ..onTap = () => _openURL('https://dev.lidle.io/documents/user-agreement.pdf'),
                             ),
                             const TextSpan(
-                              text: 'и даю ',
+                              text: ', ',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            TextSpan(
+                              text: 'офертой',
+                              style: const TextStyle(
+                                color: Color(0xFF38BDF8),
+                                fontSize: 13,
+                              ),
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => _openURL('https://dev.lidle.io/documents/offer.pdf'),
+                            ),
+                            const TextSpan(
+                              text: ' и даю ',
                               style: TextStyle(color: Colors.white70),
                             ),
                             TextSpan(
@@ -327,7 +340,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       width: double.infinity,
                       height: 53,
                       child: ElevatedButton(
-                        onPressed: ((agreeTerms && agreeMarketing) && state is! AuthLoading)
+                        onPressed: (agreeTerms && state is! AuthLoading)
                           ? _trySubmit
                           : null,
                         style: ElevatedButton.styleFrom(

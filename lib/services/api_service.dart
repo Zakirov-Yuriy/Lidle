@@ -949,8 +949,24 @@ class ApiService {
   /// Получить одно объявление по ID.
   static Future<Advert> getAdvert(int id, {String? token}) async {
     try {
-      final response = await get('/adverts/$id', token: token);
+      // Пытаемся получить полный ответ с атрибутами и всеми полями
+      final response = await getWithQuery('/adverts/$id', {
+        'with': 'attributes,user', // Запрашиваем полные данные с атрибутами и пользователем
+      }, token: token);
       final data = response['data'];
+      
+      // 🔍 DEBUG: Логируем сырой JSON для проверки is_bargain
+      print('\n>>> API getAdvert($id) RESPONSE <<<');
+      if (data is Map<String, dynamic>) {
+        print('STATUS: MAP > is_bargain=${data['is_bargain']} name=${data['name']}');
+      } else if (data is List && data.isNotEmpty) {
+        final firstItem = data[0] as Map<String, dynamic>;
+        print('STATUS: LIST > is_bargain=${firstItem['is_bargain']} name=${firstItem['name']}');
+      } else {
+        print('STATUS: UNKNOWN TYPE');
+      }
+      print('>>> END <<<\n');
+      
       if (data is List) {
         return Advert.fromJson(data[0] as Map<String, dynamic>);
       } else {
