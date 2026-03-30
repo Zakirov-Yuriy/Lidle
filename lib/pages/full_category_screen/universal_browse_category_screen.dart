@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_screen.dart';
@@ -166,7 +171,33 @@ class _UniversalBrowseCategoryScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Когда интернет восстановлен - перезагружаем категории
+        if (connectivityState is ConnectedState) {
+          // ⏳ Добавляем задержку для стабилизации соединения
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _loadCategories();
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          // Показываем экран отсутствия интернета
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
+          }
+
+          // Показываем обычный контент
+          return Scaffold(
       backgroundColor: const Color(0xFF1D2835),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -404,6 +435,9 @@ class _UniversalBrowseCategoryScreenState
                   ),
           ),
         ],
+      ),
+    );
+        },
       ),
     );
   }

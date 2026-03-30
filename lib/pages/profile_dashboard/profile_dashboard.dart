@@ -1,13 +1,12 @@
-// ============================================================
-// "Виджет: Панель управления профилем пользователя"
-// ============================================================
-
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
@@ -18,6 +17,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
 import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
@@ -258,7 +258,27 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
+              _loadListingsCounts(useCache: false);
+              _loadPriceOffersCount(useCache: false);
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+
+          return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthInitial || state is AuthLoggedOut) {
           Navigator.of(context).pushNamedAndRemoveUntil(
@@ -546,6 +566,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
             },
           ),
         ),
+      ),
+    );
+        },
       ),
     );
   }

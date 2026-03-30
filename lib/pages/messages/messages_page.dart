@@ -7,10 +7,14 @@ import 'package:lidle/widgets/cards/message_card.dart'; // Import MessageCard
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/blocs/messages/messages_bloc.dart';
 import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/services/messages_local_service.dart';
 import 'package:lidle/services/api_service.dart';
@@ -463,19 +467,37 @@ class _MessagesPageState extends State<MessagesPage>
   Widget build(BuildContext context) {
     super.build(context); // 💾 Требуется для AutomaticKeepAliveClientMixin
     
-    return BlocListener<NavigationBloc, NavigationState>(
-      listener: (context, state) {
-        if (!mounted) return;
-        // Обрабатываем навигацию при выборе других пунктов меню
-        if (state is NavigationToHome ||
-            state is NavigationToProfile ||
-            state is NavigationToFavorites ||
-            state is NavigationToAddListing ||
-            state is NavigationToMyPurchases) {
-          context.read<NavigationBloc>().executeNavigation(context);
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              context.read<MessagesBloc>().add(const LoadMessages());
+            }
+          });
         }
       },
-      child: Scaffold(
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+
+          return BlocListener<NavigationBloc, NavigationState>(
+            listener: (context, state) {
+              if (!mounted) return;
+              // Обрабатываем навигацию при выборе других пунктов меню
+              if (state is NavigationToHome ||
+                  state is NavigationToProfile ||
+                  state is NavigationToFavorites ||
+                  state is NavigationToAddListing ||
+                  state is NavigationToMyPurchases) {
+                context.read<NavigationBloc>().executeNavigation(context);
+              }
+            },
+            child: Scaffold(
         backgroundColor: primaryBackground,
         body: SafeArea(
           child: Column(
@@ -1126,7 +1148,10 @@ class _MessagesPageState extends State<MessagesPage>
             );
           },
         ),
-      ),
-    );
-  }
+            ),
+            );
+          },
+        ),
+      );
+    }
 }

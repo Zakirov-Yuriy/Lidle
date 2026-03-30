@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
@@ -7,6 +11,7 @@ import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
 import 'package:lidle/widgets/components/k_calendar/k_calendar_widget.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -536,94 +541,115 @@ class _RealEstateListingsFilterScreenState
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: primaryBackground,
-        body: const Center(
-          child: CircularProgressIndicator(color: Colors.lightBlue),
-        ),
-      );
-    }
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _loadFilters();
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
 
-    if (_errorMessage != null) {
-      return Scaffold(
-        backgroundColor: primaryBackground,
-        body: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, color: Colors.red, size: 48),
-                const SizedBox(height: 16),
-                Text(
-                  'Ошибка загрузки фильтров',
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+          if (_isLoading) {
+            return Scaffold(
+              backgroundColor: primaryBackground,
+              body: const Center(
+                child: CircularProgressIndicator(color: Colors.lightBlue),
+              ),
+            );
+          }
+
+          if (_errorMessage != null) {
+            return Scaffold(
+              backgroundColor: primaryBackground,
+              body: SafeArea(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Ошибка загрузки фильтров',
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      OutlinedButton(
+                        onPressed: _loadFilters,
+                        child: const Text('Повторить'),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  textAlign: TextAlign.center,
+              ),
+            );
+          }
+
+          return Scaffold(
+            backgroundColor: primaryBackground,
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 25),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 19),
+
+                    // Блок "Категории"
+                    _buildCategoriesBlock(),
+                    const SizedBox(height: 27),
+
+                    // Блок "Выберите регион" - скрыт, регионы загружаются автоматически
+                    // _buildRegionBlock(),
+                    // const SizedBox(height: 27),
+
+                    // Блок "Выберите город"
+                    _buildCityBlock(),
+                    const SizedBox(height: 27),
+
+                    // Блок "Выберите категорию"
+                    _buildSelectedCategoryBlock(),
+                    const SizedBox(height: 27),
+
+                    // Блок сортировки
+                    _buildSortBlock(),
+                    const SizedBox(height: 10),
+                    const Divider(color: Colors.white24),
+                    const SizedBox(height: 5),
+
+                    // Динамические фильтры
+                    _buildDynamicFilters(),
+
+                    // const SizedBox(height: 27),
+                    // const Divider(color: Colors.white24),
+                    const SizedBox(height: 21),
+
+                    // Кнопки управления
+                    _buildActionButtons(),
+
+                    const SizedBox(height: 60),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                OutlinedButton(
-                  onPressed: _loadFilters,
-                  child: const Text('Повторить'),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 25),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 19),
-
-              // Блок "Категории"
-              _buildCategoriesBlock(),
-              const SizedBox(height: 27),
-
-              // Блок "Выберите регион" - скрыт, регионы загружаются автоматически
-              // _buildRegionBlock(),
-              // const SizedBox(height: 27),
-
-              // Блок "Выберите город"
-              _buildCityBlock(),
-              const SizedBox(height: 27),
-
-              // Блок "Выберите категорию"
-              _buildSelectedCategoryBlock(),
-              const SizedBox(height: 27),
-
-              // Блок сортировки
-              _buildSortBlock(),
-              const SizedBox(height: 10),
-              const Divider(color: Colors.white24),
-              const SizedBox(height: 5),
-
-              // Динамические фильтры
-              _buildDynamicFilters(),
-
-              // const SizedBox(height: 27),
-              // const Divider(color: Colors.white24),
-              const SizedBox(height: 21),
-
-              // Кнопки управления
-              _buildActionButtons(),
-
-              const SizedBox(height: 60),
-            ],
-          ),
-        ),
+          );
+        },
       ),
     );
   }

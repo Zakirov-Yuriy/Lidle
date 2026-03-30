@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 
 /// ============================================================
 /// Виджет: Универсальный экран для отображения категорий
@@ -110,9 +115,29 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF1D2835),
-      body: Column(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Когда интернет восстановился, перезагрузить категории
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _loadCategories();
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          // Если нет интернета, показать экран отсутствия сети
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+          // Иначе показать обычный Scaffold
+          return Scaffold(
+            backgroundColor: const Color(0xFF1D2835),
+            body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
@@ -270,6 +295,9 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                   ),
           ),
         ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -3,11 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/services/api_service.dart';
@@ -28,20 +32,31 @@ class IncomingPriceOfferPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<NavigationBloc, NavigationState>(
-      listener: (context, state) {
-        if (state is NavigationToProfile ||
-            state is NavigationToHome ||
-            state is NavigationToFavorites ||
-            state is NavigationToAddListing ||
-            state is NavigationToMyPurchases ||
-            state is NavigationToMessages ||
-            state is NavigationToSignIn) {
-          context.read<NavigationBloc>().executeNavigation(context);
-        }
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // При восстановлении подключения просто перестраиваем UI
       },
-      child: BlocBuilder<NavigationBloc, NavigationState>(
-        builder: (context, navigationState) {
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+          return BlocListener<NavigationBloc, NavigationState>(
+            listener: (context, state) {
+              if (state is NavigationToProfile ||
+                  state is NavigationToHome ||
+                  state is NavigationToFavorites ||
+                  state is NavigationToAddListing ||
+                  state is NavigationToMyPurchases ||
+                  state is NavigationToMessages ||
+                  state is NavigationToSignIn) {
+                context.read<NavigationBloc>().executeNavigation(context);
+              }
+            },
+            child: BlocBuilder<NavigationBloc, NavigationState>(
+              builder: (context, navigationState) {
           return Scaffold(
             extendBody: true,
             backgroundColor: backgroundColor,
@@ -193,6 +208,9 @@ class IncomingPriceOfferPage extends StatelessWidget {
               },
             ),
           );
+        },
+      ),
+    );
         },
       ),
     );

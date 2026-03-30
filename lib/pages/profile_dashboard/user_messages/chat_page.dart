@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 
 class ChatPage extends StatelessWidget {
   const ChatPage({super.key});
@@ -11,7 +16,19 @@ class ChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Screen will rebuild automatically when state changes
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+
+          return Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
@@ -175,6 +192,9 @@ class ChatPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+        },
       ),
     );
   }

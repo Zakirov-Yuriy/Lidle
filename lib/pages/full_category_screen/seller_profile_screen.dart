@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
@@ -220,7 +225,34 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Когда интернет восстановлен - перезагружаем объявления продавца
+        if (connectivityState is ConnectedState) {
+          // ⏳ Добавляем задержку для стабилизации соединения
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && widget.userId != null) {
+              _SellerProfileScreenState.invalidateCache(widget.userId!);
+              _loadSellerListings(forceRefresh: true);
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          // Показываем экран отсутствия интернета
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
+          }
+
+          // Показываем обычный контент
+          return Scaffold(
       backgroundColor: primaryBackground,
       bottomNavigationBar: _buildBottomNavigation(),
       body: SafeArea(
@@ -275,6 +307,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ), // SingleChildScrollView
         ), // RefreshIndicator
       ), // SafeArea
+    );
+        },
+      ),
     );
   }
 

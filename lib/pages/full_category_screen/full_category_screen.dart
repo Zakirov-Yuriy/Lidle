@@ -5,6 +5,10 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/catalog/catalog_bloc.dart';
 import 'package:lidle/blocs/catalog/catalog_event.dart';
 import 'package:lidle/blocs/catalog/catalog_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/main.dart';
 import 'universal_browse_category_screen.dart';
 
@@ -50,7 +54,34 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Когда интернет восстановлен - перезагружаем каталоги
+        if (connectivityState is ConnectedState) {
+          // ⏳ Добавляем задержку для стабилизации соединения
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              // ignore: use_build_context_synchronously
+              context.read<CatalogBloc>().add(LoadCatalogs(forceRefresh: true));
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          // Показываем экран отсутствия интернета
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
+          }
+
+          // Показываем обычный контент
+          return Scaffold(
       backgroundColor: const Color(0xFF1D2835),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,6 +294,9 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
             ),
           ),
         ],
+      ),
+    );
+        },
       ),
     );
   }

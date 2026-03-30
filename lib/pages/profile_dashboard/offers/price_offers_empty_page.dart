@@ -13,6 +13,10 @@ import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 
 class PriceOffersEmptyPage extends StatefulWidget {
   const PriceOffersEmptyPage({super.key});
@@ -76,6 +80,14 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
     if (state == AppLifecycleState.resumed) {
       print('📱 Экран вернулся в фокус, перезагружаем список предложений');
       _loadMyOffers();
+    }
+  }
+
+  /// Перезагружает данные экрана при восстановлении подключения
+  void _reloadScreenData() {
+    if (mounted) {
+      _loadMyOffers();
+      _loadOffersToMe();
     }
   }
 
@@ -171,13 +183,13 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       print(
         '🔍 Prefetching offer details for ${parsedListings.length} listings (max 3 concurrent)...',
       );
-      
+
       // Создаем список функций запросов для очереди
       final requestFunctions = parsedListings.map((offer) {
         return () async {
           final advertId = int.tryParse(offer.advertisementId ?? '');
           final typeSlug = offer.typeSlug ?? 'adverts';
-          
+
           // null = ошибка (показываем с оригинальным счётчиком)
           if (advertId == null) {
             return MapEntry(offer, {
@@ -199,7 +211,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                 token: token,
               ),
             );
-            
+
             // Считаем количество «актуальных» предложений:
             // — statusId == 1 (Новый) — ещё не обработаны
             // — statusId == 2 (Принят) — сделка состоялась, объявление нужно оставить
@@ -245,13 +257,13 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
           }
         };
       }).toList();
-      
+
       // 🚀 Используем очередь чтобы ограничить параллельные запросы
       final prefetchResults = await ApiRequestQueue.instance.queueBatch(
         requestFunctions,
         batchSize: 3, // Максимум 3 одновременных запроса
       );
-      
+
       print('✅ Prefetch завершен: ${ApiRequestQueue.instance.stats}');
 
       // ✅ НОВАЯ ЛОГИКА: Показываем ВСЕ объявления, включая отклонённые
@@ -504,336 +516,364 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         ? _isLoadingMyOffers
         : _isLoadingOffersToMe;
 
-    return BlocListener<NavigationBloc, NavigationState>(
-      listener: (context, state) {
-        if (state is NavigationToProfile ||
-            state is NavigationToHome ||
-            state is NavigationToFavorites ||
-            state is NavigationToAddListing ||
-            state is NavigationToMyPurchases ||
-            state is NavigationToMessages ||
-            state is NavigationToSignIn) {
-          context.read<NavigationBloc>().executeNavigation(context);
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _reloadScreenData();
+            }
+          });
         }
       },
-      child: BlocBuilder<NavigationBloc, NavigationState>(
-        builder: (context, navigationState) {
-          return Scaffold(
-            extendBody: true,
-            backgroundColor: backgroundColor,
-            body: SafeArea(
-              bottom: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ───── Header ─────
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 5, right: 23),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [const Header(), const Spacer()],
-                    ),
-                  ),
-
-                  // ───── Back / Cancel ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            size: 16,
-                          ),
-                        ),
-                        const Text(
-                          'Предложения цен',
-                          style: TextStyle(
-                            color: Color.fromARGB(255, 255, 255, 255),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            if (isSelectionMode) {
-                              _exitSelectionMode();
-                            } else {
-                              Navigator.pop(context);
-                            }
-                          },
-                          child: const Text(
-                            'Отмена',
-                            style: TextStyle(
-                              color: activeIconColor,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 10),
-
-                  // ───── Tabs ─────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
+          }
+          return BlocListener<NavigationBloc, NavigationState>(
+            listener: (context, state) {
+              if (state is NavigationToProfile ||
+                  state is NavigationToHome ||
+                  state is NavigationToFavorites ||
+                  state is NavigationToAddListing ||
+                  state is NavigationToMyPurchases ||
+                  state is NavigationToMessages ||
+                  state is NavigationToSignIn) {
+                context.read<NavigationBloc>().executeNavigation(context);
+              }
+            },
+            child: BlocBuilder<NavigationBloc, NavigationState>(
+              builder: (context, navigationState) {
+                return Scaffold(
+                  extendBody: true,
+                  backgroundColor: backgroundColor,
+                  body: SafeArea(
+                    bottom: false,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isMyOffersSelected = true;
-                                });
-                              },
-                              child: Text(
-                                'Мои предложения',
-                                style: TextStyle(
-                                  color: isMyOffersSelected
-                                      ? accentColor
-                                      : Colors.white,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 24),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isMyOffersSelected = false;
-                                });
-                                // Загружаем предложения когда пользователь переходит на этот таб
-                                if (_offersToMe.isEmpty &&
-                                    !_isLoadingOffersToMe) {
-                                  _loadOffersToMe();
-                                }
-                              },
-                              child: Text(
-                                'Предложения мне',
-                                style: TextStyle(
-                                  color: isMyOffersSelected
-                                      ? Colors.white
-                                      : accentColor,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                          ],
+                        // ───── Header ─────
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 5, right: 23),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [const Header(), const Spacer()],
+                          ),
                         ),
-                        const SizedBox(height: 9),
-                        Stack(
-                          children: [
-                            Container(
-                              height: 1,
-                              width: double.infinity,
-                              color: Colors.white24,
-                            ),
-                            AnimatedPositioned(
-                              duration: const Duration(milliseconds: 200),
-                              left: isMyOffersSelected ? 0 : 157,
-                              child: Container(
-                                height: 2,
-                                width: 133,
-                                color: accentColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  // ───── Select all / Delete ─────
-                  if (isSelectionMode)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 25,
-                        vertical: 12,
-                      ),
-                      child: Row(
-                        children: [
-                          CustomCheckbox(
-                            value: isMyOffersSelected
-                                ? selectAllCheckedMyOffers
-                                : selectAllCheckedOffersToMe,
-                            onChanged: (value) => _toggleSelectAll(),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Выбрать все',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap:
-                                (isMyOffersSelected
-                                        ? itemCheckedMyOffers
-                                        : itemCheckedOffersToMe)
-                                    .contains(true)
-                                ? _deleteSelected
-                                : null,
-                            child: Text(
-                              'Удалить',
-                              style: TextStyle(
-                                color:
-                                    (isMyOffersSelected
-                                            ? itemCheckedMyOffers
-                                            : itemCheckedOffersToMe)
-                                        .contains(true)
-                                    ? const Color(0xFFFF3B30)
-                                    : Colors.white38,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  // if (isSelectionMode) const SizedBox(height: 12),
-                  if (isSelectionMode)
-                    const Divider(color: Colors.white24, height: 0),
-
-                  Expanded(
-                    child: isLoading
-                        ? const Center(
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Color(0xFF00B7FF),
-                              ),
-                            ),
-                          )
-                        : offersToDisplay.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.only(bottom: 110.0),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Image.asset(
-                                  isMyOffersSelected
-                                      ? 'assets/offers/My_applications.png'
-                                      : 'assets/offers/Applications_for_me.png',
-                                  height: 72,
-                                  width: 72,
+                        // ───── Back / Cancel ─────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 25),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: const Icon(
+                                  Icons.arrow_back_ios,
+                                  color: Color.fromARGB(255, 255, 255, 255),
+                                  size: 16,
                                 ),
-                                const SizedBox(height: 24),
-                                Text(
-                                  isMyOffersSelected
-                                      ? 'Вы не предложили цены'
-                                      : 'Вам не предложили цены',
+                              ),
+                              const Text(
+                                'Предложения цен',
+                                style: TextStyle(
+                                  color: Color.fromARGB(255, 255, 255, 255),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: () {
+                                  if (isSelectionMode) {
+                                    _exitSelectionMode();
+                                  } else {
+                                    Navigator.pop(context);
+                                  }
+                                },
+                                child: const Text(
+                                  'Отмена',
                                   style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
+                                    color: activeIconColor,
+                                    fontSize: 16,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                const SizedBox(
-                                  width: double.infinity,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Text(
-                                        'У вас нет откликов на быструю',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        // ───── Tabs ─────
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 25),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        isMyOffersSelected = true;
+                                      });
+                                    },
+                                    child: Text(
+                                      'Мои предложения',
+                                      style: TextStyle(
+                                        color: isMyOffersSelected
+                                            ? accentColor
+                                            : Colors.white,
+                                        fontSize: 15,
                                       ),
-                                      Text(
-                                        'подработку, как только вы уберете',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 24),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        isMyOffersSelected = false;
+                                      });
+                                      // Загружаем предложения когда пользователь переходит на этот таб
+                                      if (_offersToMe.isEmpty &&
+                                          !_isLoadingOffersToMe) {
+                                        _loadOffersToMe();
+                                      }
+                                    },
+                                    child: Text(
+                                      'Предложения мне',
+                                      style: TextStyle(
+                                        color: isMyOffersSelected
+                                            ? Colors.white
+                                            : accentColor,
+                                        fontSize: 15,
                                       ),
-                                      Text(
-                                        'объявление с активных оно тут',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                      Text(
-                                        'появится',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 9),
+                              Stack(
+                                children: [
+                                  Container(
+                                    height: 1,
+                                    width: double.infinity,
+                                    color: Colors.white24,
+                                  ),
+                                  AnimatedPositioned(
+                                    duration: const Duration(milliseconds: 200),
+                                    left: isMyOffersSelected ? 0 : 157,
+                                    child: Container(
+                                      height: 2,
+                                      width: 133,
+                                      color: accentColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // ───── Select all / Delete ─────
+                        if (isSelectionMode)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 25,
+                              vertical: 12,
+                            ),
+                            child: Row(
+                              children: [
+                                CustomCheckbox(
+                                  value: isMyOffersSelected
+                                      ? selectAllCheckedMyOffers
+                                      : selectAllCheckedOffersToMe,
+                                  onChanged: (value) => _toggleSelectAll(),
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Выбрать все',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap:
+                                      (isMyOffersSelected
+                                              ? itemCheckedMyOffers
+                                              : itemCheckedOffersToMe)
+                                          .contains(true)
+                                      ? _deleteSelected
+                                      : null,
+                                  child: Text(
+                                    'Удалить',
+                                    style: TextStyle(
+                                      color:
+                                          (isMyOffersSelected
+                                                  ? itemCheckedMyOffers
+                                                  : itemCheckedOffersToMe)
+                                              .contains(true)
+                                          ? const Color(0xFFFF3B30)
+                                          : Colors.white38,
+                                      fontSize: 16,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          )
-                        : ListView.builder(
-                            itemCount: offersToDisplay.length,
-                            itemBuilder: (context, index) {
-                              final offerItem = offersToDisplay[index];
-                              final isChecked = isMyOffersSelected
-                                  ? itemCheckedMyOffers[index]
-                                  : itemCheckedOffersToMe[index];
-                              return OfferCard(
-                                offer: offerItem,
-                                isChecked: isChecked,
-                                isSelectionMode: isSelectionMode,
-                                onChanged: () => _toggleItem(index),
-                                onLongPress: () {
-                                  if (!isSelectionMode) {
-                                    _enterSelectionMode();
-                                    _toggleItem(index);
-                                  }
-                                },
-                                // При обработке всех предложений по этому объявлению:
-                                // 1. запоминаем его ID — чтобы не показывать снова
-                                // 2. перезагружаем список чтобы бэкенд обновил данные
-                                onRefreshNeeded: () {
-                                  final id =
-                                      offerItem.advertisementId ?? offerItem.id;
-                                  setState(() {
-                                    _handledAdvertIds.add(id);
-                                  });
-                                  if (!isMyOffersSelected) {
-                                    _loadOffersToMe();
-                                  } else {
-                                    _loadMyOffers();
-                                  }
-                                },
-                              );
-                            },
                           ),
+                        // if (isSelectionMode) const SizedBox(height: 12),
+                        if (isSelectionMode)
+                          const Divider(color: Colors.white24, height: 0),
+
+                        Expanded(
+                          child: isLoading
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFF00B7FF),
+                                    ),
+                                  ),
+                                )
+                              : offersToDisplay.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.only(bottom: 110.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Image.asset(
+                                        isMyOffersSelected
+                                            ? 'assets/offers/My_applications.png'
+                                            : 'assets/offers/Applications_for_me.png',
+                                        height: 72,
+                                        width: 72,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Text(
+                                        isMyOffersSelected
+                                            ? 'Вы не предложили цены'
+                                            : 'Вам не предложили цены',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      const SizedBox(
+                                        width: double.infinity,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              'У вас нет откликов на быструю',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 14,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                            Text(
+                                              'подработку, как только вы уберете',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 14,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                            Text(
+                                              'объявление с активных оно тут',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 14,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                            Text(
+                                              'появится',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 14,
+                                                height: 1.4,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : ListView.builder(
+                                  itemCount: offersToDisplay.length,
+                                  itemBuilder: (context, index) {
+                                    final offerItem = offersToDisplay[index];
+                                    final isChecked = isMyOffersSelected
+                                        ? itemCheckedMyOffers[index]
+                                        : itemCheckedOffersToMe[index];
+                                    return OfferCard(
+                                      offer: offerItem,
+                                      isChecked: isChecked,
+                                      isSelectionMode: isSelectionMode,
+                                      onChanged: () => _toggleItem(index),
+                                      onLongPress: () {
+                                        if (!isSelectionMode) {
+                                          _enterSelectionMode();
+                                          _toggleItem(index);
+                                        }
+                                      },
+                                      // При обработке всех предложений по этому объявлению:
+                                      // 1. запоминаем его ID — чтобы не показывать снова
+                                      // 2. перезагружаем список чтобы бэкенд обновил данные
+                                      onRefreshNeeded: () {
+                                        final id =
+                                            offerItem.advertisementId ??
+                                            offerItem.id;
+                                        setState(() {
+                                          _handledAdvertIds.add(id);
+                                        });
+                                        if (!isMyOffersSelected) {
+                                          _loadOffersToMe();
+                                        } else {
+                                          _loadMyOffers();
+                                        }
+                                      },
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-            ),
-            bottomNavigationBar: BottomNavigation(
-              onItemSelected: (index) {
-                if (index == 3) {
-                  // Shopping cart icon
-                  context.read<NavigationBloc>().add(
-                    NavigateToMyPurchasesEvent(),
-                  );
-                } else {
-                  context.read<NavigationBloc>().add(
-                    SelectNavigationIndexEvent(index),
-                  );
-                }
+                  bottomNavigationBar: BottomNavigation(
+                    onItemSelected: (index) {
+                      if (index == 3) {
+                        // Shopping cart icon
+                        context.read<NavigationBloc>().add(
+                          NavigateToMyPurchasesEvent(),
+                        );
+                      } else {
+                        context.read<NavigationBloc>().add(
+                          SelectNavigationIndexEvent(index),
+                        );
+                      }
+                    },
+                  ),
+                );
               },
             ),
           );

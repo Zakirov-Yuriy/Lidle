@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 
 class IndoorAdvertisingScreen extends StatefulWidget {
   static const routeName = '/indoor-advertising';
@@ -17,21 +22,49 @@ class IndoorAdvertisingScreen extends StatefulWidget {
 class _IndoorAdvertisingScreenState extends State<IndoorAdvertisingScreen> {
   static const accentColor = Color(0xFF00B7FF);
 
+  /// Перезагружает данные экрана при восстановлении подключения
+  void _reloadScreenData() {
+    // Экран не требует загрузки данных - это статический UI
+    // При необходимости добавить API запросы, добавить их сюда
+    if (mounted) {
+      setState(() {
+        // UI перестроится автоматически
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ───── Header ─────
-            Padding(
-              padding: const EdgeInsets.only(bottom: 21, right: 23),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _reloadScreenData();
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+          return Scaffold(
+            backgroundColor: primaryBackground,
+            body: SafeArea(
+              child: Column(
                 children: [
-                  const Header(),
+                  // ───── Header ─────
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 21, right: 23),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const Header(),
                   Padding(
                     padding: const EdgeInsets.only(top: 19.0),
                     child: GestureDetector(
@@ -141,6 +174,9 @@ class _IndoorAdvertisingScreenState extends State<IndoorAdvertisingScreen> {
             ),
           ],
         ),
+      ),
+    );
+        },
       ),
     );
   }

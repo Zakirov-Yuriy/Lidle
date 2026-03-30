@@ -16,6 +16,10 @@ import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import '../../../constants.dart';
 import '../../../constants/dnr_cities.dart';
 import '../../../services/api_service.dart';
@@ -200,6 +204,45 @@ class _DynamicFilterState extends State<DynamicFilter> {
     await _loadRegions();
 
     print('📝 [EDIT MODE] Initialization complete!');
+  }
+
+  /// Перезагружает данные фильтра при восстановлении подключения
+  Future<void> _reloadFilterData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      if (_isEditMode) {
+        // При редактировании: перезагружаем данные объявления и атрибуты
+        await Future.wait([
+          _loadAttributes(),
+          _loadUserContacts(),
+          _loadRegions(),
+        ]);
+        // Если есть данные объявления, обновляем их
+        if (widget.advertId != null) {
+          await _loadAdvertDataForEditing();
+          _repopulateControllersAfterAttributesLoaded();
+        }
+      } else {
+        // При создании: перезагружаем атрибуты и данные поддержки
+        await Future.wait([
+          _loadAttributes(),
+          _loadUserContacts(),
+          _loadRegions(),
+        ]);
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      // print('Error reloading filter data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -3036,68 +3079,85 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: defaultPadding,
-            vertical: 19,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: const Icon(
-                      Icons.close,
-                      color: Color.fromARGB(255, 221, 27, 27),
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _reloadFilterData();
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+          return Scaffold(
+            backgroundColor: primaryBackground,
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: defaultPadding,
+                  vertical: 19,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.close,
+                            color: Color.fromARGB(255, 221, 27, 27),
+                          ),
+                        ),
+                        const SizedBox(width: 13),
+                        const Text(
+                          'Создайте объявление',
+                          style: TextStyle(
+                            color: textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 13),
-                  const Text(
-                    'Создайте объявление',
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 17),
+
+                    const Text(
+                      'Опишите товар или услугу',
+                      style: TextStyle(color: textPrimary, fontSize: 16),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 17),
+                    const SizedBox(height: 17),
 
-              const Text(
-                'Опишите товар или услугу',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 17),
-
-              GestureDetector(
-                onTap: () {
-                  _showImageSourceActionSheet(context);
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: _images.isEmpty
-                        ? secondaryBackground
-                        : primaryBackground,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: _images.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              Padding(
-                                padding: EdgeInsets.only(top: 28.0),
-                                child: Icon(
-                                  Icons.add_circle_outline,
-                                  color: textSecondary,
-                                  size: 40,
-                                ),
+                    GestureDetector(
+                      onTap: () {
+                        _showImageSourceActionSheet(context);
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: _images.isEmpty
+                              ? secondaryBackground
+                              : primaryBackground,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: _images.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Padding(
+                                      padding: EdgeInsets.only(top: 28.0),
+                                      child: Icon(
+                                        Icons.add_circle_outline,
+                                        color: textSecondary,
+                                        size: 40,
+                                      ),
                               ),
                               SizedBox(height: 3),
                               Padding(
@@ -3903,6 +3963,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
             ],
           ),
         ),
+      ),
+    );
+        },
       ),
     );
   }

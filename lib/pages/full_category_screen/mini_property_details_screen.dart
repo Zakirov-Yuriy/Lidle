@@ -15,7 +15,11 @@ import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
@@ -330,7 +334,39 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ListingsBloc, ListingsState>(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Когда интернет восстановлен - перезагружаем данные объявления
+        if (connectivityState is ConnectedState) {
+          // Очищаем ошибку сразу
+          // ⏳ Добавляем задержку для стабилизации соединения
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              // Перезагружаем данные объявления
+              // ignore: use_build_context_synchronously
+              context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
+              // Перезагружаем похожие объявления и предложения цены
+              _loadSimilarListings();
+              _loadPriceOffers();
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          // Показываем экран отсутствия интернета
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
+          }
+
+          // Показываем обычный контент
+          return BlocListener<ListingsBloc, ListingsState>(
       listener: (context, state) {
         // print('BlocListener in MiniPropertyDetailsScreen: $state');
         if (state is AdvertLoaded) {
@@ -530,6 +566,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             ),
           ],
         ),
+      ),
+    );
+        },
       ),
     );
   }

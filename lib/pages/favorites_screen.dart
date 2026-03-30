@@ -4,11 +4,15 @@ import 'package:flutter_svg/svg.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart'; // Import SelectionDialog
 import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import '../constants.dart';
 import '../widgets/navigation/bottom_navigation.dart';
 import '../models/home_models.dart';
@@ -136,68 +140,86 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocListener(
-      listeners: [
-        BlocListener<NavigationBloc, NavigationState>(
-          listener: (context, state) {
-            if (state is NavigationToProfile ||
-                state is NavigationToHome ||
-                state is NavigationToFavorites ||
-                state is NavigationToMessages) {
-              context.read<NavigationBloc>().executeNavigation(context);
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        if (connectivityState is ConnectedState) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              context.read<WishlistBloc>().add(const LoadWishlistEvent());
             }
-          },
-        ),
-        BlocListener<ListingsBloc, ListingsState>(
-          listener: (context, state) {
-            if (state is ListingsLoaded) {
-              // Обновляем favorites при изменении listings
-              setState(() {});
-            }
-          },
-        ),
-        BlocListener<WishlistBloc, WishlistState>(
-          listener: (context, state) {
-            // Когда wishlist обновляется, переотчитываемся
-            if (state is WishlistLoaded || 
-                state is WishlistItemAdded || 
-                state is WishlistItemRemoved) {
-              print('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
-              setState(() {});
-            }
-          },
-        ),
-      ],
-      child: Scaffold(
-        extendBody: true,
-        backgroundColor: primaryBackground,
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 21, right: 23),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(onRetry: () {
+              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+            });
+          }
+
+          return MultiBlocListener(
+            listeners: [
+              BlocListener<NavigationBloc, NavigationState>(
+                listener: (context, state) {
+                  if (state is NavigationToProfile ||
+                      state is NavigationToHome ||
+                      state is NavigationToFavorites ||
+                      state is NavigationToMessages) {
+                    context.read<NavigationBloc>().executeNavigation(context);
+                  }
+                },
+              ),
+              BlocListener<ListingsBloc, ListingsState>(
+                listener: (context, state) {
+                  if (state is ListingsLoaded) {
+                    // Обновляем favorites при изменении listings
+                    setState(() {});
+                  }
+                },
+              ),
+              BlocListener<WishlistBloc, WishlistState>(
+                listener: (context, state) {
+                  // Когда wishlist обновляется, переотчитываемся
+                  if (state is WishlistLoaded || 
+                      state is WishlistItemAdded || 
+                      state is WishlistItemRemoved) {
+                    print('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
+                    setState(() {});
+                  }
+                },
+              ),
+            ],
+            child: Scaffold(
+              extendBody: true,
+              backgroundColor: primaryBackground,
+              body: SafeArea(
+                bottom: false,
+                child: Column(
                   children: [
-                    const Header(),
-                    const Spacer(),
                     Padding(
-                      padding: const EdgeInsets.only(top: 15.0),
-                      child: SvgPicture.asset(
-                        'assets/home_page/marker-pin.svg',
-                        width: 20,
-                        height: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 7),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 15.0),
-                      child: const Text(
-                        'г. Мариуполь. ДНР',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFAAAAAA),
+                      padding: const EdgeInsets.only(bottom: 21, right: 23),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Header(),
+                          const Spacer(),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 15.0),
+                            child: SvgPicture.asset(
+                              'assets/home_page/marker-pin.svg',
+                              width: 20,
+                              height: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Padding(
+                            padding: const EdgeInsets.only(top: 15.0),
+                            child: const Text(
+                              'г. Мариуполь. ДНР',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFFAAAAAA),
                         ),
                       ),
                     ),
@@ -354,7 +376,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         ),
       ),
     );
-  }
+      },
+    ),
+  );
+}
 
   // Helper widget for building dropdowns, similar to real_estate_listings_screen.dart
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {

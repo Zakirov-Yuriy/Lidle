@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
@@ -514,7 +519,34 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<ConnectivityBloc, ConnectivityState>(
+      listener: (context, connectivityState) {
+        // Когда интернет восстановлен - перезагружаем объявления
+        if (connectivityState is ConnectedState) {
+          // ⏳ Добавляем задержку для стабилизации соединения
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _currentPage = 1;
+              _loadAdverts(forceRefresh: true);
+            }
+          });
+        }
+      },
+      child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+        builder: (context, connectivityState) {
+          // Показываем экран отсутствия интернета
+          if (connectivityState is DisconnectedState) {
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
+          }
+
+          // Показываем обычный контент
+          return Scaffold(
       extendBody: true,
       backgroundColor: primaryBackground,
       body: SafeArea(
@@ -681,6 +713,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         ),
       ),
       bottomNavigationBar: _buildBottomNavigation(),
+    );
+        },
+      ),
     );
   }
 
