@@ -13,12 +13,16 @@ import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
 
   const ContactDataScreen({super.key});
-  
+
   /// 🧹 Очищает кеш контактных данных при logout
   /// Вызывается из AuthBloc при LogoutEvent
   static void clearCache() {
@@ -42,7 +46,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _cityController;
 
   bool _isLoading = false;
-  bool _isLoadingData = false; // ✅ Флаг чтобы не запускать одновременные загрузки
+  bool _isLoadingData =
+      false; // ✅ Флаг чтобы не запускать одновременные загрузки
   String? _errorMessage;
 
   // Храним ID контактов для обновления
@@ -77,11 +82,13 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     super.didChangeDependencies();
     // ignore: avoid_print
     print('🔵 ContactDataScreen: didChangeDependencies() called');
-    
+
     // 💾 КЕШИРОВАНИЕ: Проверяем нужно ли обновлять данные
     if (_shouldRefreshContactData()) {
       // ignore: avoid_print
-      print('🔄 ContactDataScreen: Cache expired или первый вход, загружаем свежие данные');
+      print(
+        '🔄 ContactDataScreen: Cache expired или первый вход, загружаем свежие данные',
+      );
       _loadContactData();
       _lastContactDataLoadTime = DateTime.now();
     } else {
@@ -101,7 +108,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final name = profileState is ProfileLoaded ? profileState.name : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
-      
+
       // Загружаем сохраненные данные из Hive
       final region = UserService.getLocal('region') as String? ?? '';
       final city = UserService.getLocal('city') as String? ?? '';
@@ -111,7 +118,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       setState(() {
         _nameController.text = name;
         _emailController.text = email;
-        _phone1Controller.text = phone.isEmpty ? '' : (phone.startsWith('+') ? phone : '+$phone');
+        _phone1Controller.text = phone.isEmpty
+            ? ''
+            : (phone.startsWith('+') ? phone : '+$phone');
         _phone2Controller.text = '';
         _telegramController.text = telegram;
         _whatsappController.text = whatsapp;
@@ -131,13 +140,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   /// 💾 Проверяет нужно ли обновлять кеш контактных данных
   bool _shouldRefreshContactData() {
     if (_lastContactDataLoadTime == null) return true;
-    return DateTime.now()
-            .difference(_lastContactDataLoadTime!)
-            .inMinutes >=
+    return DateTime.now().difference(_lastContactDataLoadTime!).inMinutes >=
         _contactDataCacheDuration.inMinutes;
   }
 
-  Future<void> _loadContactData() async {
+  Future<void> _loadContactData({int retryCount = 0}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -157,16 +164,19 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final phonesResponse = await ContactService.getPhones(token: token);
       final emailsResponse = await ContactService.getEmails(token: token);
 
+      // ✅ Проверяем что widget еще mounted перед использованием Context
+      if (!mounted) return;
+
       // Получаем имя пользователя из ProfileBloc (из API)
       final profileState = context.read<ProfileBloc>().state;
       final name = profileState is ProfileLoaded ? profileState.name : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
-      
+
       // Получаем область и город из локального хранилища
       var region = UserService.getLocal('region') as String? ?? '';
       var city = UserService.getLocal('city') as String? ?? '';
-      
+
       // Если данные не найдены в хранилище, пытаемся получить из первого объявления пользователя
       if (region.isEmpty || city.isEmpty) {
         try {
@@ -177,30 +187,35 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             limit: 1,
             token: token,
           );
-          
+
           // ignore: avoid_print
           print('📢 MyAdvertsResponse:');
           // ignore: avoid_print
           print('   Data count: ${myAdvertsResponse.data.length}');
-          
+
           if (myAdvertsResponse.data.isNotEmpty) {
             final firstAdvert = myAdvertsResponse.data.first;
             // ignore: avoid_print
-            print('   First advert: name="${firstAdvert.name}", address="${firstAdvert.address}"');
-            
+            print(
+              '   First advert: name="${firstAdvert.name}", address="${firstAdvert.address}"',
+            );
+
             // Извлекаем адрес из объявления
             final advertAddress = firstAdvert.address ?? '';
-            
+
             // Парсим область и город из адреса (формат может быть "область, город, улица")
             // Например: "Донецкая область, Мариуполь, ул. Артёма"
             if (advertAddress.isNotEmpty) {
-              final addressParts = advertAddress.split(',').map((s) => s.trim()).toList();
+              final addressParts = advertAddress
+                  .split(',')
+                  .map((s) => s.trim())
+                  .toList();
               // ignore: avoid_print
               print('   Address parts: $addressParts');
-              
+
               if (addressParts.length >= 2) {
                 region = addressParts[0]; // Первая часть - область
-                city = addressParts[1];   // Вторая часть - город
+                city = addressParts[1]; // Вторая часть - город
                 // ignore: avoid_print
                 print('   ✅ Extracted - region: "$region", city: "$city"');
               }
@@ -270,18 +285,39 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _cityController.text = city;
         _isLoading = false;
       });
-      
+
       // 💾 Сохраняем данные в локальное хранилище для кеширования
       await UserService.saveLocal('name', name);
       await UserService.saveLocal('region', region);
       await UserService.saveLocal('city', city);
       // ignore: avoid_print
-      print('✅ ContactDataScreen: данные сохранены в локальное хранилище для кеша');
+      print(
+        '✅ ContactDataScreen: данные сохранены в локальное хранилище для кеша',
+      );
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Ошибка загрузки: ${e.toString()}';
-        _isLoading = false;
-      });
+      // ♻️ RETRY ЛОГИКА: Повторяем попытку загрузки при сбое
+      const maxRetries = 3;
+      const retryDelayMs = 2000; // 2 сек между попытками
+      
+      if (retryCount < maxRetries) {
+        // ignore: avoid_print
+        print(
+          '⚠️ ContactDataScreen: Сбой загрузки (попытка ${retryCount + 1}/$maxRetries), '
+          'повторяем через ${retryDelayMs}ms...',
+        );
+        // Ждем перед повторной попыткой
+        await Future.delayed(Duration(milliseconds: retryDelayMs));
+        // Повторяем рекурсивно
+        await _loadContactData(retryCount: retryCount + 1);
+      } else {
+        // Исчерпаны попытки - показываем ошибку
+        setState(() {
+          _errorMessage = 'Ошибка загрузки: ${e.toString()}';
+          _isLoading = false;
+        });
+        // ignore: avoid_print
+        print('❌ ContactDataScreen: Сбой после $maxRetries попыток: $e');
+      }
     }
   }
 
@@ -459,148 +495,188 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ───── Header ─────
-              Padding(
-                padding: const EdgeInsets.only(bottom: 20, right: 23),
-                child: Row(children: const [Header()]),
-              ),
+      body: BlocListener<ConnectivityBloc, ConnectivityState>(
+        listener: (context, connectivityState) {
+          // Когда интернет восстановлен - перезагружаем контактные данные
+          if (connectivityState is ConnectedState) {
+            // Очищаем предыдущую ошибку сразу
+            setState(() {
+              _errorMessage = null;
+            });
+            
+            // ⏳ Добавляем задержку для стабилизации соединения
+            // перед попыткой API запросов (обычно достаточно 500ms)
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                _loadContactData();
+                _lastContactDataLoadTime = DateTime.now();
+              }
+            });
+          }
+        },
+        child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+          builder: (context, connectivityState) {
+            // Показываем экран отсутствия интернета
+            if (connectivityState is DisconnectedState) {
+              return NoInternetScreen(
+                onRetry: () {
+                  context.read<ConnectivityBloc>().add(
+                    const CheckConnectivityEvent(),
+                  );
+                },
+              );
+            }
 
-              // ───── Back row ─────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Row(
+            // Показываем обычный контент
+            return SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white,
-                        size: 16,
+                    // ───── Header ─────
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20, right: 23),
+                      child: Row(children: const [Header()]),
+                    ),
+
+                    // ───── Back row ─────
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: const Icon(
+                              Icons.arrow_back_ios,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Контактные данные',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const Spacer(),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text(
+                              'Назад',
+                              style: TextStyle(
+                                color: accentColor,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'Контактные данные',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
+
+                    const SizedBox(height: 16),
+
+                    // ───── Description ─────
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 25),
+                      child: Text(
+                        'На этой странице, вы указываете вашу личную информацию '
+                        'которая будет видна в объявлениях',
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 16,
+                          height: 1.4,
+                        ),
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        'Назад',
-                        style: TextStyle(color: accentColor, fontSize: 16),
+
+                    const SizedBox(height: 10),
+
+                    if (_errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
+
+                    if (_isLoading)
+                      // 🧨 ОПТИМИЗАЦИЯ: Skeleton loader вместо простого индикатора загрузки
+                      // Показывает структуру экрана заранее для лучшего UX
+                      _buildSkeletonFields()
+                    else ...[
+                      // ───── Fields ─────
+                      _label('Контактное лицо'),
+                      _field(_nameController, 'Введите имя контактного лица'),
+
+                      _label('Ваша область'),
+                      _field(_regionController, 'Введите вашу область'),
+
+                      _label('Ваш город'),
+                      _field(_cityController, 'Введите ваш город'),
+
+                      _label('Электронная почта'),
+                      _field(_emailController, 'Введите вашу почту'),
+
+                      _label('Номер телефона 1'),
+                      _field(_phone1Controller, 'Введите номер телефона'),
+
+                      _label('Номер телефона 2'),
+                      _field(_phone2Controller, 'Введите'),
+
+                      _label('Ссылка на ваш чат в Max'),
+                      _field(_telegramController, 'Введите ссылку на чат'),
+
+                      // _label('Ссылка на ваш whatsapp'),
+                      // _field(_whatsappController, ''),
+                      const SizedBox(height: 24),
+
+                      // ───── Save button ─────
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: 47,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: accentColor,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                            ),
+                            onPressed: _isLoading ? null : _saveContactData,
+                            child: const Text(
+                              'Сохранить',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              // ───── Description ─────
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 25),
-                child: Text(
-                  'На этой странице, вы указываете вашу личную информацию '
-                  'которая будет видна в объявлениях',
-                  style: TextStyle(
-                    color: Colors.white54,
-                    fontSize: 16,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              if (_errorMessage != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 14),
-                    ),
-                  ),
-                ),
-
-              if (_isLoading)
-                // 🧨 ОПТИМИЗАЦИЯ: Skeleton loader вместо простого индикатора загрузки
-                // Показывает структуру экрана заранее для лучшего UX
-                _buildSkeletonFields()
-              else ...[
-                // ───── Fields ─────
-                _label('Контактное лицо'),
-                _field(_nameController, 'Введите имя контактного лица'),
-
-                _label('Ваша область'),
-                _field(_regionController, 'Введите вашу область'),
-
-                _label('Ваш город'),
-                _field(_cityController, 'Введите ваш город'),
-
-                _label('Электронная почта'),
-                _field(_emailController, 'Введите вашу почту'),
-
-                _label('Номер телефона 1'),
-                _field(_phone1Controller, 'Введите номер телефона'), 
-
-                _label('Номер телефона 2'),
-                _field(_phone2Controller, 'Введите'),
-
-                
-
-                _label('Ссылка на ваш чат в Max'),
-                _field(_telegramController, 'Введите ссылку на чат'),
-
-                // _label('Ссылка на ваш whatsapp'),
-                // _field(_whatsappController, ''),
-                const SizedBox(height: 24),
-
-                // ───── Save button ─────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: 47,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: accentColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-                      onPressed: _isLoading ? null : _saveContactData,
-                      child: const Text(
-                        'Сохранить',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 32),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

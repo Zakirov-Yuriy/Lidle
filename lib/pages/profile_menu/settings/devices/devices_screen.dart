@@ -10,9 +10,12 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/devices/devices_bloc.dart';
 import 'package:lidle/blocs/devices/devices_event.dart';
 import 'package:lidle/blocs/devices/devices_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/models/device_model.dart';
 import 'package:lidle/services/device_info_service.dart';
-import 'package:lidle/hive_service.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'device_details_widget.dart';
 
 class DevicesScreen extends StatefulWidget {
@@ -40,8 +43,31 @@ class _DevicesScreenState extends State<DevicesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgColor,
-      body: SafeArea(
-        child: Column(
+      body: BlocListener<ConnectivityBloc, ConnectivityState>(
+        listener: (context, connectivityState) {
+          // Когда интернет восстановлен - перезагружаем данные устройств
+          if (connectivityState is ConnectedState) {
+            context
+                .read<DevicesBloc>()
+                .add(const LoadDevicesEvent(forceRefresh: true));
+          }
+        },
+        child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
+          builder: (context, connectivityState) {
+            // Показываем экран отсутствия интернета
+            if (connectivityState is DisconnectedState) {
+              return NoInternetScreen(
+                onRetry: () {
+                  context
+                      .read<ConnectivityBloc>()
+                      .add(const CheckConnectivityEvent());
+                },
+              );
+            }
+
+            // Показываем обычный контент
+            return SafeArea(
+              child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ───── Header ─────
@@ -325,7 +351,10 @@ class _DevicesScreenState extends State<DevicesScreen> {
             ),
           ],
         ),
-      ),
+            );
+          },
+        ),
+        ),
     );
   }
 

@@ -43,6 +43,7 @@ dependencies:
   flutter_local_notifications: ^17.2.0 # Для локальных пуш-уведомлений
   permission_handler: ^11.4.0 # Для запроса разрешений (Android 13+ для уведомлений)
   workmanager: ^0.9.0
+  connectivity_plus: ^6.0.0 # Для мониторинга подключения к интернету
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +85,7 @@ flutter:
     - assets/user_qr/
     - assets/chat_page/send-03.svg
     - assets/profile_dashboard/
+    - assets/connectivity/connectivity.svg
     
     
 

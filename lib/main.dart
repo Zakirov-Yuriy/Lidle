@@ -30,9 +30,13 @@ import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/blocs/catalog/catalog_bloc.dart';
 import 'package:lidle/blocs/devices/devices_bloc.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_state.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/services/device_info_service.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/message_polling_service.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/filters_screen.dart';
 import 'package:lidle/pages/auth/account_recovery.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
@@ -176,6 +180,41 @@ void main() async {
 }
 
 // ============================================================
+//  Обёртка для отображения экрана отсутствия интернета
+// ============================================================
+
+class AppWrapper extends StatefulWidget {
+  const AppWrapper({super.key});
+
+  @override
+  State<AppWrapper> createState() => _AppWrapperState();
+}
+
+class _AppWrapperState extends State<AppWrapper> {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ConnectivityBloc, ConnectivityState>(
+      builder: (context, state) {
+        // Показываем экран отсутствия интернета
+        if (state is DisconnectedState) {
+          return NoInternetScreen(
+            onRetry: () {
+              // Проверяем соединение снова
+              context
+                  .read<ConnectivityBloc>()
+                  .add(const CheckConnectivityEvent());
+            },
+          );
+        }
+
+        // Показываем основное приложение при наличии соединения
+        return const HomePage();
+      },
+    );
+  }
+}
+
+// ============================================================
 //  Корневой виджет приложения
 // ============================================================
 
@@ -204,6 +243,7 @@ class LidleApp extends StatelessWidget {
         BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
         BlocProvider<DevicesBloc>(create: (context) => DevicesBloc()),
         BlocProvider<WishlistBloc>(create: (context) => WishlistBloc()),
+        BlocProvider<ConnectivityBloc>(create: (context) => ConnectivityBloc()),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
@@ -271,8 +311,8 @@ class LidleApp extends StatelessWidget {
             return home ?? ErrorWidget(Exception('Unknown error'));
           },
 
-          // Production home
-          home: const HomePage(),
+          // Production home с обёрткой для проверки интернета
+          home: const AppWrapper(),
           // home: const PropertyDetailsScreen(),
           routes: {
             HomePage.routeName: (context) => const HomePage(),
