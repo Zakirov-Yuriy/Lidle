@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.*
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -5,8 +8,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Загрузка параметров подписи из key.properties
+val keyPropertiesFile = rootProject.file("app/key.properties")
+val keyProperties = Properties()
+if (keyPropertiesFile.exists()) {
+    keyProperties.load(FileInputStream(keyPropertiesFile))
+}
+
 android {
-    namespace = "com.example.lidle"
+    namespace = "io.lidle.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,30 +32,45 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.lidle"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        applicationId = "io.lidle.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // Настройка подписи для release build
+    signingConfigs {
+        if (keyPropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(keyProperties.getProperty("storeFile", "keystore.jks"))
+                storePassword = keyProperties.getProperty("storePassword", "")
+                keyAlias = keyProperties.getProperty("keyAlias", "")
+                keyPassword = keyProperties.getProperty("keyPassword", "")
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Debug версия - встроенная подпись
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
+        }
+
         release {
-            // TODO: Add your own signing config for the release build.
-            //isMinifyEnabled = false
-            //signingConfig = signingConfigs.getByName("release")
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Release версия для RuStore
+            if (keyPropertiesFile.exists() && signingConfigs.findByName("release") != null) {
+                signingConfig = signingConfigs.getByName("release")
+                //signingConfig = signingConfigs.getByName("debug")
+            }
 
-            //Для релиза веключать
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // Включаем R8 минификацию для продакшена
+            isMinifyEnabled = true
+            isShrinkResources = true
 
-            // Отключаем ProGuard для отладки
-            proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+            // ProGuard конфиг с safe набором для Flutter плагинов
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }

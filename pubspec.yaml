@@ -2,7 +2,7 @@ name: lidle
 description: "LIDLE - современное кроссплатформенное мобильное приложение маркетплейса на базе Flutter для удобной покупки и продажи автомобилей, недвижимости и других товаров/услуг."
 publish_to: 'none' # Удалить эту строку, если хотите опубликовать в pub.dev
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.9.2
@@ -84,8 +84,6 @@ flutter:
     - assets/user_qr/
     - assets/chat_page/send-03.svg
     - assets/profile_dashboard/
-    - .env
-    - .env.production
     
     
 

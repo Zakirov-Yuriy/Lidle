@@ -1,4 +1,4 @@
-package com.example.lidle
+package io.lidle.app
 
 import io.flutter.embedding.android.FlutterActivity
 

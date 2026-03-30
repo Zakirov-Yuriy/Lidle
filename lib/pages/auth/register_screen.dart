@@ -200,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           errorText: 'Пожалуйста, введите вашу фамилию',
                         ),
                       ],
-                      subtitle: 'скрыта от пользователей',
+                    subtitle: ' (скрыта от пользователей)',
                     ),
                     _buildTextField(
                       'email',
@@ -215,7 +215,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           errorText: 'Пожалуйста, введите корректный email',
                         ),
                       ],
-                      subtitle: 'скрыта от пользователей',
+                      subtitle: ' (скрыта от пользователей)',
                     ),
                     _buildTextField(
                       'phone',
@@ -405,7 +405,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 label,
@@ -414,7 +414,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               if (subtitle != null)
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
                 ),
             ],
           ),
