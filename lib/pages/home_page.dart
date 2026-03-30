@@ -51,6 +51,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
   
   /// Защита от двойного клика на кнопку поделиться
   bool _isShareInProgress = false;
+  
+  /// Дебоунс загрузки следующей страницы при прокручивании (3 секунды)
+  static const Duration _loadMoreDebounce = Duration(seconds: 3);
+  
+  /// Время последней загрузки следующей страницы
+  DateTime? _lastLoadMoreTime;
 
   @override
   void initState() {
@@ -299,8 +305,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
                                       // Это надежнее, т.к. мы не знаем точное количество страниц
                                       final canLoadMore = state.listings.length < 500;
                                       
-                                      if (canLoadMore) {
+                                      // ⏱️ Добавляем дебоунс на загрузку (минимум 3 секунды между запросами)
+                                      final now = DateTime.now();
+                                      final shouldLoadMore = _lastLoadMoreTime == null ||
+                                          now.difference(_lastLoadMoreTime!) >= _loadMoreDebounce;
+                                      
+                                      if (canLoadMore && shouldLoadMore) {
                                         print('📥 Конец достигнут, загружаем еще... (текущих: ${state.listings.length})');
+                                        _lastLoadMoreTime = now;
                                         context.read<ListingsBloc>().add(LoadNextPageEvent());
                                       }
                                     }

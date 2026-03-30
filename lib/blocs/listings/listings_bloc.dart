@@ -8,6 +8,7 @@ import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
 import '../../services/loading_timer_service.dart';
+import '../../services/api_request_queue.dart';
 import '../../core/cache/cache_service.dart';
 import '../../core/cache/cache_keys.dart';
 
@@ -23,6 +24,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Флаг для отслеживания, уже ли загружены данные.
   /// Предотвращает ненужные повторные загрузки.
   bool _isInitialLoadComplete = false;
+
+  /// Флаг для защиты от дублирования pull-to-refresh запросов.
+  bool _isLoadingListings = false;
+
+  /// Время последнего успешного обновления через pull-to-refresh.
+  DateTime? _lastRefreshTime;
+
+  /// Минимальное время между refresh операциями (3 секунды).
+  static const Duration _refreshDebounce = Duration(seconds: 3);
 
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
@@ -168,7 +178,26 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     LoadListingsEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    // � ТАЙМЕР: Запускаем измерение времени загрузки
+    // Защита от дублирования pull-to-refresh запросов
+    if (_isLoadingListings) {
+      print('LoadListingsEvent уже выполняется, игнорируем дублирование');
+      return;
+    }
+
+    // Дебоунс для pull-to-refresh: минимум 3 секунды между обновлениями
+    if (event.forceRefresh && _lastRefreshTime != null) {
+      final timeSinceLastRefresh = DateTime.now().difference(_lastRefreshTime!);
+      if (timeSinceLastRefresh < _refreshDebounce) {
+        print('Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями');
+        return;
+      }
+    }
+
+    _isLoadingListings = true;
+    if (event.forceRefresh) {
+      _lastRefreshTime = DateTime.now();
+    }
+
     const operationKey = 'listings_load';
     LoadingTimerService().startLoadingTimer(operationKey);
     
@@ -260,45 +289,41 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       int itemsPerPage = 50;
 
       if (firstBatchCatalogIds.isNotEmpty) {
-        const int maxConcurrentRequests = 3;
-        
-        for (int i = 0; i < firstBatchCatalogIds.length; i += maxConcurrentRequests) {
-          final batch = firstBatchCatalogIds.sublist(
-            i,
-            (i + maxConcurrentRequests).clamp(0, firstBatchCatalogIds.length),
-          );
+        // Преобразуем каталоги в список функций для queueBatch
+        final requestFunctions = firstBatchCatalogIds
+            .map(
+              (catalogId) => () => ApiService.getAdverts(
+                catalogId: catalogId,
+                token: token,
+                page: 1,
+                limit: 50,
+              ),
+            )
+            .toList();
 
-          final batchFutures = batch
-              .map(
-                (catalogId) => ApiService.getAdverts(
-                  catalogId: catalogId,
-                  token: token,
-                  page: 1,
-                  limit: 50,
-                ),
-              )
-              .toList();
+        // Используем ApiRequestQueue для ограничения параллельных запросов
+        final batchResponses = await ApiRequestQueue.instance.queueBatch(
+          requestFunctions,
+          batchSize: 2,
+        );
 
-          final batchResponses = await Future.wait(batchFutures);
+        // Парсируем ответы
+        for (final response in batchResponses) {
+          if (response.data.isNotEmpty) {
+            List<home.Listing> parsedListings;
 
-          // Парсируем ответы
-          for (final response in batchResponses) {
-            if (response.data.isNotEmpty) {
-              List<home.Listing> parsedListings;
-
-              if (response.data.length > 50) {
-                parsedListings = await compute<List<Advert>, List<home.Listing>>(
-                  (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                  response.data,
-                );
-              } else {
-                parsedListings = _parseAdvertsOnBackgroundThread(response.data);
-              }
-
-              initialListings.addAll(parsedListings);
-              totalPages = response.meta.lastPage;
-              itemsPerPage = response.meta.perPage;
+            if (response.data.length > 50) {
+              parsedListings = await compute<List<Advert>, List<home.Listing>>(
+                (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                response.data,
+              );
+            } else {
+              parsedListings = _parseAdvertsOnBackgroundThread(response.data);
             }
+
+            initialListings.addAll(parsedListings);
+            totalPages = response.meta.lastPage;
+            itemsPerPage = response.meta.perPage;
           }
         }
       }
@@ -344,6 +369,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       );
       
       emit(ListingsError(message: e.toString()));
+    } finally {
+      _isLoadingListings = false;
     }
   }
 
