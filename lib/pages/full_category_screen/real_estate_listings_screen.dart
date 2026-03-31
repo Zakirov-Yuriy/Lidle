@@ -58,6 +58,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   static final Map<String, DateTime> _cacheTimestamps =
       {}; // Время создания кеша
   static const Duration _cacheTTL = Duration(minutes: 5); // 5 минут TTL
+  static const int MAX_LISTINGS = 75; // Максимум объявлений для отображения
 
   int _selectedIndex = 0;
   List<Listing> _listings = [];
@@ -116,6 +117,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }
 
   void _onScroll() {
+    // Отключаем бесконечную прокрутку если достигнут лимит объявлений
+    if (_listings.length >= MAX_LISTINGS) {
+      return;
+    }
+    
     if (_scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 200 &&
         !_isLoading &&
@@ -443,7 +449,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
       final fullListings = sortedNewListings;
 
-      // 💾 КЕШИРОВАНИЕ: Сохраняем результаты в кеш (только первую страницу)
+      //  КЕШИРОВАНИЕ: Сохраняем результаты в кеш (только первую страницу)
       if (!isNextPage) {
         final cacheKey = _getCacheKey(sort: sort);
         _listingsCache[cacheKey] = fullListings;
@@ -678,7 +684,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                     )
                   else
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      padding: const EdgeInsets.only(left: 12, right: 12, bottom: 7),
                       sliver: SliverGrid(
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -688,11 +694,45 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                               childAspectRatio: 0.70,
                             ),
                         delegate: SliverChildBuilderDelegate(
-                          (context, i) => ListingCard(listing: _listings[i]),
-                          childCount: _listings.length,
+                          (context, i) {
+                            final displayCount = _listings.length > MAX_LISTINGS ? MAX_LISTINGS : _listings.length;
+                            
+                            // Показываем карточки до лимита
+                            if (i < displayCount) {
+                              return ListingCard(listing: _listings[i]);
+                            }
+                            
+                            // Показываем надпись если достигнут лимит и есть ещё объявления
+                            return const SizedBox.shrink();
+                          },
+                          childCount: _listings.length > MAX_LISTINGS ? MAX_LISTINGS : _listings.length,
                         ),
                       ),
                     ),
+                  // Сообщение если достигнут лимит объявлений
+                  if (!_isLoading && _listings.length >= MAX_LISTINGS)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only( bottom: 45.0),
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text(
+                              'Больше объявлений по точному запросу через фильтр',
+                              textAlign: TextAlign.center,
+                              softWrap: true,
+                              style: TextStyle(
+                                color: const Color(0xFF00A6FF),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w400,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  
                   // Индикатор подгрузки
                   if (_isLoadingMore)
                     SliverToBoxAdapter(

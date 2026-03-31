@@ -21,7 +21,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   static const accentColor = Color(0xFF00B7FF);
   static const cardColor = Color(0xFF1F2C3A);
 
-  String? _selectedConnection;
+  String? _selectedConnection = 'any';
 
   String _getConnectionText(String? value) {
     switch (value) {
