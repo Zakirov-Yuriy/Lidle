@@ -195,7 +195,7 @@ class _AppWrapperState extends State<AppWrapper> {
   Widget build(BuildContext context) {
     return BlocBuilder<ConnectivityBloc, ConnectivityState>(
       builder: (context, state) {
-        // Показываем экран отсутствия интернета
+        // Показываем экран отсутствия интернета или несоответствия типа подключения
         if (state is DisconnectedState) {
           return NoInternetScreen(
             onRetry: () {
@@ -204,6 +204,9 @@ class _AppWrapperState extends State<AppWrapper> {
                   .read<ConnectivityBloc>()
                   .add(const CheckConnectivityEvent());
             },
+            reason: state.reason,
+            availableTypes: state.availableTypes,
+            preferredType: state.preferredType,
           );
         }
 

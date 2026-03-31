@@ -3,6 +3,10 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
+import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
@@ -21,9 +25,16 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   static const accentColor = Color(0xFF00B7FF);
   static const cardColor = Color(0xFF1F2C3A);
 
-  String? _selectedConnection = 'any';
+  late String _selectedConnection;
 
-  String _getConnectionText(String? value) {
+  @override
+  void initState() {
+    super.initState();
+    // Загружаем сохраненное предпочтение из HiveService
+    _selectedConnection = HiveService.getSetting('network_preference', defaultValue: 'any') ?? 'any';
+  }
+
+  String _getConnectionText(String value) {
     switch (value) {
       case 'wifi':
         return 'Только Wi-Fi';
@@ -138,8 +149,8 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                     children: [
                       Text(
                         _getConnectionText(_selectedConnection),
-                        style: TextStyle(
-                          color: _selectedConnection != null ? Colors.white : Colors.white54,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 16,
                         ),
                       ),
@@ -159,7 +170,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
   }
 
   void _showConnectionDialog() {
-    String? selectedConnection = _selectedConnection;
+    String selectedConnection = _selectedConnection;
 
     showDialog(
       context: context,
@@ -242,6 +253,12 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                           child: ElevatedButton(
                             onPressed: () {
                               setState(() => _selectedConnection = selectedConnection);
+                              
+                              // 🔔 Отправляем событие в ConnectivityBloc для обновления статуса
+                              context.read<ConnectivityBloc>().add(
+                                SetNetworkPreferenceEvent(selectedConnection),
+                              );
+                              
                               Navigator.pop(context);
                             },
                             style: ElevatedButton.styleFrom(

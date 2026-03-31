@@ -20,3 +20,11 @@ class DisconnectedEvent extends ConnectivityEvent {
 class CheckConnectivityEvent extends ConnectivityEvent {
   const CheckConnectivityEvent();
 }
+
+/// Событие для изменения предпочтения типа подключения
+/// [preference] - предпочитаемый тип: 'wifi', 'mobile', 'any'
+class SetNetworkPreferenceEvent extends ConnectivityEvent {
+  final String preference; // 'wifi', 'mobile', 'any'
+  
+  const SetNetworkPreferenceEvent(this.preference);
+}

@@ -1,6 +1,7 @@
 // ============================================================
-// "Экран отсутствия интернета"
+// "Экран отсутствия интернета или соединения не соответствует типу"
 // Отображается когда у пользователя нет соединения с интернетом
+// или соединение не соответствует его предпочтениям
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -10,11 +11,55 @@ import 'package:lidle/widgets/components/header.dart';
 class NoInternetScreen extends StatelessWidget {
   /// Callback для повторной попытки (перезагрузки страницы)
   final VoidCallback onRetry;
+  
+  /// Причина отключения: 'no_internet' или 'preference_not_met'
+  final String reason;
+  
+  /// Доступные типы подключения
+  final List<String> availableTypes;
+  
+  /// Предпочтение пользователя
+  final String? preferredType;
 
   const NoInternetScreen({
     super.key,
     required this.onRetry,
+    this.reason = 'no_internet',
+    this.availableTypes = const [],
+    this.preferredType,
   });
+
+  /// Получает заголовок в зависимости от причины
+  String _getTitle() {
+    switch (reason) {
+      case 'preference_not_met':
+        return 'Интернет не соответствует предпочтениям';
+      case 'no_internet':
+      default:
+        return 'Нет соединения с интернетом';
+    }
+  }
+
+  /// Получает описание в зависимости от причины и доступных типов
+  String _getDescription() {
+    switch (reason) {
+      case 'preference_not_met':
+        if (preferredType == 'wifi' && availableTypes.contains('mobile')) {
+          return 'Доступен только мобильный интернет.\n'
+              'Измените предпочтения в настройках приватности\n'
+              'или подключитесь к Wi-Fi';
+        } else if (preferredType == 'mobile' && availableTypes.contains('wifi')) {
+          return 'Доступен только Wi-Fi.\n'
+              'Измените предпочтения в настройках приватности\n'
+              'или используйте мобильный интернет';
+        }
+        return 'Текущее соединение не соответствует вашим предпочтениям.\n'
+            'Измените предпочтения в настройках приватности';
+      case 'no_internet':
+      default:
+        return 'Страница будет загружена, как только вы вернетесь в сеть';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,11 +98,11 @@ class NoInternetScreen extends StatelessWidget {
                     const SizedBox(height: 32),
 
                     // Заголовок
-                    const Center(
+                    Center(
                       child: Text(
-                        'Нет соединения с интернетом',
+                        _getTitle(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
@@ -68,11 +113,11 @@ class NoInternetScreen extends StatelessWidget {
                     const SizedBox(height: 12),
 
                     // Подтекст с описанием
-                    const Center(
+                    Center(
                       child: Text(
-                        'Страница будет загружена, как только вы вернетесь в сеть',
+                        _getDescription(),
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFF9CA3AF),
                           fontSize: 14,
                         ),
@@ -116,3 +161,4 @@ class NoInternetScreen extends StatelessWidget {
     );
   }
 }
+
