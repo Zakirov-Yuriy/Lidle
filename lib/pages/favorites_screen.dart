@@ -19,6 +19,7 @@ import '../models/home_models.dart';
 import '../widgets/cards/listing_card.dart';
 import '../hive_service.dart';
 import 'package:lidle/pages/home_page.dart';
+import 'package:lidle/core/logger.dart';
 
 class FavoritesScreen extends StatefulWidget {
   static const routeName = '/favorites';
@@ -44,7 +45,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       Future.microtask(() {
         if (mounted) {
           context.read<WishlistBloc>().add(const LoadWishlistEvent());
-          print('🔄 FavoritesScreen.initState: Загружаем wishlist');
+          log.d('🔄 FavoritesScreen.initState: Загружаем wishlist');
         }
       });
     }
@@ -63,7 +64,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         })
         .toList();
     
-    print('📊 FavoritesScreen._getFavoritedListings: Всего объявлений: ${allListings.length}, Избранных: ${favorited.length}, IDs избранного: $ids');
+    log.d('📊 FavoritesScreen._getFavoritedListings: Всего объявлений: ${allListings.length}, Избранных: ${favorited.length}, IDs избранного: $ids');
     
     return favorited;
   }
@@ -184,7 +185,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   if (state is WishlistLoaded || 
                       state is WishlistItemAdded || 
                       state is WishlistItemRemoved) {
-                    print('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
+                    log.d('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
                     setState(() {});
                   }
                 },

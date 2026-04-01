@@ -13,6 +13,7 @@ import 'package:lidle/blocs/listings/listings_state.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости для моих объявлений"
@@ -43,13 +44,13 @@ class _MyListingsPropertyDetailsScreenState
   void initState() {
     super.initState();
     _listing = widget.listing;
-    // print();
+    // log.d();
 
     // DEBUG логирование
-    // print('[DEBUG] initState - проверка полноты данных:');
-    // print();
-    // print();
-    // print();
+    // log.d('[DEBUG] initState - проверка полноты данных:');
+    // log.d();
+    // log.d();
+    // log.d();
 
     // Проверяем, есть ли полные данные (описание, характеристики, информация о продавце)
     final hasCompleteData =
@@ -57,12 +58,12 @@ class _MyListingsPropertyDetailsScreenState
         (_listing.characteristics.isNotEmpty) &&
         (_listing.sellerName != null && _listing.sellerName!.isNotEmpty);
 
-    // print('[DEBUG] hasCompleteData: $hasCompleteData');
+    // log.d('[DEBUG] hasCompleteData: $hasCompleteData');
     if (!hasCompleteData) {
-      // print();
+      // log.d();
       context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
     } else {
-      // print();
+      // log.d();
       _isAdvertLoaded = true;
     }
 
@@ -104,7 +105,7 @@ class _MyListingsPropertyDetailsScreenState
           ).timeout(
             const Duration(seconds: 5),
             onTimeout: () {
-              // print('Timeout loading image: $imageUrl');
+              // log.d('Timeout loading image: $imageUrl');
             },
           ),
         );
@@ -118,7 +119,7 @@ class _MyListingsPropertyDetailsScreenState
           ).timeout(
             const Duration(seconds: 3),
             onTimeout: () {
-              // print('Timeout loading asset image: $imageUrl');
+              // log.d('Timeout loading asset image: $imageUrl');
             },
           ),
         );
@@ -127,9 +128,9 @@ class _MyListingsPropertyDetailsScreenState
 
     try {
       await Future.wait(precacheFutures, eagerError: false);
-      // print('Successfully precached ${images.length} images');
+      // log.d('Successfully precached ${images.length} images');
     } catch (e) {
-      // print('Error precaching images: $e');
+      // log.d('Error precaching images: $e');
     }
 
     if (mounted) {
@@ -143,9 +144,9 @@ class _MyListingsPropertyDetailsScreenState
   Widget build(BuildContext context) {
     return BlocListener<ListingsBloc, ListingsState>(
       listener: (context, state) {
-        // print('BlocListener in MyListingsPropertyDetailsScreen: $state');
+        // log.d('BlocListener in MyListingsPropertyDetailsScreen: $state');
         if (state is AdvertLoaded) {
-          // print();
+          // log.d();
           setState(() {
             _isAdvertLoaded = true;
             // Всегда обновляем все данные: описание, характеристики, информацию о продавце
@@ -178,11 +179,11 @@ class _MyListingsPropertyDetailsScreenState
                 userId: state.listing.userId ?? _listing.userId,
               );
             }
-            // print('✅ _listing updated:');
-            // print('  - Title: ${_listing.title}');
-            // print();
-            // print('  - Seller: ${_listing.sellerName}');
-            // print();
+            // log.d('✅ _listing updated:');
+            // log.d('  - Title: ${_listing.title}');
+            // log.d();
+            // log.d('  - Seller: ${_listing.sellerName}');
+            // log.d();
           });
           // Precache images after loading the advert
           _precacheImages();
@@ -292,7 +293,7 @@ class _MyListingsPropertyDetailsScreenState
       );
     }
 
-    // print('Listing ${_listing.id} has ${_listing.images.length} images');
+    // log.d('Listing ${_listing.id} has ${_listing.images.length} images');
     final images = _listing.images.isNotEmpty
         ? _listing.images
         : [_listing.imagePath];
@@ -452,14 +453,14 @@ class _MyListingsPropertyDetailsScreenState
     String fullAddress = '';
     
     // DEBUG: Логируем компоненты адреса
-    print('[📍 ADDRESS COMPONENTS]');
-    print('  mainRegion: ${_listing.mainRegion}');
-    print('  subRegion: ${_listing.subRegion}');
-    print('  district: ${_listing.district}');
-    print('  city: ${_listing.city}');
-    print('  street: ${_listing.street}');
-    print('  buildingNumber: ${_listing.buildingNumber}');
-    print('  location (fallback): ${_listing.location}');
+    log.d('[📍 ADDRESS COMPONENTS]');
+    log.d('  mainRegion: ${_listing.mainRegion}');
+    log.d('  subRegion: ${_listing.subRegion}');
+    log.d('  district: ${_listing.district}');
+    log.d('  city: ${_listing.city}');
+    log.d('  street: ${_listing.street}');
+    log.d('  buildingNumber: ${_listing.buildingNumber}');
+    log.d('  location (fallback): ${_listing.location}');
     
     // Собираем адрес в порядке: mainRegion (область) → subRegion (район) → district (район города) → city (город) → street (улица) → buildingNumber (номер дома)
     if (_listing.mainRegion != null && _listing.mainRegion!.isNotEmpty) {
@@ -486,7 +487,7 @@ class _MyListingsPropertyDetailsScreenState
       fullAddress += _listing.buildingNumber!;
     }
     
-    print('[✅ ASSEMBLED ADDRESS]: $fullAddress');
+    log.d('[✅ ASSEMBLED ADDRESS]: $fullAddress');
 
     // Если нет отдельных компонентов, используем location как fallback
     final displayAddress = fullAddress.isNotEmpty ? fullAddress : _listing.location;
@@ -520,10 +521,10 @@ class _MyListingsPropertyDetailsScreenState
   Widget _buildAboutApartmentCard() {
     final Map<String, dynamic> chars = _listing.characteristics;
     // DEBUG: Выводим характеристики в консоль для отладки
-    // print('[DEBUG] Характеристики в карточке:');
-    // print('  - Всего характеристик: ${chars.length}');
-    // print('  - Keys: ${chars.keys.toList()}');
-    // chars.forEach((k, v) => print('  $k: $v (type: ${v.runtimeType})'));
+    // log.d('[DEBUG] Характеристики в карточке:');
+    // log.d('  - Всего характеристик: ${chars.length}');
+    // log.d('  - Keys: ${chars.keys.toList()}');
+    // chars.forEach((k, v) => log.d('  $k: $v (type: ${v.runtimeType})'));
 
     // Формируем список виджетов для отображения характеристик
     final List<Widget> charWidgets = [];
@@ -564,7 +565,7 @@ class _MyListingsPropertyDetailsScreenState
         ? charWidgets
         : charWidgets.take(_collapsedCount).toList();
 
-    // print();
+    // log.d();
 
     return _card(
       child: Column(
@@ -630,9 +631,9 @@ class _MyListingsPropertyDetailsScreenState
     final String? descriptionText = _listing.description;
 
     // DEBUG логирование
-    // print('[DEBUG] _buildDescriptionCard called:');
-    // print();
-    // print('  - isEmpty: ${descriptionText?.isEmpty ?? true}');
+    // log.d('[DEBUG] _buildDescriptionCard called:');
+    // log.d();
+    // log.d('  - isEmpty: ${descriptionText?.isEmpty ?? true}');
 
     // Проверяем, нужно ли показывать кнопку раскрытия
     // Показываем кнопку только если текст достаточно длинный (больше 200 символов)
@@ -722,10 +723,10 @@ class _MyListingsPropertyDetailsScreenState
     final sellerRegDate = _listing.sellerRegistrationDate ?? "2024г.";
 
     // DEBUG логирование
-    // print('[DEBUG] _buildSellerCard called:');
-    // print('  - sellerName (from listing): ${_listing.sellerName ?? "null"}');
-    // print();
-    // print();
+    // log.d('[DEBUG] _buildSellerCard called:');
+    // log.d('  - sellerName (from listing): ${_listing.sellerName ?? "null"}');
+    // log.d();
+    // log.d();
 
     return _card(
       child: Column(
@@ -957,12 +958,12 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
     final listingId = int.tryParse(widget.listing.id);
     if (listingId != null && mounted) {
       if (_isFavorited) {
-        print('💗 _SimilarOfferCard: Отправляем AddToWishlistEvent для advert_id=$listingId');
+        log.d('💗 _SimilarOfferCard: Отправляем AddToWishlistEvent для advert_id=$listingId');
         context.read<WishlistBloc>().add(
           AddToWishlistEvent(listingId: listingId),
         );
       } else {
-        print('💔 _SimilarOfferCard: Отправляем RemoveFromWishlistEvent для advert_id=$listingId');
+        log.d('💔 _SimilarOfferCard: Отправляем RemoveFromWishlistEvent для advert_id=$listingId');
         context.read<WishlistBloc>().add(
           RemoveFromWishlistEvent(listingId: listingId),
         );

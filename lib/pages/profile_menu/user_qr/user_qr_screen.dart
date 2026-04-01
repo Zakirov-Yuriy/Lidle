@@ -13,6 +13,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
+import 'package:lidle/core/logger.dart';
 
 class UserQrScreen extends StatefulWidget {
   const UserQrScreen({super.key});
@@ -44,7 +45,7 @@ class _UserQrScreenState extends State<UserQrScreen> {
 
       // Сохраняем файл
       await file.writeAsBytes(bytes);
-      // print('✅ QR код сохранен: ${file.path}');
+      // log.d('✅ QR код сохранен: ${file.path}');
 
       // Делимся файлом
       await Share.shareXFiles(
@@ -53,7 +54,7 @@ class _UserQrScreenState extends State<UserQrScreen> {
         subject: 'QR код пользователя LIDLE',
       );
     } catch (e) {
-      // print('❌ Ошибка при шаринге QR кода: $e');
+      // log.d('❌ Ошибка при шаринге QR кода: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

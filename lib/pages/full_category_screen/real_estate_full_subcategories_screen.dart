@@ -4,6 +4,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_apartments_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Полный экран подкатегорий недвижимости"
@@ -35,41 +36,41 @@ class _RealEstateFullSubcategoriesScreenState
   /// Загружает подкатегории для переданного каталога с API
   Future<void> _loadSubcategories() async {
     setState(() => isLoadingSubcategories = true);
-    print('🔄 Начинаем загрузку категорий из каталога ID=${widget.catalogId} с API...');
+    log.d('🔄 Начинаем загрузку категорий из каталога ID=${widget.catalogId} с API...');
     
     try {
       // Получаем текущий токен из Hive
       final token = HiveService.getUserData('token') as String?;
-      print('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
-      print('📦 Загружаем каталог ID=${widget.catalogId}');
+      log.d('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
+      log.d('📦 Загружаем каталог ID=${widget.catalogId}');
       
       // Получаем каталог с категориями
       final catalog = await ApiService.getCatalog(widget.catalogId, token: token);
-      print('✅ Каталог загружен: ${catalog.name} (ID=${catalog.id})');
-      print('✅ Загружено ${catalog.categories.length} категорий для этого каталога');
+      log.d('✅ Каталог загружен: ${catalog.name} (ID=${catalog.id})');
+      log.d('✅ Загружено ${catalog.categories.length} категорий для этого каталога');
       
       // Выводим названия загруженных категорий для отладки
       for (var i = 0; i < catalog.categories.length; i++) {
-        print('   [$i] ${catalog.categories[i].name}');
+        log.d('   [$i] ${catalog.categories[i].name}');
       }
       
       if (mounted) {
         setState(() {
           catalogName = catalog.name; // Сохраняем название каталога
           apiSubcategories = catalog.categories;
-          print('✅ apiSubcategories обновлены (${apiSubcategories.length} элементов)');
-          print('✅ catalogName обновлено: $catalogName');
+          log.d('✅ apiSubcategories обновлены (${apiSubcategories.length} элементов)');
+          log.d('✅ catalogName обновлено: $catalogName');
         });
       }
     } catch (e) {
-      print('❌ ОШИБКА при загрузке подкатегорий: $e');
+      log.d('❌ ОШИБКА при загрузке подкатегорий: $e');
       if (mounted) {
         setState(() => apiSubcategories = []);
       }
     } finally {
       if (mounted) {
         setState(() => isLoadingSubcategories = false);
-        print('✅ Загрузка подкатегорий завершена');
+        log.d('✅ Загрузка подкатегорий завершена');
       }
     }
   }
@@ -180,7 +181,7 @@ class _RealEstateFullSubcategoriesScreenState
                                     onTap: () async {
                                       // Защита от множественных нажатий
                                       if (_isNavigating) {
-                                        print('🛑 Already navigating in subcategories, ignoring tap on "$categoryName"');
+                                        log.d('🛑 Already navigating in subcategories, ignoring tap on "$categoryName"');
                                         return;
                                       }
                                       
@@ -189,7 +190,7 @@ class _RealEstateFullSubcategoriesScreenState
                                       try {
                                         // Если у категории есть подкатегории (дети), переходим на экран выбора
                                         if (hasChildren) {
-                                          print('🟡 [RealEstateFullSubcategoriesScreen] Pushing to RealEstateFullApartmentsScreen for category: $categoryName');
+                                          log.d('🟡 [RealEstateFullSubcategoriesScreen] Pushing to RealEstateFullApartmentsScreen for category: $categoryName');
                                           final result = await Navigator.push(
                                             context,
                                             MaterialPageRoute(
@@ -200,15 +201,15 @@ class _RealEstateFullSubcategoriesScreenState
                                               ),
                                             ),
                                           );
-                                          print('🟡 [RealEstateFullSubcategoriesScreen] Returned from RealEstateFullApartmentsScreen with result: $result');
+                                          log.d('🟡 [RealEstateFullSubcategoriesScreen] Returned from RealEstateFullApartmentsScreen with result: $result');
                                           // Если получили результат, возвращаем его на intermediate_filters_screen.dart
                                           if (result != null && mounted) {
-                                            print('🟡 [RealEstateFullSubcategoriesScreen] Popping back to intermediate_filters_screen with: $result');
+                                            log.d('🟡 [RealEstateFullSubcategoriesScreen] Popping back to intermediate_filters_screen with: $result');
                                             Navigator.pop(context, result);
                                           }
                                         } else {
                                           // Для категорий без подкатегорий просто возвращаем название
-                                          print('🟡 [RealEstateFullSubcategoriesScreen] No children for category: $categoryName, returning directly');
+                                          log.d('🟡 [RealEstateFullSubcategoriesScreen] No children for category: $categoryName, returning directly');
                                           Navigator.pop(context, categoryName);
                                         }
                                       } finally {

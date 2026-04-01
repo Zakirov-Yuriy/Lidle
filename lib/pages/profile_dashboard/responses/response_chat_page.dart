@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/response_model.dart';
 import 'package:lidle/pages/profile_dashboard/responses/user_account_page.dart';
+import 'package:lidle/core/logger.dart';
 
 class ResponseChatPage extends StatelessWidget {
   final ResponseModel response;
@@ -67,7 +68,7 @@ class ResponseChatPage extends StatelessWidget {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        // print('🔄 Переход на UserAccountPage...');
+                        // log.d('🔄 Переход на UserAccountPage...');
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (context) =>

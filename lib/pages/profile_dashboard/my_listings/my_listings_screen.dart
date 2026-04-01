@@ -21,6 +21,7 @@ import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class MyListingsScreen extends StatefulWidget {
   static const routeName = '/my-listings';
@@ -133,7 +134,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         }
       }
     } catch (e) {
-      // print('Error setting initial category and tab: $e');
+      // log.d('Error setting initial category and tab: $e');
     }
   }
 
@@ -302,7 +303,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         lastPage = response.lastPage ?? 1;
         currentPage++;
       } catch (e) {
-        // print();
+        // log.d();
         break;
       }
     }
@@ -361,7 +362,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         });
       }
     } catch (e) {
-      // print('=== Ошибка загрузки объявлений: $e');
+      // log.d('=== Ошибка загрузки объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingMore = false;
@@ -403,7 +404,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         lastPage = response.lastPage ?? 1;
         currentPage++;
       } catch (e) {
-        // print();
+        // log.d();
         break;
       }
     }
@@ -487,7 +488,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         });
       }
     } catch (e) {
-      // print('=== Ошибка загрузки дополнительных объявлений: $e');
+      // log.d('=== Ошибка загрузки дополнительных объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingMore = false;
@@ -1873,7 +1874,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         );
       }
     } catch (e) {
-      // print('Ошибка активации: $e');
+      // log.d('Ошибка активации: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -1901,7 +1902,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         );
       }
     } catch (e) {
-      // print('Ошибка деактивации: $e');
+      // log.d('Ошибка деактивации: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,

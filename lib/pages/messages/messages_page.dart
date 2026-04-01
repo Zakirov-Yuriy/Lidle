@@ -20,6 +20,7 @@ import 'package:lidle/services/messages_local_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/dialogs/delete_chat_dialog.dart';
 import 'dart:async';
+import 'package:lidle/core/logger.dart';
 
 class MessagesPage extends StatefulWidget {
   // Renamed from MessagesEmptyPage
@@ -181,7 +182,7 @@ class _MessagesPageState extends State<MessagesPage>
         _loadMessagesBackground();
       }
     });
-    print('✅ Таймер обновления счетчика сообщений запущен (интервал 15 сек)');
+    log.d('✅ Таймер обновления счетчика сообщений запущен (интервал 15 сек)');
   }
 
   /// 💬 Загрузить список чатов в фоне (без показа лоадера)
@@ -189,7 +190,7 @@ class _MessagesPageState extends State<MessagesPage>
   Future<void> _loadMessagesBackground() async {
     // 🛡️ Пропускаем если уже загружаются чаты
     if (_isLoadingChatsBackground) {
-      print('⏭️  Пропускаем загрузку (уже идет загрузка списка чатов)');
+      log.d('⏭️  Пропускаем загрузку (уже идет загрузка списка чатов)');
       return;
     }
 
@@ -260,7 +261,7 @@ class _MessagesPageState extends State<MessagesPage>
                 (entry.key < messages.length ? messages[entry.key].unreadCount : -1));
 
         if (hasChanges) {
-          print('📨 Счетчик сообщений обновлен');
+          log.d('📨 Счетчик сообщений обновлен');
           setState(() {
             messages = loadedMessages;
           });
@@ -275,7 +276,7 @@ class _MessagesPageState extends State<MessagesPage>
         _rateLimitRetryCount++;
         // Экспоненциальная задержка: 30сек, 60сек, 120сек...
         final delaySeconds = 30 * (1 << (_rateLimitRetryCount - 1));
-        print('⏸️  Rate limit на списке чатов! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...');
+        log.d('⏸️  Rate limit на списке чатов! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...');
         
         // Отменяем текущий таймер
         _updateTimer?.cancel();
@@ -283,12 +284,12 @@ class _MessagesPageState extends State<MessagesPage>
         // Запускаем новый таймер через задержку
         _rateLimitTimer = Timer(Duration(seconds: delaySeconds), () {
           if (mounted) {
-            print('🔄 Восстанавливаем периодическое обновление списка чатов');
+            log.d('🔄 Восстанавливаем периодическое обновление списка чатов');
             _startAutoUpdate();
           }
         });
       } else {
-        print('⚠️  Ошибка фонового обновления счетчика: $e');
+        log.d('⚠️  Ошибка фонового обновления счетчика: $e');
         _rateLimitRetryCount = 0;
       }
     } finally {
@@ -358,7 +359,7 @@ class _MessagesPageState extends State<MessagesPage>
         messages = loadedMessages;
       }
     } catch (e) {
-      print('❌ Ошибка загрузки чатов: $e');
+      log.d('❌ Ошибка загрузки чатов: $e');
       // Fallback на дамми данные при ошибке
       messages = dummyMessages;
     }
@@ -967,10 +968,10 @@ class _MessagesPageState extends State<MessagesPage>
                                                   try {
                                                     if (msg.chatId != null) {
                                                       await ApiService.deleteChat(msg.chatId!);
-                                                      print('✅ Chat ${msg.chatId} deleted on server');
+                                                      log.d('✅ Chat ${msg.chatId} deleted on server');
                                                     }
                                                   } catch (e) {
-                                                    print('⚠️ Failed to delete chat on server: $e');
+                                                    log.d('⚠️ Failed to delete chat on server: $e');
                                                     // Продолжаем — пометим локально, чтобы скрыть чат
                                                   }
 

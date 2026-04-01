@@ -17,6 +17,7 @@ import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
@@ -28,7 +29,7 @@ class ContactDataScreen extends StatefulWidget {
   static void clearCache() {
     _ContactDataScreenState._lastContactDataLoadTime = null;
     // ignore: avoid_print
-    print('🧹 ContactDataScreen: кеш очищен при logout');
+    log.d('🧹 ContactDataScreen: кеш очищен при logout');
   }
 
   @override
@@ -81,12 +82,12 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // ignore: avoid_print
-    print('🔵 ContactDataScreen: didChangeDependencies() called');
+    log.d('🔵 ContactDataScreen: didChangeDependencies() called');
 
     // 💾 КЕШИРОВАНИЕ: Проверяем нужно ли обновлять данные
     if (_shouldRefreshContactData()) {
       // ignore: avoid_print
-      print(
+      log.d(
         '🔄 ContactDataScreen: Cache expired или первый вход, загружаем свежие данные',
       );
       _loadContactData();
@@ -94,7 +95,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     } else {
       // Кеш ещё актуален - восстанавливаем данные из локального хранилища
       // ignore: avoid_print
-      print('✅ ContactDataScreen: Кеш актуален, восстанавливаем данные');
+      log.d('✅ ContactDataScreen: Кеш актуален, восстанавливаем данные');
       _restoreDataFromCache();
     }
   }
@@ -131,7 +132,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     } catch (e) {
       // Если восстановление не удалось, загружаем свежие данные
       // ignore: avoid_print
-      print('❌ Error restoring from cache: $e');
+      log.d('❌ Error restoring from cache: $e');
       _loadContactData();
       _lastContactDataLoadTime = DateTime.now();
     }
@@ -189,14 +190,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           );
 
           // ignore: avoid_print
-          print('📢 MyAdvertsResponse:');
+          log.d('📢 MyAdvertsResponse:');
           // ignore: avoid_print
-          print('   Data count: ${myAdvertsResponse.data.length}');
+          log.d('   Data count: ${myAdvertsResponse.data.length}');
 
           if (myAdvertsResponse.data.isNotEmpty) {
             final firstAdvert = myAdvertsResponse.data.first;
             // ignore: avoid_print
-            print(
+            log.d(
               '   First advert: name="${firstAdvert.name}", address="${firstAdvert.address}"',
             );
 
@@ -211,33 +212,33 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                   .map((s) => s.trim())
                   .toList();
               // ignore: avoid_print
-              print('   Address parts: $addressParts');
+              log.d('   Address parts: $addressParts');
 
               if (addressParts.length >= 2) {
                 region = addressParts[0]; // Первая часть - область
                 city = addressParts[1]; // Вторая часть - город
                 // ignore: avoid_print
-                print('   ✅ Extracted - region: "$region", city: "$city"');
+                log.d('   ✅ Extracted - region: "$region", city: "$city"');
               }
             } else {
               // ignore: avoid_print
-              print('   ❌ Address is empty or null');
+              log.d('   ❌ Address is empty or null');
             }
           } else {
             // ignore: avoid_print
-            print('   ❌ No adverts found for user');
+            log.d('   ❌ No adverts found for user');
           }
         } catch (e) {
           // Если не удаётся получить из объявления, используем сохранённые или пустые значения
           // ignore: avoid_print
-          print('❌ Error loading address from user advert: $e');
+          log.d('❌ Error loading address from user advert: $e');
         }
       }
 
-      // print('🔍 DEBUG contact_data_screen._loadContactData():');
-      // print('   - profileState.name = "$name"');
-      // print('   - profileState.email = "$email"');
-      // print('   - profileState.phone = "$phone"');
+      // log.d('🔍 DEBUG contact_data_screen._loadContactData():');
+      // log.d('   - profileState.name = "$name"');
+      // log.d('   - profileState.email = "$email"');
+      // log.d('   - profileState.phone = "$phone"');
 
       // Загружаем сохраненные данные из Hive
       final telegram = UserService.getLocal('telegram') as String? ?? '';
@@ -291,7 +292,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       await UserService.saveLocal('region', region);
       await UserService.saveLocal('city', city);
       // ignore: avoid_print
-      print(
+      log.d(
         '✅ ContactDataScreen: данные сохранены в локальное хранилище для кеша',
       );
     } catch (e) {
@@ -301,7 +302,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       
       if (retryCount < maxRetries) {
         // ignore: avoid_print
-        print(
+        log.d(
           '⚠️ ContactDataScreen: Сбой загрузки (попытка ${retryCount + 1}/$maxRetries), '
           'повторяем через ${retryDelayMs}ms...',
         );
@@ -316,7 +317,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           _isLoading = false;
         });
         // ignore: avoid_print
-        print('❌ ContactDataScreen: Сбой после $maxRetries попыток: $e');
+        log.d('❌ ContactDataScreen: Сбой после $maxRetries попыток: $e');
       }
     }
   }
@@ -337,29 +338,29 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         return;
       }
 
-      // print('💾 Saving contact data...');
-      // print('Token: ${token.substring(0, 20)}...');
-      // print();
+      // log.d('💾 Saving contact data...');
+      // log.d('Token: ${token.substring(0, 20)}...');
+      // log.d();
 
       // Обновляем имя на API (если оно изменилось)
       if (_nameController.text.isNotEmpty) {
         try {
-          // print('👤 Updating user name: ${_nameController.text}');
+          // log.d('👤 Updating user name: ${_nameController.text}');
           // Получаем фамилию из Hive или используем пустую строку
           final lastName = UserService.getLocal('lastName') as String? ?? '';
 
-          // print('🔍 DEBUG contact_data_screen._saveContactData():');
-          // print();
-          // print();
+          // log.d('🔍 DEBUG contact_data_screen._saveContactData():');
+          // log.d();
+          // log.d();
 
           await UserService.updateName(
             name: _nameController.text,
             lastName: lastName,
             token: token,
           );
-          // print('✅ User name updated successfully');
+          // log.d('✅ User name updated successfully');
         } catch (e) {
-          // print('❌ Name update error: $e');
+          // log.d('❌ Name update error: $e');
         }
       }
 
@@ -374,25 +375,25 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (_emailController.text.isNotEmpty) {
         try {
           if (_emailId != null) {
-            // print('📧 Updating email (ID: $_emailId)');
+            // log.d('📧 Updating email (ID: $_emailId)');
             // Обновляем существующий email
             await ContactService.updateEmail(
               id: _emailId!,
               email: _emailController.text,
               token: token,
             );
-            // print('✅ Email updated successfully');
+            // log.d('✅ Email updated successfully');
           } else {
-            // print('📧 Adding new email');
+            // log.d('📧 Adding new email');
             // Добавляем новый email
             await ContactService.addEmail(
               email: _emailController.text,
               token: token,
             );
-            // print('✅ Email added successfully');
+            // log.d('✅ Email added successfully');
           }
         } catch (e) {
-          // print('❌ Email update error: $e');
+          // log.d('❌ Email update error: $e');
         }
       }
 
@@ -400,25 +401,25 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (_phone1Controller.text.isNotEmpty) {
         try {
           if (_phone1Id != null) {
-            // print('☎️ Updating phone1 (ID: $_phone1Id)');
+            // log.d('☎️ Updating phone1 (ID: $_phone1Id)');
             // Обновляем существующий телефон
             await ContactService.updatePhone(
               id: _phone1Id!,
               phone: _phone1Controller.text,
               token: token,
             );
-            // print('✅ Phone1 updated successfully');
+            // log.d('✅ Phone1 updated successfully');
           } else {
-            // print('☎️ Adding new phone1');
+            // log.d('☎️ Adding new phone1');
             // Добавляем новый телефон
             await ContactService.addPhone(
               phone: _phone1Controller.text,
               token: token,
             );
-            // print('✅ Phone1 added successfully');
+            // log.d('✅ Phone1 added successfully');
           }
         } catch (e) {
-          // print('❌ Phone 1 update error: $e');
+          // log.d('❌ Phone 1 update error: $e');
         }
       }
 
@@ -426,35 +427,35 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       if (_phone2Controller.text.isNotEmpty) {
         try {
           if (_phone2Id != null) {
-            // print('☎️ Updating phone2 (ID: $_phone2Id)');
+            // log.d('☎️ Updating phone2 (ID: $_phone2Id)');
             // Обновляем существующий телефон
             await ContactService.updatePhone(
               id: _phone2Id!,
               phone: _phone2Controller.text,
               token: token,
             );
-            // print('✅ Phone2 updated successfully');
+            // log.d('✅ Phone2 updated successfully');
           } else {
-            // print('☎️ Adding new phone2');
+            // log.d('☎️ Adding new phone2');
             // Добавляем новый телефон
             await ContactService.addPhone(
               phone: _phone2Controller.text,
               token: token,
             );
-            // print('✅ Phone2 added successfully');
+            // log.d('✅ Phone2 added successfully');
           }
         } catch (e) {
-          // print('Phone 2 update error: $e');
+          // log.d('Phone 2 update error: $e');
         }
       }
 
       // После успешных изменений — проверяем данные на сервере
-      // print('🔎 Verifying saved contact data by fetching from server...');
+      // log.d('🔎 Verifying saved contact data by fetching from server...');
       try {
         await _loadContactData();
-        // print('✅ Verification GET complete');
+        // log.d('✅ Verification GET complete');
       } catch (e) {
-        // print('❗ Reload after save failed: $e');
+        // log.d('❗ Reload after save failed: $e');
       }
 
       setState(() {

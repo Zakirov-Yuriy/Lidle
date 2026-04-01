@@ -12,6 +12,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 /// ============================================================
 /// Универсальный экран для просмотра категорий и подкатегорий
@@ -72,7 +73,7 @@ class _UniversalBrowseCategoryScreenState
 
       if (widget.catalogId != null) {
         // Загружаем категории каталога по ID
-        // print();
+        // log.d();
 
         final catalogWithCategories = await ApiService.getCatalog(
           widget.catalogId!,
@@ -81,12 +82,12 @@ class _UniversalBrowseCategoryScreenState
 
         categories = catalogWithCategories.categories;
 
-        // print();
+        // log.d();
       } else if (widget.category != null) {
         // Используем дочерние категории из переданной категории
         categories = widget.category!.children ?? [];
 
-        // print();
+        // log.d();
       }
 
       setState(() {
@@ -94,7 +95,7 @@ class _UniversalBrowseCategoryScreenState
         _isLoading = false;
       });
     } catch (e) {
-      // print('❌ Browse Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
+      // log.d('❌ Browse Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -328,7 +329,7 @@ class _UniversalBrowseCategoryScreenState
                               level: widget.level + 1,
                               catalogName: widget.catalogName,
                               onTap: () {
-                                // print();
+                                // log.d();
 
                                 // Если есть подкатегории, переходим глубже
                                 if (category.children != null &&
@@ -346,7 +347,7 @@ class _UniversalBrowseCategoryScreenState
                                   );
                                 } else {
                                   // Если это конечная категория, открываем экран списков
-                                  // print();
+                                  // log.d();
                                   _navigateToListings(category);
                                 }
                               },

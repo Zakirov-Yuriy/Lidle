@@ -8,6 +8,7 @@ import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Исключение для 401 ошибок (токен истёк или невалиден).
 /// Используется для перехвата и автоматического refresh токена.
@@ -100,23 +101,23 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📥 GET REQUEST');
-      // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${effectiveToken != null}');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📥 GET REQUEST');
+      // log.d('URL: $baseUrl$endpoint');
+      // log.d('Token provided: ${effectiveToken != null}');
       if (effectiveToken != null) {
-        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
-        // print('Token type: JWT');
+        // log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
+        // log.d('Token type: JWT');
       }
-      // print('Headers:');
+      // log.d('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          // print('  $key: Bearer [HIDDEN]');
+          // log.d('  $key: Bearer [HIDDEN]');
         } else {
-          // print('  $key: $value');
+          // log.d('  $key: $value');
         }
       });
-      // print('═══════════════════════════════════════════════════════');
+      // log.d('═══════════════════════════════════════════════════════');
 
       final response = await http
           .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
@@ -174,28 +175,28 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📤 POST REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Token provided: ${effectiveToken != null}');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('📤 POST REQUEST');
+      log.d('URL: $baseUrl$endpoint');
+      log.d('Token provided: ${effectiveToken != null}');
       if (effectiveToken != null) {
-        print('Token preview: ${effectiveToken.substring(0, 30)}...');
-        print('Token type: JWT');
+        log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
+        log.d('Token type: JWT');
       }
-      print('Headers:');
+      log.d('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          log.d('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          log.d('  $key: $value');
         }
       });
-      print('Body: $body');
-      print('Body keys: ${body.keys.toList()}');
+      log.d('Body: $body');
+      log.d('Body keys: ${body.keys.toList()}');
       body.forEach((key, value) {
-        print('  $key: $value (type: ${value.runtimeType})');
+        log.d('  $key: $value (type: ${value.runtimeType})');
       });
-      print('═══════════════════════════════════════════════════════');
+      log.d('═══════════════════════════════════════════════════════');
 
       final response = await http
           .post(
@@ -207,8 +208,8 @@ class ApiService {
           // Сервер обычно отвечает за 500-800ms, 5s безопасный лимит
           .timeout(const Duration(seconds: 5));
 
-      print('📥 Response status: ${response.statusCode}');
-      print('📥 Response body: ${response.body}');
+      log.d('📥 Response status: ${response.statusCode}');
+      log.d('📥 Response body: ${response.body}');
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -387,24 +388,24 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📤 PUT REQUEST');
-      // print('URL: $baseUrl$endpoint');
-      // print('Token provided: ${effectiveToken != null}');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📤 PUT REQUEST');
+      // log.d('URL: $baseUrl$endpoint');
+      // log.d('Token provided: ${effectiveToken != null}');
       if (effectiveToken != null) {
-        // print('Token preview: ${effectiveToken.substring(0, 30)}...');
-        // print('Token type: JWT');
+        // log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
+        // log.d('Token type: JWT');
       }
-      // print('Headers:');
+      // log.d('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          // print('  $key: Bearer [HIDDEN]');
+          // log.d('  $key: Bearer [HIDDEN]');
         } else {
-          // print('  $key: $value');
+          // log.d('  $key: $value');
         }
       });
-      // print('Body: $body');
-      // print('═══════════════════════════════════════════════════════');
+      // log.d('Body: $body');
+      // log.d('═══════════════════════════════════════════════════════');
 
       final response = await http
           .put(
@@ -457,26 +458,26 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('🗑️ DELETE REQUEST');
-      print('URL: $baseUrl$endpoint');
-      print('Token provided: ${effectiveToken != null}');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('🗑️ DELETE REQUEST');
+      log.d('URL: $baseUrl$endpoint');
+      log.d('Token provided: ${effectiveToken != null}');
       if (effectiveToken != null) {
-        print('Token preview: ${effectiveToken.substring(0, 30)}...');
-        print('Token type: JWT');
+        log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
+        log.d('Token type: JWT');
       }
-      print('Headers:');
+      log.d('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          print('  $key: Bearer [HIDDEN]');
+          log.d('  $key: Bearer [HIDDEN]');
         } else {
-          print('  $key: $value');
+          log.d('  $key: $value');
         }
       });
       if (body != null) {
-        print('Body: $body');
+        log.d('Body: $body');
       }
-      print('═══════════════════════════════════════════════════════');
+      log.d('═══════════════════════════════════════════════════════');
 
       final response = await http
           .delete(
@@ -487,11 +488,11 @@ class ApiService {
           // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
           .timeout(const Duration(seconds: 5));
       
-      print('📥 DELETE RESPONSE received:');
-      print('   Status: ${response.statusCode}');
-      print('   Body length: ${response.body.length}');
+      log.d('📥 DELETE RESPONSE received:');
+      log.d('   Status: ${response.statusCode}');
+      log.d('   Body length: ${response.body.length}');
       if (response.body.isNotEmpty) {
-        print('   Body: ${response.body}');
+        log.d('   Body: ${response.body}');
       }
 
       return _handleResponse(response);
@@ -544,7 +545,7 @@ class ApiService {
         final existingCompleter = _tokenRefreshCompleter;
         if (existingCompleter != null) {
           try {
-            // print('⏳ Ожидаем завершения активного refresh...');
+            // log.d('⏳ Ожидаем завершения активного refresh...');
             await existingCompleter.future;
             // Токен обновлён другим запросом, повторяем свой запрос.
             // КРИТИЧНО: Не пробуем еще один refresh - используем токен что обновил параллельный запрос
@@ -566,7 +567,7 @@ class ApiService {
           if (currentToken == null || currentToken.isEmpty) {
             // Нет сохраненного токена - пользователь не авторизован
             // Не пробуем refresh, просто рапортуем об истечении
-            print('🔒 ApiService: нет сохраненного токена для обновления');
+            log.d('🔒 ApiService: нет сохраненного токена для обновления');
             final error = TokenExpiredException('No saved token to refresh');
             completer.completeError(error);
             throw error;
@@ -575,7 +576,7 @@ class ApiService {
           final newToken = await refreshToken(currentToken);
 
           if (newToken != null && newToken.isNotEmpty) {
-            // print('✅ ApiService: токен обновлён');
+            // log.d('✅ ApiService: токен обновлён');
             // КРИТИЧНО: Проверяем что токен действительно сохранен в Hive перед тем как продолжить
             final savedToken = HiveService.getUserData('token') as String?;
             if (savedToken == newToken || (savedToken != null && savedToken.isNotEmpty)) {
@@ -612,10 +613,10 @@ class ApiService {
       } on RateLimitException {
         if (attempt < _maxRetries - 1) {
           final delayMs = _retryDelayMs * (1 << attempt); // Exponential backoff
-          // print('⏳ ApiService: rate limit - ждем ${delayMs}ms перед повтором...');
+          // log.d('⏳ ApiService: rate limit - ждем ${delayMs}ms перед повтором...');
           await Future.delayed(Duration(milliseconds: delayMs));
         } else {
-          // print('❌ Максимум попыток достигнут. Прекращаю retry.');
+          // log.d('❌ Максимум попыток достигнут. Прекращаю retry.');
           rethrow;
         }
       }
@@ -627,7 +628,7 @@ class ApiService {
   static Map<String, dynamic> _handleResponse(http.Response response) {
     // ✅ Обработка пустого ответа (204 No Content или пустое тело при 2xx)
     if (response.body.isEmpty && response.statusCode >= 200 && response.statusCode < 300) {
-      print('✅ ApiService._handleResponse: Успешный пустой ответ (${response.statusCode})');
+      log.d('✅ ApiService._handleResponse: Успешный пустой ответ (${response.statusCode})');
       return {'success': true, 'message': 'Success', 'data': null};
     }
 
@@ -641,8 +642,8 @@ class ApiService {
     } catch (_) {
       // ❌ Если статус 2xx но JSON парсинг не удался - это ошибка API
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        print('⚠️ ApiService._handleResponse: Статус ${response.statusCode} но не валидный JSON');
-        print('   Тело ответа: "${response.body}"');
+        log.d('⚠️ ApiService._handleResponse: Статус ${response.statusCode} но не валидный JSON');
+        log.d('   Тело ответа: "${response.body}"');
         // Возвращаем успешный ответ с пустыми данными
         return {'success': true, 'message': 'Success', 'data': null};
       }
@@ -653,16 +654,16 @@ class ApiService {
     }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      // print('✅ Request successful!');
+      // log.d('✅ Request successful!');
       return data;
     } else if (response.statusCode == 429) {
       // Rate limit - signal to retry
-      // print('⚠️ 429 Too Many Requests - Rate limited');
-      // print('Error response: ${data['message'] ?? 'Too many requests'}');
+      // log.d('⚠️ 429 Too Many Requests - Rate limited');
+      // log.d('Error response: ${data['message'] ?? 'Too many requests'}');
       throw RateLimitException('429 Too Many Requests');
     } else if (response.statusCode == 401) {
-      // print('❌ 401 Unauthorized - Token might be expired or invalid');
-      // print('Error response: ${data['message'] ?? 'Token expired'}');
+      // log.d('❌ 401 Unauthorized - Token might be expired or invalid');
+      // log.d('Error response: ${data['message'] ?? 'Token expired'}');
       // Бросаем типизированное исключение для перехвата в _retryRequest.
       // Для auth-эндпоинтов (skipTokenRefresh: true) оно пробрасывается сразу,
       // без попытки обновить токен.
@@ -674,33 +675,33 @@ class ApiService {
       return data;
     } else if (response.statusCode == 422) {
       // Validation error - return response with errors
-      // print('❌ 422 Validation Error');
-      // print('Full error response: ${jsonEncode(data)}');
+      // log.d('❌ 422 Validation Error');
+      // log.d('Full error response: ${jsonEncode(data)}');
       if (data['errors'] is Map) {
-        // print('\n📋 Detailed validation errors:');
+        // log.d('\n📋 Detailed validation errors:');
         (data['errors'] as Map).forEach((key, value) {
-          // print('  ❌ $key: $value');
+          // log.d('  ❌ $key: $value');
           if (key == 'attributes' && value is List) {
-            // print('     ^ ATTRIBUTES error! Check field structure');
+            // log.d('     ^ ATTRIBUTES error! Check field structure');
           }
         });
       }
       // Don't throw exception, let calling code handle it
       return data;
     } else if (response.statusCode == 500) {
-      // print('❌ 500 Server Error');
-      // print('Error message: ${data['message'] ?? 'Server error'}');
+      // log.d('❌ 500 Server Error');
+      // log.d('Error message: ${data['message'] ?? 'Server error'}');
       throw Exception(data['message'] ?? 'Ошибка сервера');
     } else if (response.statusCode >= 400 && response.statusCode < 500) {
       // 4xx ошибки (404, 400, 403, и т.д.) - выбрасываем исключение
       // Не возвращаем data, потому что это ошибка клиента
-      print('❌ Error with status ${response.statusCode}');
-      print('   Message: ${data['message'] ?? 'Ошибка сервера'}');
+      log.d('❌ Error with status ${response.statusCode}');
+      log.d('   Message: ${data['message'] ?? 'Ошибка сервера'}');
       throw Exception('${data['message'] ?? 'Ошибка запроса'} (статус ${response.statusCode})');
     } else {
       // Остальные статусы (не обработанные выше)
-      print('❌ Error with status ${response.statusCode}');
-      print('   Message: ${data['message'] ?? 'Ошибка сервера'}');
+      log.d('❌ Error with status ${response.statusCode}');
+      log.d('   Message: ${data['message'] ?? 'Ошибка сервера'}');
       throw Exception('${data['message'] ?? 'Ошибка сервера'} (статус ${response.statusCode})');
     }
   }
@@ -714,9 +715,9 @@ class ApiService {
         'category_id': categoryId,
       }, token: token);
 
-      // print();
-      // print('   response type: ${response.runtimeType}');
-      // print('   data type: ${response['data']?.runtimeType}');
+      // log.d();
+      // log.d('   response type: ${response.runtimeType}');
+      // log.d('   data type: ${response['data']?.runtimeType}');
 
       // API возвращает: {"success":true,"data":[{"type":{...},"attributes":[...]}]}
       // data - это List с одним элементом
@@ -728,15 +729,15 @@ class ApiService {
         // data это List - берём первый элемент
         final firstItem = dataNode[0] as Map<String, dynamic>?;
         attributesJson = firstItem?['attributes'] as List<dynamic>?;
-        // print();
+        // log.d();
       } else if (dataNode is Map<String, dynamic>) {
         // data это Map - берём attributes напрямую
         attributesJson = dataNode['attributes'] as List<dynamic>?;
-        // print();
+        // log.d();
       }
 
       if (attributesJson == null || attributesJson.isEmpty) {
-        // print('   ❌ No attributes found in response');
+        // log.d('   ❌ No attributes found in response');
         throw Exception('No attributes found in response');
       }
 
@@ -748,17 +749,17 @@ class ApiService {
           if (json is Map<String, dynamic>) {
             final attr = Attribute.fromJson(json);
             attributes.add(attr);
-            // print();
+            // log.d();
           }
         } catch (e) {
-          // print('   ⚠️ Failed to parse attribute at index $i: $e');
+          // log.d('   ⚠️ Failed to parse attribute at index $i: $e');
         }
       }
 
-      // print('   ✅ Total parsed: ${attributes.length} attributes');
+      // log.d('   ✅ Total parsed: ${attributes.length} attributes');
       return attributes;
     } catch (e) {
-      // print('❌ getAdvertCreationAttributes error: $e');
+      // log.d('❌ getAdvertCreationAttributes error: $e');
       if (e.toString().contains('Token expired') && token != null) {
         // Попытка обновить токен и повторить запрос
         final newToken = await refreshToken(token);
@@ -794,11 +795,11 @@ class ApiService {
 
       // Добавляем фильтры
       if (filters != null && filters.isNotEmpty) {
-        print('📦 API getAdverts - Processing filters:');
+        log.d('📦 API getAdverts - Processing filters:');
         filters.forEach((key, value) {
           // 🟢 СПЕЦИАЛЬНАЯ ОБРАБОТКА для filters[value_selected] (для атрибутов выбранных значений, ID < 1000)
           if (key == 'value_selected' && value is Map<String, dynamic>) {
-            print('   📍 Processing value_selected:');
+            log.d('   📍 Processing value_selected:');
             // � FIX: API ожидает БЕЗ индексов, но поддерживает множественные значения через List!
             // getWithQuery() будет перевести List в: filters[value_selected][6]=40&filters[value_selected][6]=41
             value.forEach((attrId, attrValue) {
@@ -807,18 +808,18 @@ class ApiService {
                 final paramKey = 'filters[value_selected][$attrId]';
                 final listValue = (attrValue as Set).toList().cast<String>();
                 queryParams[paramKey] = listValue;
-                print(
+                log.d(
                     '      ✅ $paramKey = ${listValue.toList()} (as List for multiple params)');
               } else if (attrValue is List) {
                 // Список значений
                 final paramKey = 'filters[value_selected][$attrId]';
                 queryParams[paramKey] = attrValue;
-                print('      ✅ $paramKey = ${attrValue.toList()}');
+                log.d('      ✅ $paramKey = ${attrValue.toList()}');
               } else {
                 // Простое значение
                 final paramKey = 'filters[value_selected][$attrId]';
                 queryParams[paramKey] = attrValue.toString();
-                print('      ✅ $paramKey = ${attrValue.toString()}');
+                log.d('      ✅ $paramKey = ${attrValue.toString()}');
               }
             });
           } else if (key == 'values' && value is Map<String, dynamic>) {
@@ -834,7 +835,7 @@ class ApiService {
                       rangeValue.toString().trim().isNotEmpty) {
                     final paramKey = 'filters[values][$attrId][$rangeKey]';
                     queryParams[paramKey] = rangeValue.toString();
-                    // print('  ✅ $paramKey = ${rangeValue.toString()}');
+                    // log.d('  ✅ $paramKey = ${rangeValue.toString()}');
                   }
                 });
               } else if (attrValue is Set) {
@@ -844,7 +845,7 @@ class ApiService {
                   for (int i = 0; i < setList.length; i++) {
                     final paramKey = 'filters[values][$attrId][$i]';
                     queryParams[paramKey] = setList[i].toString();
-                    // print('  ✅ $paramKey = ${setList[i].toString()}');
+                    // log.d('  ✅ $paramKey = ${setList[i].toString()}');
                   }
                 }
               } else if (attrValue is List) {
@@ -853,14 +854,14 @@ class ApiService {
                   for (int i = 0; i < attrValue.length; i++) {
                     final paramKey = 'filters[values][$attrId][$i]';
                     queryParams[paramKey] = attrValue[i].toString();
-                    // print('  ✅ $paramKey = ${attrValue[i].toString()}');
+                    // log.d('  ✅ $paramKey = ${attrValue[i].toString()}');
                   }
                 }
               } else {
                 // Простое значение (boolean и другие)
                 final paramKey = 'filters[values][$attrId]';
                 queryParams[paramKey] = attrValue.toString();
-                // print('  ✅ $paramKey = ${attrValue.toString()}');
+                // log.d('  ✅ $paramKey = ${attrValue.toString()}');
               }
             });
           } else if (value is Map<String, dynamic>) {
@@ -868,7 +869,7 @@ class ApiService {
             value.forEach((subKey, subValue) {
               final paramKey = 'filters[$key][$subKey]';
               queryParams[paramKey] = subValue.toString();
-              // print('  ✅ $paramKey = ${subValue.toString()}');
+              // log.d('  ✅ $paramKey = ${subValue.toString()}');
             });
           } else if (value is Set) {
             // Множественный выбор (Set<String>)
@@ -878,7 +879,7 @@ class ApiService {
               for (int i = 0; i < setList.length; i++) {
                 final paramKey = 'filters[$key][$i]';
                 queryParams[paramKey] = setList[i].toString();
-                // print('  ✅ $paramKey = ${setList[i].toString()}');
+                // log.d('  ✅ $paramKey = ${setList[i].toString()}');
               }
             }
           } else if (value is List) {
@@ -888,21 +889,21 @@ class ApiService {
               for (int i = 0; i < value.length; i++) {
                 final paramKey = 'filters[$key][$i]';
                 queryParams[paramKey] = value[i].toString();
-                // print('  ✅ $paramKey = ${value[i].toString()}');
+                // log.d('  ✅ $paramKey = ${value[i].toString()}');
               }
             }
           } else {
             // Простые значения (строки, числа)
             final paramKey = 'filters[$key]';
             queryParams[paramKey] = value.toString();
-            // print('  ✅ $paramKey = ${value.toString()}');
+            // log.d('  ✅ $paramKey = ${value.toString()}');
           }
         });
       }
 
-      // print('📋 Query Parameters:');
+      // log.d('📋 Query Parameters:');
       queryParams.forEach((key, value) {
-        // print('  📋 $key: $value');
+        // log.d('  📋 $key: $value');
       });
 
       // 🟢 ТЕСТИРОВАНИЕ: Сначала пытаемся БЕЗ параметра with=attributes
@@ -917,11 +918,11 @@ class ApiService {
         // queryParams['with'] = 'attributes'; // Вариант 2: with
       }
 
-      // print('\n🔗 FULL REQUEST URL:');
-      // print(
+      // log.d('\n🔗 FULL REQUEST URL:');
+      // log.d(
       //   '   GET /adverts?${queryParams.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value.toString())}').join('&')}',
       // );
-      // print('');
+      // log.d('');
 
       final response = await getWithQuery(
         '/adverts',
@@ -931,13 +932,13 @@ class ApiService {
 
       // DEBUG: Show filters being sent to server
       if (filters != null && filters.isNotEmpty) {
-        // print('DEBUG: Filters sent = ' + filters.toString());
+        // log.d('DEBUG: Filters sent = ' + filters.toString());
       }
 
       // DEBUG: Check how many results came back
       if (response is Map && response['data'] is List) {
         final count = (response['data'] as List).length;
-        // print('DEBUG: API returned ' + count.toString() + ' listings');
+        // log.d('DEBUG: API returned ' + count.toString() + ' listings');
       }
 
       return AdvertsResponse.fromJson(response);
@@ -956,16 +957,16 @@ class ApiService {
       final data = response['data'];
       
       // 🔍 DEBUG: Логируем сырой JSON для проверки is_bargain
-      print('\n>>> API getAdvert($id) RESPONSE <<<');
+      log.d('\n>>> API getAdvert($id) RESPONSE <<<');
       if (data is Map<String, dynamic>) {
-        print('STATUS: MAP > is_bargain=${data['is_bargain']} name=${data['name']}');
+        log.d('STATUS: MAP > is_bargain=${data['is_bargain']} name=${data['name']}');
       } else if (data is List && data.isNotEmpty) {
         final firstItem = data[0] as Map<String, dynamic>;
-        print('STATUS: LIST > is_bargain=${firstItem['is_bargain']} name=${firstItem['name']}');
+        log.d('STATUS: LIST > is_bargain=${firstItem['is_bargain']} name=${firstItem['name']}');
       } else {
-        print('STATUS: UNKNOWN TYPE');
+        log.d('STATUS: UNKNOWN TYPE');
       }
-      print('>>> END <<<\n');
+      log.d('>>> END <<<\n');
       
       if (data is List) {
         return Advert.fromJson(data[0] as Map<String, dynamic>);
@@ -995,7 +996,7 @@ class ApiService {
       return null;
     } catch (e) {
       // На ошибку просто возвращаем null и объявление останется БЕЗ атрибутов
-      print('⚠️  Failed to load attributes for advert $id: $e');
+      log.d('⚠️  Failed to load attributes for advert $id: $e');
       return null;
     }
   }
@@ -1130,16 +1131,16 @@ class ApiService {
       // API returns { "success": true, "data": {"sort": [...], "filters": [...]} }
       // Extract the data object which contains sort and filters
       final data = response['data'] ?? response;
-      // print('📊 Full filter JSON keys: ${data.keys.toList()}');
+      // log.d('📊 Full filter JSON keys: ${data.keys.toList()}');
       if (data['filters'] is List) {
         final filtersList = data['filters'] as List;
-        // print('📊 Filters count: ${filtersList.length}');
+        // log.d('📊 Filters count: ${filtersList.length}');
         for (int i = 0; i < filtersList.length; i++) {
-          // print('  [$i] ID=${filtersList[i]['id']}, Title=${filtersList[i]['title']}, Values=${filtersList[i]['values']?.length ?? 0}');
-          // print('       is_title_hidden=${filtersList[i]['is_title_hidden']}, is_special_design=${filtersList[i]['is_special_design']}');
+          // log.d('  [$i] ID=${filtersList[i]['id']}, Title=${filtersList[i]['title']}, Values=${filtersList[i]['values']?.length ?? 0}');
+          // log.d('       is_title_hidden=${filtersList[i]['is_title_hidden']}, is_special_design=${filtersList[i]['is_special_design']}');
         }
         // Сканируем все фильтры на предмет "Вам предложат цену"
-        // print('🔍 Searching for "Вам предложат цену" filter...');
+        // log.d('🔍 Searching for "Вам предложат цену" filter...');
         bool found = false;
         for (final filter in filtersList) {
           final title = filter['title']?.toString() ?? '';
@@ -1147,14 +1148,14 @@ class ApiService {
               title.contains('цену') ||
               title.contains('offer') ||
               title.contains('price')) {
-            // print('   ✅ Found possible match: ID=${filter['id']}, Title=$title');
+            // log.d('   ✅ Found possible match: ID=${filter['id']}, Title=$title');
             found = true;
           }
         }
         if (!found) {
-          // print('   ❌ "Вам предложат цену" filter NOT found in API response!');
-          // print('   NOTE: This filter is REQUIRED but not returned by API');
-          // print('   It will be added programmatically in _loadAttributes()');
+          // log.d('   ❌ "Вам предложат цену" filter NOT found in API response!');
+          // log.d('   NOTE: This filter is REQUIRED but not returned by API');
+          // log.d('   It will be added programmatically in _loadAttributes()');
         }
       }
       try {
@@ -1163,9 +1164,9 @@ class ApiService {
         // So we pass it directly to fromJson
         return MetaFiltersResponse.fromJson(data);
       } catch (parseError) {
-        // print('🔴 ERROR parsing MetaFiltersResponse:');
-        // print('   Error: $parseError');
-        // print('   Data keys: ${data.keys}');
+        // log.d('🔴 ERROR parsing MetaFiltersResponse:');
+        // log.d('   Error: $parseError');
+        // log.d('   Data keys: ${data.keys}');
         rethrow;
       }
     } catch (e) {
@@ -1191,17 +1192,17 @@ class ApiService {
   }) async {
     try {
       final json = request.toJson();
-      // print('\n🚀 SENDING TO API: POST /adverts');
-      // print('Full JSON:');
-      // print(json);
+      // log.d('\n🚀 SENDING TO API: POST /adverts');
+      // log.d('Full JSON:');
+      // log.d(json);
       if (json['attributes'] != null) {
-        // print('\nAttributes structure:');
-        // print('  - value_selected: ${json['attributes']['value_selected']}');
-        // print('  - values keys: ${json['attributes']['values']?.keys.toList()}');
+        // log.d('\nAttributes structure:');
+        // log.d('  - value_selected: ${json['attributes']['value_selected']}');
+        // log.d('  - values keys: ${json['attributes']['values']?.keys.toList()}');
         if (json['attributes']['values'] != null) {
-          // print('  - values[1048]: ${json['attributes']['values']['1048']} (Type: ${json['attributes']['values']['1048'].runtimeType})');
-          // print('  - values[1127]: ${json['attributes']['values']['1127']}');
-          // print('  - values[1040]: ${json['attributes']['values']['1040']}');
+          // log.d('  - values[1048]: ${json['attributes']['values']['1048']} (Type: ${json['attributes']['values']['1048'].runtimeType})');
+          // log.d('  - values[1127]: ${json['attributes']['values']['1127']}');
+          // log.d('  - values[1040]: ${json['attributes']['values']['1040']}');
         }
       }
 
@@ -1227,13 +1228,13 @@ class ApiService {
   }) async {
     try {
       final json = request.toJson();
-      // print('\n🔄 SENDING TO API: PUT /adverts/$advertId');
-      // print('Full JSON:');
-      // print(json);
+      // log.d('\n🔄 SENDING TO API: PUT /adverts/$advertId');
+      // log.d('Full JSON:');
+      // log.d(json);
       if (json['attributes'] != null) {
-        // print('\nAttributes structure:');
-        // print('  - value_selected: ${json['attributes']['value_selected']}');
-        // print('  - values keys: ${json['attributes']['values']?.keys.toList()}');
+        // log.d('\nAttributes structure:');
+        // log.d('  - value_selected: ${json['attributes']['value_selected']}');
+        // log.d('  - values keys: ${json['attributes']['values']?.keys.toList()}');
       }
 
       final response = await put('/adverts/$advertId', json, token: token);
@@ -1289,7 +1290,7 @@ class ApiService {
       
       // Если refresh_token не найден - это критическая ошибка
       if (refreshTokenValue == null || refreshTokenValue.isEmpty) {
-        print(
+        log.d(
           '❌ refreshToken: refresh_token не найден в Hive, невозможно обновить токен',
         );
         return null;
@@ -1320,14 +1321,14 @@ class ApiService {
       // Оба случая означают что нужна повторная авторизация (нет автоматического рефреша).
       // TokenService._doRefresh() увидит null и вызовет _notifyTokenExpired().
       if (response.statusCode == 401 || response.statusCode == 403) {
-        // print(
+        // log.d(
         //   '🔒 refreshToken: токен истёк/невалиден (${response.statusCode}): ${response.body}',
         // );
         return null;
       }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        // print(
+        // log.d(
         //   '❌ refreshToken: сервер вернул ${response.statusCode}: ${response.body}',
         // );
         return null;
@@ -1337,7 +1338,7 @@ class ApiService {
 
       // Проверяем флаг success
       if (data['success'] != true) {
-        // print('❌ refreshToken: success=false: ${data['message']}');
+        // log.d('❌ refreshToken: success=false: ${data['message']}');
         return null;
       }
 
@@ -1345,11 +1346,11 @@ class ApiService {
       final newAccessToken = data['access_token'] as String?;
       if (newAccessToken != null && newAccessToken.isNotEmpty) {
         await HiveService.saveUserData('token', newAccessToken);
-        print(
+        log.d(
           '✅ refreshToken: новый access_token сохранён: ${newAccessToken.substring(0, newAccessToken.length.clamp(0, 20))}...',
         );
       } else {
-        print('❌ refreshToken: access_token не найден или пуст в ответе: $data');
+        log.d('❌ refreshToken: access_token не найден или пуст в ответе: $data');
         return null;
       }
 
@@ -1358,9 +1359,9 @@ class ApiService {
       final newRefreshToken = data['refresh_token'] as String?;
       if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
         await HiveService.saveUserData('refresh_token', newRefreshToken);
-        print('✅ refreshToken: новый refresh_token сохранён (ротация токена)');
+        log.d('✅ refreshToken: новый refresh_token сохранён (ротация токена)');
       } else {
-        print('❌ refreshToken: refresh_token не найден или пуст в ответе');
+        log.d('❌ refreshToken: refresh_token не найден или пуст в ответе');
         return null;
       }
 
@@ -1372,7 +1373,7 @@ class ApiService {
           .add(Duration(seconds: expiresIn))
           .millisecondsSinceEpoch;
       await HiveService.saveUserData('token_expires_at', expiresAtMs);
-      print(
+      log.d(
         '✅ refreshToken: access_token expires_in=$expiresIn сек, истекает в '
         '${DateTime.fromMillisecondsSinceEpoch(expiresAtMs).toLocal()}',
       );
@@ -1389,7 +1390,7 @@ class ApiService {
         'refresh_token_expires_at',
         refreshExpiresAtMs,
       );
-      print(
+      log.d(
         '✅ refreshToken: refresh_token expires_in=$refreshExpiresIn сек (14 дней), '
         'истекает в ${DateTime.fromMillisecondsSinceEpoch(refreshExpiresAtMs).toLocal()}',
       );
@@ -1397,14 +1398,14 @@ class ApiService {
       // КРИТИЧНО: Перед возвратом проверяем что токен действительно сохранен в Hive
       final savedToken = HiveService.getUserData('token') as String?;
       if (savedToken == null || savedToken.isEmpty) {
-        print('❌ refreshToken: КРИТИЧЕСКАЯ ОШИБКА - токен не был сохранен в Hive!');
+        log.d('❌ refreshToken: КРИТИЧЕСКАЯ ОШИБКА - токен не был сохранен в Hive!');
         return null;
       }
       
-      print('✅ refreshToken: токен успешно сохранен и готов к возврату');
+      log.d('✅ refreshToken: токен успешно сохранен и готов к возврату');
       return newAccessToken;
     } catch (e) {
-      // print('❌ refreshToken exception: $e');
+      // log.d('❌ refreshToken exception: $e');
       return null;
     }
   }
@@ -1442,7 +1443,7 @@ class ApiService {
     try {
       await post('/adverts/$advertId/view', {}, token: token);
     } catch (e) {
-      // print('Failed to save advert view: $e');
+      // log.d('Failed to save advert view: $e');
       // Не пробрасываем ошибку, так как это некритично
     }
   }
@@ -1452,7 +1453,7 @@ class ApiService {
     try {
       await post('/adverts/$advertId/share', {}, token: token);
     } catch (e) {
-      // print('Failed to share advert: $e');
+      // log.d('Failed to share advert: $e');
       // Не пробрасываем ошибка
     }
   }
@@ -1470,13 +1471,13 @@ class ApiService {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📤 MULTIPART UPLOAD REQUEST');
-      // print('URL: $baseUrl$endpoint');
-      // print('Field name: $fieldName');
-      // print('File: $filePath');
-      // print('Token provided: ${token != null}');
-      // print('═══════════════════════════════════════════════════════');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📤 MULTIPART UPLOAD REQUEST');
+      // log.d('URL: $baseUrl$endpoint');
+      // log.d('Field name: $fieldName');
+      // log.d('File: $filePath');
+      // log.d('Token provided: ${token != null}');
+      // log.d('═══════════════════════════════════════════════════════');
 
       final request = http.MultipartRequest(
         'POST',
@@ -1555,7 +1556,7 @@ class ApiService {
       // Добавить новые загруженные файлы
       int imageIndex = 0;
       for (final filePath in imagePaths) {
-        // print('📎 Adding image $imageIndex: $filePath');
+        // log.d('📎 Adding image $imageIndex: $filePath');
         final file = File(filePath);
 
         if (await file.exists()) {
@@ -1564,7 +1565,7 @@ class ApiService {
           );
           imageIndex++;
         } else {
-          // print('⚠️ File not found: $filePath');
+          // log.d('⚠️ File not found: $filePath');
         }
       }
 
@@ -1573,7 +1574,7 @@ class ApiService {
         for (int i = 0; i < existingImages.length; i++) {
           final existingFileName = existingImages[i];
           request.fields['images[${imageIndex + i}]'] = existingFileName;
-          // print('📸 Preserving existing image: $existingFileName');
+          // log.d('📸 Preserving existing image: $existingFileName');
         }
       }
 
@@ -1581,38 +1582,38 @@ class ApiService {
       if (deleteImages != null && deleteImages.isNotEmpty) {
         for (int i = 0; i < deleteImages.length; i++) {
           request.fields['delete_images[$i]'] = deleteImages[i];
-          // print('🗑️ Marking for deletion: ${deleteImages[i]}');
+          // log.d('🗑️ Marking for deletion: ${deleteImages[i]}');
         }
       }
 
       // Логирование запроса
-      // print('════════════════════════════════════════════════════');
-      // print('📤 MULTIPART REQUEST to /adverts/$advertId/images');
-      // print('   Mode: ${deleteImages != null ? 'DELETE' : 'UPLOAD'}');
-      // print('   New files: ${imagePaths.length}');
+      // log.d('════════════════════════════════════════════════════');
+      // log.d('📤 MULTIPART REQUEST to /adverts/$advertId/images');
+      // log.d('   Mode: ${deleteImages != null ? 'DELETE' : 'UPLOAD'}');
+      // log.d('   New files: ${imagePaths.length}');
       if (existingImages != null && existingImages.isNotEmpty) {
-        // print('   Existing: ${existingImages.length}');
+        // log.d('   Existing: ${existingImages.length}');
       }
       if (deleteImages != null && deleteImages.isNotEmpty) {
-        // print('   To delete: ${deleteImages.length}');
+        // log.d('   To delete: ${deleteImages.length}');
       }
-      // print('════════════════════════════════════════════════════');
+      // log.d('════════════════════════════════════════════════════');
 
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      // print('тЬЕ API Response status: ${response.statusCode}');
-      // print('ЁЯУЛ Response body: ${response.body}');
+      // log.d('тЬЕ API Response status: ${response.statusCode}');
+      // log.d('ЁЯУЛ Response body: ${response.body}');
 
       if (response.statusCode == 200) {
-        // print('✅ Images operation completed successfully!');
+        // log.d('✅ Images operation completed successfully!');
         return jsonDecode(response.body) as Map<String, dynamic>;
       } else if (response.statusCode == 401) {
         // Токен истёк - пытаемся обновить и повторить
-        // print('⚠️ Token expired (401), attempting to refresh...');
+        // log.d('⚠️ Token expired (401), attempting to refresh...');
         final newToken = await refreshToken(token);
         if (newToken != null) {
-          // print('✅ Token refreshed, retrying upload...');
+          // log.d('✅ Token refreshed, retrying upload...');
           return uploadAdvertImages(
             advertId,
             imagePaths,
@@ -1636,7 +1637,7 @@ class ApiService {
         );
       }
     } catch (e) {
-      // print('тЭМ Error with image operation: $e');
+      // log.d('тЭМ Error with image operation: $e');
       rethrow;
     }
   }
@@ -1652,9 +1653,9 @@ class ApiService {
 
       final uri = Uri.parse('$baseUrl/addresses/regions');
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📥 GET REQUEST /addresses/regions');
-      // print('URL: $uri');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📥 GET REQUEST /addresses/regions');
+      // log.d('URL: $uri');
 
       final response = await http
           .get(uri, headers: headers)
@@ -1662,7 +1663,7 @@ class ApiService {
             const Duration(seconds: 30),
           ); // Увеличен timeout для регионов
 
-      // print('✅ API Response status: ${response.statusCode}');
+      // log.d('✅ API Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -1678,7 +1679,7 @@ class ApiService {
         // Токен истёк, но это non-critical эндпоинт
         // Не пробуем refresh, просто возвращаем пустой список
         // Пользователь сможет повторить позже
-        print(
+        log.d(
           '⚠️ getRegions: 401 Unauthorized (token expired, skipping refresh)',
         );
         return [];
@@ -1689,7 +1690,7 @@ class ApiService {
       throw Exception('Timeout при загрузке регионов (превышено 30 сек)');
     } catch (e) {
       // Логируем ошибку но возвращаем пустой список чтобы не сломать приложение
-      print('⚠️ getRegions error: $e');
+      log.d('⚠️ getRegions error: $e');
       return [];
     }
   }
@@ -1726,22 +1727,22 @@ class ApiService {
 
       final uri = Uri.parse('$baseUrl/addresses/search');
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📥 GET REQUEST /addresses/search');
-      // print('URL: $uri');
-      // print('Token provided: ${token != null}');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📥 GET REQUEST /addresses/search');
+      // log.d('URL: $uri');
+      // log.d('Token provided: ${token != null}');
       if (token != null) {
-        // print('Token preview: ${token.substring(0, 30)}...');
+        // log.d('Token preview: ${token.substring(0, 30)}...');
       }
-      // print('Headers:');
+      // log.d('Headers:');
       headers.forEach((key, value) {
         if (key == 'Authorization') {
-          // print('  $key: Bearer [HIDDEN]');
+          // log.d('  $key: Bearer [HIDDEN]');
         } else {
-          // print('  $key: $value');
+          // log.d('  $key: $value');
         }
       });
-      // print('Body: ${jsonEncode(bodyMap)}');
+      // log.d('Body: ${jsonEncode(bodyMap)}');
 
       // Use http.Request to send GET with JSON body (unusual but API requires it)
       final request = http.Request('GET', uri);
@@ -1753,7 +1754,7 @@ class ApiService {
       );
       final response = await http.Response.fromStream(streamResponse);
 
-      // print('✅ API Response status: ${response.statusCode}');
+      // log.d('✅ API Response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
@@ -1779,14 +1780,14 @@ class ApiService {
     String? token,
   }) async {
     try {
-      print('🔵 [ApiService.getListingsFilterAttributes] START - categoryId=$categoryId, token=${token != null ? 'YES' : 'NO'}');
+      log.d('🔵 [ApiService.getListingsFilterAttributes] START - categoryId=$categoryId, token=${token != null ? 'YES' : 'NO'}');
       
       final response = await getWithQuery('/adverts/create', {
         'category_id': categoryId,
       }, token: token);
 
-      print('🔵 [ApiService] Raw response: $response');
-      print('🔵 [ApiService] Response data type: ${response['data'].runtimeType}');
+      log.d('🔵 [ApiService] Raw response: $response');
+      log.d('🔵 [ApiService] Response data type: ${response['data'].runtimeType}');
 
       // Если требуется токен и он истёк, обновить и повторить
       if (response['message'] != null &&
@@ -1806,29 +1807,29 @@ class ApiService {
       List<dynamic> attributes = [];
       if (response['data'] is List) {
         final dataList = response['data'] as List<dynamic>;
-        print('🔵 [ApiService] dataList length: ${dataList.length}');
+        log.d('🔵 [ApiService] dataList length: ${dataList.length}');
         if (dataList.isNotEmpty && dataList[0] is Map) {
           final firstItem = dataList[0] as Map<String, dynamic>;
-          print('🔵 [ApiService] firstItem keys: ${firstItem.keys.toList()}');
+          log.d('🔵 [ApiService] firstItem keys: ${firstItem.keys.toList()}');
           attributes = firstItem['attributes'] as List<dynamic>? ?? [];
-          print('🔵 [ApiService] Extracted ${attributes.length} attributes');
+          log.d('🔵 [ApiService] Extracted ${attributes.length} attributes');
         } else {
-          print('🔵 [ApiService] dataList is empty or first item is not Map');
+          log.d('🔵 [ApiService] dataList is empty or first item is not Map');
         }
       } else {
-        print('🔵 [ApiService] response[data] is not List, it is: ${response['data'].runtimeType}');
+        log.d('🔵 [ApiService] response[data] is not List, it is: ${response['data'].runtimeType}');
       }
 
       // Вернуть весь ответ
-      print('🔵 [ApiService.getListingsFilterAttributes] SUCCESS - returning ${attributes.length} attributes');
+      log.d('🔵 [ApiService.getListingsFilterAttributes] SUCCESS - returning ${attributes.length} attributes');
       return {
         'success': true,
         'data': attributes,
         'message': response['message'],
       };
     } catch (e) {
-      print('🔴 [ApiService.getListingsFilterAttributes] ERROR: $e');
-      print('🔴 [ApiService] Stack: ${StackTrace.current}');
+      log.d('🔴 [ApiService.getListingsFilterAttributes] ERROR: $e');
+      log.d('🔴 [ApiService] Stack: ${StackTrace.current}');
       return {'success': false, 'data': [], 'message': e.toString()};
     }
   }
@@ -1861,10 +1862,10 @@ class ApiService {
         token: effectiveToken,
       );
 
-      // print('✅ Price offer sent successfully for advert $advertId');
+      // log.d('✅ Price offer sent successfully for advert $advertId');
       return response;
     } catch (e) {
-      // print('❌ Error submitting price offer: $e');
+      // log.d('❌ Error submitting price offer: $e');
       rethrow;
     }
   }
@@ -1883,7 +1884,7 @@ class ApiService {
     List<String> sort = const ['new'],
   }) async {
     try {
-      print(
+      log.d(
         '🔗 getPriceOffers() calling: /me/offers/received/$advertSlug/$advertId',
       );
 
@@ -1902,22 +1903,22 @@ class ApiService {
         token: effectiveToken,
       );
 
-      print('📊 getPriceOffers() response:');
-      print('   Keys: ${response.keys.toList()}');
-      print('   Full response: $response');
+      log.d('📊 getPriceOffers() response:');
+      log.d('   Keys: ${response.keys.toList()}');
+      log.d('   Full response: $response');
 
       if (response['data'] is List) {
         final offers = List<Map<String, dynamic>>.from(
           (response['data'] as List).whereType<Map<String, dynamic>>(),
         );
-        print('✅ getPriceOffers() returning ${offers.length} offers');
+        log.d('✅ getPriceOffers() returning ${offers.length} offers');
         return offers;
       }
 
-      print('⚠️ getPriceOffers() data is not a List, returning empty');
+      log.d('⚠️ getPriceOffers() data is not a List, returning empty');
       return [];
     } catch (e) {
-      print('❌ Error getting price offers: $e');
+      log.d('❌ Error getting price offers: $e');
       rethrow;
     }
   }
@@ -1952,14 +1953,14 @@ class ApiService {
           (response['data'] as List).whereType<Map<String, dynamic>>(),
         );
 
-        // print('📊 getMyOffers() returned ${offers.length} offers');
+        // log.d('📊 getMyOffers() returned ${offers.length} offers');
         if (offers.isNotEmpty) {
-          // print('   First offer structure:');
+          // log.d('   First offer structure:');
           // offers.first.forEach((key, value) {
           //   if (value is Map || value is List) {
-          //     print('      $key: [object with keys]');
+          //     log.d('      $key: [object with keys]');
           //   } else {
-          //     print('      $key: $value (${value.runtimeType})');
+          //     log.d('      $key: $value (${value.runtimeType})');
           //   }
           // });
         }
@@ -1973,7 +1974,7 @@ class ApiService {
 
       return [];
     } catch (e) {
-      print('❌ Error in getMyOffers: $e');
+      log.d('❌ Error in getMyOffers: $e');
       return [];
     }
   }
@@ -2012,7 +2013,7 @@ class ApiService {
 
       return [];
     } catch (e) {
-      // print('❌ Error getting offers received list: $e');
+      // log.d('❌ Error getting offers received list: $e');
       return [];
     }
   }
@@ -2057,7 +2058,7 @@ class ApiService {
 
       return allOffers;
     } catch (e) {
-      // print('❌ Error getting all received offers: $e');
+      // log.d('❌ Error getting all received offers: $e');
       return [];
     }
   }
@@ -2079,7 +2080,7 @@ class ApiService {
 
       final body = {'offer_status_id': statusId};
 
-      print(
+      log.d(
         '🔄 Обновляем статус полученного предложения #$offerId на $statusId',
       );
 
@@ -2089,10 +2090,10 @@ class ApiService {
         token: effectiveToken,
       );
 
-      print('✅ updateReceivedOfferStatus response: $response');
+      log.d('✅ updateReceivedOfferStatus response: $response');
       return response;
     } catch (e) {
-      print('❌ Ошибка updateReceivedOfferStatus: $e');
+      log.d('❌ Ошибка updateReceivedOfferStatus: $e');
       rethrow;
     }
   }
@@ -2118,12 +2119,12 @@ class ApiService {
 
       final body = {'offer_status_id': statusId};
 
-      print(
+      log.d(
         '🔄 Обновляем статус своего предложения #$offerId на статус $statusId',
       );
-      print('   Endpoint: /me/offers/$offerId');
-      print('   Body: $body');
-      print('   ℹ️  Это МОЕ предложение которое я отправил');
+      log.d('   Endpoint: /me/offers/$offerId');
+      log.d('   Body: $body');
+      log.d('   ℹ️  Это МОЕ предложение которое я отправил');
 
       final response = await delete(
         '/me/offers/$offerId',
@@ -2131,46 +2132,46 @@ class ApiService {
         body: body,
       );
 
-      print('✅ API Response received:');
-      print('   Response type: ${response.runtimeType}');
-      print('   Response keys: ${response.keys.toList()}');
-      print('   Full response: $response');
+      log.d('✅ API Response received:');
+      log.d('   Response type: ${response.runtimeType}');
+      log.d('   Response keys: ${response.keys.toList()}');
+      log.d('   Full response: $response');
 
       // Пытаемся получить success field - может быть во вложенной структуре
       var success = response['success'];
       var message = response['message'];
       var data = response['data'];
 
-      print('   success field: $success (type: ${success.runtimeType})');
-      print(
+      log.d('   success field: $success (type: ${success.runtimeType})');
+      log.d(
         '   message field: $message (type: ${message?.runtimeType ?? "null"})',
       );
-      print('   data field: $data (type: ${data?.runtimeType ?? "null"})');
+      log.d('   data field: $data (type: ${data?.runtimeType ?? "null"})');
 
       // Проверяем успешность - success может быть true или в другой структуре
       if (success == true) {
-        print('   ✅ Статус успешно обновлен!');
+        log.d('   ✅ Статус успешно обновлен!');
         return response;
       } else if (success == false) {
         final errMsg = message ?? 'Неизвестная ошибка';
-        print('   ❌ API вернул success=false');
-        print('   Message: $errMsg');
+        log.d('   ❌ API вернул success=false');
+        log.d('   Message: $errMsg');
         throw Exception(errMsg);
       } else {
         // success может быть null или отсутствовать
-        print('   ⚠️ Поле success имеет неожиданное значение: $success');
+        log.d('   ⚠️ Поле success имеет неожиданное значение: $success');
         if (message != null) {
-          print('   Message: $message');
+          log.d('   Message: $message');
           throw Exception(message);
         } else {
-          print(
+          log.d(
             '   Предположим что операция успешна (success не присутствует)',
           );
           return response;
         }
       }
     } catch (e) {
-      print('❌ Ошибка при обновлении статуса предложения: $e');
+      log.d('❌ Ошибка при обновлении статуса предложения: $e');
       rethrow; // Используем rethrow вместо throw Exception для сохранения stacktrace
     }
   }
@@ -2183,7 +2184,7 @@ class ApiService {
     String? token,
   }) async {
     try {
-      print('👤 Getting user profile for userId: $userId');
+      log.d('👤 Getting user profile for userId: $userId');
 
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -2193,25 +2194,25 @@ class ApiService {
 
       final response = await get('/users/$userId', token: effectiveToken);
 
-      print('📦 getUserProfile() response keys: ${response.keys.toList()}');
+      log.d('📦 getUserProfile() response keys: ${response.keys.toList()}');
 
       if (response['data'] is List && (response['data'] as List).isNotEmpty) {
         final userData = (response['data'] as List)[0] as Map<String, dynamic>;
-        print('✅ Got user profile for: ${userData['name']}');
-        print('   Fields: name, created_at, avatar, contacts, qrCode');
-        print(
+        log.d('✅ Got user profile for: ${userData['name']}');
+        log.d('   Fields: name, created_at, avatar, contacts, qrCode');
+        log.d(
           '   ⚠️ NOTE: /users/{id} endpoint does NOT include nickname field',
         );
-        print('   According to docs/api/users_user_profile_report_adverts.md');
-        print('   Using @name as fallback for display name');
+        log.d('   According to docs/api/users_user_profile_report_adverts.md');
+        log.d('   Using @name as fallback for display name');
 
         return userData;
       }
 
-      print('⚠️ No data in user profile response');
+      log.d('⚠️ No data in user profile response');
       return {};
     } catch (e) {
-      print('❌ Error getting user profile: $e');
+      log.d('❌ Error getting user profile: $e');
       return {};
     }
   }
@@ -2223,19 +2224,19 @@ class ApiService {
     String? token,
   }) async {
     try {
-      print('📞 Getting user phones for userId: $userId');
+      log.d('📞 Getting user phones for userId: $userId');
 
       final userProfile = await getUserProfile(userId: userId, token: token);
 
       if (userProfile.isEmpty) {
-        print('⚠️ User profile is empty');
+        log.d('⚠️ User profile is empty');
         return [];
       }
 
       // Парсим contacts из профиля
       final contacts = userProfile['contacts'];
       if (contacts == null) {
-        print('⚠️ No contacts found in user profile');
+        log.d('⚠️ No contacts found in user profile');
         return [];
       }
 
@@ -2305,12 +2306,12 @@ class ApiService {
       phoneNumbers.removeWhere((p) => p.isEmpty);
       final uniquePhones = phoneNumbers.toSet().toList();
 
-      print('✅ Got ${uniquePhones.length} phone numbers for user $userId');
-      uniquePhones.forEach((phone) => print('   📱 $phone'));
+      log.d('✅ Got ${uniquePhones.length} phone numbers for user $userId');
+      uniquePhones.forEach((phone) => log.d('   📱 $phone'));
 
       return uniquePhones;
     } catch (e) {
-      print('❌ Error getting user phones: $e');
+      log.d('❌ Error getting user phones: $e');
       return [];
     }
   }
@@ -2328,7 +2329,7 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      print('📥 Загружаем список чатов (страница $page)...');
+      log.d('📥 Загружаем список чатов (страница $page)...');
 
       final response = await getWithQuery(
         '/chats',
@@ -2338,13 +2339,13 @@ class ApiService {
 
       if (response['data'] != null && response['data'] is List) {
         final chats = List<Map<String, dynamic>>.from(response['data'] as List);
-        print('✅ Загружено чатов: ${chats.length}');
+        log.d('✅ Загружено чатов: ${chats.length}');
         return chats;
       }
 
       return [];
     } catch (e) {
-      print('❌ Ошибка загрузки чатов: $e');
+      log.d('❌ Ошибка загрузки чатов: $e');
       rethrow;
     }
   }
@@ -2363,7 +2364,7 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      print('📥 Загружаем сообщения чата #$chatId (страница $page)...');
+      log.d('📥 Загружаем сообщения чата #$chatId (страница $page)...');
 
       final response = await getWithQuery(
         '/chats/$chatId/messages',
@@ -2374,13 +2375,13 @@ class ApiService {
       if (response['data'] != null && response['data'] is List) {
         final messages =
             List<Map<String, dynamic>>.from(response['data'] as List);
-        print('✅ Загружено сообщений: ${messages.length}');
+        log.d('✅ Загружено сообщений: ${messages.length}');
         return messages;
       }
 
       return [];
     } catch (e) {
-      print('❌ Ошибка загрузки сообщений: $e');
+      log.d('❌ Ошибка загрузки сообщений: $e');
       rethrow;
     }
   }
@@ -2403,7 +2404,7 @@ class ApiService {
         throw Exception('Сообщение не может быть пустым');
       }
 
-      print('📤 Отправляем сообщение в чат #$chatId...');
+      log.d('📤 Отправляем сообщение в чат #$chatId...');
 
       final response = await post(
         '/chats/$chatId/messages',
@@ -2411,10 +2412,10 @@ class ApiService {
         token: effectiveToken,
       );
 
-      print('✅ Сообщение отправлено: $response');
+      log.d('✅ Сообщение отправлено: $response');
       return response;
     } catch (e) {
-      print('❌ Ошибка отправки сообщения: $e');
+      log.d('❌ Ошибка отправки сообщения: $e');
       rethrow;
     }
   }
@@ -2437,7 +2438,7 @@ class ApiService {
         throw Exception('Сообщение не может быть пустым');
       }
 
-      print('💬 Начинаем чат с пользователем #$userId...');
+      log.d('💬 Начинаем чат с пользователем #$userId...');
 
       final response = await post(
         '/chats/start',
@@ -2448,7 +2449,7 @@ class ApiService {
         token: effectiveToken,
       );
 
-      print('✅ Чат создан: $response');
+      log.d('✅ Чат создан: $response');
 
       // Пытаемся получить ID чата из ответа
       if (response['data'] != null && response['data'] is List) {
@@ -2458,7 +2459,7 @@ class ApiService {
 
       return null;
     } catch (e) {
-      print('❌ Ошибка создания чата: $e');
+      log.d('❌ Ошибка создания чата: $e');
       rethrow;
     }
   }
@@ -2476,17 +2477,17 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      print('🗑️ Удаляем чат #$chatId...');
+      log.d('🗑️ Удаляем чат #$chatId...');
 
       final response = await delete(
         '/chats/$chatId',
         token: effectiveToken,
       );
 
-      print('✅ Ответ удаления чата: $response');
+      log.d('✅ Ответ удаления чата: $response');
       return response['success'] == true || response['data'] != null;
     } catch (e) {
-      print('❌ Ошибка удаления чата: $e');
+      log.d('❌ Ошибка удаления чата: $e');
       rethrow;
     }
   }
@@ -2505,7 +2506,7 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      print('✅ Отмечаем сообщение #$messageId как прочитанное...');
+      log.d('✅ Отмечаем сообщение #$messageId как прочитанное...');
 
       final response = await post(
         '/chats/$chatId/messages/$messageId/read',
@@ -2513,10 +2514,10 @@ class ApiService {
         token: effectiveToken,
       );
 
-      print('✅ Сообщение отмечено как прочитанное: $response');
+      log.d('✅ Сообщение отмечено как прочитанное: $response');
       return response['success'] == true;
     } catch (e) {
-      print('⚠️ Ошибка при отметке сообщения как прочитанного: $e');
+      log.d('⚠️ Ошибка при отметке сообщения как прочитанного: $e');
       // Не выбрасываем исключение, так как это не критично
       return false;
     }
@@ -2538,17 +2539,17 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      print('🗑️ Удаляем объявление #$advertId из избранного...');
+      log.d('🗑️ Удаляем объявление #$advertId из избранного...');
 
       final response = await delete(
         '/me/wishlist/destroy/$advertId',
         token: effectiveToken,
       );
 
-      print('✅ Ответ от API: $response');
+      log.d('✅ Ответ от API: $response');
       return response;
     } catch (e) {
-      print('❌ Ошибка удаления из избранного: $e');
+      log.d('❌ Ошибка удаления из избранного: $e');
       rethrow;
     }
   }

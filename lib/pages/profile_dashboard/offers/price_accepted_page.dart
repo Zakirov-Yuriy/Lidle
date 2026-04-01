@@ -15,6 +15,7 @@ import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 class PriceAcceptedPage extends StatefulWidget {
   final Offer offer;
@@ -66,7 +67,7 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
 
     try {
       final offerId = int.parse(widget.offer.id);
-      print('🗑️ Удаляем предложение ID: $offerId');
+      log.d('🗑️ Удаляем предложение ID: $offerId');
 
       final response = await ApiService.updateOfferStatus(
         offerId: offerId,
@@ -76,7 +77,7 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
       // Проверяем что API вернул success: true
       if (response['success'] == true) {
         if (mounted) {
-          print('✅ Предложение успешно удалено!');
+          log.d('✅ Предложение успешно удалено!');
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Предложение успешно отклонено'),
@@ -90,7 +91,7 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
         throw Exception(response['message'] ?? 'Неизвестная ошибка API');
       }
     } catch (e) {
-      print('❌ Ошибка при удалении предложения: $e');
+      log.d('❌ Ошибка при удалении предложения: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),

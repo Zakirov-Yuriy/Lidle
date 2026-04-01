@@ -18,6 +18,7 @@ import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
@@ -28,7 +29,7 @@ class SettingsScreen extends StatefulWidget {
   /// Вызывается из AuthBloc при LogoutEvent
   static void clearCache() {
     _SettingsScreenState._lastProfileLoadTime = null;
-    print('🧹 SettingsScreen: кеш очищен при logout');
+    log.d('🧹 SettingsScreen: кеш очищен при logout');
   }
 
   @override
@@ -67,10 +68,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_shouldRefreshProfile()) {
       context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
       _lastProfileLoadTime = DateTime.now();
-      print('✅ SettingsScreen: загружен профиль (кеш обновлен)');
+      log.d('✅ SettingsScreen: загружен профиль (кеш обновлен)');
     } else {
       final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
-      print('⏳ SettingsScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+      log.d('⏳ SettingsScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
     }
     
     _loadMainPhoneId();
@@ -98,7 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       }
     } catch (e) {
-      // print('Error loading main phone ID: $e');
+      // log.d('Error loading main phone ID: $e');
     }
   }
 
@@ -161,7 +162,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          debugPrint('Photo tapped');
+                          log.d('Photo tapped');
                           Navigator.pushNamed(context, '/change_photo');
                         },
                         behavior: HitTestBehavior.opaque,

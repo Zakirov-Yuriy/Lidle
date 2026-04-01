@@ -34,6 +34,7 @@ import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
 import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
@@ -137,25 +138,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
           },
         )
         .toList();
-    print(
+    log.d(
       '✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)',
     );
 
     // Проверить режим редактирования
     _isEditMode = widget.advertId != null;
-    // print('🔧 DynamicFilter initState:');
-    // print('   - advertId: ${widget.advertId}');
-    // print('   - categoryId: ${widget.categoryId}');
-    // print('   - isEditMode: $_isEditMode');
+    // log.d('🔧 DynamicFilter initState:');
+    // log.d('   - advertId: ${widget.advertId}');
+    // log.d('   - categoryId: ${widget.categoryId}');
+    // log.d('   - isEditMode: $_isEditMode');
 
     // Используем разные сценарии инициализации для создания vs редактирования
     if (_isEditMode) {
       // При редактировании: сначала загрузить данные, потом атрибуты
-      // print('   → Starting initialization for EDITING mode');
+      // log.d('   → Starting initialization for EDITING mode');
       _initializeForEditing();
     } else {
       // При создании: загрузить атрибуты, контакты, регионы
-      // print('   → Starting initialization for CREATION mode');
+      // log.d('   → Starting initialization for CREATION mode');
       _initializeForCreation();
     }
   }
@@ -173,7 +174,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Инициализация для редактирования объявления
   Future<void> _initializeForEditing() async {
-    print(
+    log.d(
       '📝 [EDIT MODE] Step 1: Loading advert data FIRST to get category...',
     );
 
@@ -181,14 +182,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // НЕ заполняем данные в контроллеры еще - им нужны атрибуты
     await _loadAdvertCategoryOnly();
 
-    print(
+    log.d(
       '📝 [EDIT MODE] Step 2: Now loading attributes for category $_editAdvertCategoryId...',
     );
 
     // 2️⃣ Теперь загружаем атрибуты для ПРАВИЛЬНОЙ категории
     await _loadAttributes();
 
-    print(
+    log.d(
       '📝 [EDIT MODE] Step 3: Attributes loaded. Now loading full advert data...',
     );
 
@@ -198,7 +199,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // 3️⃣ ПОТОМ загружаем все данные объявления (используем правильные атрибуты)
     await _loadAdvertDataForEditing();
 
-    print(
+    log.d(
       '📝 [EDIT MODE] Step 4: Repopulating controllers after attributes + advert data loaded...',
     );
 
@@ -207,13 +208,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
       _repopulateControllersAfterAttributesLoaded();
     }
 
-    print('📝 [EDIT MODE] Step 5: Loading contacts and regions...');
+    log.d('📝 [EDIT MODE] Step 5: Loading contacts and regions...');
 
     // 5️⃣ Загружаем вспомогательные данные
     await _loadUserContacts();
     await _loadRegions();
 
-    print('📝 [EDIT MODE] Initialization complete!');
+    log.d('📝 [EDIT MODE] Initialization complete!');
   }
 
   /// Перезагружает данные фильтра при восстановлении подключения
@@ -248,7 +249,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _isLoading = false;
       });
     } catch (e) {
-      // print('Error reloading filter data: $e');
+      // log.d('Error reloading filter data: $e');
       setState(() {
         _isLoading = false;
       });
@@ -325,12 +326,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
     try {
       // Определяем категорию: из редактирования, затем из параметра, затем по умолчанию 2
       final categoryId = _editAdvertCategoryId ?? widget.categoryId ?? 2;
-      // print('');
-      // print('🎯 _loadAttributes() called:');
-      // print('   - _editAdvertCategoryId: $_editAdvertCategoryId');
-      // print('   - widget.categoryId: ${widget.categoryId}');
-      // print('   - Using categoryId: $categoryId');
-      // print('   Loading attributes for category: $categoryId');
+      // log.d('');
+      // log.d('🎯 _loadAttributes() called:');
+      // log.d('   - _editAdvertCategoryId: $_editAdvertCategoryId');
+      // log.d('   - widget.categoryId: ${widget.categoryId}');
+      // log.d('   - Using categoryId: $categoryId');
+      // log.d('   Loading attributes for category: $categoryId');
       final token = TokenService.currentToken;
 
       // ИСПОЛЬЗУЕМ /adverts/create ВМЕСТО /meta/filters
@@ -344,16 +345,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
           categoryId: categoryId,
           token: token,
         );
-        // print();
+        // log.d();
       } catch (e) {
-        // print();
+        // log.d();
         // Fallback на старый метод
         final response = await ApiService.getMetaFilters(
           categoryId: categoryId,
           token: token,
         );
         loadedAttributes = response.filters;
-        // print();
+        // log.d();
       }
 
       // Логируем загруженные атрибуты
@@ -366,7 +367,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Save both original style and transformed style
       mutableFilters = mutableFilters.map((attr) {
         final submissionStyle = _getSubmissionStyle(attr.style);
-        // print();
+        // log.d();
         // Create new attribute with both styles preserved
         return Attribute(
           id: attr.id,
@@ -393,14 +394,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Инициализируем resolver для динамического поиска ID атрибутов
       _attributeResolver = AttributeResolver(mutableFilters);
-      // print('');
-      // print('📋 ═══════════════════════════════════════════════════════');
-      // print('📋 CATEGORY $categoryId - ATTRIBUTES LOADED');
-      // print('📋 ═══════════════════════════════════════════════════════');
+      // log.d('');
+      // log.d('📋 ═══════════════════════════════════════════════════════');
+      // log.d('📋 CATEGORY $categoryId - ATTRIBUTES LOADED');
+      // log.d('📋 ═══════════════════════════════════════════════════════');
       _attributeResolver.debugPrintAll(prefix: '   ');
       _attributeResolver.debugPrintCriticalAttributes(prefix: '   ');
-      // print('📋 ═══════════════════════════════════════════════════════');
-      // print('');
+      // log.d('📋 ═══════════════════════════════════════════════════════');
+      // log.d('');
 
       // Получаем ID критических атрибутов динамически
       var offerPriceAttrId = _attributeResolver.getOfferPriceAttributeId();
@@ -408,15 +409,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Если не нашли по имени/типу, ищем по известным ID для недвижимости
       // и используем первый найденный или создаём новый
       if (offerPriceAttrId == null) {
-        // print();
-        // print();
+        // log.d();
+        // log.d();
 
         // Попробуем найти по известным ID (в случае если API поменял названия)
         const knownOfferPriceIds = [1048, 1050, 1051, 1052, 1128, 1130];
         for (final id in knownOfferPriceIds) {
           if (mutableFilters.any((a) => a.id == id)) {
             offerPriceAttrId = id;
-            // print('   ✅ Found by known ID: $id');
+            // log.d('   ✅ Found by known ID: $id');
             break;
           }
         }
@@ -424,7 +425,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Если всё ещё не нашли, создаём новый с дефолтным ID для этой категории
       if (offerPriceAttrId == null) {
-        // print();
+        // log.d();
 
         // Используем ID в зависимости от категории (fallback)
         if (categoryId == 2) {
@@ -438,7 +439,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         } else {
           // Для всех остальных категорий используем базовый ID
           offerPriceAttrId = 2000 + categoryId;
-          // print();
+          // log.d();
         }
       }
 
@@ -448,11 +449,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
       );
 
       if (!hasOfferPriceAttr) {
-        // print();
+        // log.d();
         // НЕ создаём искусственный атрибут - это вызовет ошибку валидации на API!
         // Он будет пропущен при отправке, так как его нет в _attributes
       } else {
-        // print('✅ Attribute $offerPriceAttrId already exists in filters');
+        // log.d('✅ Attribute $offerPriceAttrId already exists in filters');
       }
 
       if (mounted) {
@@ -480,7 +481,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Load category name
       _loadCategoryInfo();
     } catch (e) {
-      // print('Error loading attributes from API: $e');
+      // log.d('Error loading attributes from API: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -502,7 +503,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       final token = TokenService.currentToken;
       final advertId = widget.advertId!;
 
-      print('📂 [CATEGORY] Loading category ID from advert $advertId...');
+      log.d('📂 [CATEGORY] Loading category ID from advert $advertId...');
 
       final response = await ApiService.get('/adverts/$advertId', token: token);
 
@@ -528,7 +529,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       if (advertData.containsKey('category_id') &&
           advertData['category_id'] != null) {
         extractedCategoryId = advertData['category_id'] as int;
-        print('   ✅ Found category_id = $extractedCategoryId');
+        log.d('   ✅ Found category_id = $extractedCategoryId');
       }
 
       // Вариант 2: если category это Map с id
@@ -538,26 +539,26 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final categoryData = advertData['category'] as Map<String, dynamic>;
         if (categoryData.containsKey('id')) {
           extractedCategoryId = categoryData['id'] as int;
-          print('   ✅ Found category.id = $extractedCategoryId');
+          log.d('   ✅ Found category.id = $extractedCategoryId');
         }
       }
 
       // Вариант 3: Если это передано как widget.categoryId (параметр навигации)
       if (extractedCategoryId == null && widget.categoryId != null) {
         extractedCategoryId = widget.categoryId;
-        print('   ✅ Using widget.categoryId = $extractedCategoryId (fallback)');
+        log.d('   ✅ Using widget.categoryId = $extractedCategoryId (fallback)');
       }
 
       // Установляем найденную категорию
       if (extractedCategoryId != null) {
         _editAdvertCategoryId = extractedCategoryId;
-        print('   ✅ SET _editAdvertCategoryId = $_editAdvertCategoryId');
+        log.d('   ✅ SET _editAdvertCategoryId = $_editAdvertCategoryId');
       } else {
-        print('   ⚠️ Could not find category ID, will use default = 2');
+        log.d('   ⚠️ Could not find category ID, will use default = 2');
         _editAdvertCategoryId = 2; // Default fallback
       }
     } catch (e) {
-      print('   ❌ Error loading category ID: $e');
+      log.d('   ❌ Error loading category ID: $e');
       _editAdvertCategoryId = 2; // Fallback
     }
   }
@@ -574,7 +575,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // Получаем полные данные объявления через публичный эндпоинт
       // В API есть /adverts/{id} который возвращает все необходимые данные
-      // print('📥 Loading advert data for editing: $advertId');
+      // log.d('📥 Loading advert data for editing: $advertId');
 
       final response = await ApiService.get('/adverts/$advertId', token: token);
 
@@ -593,12 +594,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
         advertData = response;
       }
 
-      // print('📦 Loaded advert data: ${advertData.keys.toList()}');
-      // print('📦 Full advert type data: ${advertData['type']}');
+      // log.d('📦 Loaded advert data: ${advertData.keys.toList()}');
+      // log.d('📦 Full advert type data: ${advertData['type']}');
 
       // 🔄 КАТЕГОРИЯ УЖЕ ЗАГРУЖЕНА В _loadAdvertCategoryOnly()
       // Используем это значение для правильного парсинга атрибутов
-      // print('   Using _editAdvertCategoryId = $_editAdvertCategoryId from previous load');
+      // log.d('   Using _editAdvertCategoryId = $_editAdvertCategoryId from previous load');
 
       if (mounted) {
         setState(() {
@@ -612,20 +613,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       if (advertData.containsKey('name')) {
         _titleController.text = advertData['name'] as String? ?? '';
-        // print('✅ Filled title: ${advertData['name']}');
+        // log.d('✅ Filled title: ${advertData['name']}');
       }
 
       if (advertData.containsKey('description')) {
         _descriptionController.text =
             advertData['description'] as String? ?? '';
-        // print('✅ Filled description');
+        // log.d('✅ Filled description');
       }
 
       if (advertData.containsKey('price')) {
         final price = advertData['price'];
         if (price != null) {
           _priceController.text = price.toString();
-          // print('✅ Filled price: $price');
+          // log.d('✅ Filled price: $price');
         }
       }
 
@@ -635,7 +636,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // 🔧 Парсим адрес при редактировании
         // API возвращает адрес как строка: "г. Донецк, ул. Бутовская" или "Область, г. Донецк, ул. Бутовская, д. 70"
         await _populateAddressFieldsFromEdit(fullAddress);
-        // print('✅ Filled address: $fullAddress');
+        // log.d('✅ Filled address: $fullAddress');
       }
 
       // Заполняем контакты если есть (может быть в разных местах)
@@ -651,7 +652,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       if (contactName.isNotEmpty) {
         _contactNameController.text = contactName;
-        // print('✅ Filled contact name: $contactName');
+        // log.d('✅ Filled contact name: $contactName');
       }
 
       // ✅ ЗАПОЛНЯЕМ АТРИБУТЫ ИЗ ОБЪЯВЛЕНИЯ
@@ -663,9 +664,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // ✅ ЗАПОЛНЯЕМ КОНТАКТЫ ИЗ ОБЪЯВЛЕНИЯ
       _populateContactsFromAdvert(advertData);
 
-      // print('✅ Advert data loaded successfully');
+      // log.d('✅ Advert data loaded successfully');
     } catch (e) {
-      // print('❌ Error loading advert data: $e');
+      // log.d('❌ Error loading advert data: $e');
       if (mounted) {
         setState(() => _isLoadingEditData = false);
         ScaffoldMessenger.of(
@@ -681,11 +682,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _populateAddressFieldsFromEdit(String fullAddress) async {
     try {
       if (fullAddress.isEmpty) {
-        print('⚠️ Empty address provided');
+        log.d('⚠️ Empty address provided');
         return;
       }
 
-      print('🔍 Populating address fields from: $fullAddress');
+      log.d('🔍 Populating address fields from: $fullAddress');
 
       // Адрес может быть в разных форматах:
       // 1. "г. Донецк, ул. Донецкая" - 2 части (город, улица)
@@ -694,13 +695,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       final parts = fullAddress.split(',').map((p) => p.trim()).toList();
 
-      print('   Parts: $parts (${parts.length} parts)');
+      log.d('   Parts: $parts (${parts.length} parts)');
 
       if (parts.isEmpty) return;
 
       // ✅ ВАРИАНТ 1: 4 части - полный адрес с областью
       if (parts.length == 4) {
-        print('   📍 Full address with region detected');
+        log.d('   📍 Full address with region detected');
         await _selectAddressFromParts(
           region: parts[0],
           city: parts[1],
@@ -710,7 +711,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
       // ✅ ВАРИАНТ 2: 3 части - адрес с номером дома (без области)
       else if (parts.length == 3) {
-        print('   📍 Address with building detected');
+        log.d('   📍 Address with building detected');
         await _selectAddressFromParts(
           city: parts[0],
           street: parts[1],
@@ -719,13 +720,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
       // ✅ ВАРИАНТ 3: 2 части - только город и улица
       else if (parts.length == 2) {
-        print('   📍 Address without building detected');
+        log.d('   📍 Address without building detected');
         await _selectAddressFromParts(city: parts[0], street: parts[1]);
       }
 
-      print('✅ Address fields populated successfully');
+      log.d('✅ Address fields populated successfully');
     } catch (e) {
-      print('❌ Error populating address fields: $e');
+      log.d('❌ Error populating address fields: $e');
     }
   }
 
@@ -741,22 +742,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // ✅ ЗАПОЛНЯЕМ КОНТРОЛЛЕРЫ СРАЗУ
       if (region != null && region.isNotEmpty) {
         setState(() => _regionController.text = region);
-        print('   ✅ Set _regionController = "$region"');
+        log.d('   ✅ Set _regionController = "$region"');
       }
 
       if (city != null && city.isNotEmpty) {
         setState(() => _cityController.text = city);
-        print('   ✅ Set _cityController = "$city"');
+        log.d('   ✅ Set _cityController = "$city"');
       }
 
       if (street != null && street.isNotEmpty) {
         setState(() => _streetController.text = street);
-        print('   ✅ Set _streetController = "$street"');
+        log.d('   ✅ Set _streetController = "$street"');
       }
 
       if (building != null && building.isNotEmpty) {
         setState(() => _buildingController.text = building);
-        print('   ✅ Set _buildingController = "$building"');
+        log.d('   ✅ Set _buildingController = "$building"');
       }
 
       // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ РЕГИОН (если он указан)
@@ -781,7 +782,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         }
       }
     } catch (e) {
-      print('❌ Error selecting address from parts: $e');
+      log.d('❌ Error selecting address from parts: $e');
     }
   }
 
@@ -810,7 +811,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
               .map((e) => {'name': e.key, 'id': e.value})
               .toList();
         });
-        print('   📦 Loaded ${_regions.length} regions from API');
+        log.d('   📦 Loaded ${_regions.length} regions from API');
       }
 
       // Ищем регион по названию (точное совпадение или частичное)
@@ -833,12 +834,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _selectedRegion.clear();
           _selectedRegion.add(region['name'] as String);
         });
-        print('   ✅ Selected region: ${region['name']} (ID: ${region['id']})');
+        log.d('   ✅ Selected region: ${region['name']} (ID: ${region['id']})');
       } else {
-        print('   ⚠️ Region "$regionName" not found in list');
+        log.d('   ⚠️ Region "$regionName" not found in list');
       }
     } catch (e) {
-      print('   ❌ Error selecting region: $e');
+      log.d('   ❌ Error selecting region: $e');
     }
   }
 
@@ -846,7 +847,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _selectCityByName(String cityName) async {
     try {
       if (_selectedRegionId == null) {
-        print('   ⚠️ Cannot select city: no region selected');
+        log.d('   ⚠️ Cannot select city: no region selected');
         return;
       }
 
@@ -874,7 +875,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
         // 🔧 FALLBACK: закомментирована для тестирования только API
         // if (_cities.length < 25) {
-        //   print('⚠️ API вернул только ${_cities.length} городов для региона, добавляем dnrCities (${dnrCities.length})');
+        //   log.d('⚠️ API вернул только ${_cities.length} городов для региона, добавляем dnrCities (${dnrCities.length})');
         //   final existingNames = <String>{
         //     for (var city in _cities) city['name'] as String
         //   };
@@ -887,10 +888,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
         //       });
         //     }
         //   }
-        //   print('✅ После merge: _cities.length = ${_cities.length}');
+        //   log.d('✅ После merge: _cities.length = ${_cities.length}');
         // }
       });
-      print('   📦 Loaded ${_cities.length} cities for region');
+      log.d('   📦 Loaded ${_cities.length} cities for region');
 
       // Ищем город по названию
       final city = _cities.firstWhere(
@@ -912,12 +913,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _selectedCity.clear();
           _selectedCity.add(city['name'] as String);
         });
-        print('   ✅ Selected city: ${city['name']} (ID: ${city['id']})');
+        log.d('   ✅ Selected city: ${city['name']} (ID: ${city['id']})');
       } else {
-        print('   ⚠️ City "$cityName" not found in list');
+        log.d('   ⚠️ City "$cityName" not found in list');
       }
     } catch (e) {
-      print('   ❌ Error selecting city: $e');
+      log.d('   ❌ Error selecting city: $e');
     }
   }
 
@@ -925,7 +926,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _selectStreetByName(String streetName) async {
     try {
       if (_selectedCityId == null) {
-        print('   ⚠️ Cannot select street: no city selected');
+        log.d('   ⚠️ Cannot select street: no city selected');
         return;
       }
 
@@ -950,7 +951,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
       });
-      print('   📦 Loaded ${_streets.length} streets for city');
+      log.d('   📦 Loaded ${_streets.length} streets for city');
 
       // Ищем улицу по названию
       final street = _streets.firstWhere(
@@ -972,12 +973,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _selectedStreet.clear();
           _selectedStreet.add(street['name'] as String);
         });
-        print('   ✅ Selected street: ${street['name']} (ID: ${street['id']})');
+        log.d('   ✅ Selected street: ${street['name']} (ID: ${street['id']})');
       } else {
-        print('   ⚠️ Street "$streetName" not found in list');
+        log.d('   ⚠️ Street "$streetName" not found in list');
       }
     } catch (e) {
-      print('   ❌ Error selecting street: $e');
+      log.d('   ❌ Error selecting street: $e');
     }
   }
 
@@ -985,7 +986,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _selectBuildingByName(String buildingName) async {
     try {
       if (_selectedStreetId == null) {
-        print('   ⚠️ Cannot select building: no street selected');
+        log.d('   ⚠️ Cannot select building: no street selected');
         return;
       }
 
@@ -1010,7 +1011,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
       });
-      print('   📦 Loaded ${_buildings.length} buildings for street');
+      log.d('   📦 Loaded ${_buildings.length} buildings for street');
 
       // Ищем номер дома по названию
       final building = _buildings.firstWhere(
@@ -1032,12 +1033,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _selectedBuilding.clear();
           _selectedBuilding.add(building['name'] as String);
         });
-        print('   ✅ Selected building: ${building['name']}');
+        log.d('   ✅ Selected building: ${building['name']}');
       } else {
-        print('   ⚠️ Building "$buildingName" not found in list');
+        log.d('   ⚠️ Building "$buildingName" not found in list');
       }
     } catch (e) {
-      print('   ❌ Error selecting building: $e');
+      log.d('   ❌ Error selecting building: $e');
     }
   }
 
@@ -1055,8 +1056,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       final parts = fullAddress.split(',').map((p) => p.trim()).toList();
 
-      print('🔍 Parsing address: $fullAddress');
-      print('   Parts: $parts (${parts.length} parts)');
+      log.d('🔍 Parsing address: $fullAddress');
+      log.d('   Parts: $parts (${parts.length} parts)');
 
       if (parts.isEmpty) return;
 
@@ -1070,10 +1071,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
       if (parts.length >= 3) {
         // Если 3+ части, последняя - это номер дома
         buildingNumber = parts.last;
-        print('   ✅ Found building number: "$buildingNumber" (last part)');
+        log.d('   ✅ Found building number: "$buildingNumber" (last part)');
       } else if (parts.length == 2) {
         // Только 2 части - нет номера дома в API
-        print('   ⚠️ No building number in address (only 2 parts)');
+        log.d('   ⚠️ No building number in address (only 2 parts)');
         // Это нормально, может быть просто "г. Донецк, ул. Бутовская"
       }
 
@@ -1085,16 +1086,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
             buildingNumber!,
           ); // ! для force unwrap, так как проверили что not null
         });
-        print('   ✅ Set _selectedBuilding = {"$buildingNumber"}');
+        log.d('   ✅ Set _selectedBuilding = {"$buildingNumber"}');
       } else {
         // Если номера дома нет, делаем _selectedBuilding пустым
         setState(() {
           _selectedBuilding.clear();
         });
-        print('   ℹ️ _selectedBuilding cleared (no building number)');
+        log.d('   ℹ️ _selectedBuilding cleared (no building number)');
       }
     } catch (e) {
-      print('❌ Error parsing address: $e');
+      log.d('❌ Error parsing address: $e');
     }
   }
 
@@ -1102,7 +1103,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   /// Парсит структуру attributes из API ответа и заполняет _selectedValues
   void _populateAttributesFromAdvert(Map<String, dynamic> advertData) {
     if (!advertData.containsKey('attributes')) {
-      print('ℹ️ No attributes found in advert data');
+      log.d('ℹ️ No attributes found in advert data');
       return;
     }
 
@@ -1110,13 +1111,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
       final attributesData = advertData['attributes'];
 
       if (attributesData is Map<String, dynamic>) {
-        print('🔍 Populating attributes from advert...');
+        log.d('🔍 Populating attributes from advert...');
 
         // ✅ Обратное маппирование value_selected - найти к каким атрибутам относятся ID значений
         if (attributesData.containsKey('value_selected')) {
           final valueSelected = attributesData['value_selected'];
           if (valueSelected is List && _attributes.isNotEmpty) {
-            print('   value_selected IDs: $valueSelected');
+            log.d('   value_selected IDs: $valueSelected');
 
             // Для каждого ID значения найти атрибут по его значениям
             for (final valueId in valueSelected) {
@@ -1138,7 +1139,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       _selectedValues[attr.id] = {matchingValue.value};
                     }
                   });
-                  print(
+                  log.d(
                     '   ✅ Attr ${attr.id} "${attr.title}": added value "${matchingValue.value}"',
                   );
                   break; // Found, move to next value ID
@@ -1152,7 +1153,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         if (attributesData.containsKey('values')) {
           final values = attributesData['values'];
           if (values is Map<String, dynamic>) {
-            print('   values: $values');
+            log.d('   values: $values');
 
             values.forEach((attrIdStr, valueData) {
               try {
@@ -1175,7 +1176,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                           'max': valueData['max_value'],
                         };
                       });
-                      print(
+                      log.d(
                         '   ✅ Attr $attrId: range value=${valueData['value']}, max=${valueData['max_value']}',
                       );
                     } else if (valueData.containsKey('value')) {
@@ -1188,7 +1189,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                           _selectedValues[attrId] =
                               (value == 1 || value == true);
                         });
-                        print('   ✅ Attr $attrId: boolean value=$value');
+                        log.d('   ✅ Attr $attrId: boolean value=$value');
                       } else {
                         // Для текстовых атрибутов сохраняем в controller
                         if (_controllers[attrId] != null) {
@@ -1198,7 +1199,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                             _selectedValues[attrId] = value;
                           });
                         }
-                        print('   ✅ Attr $attrId: value=$value');
+                        log.d('   ✅ Attr $attrId: value=$value');
                       }
                     }
                   } else {
@@ -1206,24 +1207,24 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     setState(() {
                       _selectedValues[attrId] = valueData;
                     });
-                    print('   ✅ Attr $attrId: simple value=$valueData');
+                    log.d('   ✅ Attr $attrId: simple value=$valueData');
                   }
                 } else {
-                  print(
+                  log.d(
                     '   ⚠️ Attribute ID $attrId not found in loaded attributes',
                   );
                 }
               } catch (e) {
-                print('   ⚠️ Error parsing attribute "$attrIdStr": $e');
+                log.d('   ⚠️ Error parsing attribute "$attrIdStr": $e');
               }
             });
           }
         }
 
-        print('✅ Attributes population complete');
+        log.d('✅ Attributes population complete');
       } else if (attributesData is List) {
-        print('ℹ️ Attributes returned as list format');
-        print('   List length: ${(attributesData as List).length}');
+        log.d('ℹ️ Attributes returned as list format');
+        log.d('   List length: ${(attributesData as List).length}');
 
         // Обработка List формата: [{id, value, max_value, values_id}, ...]
         try {
@@ -1231,9 +1232,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           // ⚠️ НЕ переносим старые значения! Начинаем с чистого листа
           final tempSelectedValues = <int, dynamic>{};
 
-          print('   _attributes available: ${_attributes.length}');
+          log.d('   _attributes available: ${_attributes.length}');
           if (_attributes.isEmpty) {
-            print('   ⚠️ WARNING: _attributes is empty! Cannot process values');
+            log.d('   ⚠️ WARNING: _attributes is empty! Cannot process values');
             return;
           }
 
@@ -1255,17 +1256,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
               );
 
               if (attr.id == 0) {
-                print('   ⚠️ Attr $attrId not found in _attributes');
+                log.d('   ⚠️ Attr $attrId not found in _attributes');
                 continue;
               }
 
-              print('   Processing Attr $attrId "${attr.title}"...');
+              log.d('   Processing Attr $attrId "${attr.title}"...');
 
               // ✅ CASE 1: values_id - для множественных выборов (D1, F типы)
               if (attrItem.containsKey('values_id')) {
                 final valuesId = attrItem['values_id'];
                 if (valuesId is List && valuesId.isNotEmpty) {
-                  print('      ✅ Has values_id: $valuesId');
+                  log.d('      ✅ Has values_id: $valuesId');
 
                   final selectedSet = <String>{};
                   for (final valueId in valuesId) {
@@ -1289,21 +1290,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     if (attr.styleSingle == 'I') {
                       tempSelectedValues[attrId] =
                           true; // Если значение есть - true
-                      print('      ✅ I-type checkbox: Set to TRUE');
+                      log.d('      ✅ I-type checkbox: Set to TRUE');
                     } else {
                       // C1, D1, F типы - оставить как Set
                       tempSelectedValues[attrId] = selectedSet;
-                      print(
+                      log.d(
                         '      ✅ Added to tempSelectedValues: $selectedSet',
                       );
                     }
                   } else {
-                    print(
+                    log.d(
                       '      ⚠️ values_id пусто или не найдено в values - пропускаем',
                     );
                   }
                 } else {
-                  print(
+                  log.d(
                     '      ⚠️ values_id отсутствует или пусто - пропускаем',
                   );
                 }
@@ -1315,41 +1316,41 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 final maxVal = attrItem['max_value'];
 
                 tempSelectedValues[attrId] = {'min': minVal, 'max': maxVal};
-                print('      ✅ Range: $minVal - $maxVal');
+                log.d('      ✅ Range: $minVal - $maxVal');
               }
               // ✅ CASE 3: value - для простых значений (G1, H типы)
               else if (attrItem.containsKey('value') &&
                   attrItem['value'] != null) {
                 final value = attrItem['value'];
                 tempSelectedValues[attrId] = value;
-                print('      ✅ Value: $value (type: ${value.runtimeType})');
+                log.d('      ✅ Value: $value (type: ${value.runtimeType})');
               }
             }
           }
 
-          print('   Processed ${processedAttrIds.length} attributes from API');
-          print(
+          log.d('   Processed ${processedAttrIds.length} attributes from API');
+          log.d(
             '   tempSelectedValues prepared: ${tempSelectedValues.length} items',
           );
-          print('   Content: $tempSelectedValues');
+          log.d('   Content: $tempSelectedValues');
 
           // 🔄 Один раз setState() с ВСЕ значения
           if (tempSelectedValues.isNotEmpty) {
             setState(() {
               _selectedValues = tempSelectedValues;
             });
-            print(
+            log.d(
               '✅ setState() called. _selectedValues now has ${_selectedValues.length} items',
             );
           }
 
-          print('✅ List format attributes processed');
+          log.d('✅ List format attributes processed');
         } catch (e) {
-          print('❌ Error processing list format: $e');
+          log.d('❌ Error processing list format: $e');
         }
       }
     } catch (e) {
-      print('❌ Error populating attributes: $e');
+      log.d('❌ Error populating attributes: $e');
     }
   }
 
@@ -1357,9 +1358,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
   /// Это нужно для того чтобы UI отобразил предзаполненные значения
   void _repopulateControllersAfterAttributesLoaded() {
     try {
-      print('🔄 Repopulating controllers after attributes loaded...');
-      print('   _selectedValues: $_selectedValues');
-      print('   _attributes count: ${_attributes.length}');
+      log.d('🔄 Repopulating controllers after attributes loaded...');
+      log.d('   _selectedValues: $_selectedValues');
+      log.d('   _attributes count: ${_attributes.length}');
 
       // НЕ очищаем контроллеры! Просто обновляем их текст
       // Потому что они уже используются в UI через putIfAbsent
@@ -1368,14 +1369,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
         if (_selectedValues.containsKey(attr.id)) {
           final value = _selectedValues[attr.id];
 
-          print(
+          log.d(
             '   Updating attr ${attr.id} "${attr.title}": value=$value (styleSingle: ${attr.styleSingle})',
           );
 
           // CASE 1: Множество (Set) - для C1 и F типов
           if (value is Set) {
             if (value.isEmpty) {
-              print('     ℹ️ Empty set for attr ${attr.id} - skip');
+              log.d('     ℹ️ Empty set for attr ${attr.id} - skip');
               continue;
             }
 
@@ -1383,20 +1384,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
             final firstValue = value.first.toString();
             if (_controllers.containsKey(attr.id)) {
               _controllers[attr.id]!.text = firstValue;
-              print('     ✅ Updated Controller (from set) with "$firstValue"');
+              log.d('     ✅ Updated Controller (from set) with "$firstValue"');
             } else {
               _controllers[attr.id] = TextEditingController(text: firstValue);
-              print('     ✅ Created Controller (from set) with "$firstValue"');
+              log.d('     ✅ Created Controller (from set) with "$firstValue"');
             }
           }
           // CASE 2: Простое текстовое значение
           else if (value is String) {
             if (_controllers.containsKey(attr.id)) {
               _controllers[attr.id]!.text = value;
-              print('     ✅ Updated text controller with "$value"');
+              log.d('     ✅ Updated text controller with "$value"');
             } else {
               _controllers[attr.id] = TextEditingController(text: value);
-              print('     ✅ Created text controller with "$value"');
+              log.d('     ✅ Created text controller with "$value"');
             }
           }
           // CASE 3: Диапазон (E1) - обновляем оба контроллера
@@ -1419,7 +1420,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
               _controllers[maxKey] = TextEditingController(text: maxVal);
             }
 
-            print('     ✅ Updated range controllers: min=$minVal, max=$maxVal');
+            log.d('     ✅ Updated range controllers: min=$minVal, max=$maxVal');
           }
           // CASE 4: Числовое значение
           else if (value is num) {
@@ -1430,7 +1431,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 text: value.toString(),
               );
             }
-            print('     ✅ Updated numeric controller with $value');
+            log.d('     ✅ Updated numeric controller with $value');
           }
         }
       }
@@ -1439,7 +1440,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       if (_isEditMode) {
         // Атрибут "Вам предложат цену" (1048) - по умолчанию ВСЕГДА true
         _selectedValues[1048] = true;
-        print(
+        log.d(
           '   ✅ Set attribute 1048 "Вам предложат цену" to TRUE by default',
         );
       }
@@ -1451,9 +1452,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
         });
       }
 
-      print('✅ Controllers repopulation complete');
+      log.d('✅ Controllers repopulation complete');
     } catch (e) {
-      print('❌ Error repopulating controllers: $e');
+      log.d('❌ Error repopulating controllers: $e');
     }
   }
 
@@ -1475,11 +1476,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       if (imageUrls.isEmpty) {
-        print('ℹ️ No images found in advert data');
+        log.d('ℹ️ No images found in advert data');
         return;
       }
 
-      print('📸 Found ${imageUrls.length} images, downloading...');
+      log.d('📸 Found ${imageUrls.length} images, downloading...');
 
       final tempDir = await getTemporaryDirectory();
       final List<File> downloadedImages = [];
@@ -1501,7 +1502,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           }
 
           if (imageUrl == null || imageUrl.isEmpty) {
-            print('⚠️ Image $i has no URL');
+            log.d('⚠️ Image $i has no URL');
             continue;
           }
 
@@ -1514,13 +1515,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
           }
 
           // Скачиваем изображение
-          print('  ↓ Downloading image $i: $imageUrl');
+          log.d('  ↓ Downloading image $i: $imageUrl');
           final response = await http
               .get(Uri.parse(imageUrl))
               .timeout(
                 const Duration(seconds: 15),
                 onTimeout: () {
-                  print('  ⏱️ Timeout downloading image $i');
+                  log.d('  ⏱️ Timeout downloading image $i');
                   throw TimeoutException('Timeout loading image $i');
                 },
               );
@@ -1533,12 +1534,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
             await file.writeAsBytes(response.bodyBytes);
 
             downloadedImages.add(file);
-            print('  ✅ Saved image $i: $fileName');
+            log.d('  ✅ Saved image $i: $fileName');
           } else {
-            print('  ❌ Failed to download image $i: ${response.statusCode}');
+            log.d('  ❌ Failed to download image $i: ${response.statusCode}');
           }
         } catch (e) {
-          print('  ❌ Error downloading image $i: $e');
+          log.d('  ❌ Error downloading image $i: $e');
           // Продолжаем загружать остальные изображения
           continue;
         }
@@ -1548,12 +1549,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
         setState(() {
           _images.addAll(downloadedImages);
         });
-        print(
+        log.d(
           '✅ Images loaded successfully: ${downloadedImages.length}/${imageUrls.length}',
         );
       }
     } catch (e) {
-      print('❌ Error loading advert images: $e');
+      log.d('❌ Error loading advert images: $e');
     }
   }
 
@@ -1567,7 +1568,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final phone = advertData['phone'].toString();
         if (phone.isNotEmpty) {
           _phone1Controller.text = phone;
-          print('✅ Filled phone: $phone');
+          log.d('✅ Filled phone: $phone');
         }
       }
 
@@ -1576,7 +1577,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final email = advertData['email'].toString();
         if (email.isNotEmpty) {
           _emailController.text = email;
-          print('✅ Filled email: $email');
+          log.d('✅ Filled email: $email');
         }
       }
 
@@ -1586,7 +1587,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final telegram = advertData['telegram'].toString();
         if (telegram.isNotEmpty) {
           _telegramController.text = telegram;
-          print('✅ Filled telegram: $telegram');
+          log.d('✅ Filled telegram: $telegram');
         }
       }
 
@@ -1596,13 +1597,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final whatsapp = advertData['whatsapp'].toString();
         if (whatsapp.isNotEmpty) {
           _whatsappController.text = whatsapp;
-          print('✅ Filled whatsapp: $whatsapp');
+          log.d('✅ Filled whatsapp: $whatsapp');
         }
       }
 
-      print('✅ Contacts population complete');
+      log.d('✅ Contacts population complete');
     } catch (e) {
-      print('❌ Error populating contacts: $e');
+      log.d('❌ Error populating contacts: $e');
     }
   }
 
@@ -1614,7 +1615,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // но если есть токен, используем его
       // Логируем для отладки
       if (token == null) {
-        print('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
+        log.d('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
       }
 
       final regions = await ApiService.getRegions(token: token);
@@ -1624,9 +1625,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _regions = regions;
         });
       }
-      print('✅ Loaded ${regions.length} regions');
+      log.d('✅ Loaded ${regions.length} regions');
     } catch (e) {
-      print('❌ Error loading regions: $e');
+      log.d('❌ Error loading regions: $e');
       // Retry after 3 seconds
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) _loadRegions();
@@ -1637,7 +1638,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _loadCategoryInfo() async {
     try {
       if (widget.categoryId == null) {
-        // print('⚠️ Category ID is null, using default name');
+        // log.d('⚠️ Category ID is null, using default name');
         if (mounted) {
           setState(() {
             _categoryName = 'Долгосрочная аренда комнат';
@@ -1647,7 +1648,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       final token = TokenService.currentToken;
-      // print('📦 Loading category info for ID: ${widget.categoryId}');
+      // log.d('📦 Loading category info for ID: ${widget.categoryId}');
 
       // Get category info by ID
       final category = await ApiService.getCategory(
@@ -1660,9 +1661,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _categoryName = category.name;
         });
       }
-      // print('✅ Category name loaded: $_categoryName');
+      // log.d('✅ Category name loaded: $_categoryName');
     } catch (e) {
-      // print('❌ Error loading category info: $e');
+      // log.d('❌ Error loading category info: $e');
       if (mounted) {
         setState(() {
           _categoryName = 'Категория';
@@ -1674,15 +1675,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Future<void> _loadUserContacts() async {
     try {
       final token = TokenService.currentToken;
-      // print('📱 Token obtained, loading user contacts...');
+      // log.d('📱 Token obtained, loading user contacts...');
       if (token == null) {
-        // print('❌ Token is null, cannot load contacts');
+        // log.d('❌ Token is null, cannot load contacts');
         return;
       }
 
       // Load phones - REQUIRED for publishing
       try {
-        // print('📞 Loading phones from /me/settings/phones...');
+        // log.d('📞 Loading phones from /me/settings/phones...');
         final phonesResponse = await ApiService.get(
           '/me/settings/phones',
           token: token,
@@ -1690,17 +1691,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // API returns { "data": [...] } without success field
         if (phonesResponse['data'] is List) {
           _userPhones = List<Map<String, dynamic>>.from(phonesResponse['data']);
-          // print('✅ Loaded phones: ${_userPhones.length} phone(s)');
+          // log.d('✅ Loaded phones: ${_userPhones.length} phone(s)');
         } else {
-          // print('⚠️ Phones response format incorrect');
+          // log.d('⚠️ Phones response format incorrect');
         }
       } catch (e) {
-        // print('❌ Error loading phones: $e');
+        // log.d('❌ Error loading phones: $e');
       }
 
       // Load emails
       try {
-        // print('📧 Loading emails from /me/settings/emails...');
+        // log.d('📧 Loading emails from /me/settings/emails...');
         final emailsResponse = await ApiService.get(
           '/me/settings/emails',
           token: token,
@@ -1708,17 +1709,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // API returns { "data": [...] } without success field
         if (emailsResponse['data'] is List) {
           _userEmails = List<Map<String, dynamic>>.from(emailsResponse['data']);
-          // print('✅ Loaded emails: ${_userEmails.length} email(s)');
+          // log.d('✅ Loaded emails: ${_userEmails.length} email(s)');
         } else {
-          // print('⚠️ Emails response format incorrect');
+          // log.d('⚠️ Emails response format incorrect');
         }
       } catch (e) {
-        // print('❌ Error loading emails: $e');
+        // log.d('❌ Error loading emails: $e');
       }
 
       // Load telegrams
       try {
-        // print('💬 Loading telegrams from /me/settings/telegrams...');
+        // log.d('💬 Loading telegrams from /me/settings/telegrams...');
         final telegramsResponse = await ApiService.get(
           '/me/settings/telegrams',
           token: token,
@@ -1728,17 +1729,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _userTelegrams = List<Map<String, dynamic>>.from(
             telegramsResponse['data'],
           );
-          // print('✅ Loaded telegrams: ${_userTelegrams.length} telegram(s)');
+          // log.d('✅ Loaded telegrams: ${_userTelegrams.length} telegram(s)');
         } else {
-          // print('⚠️ Telegrams response format incorrect');
+          // log.d('⚠️ Telegrams response format incorrect');
         }
       } catch (e) {
-        // print('❌ Error loading telegrams: $e');
+        // log.d('❌ Error loading telegrams: $e');
       }
 
       // Load whatsapps
       try {
-        // print('💬 Loading whatsapps from /me/settings/whatsapps...');
+        // log.d('💬 Loading whatsapps from /me/settings/whatsapps...');
         final whatsappsResponse = await ApiService.get(
           '/me/settings/whatsapps',
           token: token,
@@ -1748,19 +1749,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _userWhatsapps = List<Map<String, dynamic>>.from(
             whatsappsResponse['data'],
           );
-          // print('✅ Loaded whatsapps: ${_userWhatsapps.length} whatsapp(s)');
+          // log.d('✅ Loaded whatsapps: ${_userWhatsapps.length} whatsapp(s)');
         } else {
-          // print('⚠️ Whatsapps response format incorrect');
+          // log.d('⚠️ Whatsapps response format incorrect');
         }
       } catch (e) {
-        // print('❌ Error loading whatsapps: $e');
+        // log.d('❌ Error loading whatsapps: $e');
       }
 
       // Load user profile to get name
       try {
-        // print('👤 Loading user profile from /me...');
+        // log.d('👤 Loading user profile from /me...');
         final userProfile = await UserService.getProfile(token: token);
-        // print();
+        // log.d();
 
         // Fill contact fields with user data
         if (mounted) {
@@ -1769,34 +1770,34 @@ class _DynamicFilterState extends State<DynamicFilter> {
             final fullName = '${userProfile.name} ${userProfile.lastName}'
                 .trim();
             _contactNameController.text = fullName;
-            // print('✅ Filled contact name: $fullName');
+            // log.d('✅ Filled contact name: $fullName');
 
             // Fill email from first available email
             if (_userEmails.isNotEmpty) {
               final email = _userEmails[0]['email'] ?? '';
               _emailController.text = email;
-              // print('✅ Filled email: $email');
+              // log.d('✅ Filled email: $email');
             }
 
             // Fill phone1 from first available phone
             if (_userPhones.isNotEmpty) {
               final phone = _userPhones[0]['phone'] ?? '';
               _phone1Controller.text = phone;
-              // print('✅ Filled phone1: $phone');
+              // log.d('✅ Filled phone1: $phone');
             }
           });
         }
       } catch (e) {
-        // print('⚠️ Error loading user profile: $e');
+        // log.d('⚠️ Error loading user profile: $e');
       }
 
       if (mounted) {
         setState(() {});
       }
-      // print('✅ User contacts loading complete');
+      // log.d('✅ User contacts loading complete');
     } catch (e) {
-      // print('❌ Error loading user contacts: $e');
-      // print('   Stack trace: ${StackTrace.current}');
+      // log.d('❌ Error loading user contacts: $e');
+      // log.d('   Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -1814,10 +1815,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
     if (offerPriceAttrId != null &&
         _attributes.any((a) => a.id == offerPriceAttrId)) {
       _selectedValues[offerPriceAttrId] = true;
-      // print('🧪 Auto-fill DISABLED - user must fill form manually');
-      // print('   Only initialized required attribute $offerPriceAttrId = true');
+      // log.d('🧪 Auto-fill DISABLED - user must fill form manually');
+      // log.d('   Only initialized required attribute $offerPriceAttrId = true');
     } else {
-      // print('🧪 Auto-fill DISABLED - could not find offer price attribute');
+      // log.d('🧪 Auto-fill DISABLED - could not find offer price attribute');
     }
   }
 
@@ -1847,7 +1848,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         types: ['city'],
       );
 
-      // print();
+      // log.d();
 
       final uniqueCities = <String, int>{};
       for (final result in response.data) {
@@ -1865,7 +1866,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             uniqueCities[cityName] = -1;
           }
         }
-        print(
+        log.d(
           '✅ Добавлены все 72 города ДНР из констант. Итого городов: ${uniqueCities.length}',
         );
       }
@@ -1880,10 +1881,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
             (a, b) => (a['name'] as String).compareTo(b['name'] as String),
           );
         });
-        print('✅ Auto-loaded ${_cities.length} cities');
+        log.d('✅ Auto-loaded ${_cities.length} cities');
       }
     } catch (e) {
-      print('❌ Error auto-loading cities: $e');
+      log.d('❌ Error auto-loading cities: $e');
     }
   }
 
@@ -1913,7 +1914,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         types: ['street'],
       );
 
-      // print();
+      // log.d();
 
       final uniqueStreets = <String, int>{};
       for (final result in response.data) {
@@ -1928,10 +1929,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
               .map((e) => {'name': e.key, 'id': e.value})
               .toList();
         });
-        // print('✅ Auto-loaded ${_streets.length} streets');
+        // log.d('✅ Auto-loaded ${_streets.length} streets');
       }
     } catch (e) {
-      // print('❌ Error auto-loading streets: $e');
+      // log.d('❌ Error auto-loading streets: $e');
     }
   }
 
@@ -1960,7 +1961,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         types: ['building'],
       );
 
-      // print();
+      // log.d();
 
       final uniqueBuildings = <String, int>{};
       for (final result in response.data) {
@@ -1975,10 +1976,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
               .map((e) => {'name': e.key, 'id': e.value})
               .toList();
         });
-        // print('✅ Auto-loaded ${_buildings.length} buildings');
+        // log.d('✅ Auto-loaded ${_buildings.length} buildings');
       }
     } catch (e) {
-      // print('❌ Error auto-loading buildings: $e');
+      // log.d('❌ Error auto-loading buildings: $e');
     }
   }
 
@@ -2007,7 +2008,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         }
       });
       if (mounted) {
-        // print();
+        // log.d();
       }
     }
   }
@@ -2110,9 +2111,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _selectedValues[sellerTypeAttrId] = isIndividual
             ? 'Частное лицо'
             : 'Бизнес';
-        // print();
+        // log.d();
       } else {
-        // print('⚠️ Seller type attribute ID not found in category');
+        // log.d('⚠️ Seller type attribute ID not found in category');
       }
     });
   }
@@ -2125,22 +2126,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
     };
 
     // 🔍 ДИАГНОСТИКА: Начало сбора атрибутов
-    print('');
-    print('═══════════════════════════════════════════════════════');
-    print('🔍 ДИАГНОСТИКА: _collectFormData() Начало');
-    print('═══════════════════════════════════════════════════════');
-    print('📋 Загруженные атрибуты в _attributes:');
+    log.d('');
+    log.d('═══════════════════════════════════════════════════════');
+    log.d('🔍 ДИАГНОСТИКА: _collectFormData() Начало');
+    log.d('═══════════════════════════════════════════════════════');
+    log.d('📋 Загруженные атрибуты в _attributes:');
     for (final attr in _attributes) {
-      print(
+      log.d(
         '   - ID ${attr.id}: "${attr.title}" (is_multiple=${attr.isMultiple}, values=${attr.values.length})',
       );
     }
-    print('');
-    print('📂 Значения в _selectedValues (к обработке):');
+    log.d('');
+    log.d('📂 Значения в _selectedValues (к обработке):');
     _selectedValues.forEach((k, v) {
-      print('   - Key=$k: $v (Type: ${v.runtimeType})');
+      log.d('   - Key=$k: $v (Type: ${v.runtimeType})');
     });
-    print('');
+    log.d('');
 
     _selectedValues.forEach((key, value) {
       // CRITICAL FIX: Skip attributes that don't exist in the loaded category
@@ -2150,7 +2151,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         orElse: () => Attribute(id: 0, title: '', order: 0, values: []),
       );
       if (attr.id == 0) {
-        // print('⚠️ WARNING: Filter ID $key not found in loaded attributes! SKIPPING.');
+        // log.d('⚠️ WARNING: Filter ID $key not found in loaded attributes! SKIPPING.');
         return; // Skip this attribute - it doesn't exist in this category
       }
 
@@ -2160,20 +2161,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // These should only send ONE value to the API
         if (attr.isMultiple) {
           // API allows multiple - add all selected values
-          // print();
+          // log.d();
           for (final val in value) {
             final attrValue = attr.values.firstWhere(
               (v) => v.value == val,
               orElse: () => const Value(id: 0, value: ''),
             );
             if (attrValue.id != 0) {
-              // print();
+              // log.d();
               attributes['value_selected'].add(attrValue.id);
             }
           }
         } else {
           // API allows only one value - take first
-          // print();
+          // log.d();
           if (value.isNotEmpty) {
             final firstVal = value.first;
             final attrValue = attr.values.firstWhere(
@@ -2181,25 +2182,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
               orElse: () => const Value(id: 0, value: ''),
             );
             if (attrValue.id != 0) {
-              // print('   ✅ Adding single value: $firstVal (ID=${attrValue.id})');
+              // log.d('   ✅ Adding single value: $firstVal (ID=${attrValue.id})');
               attributes['value_selected'].add(attrValue.id);
             } else {
-              // print('   ❌ Value "$firstVal" not found in attribute values');
+              // log.d('   ❌ Value "$firstVal" not found in attribute values');
             }
           } else {
-            // print('   ⚠️ No values selected for is_multiple=false attribute');
+            // log.d('   ⚠️ No values selected for is_multiple=false attribute');
           }
         }
 
         // SPECIAL DIAGNOSTIC: Log attribute 6 handling
         if (key == 6) {
-          // print('🔍🔍 SPECIAL DIAGNOSTIC FOR ATTRIBUTE 6 (ROOMS):');
-          // print('   is_multiple: ${attr.isMultiple}');
-          // print('   Selected values in Set: $value');
-          // print('   Number of values: ${value.length}');
-          // print('   All available values for attr 6:');
+          // log.d('🔍🔍 SPECIAL DIAGNOSTIC FOR ATTRIBUTE 6 (ROOMS):');
+          // log.d('   is_multiple: ${attr.isMultiple}');
+          // log.d('   Selected values in Set: $value');
+          // log.d('   Number of values: ${value.length}');
+          // log.d('   All available values for attr 6:');
           for (final _ in attr.values) {
-            // print('      - "${_.value}" (ID=${_.id})');
+            // log.d('      - "${_.value}" (ID=${_.id})');
           }
           if (value.isNotEmpty) {
             // debug: value contains selected values
@@ -2209,7 +2210,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // Range values - for attributes like 1040 (floor) - but NOT 1127 anymore
         final minVal = (value['min']?.toString() ?? '').trim();
         final maxVal = (value['max']?.toString() ?? '').trim();
-        // print();
+        // log.d();
 
         // Parse values based on data type
         dynamic parsedValue;
@@ -2243,13 +2244,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
         }
         if (attrObj.isNotEmpty) {
           attributes['values']['$key'] = attrObj;
-          // print('   Added range attr $key: $attrObj');
+          // log.d('   Added range attr $key: $attrObj');
         }
       } else if (value is String) {
         if (attr.values.isEmpty) {
           // Text field - DO NOT add to attributes.values (API doesn't accept them)
           if (value.isNotEmpty) {
-            // print();
+            // log.d();
           }
         } else {
           // Single selection - lookup value ID
@@ -2259,7 +2260,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           );
           if (attrValue.id != 0) {
             attributes['value_selected'].add(attrValue.id);
-            // print();
+            // log.d();
           }
         }
       } else if (value is bool && value) {
@@ -2278,7 +2279,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // No need to add as separate field anymore
 
     // DIAGNOSTIC: Map value_ids back to attributes
-    // print('🔧 DIAGNOSTIC - Mapping value_ids to attributes:');
+    // log.d('🔧 DIAGNOSTIC - Mapping value_ids to attributes:');
     for (final valueId in attributes['value_selected'] as List<int>) {
       String? foundAttrTitle = 'UNKNOWN';
       for (final attr in _attributes) {
@@ -2288,15 +2289,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
         );
         if (matchingValue.id != 0) {
           foundAttrTitle = '${attr.id}:${attr.title}';
-          // print();
+          // log.d();
           break;
         }
       }
       if (foundAttrTitle == 'UNKNOWN') {
-        // print();
+        // log.d();
       }
     }
-    // print('Collected attributes: $attributes');
+    // log.d('Collected attributes: $attributes');
 
     // Handle "Вам предложат цену" attribute (ID varies by category)
     // IMPORTANT: This should be in attributes.values, NOT in value_selected!
@@ -2310,14 +2311,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
       if (_selectedValues.containsKey(offerPriceAttrId) &&
           _selectedValues[offerPriceAttrId] == true) {
         attributes['values']['$offerPriceAttrId'] = {'value': 1};
-        // print();
+        // log.d();
       } else {
         // If not explicitly selected, add by default (it's required)
         attributes['values']['$offerPriceAttrId'] = {'value': 1};
-        // print();
+        // log.d();
       }
     } else {
-      // print();
+      // log.d();
     }
 
     // Handle required attribute "Общая площадь" (Total area) - ID varies by category
@@ -2332,15 +2333,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
           final areaVal = int.tryParse(area.toString().trim());
           if (areaVal != null) {
             attributes['values']['$areaAttrId'] = {'value': areaVal};
-            // print('✅ Attribute $areaAttrId (area) set: value=$areaVal');
+            // log.d('✅ Attribute $areaAttrId (area) set: value=$areaVal');
           } else {
             // If parsing fails, set default - но только если атрибут обязательный!
             final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
             if (areaAttr != null && areaAttr.isRequired) {
               attributes['values']['$areaAttrId'] = {'value': 50};
-              // print('⚠️ Failed to parse area value, using default: 50');
+              // log.d('⚠️ Failed to parse area value, using default: 50');
             } else {
-              // print();
+              // log.d();
             }
           }
         } else {
@@ -2348,9 +2349,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           final areaAttr = _attributeResolver.getAttributeById(areaAttrId);
           if (areaAttr != null && areaAttr.isRequired) {
             attributes['values']['$areaAttrId'] = {'value': 50};
-            // print('✅ Set default $areaAttrId: value=50');
+            // log.d('✅ Set default $areaAttrId: value=50');
           } else {
-            // print();
+            // log.d();
           }
         }
       } else {
@@ -2359,14 +2360,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
         if (areaAttr != null && areaAttr.isRequired) {
           // Обязательный - добавляем дефолт
           attributes['values']['$areaAttrId'] = {'value': 50};
-          // print('✅ Set required default $areaAttrId: value=50');
+          // log.d('✅ Set required default $areaAttrId: value=50');
         } else {
           // Не обязательный - не добавляем
-          // print();
+          // log.d();
         }
       }
     } else {
-      // print();
+      // log.d();
     }
 
     // NOTE: attribute_1048 (boolean type) is handled separately via toJson() in CreateAdvertRequest
@@ -2378,7 +2379,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // This just collects whatever UI values exist
     final Map<String, dynamic> address = {};
 
-    // print('Collected address: $address');
+    // log.d('Collected address: $address');
 
     // Collect contacts with proper validation
     // According to API docs: user_phone_id is REQUIRED, user_email_id may be required
@@ -2387,7 +2388,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Primary phone is required
     if (_userPhones.isNotEmpty) {
       contacts['user_phone_id'] = _userPhones.first['id'];
-      // print('✅ Using phone ID: ${_userPhones.first['id']} (${_userPhones.first['phone']})');
+      // log.d('✅ Using phone ID: ${_userPhones.first['id']} (${_userPhones.first['phone']})');
     }
 
     // Email handling - ALWAYS include email ID if available
@@ -2399,12 +2400,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       contacts['user_email_id'] = emailData['id'];
       if (isVerified) {
-        // print('✅ Using verified email ID: ${emailData['id']} (${emailData['email']})');
+        // log.d('✅ Using verified email ID: ${emailData['id']} (${emailData['email']})');
       } else {
-        // print('⚠️ Email NOT verified (email_verified_at=null): ${emailData['email']} - but API requires it, sending anyway');
+        // log.d('⚠️ Email NOT verified (email_verified_at=null): ${emailData['email']} - but API requires it, sending anyway');
       }
     } else {
-      // print('❌ ERROR: No email contacts found!');
+      // log.d('❌ ERROR: No email contacts found!');
     }
 
     if (_userTelegrams.isNotEmpty) {
@@ -2414,15 +2415,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
       contacts['user_whatsapp_id'] = _userWhatsapps.first['id'];
     }
 
-    // print('Collected contacts: $contacts');
+    // log.d('Collected contacts: $contacts');
 
     // 🔍 ДИАГНОСТИКА: Результат сбора атрибутов
-    print('');
-    print('✅ Собранные атрибуты для отправки:');
-    print('   value_selected: ${attributes['value_selected']}');
-    print('   values: ${attributes['values']}');
-    print('═══════════════════════════════════════════════════════');
-    print('');
+    log.d('');
+    log.d('✅ Собранные атрибуты для отправки:');
+    log.d('   value_selected: ${attributes['value_selected']}');
+    log.d('   values: ${attributes['values']}');
+    log.d('═══════════════════════════════════════════════════════');
+    log.d('');
 
     return CreateAdvertRequest(
       name: _titleController.text,
@@ -2476,10 +2477,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       // Debug logging for phone validation
-      // print('🔍 Publishing advert - phone validation:');
-      // print('   _userPhones.length: ${_userPhones.length}');
-      // print('   _userPhones content: $_userPhones');
-      // print('   _phone1Controller.text: ${_phone1Controller.text}');
+      // log.d('🔍 Publishing advert - phone validation:');
+      // log.d('   _userPhones.length: ${_userPhones.length}');
+      // log.d('   _userPhones content: $_userPhones');
+      // log.d('   _phone1Controller.text: ${_phone1Controller.text}');
 
       if (_userPhones.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2578,7 +2579,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         try {
           final token = TokenService.currentToken;
           if (token != null) {
-            // print('🔍 Starting 3-step address search...');
+            // log.d('🔍 Starting 3-step address search...');
 
             // ============ STEP 1: Search for city WITHOUT filters ============
             // ============ Prepare address from selected API data ============
@@ -2716,28 +2717,28 @@ class _DynamicFilterState extends State<DynamicFilter> {
               };
             }
 
-            // print('✅ Address prepared from selections:');
-            // print('   region_id (for address): ${address['region_id']}');
-            // print('   city_id: ${address['city_id']}');
-            // print('   street_id: ${address['street_id']}');
-            // print('   building_number: ${address['building_number']}');
-            // print();
-            // print('');
-            // print('📋 DEBUG INFO - Selected values stored:');
-            // print('   _selectedRegion: $_selectedRegion');
-            // print('   _selectedRegionId: $_selectedRegionId');
-            // print('   _selectedCity: $_selectedCity');
-            // print('   _selectedCityId: $_selectedCityId');
-            // print('   _selectedStreet: $_selectedStreet');
-            // print('   _selectedStreetId: $_selectedStreetId');
-            // print('   _selectedBuilding: $_selectedBuilding');
-            // print('   _selectedBuildingId: $_selectedBuildingId');
-            // print('');
-            // print('📋 DEBUG INFO - Lists content:');
-            // print('   _regions: ${_regions.map((r) => '${r['name']}(id=${r['id']})').toList()}');
-            // print('   _cities: ${_cities.map((c) => '${c['name']}(id=${c['id']})').toList()}');
-            // print('   _streets: ${_streets.map((s) => '${s['name']}(id=${s['id']})').toList()}');
-            // print('   _buildings: ${_buildings.map((b) => '${b['name']}(id=${b['id']})').toList()}');
+            // log.d('✅ Address prepared from selections:');
+            // log.d('   region_id (for address): ${address['region_id']}');
+            // log.d('   city_id: ${address['city_id']}');
+            // log.d('   street_id: ${address['street_id']}');
+            // log.d('   building_number: ${address['building_number']}');
+            // log.d();
+            // log.d('');
+            // log.d('📋 DEBUG INFO - Selected values stored:');
+            // log.d('   _selectedRegion: $_selectedRegion');
+            // log.d('   _selectedRegionId: $_selectedRegionId');
+            // log.d('   _selectedCity: $_selectedCity');
+            // log.d('   _selectedCityId: $_selectedCityId');
+            // log.d('   _selectedStreet: $_selectedStreet');
+            // log.d('   _selectedStreetId: $_selectedStreetId');
+            // log.d('   _selectedBuilding: $_selectedBuilding');
+            // log.d('   _selectedBuildingId: $_selectedBuildingId');
+            // log.d('');
+            // log.d('📋 DEBUG INFO - Lists content:');
+            // log.d('   _regions: ${_regions.map((r) => '${r['name']}(id=${r['id']})').toList()}');
+            // log.d('   _cities: ${_cities.map((c) => '${c['name']}(id=${c['id']})').toList()}');
+            // log.d('   _streets: ${_streets.map((s) => '${s['name']}(id=${s['id']})').toList()}');
+            // log.d('   _buildings: ${_buildings.map((b) => '${b['name']}(id=${b['id']})').toList()}');
 
             // Recreate request with address from API selections
             if (address.isNotEmpty) {
@@ -2752,7 +2753,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   .getOfferPriceAttributeId();
               if (updatedAttributes.containsKey('attribute_1048')) {
                 updatedAttributes.remove('attribute_1048');
-                // print('   🗑️ Removed top-level attribute_1048 key');
+                // log.d('   🗑️ Removed top-level attribute_1048 key');
               }
               if (updatedAttributes.containsKey('values')) {
                 final values =
@@ -2760,17 +2761,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 // Remove any boolean values for offer price attributes
                 if (values.containsKey('1048') && values['1048'] is! Map) {
                   values.remove('1048');
-                  // print('   🗑️ Removed non-map 1048 from values');
+                  // log.d('   🗑️ Removed non-map 1048 from values');
                 }
                 if (values.containsKey('1050') && values['1050'] is! Map) {
                   values.remove('1050');
-                  // print('   🗑️ Removed non-map 1050 from values');
+                  // log.d('   🗑️ Removed non-map 1050 from values');
                 }
                 // 🔧 FIX: Only set offer price attribute if it exists in this category
                 // For Jobs and other categories without this attribute, offerPriceAttrId will be null
                 if (offerPriceAttrId != null) {
                   values['$offerPriceAttrId'] = {'value': 1};
-                  // print('   ✅ Set $offerPriceAttrId in values as {value: 1}');
+                  // log.d('   ✅ Set $offerPriceAttrId in values as {value: 1}');
                 }
               }
 
@@ -2789,7 +2790,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             }
           }
         } catch (e) {
-          // print('❌ Address search failed: $e');
+          // log.d('❌ Address search failed: $e');
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Ошибка поиска адреса: $e')));
@@ -2797,22 +2798,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
           return;
         }
       } else {
-        // print('⚠️ City or street not selected, address will be empty');
+        // log.d('⚠️ City or street not selected, address will be empty');
       }
 
-      print('═══════════════════════════════════════════════════════');
-      print('📋 АДРЕС ПЕРЕД ОТПРАВКОЙ В API (4 параметра):');
-      print('═══════════════════════════════════════════════════════');
-      print('   1️⃣  region: ${address['region']}');
-      print('   2️⃣  city: ${address['city']}');
-      print('   3️⃣  street: ${address['street']}');
-      print('   4️⃣  building_number: ${address['building_number']}');
-      print('');
-      print('📊 IDs для адреса (если используются):');
-      print('   region_id: ${address['region_id']}');
-      print('   city_id: ${address['city_id']}');
-      print('   street_id: ${address['street_id']}');
-      print('═══════════════════════════════════════════════════════');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('📋 АДРЕС ПЕРЕД ОТПРАВКОЙ В API (4 параметра):');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('   1️⃣  region: ${address['region']}');
+      log.d('   2️⃣  city: ${address['city']}');
+      log.d('   3️⃣  street: ${address['street']}');
+      log.d('   4️⃣  building_number: ${address['building_number']}');
+      log.d('');
+      log.d('📊 IDs для адреса (если используются):');
+      log.d('   region_id: ${address['region_id']}');
+      log.d('   city_id: ${address['city_id']}');
+      log.d('   street_id: ${address['street_id']}');
+      log.d('═══════════════════════════════════════════════════════');
 
       if (request.contacts.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2839,28 +2840,28 @@ class _DynamicFilterState extends State<DynamicFilter> {
       });
 
       // Log final request before sending
-      print('════════════════════════════════════════════════════════');
-      print('📤 ФИНАЛЬНЫЙ ЗАПРОС В API:');
-      print('   name: ${request.name}');
-      print('   price: ${request.price}');
-      print('   categoryId: ${request.categoryId}');
-      print('   АДРЕС (address):');
-      print('      ├─ region: ${request.address['region']}');
-      print('      ├─ city: ${request.address['city']}');
-      print('      ├─ street: ${request.address['street']}');
-      print('      └─ building_number: ${request.address['building_number']}');
-      print(
+      log.d('════════════════════════════════════════════════════════');
+      log.d('📤 ФИНАЛЬНЫЙ ЗАПРОС В API:');
+      log.d('   name: ${request.name}');
+      log.d('   price: ${request.price}');
+      log.d('   categoryId: ${request.categoryId}');
+      log.d('   АДРЕС (address):');
+      log.d('      ├─ region: ${request.address['region']}');
+      log.d('      ├─ city: ${request.address['city']}');
+      log.d('      ├─ street: ${request.address['street']}');
+      log.d('      └─ building_number: ${request.address['building_number']}');
+      log.d(
         '   attributes.value_selected: ${request.attributes['value_selected']}',
       );
-      print(
+      log.d(
         '   attributes.values keys: ${request.attributes['values'].keys.toList()}',
       );
-      print('================================================================');
+      log.d('================================================================');
 
       // VERIFY address has region_id and city_id
       if (!request.address.containsKey('region_id') ||
           request.address['region_id'] == null) {
-        // print('❌ ERROR: region_id is missing or null in address!');
+        // log.d('❌ ERROR: region_id is missing or null in address!');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -2874,7 +2875,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       if (!request.address.containsKey('city_id') ||
           request.address['city_id'] == null) {
-        // print('❌ ERROR: city_id is missing or null in address!');
+        // log.d('❌ ERROR: city_id is missing or null in address!');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -2894,26 +2895,26 @@ class _DynamicFilterState extends State<DynamicFilter> {
       });
 
       // 🔍 ДИАГНОСТИКА: Выводим что будет отправлено на API
-      print('═══════════════════════════════════════════════════════');
-      print('📤 ДИАГНОСТИКА: Отправляемые атрибуты');
-      print('═══════════════════════════════════════════════════════');
-      print('✅ Загруженные атрибуты в категории: ${request.categoryId}');
-      print('   Всего атрибутов: ${_attributes.length}');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('📤 ДИАГНОСТИКА: Отправляемые атрибуты');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('✅ Загруженные атрибуты в категории: ${request.categoryId}');
+      log.d('   Всего атрибутов: ${_attributes.length}');
       for (final attr in _attributes) {
-        print('   - ID ${attr.id}: ${attr.title}');
+        log.d('   - ID ${attr.id}: ${attr.title}');
       }
-      print('');
-      print('📋 Отправляемые в API:');
-      print('   value_selected: ${request.attributes['value_selected']}');
-      print(
+      log.d('');
+      log.d('📋 Отправляемые в API:');
+      log.d('   value_selected: ${request.attributes['value_selected']}');
+      log.d(
         '   values keys: ${(request.attributes['values'] as Map).keys.toList()}',
       );
 
       // Показываем какие value_id отправляются
       final valueIds = request.attributes['value_selected'] as List<int>;
       if (valueIds.isNotEmpty) {
-        print('');
-        print('📊 Поиск атрибутов для каждого value_id:');
+        log.d('');
+        log.d('📊 Поиск атрибутов для каждого value_id:');
         for (final valueId in valueIds) {
           String? foundAttr = '❌ НЕ НАЙДЕНО';
           for (final attr in _attributes) {
@@ -2925,15 +2926,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
               break;
             }
           }
-          print('   Value ID $valueId → $foundAttr');
+          log.d('   Value ID $valueId → $foundAttr');
         }
       }
 
       // Показываем values
       final valuesMap = request.attributes['values'] as Map<String, dynamic>;
       if (valuesMap.isNotEmpty) {
-        print('');
-        print('🔢 Числовые/булевы атрибуты (values):');
+        log.d('');
+        log.d('🔢 Числовые/булевы атрибуты (values):');
         valuesMap.forEach((attrIdStr, value) {
           final attrId = int.tryParse(attrIdStr);
           final attr = _attributes.firstWhere(
@@ -2941,13 +2942,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
             orElse: () =>
                 Attribute(id: 0, title: 'UNKNOWN', order: 0, values: []),
           );
-          print(
+          log.d(
             '   Атрибут ID $attrIdStr: ${attr.title} (в категории: ${attr.id != 0 ? "ДА" : "НЕТ"}) = $value',
           );
         });
       }
-      print('═══════════════════════════════════════════════════════');
-      print('');
+      log.d('═══════════════════════════════════════════════════════');
+      log.d('');
 
       // Выбираем нужный метод API в зависимости от режима
       final response = _isEditMode && widget.advertId != null
@@ -3000,23 +3001,23 @@ class _DynamicFilterState extends State<DynamicFilter> {
       if (_isEditMode && widget.advertId != null) {
         // При редактировании используем существующий ID
         advertId = widget.advertId;
-        // print('✅ Using existing advert ID for updating: $advertId');
+        // log.d('✅ Using existing advert ID for updating: $advertId');
       } else if (response['data'] != null) {
         if (response['data'] is List && (response['data'] as List).isNotEmpty) {
           // API returns data as a list, get first item
           final data = (response['data'] as List)[0] as Map<String, dynamic>;
           advertId = data['id'] as int?;
-          // print('✅ Extracted advert ID from list: $advertId');
+          // log.d('✅ Extracted advert ID from list: $advertId');
         } else if (response['data'] is Map) {
           // Alternative format: data as direct map
           final data = response['data'] as Map<String, dynamic>;
           advertId = data['id'] as int?;
-          // print('✅ Extracted advert ID from map: $advertId');
+          // log.d('✅ Extracted advert ID from map: $advertId');
         }
       }
 
       if (advertId == null) {
-        // print('❌ ERROR: No advert ID returned from API!');
+        // log.d('❌ ERROR: No advert ID returned from API!');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Ошибка: не удалось получить ID объявления'),
@@ -3030,7 +3031,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         return;
       }
 
-      // print(_isEditMode
+      // log.d(_isEditMode
       //     ? '✅ Advert updated with ID: $advertId'
       //     : '✅ Advert created with ID: $advertId');
 
@@ -3049,7 +3050,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             token: token,
           );
         } catch (e) {
-          // print('⚠️ Warning: Error uploading images: $e');
+          // log.d('⚠️ Warning: Error uploading images: $e');
           // Don't fail the entire operation if images fail - advert is already created
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -3069,13 +3070,13 @@ class _DynamicFilterState extends State<DynamicFilter> {
       });
 
       // Log to console
-      // print('✅ Объявление отправлено в админку');
-      // print('Response: ${response['message']}');
+      // log.d('✅ Объявление отправлено в админку');
+      // log.d('Response: ${response['message']}');
 
       // 🗑️ Инвалидируем кеш объявлений и счётчиков профиля после публикации
       AppCacheService().invalidate(CacheKeys.profileListingsCounts);
       await AppCacheService().invalidateByPrefix(CacheKeys.advertsPrefix);
-      // print('🗑️ Кеш профиля инвалидирован - счетчики обновятся при возврате');
+      // log.d('🗑️ Кеш профиля инвалидирован - счетчики обновятся при возврате');
 
       // Show moderation dialog
       _showModerationDialog();
@@ -3591,11 +3592,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                         types: ['city'],
                                       );
 
-                                  // print('🔍 Поиск для области: "${_selectedRegion.isNotEmpty ? _selectedRegion.first : 'неизвестна'}" (ID: $_selectedRegionId)');
-                                  // print('🔍 Поисковый запрос: "$searchQuery"');
-                                  // print();
+                                  // log.d('🔍 Поиск для области: "${_selectedRegion.isNotEmpty ? _selectedRegion.first : 'неизвестна'}" (ID: $_selectedRegionId)');
+                                  // log.d('🔍 Поисковый запрос: "$searchQuery"');
+                                  // log.d();
 
-                                  // print('📋 City API response details:');
+                                  // log.d('📋 City API response details:');
                                   for (
                                     int i = 0;
                                     i < response.data.take(3).length;
@@ -3644,15 +3645,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                     }
                                   }
 
-                                  // print('   ✅ Прошло фильтр: ${uniqueCities.length}');
-                                  // print('   ❌ Отфильтровано: $filtered');
+                                  // log.d('   ✅ Прошло фильтр: ${uniqueCities.length}');
+                                  // log.d('   ❌ Отфильтровано: $filtered');
 
                                   setState(() {
                                     _cities = uniqueCities.values.toList();
 
                                     // 🔧 FALLBACK: закомментирована для тестирования только API
                                     // if (_cities.length < 25) {
-                                    //   print('⚠️ API вернул только ${_cities.length} городов, добавляем dnrCities (${dnrCities.length})');
+                                    //   log.d('⚠️ API вернул только ${_cities.length} городов, добавляем dnrCities (${dnrCities.length})');
                                     //   final existingNames = <String>{
                                     //     for (var city in _cities) city['name'] as String
                                     //   };
@@ -3667,18 +3668,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                     //       });
                                     //     }
                                     //   }
-                                    //   print('✅ После merge: _cities.length = ${_cities.length}');
+                                    //   log.d('✅ После merge: _cities.length = ${_cities.length}');
                                     // }
 
-                                    // print();
+                                    // log.d();
                                     for (var i = 0; i < _cities.length; i++) {
-                                      // print(
+                                      // log.d(
                                       //   '   ${i + 1}. ${_cities[i]['name']} (ID: ${_cities[i]['id']})',
                                       // );
                                     }
                                   });
                                 } catch (e) {
-                                  // print('Error loading cities: $e');
+                                  // log.d('Error loading cities: $e');
                                 }
                               }
 
@@ -3696,17 +3697,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
                               final List<Map<String, dynamic>> citiesToShow =
                                   _cities;
 
-                              print(
+                              log.d(
                                 '\n🟦 dynamic_filter.dart: Открытие диалога города:',
                               );
-                              print('   - _cities.length: ${_cities.length}');
-                              print(
+                              log.d('   - _cities.length: ${_cities.length}');
+                              log.d(
                                 '   - dnrCities.length: ${dnrCities.length}',
                               );
-                              print(
+                              log.d(
                                 '   - citiesToShow.length: ${citiesToShow.length}',
                               );
-                              print('   - Using fallback: ${_cities.isEmpty}');
+                              log.d('   - Using fallback: ${_cities.isEmpty}');
 
                               showDialog(
                                 context: context,
@@ -3746,10 +3747,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                           _selectedBuildingId = null;
                                           _buildings.clear();
                                         });
-                                        // print('✅ City selected:');
-                                        // print('   Name: $selectedCityName');
-                                        // print('   ID: $cityId');
-                                        // print();
+                                        // log.d('✅ City selected:');
+                                        // log.d('   Name: $selectedCityName');
+                                        // log.d('   ID: $cityId');
+                                        // log.d();
                                       }
                                     },
                                   );
@@ -3823,7 +3824,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                     _streets = uniqueStreets.values.toList();
                                   });
                                 } catch (e) {
-                                  // print('Error loading streets: $e');
+                                  // log.d('Error loading streets: $e');
                                 }
                               }
 
@@ -3865,10 +3866,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                             _selectedBuildingId = null;
                                             _buildings.clear();
                                           });
-                                          // print('✅ Street selected:');
-                                          // print('   Name: $selectedStreetName');
-                                          // print('   ID: $streetId');
-                                          // print();
+                                          // log.d('✅ Street selected:');
+                                          // log.d('   Name: $selectedStreetName');
+                                          // log.d('   ID: $streetId');
+                                          // log.d();
                                         }
                                       },
                                     );
@@ -4320,7 +4321,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     final areaAttrId = _attributeResolver.getAreaAttributeId();
 
     if (areaAttrId == null) {
-      // print('⚠️ Area attribute ID not found, skipping field');
+      // log.d('⚠️ Area attribute ID not found, skipping field');
       return const SizedBox.shrink();
     }
 
@@ -4347,7 +4348,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         ),
         onChanged: (value) {
-          // print('onChanged for $areaAttrId area: $value');
+          // log.d('onChanged for $areaAttrId area: $value');
           setState(() {
             _selectedValues[areaAttrId] = value;
           });
@@ -4367,7 +4368,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // которые могут добавиться на сервере ПОСЛЕ написания этого кода!
 
     // Debug logging for style mapping
-    // print(
+    // log.d(
     //   '🎨 Building filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, styleSingle=${attr.styleSingle ?? 'null'}, '
     //   'is_range=${attr.isRange}, is_multiple=${attr.isMultiple}, '
     //   'is_popup=${attr.isPopup}, is_special_design=${attr.isSpecialDesign}, '
@@ -4375,7 +4376,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // );
 
     // Also print all field names in a compact way to find the exact "За месяц" name
-    print(
+    log.d(
       '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
     );
 
@@ -4391,25 +4392,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
         attr.id == 999;
 
     if (isMonthField) {
-      // print('');
-      // print('═════════════════════════════════════════════════════════════');
-      // print('🔍 SPECIAL DEBUG: Field "${attr.title}" (ID=${attr.id})');
-      // print('═════════════════════════════════════════════════════════════');
-      // print('📊 FULL PARAMETERS:');
-      // print('  • style: "${attr.style}"');
-      // print('  • is_range: ${attr.isRange}');
-      // print('  • is_multiple: ${attr.isMultiple}');
-      // print('  • is_popup: ${attr.isPopup}');
-      // print('  • is_special_design: ${attr.isSpecialDesign}');
-      // print('  • is_title_hidden: ${attr.isTitleHidden}');
-      // print('  • is_required: ${attr.isRequired}');
-      // print('  • is_hidden: ${attr.isHidden}');
-      // print('  • is_filter: ${attr.isFilter}');
-      // print('  • data_type: "${attr.dataType}"');
-      // print('  • values_count: ${attr.values.length}');
-      // print('  • values: ${attr.values.map((v) => v.value).toList()}');
-      // print('═════════════════════════════════════════════════════════════');
-      // print('');
+      // log.d('');
+      // log.d('═════════════════════════════════════════════════════════════');
+      // log.d('🔍 SPECIAL DEBUG: Field "${attr.title}" (ID=${attr.id})');
+      // log.d('═════════════════════════════════════════════════════════════');
+      // log.d('📊 FULL PARAMETERS:');
+      // log.d('  • style: "${attr.style}"');
+      // log.d('  • is_range: ${attr.isRange}');
+      // log.d('  • is_multiple: ${attr.isMultiple}');
+      // log.d('  • is_popup: ${attr.isPopup}');
+      // log.d('  • is_special_design: ${attr.isSpecialDesign}');
+      // log.d('  • is_title_hidden: ${attr.isTitleHidden}');
+      // log.d('  • is_required: ${attr.isRequired}');
+      // log.d('  • is_hidden: ${attr.isHidden}');
+      // log.d('  • is_filter: ${attr.isFilter}');
+      // log.d('  • data_type: "${attr.dataType}"');
+      // log.d('  • values_count: ${attr.values.length}');
+      // log.d('  • values: ${attr.values.map((v) => v.value).toList()}');
+      // log.d('═════════════════════════════════════════════════════════════');
+      // log.d('');
     }
 
     // =================================================================
@@ -4421,7 +4422,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: is_title_hidden=true, is_multiple=true
     // Пример: Без комиссии, Возможность обмена, Только с доставкой и т.д.
     if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
-      // print();
+      // log.d();
       return _buildCheckboxField(attr);
     }
 
@@ -4429,7 +4430,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: is_title_hidden=true, is_multiple=false, есть values
     // Пример: Только с доставкой, Только с исполнителем (styleSingle=I)
     if (attr.isTitleHidden && !attr.isMultiple && attr.values.isNotEmpty) {
-      // print();
+      // log.d();
       return _buildCheckboxField(attr);
     }
 
@@ -4437,7 +4438,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: styleSingle='A1'
     // Пример: Цена, Средний чек (числовое поле с суффиксом валюты)
     if (attr.styleSingle == 'A1') {
-      // print();
+      // log.d();
       return _buildA1Field(attr);
     }
 
@@ -4445,7 +4446,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: styleSingle='B1'
     // Пример: Возможен торг, Без комиссии, Возможность обмена (при подаче объявления)
     if (attr.styleSingle == 'B1') {
-      // print();
+      // log.d();
       return _buildB1Field(attr);
     }
 
@@ -4453,7 +4454,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: styleSingle='G1'
     // Пример: Общее площадь, Жилая площадь (одиночное числовое поле)
     if (attr.styleSingle == 'G1') {
-      // print();
+      // log.d();
       return _buildG1Field(attr);
     }
 
@@ -4462,7 +4463,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Пример: Множественный выбор, Инфраструктура (много опций в popUp)
     // ВАЖНО: F это ВСЕГДА множественный выбор с SQUARE CHECKBOXES
     if (attr.styleSingle == 'F') {
-      // print();
+      // log.d();
       // Гарантируем isMultiple=true для множественного выбора с чекбоксами
       Attribute fAttr = attr.copyWith(isMultiple: true);
       return _buildMultipleSelectPopup(fAttr);
@@ -4472,7 +4473,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: styleSingle='E1'
     // Пример: Этажи, Площадь (диапазон при подаче объявления)
     if (attr.styleSingle == 'E1') {
-      // print();
+      // log.d();
       return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
     }
 
@@ -4480,7 +4481,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: styleSingle='J1'
     // Пример: Календарь аренды, Время и дата для услуг (виджет с двумя датами/временем)
     if (attr.styleSingle == 'J1') {
-      // print();
+      // log.d();
       return _buildJ1Field(attr);
     }
 
@@ -4488,7 +4489,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: styleSingle='K1' или styleSingle='K'
     // Пример: K-Calendar аренда, Время и дата для услуг (компактный формат)
     if (attr.styleSingle == 'K1' || attr.styleSingle == 'K') {
-      // print();
+      // log.d();
       return _buildK1Field(attr);
     }
 
@@ -4497,7 +4498,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Пример: Меблированная, Вид объекта, Ипотека (кнопки при подаче объявления)
     // ВАЖНО: это одиночный выбор в виде кнопок (как D1 для dropdown, E1 для range)
     if (attr.styleSingle == 'C1') {
-      // print();
+      // log.d();
       return _buildSpecialDesignField(attr);
     }
 
@@ -4509,7 +4510,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         !attr.isTitleHidden &&
         attr.values.isNotEmpty &&
         attr.values.length <= 2) {
-      // print();
+      // log.d();
       return _buildCheckboxField(attr);
     }
 
@@ -4517,7 +4518,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаг: is_range=true
     // Пример: Этаж, Площадь, Цена и т.д.
     if (attr.isRange) {
-      // print();
+      // log.d();
       return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
     }
 
@@ -4537,11 +4538,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
             .isNotEmpty; // Note: is_popup может быть false в API, но мы переопределим его
 
     if (attr.id == 1) {
-      // print();
+      // log.d();
     }
 
     if (isD1PopupWithoutF) {
-      // print();
+      // log.d();
       // D1 должен показывать POPUP с RADIO buttons - переопределяем isMultiple=false и is_popup=true
       Attribute d1Attr = attr.copyWith(isMultiple: false, isPopup: true);
       return _buildMultipleSelectPopup(d1Attr);
@@ -4555,7 +4556,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         attr.isMultiple &&
         attr.styleSingle != 'D1' &&
         attr.values.isNotEmpty) {
-      // print();
+      // log.d();
       // D (без D1) должен показывать CHECKBOXES - оставляем isMultiple=true
       return _buildMultipleSelectPopup(attr);
     }
@@ -4564,7 +4565,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: is_special_design=true, есть values (2, 3 или больше)
     // Примеры: Меблированная (2 кнопки), Вид сделки (3 кнопки)
     if (attr.isSpecialDesign && attr.values.isNotEmpty) {
-      // print();
+      // log.d();
       return _buildSpecialDesignField(attr);
     }
 
@@ -4572,7 +4573,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: is_multiple=true, есть values, НО НЕ is_popup
     // Пример: Комфорт, Инфраструктура (как dropdown, не popup)
     if (attr.isMultiple && !attr.isPopup && attr.values.isNotEmpty) {
-      // print();
+      // log.d();
       return _buildMultipleSelectDropdown(attr);
     }
 
@@ -4585,14 +4586,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Style F: Много вариантов (> 5) - POPUP с CHECKBOXES (MULTIPLE selection)
       // Examples: Тип сделки, Ландшафт, Инфраструктура (7, 20, 16 опций)
       if (attr.values.length > 5) {
-        // print();
+        // log.d();
         // Override: Allow multiple selection for Style F with many options
         Attribute multiAttr = attr.copyWith(isMultiple: true);
         return _buildMultipleSelectPopup(multiAttr);
       } else {
         // Мало вариантов (2-5) - Single select dropdown
         // Example: Санузел (5 опций)
-        // print();
+        // log.d();
         return _buildSingleSelectDropdown(attr);
       }
     }
@@ -4601,14 +4602,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Флаги: НЕТ values (текстовое поле без предопределенных вариантов)
     // Пример: Название ЖК, Описание и т.д.
     if (attr.values.isEmpty) {
-      // print();
+      // log.d();
       return _buildTextInputField(attr);
     }
 
     // =================================================================
     // PRIORITY 2: Если не совпадает ни один случай выше - используем STYLE
     // =================================================================
-    // print();
+    // log.d();
 
     switch (attr.style) {
       case 'A':
@@ -4673,7 +4674,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         // PRIORITY 3: Finale fallback для неизвестных стилей
         // Используем логику на основе флагов еще раз
         // =================================================================
-        // print('❌ Unknown style "${attr.style}", using final fallback logic');
+        // log.d('❌ Unknown style "${attr.style}", using final fallback logic');
         if (attr.isPopup && attr.isMultiple && attr.values.isNotEmpty) {
           return _buildMultipleSelectPopup(attr);
         } else if (attr.isRange) {
@@ -5050,19 +5051,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // При создании: создаем новый контроллер с пустым значением
     final controller = _controllers.putIfAbsent(attr.id, () {
       final value = _selectedValues[attr.id];
-      print('🔍 Creating G1 controller for attr ${attr.id} "${attr.title}"');
-      print(
+      log.d('🔍 Creating G1 controller for attr ${attr.id} "${attr.title}"');
+      log.d(
         '   value from _selectedValues: $value (type: ${value.runtimeType})',
       );
 
       final textValue = value is String ? value : (value?.toString() ?? '');
-      print('   textValue: "$textValue"');
+      log.d('   textValue: "$textValue"');
 
       return TextEditingController(text: textValue);
     });
 
     // DEBUG: проверяем что контроллер имеет правильное значение
-    print(
+    log.d(
       '   Current controller text: "${controller.text}" for attr ${attr.id}',
     );
 
@@ -5098,7 +5099,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     } else if (value is Set<String> && value.isNotEmpty) {
       // Если значение это Set - берем первый элемент (одиночный выбор для C1)
       selected = value.first;
-      print('   ✅ C1/C field: Extracted value from Set: $selected');
+      log.d('   ✅ C1/C field: Extracted value from Set: $selected');
     }
 
     // According to documentation:
@@ -5406,11 +5407,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
 
-    print(
+    log.d(
       '🔍 Building multiple select popup for attr ${attr.id} "${attr.title}"',
     );
-    print('   selected values: ${selected.toList()}');
-    print('   available options: ${attr.values.map((v) => v.value).toList()}');
+    log.d('   selected values: ${selected.toList()}');
+    log.d('   available options: ${attr.values.map((v) => v.value).toList()}');
 
     // According to documentation:
     // Style F: Always popup with checkboxes

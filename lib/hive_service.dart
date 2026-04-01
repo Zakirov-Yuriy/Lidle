@@ -2,6 +2,7 @@
 /// Предоставляет методы для инициализации, сохранения, получения и удаления данных
 /// для пользовательских настроек и других данных приложения.
 import 'package:hive/hive.dart';
+import 'package:lidle/core/logger.dart';
 
 /// `HiveService` - это статический класс, который управляет взаимодействием с Hive.
 /// Он предоставляет удобный интерфейс для работы с двумя основными "боксами" (хранилищами):
@@ -38,7 +39,7 @@ class HiveService {
   /// [key] - уникальный идентификатор для сохранения данных.
   /// [value] - данные, которые нужно сохранить.
   static Future<void> saveUserData(String key, dynamic value) async {
-    // print('💾 HiveService: Сохраняем $key = $value');
+    // log.d('💾 HiveService: Сохраняем $key = $value');
     await userBox.put(key, value);
   }
 
@@ -47,7 +48,7 @@ class HiveService {
   /// Возвращает данные, связанные с ключом, или `null`, если ключ не найден.
   static dynamic getUserData(String key) {
     final data = userBox.get(key);
-    // print('📖 HiveService: Получили $key = $data');
+    // log.d('📖 HiveService: Получили $key = $data');
     return data;
   }
 
@@ -254,9 +255,9 @@ class HiveService {
         'data': data,
       };
       await listingsBox.put(key, cacheData);
-      // print('💾 HiveService: Сохранили кеш $key');
+      // log.d('💾 HiveService: Сохранили кеш $key');
     } catch (e) {
-      // print('❌ HiveService: Ошибка при сохранении кеша $key: $e');
+      // log.d('❌ HiveService: Ошибка при сохранении кеша $key: $e');
     }
   }
 
@@ -267,12 +268,12 @@ class HiveService {
     try {
       final cached = listingsBox.get(key);
       if (cached == null) {
-        // print('📖 HiveService: Кеш $key не найден');
+        // log.d('📖 HiveService: Кеш $key не найден');
         return null;
       }
 
       if (cached is! Map) {
-        // print('⚠️ HiveService: Кеш $key имеет неправильный формат');
+        // log.d('⚠️ HiveService: Кеш $key имеет неправильный формат');
         listingsBox.delete(key);
         return null;
       }
@@ -285,16 +286,16 @@ class HiveService {
       final difference = now.difference(cachedTime).inMinutes;
 
       if (difference > _cacheLifetimeMinutes) {
-        // print();
+        // log.d();
         // Очищаем кеш синхронно (не требует async)
         listingsBox.delete(key);
         return null;
       }
 
-      // print('✅ HiveService: Кеш $key свежий (${difference}м)');
+      // log.d('✅ HiveService: Кеш $key свежий (${difference}м)');
       return cached['data'];
     } catch (e) {
-      // print('❌ HiveService: Ошибка при чтении кеша $key: $e');
+      // log.d('❌ HiveService: Ошибка при чтении кеша $key: $e');
       return null;
     }
   }
@@ -304,9 +305,9 @@ class HiveService {
   static Future<void> clearListingsCache(String key) async {
     try {
       await listingsBox.delete(key);
-      // print('🗑️ HiveService: Очистили кеш $key');
+      // log.d('🗑️ HiveService: Очистили кеш $key');
     } catch (e) {
-      // print('❌ HiveService: Ошибка при очистке кеша $key: $e');
+      // log.d('❌ HiveService: Ошибка при очистке кеша $key: $e');
     }
   }
 
@@ -314,9 +315,9 @@ class HiveService {
   static Future<void> clearAllListingsCache() async {
     try {
       await listingsBox.clear();
-      // print('🗑️ HiveService: Очистили все кеши объявлений');
+      // log.d('🗑️ HiveService: Очистили все кеши объявлений');
     } catch (e) {
-      // print('❌ HiveService: Ошибка при очистке всех кешей: $e');
+      // log.d('❌ HiveService: Ошибка при очистке всех кешей: $e');
     }
   }
 
@@ -333,7 +334,7 @@ class HiveService {
   ) async {
     final key = 'category_filters_$categoryId';
     await settingsBox.put(key, filters);
-    print('💾 Фильтры сохранены для категории $categoryId');
+    log.i('💾 Фильтры сохранены для категории $categoryId');
   }
 
   /// Загружает сохраненные фильтры категории.
@@ -343,10 +344,10 @@ class HiveService {
     final key = 'category_filters_$categoryId';
     final filters = settingsBox.get(key, defaultValue: <String, dynamic>{});
     if (filters is Map) {
-      print('📖 Фильтры загружены для категории $categoryId: $filters');
+      log.i('📋 Фильтры загружены для категории $categoryId: $filters');
       return Map<String, dynamic>.from(filters);
     }
-    print('⚠️  Фильтры не найдены для категории $categoryId');
+    log.w('⚠️  Фильтры не найдены для категории $categoryId');
     return <String, dynamic>{};
   }
 
@@ -355,7 +356,7 @@ class HiveService {
   static Future<void> deleteCategoryFilters(int categoryId) async {
     final key = 'category_filters_$categoryId';
     await settingsBox.delete(key);
-    print('🗑️  Фильтры удалены для категории $categoryId');
+    log.i('🗑️  Фильтры удалены для категории $categoryId');
   }
 }
 

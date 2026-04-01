@@ -1,5 +1,6 @@
 import 'package:lidle/models/catalog_category_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Сервис для работы с каталогами и категориями
 class CatalogService {
@@ -7,10 +8,10 @@ class CatalogService {
   static Future<CatalogsResponse> getCatalogs({String? token}) async {
     try {
       final response = await ApiService.get('/content/catalogs', token: token);
-      // print('=== API Каталоги ответ: $response');
+      // log.d('=== API Каталоги ответ: $response');
       return CatalogsResponse.fromJson(response);
     } catch (e) {
-      // print('=== API Каталоги ошибка: $e');
+      // log.d('=== API Каталоги ошибка: $e');
       throw Exception('Failed to load catalogs: $e');
     }
   }

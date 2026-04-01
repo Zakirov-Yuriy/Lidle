@@ -12,6 +12,7 @@ import '../../services/user_service.dart';
 import '../../pages/profile_menu/profile_menu_screen.dart'; // 🧹 Для очистки кеша профиля при logout
 import '../../pages/profile_menu/settings/settings_screen.dart'; // 🧹 Для очистки кеша настроек при logout
 import '../../pages/profile_menu/settings/contact_data/contact_data_screen.dart'; // 🧹 Для очистки кеша контактных данных при logout
+import 'package:lidle/core/logger.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Конструктор AuthBloc.
@@ -90,7 +91,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             .millisecondsSinceEpoch;
         await UserService.saveLocal('refresh_token_expires_at', refreshExpiresAtMs);
 
-        print(
+        log.d(
           '✅ auth_bloc: сохранены токены - access_token действует ${expiresIn ~/ 60}мин, '
           'refresh_token действует ${refreshExpiresIn ~/ 86400} дней',
         );
@@ -348,14 +349,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               // Токен еще действителен более чем на 5 минут - не обновляем
               shouldRefresh = false;
               final minutesRemaining = timeUntilExpiryMs ~/ (60 * 1000);
-              print('✅ AuthBloc: токен еще действителен, обновление пропущено ($minutesRemaining мин осталось)');
+              log.d('✅ AuthBloc: токен еще действителен, обновление пропущено ($minutesRemaining мин осталось)');
             } else if (timeUntilExpiryMs > 0) {
               // Токен истекает в ближайшие 5 минут - обновляем профилактически
-              print('⚠️  AuthBloc: токен истекает скоро, выполняем профилактический refresh');
+              log.d('⚠️  AuthBloc: токен истекает скоро, выполняем профилактический refresh');
               shouldRefresh = true;
             } else {
               // Токен полностью истек - обновляем обязательно
-              print('❌ AuthBloc: токен полностью истек');
+              log.d('❌ AuthBloc: токен полностью истек');
               shouldRefresh = true;
             }
           } catch (_) {
@@ -370,7 +371,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           // ApiService.refreshToken() использует refresh_token из Hive, но мы проверяем его первым.
           final refreshToken = await UserService.getLocal('refresh_token') as String?;
           if (refreshToken == null || refreshToken.isEmpty) {
-            print(
+            log.d(
               '⚠️  AuthBloc: refresh_token не найден, отправляем на авторизацию (первый запуск?)',
             );
             await AuthService.logout();
@@ -386,12 +387,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             // Успешно обновили токен — эмитируем AuthAuthenticated
             // Это запустит TokenService.init() в BlocListener, который будет
             // периодически обновлять токен согласно его таймеру.
-            print('✅ AuthBloc: токен успешно обновлен при запуске приложения');
+            log.d('✅ AuthBloc: токен успешно обновлен при запуске приложения');
             emit(AuthAuthenticated(token: newToken));
           } else {
             // Refresh не сработал (401/403 на сервере) — refresh_token истёк
             // или невалиден. Отправляем пользователя на авторизацию.
-            print(
+            log.d(
               '❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию',
             );
             await AuthService.logout();
@@ -413,12 +414,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // или пользователь без интернета. В этом случае эмитируем AuthAuthenticated
       // чтобы приложение попыталось продолжить работу с наличным токеном.
       // TokenService.init() будет пытаться обновить токен при возвращении в foreground.
-      print(
+      log.d(
         '⚠️  AuthBloc: сетевая ошибка при обновлении токена при запуске: $e',
       );
       final token = TokenService.currentToken;
       if (token != null && token.isNotEmpty) {
-        print('⚠️  AuthBloc: продолжаем работу с существующим токеном...');
+        log.d('⚠️  AuthBloc: продолжаем работу с существующим токеном...');
         emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthError(message: e.toString()));
@@ -434,7 +435,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     TokenExpiredEvent event,
     Emitter<AuthState> emit,
   ) async {
-    // print('🔐 AuthBloc: токен истёк, выполняем принудительный logout...');
+    // log.d('🔐 AuthBloc: токен истёк, выполняем принудительный logout...');
     try {
       await AuthService.logout();
     } catch (_) {}
@@ -442,7 +443,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await UserService.deleteLocal('token');
     await UserService.deleteLocal('refresh_token');
     await UserService.clearLocalProfileData();
-    // print('🔐 AuthBloc: токены удалены, переходим на экран входа');
+    // log.d('🔐 AuthBloc: токены удалены, переходим на экран входа');
     emit(AuthTokenExpired());
   }
 
@@ -454,7 +455,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     TokenRefreshedEvent event,
     Emitter<AuthState> emit,
   ) async {
-    // print('✅ AuthBloc: токен обновлён в фоне: ${event.newToken.substring(0, 20)}...');
+    // log.d('✅ AuthBloc: токен обновлён в фоне: ${event.newToken.substring(0, 20)}...');
     // Токен уже сохранён в Hive через ApiService.refreshToken()
     // Просто обновляем состояние с новым токеном
     emit(AuthAuthenticated(token: event.newToken));

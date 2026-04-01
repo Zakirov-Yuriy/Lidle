@@ -11,6 +11,7 @@ import '../../services/loading_timer_service.dart';
 import '../../services/api_request_queue.dart';
 import '../../core/cache/cache_service.dart';
 import '../../core/cache/cache_keys.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Bloc для управления состоянием данных объявлений.
 /// Обрабатывает события загрузки, поиска и фильтрации объявлений.
@@ -180,7 +181,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   ) async {
     // Защита от дублирования pull-to-refresh запросов
     if (_isLoadingListings) {
-      print('LoadListingsEvent уже выполняется, игнорируем дублирование');
+      log.d('LoadListingsEvent уже выполняется, игнорируем дублирование');
       return;
     }
 
@@ -188,7 +189,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     if (event.forceRefresh && _lastRefreshTime != null) {
       final timeSinceLastRefresh = DateTime.now().difference(_lastRefreshTime!);
       if (timeSinceLastRefresh < _refreshDebounce) {
-        print('Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями');
+        log.d('Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями');
         return;
       }
     }
@@ -489,7 +490,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     LoadAdvertEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    // print('Loading single advert for id ${event.advertId}');
+    // log.d('Loading single advert for id ${event.advertId}');
 
     // 🔄 Проверяем кеш перед запросом к API
     final cacheKey = CacheKeys.advertKey(event.advertId);
@@ -499,18 +500,18 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         try {
           // Безопасно преобразуем Dynamic Map в Map<String, dynamic>
           final cachedAdvert = Map<String, dynamic>.from(cachedAdvertRaw);
-          // print('✅ ListingsBloc: Восстановили объявление из кеша');
+          // log.d('✅ ListingsBloc: Восстановили объявление из кеша');
           final listing = _jsonToListing(cachedAdvert);
           emit(AdvertLoaded(listing: listing));
           return;
         } catch (e) {
           // Если не удалось восстановить из кеша, загружаем заново
-          print('⚠️ ListingsBloc: Ошибка восстановления из кеша: $e');
+          log.d('⚠️ ListingsBloc: Ошибка восстановления из кеша: $e');
         }
       }
     } catch (e) {
       // Игнорируем ошибки кеша и продолжаем загрузку
-      print('⚠️ ListingsBloc: Ошибка доступа к кешу: $e');
+      log.d('⚠️ ListingsBloc: Ошибка доступа к кешу: $e');
     }
 
     emit(ListingsLoading());
@@ -524,18 +525,18 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         token: token,
       );
 
-      // print('Loaded advert ${advert.id} with ${advert.images.length} images');
+      // log.d('Loaded advert ${advert.id} with ${advert.images.length} images');
 
       // Преобразуем Advert в Listing
       final listing = advert.toListing();
 
-      // print('Converted to listing with ${listing.images.length} images');
+      // log.d('Converted to listing with ${listing.images.length} images');
 
       // 💾 Сохраняем в унифицированный кеш (L1 + L2 Hive)
       // Обернуто в try-catch т.к. Hive может быть не инициализирован
       try {
         final jsonToCache = _listingToJson(listing);
-        print('💾 Caching listing ${listing.id} with isBargain=${jsonToCache['isBargain']}');
+        log.d('💾 Caching listing ${listing.id} with isBargain=${jsonToCache['isBargain']}');
         AppCacheService().set<Map<String, dynamic>>(
           cacheKey,
           jsonToCache,
@@ -547,7 +548,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       emit(AdvertLoaded(listing: listing));
     } catch (e) {
-      // print('Failed to load advert: $e');
+      // log.d('Failed to load advert: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -581,7 +582,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Просто берём очередную страницу из него
       final nextPage = (currentState.listings.length ~/ 50) + 1;
 
-      // print('📄 Загрузка: ${currentState.listings.length} текущих, страница $nextPage...');
+      // log.d('📄 Загрузка: ${currentState.listings.length} текущих, страница $nextPage...');
 
       final advertsResponse = await ApiService.getAdverts(
         catalogId: 1, // Главный каталог - все объявления
@@ -611,7 +612,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final totalPages = advertsResponse.meta.lastPage;
       final itemsPerPage = advertsResponse.meta.perPage;
 
-      // print('✅ Загружено ${newListings.length} нов объявлений, всего: ${allListings.length}');
+      // log.d('✅ Загружено ${newListings.length} нов объявлений, всего: ${allListings.length}');
 
       // Испускаем новое состояние с новыми объявлениями в конце
       emit(
@@ -624,7 +625,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
     } catch (e) {
-      // print('❌ Ошибка при загрузке следующей страницы: $e');
+      // log.d('❌ Ошибка при загрузке следующей страницы: $e');
       // При ошибке испускаем состояние ошибки
       emit(
         ListingsError(message: 'Ошибка при загрузке следующей страницы: $e'),
@@ -648,11 +649,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // Проверяем валидность номера страницы
     if (event.pageNumber < 1 || event.pageNumber > currentState.totalPages) {
-      // print();
+      // log.d();
       return;
     }
 
-    // print('📄 Загрузка конкретной страницы ${event.pageNumber}...');
+    // log.d('📄 Загрузка конкретной страницы ${event.pageNumber}...');
 
     try {
       // Получаем токен для аутентификации
@@ -671,7 +672,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         return advert.toListing();
       }).toList();
 
-      // print();
+      // log.d();
 
       // Сортируем объявления по датам (новые в начале)
       final sortedListings = _sortListingsByDate(listings);
@@ -717,7 +718,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           return DateTime(year, month, day);
         }
       } catch (e) {
-        // print('Ошибка при парсировании даты "$dateStr": $e');
+        // log.d('Ошибка при парсировании даты "$dateStr": $e');
       }
       return null;
     }
@@ -891,7 +892,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             }
           } catch (e) {
             // Логируем ошибку батча но продолжаем с остальными
-            print('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
+            log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
             continue;
           }
         }
@@ -934,12 +935,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             },
             persist: true,
           );
-          print('✅ ListingsBloc ФАЗА 2: Полный список закеширован (${finalSortedListings.length} объявлений)');
+          log.d('✅ ListingsBloc ФАЗА 2: Полный список закеширован (${finalSortedListings.length} объявлений)');
         } catch (e) {
-          print('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
+          log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
         }
       } catch (e) {
-        print('❌ ListingsBloc ФАЗА 2: Ошибка при загрузке остальных каталогов: $e');
+        log.d('❌ ListingsBloc ФАЗА 2: Ошибка при загрузке остальных каталогов: $e');
         // UI остается с первыми 12 объявлениями, пользователь может продолжить работу
       }
     });
@@ -976,12 +977,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             },
             persist: true,
           );
-          print('✅ ListingsBloc ФАЗА 2: Данные успешно закеширован');
+          log.d('✅ ListingsBloc ФАЗА 2: Данные успешно закеширован');
         } catch (e) {
-          print('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
+          log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
         }
       } catch (e) {
-        print('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
+        log.d('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
       }
     });
   }

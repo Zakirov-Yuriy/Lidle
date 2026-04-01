@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'api_service.dart';
 import '../hive_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class AuthService {
   /// Отправка кода подтверждения.
@@ -136,11 +137,11 @@ class AuthService {
       if (token != null && token.isNotEmpty) {
         // Инвалидируем токен на сервере
         await ApiService.post('/auth/logout', {}, token: token);
-        // print('✅ AuthService: logout на сервере выполнен');
+        // log.d('✅ AuthService: logout на сервере выполнен');
       }
     } catch (e) {
       // Игнорируем ошибки сервера — токены всё равно удалим локально
-      // print('⚠️ AuthService: ошибка logout на сервере (игнорируем): $e');
+      // log.d('⚠️ AuthService: ошибка logout на сервере (игнорируем): $e');
     } finally {
       // Всегда удаляем оба токена локально
       await HiveService.deleteUserData('token');
@@ -164,7 +165,7 @@ class AuthService {
       // Разбираем токен на три части: header.payload.signature
       final parts = token.split('.');
       if (parts.length != 3) {
-        // print('❌ AuthService: Неверный формат токена (ожидается 3 части)');
+        // log.d('❌ AuthService: Неверный формат токена (ожидается 3 части)');
         return '0';
       }
 
@@ -189,10 +190,10 @@ class AuthService {
 
       // Извлекаем claim 'sub' - это ID пользователя
       final userId = json['sub']?.toString() ?? '0';
-      // print('✅ AuthService: userId из токена = $userId');
+      // log.d('✅ AuthService: userId из токена = $userId');
       return userId;
     } catch (e) {
-      // print('❌ AuthService: Ошибка при декодировании токена: $e');
+      // log.d('❌ AuthService: Ошибка при декодировании токена: $e');
       return '0';
     }
   }

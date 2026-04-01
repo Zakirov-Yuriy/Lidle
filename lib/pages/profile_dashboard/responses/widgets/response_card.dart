@@ -7,6 +7,7 @@ import 'package:lidle/pages/profile_dashboard/responses/response_chat_page.dart'
 import 'package:lidle/pages/profile_dashboard/responses/accept_response_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/completion_deal_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/user_account_page.dart';
+import 'package:lidle/core/logger.dart';
 
 class ResponseCard extends StatelessWidget {
   final ResponseModel response;
@@ -93,7 +94,7 @@ class ResponseCard extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () {
-                      // print();
+                      // log.d();
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) =>
@@ -113,7 +114,7 @@ class ResponseCard extends StatelessWidget {
                       children: [
                         GestureDetector(
                           onTap: () {
-                            // print();
+                            // log.d();
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) =>
@@ -258,7 +259,7 @@ class ResponseCard extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: () {
-                    // print('🔄 Переход на UserAccountPage из response_card...');
+                    // log.d('🔄 Переход на UserAccountPage из response_card...');
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) =>
@@ -278,7 +279,7 @@ class ResponseCard extends StatelessWidget {
                     children: [
                       GestureDetector(
                         onTap: () {
-                          // print();
+                          // log.d();
                           Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (context) =>

@@ -16,6 +16,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/models/filter_models.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Динамический экран фильтров для листинга объявлений"
@@ -89,7 +90,7 @@ class _RealEstateListingsFilterScreenState
       'id': name.hashCode.abs(),
       'main_region_id': 1,
     }).toList();
-    print('✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)');
+    log.d('✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)');
     
     _loadFilters();
     _loadRegions();
@@ -119,8 +120,8 @@ class _RealEstateListingsFilterScreenState
       // Получить токен из хранилища
       final token = TokenService.currentToken;
 
-      print('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
-      print('📥 Loading filters for category: ${widget.categoryId}');
+      log.d('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
+      log.d('📥 Loading filters for category: ${widget.categoryId}');
 
       // Получить фильтры для категории через API
       final response = await ApiService.getListingsFilterAttributes(
@@ -128,13 +129,13 @@ class _RealEstateListingsFilterScreenState
         token: token,
       );
 
-      print('📊 API Response: $response');
+      log.d('📊 API Response: $response');
 
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> attributesData = response['data'] as List<dynamic>;
         final attributes = <Attribute>[];
 
-        print('📋 Total attributes in response: ${attributesData.length}');
+        log.d('📋 Total attributes in response: ${attributesData.length}');
 
         for (int i = 0; i < attributesData.length; i++) {
           try {
@@ -142,11 +143,11 @@ class _RealEstateListingsFilterScreenState
               attributesData[i] as Map<String, dynamic>,
             );
             attributes.add(attr);
-            print(
+            log.d(
               '  ✅ [$i] ID=${attr.id}, Title="${attr.title}", Style="${attr.style}", IsRange=${attr.isRange}, IsMultiple=${attr.isMultiple}',
             );
           } catch (e) {
-            print('❌ Error parsing attribute at index $i: $e');
+            log.d('❌ Error parsing attribute at index $i: $e');
           }
         }
 
@@ -155,16 +156,16 @@ class _RealEstateListingsFilterScreenState
           _isLoading = false;
         });
 
-        print('✅ Successfully loaded ${attributes.length} filter attributes');
+        log.d('✅ Successfully loaded ${attributes.length} filter attributes');
       } else {
-        print(
+        log.d(
           '❌ Response success=${response['success']}, data=${response['data']}',
         );
         throw Exception(response['message'] ?? 'Failed to load filters');
       }
     } catch (e) {
-      print('❌ Error loading filters: $e');
-      print('   Stack trace: $e');
+      log.d('❌ Error loading filters: $e');
+      log.d('   Stack trace: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -175,10 +176,10 @@ class _RealEstateListingsFilterScreenState
   void _loadAppliedFilters() {
     if (widget.appliedFilters == null) return;
 
-    print('\n🔄 ═══════════════════════════════════════');
-    print('🔄 _loadAppliedFilters() - RESTORING FILTERS');
-    print('🔄 Applied filters count: ${widget.appliedFilters!.length}');
-    print('🔄 ═══════════════════════════════════════');
+    log.d('\n🔄 ═══════════════════════════════════════');
+    log.d('🔄 _loadAppliedFilters() - RESTORING FILTERS');
+    log.d('🔄 Applied filters count: ${widget.appliedFilters!.length}');
+    log.d('🔄 ═══════════════════════════════════════');
 
     // Восстановить ранее выбранные значения
     widget.appliedFilters!.forEach((key, value) {
@@ -190,7 +191,7 @@ class _RealEstateListingsFilterScreenState
           for (final city in _cities) {
             if (city['id'] == value) {
               _selectedCity = {city['name'] as String};
-              print('✅ Restored city: ${city['name']} (ID: $value)');
+              log.d('✅ Restored city: ${city['name']} (ID: $value)');
               break;
             }
           }
@@ -200,15 +201,15 @@ class _RealEstateListingsFilterScreenState
           final attrId = int.tryParse(key);
           if (attrId != null) {
             _selectedValues[attrId] = value;
-            print('✅ Restored attribute: $key = $value');
+            log.d('✅ Restored attribute: $key = $value');
           }
         }
       } catch (e) {
-        print('⚠️  Error loading filter: $e');
+        log.d('⚠️  Error loading filter: $e');
       }
     });
 
-    print('🔄 ═══════════════════════════════════════\n');
+    log.d('🔄 ═══════════════════════════════════════\n');
   }
 
   /// Загружает сохраненные фильтры для текущей категории из Hive
@@ -216,38 +217,38 @@ class _RealEstateListingsFilterScreenState
     final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
 
     if (savedFilters.isEmpty) {
-      print('⚠️  Сохраненных фильтров для категории ${widget.categoryId} не найдено');
+      log.d('⚠️  Сохраненных фильтров для категории ${widget.categoryId} не найдено');
       return;
     }
 
-    print('\n💾 ═══════════════════════════════════════');
-    print('💾 _loadSavedCategoryFilters() - RESTORING SAVED FILTERS');
-    print('💾 Категория: ${widget.categoryId}');
-    print('💾 Количество ключей: ${savedFilters.length}');
+    log.d('\n💾 ═══════════════════════════════════════');
+    log.d('💾 _loadSavedCategoryFilters() - RESTORING SAVED FILTERS');
+    log.d('💾 Категория: ${widget.categoryId}');
+    log.d('💾 Количество ключей: ${savedFilters.length}');
     
     savedFilters.forEach((key, value) {
-      print('   Ключ: "$key" (type=${key.runtimeType})');
+      log.d('   Ключ: "$key" (type=${key.runtimeType})');
       if (value is Map) {
-        print('   └─ Value: Map (${value.length} items) -> ${value.toString()}');
+        log.d('   └─ Value: Map (${value.length} items) -> ${value.toString()}');
       } else if (value is List) {
-        print('   └─ Value: List (${value.length} items) -> ${value.toString()}');
+        log.d('   └─ Value: List (${value.length} items) -> ${value.toString()}');
       } else if (value is Set) {
-        print('   └─ Value: Set (${value.length} items) -> ${value.toString()}');
+        log.d('   └─ Value: Set (${value.length} items) -> ${value.toString()}');
       } else {
-        print('   └─ Value: ${value.runtimeType} -> $value');
+        log.d('   └─ Value: ${value.runtimeType} -> $value');
       }
     });
-    print('💾 ═══════════════════════════════════════');
+    log.d('💾 ═══════════════════════════════════════');
 
     setState(() {
       // Восстанавливаем сортировку
       if (savedFilters.containsKey('sort_date')) {
         _selectedDateSort = savedFilters['sort_date'] as String?;
-        print('✅ Восстановлена сортировка по дате: $_selectedDateSort');
+        log.d('✅ Восстановлена сортировка по дате: $_selectedDateSort');
       }
       if (savedFilters.containsKey('sort_price')) {
         _selectedPriceSort = savedFilters['sort_price'] as String?;
-        print('✅ Восстановлена сортировка по цене: $_selectedPriceSort');
+        log.d('✅ Восстановлена сортировка по цене: $_selectedPriceSort');
       }
 
       // Восстанавливаем город
@@ -256,7 +257,7 @@ class _RealEstateListingsFilterScreenState
         if (savedFilters.containsKey('city_name')) {
           _selectedCity = {savedFilters['city_name'] as String};
         }
-        print('✅ Восстановлен город: $_selectedCity (ID: $_selectedCityId)');
+        log.d('✅ Восстановлен город: $_selectedCity (ID: $_selectedCityId)');
       }
 
       // Восстанавливаем атрибуты фильтров
@@ -286,27 +287,27 @@ class _RealEstateListingsFilterScreenState
               normalizedMap[k.toString()] = v?.toString() ?? '';
             });
             restoredValue = normalizedMap;
-            print('✅ Восстановлен ДИАПАЗОН атрибут: $key = min:${normalizedMap['min']}, max:${normalizedMap['max']}');
+            log.d('✅ Восстановлен ДИАПАЗОН атрибут: $key = min:${normalizedMap['min']}, max:${normalizedMap['max']}');
           } 
           // Если это List (был Set, конвертирован в List при сохранении) - преобразуем обратно в Set
           else if (value is List) {
             restoredValue = (value as List).cast<String>().toSet();
-            print('✅ Восстановлен SET (из List) атрибут: $key = ${restoredValue.toString()}');
+            log.d('✅ Восстановлен SET (из List) атрибут: $key = ${restoredValue.toString()}');
           }
           // Если это Set (выбранные значения)
           else if (value is Set) {
             restoredValue = value;
-            print('✅ Восстановлен SET атрибут: $key = ${value.toList()}');
+            log.d('✅ Восстановлен SET атрибут: $key = ${value.toList()}');
           }
           // Если это boolean
           else if (value is bool) {
             restoredValue = value;
-            print('✅ Восстановлен BOOL атрибут: $key = $value');
+            log.d('✅ Восстановлен BOOL атрибут: $key = $value');
           }
           // Обычная строка
           else {
             restoredValue = value;
-            print('✅ Восстановлен атрибут: $key = $value (type=${value.runtimeType})');
+            log.d('✅ Восстановлен атрибут: $key = $value (type=${value.runtimeType})');
           }
           
           _selectedValues[attrId] = restoredValue;
@@ -323,14 +324,14 @@ class _RealEstateListingsFilterScreenState
             _controllers[minKey] = TextEditingController(text: minValue);
             _controllers[maxKey] = TextEditingController(text: maxValue);
             
-            print('   ├─ TextEditingController[$minKey] = "$minValue"');
-            print('   └─ TextEditingController[$maxKey] = "$maxValue"');
+            log.d('   ├─ TextEditingController[$minKey] = "$minValue"');
+            log.d('   └─ TextEditingController[$maxKey] = "$maxValue"');
           }
         }
       }
     });
 
-    print('💾 ═══════════════════════════════════════\n');
+    log.d('💾 ═══════════════════════════════════════\n');
   }
 
   /// Сохраняет текущее состояние фильтров для восстановления при следующих посещениях
@@ -376,20 +377,20 @@ class _RealEstateListingsFilterScreenState
       }
     });
 
-    print('\n💾 ═══════════════════════════════════════');
-    print('💾 SAVING FILTER STATE TO HIVE');
-    print('💾 Category: ${widget.categoryId}');
-    print('💾 Items to save: ${stateToSave.length}');
+    log.d('\n💾 ═══════════════════════════════════════');
+    log.d('💾 SAVING FILTER STATE TO HIVE');
+    log.d('💾 Category: ${widget.categoryId}');
+    log.d('💾 Items to save: ${stateToSave.length}');
     stateToSave.forEach((k, v) {
       if (v is Map) {
-        print('   ├─ $k: Map ${v.toString()}');
+        log.d('   ├─ $k: Map ${v.toString()}');
       } else if (v is List) {
-        print('   ├─ $k: List ${v.toString()}');
+        log.d('   ├─ $k: List ${v.toString()}');
       } else {
-        print('   ├─ $k: $v (type=${v.runtimeType})');
+        log.d('   ├─ $k: $v (type=${v.runtimeType})');
       }
     });
-    print('💾 ═══════════════════════════════════════\n');
+    log.d('💾 ═══════════════════════════════════════\n');
 
     await HiveService.saveCategoryFilters(widget.categoryId, stateToSave);
   }
@@ -397,26 +398,26 @@ class _RealEstateListingsFilterScreenState
   Map<String, dynamic> _collectFilters() {
     final Map<String, dynamic> filters = {};
 
-    print('\n📦 ═══════════════════════════════════════');
-    print('📦 _collectFilters() - STARTING');
-    print('📦 ═══════════════════════════════════════');
+    log.d('\n📦 ═══════════════════════════════════════');
+    log.d('📦 _collectFilters() - STARTING');
+    log.d('📦 ═══════════════════════════════════════');
 
     // DEBUG: Выводим текущее состояние городов
-    print('📦 DEBUG STATE:');
-    print(
+    log.d('📦 DEBUG STATE:');
+    log.d(
       '   _selectedCityId: $_selectedCityId (type: ${_selectedCityId?.runtimeType})',
     );
-    print('   _selectedCity: $_selectedCity');
-    print('   _cities.length: ${_cities.length}');
+    log.d('   _selectedCity: $_selectedCity');
+    log.d('   _cities.length: ${_cities.length}');
 
     // Добавить сортировку
     if (_selectedDateSort != null) {
       filters['sort_date'] = _selectedDateSort;
-      print('✅ Filter: sort_date = $_selectedDateSort');
+      log.d('✅ Filter: sort_date = $_selectedDateSort');
     }
     if (_selectedPriceSort != null) {
       filters['sort_price'] = _selectedPriceSort;
-      print('✅ Filter: sort_price = $_selectedPriceSort');
+      log.d('✅ Filter: sort_price = $_selectedPriceSort');
     }
 
     // Добавить выбранный город
@@ -427,15 +428,15 @@ class _RealEstateListingsFilterScreenState
           : 'Unknown';
       // 🟢 ВАЖНО: также добавляем имя города для клиентской фильтрации
       filters['city_name'] = cityName;
-      print('✅ Filter: city_id = $_selectedCityId (city: $cityName)');
-      print('✅ Filter: city_name = $cityName (для клиентской фильтрации)');
-      print('✅ FILTER ADDED TO RESULT!');
+      log.d('✅ Filter: city_id = $_selectedCityId (city: $cityName)');
+      log.d('✅ Filter: city_name = $cityName (для клиентской фильтрации)');
+      log.d('✅ FILTER ADDED TO RESULT!');
     } else {
-      print('⚠️  NO city selected. _selectedCityId is null');
-      print('   _selectedCity: $_selectedCity');
-      print('   _cities available: ${_cities.length}');
+      log.d('⚠️  NO city selected. _selectedCityId is null');
+      log.d('   _selectedCity: $_selectedCity');
+      log.d('   _cities available: ${_cities.length}');
       if (_cities.isNotEmpty) {
-        print(
+        log.d(
           '   Sample cities: ${_cities.take(3).map((c) => c['name']).toList()}',
         );
       }
@@ -477,30 +478,30 @@ class _RealEstateListingsFilterScreenState
             'min': minValue, // число или пустая строка
             'max': maxValue, // число или пустая строка
           };
-          print(
+          log.d(
             '✅ Attribute: [$key] = min:$minValue, max:$maxValue (type: $filterType)',
           );
         } else {
-          print('⏭️  Skipped: [$key] = {empty range}');
+          log.d('⏭️  Skipped: [$key] = {empty range}');
         }
       } else if (value is bool && value == true) {
         // Включаем только true boolean'ы
         shouldInclude = true;
-        print('✅ Attribute: [$key] = $value (type: $filterType, bool)');
+        log.d('✅ Attribute: [$key] = $value (type: $filterType, bool)');
       } else if (value is bool && value == false) {
         // Исключаем false boolean'ы
-        print('⏭️  Skipped: [$key] = false (checkbox not selected)');
+        log.d('⏭️  Skipped: [$key] = false (checkbox not selected)');
       } else if (value != null &&
           value != '' &&
           (value is! Set || value.isNotEmpty)) {
         // Обычные значения (Set, List, String) - это value_selected
         shouldInclude = true;
         if (value is Set && value.isNotEmpty) {
-          print(
+          log.d(
             '✅ Attribute: [$key] = ${value.join(", ")} (type: Set<String>, count: ${value.length})',
           );
         } else {
-          print(
+          log.d(
             '✅ Attribute: [$key] = $value (type: $filterType, ${value.runtimeType})',
           );
         }
@@ -518,24 +519,24 @@ class _RealEstateListingsFilterScreenState
     // Если есть value_selected атрибуты, добавляем их в filters[value_selected]
     if (valueSelectedMap.isNotEmpty) {
       filters['value_selected'] = valueSelectedMap;
-      print('✅ value_selected attributes added to filters[value_selected]');
-      print('📋 value_selected content:');
+      log.d('✅ value_selected attributes added to filters[value_selected]');
+      log.d('📋 value_selected content:');
       valueSelectedMap.forEach((k, v) {
-        print('   [$k] = ${v is Set ? '{Set: ${v.toList()}}' : '{Type: ${v.runtimeType}, Value: $v}'}');
+        log.d('   [$k] = ${v is Set ? '{Set: ${v.toList()}}' : '{Type: ${v.runtimeType}, Value: $v}'}');
       });
     }
 
     // Если есть атрибуты диапазонов, добавляем их в filters[values]
     if (valuesMap.isNotEmpty) {
       filters['values'] = valuesMap;
-      print('✅ range attributes added to filters[values]');
+      log.d('✅ range attributes added to filters[values]');
     }
 
-    print('📦 ═══════════════════════════════════════');
-    print('📦 FINAL FILTERS: ${filters.toString()}');
-    print('📦 Filter keys: ${filters.keys.toList()}');
-    print('📦 Filter is empty? ${filters.isEmpty}');
-    print('📦 ═══════════════════════════════════════\n');
+    log.d('📦 ═══════════════════════════════════════');
+    log.d('📦 FINAL FILTERS: ${filters.toString()}');
+    log.d('📦 Filter keys: ${filters.keys.toList()}');
+    log.d('📦 Filter is empty? ${filters.isEmpty}');
+    log.d('📦 ═══════════════════════════════════════\n');
     return filters;
   }
 
@@ -673,9 +674,9 @@ class _RealEstateListingsFilterScreenState
         const Spacer(),
         GestureDetector(
           onTap: () async {
-            print('\n🔴 ════════════════════════════════════════');
-            print('🔴 RESET BUTTON TAPPED');
-            print('🔴 ════════════════════════════════════════');
+            log.d('\n🔴 ════════════════════════════════════════');
+            log.d('🔴 RESET BUTTON TAPPED');
+            log.d('🔴 ════════════════════════════════════════');
             
             setState(() {
               // Очищаем все фильтры
@@ -687,13 +688,13 @@ class _RealEstateListingsFilterScreenState
               _selectedRegion.clear();
               _selectedRegionId = null;
               
-              print('🔴 Cleared: date sort, price sort, city, region, all attributes');
+              log.d('🔴 Cleared: date sort, price sort, city, region, all attributes');
             });
             
             // Удалить сохраненные фильтры для этой категории
             await HiveService.deleteCategoryFilters(widget.categoryId);
-            print('🔴 Deleted saved filters from Hive for category ${widget.categoryId}');
-            print('🔴 ════════════════════════════════════════\n');
+            log.d('🔴 Deleted saved filters from Hive for category ${widget.categoryId}');
+            log.d('🔴 ════════════════════════════════════════\n');
           },
           child: const Text(
             "Сбросить",
@@ -787,7 +788,7 @@ class _RealEstateListingsFilterScreenState
                           _cities.clear();
                         });
 
-                        print(
+                        log.d(
                           '✅ Выбран регион: $selectedRegionName (ID: $regionId)',
                         );
 
@@ -874,7 +875,7 @@ class _RealEstateListingsFilterScreenState
                           _selectedCityId = cityId;
                         });
 
-                        print('✅ Выбран город: $selectedCityName (ID: $cityId)');
+                        log.d('✅ Выбран город: $selectedCityName (ID: $cityId)');
                       }
                     },
                   );
@@ -1084,7 +1085,7 @@ class _RealEstateListingsFilterScreenState
 
   Widget _buildDynamicFilters() {
     if (_attributes.isEmpty) {
-      print(
+      log.d(
         '⚠️ _buildDynamicFilters: No attributes loaded! _attributes.length = 0',
       );
       return const Center(
@@ -1098,14 +1099,14 @@ class _RealEstateListingsFilterScreenState
       );
     }
 
-    print('✅ _buildDynamicFilters: Building ${_attributes.length} filters');
+    log.d('✅ _buildDynamicFilters: Building ${_attributes.length} filters');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // const SizedBox(height: 16),
         ..._attributes.map((attr) {
-          print(
+          log.d(
             '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
           );
 
@@ -1131,7 +1132,7 @@ class _RealEstateListingsFilterScreenState
   Widget _buildFilterField(Attribute attr) {
     // Логика определения типа фильтра на основе флагов и документации
     // Приоритет: styleSingle точное совпадение > isSpecialDesign > (isTitleHidden && isMultiple) > isRange > empty > isPopup > isMultiple > else
-    print(
+    log.d(
       '    🎨 _buildFilterField: ID=${attr.id}, Title="${attr.title}", '
       'values.count=${attr.values.length}, isRange=${attr.isRange}, '
       'isMultiple=${attr.isMultiple}, isSpecialDesign=${attr.isSpecialDesign}, '
@@ -1142,7 +1143,7 @@ class _RealEstateListingsFilterScreenState
     // Style F: Popup диалог с квадратными чекбоксами - определяется по styleSingle="F"
     // Это наивысший приоритет, так как API явно указывает этот стиль
     if (attr.styleSingle == "F" && attr.values.isNotEmpty) {
-      print(
+      log.d(
         '    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - styleSingle="F"',
       );
       return _buildStyleFPopupFilter(attr);
@@ -1151,7 +1152,7 @@ class _RealEstateListingsFilterScreenState
     // Style B1: Одиночный чекбокс - определяется по styleSingle="B1"
     // Высокий приоритет, так как API явно указывает этот стиль
     if (attr.styleSingle == "B1") {
-      print(
+      log.d(
         '    -> Rendering as SINGLE CHECKBOX (Style B1) - styleSingle="B1"',
       );
       return _buildB1Field(attr);
@@ -1160,7 +1161,7 @@ class _RealEstateListingsFilterScreenState
     // Style I: Список чекбоксов - определяется по styleSingle="I"
     // Высокий приоритет, так как API явно указывает этот стиль
     if (attr.styleSingle == "I") {
-      print(
+      log.d(
         '    -> Rendering as MULTIPLE CHECKBOXES (Style I) - styleSingle="I"',
       );
       return _buildStyleIField(attr);
@@ -1169,7 +1170,7 @@ class _RealEstateListingsFilterScreenState
     // Style J1: Календарь с выбором даты и времени - определяется по styleSingle="J1"
     // Высокий приоритет, так как API явно указывает этот стиль
     if (attr.styleSingle == "J1") {
-      print(
+      log.d(
         '    -> Rendering as CALENDAR DATE/TIME (Style J1) - styleSingle="J1"',
       );
       return _buildStyleJ1Field(attr);
@@ -1178,7 +1179,7 @@ class _RealEstateListingsFilterScreenState
     // Style K1/K: Календарь с выбором даты и времени (K-Calendar) - определяется по styleSingle="K1" или "K"
     // Высокий приоритет, так как API явно указывает этот стиль
     if (attr.styleSingle == "K1" || attr.styleSingle == "K") {
-      print(
+      log.d(
         '    -> Rendering as K-CALENDAR DATE/TIME (Style K1) - styleSingle="${attr.styleSingle}"',
       );
       return _buildStyleK1Field(attr);
@@ -1187,7 +1188,7 @@ class _RealEstateListingsFilterScreenState
     // Style C: Да/Нет кнопки (Ипотека, Вид сделки)
     // Флаг isSpecialDesign=true указывает на кнопки для выбора уникального значения
     if (attr.isSpecialDesign) {
-      print(
+      log.d(
         '    -> Rendering as YES/NO BUTTONS (Style C) - isSpecialDesign=true',
       );
       return _buildSpecialDesignFilter(attr);
@@ -1196,7 +1197,7 @@ class _RealEstateListingsFilterScreenState
     // Style I: Чекбоксы без popup (Возможность торга, Без комиссии)
     // Комбинация: isTitleHidden=true && isMultiple=true && values не пусты
     if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
-      print(
+      log.d(
         '    -> Rendering as CHECKBOXES (Style I) - isTitleHidden && isMultiple',
       );
       return _buildCheckboxFilter(attr);
@@ -1205,21 +1206,21 @@ class _RealEstateListingsFilterScreenState
     // Диапазоны от/до (Style A, E, G)
     // Флаг isRange=true указывает на поле с минимум и максимум значениями
     if (attr.isRange) {
-      print('    -> Rendering as RANGE (Style A/E/G) - isRange=true');
+      log.d('    -> Rendering as RANGE (Style A/E/G) - isRange=true');
       return _buildRangeFilterField(attr);
     }
 
     // Текстовое поле (Style H)
     // Если нет вариантов для выбора - это текстовое поле
     if (attr.values.isEmpty) {
-      print('    -> Rendering as TEXT INPUT (Style H) - no values');
+      log.d('    -> Rendering as TEXT INPUT (Style H) - no values');
       return _buildTextFilterField(attr);
     }
 
     // Style F: Popup диалог с чекбоксами для множественного выбора (fallback)
     // isPopup=true указывает на popup диалог с чекбоксами со множественным выбором
     if (attr.isPopup && attr.values.isNotEmpty) {
-      print(
+      log.d(
         '    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - isPopup=true',
       );
       return _buildStyleFPopupFilter(attr);
@@ -1228,7 +1229,7 @@ class _RealEstateListingsFilterScreenState
     // Style D: Multiple select с popup (Тип дома)
     // isMultiple=true && values не пусты = множественный выбор через popup
     if (attr.isMultiple) {
-      print(
+      log.d(
         '    -> Rendering as MULTIPLE SELECT POPUP (Style D) - isMultiple=true',
       );
       return _buildStyleDMultipleFilter(attr);
@@ -1236,7 +1237,7 @@ class _RealEstateListingsFilterScreenState
 
     // Single select dropdown (неиспользуемый в текущей документации)
     // Остальные случаи с values = одиночный выбор через dropdown
-    print('    -> Rendering as DROPDOWN SELECT - default single select');
+    log.d('    -> Rendering as DROPDOWN SELECT - default single select');
     return _buildSingleSelectFilter(attr);
   }
 
@@ -1284,7 +1285,7 @@ class _RealEstateListingsFilterScreenState
                       // 🟢 Сохраняем ID, не текстовое значение!
                       _selectedValues[attr.id] =
                           isSelected ? '' : value.id.toString();
-                      print(
+                      log.d(
                         '✅ Special Design: "${value.value}" → ID=${value.id}',
                       );
                     });
@@ -1454,27 +1455,27 @@ class _RealEstateListingsFilterScreenState
     final maxKey = attr.id * 2 + 1;
 
     // 🔍 ДИАГНОСТИКА: Логируем состояние при построении
-    print('\n🎨 Building RANGE field:');
-    print('   Attribute ID: ${attr.id}, Title: "${attr.title}"');
-    print('   Range value: $range (type=${range.runtimeType})');
-    print('   Is controller for min (key=$minKey) already exists? ${_controllers.containsKey(minKey)}');
-    print('   Is controller for max (key=$maxKey) already exists? ${_controllers.containsKey(maxKey)}');
+    log.d('\n🎨 Building RANGE field:');
+    log.d('   Attribute ID: ${attr.id}, Title: "${attr.title}"');
+    log.d('   Range value: $range (type=${range.runtimeType})');
+    log.d('   Is controller for min (key=$minKey) already exists? ${_controllers.containsKey(minKey)}');
+    log.d('   Is controller for max (key=$maxKey) already exists? ${_controllers.containsKey(maxKey)}');
 
     // Если контроллеры уже существуют, обновляем их текст из текущих значений
     if (_controllers.containsKey(minKey)) {
       _controllers[minKey]!.text = (range['min'] ?? '').toString();
-      print('   ✅ Updated existing minController: "${_controllers[minKey]!.text}"');
+      log.d('   ✅ Updated existing minController: "${_controllers[minKey]!.text}"');
     }
     if (_controllers.containsKey(maxKey)) {
       _controllers[maxKey]!.text = (range['max'] ?? '').toString();
-      print('   ✅ Updated existing maxController: "${_controllers[maxKey]!.text}"');
+      log.d('   ✅ Updated existing maxController: "${_controllers[maxKey]!.text}"');
     }
 
     final minController = _controllers.putIfAbsent(
       minKey,
       () {
         final controller = TextEditingController(text: (range['min'] ?? '').toString());
-        print('   ✅ Created NEW minController with text: "${controller.text}"');
+        log.d('   ✅ Created NEW minController with text: "${controller.text}"');
         return controller;
       },
     );
@@ -1483,7 +1484,7 @@ class _RealEstateListingsFilterScreenState
       maxKey,
       () {
         final controller = TextEditingController(text: (range['max'] ?? '').toString());
-        print('   ✅ Created NEW maxController with text: "${controller.text}"');
+        log.d('   ✅ Created NEW maxController with text: "${controller.text}"');
         return controller;
       },
     );
@@ -1592,7 +1593,7 @@ class _RealEstateListingsFilterScreenState
                       );
                       if (matchingValue.id != 0) {
                         _selectedValues[attr.id] = matchingValue.id.toString();
-                        print(
+                        log.d(
                           '✅ Single Select: "${selectedText}" → ID=${matchingValue.id}',
                         );
                       } else {
@@ -1711,14 +1712,14 @@ class _RealEstateListingsFilterScreenState
         if (storedIds.contains(attrValue.id.toString())) {
           displaySelected.add(attrValue.value);
           displayValues.add(attrValue.value);
-          print(
+          log.d(
             '   🔄 Display conversion: ID=${attrValue.id} ("${attrValue.value}") is selected',
           );
         }
       }
     }
 
-    print(
+    log.d(
       '🎨 StyleD Filter Built: ID=${attr.id}, Title="${attr.title}", Current selected IDs: $storedIds, Display text: $displaySelected',
     );
 
@@ -1731,7 +1732,7 @@ class _RealEstateListingsFilterScreenState
         if (!attr.isTitleHidden) const SizedBox(height: 8),
         GestureDetector(
           onTap: () {
-            print(
+            log.d(
               '🎯 StyleD Dialog opened: ID=${attr.id}, Title="${attr.title}", Current stored IDs: $storedIds',
             );
             showDialog(
@@ -1741,7 +1742,7 @@ class _RealEstateListingsFilterScreenState
                 options: attr.values.map((v) => v.value).toList(),
                 selectedOptions: displaySelected,  // ✅ FIX #1: Передаем текстовые значения, не IDы
                 onSelectionChanged: (newSelected) {
-                  print(
+                  log.d(
                     '✅ StyleD Selection changed: ID=${attr.id}, newSelected=$newSelected',
                   );
                   setState(() {
@@ -1749,14 +1750,14 @@ class _RealEstateListingsFilterScreenState
                     final selectedIds = <String>{};
                     for (var value in attr.values) {
                       if (newSelected.contains(value.value)) {
-                        print(
+                        log.d(
                           '   🔄 Converting: "${value.value}" (ID=${value.id}) → added to selectedIds',
                         );
                         selectedIds.add(value.id.toString());
                       }
                     }
                     _selectedValues[attr.id] = selectedIds;
-                    print(
+                    log.d(
                       '✅ StyleD Selection saved: _selectedValues[${attr.id}] = $selectedIds',
                     );
                   });
@@ -1802,7 +1803,7 @@ class _RealEstateListingsFilterScreenState
     Attribute attr,
     Set<String> currentSelected,
   ) {
-    print(
+    log.d(
       '🎨 StyleF Dialog opened: ID=${attr.id}, Title="${attr.title}", Current: $currentSelected',
     );
 
@@ -1831,7 +1832,7 @@ class _RealEstateListingsFilterScreenState
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white),
                       onPressed: () {
-                        print('❌ StyleF Dialog cancelled');
+                        log.d('❌ StyleF Dialog cancelled');
                         Navigator.of(context).pop();
                       },
                     ),
@@ -1873,12 +1874,12 @@ class _RealEstateListingsFilterScreenState
                                     onTap: () {
                                       setDialogState(() {
                                         if (isChecked) {
-                                          print(
+                                          log.d(
                                             '❌ StyleF Unchecked: ID=$valueId, Value="${value.value}"',
                                           );
                                           tempSelected.remove(valueId);
                                         } else {
-                                          print(
+                                          log.d(
                                             '✅ StyleF Checked: ID=$valueId, Value="${value.value}"',
                                           );
                                           tempSelected.add(valueId);
@@ -1898,12 +1899,12 @@ class _RealEstateListingsFilterScreenState
                                     onChanged: (bool val) {
                                       setDialogState(() {
                                         if (val) {
-                                          print(
+                                          log.d(
                                             '✅ StyleF Checkbox Checked: ID=$valueId, Value="${value.value}"',
                                           );
                                           tempSelected.add(valueId);
                                         } else {
-                                          print(
+                                          log.d(
                                             '❌ StyleF Checkbox Unchecked: ID=$valueId, Value="${value.value}"',
                                           );
                                           tempSelected.remove(valueId);
@@ -1931,7 +1932,7 @@ class _RealEstateListingsFilterScreenState
                             ),
                           ),
                           onPressed: () {
-                            print('❌ StyleF Dialog cancelled');
+                            log.d('❌ StyleF Dialog cancelled');
                             Navigator.of(context).pop();
                           },
                           child: const Text(
@@ -1954,7 +1955,7 @@ class _RealEstateListingsFilterScreenState
                             ),
                           ),
                           onPressed: () {
-                            print(
+                            log.d(
                               '✅ StyleF Dialog confirmed: Final selected=$tempSelected',
                             );
                             setState(() {
@@ -2384,15 +2385,15 @@ class _RealEstateListingsFilterScreenState
               ),
             ),
             onPressed: () async {
-              print('\n🔵 ════════════════════════════════════════');
-              print('🔵 BUTTON "Применить фильтры" PRESSED');
-              print('🔵 ════════════════════════════════════════');
+              log.d('\n🔵 ════════════════════════════════════════');
+              log.d('🔵 BUTTON "Применить фильтры" PRESSED');
+              log.d('🔵 ════════════════════════════════════════');
 
               final filters = _collectFilters();
 
-              print('🔵 About to return filters to listings_screen');
-              print('🔵 Filters to return: $filters');
-              print('🔵 ════════════════════════════════════════\n');
+              log.d('🔵 About to return filters to listings_screen');
+              log.d('🔵 Filters to return: $filters');
+              log.d('🔵 ════════════════════════════════════════\n');
 
               // 💾 ВАЖНО: Сохраняем СОСТОЯНИЕ фильтров (из _selectedValues), а не преобразованные фильтры
               // Это позволяет правильно восстановить все значения при следующем открытии экрана
@@ -2500,11 +2501,11 @@ class _RealEstateListingsFilterScreenState
   /// Загружает регионы из API при инициализации экрана
   Future<void> _loadRegions() async {
     try {
-      print('📍 Загрузка регионов...');
+      log.d('📍 Загрузка регионов...');
       final token = TokenService.currentToken;
 
       if (token == null) {
-        print('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
+        log.d('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
       }
 
       final regions = await ApiService.getRegions(token: token);
@@ -2514,14 +2515,14 @@ class _RealEstateListingsFilterScreenState
           _regions = regions;
         });
       }
-      print('✅ Загружено ${regions.length} регионов');
+      log.d('✅ Загружено ${regions.length} регионов');
 
       // Автоматически загрузить города из всех регионов
       if (regions.isNotEmpty) {
         await _loadAllCitiesFromAllRegions(regions);
       }
     } catch (e) {
-      print('❌ Ошибка загрузки регионов: $e');
+      log.d('❌ Ошибка загрузки регионов: $e');
       // Попытаюсь загрузить снова через 3 секунды
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) _loadRegions();
@@ -2540,10 +2541,10 @@ class _RealEstateListingsFilterScreenState
         });
       }
 
-      print('\n🔍 ═══════════════════════════════════════');
-      print('🔍 _loadAllCitiesFromAllRegions() - STARTING');
-      print('🔍 Regions count: ${regions.length}');
-      print('🔍 ═══════════════════════════════════════');
+      log.d('\n🔍 ═══════════════════════════════════════');
+      log.d('🔍 _loadAllCitiesFromAllRegions() - STARTING');
+      log.d('🔍 Regions count: ${regions.length}');
+      log.d('🔍 ═══════════════════════════════════════');
 
       final token = TokenService.currentToken;
 
@@ -2555,7 +2556,7 @@ class _RealEstateListingsFilterScreenState
         final regionName = region['name'] as String?;
 
         if (regionId == null || regionName == null) {
-          print('⚠️  Skipping region with null ID or name: $region');
+          log.d('⚠️  Skipping region with null ID or name: $region');
           continue;
         }
 
@@ -2566,7 +2567,7 @@ class _RealEstateListingsFilterScreenState
             searchQuery = searchQuery + '   ';
           }
 
-          print('📍 Loading cities for region: "$regionName" (ID=$regionId)');
+          log.d('📍 Loading cities for region: "$regionName" (ID=$regionId)');
 
           // Загрузить города через API
           final response = await AddressService.searchAddresses(
@@ -2575,7 +2576,7 @@ class _RealEstateListingsFilterScreenState
             types: ['city'],
           );
 
-          print('   ✅ API returned ${response.data.length} results');
+          log.d('   ✅ API returned ${response.data.length} results');
 
           // Добавить города в карту (без дубликатов по ID)
           for (final result in response.data) {
@@ -2589,23 +2590,23 @@ class _RealEstateListingsFilterScreenState
                   'id': cityId,
                   'main_region_id': result.main_region?.id,
                 };
-                print('      + City added: "$cityName" (ID=$cityId)');
+                log.d('      + City added: "$cityName" (ID=$cityId)');
               }
             } else {
-              print('      ⚠️  City with null ID skipped: $cityName');
+              log.d('      ⚠️  City with null ID skipped: $cityName');
             }
           }
 
-          print(
+          log.d(
             '   📊 Cities map now has ${citiesMap.length} total unique cities',
           );
         } catch (e) {
-          print('   ❌ Ошибка загрузки городов для "$regionName": $e');
+          log.d('   ❌ Ошибка загрузки городов для "$regionName": $e');
         }
       }
 
       // Добавляем города из dnrCities констант (fallback если API не вернул их)
-      print('📦 dnrCities констант имеет ${dnrCities.length} уникальных городов');
+      log.d('📦 dnrCities констант имеет ${dnrCities.length} уникальных городов');
       for (final cityName in dnrCities) {
         // Проверяем есть ли такой город уже в карте (по имени, без ID)
         final exists = citiesMap.values.any((c) => c['name'] == cityName);
@@ -2619,10 +2620,10 @@ class _RealEstateListingsFilterScreenState
             'main_region_id': 1, // ДНР = регион 1
             'from_dnr_cities': true, // Отметим что это из констант
           };
-          print('      + City (from dnrCities): "$cityName" (ID=$tempId)');
+          log.d('      + City (from dnrCities): "$cityName" (ID=$tempId)');
         }
       }
-      print('   📊 Cities map after dnrCities merge has ${citiesMap.length} total unique cities');
+      log.d('   📊 Cities map after dnrCities merge has ${citiesMap.length} total unique cities');
 
       // Обновить состояние с объединённым списком городов
       if (mounted) {
@@ -2631,22 +2632,22 @@ class _RealEstateListingsFilterScreenState
           _citiesLoading = false;
         });
 
-        print('\n🔍 ═══════════════════════════════════════');
-        print('🔍 _loadAllCitiesFromAllRegions() - COMPLETE');
+        log.d('\n🔍 ═══════════════════════════════════════');
+        log.d('🔍 _loadAllCitiesFromAllRegions() - COMPLETE');
         if (citiesMap.isNotEmpty) {
-          print('✅ Всего загружено ${_cities.length} уникальных городов');
-          print('🔍 First 3 cities:');
+          log.d('✅ Всего загружено ${_cities.length} уникальных городов');
+          log.d('🔍 First 3 cities:');
           for (int i = 0; i < (_cities.length > 3 ? 3 : _cities.length); i++) {
-            print('   [${_cities[i]['id']}] - ${_cities[i]['name']}');
+            log.d('   [${_cities[i]['id']}] - ${_cities[i]['name']}');
           }
         } else {
-          print('⚠️  На городов не найдено');
+          log.d('⚠️  На городов не найдено');
         }
-        print('🔍 ═══════════════════════════════════════\n');
+        log.d('🔍 ═══════════════════════════════════════\n');
       }
     } catch (e) {
-      print('❌ Ошибка при загрузке городов из регионов: $e');
-      print('   Stack trace: ${StackTrace.current}');
+      log.d('❌ Ошибка при загрузке городов из регионов: $e');
+      log.d('   Stack trace: ${StackTrace.current}');
       if (mounted) {
         setState(() {
           _citiesLoading = false;
@@ -2658,7 +2659,7 @@ class _RealEstateListingsFilterScreenState
   /// Загружает города для выбранного региона через API
   Future<void> _loadCitiesForRegion(int regionId, String regionName) async {
     try {
-      print('🔍 Загрузка городов для области: "$regionName" (ID: $regionId)');
+      log.d('🔍 Загрузка городов для области: "$regionName" (ID: $regionId)');
       final token = TokenService.currentToken;
 
       // Подготовить поисковый запрос
@@ -2675,7 +2676,7 @@ class _RealEstateListingsFilterScreenState
         types: ['city'],
       );
 
-      print('✅ API вернул ${response.data.length} результатов');
+      log.d('✅ API вернул ${response.data.length} результатов');
 
       final cities = response.data
           .where((result) => result.main_region?.id == regionId)
@@ -2700,7 +2701,7 @@ class _RealEstateListingsFilterScreenState
             });
           }
         }
-        print('✅ Добавлены все 72 города ДНР из констант. Итого городов: ${cities.length}');
+        log.d('✅ Добавлены все 72 города ДНР из констант. Итого городов: ${cities.length}');
         // Сортируем для удобства
         cities.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
       }
@@ -2709,19 +2710,19 @@ class _RealEstateListingsFilterScreenState
         setState(() {
           _cities = cities;
         });
-        print(
+        log.d(
           '✅ Загружено ${_cities.length} городов для области "$regionName"',
         );
       }
     } catch (e) {
-      print('❌ Ошибка загрузки городов: $e');
+      log.d('❌ Ошибка загрузки городов: $e');
       if (mounted) {
         try {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Ошибка загрузки городов: $e')),
           );
         } catch (ex) {
-          print('⚠️ Cannot show snackbar: $ex');
+          log.d('⚠️ Cannot show snackbar: $ex');
         }
       }
     }

@@ -10,6 +10,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/auth_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
@@ -66,7 +67,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
       // Получаем userId из токена
       _currentUserId = AuthService.extractUserIdFromToken(token);
-      // print('📱 Загружаем контакты для userId: $_currentUserId');
+      // log.d('📱 Загружаем контакты для userId: $_currentUserId');
 
       final savedContacts = _getSavedContactsFromLocal();
       List<Map<String, dynamic>> allContacts = [];
@@ -98,7 +99,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             });
           }
         } catch (e) {
-          // print('❌ Error loading user profile: $e');
+          // log.d('❌ Error loading user profile: $e');
         }
       }
 
@@ -108,7 +109,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      // print('❌ Error loading contacts: $e');
+      // log.d('❌ Error loading contacts: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -127,7 +128,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         decoded.map((item) => Map<String, dynamic>.from(item)),
       );
     } catch (e) {
-      // print('❌ Error parsing saved contacts: $e');
+      // log.d('❌ Error parsing saved contacts: $e');
       return [];
     }
   }
@@ -139,7 +140,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
     if (!savedContacts.any((c) => c['user_id'] == userId)) {
       savedContacts.add({'user_id': userId, 'phone': phone});
       UserService.saveLocal(key, jsonEncode(savedContacts));
-      // print('💾 Контакт сохранен для userId $_currentUserId: user_id=$userId');
+      // log.d('💾 Контакт сохранен для userId $_currentUserId: user_id=$userId');
     }
   }
 
@@ -400,7 +401,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         }
       }
     } catch (e) {
-      // print('Error adding contact: $e');
+      // log.d('Error adding contact: $e');
       if (mounted) {
         try {
           Navigator.pop(context);
@@ -477,7 +478,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         );
       }
     } catch (e) {
-      // print('❌ Error: $e');
+      // log.d('❌ Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Ошибка: $e'), backgroundColor: Colors.red),

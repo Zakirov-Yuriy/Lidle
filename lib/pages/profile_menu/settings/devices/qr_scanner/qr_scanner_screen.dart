@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:lidle/core/logger.dart';
 
 class QrScannerScreen extends StatelessWidget {
   const QrScannerScreen({super.key});
@@ -24,7 +25,7 @@ class QrScannerScreen extends StatelessWidget {
 
               if (value != null) {
                 Navigator.pop(context);
-                debugPrint('QR scanned: $value');
+                log.d('QR scanned: $value');
               }
             },
           ),

@@ -29,6 +29,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -191,7 +192,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         });
       }
     } catch (e) {
-      print('❌ Ошибка загрузки объявлений: $e');
+      log.d('❌ Ошибка загрузки объявлений: $e');
       if (mounted) {
         setState(() {
           _isLoadingListings = false;
@@ -247,7 +248,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         });
       }
     } catch (e) {
-      print('❌ Ошибка загрузки количества предложений цен: $e');
+      log.d('❌ Ошибка загрузки количества предложений цен: $e');
       if (mounted) {
         setState(() {
           _isLoadingPriceOffers = false;
@@ -311,9 +312,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
             builder: (context, navigationState) {
               return BlocBuilder<ProfileBloc, ProfileState>(
                 builder: (context, profileState) {
-                  // print();
+                  // log.d();
                   if (profileState is ProfileLoaded) {
-                    // print('✅ ProfileLoaded: ${profileState.name}');
+                    // log.d('✅ ProfileLoaded: ${profileState.name}');
                   }
                   return Scaffold(
                     extendBody: true,
@@ -374,8 +375,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                               HiveService.getFavorites();
 
                                           // ✅ Отладка: логируем количество избранных
-                                          // print();
-                                          // print('   Favorites IDs: $favorites');
+                                          // log.d();
+                                          // log.d('   Favorites IDs: $favorites');
 
                                           // Используем длину списка избранного напрямую
                                           // (это более надёжно чем подсчёт через ListingsBloc.staticListings)

@@ -9,6 +9,7 @@ import 'package:lidle/blocs/navigation/navigation_event.dart';
 import 'package:lidle/widgets/sort_dialog.dart';
 import 'package:lidle/models/review_model.dart';
 import 'package:lidle/widgets/cards/review_card.dart';
+import 'package:lidle/core/logger.dart';
 
 class ReviewsEmptyPage extends StatefulWidget {
   static const routeName = '/reviews-empty';
@@ -125,7 +126,7 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
                                 _selectedSortOption = selectedOption;
                               });
                               // TODO: Реализовать функцию сортировки на основе выбранного варианта
-                              // print("Выбран вариант сортировки: $selectedOption");
+                              // log.d("Выбран вариант сортировки: $selectedOption");
                             }
                           },
                         ),

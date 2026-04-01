@@ -7,6 +7,7 @@ import 'package:lidle/features/cart/domain/entities/cart_screen.dart';
 import 'package:lidle/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/core/logger.dart';
 
 class ProductCard extends StatefulWidget {
   final Listing listing;
@@ -47,13 +48,13 @@ class _ProductCardState extends State<ProductCard> {
       if (advertId != null) {
         if (_isFavorite) {
           // Добавляем в wishlist на сервере
-          print('💗 ProductCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
+          log.i('💗 ProductCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
           context.read<WishlistBloc>().add(
             AddToWishlistEvent(listingId: advertId),
           );
         } else {
           // Удаляем из wishlist на сервере
-          print('💔 ProductCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
+          log.i('💔 ProductCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
           context.read<WishlistBloc>().add(
             RemoveFromWishlistEvent(listingId: advertId),
           );

@@ -26,6 +26,7 @@ import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/full_category_screen/property_gallery_screen.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Мини-экран деталей недвижимости"
@@ -149,18 +150,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.initState();
     _listing = widget.listing;
     _imagesPrecached = false;
-    // print();
+    // log.d();
 
     // 🔄 Загружаем полное объявление, если:
     // 1. Нет изображений (значит это базовые данные со списка)
     // 2. Нет достаточно информации для отображения
     // Если объявление уже полностью загружено, не загружаем повторно
     if (_listing.images.isEmpty) {
-      // print('📥 MiniPropertyDetailsScreen: Загружаем полные данные объявления');
+      // log.d('📥 MiniPropertyDetailsScreen: Загружаем полные данные объявления');
       _isAdvertLoaded = false;
       context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
     } else {
-      // print('✅ MiniPropertyDetailsScreen: Используем уже загруженные данные');
+      // log.d('✅ MiniPropertyDetailsScreen: Используем уже загруженные данные');
       _isAdvertLoaded = true;
     }
 
@@ -193,7 +194,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     try {
       final token = TokenService.currentToken;
       if (token == null) {
-        // print('❌ Токен не найден для загрузки похожих объявлений');
+        // log.d('❌ Токен не найден для загрузки похожих объявлений');
         return;
       }
 
@@ -213,10 +214,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           _isSimilarListingsLoading = false;
         });
 
-        // print('✅ Загружены похожие объявления: ${_similarListings.length} шт.');
+        // log.d('✅ Загружены похожие объявления: ${_similarListings.length} шт.');
       }
     } catch (e) {
-      // print('❌ Ошибка при загрузке похожих объявлений: $e');
+      // log.d('❌ Ошибка при загрузке похожих объявлений: $e');
       if (mounted) {
         setState(() {
           _isSimilarListingsLoading = false;
@@ -263,10 +264,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           _isPriceOffersLoading = false;
         });
 
-        // print('✅ Загружены предложения цены: ${_priceOffers.length} шт.');
+        // log.d('✅ Загружены предложения цены: ${_priceOffers.length} шт.');
       }
     } catch (e) {
-      print('⚠️ Ошибка при загрузке предложений цены (это нормально, если объявление не ваше): $e');
+      log.d('⚠️ Ошибка при загрузке предложений цены (это нормально, если объявление не ваше): $e');
       if (mounted) {
         setState(() {
           _isPriceOffersLoading = false;
@@ -297,7 +298,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ).timeout(
             const Duration(seconds: 5),
             onTimeout: () {
-              // print('Timeout loading image: $imageUrl');
+              // log.d('Timeout loading image: $imageUrl');
             },
           ),
         );
@@ -311,7 +312,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ).timeout(
             const Duration(seconds: 3),
             onTimeout: () {
-              // print('Timeout loading asset image: $imageUrl');
+              // log.d('Timeout loading asset image: $imageUrl');
             },
           ),
         );
@@ -320,9 +321,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
     try {
       await Future.wait(precacheFutures, eagerError: false);
-      // print('Successfully precached ${images.length} images');
+      // log.d('Successfully precached ${images.length} images');
     } catch (e) {
-      // print('Error precaching images: $e');
+      // log.d('Error precaching images: $e');
     }
 
     if (mounted) {
@@ -368,9 +369,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           // Показываем обычный контент
           return BlocListener<ListingsBloc, ListingsState>(
       listener: (context, state) {
-        // print('BlocListener in MiniPropertyDetailsScreen: $state');
+        // log.d('BlocListener in MiniPropertyDetailsScreen: $state');
         if (state is AdvertLoaded) {
-          // print();
+          // log.d();
           setState(() {
             _isAdvertLoaded = true;
             if (state.listing.images.isNotEmpty) {
@@ -397,7 +398,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
               );
             }
             // 🔍 DEBUG: Логируем значение isBargain после загрузки
-            // print('🔍 DEBUG: Loaded listing ID=${_listing.id}, isBargain=${_listing.isBargain}');
+            // log.d('🔍 DEBUG: Loaded listing ID=${_listing.id}, isBargain=${_listing.isBargain}');
           });
           // Precache images after loading the advert
           _precacheImages();
@@ -834,8 +835,8 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     final Map<String, dynamic> chars = _listing.characteristics ?? {};
     
     // DEBUG: Выводим характеристики в консоль для отладки
-    // print('[DEBUG] Характеристики в карточке:');
-    // chars.forEach((k, v) => print('  $k: $v'));
+    // log.d('[DEBUG] Характеристики в карточке:');
+    // chars.forEach((k, v) => log.d('  $k: $v'));
 
     // Формируем список виджетов для отображения характеристик
     final List<Widget> charWidgets = [];
@@ -1360,7 +1361,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
     try {
       // Получаем телефоны из API
-      print('📞 Loading phones for seller ID: $userId');
+      log.d('📞 Loading phones for seller ID: $userId');
       
       // Безопасный парсинг userId
       final userIdInt = int.tryParse(userId);
@@ -1406,7 +1407,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         },
       );
     } catch (e) {
-      print('❌ Error loading phone numbers: $e');
+      log.d('❌ Error loading phone numbers: $e');
 
       // Закрываем диалог загрузки
       if (mounted) {

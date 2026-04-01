@@ -1,6 +1,7 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/core/logger.dart';
 
 part 'my_adverts_service.g.dart';
 
@@ -153,11 +154,11 @@ class MyAdvertsService {
       );
 
       // ignore: avoid_print
-      // print('📢 MyAdvertsService.getMyAdverts() response:');
+      // log.d('📢 MyAdvertsService.getMyAdverts() response:');
       // ignore: avoid_print
-      // print('   Response keys: ${response.keys.toList()}');
+      // log.d('   Response keys: ${response.keys.toList()}');
       // ignore: avoid_print
-      // print('   Full response: $response');
+      // log.d('   Full response: $response');
 
       return MyAdvertsResponse.fromJson(response);
     } catch (e) {

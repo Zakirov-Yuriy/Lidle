@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/core/logger.dart';
 
 class CategoryCard extends StatelessWidget {
   final Category category;
@@ -16,7 +17,7 @@ class CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // print('🎯 CategoryCard tapped: ${category.title}');
+        // log.d('🎯 CategoryCard tapped: ${category.title}');
         onTap?.call();
       },
       child: Container(

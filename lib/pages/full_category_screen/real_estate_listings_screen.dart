@@ -23,6 +23,7 @@ import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Универсальный экран объявлений по категориям"
@@ -153,21 +154,21 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             );
             attributes.add(attr);
           } catch (e) {
-            print('❌ Error parsing attribute at index $i: $e');
+            log.d('❌ Error parsing attribute at index $i: $e');
           }
         }
 
         if (mounted) {
           setState(() {
             _attributes = attributes;
-            print('✅ Loaded ${_attributes.length} attributes for filter display');
+            log.d('✅ Loaded ${_attributes.length} attributes for filter display');
           });
         }
       } else {
-        print('⚠️  Failed to load attributes: ${response['message']}');
+        log.d('⚠️  Failed to load attributes: ${response['message']}');
       }
     } catch (e) {
-      print('❌ Error loading attributes: $e');
+      log.d('❌ Error loading attributes: $e');
       // Не показываем ошибку пользователю, просто продолжаем
     }
   }
@@ -207,7 +208,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         }
       }
     } catch (e) {
-      print('⚠️  Error getting attribute value for $attributeId=$cleanValueId: $e');
+      log.d('⚠️  Error getting attribute value for $attributeId=$cleanValueId: $e');
     }
 
     // Fallback для известных значений
@@ -260,14 +261,14 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }) async {
     try {
       if (!isNextPage) {
-        print('\n🔵 ═══════════════════════════════════════');
-        print('🔵 _loadAdverts() CALLED');
-        print('🔵 forceRefresh: $forceRefresh');
-        print('🔵 Applied filters: ${_appliedFilters.keys.toList()}');
+        log.d('\n🔵 ═══════════════════════════════════════');
+        log.d('🔵 _loadAdverts() CALLED');
+        log.d('🔵 forceRefresh: $forceRefresh');
+        log.d('🔵 Applied filters: ${_appliedFilters.keys.toList()}');
         _appliedFilters.forEach((key, value) {
-          print('   ├─ $key: ${value is Map ? "Map(${(value as Map).keys.toList()})" : value}');
+          log.d('   ├─ $key: ${value is Map ? "Map(${(value as Map).keys.toList()})" : value}');
         });
-        print('🔵 ═══════════════════════════════════════\n');
+        log.d('🔵 ═══════════════════════════════════════\n');
         
         setState(() {
           _isLoading = true;
@@ -287,7 +288,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final cacheKey = _getCacheKey(sort: sort);
         if (_isCacheValid(cacheKey)) {
           final cachedListings = _listingsCache[cacheKey] ?? [];
-          print('💾 CACHE HIT: Loaded ${cachedListings.length} listings from cache');
+          log.d('💾 CACHE HIT: Loaded ${cachedListings.length} listings from cache');
           setState(() {
             _listings = cachedListings;
             _isLoading = false;
@@ -318,7 +319,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
       // Если есть примененные фильтры и нет результатов, предлагаем очистить фильтры
       if (response.data.isEmpty && _appliedFilters.isNotEmpty && !isNextPage) {
-        print(
+        log.d(
           'ℹ️  No results with applied filters. User should adjust filters.',
         );
       }
@@ -332,36 +333,36 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       // ═══════════════════════════════════════════════════════════════
       // 🔬 ДИАГНОСТИКА: Логируем структуру характеристик для первых 3 объявлений
       // ═══════════════════════════════════════════════════════════════
-      print('\n📊 LISTINGS DATA STRUCTURE (for first 3):');
-      print('🔍 FULL LIST OF IDs RECEIVED:');
-      print('   Total: ${listingsToFilter.length} listings');
-      print('   IDs: ${listingsToFilter.map((l) => l.id).toList()}');
+      log.d('\n📊 LISTINGS DATA STRUCTURE (for first 3):');
+      log.d('🔍 FULL LIST OF IDs RECEIVED:');
+      log.d('   Total: ${listingsToFilter.length} listings');
+      log.d('   IDs: ${listingsToFilter.map((l) => l.id).toList()}');
       
       for (int i = 0; i < listingsToFilter.take(3).length; i++) {
         final listing = listingsToFilter[i];
-        print('\n   ✓ Listing #${i + 1}: ID=${listing.id}');
-        print('     Title: ${listing.title}');
-        print('     Characteristics keys: ${listing.characteristics.keys.toList()}');
+        log.d('\n   ✓ Listing #${i + 1}: ID=${listing.id}');
+        log.d('     Title: ${listing.title}');
+        log.d('     Characteristics keys: ${listing.characteristics.keys.toList()}');
 
         // Логируем КАЖДУЮ характеристику подробно
         listing.characteristics.forEach((key, value) {
-          print('     ├─ ID=$key:');
+          log.d('     ├─ ID=$key:');
           if (value is Map) {
-            print('     │  (Map with ${value.length} keys)');
+            log.d('     │  (Map with ${value.length} keys)');
             value.forEach((k, v) {
-              print('     │  ├─ $k: $v (${v.runtimeType})');
+              log.d('     │  ├─ $k: $v (${v.runtimeType})');
             });
           } else if (value is List) {
-            print('     │  (List with ${value.length} items)');
+            log.d('     │  (List with ${value.length} items)');
             for (int j = 0; j < value.take(2).length; j++) {
-              print('     │  ├─ [$j]: ${value[j]} (${value[j].runtimeType})');
+              log.d('     │  ├─ [$j]: ${value[j]} (${value[j].runtimeType})');
             }
           } else {
-            print('     │  Value: $value (${value.runtimeType})');
+            log.d('     │  Value: $value (${value.runtimeType})');
           }
         });
       }
-      print('═══════════════════════════════════════════════════════════════\n');
+      log.d('═══════════════════════════════════════════════════════════════\n');
 
       var sortedNewListings = _applyClientSideFiltering(
         listingsToFilter,
@@ -379,21 +380,21 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           _appliedFilters['sort_date'] != null &&
           (_appliedFilters['sort_date'] as String).isNotEmpty) {
         sortByDate = _appliedFilters['sort_date'] as String;
-        print('🔀 SORT FROM FILTERS (DATE): $sortByDate');
+        log.d('🔀 SORT FROM FILTERS (DATE): $sortByDate');
       }
 
       if (_appliedFilters.containsKey('sort_price') &&
           _appliedFilters['sort_price'] != null &&
           (_appliedFilters['sort_price'] as String).isNotEmpty) {
         sortByPrice = _appliedFilters['sort_price'] as String;
-        print('🔀 SORT FROM FILTERS (PRICE): $sortByPrice');
+        log.d('🔀 SORT FROM FILTERS (PRICE): $sortByPrice');
       }
 
       if (sortByDate != null && sortByDate.isNotEmpty) {
-        print(
+        log.d(
           '🔀 CLIENT-SIDE SORTING: Date=$sortByDate, Price=${sortByPrice ?? "none"}',
         );
-        print('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
+        log.d('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
 
         // МУЛЬТИСОРТИРОВКА: сначала по дате, потом по цене
         sortedNewListings.sort((a, b) {
@@ -425,11 +426,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           return dateComparison;
         });
 
-        print('🔀 AFTER sorting: ${sortedNewListings.length} listings');
+        log.d('🔀 AFTER sorting: ${sortedNewListings.length} listings');
       } else if (sortByPrice != null && sortByPrice.isNotEmpty) {
         // Если выбрана только сортировка ПО ЦЕНЕ (без даты)
-        print('🔀 CLIENT-SIDE SORTING: Price only=$sortByPrice');
-        print('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
+        log.d('🔀 CLIENT-SIDE SORTING: Price only=$sortByPrice');
+        log.d('🔀 BEFORE sorting: ${sortedNewListings.length} listings');
 
         sortedNewListings.sort((a, b) {
           final priceA = double.tryParse(a.price) ?? 0;
@@ -444,7 +445,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           return 0;
         });
 
-        print('🔀 AFTER sorting: ${sortedNewListings.length} listings');
+        log.d('🔀 AFTER sorting: ${sortedNewListings.length} listings');
       }
 
       final fullListings = sortedNewListings;
@@ -454,7 +455,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final cacheKey = _getCacheKey(sort: sort);
         _listingsCache[cacheKey] = fullListings;
         _cacheTimestamps[cacheKey] = DateTime.now();
-        print(
+        log.d(
           '💾 CACHED: Saved ${fullListings.length} listings to cache (key=$cacheKey)',
         );
       }
@@ -473,7 +474,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         _isLoadingMore = false;
       });
     } catch (e) {
-      print('❌ Error loading listings: $e');
+      log.d('❌ Error loading listings: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -499,7 +500,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         return DateTime(year, month, day);
       }
     } catch (e) {
-      print('⚠️ Error parsing date "$dateString": $e');
+      log.d('⚠️ Error parsing date "$dateString": $e');
     }
     // Возвращаем сегодняшнюю дату если парсинг не удался
     return DateTime.now();
@@ -513,7 +514,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     if (selectedOptions.contains('Сначала дешевые')) sort = 'cheap';
 
     if (sort != null) {
-      print('📊 SORT SELECTED: $sort (${selectedOptions.join(", ")})');
+      log.d('📊 SORT SELECTED: $sort (${selectedOptions.join(", ")})');
       _currentSort = sort; // 💾 Сохраняем текущий тип сортировки
       _loadAdverts(sort: sort);
     }
@@ -818,10 +819,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           const Spacer(),
           GestureDetector(
             onTap: () {
-              print('\n🟣 ════════════════════════════════════════');
-              print('🟣 FILTERS BUTTON TAPPED on listings_screen');
-              print('🟣 Current applied filters: $_appliedFilters');
-              print('🟣 ════════════════════════════════════════\n');
+              log.d('\n🟣 ════════════════════════════════════════');
+              log.d('🟣 FILTERS BUTTON TAPPED on listings_screen');
+              log.d('🟣 Current applied filters: $_appliedFilters');
+              log.d('🟣 ════════════════════════════════════════\n');
 
               // Открыть динамический фильтр для листинга
               if (widget.categoryId != null) {
@@ -835,41 +836,41 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                     ),
                   ),
                 ).then((filters) {
-                  print('\n🟣 ════════════════════════════════════════');
-                  print('🟣 RETURNED FROM FILTER SCREEN');
-                  print('🟣 Filter type: ${filters?.runtimeType}');
-                  print('🟣 Filter is null? ${filters == null}');
-                  print('🟣 Filter is Map? ${filters is Map<String, dynamic>}');
-                  print('🟣 ════════════════════════════════════════\n');
+                  log.d('\n🟣 ════════════════════════════════════════');
+                  log.d('🟣 RETURNED FROM FILTER SCREEN');
+                  log.d('🟣 Filter type: ${filters?.runtimeType}');
+                  log.d('🟣 Filter is null? ${filters == null}');
+                  log.d('🟣 Filter is Map? ${filters is Map<String, dynamic>}');
+                  log.d('🟣 ════════════════════════════════════════\n');
 
                   if (filters != null && filters is Map<String, dynamic>) {
                     // Применить фильтры и перезагрузить объявления
-                    print('\n✅ ═══════════════════════════════════════');
-                    print('✅ FILTERS RETURNED FROM FILTER SCREEN');
-                    print('✅ ═══════════════════════════════════════');
-                    print('✅ Filter count: ${filters.length}');
+                    log.d('\n✅ ═══════════════════════════════════════');
+                    log.d('✅ FILTERS RETURNED FROM FILTER SCREEN');
+                    log.d('✅ ═══════════════════════════════════════');
+                    log.d('✅ Filter count: ${filters.length}');
                     filters.forEach((key, value) {
-                      print('   [$key] = ${value is Map ? "${(value as Map).keys.toList()}" : value} (type: ${value.runtimeType})');
+                      log.d('   [$key] = ${value is Map ? "${(value as Map).keys.toList()}" : value} (type: ${value.runtimeType})');
                     });
-                    print('✅ ═══════════════════════════════════════\n');
+                    log.d('✅ ═══════════════════════════════════════\n');
 
                     setState(() {
                       _appliedFilters = filters;
                       // 🟢 Обновляем выбранный город из фильтров
                       if (filters.containsKey('city_name') && filters['city_name'] is String) {
                         _selectedCityName = filters['city_name'] as String;
-                        print('🌍 City updated from filters: $_selectedCityName');
+                        log.d('🌍 City updated from filters: $_selectedCityName');
                       }
                       _currentPage = 1;
                       _listings.clear();
                       // 🟢 ВАЖНО: Инвалидируем кеш при изменении фильтров
                       _cacheTimestamps.clear();
                       _listingsCache.clear();
-                      print('🗑️  Cache cleared due to filter change');
+                      log.d('🗑️  Cache cleared due to filter change');
                     });
                     _loadAdverts(forceRefresh: true);
                   } else {
-                    print('❌ No filters returned or filters is not a Map');
+                    log.d('❌ No filters returned or filters is not a Map');
                   }
                 });
               } else {
@@ -976,7 +977,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                 _listings.clear();
                 _cacheTimestamps.clear();
                 _listingsCache.clear();
-                print('🗑️  Filter removed: $attributeName = $valueName');
+                log.d('🗑️  Filter removed: $attributeName = $valueName');
               });
               _loadAdverts(forceRefresh: true);
             },
@@ -1020,7 +1021,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                 _listings.clear();
                 _cacheTimestamps.clear();
                 _listingsCache.clear();
-                print('🗑️  Range filter removed: $displayText');
+                log.d('🗑️  Range filter removed: $displayText');
               });
               _loadAdverts(forceRefresh: true);
             },
@@ -1314,13 +1315,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return listings;
     }
 
-    print(
+    log.d(
       '\n🟢 ═══════════════════════════════════════════════════════════════',
     );
-    print('🟢 CLIENT-SIDE FILTERING STARTED');
-    print('🟢 Initial listings: ${listings.length}');
-    print('🟢 Filters to apply: ${filters.keys.toList()}');
-    print(
+    log.d('🟢 CLIENT-SIDE FILTERING STARTED');
+    log.d('🟢 Initial listings: ${listings.length}');
+    log.d('🟢 Filters to apply: ${filters.keys.toList()}');
+    log.d(
       '🟢 ═══════════════════════════════════════════════════════════════\n',
     );
 
@@ -1334,8 +1335,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         (filters['value_selected'] as Map).isNotEmpty;
 
     if (hasApiFilters) {
-      print('⏭️  SKIPPING CLIENT-SIDE FILTERING - API ALREADY FILTERED');
-      print('   API фильтры уже применены на сервере, используем результаты как есть\n');
+      log.d('⏭️  SKIPPING CLIENT-SIDE FILTERING - API ALREADY FILTERED');
+      log.d('   API фильтры уже применены на сервере, используем результаты как есть\n');
     } else {
       // 1️⃣ ФИЛЬТРАЦИЯ ПО ГОРОДУ
       if (filters.containsKey('city_name') &&
@@ -1349,19 +1350,19 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           filters['value_selected'] is Map) {
         final valueSelectedMap = (filters['value_selected'] as Map)
             .cast<String, dynamic>();
-        print('🔍 VALUE_SELECTED FILTERS:');
-        print('   Full Map: $valueSelectedMap');
+        log.d('🔍 VALUE_SELECTED FILTERS:');
+        log.d('   Full Map: $valueSelectedMap');
         valueSelectedMap.forEach((k, v) {
-          print('   ├─ Key=$k, Value=$v (type=${v.runtimeType})');
+          log.d('   ├─ Key=$k, Value=$v (type=${v.runtimeType})');
           if (v is Map) {
-            print('   │  └─ Map keys: ${v.keys.toList()}');
+            log.d('   │  └─ Map keys: ${v.keys.toList()}');
             v.forEach((mk, mv) {
-              print('   │     ├─ $mk: $mv');
+              log.d('   │     ├─ $mk: $mv');
             });
           } else if (v is List) {
-            print('   │  └─ List length: ${v.length}');
+            log.d('   │  └─ List length: ${v.length}');
             v.forEach((item) {
-              print('   │     ├─ $item (type=${item.runtimeType})');
+              log.d('   │     ├─ $item (type=${item.runtimeType})');
             });
           }
         });
@@ -1391,12 +1392,12 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       );
     }
 
-    print(
+    log.d(
       '\n🟢 ═══════════════════════════════════════════════════════════════',
     );
-    print('🟢 CLIENT-SIDE FILTERING COMPLETED');
-    print('🟢 Final listings: ${result.length}');
-    print(
+    log.d('🟢 CLIENT-SIDE FILTERING COMPLETED');
+    log.d('🟢 Final listings: ${result.length}');
+    log.d(
       '🟢 ═══════════════════════════════════════════════════════════════\n',
     );
 
@@ -1405,18 +1406,18 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
   /// Фильтрует объявления по названию города
   List<Listing> _filterByCity(List<Listing> listings, String cityName) {
-    print('🟢 FILTER BY CITY: "$cityName"');
-    print('   BEFORE: ${listings.length} listings');
+    log.d('🟢 FILTER BY CITY: "$cityName"');
+    log.d('   BEFORE: ${listings.length} listings');
 
     final filtered = listings.where((listing) {
       final matches = listing.location.startsWith(cityName);
       if (!matches) {
-        print('      ❌ ID=${listing.id}: ${listing.location}');
+        log.d('      ❌ ID=${listing.id}: ${listing.location}');
       }
       return matches;
     }).toList();
 
-    print('   AFTER: ${filtered.length} listings\n');
+    log.d('   AFTER: ${filtered.length} listings\n');
     return filtered;
   }
 
@@ -1430,36 +1431,36 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return listings;
     }
 
-    print('🟢 FILTER BY value_selected ATTRIBUTES');
-    print('   Filters: $valueSelectedFilters');
+    log.d('🟢 FILTER BY value_selected ATTRIBUTES');
+    log.d('   Filters: $valueSelectedFilters');
 
     // DEBUG: логируем структуру фильтров
     valueSelectedFilters.forEach((key, value) {
-      print('   Filter key=$key, value=$value (type=${value.runtimeType})');
+      log.d('   Filter key=$key, value=$value (type=${value.runtimeType})');
       if (value is List) {
-        print('      List items: $value');
+        log.d('      List items: $value');
       } else if (value is Set) {
-        print('      Set items: $value');
+        log.d('      Set items: $value');
       }
     });
 
-    print('   BEFORE: ${listings.length} listings');
+    log.d('   BEFORE: ${listings.length} listings');
 
     // ДЕБАГ: показываем характеристики для первых 5 объявлений
-    print('\n📊 ХАРАКТЕРИСТИКИ ПЕРВЫХ 5 ОБЪЯВЛЕНИЙ:');
+    log.d('\n📊 ХАРАКТЕРИСТИКИ ПЕРВЫХ 5 ОБЪЯВЛЕНИЙ:');
     for (int i = 0; i < listings.length && i < 5; i++) {
       final listing = listings[i];
-      print('\n   📌 Объявление ID=${listing.id}:');
+      log.d('\n   📌 Объявление ID=${listing.id}:');
       if (listing.characteristics.isEmpty) {
-        print('      ⚠️ БЕЗ ХАРАКТЕРИСТИК!');
+        log.d('      ⚠️ БЕЗ ХАРАКТЕРИСТИК!');
       } else {
-        print('      Всего своиств: ${listing.characteristics.length}');
+        log.d('      Всего своиств: ${listing.characteristics.length}');
         listing.characteristics.forEach((attrId, value) {
-          print('      ├─ Атрибут $attrId: $value');
+          log.d('      ├─ Атрибут $attrId: $value');
         });
       }
     }
-    print('\n🟢 НАЧАЛО ФИЛЬТРАЦИИ:\n');
+    log.d('\n🟢 НАЧАЛО ФИЛЬТРАЦИИ:\n');
 
     final filtered = listings.where((listing) {
       // Каждый фильтр должен совпадать - логика AND между фильтрами
@@ -1472,16 +1473,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
         // DEBUG для этого конкретного объявления
         if (listing.id == 104 || listing.id == 103) {
-          print('   🔍🔍 ID=${listing.id}, атрибут $attrIdStr:');
-          print('      От фильтра ожидаем: $selectedValueIds (type=${selectedValueIds.runtimeType})');
-          print('      В объявлении: $characteristic (type=${characteristic?.runtimeType})');
+          log.d('   🔍🔍 ID=${listing.id}, атрибут $attrIdStr:');
+          log.d('      От фильтра ожидаем: $selectedValueIds (type=${selectedValueIds.runtimeType})');
+          log.d('      В объявлении: $characteristic (type=${characteristic?.runtimeType})');
         }
 
         // 🔴 ВАЖНО: Если нет характеристики - ИСКЛЮЧАЕМ объявление
         // (не пропускаем фильтр, а полностью исключаем объявление)
         if (characteristic == null) {
           if (listing.id == 104 || listing.id == 103) {
-            print('      ❌ БЕЗ ХАРАКТЕРИСТИКИ\n');
+            log.d('      ❌ БЕЗ ХАРАКТЕРИСТИКИ\n');
           }
           return false; // Объявление НЕ прходит фильтр
         }
@@ -1498,9 +1499,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final selectedIds = _normalizeToSet(selectedValueIds);
 
         if (listing.id == 104 || listing.id == 103) {
-          print('      Основное значение: $characteristicSet');
-          print('      Все значения: $allValues');
-          print('      Ожидаемые значения (нормализованные): $selectedIds');
+          log.d('      Основное значение: $characteristicSet');
+          log.d('      Все значения: $allValues');
+          log.d('      Ожидаемые значения (нормализованные): $selectedIds');
         }
 
         // ✅ ВАЖНО: Проверяем совпадение по ID/значениям
@@ -1522,7 +1523,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         }
 
         if (listing.id == 104 || listing.id == 103) {
-          print('      Результат: ${hasMatch ? '✅ СОВПАДАЕТ' : '❌ НЕ СОВПАДАЕТ'}\n');
+          log.d('      Результат: ${hasMatch ? '✅ СОВПАДАЕТ' : '❌ НЕ СОВПАДАЕТ'}\n');
         }
 
         if (!hasMatch) {
@@ -1533,7 +1534,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return true;
     }).toList();
 
-    print('   AFTER: ${filtered.length} listings\n');
+    log.d('   AFTER: ${filtered.length} listings\n');
     return filtered;
   }
 
@@ -1549,14 +1550,14 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           characteristic['value'] != null) {
         // Возвращаем как строку для сравнения (API отправляет ID как строки)
         final value = characteristic['value'];
-        print('      NAMES: extracted "value" field: $value (type=${value.runtimeType})');
+        log.d('      NAMES: extracted "value" field: $value (type=${value.runtimeType})');
         return value is int ? value.toString() : value.toString();
       }
 
       // 🔑 ПРИОРИТЕТ 2: Если есть поле 'title' - используем название
       if (characteristic.containsKey('title') &&
           characteristic['title'] != null) {
-        print(
+        log.d(
           '      NAMES: extracted "title" field: ${characteristic['title']}',
         );
         return characteristic['title'].toString();
@@ -1565,7 +1566,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       // 🔑 ПРИОРИТЕТ 3: Если есть 'value_id' - это ID значения
       if (characteristic.containsKey('value_id') &&
           characteristic['value_id'] != null) {
-        print(
+        log.d(
           '      NAMES: extracted "value_id" field: ${characteristic['value_id']}',
         );
         return characteristic['value_id'].toString();
@@ -1592,14 +1593,14 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           values.add(v.toString()); // Строка ("Река", "154" и т.д.)
         }
       });
-      print('      VALUES: all from Map: $values');
+      log.d('      VALUES: all from Map: $values');
     } else {
       // Если это не Map, добавляем само значение
       final valueStr = characteristic.toString();
       if (valueStr.isNotEmpty) {
         values.add(valueStr);
       }
-      print('      VALUES: single value: $values');
+      log.d('      VALUES: single value: $values');
     }
 
     return values;
@@ -1615,29 +1616,29 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return listings;
     }
 
-    print('\n🟢 ═══════════════════════════════════════════════════════════');
-    print('🟢 FILTER BY values ATTRIBUTES (Range filters)');
-    print('🟢 Filter count: ${valuesFilters.length}');
+    log.d('\n🟢 ═══════════════════════════════════════════════════════════');
+    log.d('🟢 FILTER BY values ATTRIBUTES (Range filters)');
+    log.d('🟢 Filter count: ${valuesFilters.length}');
     
     // 📊 Логируем ПОЛНУЮ структуру валидата фильтров
-    print('\n🔬 FILTER STRUCTURE DEBUG:');
+    log.d('\n🔬 FILTER STRUCTURE DEBUG:');
     valuesFilters.forEach((key, value) {
-      print('   ├─ Key="$key" (type=${key.runtimeType}):');
+      log.d('   ├─ Key="$key" (type=${key.runtimeType}):');
       if (value is Map) {
-        print('   │  └─ Map (${value.length} items):');
+        log.d('   │  └─ Map (${value.length} items):');
         value.forEach((k, v) {
-          print('   │     ├─ $k: $v (${v.runtimeType})');
+          log.d('   │     ├─ $k: $v (${v.runtimeType})');
         });
       } else if (value is List) {
-        print('   │  └─ List (${value.length} items)');
+        log.d('   │  └─ List (${value.length} items)');
       } else {
-        print('   │  └─ ${value.runtimeType}: $value');
+        log.d('   │  └─ ${value.runtimeType}: $value');
       }
     });
-    print('═══════════════════════════════════════════════════════════');
+    log.d('═══════════════════════════════════════════════════════════');
     
-    print('🟢 Listings BEFORE: ${listings.length}');
-    print('🟢 ═══════════════════════════════════════════════════════════');
+    log.d('🟢 Listings BEFORE: ${listings.length}');
+    log.d('🟢 ═══════════════════════════════════════════════════════════');
 
     final filtered = listings.where((listing) {
       // DEBUG: Логируем информацию о каждом объявлении
@@ -1648,18 +1649,18 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final attrIdStr = filterEntry.key;
         final filterValue = filterEntry.value;
 
-        print('\n   🔍 Checking filter: attr=$attrIdStr');
-        print('      Filter value: $filterValue (type: ${filterValue.runtimeType})');
-        print('      Listing characteristics keys: ${listingAttrs.keys.toList()}');
+        log.d('\n   🔍 Checking filter: attr=$attrIdStr');
+        log.d('      Filter value: $filterValue (type: ${filterValue.runtimeType})');
+        log.d('      Listing characteristics keys: ${listingAttrs.keys.toList()}');
         
         // Получаем значение из characteristics
         final characteristic = listingAttrs[attrIdStr];
-        print('      Characteristic for attr=$attrIdStr: $characteristic');
+        log.d('      Characteristic for attr=$attrIdStr: $characteristic');
 
         // 🟢 ИЗМЕНЕННАЯ ЛОГИКА: Если нет характеристики - ПРОПУСКАЕМ этот фильтр (не исключаем объявление)
         // Это позволит показать объявления, даже если некоторые не имеют этого атрибута
         if (characteristic == null) {
-          print('      ⚠️  NO CHARACTERISTIC for attr=$attrIdStr - SKIPPING THIS FILTER');
+          log.d('      ⚠️  NO CHARACTERISTIC for attr=$attrIdStr - SKIPPING THIS FILTER');
           continue;  // ← Важное изменение: continue вместо return false
         }
 
@@ -1673,11 +1674,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           final minNum = _parseNumber(minFilter);
           final maxNum = _parseNumber(maxFilter);
 
-          print('      Range filter: min=$minNum, max=$maxNum');
+          log.d('      Range filter: min=$minNum, max=$maxNum');
 
           // Если оба пусты, пропускаем фильтр
           if (minNum == null && maxNum == null) {
-            print('      ⚠️  Both min and max are empty - SKIPPING');
+            log.d('      ⚠️  Both min and max are empty - SKIPPING');
             continue;
           }
 
@@ -1687,14 +1688,14 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             // Может быть {value: 100, max_value: 200} (диапазон) или {value: 150} (одно значение)
             if (characteristic.containsKey('value')) {
               advertVal = characteristic['value'];
-              print('      Characteristic is Map with value field: $advertVal');
+              log.d('      Characteristic is Map with value field: $advertVal');
               
               if (characteristic.containsKey('max_value')) {
                 // Это диапазон (например, этажи 1-3)
                 final advertMin = _parseNumber(characteristic['value']);
                 final advertMax = _parseNumber(characteristic['max_value']);
 
-                print('      Range characteristic: $advertMin-$advertMax');
+                log.d('      Range characteristic: $advertMin-$advertMax');
 
                 if (advertMin != null && advertMax != null) {
                   // 🟢 УЛУЧШЕННАЯ ЛОГИКА: Проверяем пересечение диапазонов
@@ -1704,24 +1705,24 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                   if (maxNum != null) intersects = intersects && (advertMin <= maxNum);
 
                   if (!intersects) {
-                    print('      ❌ Range $advertMin-$advertMax does NOT intersect with $minNum-$maxNum');
+                    log.d('      ❌ Range $advertMin-$advertMax does NOT intersect with $minNum-$maxNum');
                     return false;  // Исключаем это объявление
                   } else {
-                    print('      ✅ Range $advertMin-$advertMax INTERSECTS with $minNum-$maxNum');
+                    log.d('      ✅ Range $advertMin-$advertMax INTERSECTS with $minNum-$maxNum');
                     continue;  // Это объявление прошло проверку, проверим следующий фильтр
                   }
                 }
               }
             } else if (characteristic.containsKey('id') && characteristic.containsKey('title')) {
               // Это может быть объект атрибута, извлекаем значение по-другому
-              print('      Characteristic is attribute object');
+              log.d('      Characteristic is attribute object');
               continue;  // Пропускаем, т.к. не можем извлечь числовое значение
             }
           }
 
           // Если это простое число или строка с числом - проверяем диапазон
           final advertNum = _parseNumber(advertVal);
-          print('      Parsed numeric value: $advertNum');
+          log.d('      Parsed numeric value: $advertNum');
           
           if (advertNum != null) {
             bool ok = true;
@@ -1729,33 +1730,33 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             if (maxNum != null) ok = ok && (advertNum <= maxNum);
 
             if (!ok) {
-              print('      ❌ Value $advertNum NOT in range $minNum-$maxNum');
+              log.d('      ❌ Value $advertNum NOT in range $minNum-$maxNum');
               return false;  // Исключаем это объявление
             } else {
-              print('      ✅ Value $advertNum IS in range $minNum-$maxNum');
+              log.d('      ✅ Value $advertNum IS in range $minNum-$maxNum');
               continue;  // Объявление прошло проверку
             }
           } else {
-            print('      ⚠️  Could not parse numeric value from: $advertVal');
+            log.d('      ⚠️  Could not parse numeric value from: $advertVal');
             continue;  // Не можем проверить, пропускаем этот фильтр
           }
         } else if (filterValue is List) {
           // Если это список значений
-          print('      Filter is a list: $filterValue');
+          log.d('      Filter is a list: $filterValue');
           continue;
         } else {
           // Другие типы значений
-          print('      Filter type not recognized: ${filterValue.runtimeType}');
+          log.d('      Filter type not recognized: ${filterValue.runtimeType}');
           continue;
         }
       }
 
-      print('\n   ✅ Listing ID=${listing.id} PASSED all range filters');
+      log.d('\n   ✅ Listing ID=${listing.id} PASSED all range filters');
       return true;
     }).toList();
 
-    print('\n🟢 Listings AFTER: ${filtered.length}');
-    print('🟢 ═══════════════════════════════════════════════════════════\n');
+    log.d('\n🟢 Listings AFTER: ${filtered.length}');
+    log.d('🟢 ═══════════════════════════════════════════════════════════\n');
     return filtered;
   }
 
@@ -1768,9 +1769,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return listings;
     }
 
-    print('🟢 FILTER BY BOOLEAN ATTRIBUTES');
-    print('   Filters: $booleanFilters');
-    print('   BEFORE: ${listings.length} listings');
+    log.d('🟢 FILTER BY BOOLEAN ATTRIBUTES');
+    log.d('   Filters: $booleanFilters');
+    log.d('   BEFORE: ${listings.length} listings');
 
     final filtered = listings.where((listing) {
       // Каждый фульгер должен совпадать - логика AND между фильтрами
@@ -1803,13 +1804,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         }
 
         if (!matches) {
-          print(
+          log.d(
             '      ❌ ID=${listing.id}, attr=$attrIdStr: $advertBool != $expectedValue',
           );
           return false;
         }
 
-        print(
+        log.d(
           '      ✅ ID=${listing.id}, attr=$attrIdStr: $advertBool == $expectedValue',
         );
       }
@@ -1817,7 +1818,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return true;
     }).toList();
 
-    print('   AFTER: ${filtered.length} listings\n');
+    log.d('   AFTER: ${filtered.length} listings\n');
     return filtered;
   }
 
@@ -1825,7 +1826,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   /// Приводит всё (ID, названия, числа) к строковому формату
   Set<String> _normalizeToSet(dynamic value) {
     if (value == null) {
-      print('      NORMALIZE: NULL input -> {}');
+      log.d('      NORMALIZE: NULL input -> {}');
       return {};
     }
 
@@ -1838,7 +1839,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           })
           .where((s) => s.isNotEmpty)
           .toSet();
-      print('      NORMALIZE: Set (${value.length} items) -> $result');
+      log.d('      NORMALIZE: Set (${value.length} items) -> $result');
       return result;
     }
 
@@ -1851,16 +1852,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           })
           .where((s) => s.isNotEmpty)
           .toSet();
-      print('      NORMALIZE: List with ${value.length} items -> $result');
+      log.d('      NORMALIZE: List with ${value.length} items -> $result');
       return result;
     }
 
     // Если это Map - обрабатываем специально
     if (value is Map) {
-      print('      NORMALIZE: Map with keys=${value.keys.toSet()}');
+      log.d('      NORMALIZE: Map with keys=${value.keys.toSet()}');
       // Если это Map {value: X} - извлекаем X и рекурсим
       if (value.containsKey('value') && value['value'] != null) {
-        print('      NORMALIZE: Found "value" key, recursing...');
+        log.d('      NORMALIZE: Found "value" key, recursing...');
         return _normalizeToSet(value['value']);
       }
       // Если это Map с числовыми или строковыми значениями
@@ -1872,7 +1873,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           .where((s) => s.isNotEmpty)
           .toSet();
       if (result.isNotEmpty) {
-        print('      NORMALIZE: Map values -> $result');
+        log.d('      NORMALIZE: Map values -> $result');
         return result;
       }
       return {};
@@ -1880,7 +1881,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
     // Для всего остального - преобразуем в String
     final result = {value.toString()};
-    print('      NORMALIZE: ${value.runtimeType} -> $result');
+    log.d('      NORMALIZE: ${value.runtimeType} -> $result');
     return result;
   }
 

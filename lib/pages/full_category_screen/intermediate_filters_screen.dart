@@ -9,6 +9,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/selectable_button.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Промежуточный экран фильтров"
@@ -66,7 +67,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     // 🔧 ВАЖНО: Инициализируем apiCities сразу с dnrCities (69 городов)
     // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
     apiCities = List<String>.from(dnrCities);
-    print('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
+    log.d('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
     
     _loadCities(); // Загружаем города с API и объединяем с dnrCities
     _loadRealEstateCategories(); // Загружаем категории для маппинга
@@ -88,11 +89,11 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       if (mounted) {
         setState(() {
           realEstateCategories = catalog.categories;
-          print('Loaded ${realEstateCategories.length} real estate categories');
+          log.d('Loaded ${realEstateCategories.length} real estate categories');
         });
       }
     } catch (e) {
-      print('Error loading real estate categories: $e');
+      log.d('Error loading real estate categories: $e');
     }
   }
 
@@ -119,7 +120,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         }
       }
     } catch (e) {
-      print('Error finding category ID: $e');
+      log.d('Error finding category ID: $e');
     }
     return 1; // Fallback к ID=1 если не найдено
   }
@@ -128,20 +129,20 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   /// Получает все области (регионы) и их города, собирает в единый список
   Future<void> _loadCities() async {
     setState(() => isLoadingCities = true);
-    print('🔄 Начинаем загрузку городов с API...');
+    log.d('🔄 Начинаем загрузку городов с API...');
     
     try {
       // Получаем текущий токен из Hive
       final token = HiveService.getUserData('token') as String?;
-      print('🔑 Токен получен: ${token != null ? "✅ YES ($token)" : "❌ NO"}');
+      log.d('🔑 Токен получен: ${token != null ? "✅ YES ($token)" : "❌ NO"}');
       
       // Получаем все области с API
       final regionsResponse = await AddressService.getRegions(token: token);
       final regions = regionsResponse.data;
-      print('✅ Загружено ${regions.length} областей');
+      log.d('✅ Загружено ${regions.length} областей');
       
       if (regions.isEmpty) {
-        print('⚠️ Регионов не найдено!');
+        log.d('⚠️ Регионов не найдено!');
         if (mounted) {
           setState(() => apiCities = []);
         }
@@ -155,11 +156,11 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         final region = regions[i];
         final regionName = region.name ?? 'Неизвестная область';
         
-        print('📍 [$i/${regions.length}] Обрабатываем область: $regionName');
+        log.d('📍 [$i/${regions.length}] Обрабатываем область: $regionName');
         
         try {
           // Ищем города по названию региона
-          print('   🔍 Запрашиваем города для поиска по названию: "$regionName"...');
+          log.d('   🔍 Запрашиваем города для поиска по названию: "$regionName"...');
           
           final response = await AddressService.searchAddresses(
             query: regionName,
@@ -167,7 +168,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             types: ['city'],
           );
           
-          print('   ✅ Получено ${response.data.length} результатов поиска');
+          log.d('   ✅ Получено ${response.data.length} результатов поиска');
           
           // Получаем города из результатов
           int addedCount = 0;
@@ -184,26 +185,26 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     'name': cityName,
                   };
                   addedCount++;
-                  print('   → Добавлен город: $cityName (id: $cityId)');
+                  log.d('   → Добавлен город: $cityName (id: $cityId)');
                 }
               }
             }
           }
-          print('   → Добавлено $addedCount городов в итоговый список');
+          log.d('   → Добавлено $addedCount городов в итоговый список');
         } catch (e) {
-          print('   ❌ Ошибка при загрузке городов для области $regionName: $e');
+          log.d('   ❌ Ошибка при загрузке городов для области $regionName: $e');
         }
       }
 
       var allCities = citiesMap.values.map((c) => c['name'] as String).toList();
-      print('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
+      log.d('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
 
       // Добавляем все города ДНР из констант (чтобы не потерять те, которые API не вернул)
-      print('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
+      log.d('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
       
       final dnrSet = <String>{...allCities, ...dnrCities};
       allCities = dnrSet.toList();
-      print('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
+      log.d('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
 
       // Сортируем города для удобства
       allCities.sort();
@@ -211,23 +212,23 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       if (mounted && allCities.isNotEmpty) {
         setState(() {
           apiCities = allCities;
-          print('✅ apiCities обновлены в состояние (${apiCities.length} городов)');
-          print('🏙️ apiCities final value: ${apiCities.length} cities - $apiCities');
+          log.d('✅ apiCities обновлены в состояние (${apiCities.length} городов)');
+          log.d('🏙️ apiCities final value: ${apiCities.length} cities - $apiCities');
         });
       } else if (mounted) {
-        print('⚠️ Города не найдены (allCities.length = ${allCities.length})');
+        log.d('⚠️ Города не найдены (allCities.length = ${allCities.length})');
         setState(() => apiCities = []);
       }
     } catch (e) {
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке городов: $e');
-      print('🔍 Stack: ${StackTrace.current}');
+      log.d('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке городов: $e');
+      log.d('🔍 Stack: ${StackTrace.current}');
       if (mounted) {
         setState(() => apiCities = []);
       }
     } finally {
       if (mounted) {
         setState(() => isLoadingCities = false);
-        print('✅ Загрузка городов завершена (isLoadingCities = false)');
+        log.d('✅ Загрузка городов завершена (isLoadingCities = false)');
       }
     }
   }
@@ -500,10 +501,10 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
           onTap: () {
             // FALLBACK: если города еще не загрузились с API, используем dnrCities сразу
             final citiesToShow = apiCities.isNotEmpty ? apiCities : dnrCities;
-            print('\n📱 Открытие диалога выбора города:');
-            print('   - apiCities.length: ${apiCities.length}');
-            print('   - citiesToShow.length: ${citiesToShow.length}');
-            print('   - Using fallback dnrCities: ${apiCities.isEmpty}');
+            log.d('\n📱 Открытие диалога выбора города:');
+            log.d('   - apiCities.length: ${apiCities.length}');
+            log.d('   - citiesToShow.length: ${citiesToShow.length}');
+            log.d('   - Using fallback dnrCities: ${apiCities.isEmpty}');
             showDialog(
               context: context,
               builder: (_) {
@@ -524,7 +525,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
           onTap: () async {
             // Защита от множественных нажатий
             if (_isNavigating) {
-              print('🛑 Already navigating to category selection, ignoring tap');
+              log.d('🛑 Already navigating to category selection, ignoring tap');
               return;
             }
             
@@ -545,13 +546,13 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                   if (result is Map) {
                     selectedSubcategory = result['name'] as String?;
                     selectedSubcategoryId = result['id'] as int? ?? 1;
-                    print('Selected subcategory: ${result['name']} (ID: ${result['id']})');
+                    log.d('Selected subcategory: ${result['name']} (ID: ${result['id']})');
                     showCategoryError = false;
                   } else if (result is String) {
                     // Fallback для старого формата
                     selectedSubcategory = result;
                     selectedSubcategoryId = _findCategoryIdByName(result);
-                    print('Selected subcategory: $result (ID: $selectedSubcategoryId)');
+                    log.d('Selected subcategory: $result (ID: $selectedSubcategoryId)');
                     showCategoryError = false;
                   }
                 });

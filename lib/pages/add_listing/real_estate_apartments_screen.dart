@@ -5,6 +5,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости (квартиры)"
@@ -66,10 +67,10 @@ class _RealEstateApartmentsScreenState
         token: token,
       );
 
-      // print('Loaded category: ${category.name}');
-      // print('Found advert types: ${category.children?.length ?? 0}');
+      // log.d('Loaded category: ${category.name}');
+      // log.d('Found advert types: ${category.children?.length ?? 0}');
       // category.children?.forEach(
-      //   (child) => print('Advert type: ${child.name}'),
+      //   (child) => log.d('Advert type: ${child.name}'),
       // );
 
       setState(() {

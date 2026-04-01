@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:lidle/models/address_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Сервис для работы с адресами
 class AddressService {
@@ -53,9 +54,9 @@ class AddressService {
 
       final uri = Uri.parse('${ApiService.baseUrl}/addresses/search');
 
-      // print('📥 GET REQUEST /addresses/search');
-      // print('URL: $uri');
-      // print('Body: ${jsonEncode(bodyMap)}');
+      // log.d('📥 GET REQUEST /addresses/search');
+      // log.d('URL: $uri');
+      // log.d('Body: ${jsonEncode(bodyMap)}');
 
       // Use http.Request to send GET with JSON body
       final request = http.Request('GET', uri);
@@ -67,26 +68,26 @@ class AddressService {
       );
       final response = await http.Response.fromStream(streamResponse);
 
-      // print('✅ API Response status: ${response.statusCode}');
-      // print();
+      // log.d('✅ API Response status: ${response.statusCode}');
+      // log.d();
 
       if (response.statusCode == 200) {
-        // print('🔄 Parsing JSON response...');
+        // log.d('🔄 Parsing JSON response...');
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        // print('🔄 JSON decoded successfully');
+        // log.d('🔄 JSON decoded successfully');
 
         final result = AddressesResponse.fromJson(jsonResponse);
-        // print();
+        // log.d();
 
         return result;
       } else {
-        // print('❌ ${response.statusCode} Error');
-        // print('Response: ${response.body}');
+        // log.d('❌ ${response.statusCode} Error');
+        // log.d('Response: ${response.body}');
         throw Exception('Failed to search addresses: ${response.statusCode}');
       }
     } catch (e) {
-      // print('❌ Exception in searchAddresses: $e');
-      // print('Stack trace: ${StackTrace.current}');
+      // log.d('❌ Exception in searchAddresses: $e');
+      // log.d('Stack trace: ${StackTrace.current}');
       throw Exception('Failed to search addresses: $e');
     }
   }

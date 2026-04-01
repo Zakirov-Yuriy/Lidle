@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/user_service.dart';
 import '../../core/cache/cache_service.dart';
 import '../../core/cache/cache_keys.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Bloc для управления состоянием профиля пользователя.
 /// Обрабатывает события загрузки, обновления и выхода из профиля.
@@ -26,15 +27,15 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   ) async {
     try {
       final token = TokenService.currentToken;
-      // print('🔑 Token from Hive: $token');
+      // log.d('🔑 Token from Hive: $token');
       if (token == null) {
-        // print('❌ Токен не найден!');
+        // log.d('❌ Токен не найден!');
         emit(const ProfileError('Токен не найден'));
         return;
       }
 
       if (token.isEmpty) {
-        // print('❌ Токен пуст!');
+        // log.d('❌ Токен пуст!');
         emit(const ProfileError('Токен пуст'));
         return;
       }
@@ -131,11 +132,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         qrCodeBase64 = profile.qrCode!['value'] as String?;
         if (qrCodeBase64 != null) {
           await UserService.saveLocal('qrCode', qrCodeBase64);
-          // print('✅ QR код сохранен в Hive');
+          // log.d('✅ QR код сохранен в Hive');
         }
       }
 
-      // print('💾 Данные сохранены в Hive');
+      // log.d('💾 Данные сохранены в Hive');
 
       // 💾 Сохраняем свежие данные в L1-кеш профиля (TTL 5 мин)
       AppCacheService().set<Map<String, dynamic>>(CacheKeys.profileData, {
@@ -154,10 +155,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final userIdDisplay = 'ID: $userIdString';
       final displayName = '${profile.name} ${profile.lastName}';
 
-      // print('🔍 DEBUG ProfileBloc._onLoadProfile():');
-      // print('   - profile.name = "${profile.name}"');
-      // print('   - profile.lastName = "${profile.lastName}"');
-      // print('   - displayName (for UI) = "$displayName"');
+      // log.d('🔍 DEBUG ProfileBloc._onLoadProfile():');
+      // log.d('   - profile.name = "${profile.name}"');
+      // log.d('   - profile.lastName = "${profile.lastName}"');
+      // log.d('   - displayName (for UI) = "$displayName"');
 
       emit(
         ProfileLoaded(
@@ -173,8 +174,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         ),
       );
     } catch (e) {
-      // print('❌ Ошибка загрузки профиля: $e');
-      // print('📍 Stack trace: ${StackTrace.current}');
+      // log.d('❌ Ошибка загрузки профиля: $e');
+      // log.d('📍 Stack trace: ${StackTrace.current}');
 
       // Fallback to local data if API fails
       final name = UserService.getLocal('name') ?? 'Пользователь';
@@ -187,7 +188,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       final about = UserService.getLocal('about');
       final qrCode = UserService.getLocal('qrCode');
 
-      // print('📖 Fallback: Используем данные из Hive: $name $lastName');
+      // log.d('📖 Fallback: Используем данные из Hive: $name $lastName');
 
       emit(
         ProfileLoaded(

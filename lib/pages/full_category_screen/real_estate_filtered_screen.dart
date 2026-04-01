@@ -16,6 +16,7 @@ import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String messageIconAssetLocal =
@@ -60,29 +61,29 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
   /// Загружает отфильтрованные объявления с API
   Future<void> _loadFilteredListings() async {
     try {
-      print('🔍 [RealEstateFilteredScreen] initState: загружаем объявления для categoryId=${widget.categoryId}');
+      log.d('🔍 [RealEstateFilteredScreen] initState: загружаем объявления для categoryId=${widget.categoryId}');
       
       setState(() => _isLoading = true);
 
       // Получаем сохраненные фильтры
       final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
-      print('� Фильтры загружены для категории ${widget.categoryId}: $savedFilters');
-      print('📋 [API] Загруженные фильтры из Hive: $savedFilters');
+      log.d('� Фильтры загружены для категории ${widget.categoryId}: $savedFilters');
+      log.d('📋 [API] Загруженные фильтры из Hive: $savedFilters');
 
       // Получаем токен
       final token = TokenService.currentToken;
       if (token == null) {
         throw Exception('Токен не найден - авторизация требуется');
       }
-      print('🔐 [API] Токен получен, начинаем запрос');
+      log.d('🔐 [API] Токен получен, начинаем запрос');
 
       // ✅ СТРУКТУРИРУЕМ ФИЛЬТРЫ
       final structuredFilters = _structureFiltersForApi(savedFilters);
       
       // ИСПРАВЛЕНИЕ: Используем categoryId как параметр в API 
       // Больше НЕ загружаем весь каталог - просто используем переданный categoryId
-      print('🔄 [API] Запрашиваем объявления для categoryId=${widget.categoryId}');
-      print('🔄 [API] Структурированные фильтры для API: $structuredFilters');
+      log.d('🔄 [API] Запрашиваем объявления для categoryId=${widget.categoryId}');
+      log.d('🔄 [API] Структурированные фильтры для API: $structuredFilters');
       
       final response = await ApiService.getAdverts(
         categoryId: widget.categoryId,  // ← ИСПРАВЛЕНО: используем categoryId
@@ -93,15 +94,15 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         withAttributes: structuredFilters.isNotEmpty,  // ← Просим атрибуты если есть фильтры
       );
 
-      print('✅ [API] Получено ${response.data.length} объявлений');
+      log.d('✅ [API] Получено ${response.data.length} объявлений');
 
       if (!mounted) {
-        print('⚠️ [Widget] mounted=false, отменяем setState');
+        log.d('⚠️ [Widget] mounted=false, отменяем setState');
         return;
       }
 
       final allAdverts = response.data;
-      print('📦 [API] ИТОГО загружено: ${allAdverts.length} объявлений');
+      log.d('📦 [API] ИТОГО загружено: ${allAdverts.length} объявлений');
 
       // Конвертируем Advert в Listing
       final listings = <Listing>[];
@@ -111,11 +112,11 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
           final listing = _convertAdvertToListing(advert);
           listings.add(listing);
         } catch (e) {
-          print('❌ [Conversion] ОШИБКА при конвертации advert #$i: $e');
+          log.d('❌ [Conversion] ОШИБКА при конвертации advert #$i: $e');
         }
       }
 
-      print('✅ [Result] Успешно сконвертировано ${listings.length} объявлений из ${allAdverts.length}');
+      log.d('✅ [Result] Успешно сконвертировано ${listings.length} объявлений из ${allAdverts.length}');
 
       // ✨ ПРИМЕНЯЕМ СОХРАНЕННЫЕ ФИЛЬТРЫ
       final filteredListings = _applyClientSideFiltering(listings, savedFilters);
@@ -126,15 +127,15 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         _errorMessage = '';
       });
       
-      print('✅ [UI] setState вызван, _listings.length=${_listings.length}');
+      log.d('✅ [UI] setState вызван, _listings.length=${_listings.length}');
 
     } catch (e, stackTrace) {
-      print('❌ [ERROR] Ошибка при загрузке отфильтрованных объявлений:');
-      print('   Error: $e');
-      print('   StackTrace: $stackTrace');
+      log.d('❌ [ERROR] Ошибка при загрузке отфильтрованных объявлений:');
+      log.d('   Error: $e');
+      log.d('   StackTrace: $stackTrace');
       
       if (!mounted) {
-        print('⚠️ [Widget] mounted=false, отменяем setState');
+        log.d('⚠️ [Widget] mounted=false, отменяем setState');
         return;
       }
 
@@ -144,21 +145,21 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         _listings = [];
       });
       
-      print('✅ [Fallback] Показываем ошибку');
+      log.d('✅ [Fallback] Показываем ошибку');
     }
   }
 
   /// Конвертирует модель Advert в модель Listing для отображения
   Listing _convertAdvertToListing(dynamic advert) {
     try {
-      print('   📝 advert properties:');
-      print('      id=${advert.id}');
-      print('      name=${advert.name}');
-      print('      price=${advert.price}');
-      print('      address=${advert.address}');
-      print('      thumbnail=${advert.thumbnail}');
-      print('      images=${advert.images}');
-      print('      slug=${advert.slug}');
+      log.d('   📝 advert properties:');
+      log.d('      id=${advert.id}');
+      log.d('      name=${advert.name}');
+      log.d('      price=${advert.price}');
+      log.d('      address=${advert.address}');
+      log.d('      thumbnail=${advert.thumbnail}');
+      log.d('      images=${advert.images}');
+      log.d('      slug=${advert.slug}');
       
       final listing = Listing(
         id: advert.id.toString(),
@@ -178,12 +179,12 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         isFavorited: false,
       );
       
-      print('   ✅ Listing created: ${listing.title} - ${listing.price}');
+      log.d('   ✅ Listing created: ${listing.title} - ${listing.price}');
       return listing;
     } catch (e, stackTrace) {
-      print('   ❌ ОШИБКА при конвертации Advert: $e');
-      print('   StackTrace: $stackTrace');
-      print('   Advert object: $advert');
+      log.d('   ❌ ОШИБКА при конвертации Advert: $e');
+      log.d('   StackTrace: $stackTrace');
+      log.d('   Advert object: $advert');
       
       // Возвращаем объявление с минимальной информацией
       return Listing(
@@ -768,15 +769,15 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
     Map<String, dynamic> filters,
   ) {
     if (filters.isEmpty || listings.isEmpty) {
-      print('📋 [Filter] Фильтры пусты или нет объявлений');
+      log.d('📋 [Filter] Фильтры пусты или нет объявлений');
       return listings;
     }
 
-    print('\n🟢 ═══════════════════════════════════════════════════════════════');
-    print('🟢 ПРИМЕНЕНИЕ ФИЛЬТРОВ');
-    print('🟢 Начальные объявления: ${listings.length}');
-    print('🟢 Применяемые фильтры: ${filters.keys.toList()}');
-    print('🟢 ═══════════════════════════════════════════════════════════════\n');
+    log.d('\n🟢 ═══════════════════════════════════════════════════════════════');
+    log.d('🟢 ПРИМЕНЕНИЕ ФИЛЬТРОВ');
+    log.d('🟢 Начальные объявления: ${listings.length}');
+    log.d('🟢 Применяемые фильтры: ${filters.keys.toList()}');
+    log.d('🟢 ═══════════════════════════════════════════════════════════════\n');
 
     var result = listings;
 
@@ -788,8 +789,8 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         (filters['value_selected'] as Map).isNotEmpty;
 
     if (hasApiFilters) {
-      print('⏭️  ПРОПУСКАЕМ КЛИЕНТСКУЮ ФИЛЬТРАЦИЮ - API УЖЕ ОТФИЛЬТРОВАЛА');
-      print('   API фильтры value_selected уже применены на сервере, используем результаты как есть\n');
+      log.d('⏭️  ПРОПУСКАЕМ КЛИЕНТСКУЮ ФИЛЬТРАЦИЮ - API УЖЕ ОТФИЛЬТРОВАЛА');
+      log.d('   API фильтры value_selected уже применены на сервере, используем результаты как есть\n');
     } else {
       // Фильтрация по value_selected атрибутам (Ландшафт, Инфраструктура и т.д.)
       if (filters.containsKey('value_selected') &&
@@ -822,11 +823,11 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       );
     }
 
-    print('\n🟢 ═══════════════════════════════════════════════════════════════');
-    print('🟢 ФИЛЬТРАЦИЯ ЗАВЕРШЕНА');
-    print('🟢 API фильтры содержат value_selected: $hasApiFilters');
-    print('🟢 Итоговые объявления: ${result.length}');
-    print('🟢 ═══════════════════════════════════════════════════════════════\n');
+    log.d('\n🟢 ═══════════════════════════════════════════════════════════════');
+    log.d('🟢 ФИЛЬТРАЦИЯ ЗАВЕРШЕНА');
+    log.d('🟢 API фильтры содержат value_selected: $hasApiFilters');
+    log.d('🟢 Итоговые объявления: ${result.length}');
+    log.d('🟢 ═══════════════════════════════════════════════════════════════\n');
 
     return result;
   }
@@ -841,9 +842,9 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return listings;
     }
 
-    print('🟢 ФИЛЬТР ПО АТРИБУТАМ (value_selected)');
-    print('   Фильтры: $valueSelectedFilters');
-    print('   ПЕРЕД: ${listings.length} объявлений');
+    log.d('🟢 ФИЛЬТР ПО АТРИБУТАМ (value_selected)');
+    log.d('   Фильтры: $valueSelectedFilters');
+    log.d('   ПЕРЕД: ${listings.length} объявлений');
 
     final filtered = listings.where((listing) {
       // Каждый фильтр должен совпадать - логика AND между фильтрами
@@ -883,7 +884,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         }
 
         if (!hasMatch) {
-          print('      ❌ ID=${listing.id}: атрибут $attrIdStr не совпадает');
+          log.d('      ❌ ID=${listing.id}: атрибут $attrIdStr не совпадает');
           return false;
         }
       }
@@ -891,7 +892,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return true;
     }).toList();
 
-    print('   ПОСЛЕ: ${filtered.length} объявлений\n');
+    log.d('   ПОСЛЕ: ${filtered.length} объявлений\n');
     return filtered;
   }
 
@@ -904,8 +905,8 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return listings;
     }
 
-    print('🟢 ФИЛЬТР ПО ДИАПАЗОНАМ (values)');
-    print('   ПЕРЕД: ${listings.length} объявлений');
+    log.d('🟢 ФИЛЬТР ПО ДИАПАЗОНАМ (values)');
+    log.d('   ПЕРЕД: ${listings.length} объявлений');
 
     final filtered = listings.where((listing) {
       for (final filterEntry in valueFilters.entries) {
@@ -923,7 +924,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return true;
     }).toList();
 
-    print('   ПОСЛЕ: ${filtered.length} объявлений\n');
+    log.d('   ПОСЛЕ: ${filtered.length} объявлений\n');
     return filtered;
   }
 
@@ -936,8 +937,8 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return listings;
     }
 
-    print('🟢 ФИЛЬТР ПО БУЛЕВЫМ АТРИБУТАМ');
-    print('   ПЕРЕД: ${listings.length} объявлений');
+    log.d('🟢 ФИЛЬТР ПО БУЛЕВЫМ АТРИБУТАМ');
+    log.d('   ПЕРЕД: ${listings.length} объявлений');
 
     final filtered = listings.where((listing) {
       for (final filterEntry in booleanFilters.entries) {
@@ -961,7 +962,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return true;
     }).toList();
 
-    print('   ПОСЛЕ: ${filtered.length} объявлений\n');
+    log.d('   ПОСЛЕ: ${filtered.length} объявлений\n');
     return filtered;
   }
 
@@ -1039,9 +1040,9 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       return {};
     }
 
-    print('\n🔵 ════════════════════════════════════════════════════════════════');
-    print('🔵 СТРУКТУРИРОВАНИЕ ФИЛЬТРОВ ДЛЯ API');
-    print('🔵 Входящие фильтры (flat): $flatFilters\n');
+    log.d('\n🔵 ════════════════════════════════════════════════════════════════');
+    log.d('🔵 СТРУКТУРИРОВАНИЕ ФИЛЬТРОВ ДЛЯ API');
+    log.d('🔵 Входящие фильтры (flat): $flatFilters\n');
 
     final structured = <String, dynamic>{};
     final valueSelectedMap = <String, dynamic>{};
@@ -1052,45 +1053,45 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
       // Конвертируем ключ в int для определения типа
       final attrId = int.tryParse(keyStr) ?? 0;
 
-      print('   🔍 Обработка: key=$keyStr, attrId=$attrId, value=$value, type=${value.runtimeType}');
+      log.d('   🔍 Обработка: key=$keyStr, attrId=$attrId, value=$value, type=${value.runtimeType}');
 
       // Определяем тип фильтра по ID атрибута
       if (attrId < 1000) {
         // Это value_selected фильтр (категориальный)
-        print('      ├─ Тип: value_selected (ID < 1000)');
+        log.d('      ├─ Тип: value_selected (ID < 1000)');
         valueSelectedMap[keyStr] = value;
-        print('      └─ Добавлен в value_selected');
+        log.d('      └─ Добавлен в value_selected');
       } else if (attrId < 2000) {
         // Это values фильтр (диапазон или множественные значения)
-        print('      ├─ Тип: values (ID >= 1000 и < 2000)');
+        log.d('      ├─ Тип: values (ID >= 1000 и < 2000)');
         valuesMap[keyStr] = value;
-        print('      └─ Добавлен в values');
+        log.d('      └─ Добавлен в values');
       } else {
         // Это boolean фильтр
-        print('      ├─ Тип: boolean (ID >= 2000)');
+        log.d('      ├─ Тип: boolean (ID >= 2000)');
         booleanMap[keyStr] = value;
-        print('      └─ Добавлен в boolean');
+        log.d('      └─ Добавлен в boolean');
       }
     });
 
     // Добавляем только непустые категории
     if (valueSelectedMap.isNotEmpty) {
       structured['value_selected'] = valueSelectedMap;
-      print('\n   ✅ value_selected добавлена: $valueSelectedMap');
+      log.d('\n   ✅ value_selected добавлена: $valueSelectedMap');
     }
 
     if (valuesMap.isNotEmpty) {
       structured['values'] = valuesMap;
-      print('   ✅ values добавлена: $valuesMap');
+      log.d('   ✅ values добавлена: $valuesMap');
     }
 
     if (booleanMap.isNotEmpty) {
       structured['boolean'] = booleanMap;
-      print('   ✅ boolean добавлена: $booleanMap');
+      log.d('   ✅ boolean добавлена: $booleanMap');
     }
 
-    print('\n🔵 Исходящие фильтры (structured): $structured');
-    print('🔵 ════════════════════════════════════════════════════════════════\n');
+    log.d('\n🔵 Исходящие фильтры (structured): $structured');
+    log.d('🔵 ════════════════════════════════════════════════════════════════\n');
 
     return structured;
   }

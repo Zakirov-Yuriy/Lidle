@@ -11,6 +11,7 @@ import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_filtered_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_subfilters_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Полный экран фильтров недвижимости"
@@ -102,17 +103,17 @@ class _RealEstateFullFiltersScreenState
   @override
   void initState() {
     super.initState();
-    print('🚀 RealEstateFullFiltersScreen.initState() called');
+    log.d('🚀 RealEstateFullFiltersScreen.initState() called');
     
     // 🔧 ВАЖНО: Инициализируем apiCities сразу с dnrCities (69 городов)
     // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
     apiCities = List<String>.from(dnrCities);
-    print('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
+    log.d('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
     
     // Инициализируем выбранный город если он передан с промежуточного экрана
     if (widget.selectedCity != null && widget.selectedCity!.isNotEmpty) {
       selectedCity = {widget.selectedCity!};
-      print(
+      log.d(
         '🟢 Город инициализирован в RealEstateFullFiltersScreen: ${widget.selectedCity}',
       );
     }
@@ -120,14 +121,14 @@ class _RealEstateFullFiltersScreenState
     if (widget.selectedDateSort != null &&
         widget.selectedDateSort!.isNotEmpty) {
       _selectedDateSort = widget.selectedDateSort ?? "";
-      print(
+      log.d(
         '🟢 Сортировка по дате инициализирована: ${widget.selectedDateSort}',
       );
     }
     if (widget.selectedPriceSort != null &&
         widget.selectedPriceSort!.isNotEmpty) {
       _selectedPriceSort = widget.selectedPriceSort ?? "";
-      print(
+      log.d(
         '🟢 Сортировка по цене инициализирована: ${widget.selectedPriceSort}',
       );
     }
@@ -137,24 +138,24 @@ class _RealEstateFullFiltersScreenState
       sellerType = widget.selectedSellerType!;
       if (sellerType == "private") {
         isPrivate = true;
-        print('🟢 Тип продавца инициализирован: Частное лицо');
+        log.d('🟢 Тип продавца инициализирован: Частное лицо');
       } else if (sellerType == "business") {
         isPrivate = false;
-        print('🟢 Тип продавца инициализирован: Бизнес');
+        log.d('🟢 Тип продавца инициализирован: Бизнес');
       } else if (sellerType == "all") {
         // Для опции "Все" показываем обе кнопки активными
-        print('🟢 Тип продавца инициализирован: Все');
+        log.d('🟢 Тип продавца инициализирован: Все');
       }
     }
-    print('📍 About to call _loadDynamicFilters()');
+    log.d('📍 About to call _loadDynamicFilters()');
     _loadDynamicFilters(); // Загружаем динамические фильтры с API
-    print('📍 _loadDynamicFilters() called, now loading cities');
+    log.d('📍 _loadDynamicFilters() called, now loading cities');
     _loadCities(); // Загружаем города с API
     // Загружаем улицы для выбранного города
     if (selectedCity.isNotEmpty) {
       _loadStreetsForCity(selectedCity.first);
     }
-    print('✅ initState() completed');
+    log.d('✅ initState() completed');
   }
 
   @override
@@ -298,26 +299,26 @@ class _RealEstateFullFiltersScreenState
       });
 
       final token = TokenService.currentToken;
-      print('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
-      print('📂 Category: ${widget.selectedCategory}');
+      log.d('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
+      log.d('📂 Category: ${widget.selectedCategory}');
 
       // Используем categoryId переданный в конструктор (конечная категория)
       int categoryId = widget.categoryId; // Должна быть конечная категория (is_endpoint=true)
       
-      print('🔄 Fetching filters for categoryId: $categoryId (from widget)');
+      log.d('🔄 Fetching filters for categoryId: $categoryId (from widget)');
 
       final response = await ApiService.getListingsFilterAttributes(
         categoryId: categoryId,
         token: token,
       );
 
-      print('� API Response: $response');
+      log.d('� API Response: $response');
 
       if (response['success'] == true && response['data'] != null) {
         final List<dynamic> attributesData = response['data'] as List<dynamic>;
         final attributes = <Attribute>[];
 
-        print('📋 Total attributes in response: ${attributesData.length}');
+        log.d('📋 Total attributes in response: ${attributesData.length}');
 
         for (int i = 0; i < attributesData.length; i++) {
           try {
@@ -325,11 +326,11 @@ class _RealEstateFullFiltersScreenState
               attributesData[i] as Map<String, dynamic>,
             );
             attributes.add(attr);
-            print(
+            log.d(
               '  ✅ [$i] ID=${attr.id}, Title="${attr.title}", Style="${attr.style}", IsRange=${attr.isRange}, IsMultiple=${attr.isMultiple}',
             );
           } catch (e) {
-            print('❌ Error parsing attribute at index $i: $e');
+            log.d('❌ Error parsing attribute at index $i: $e');
           }
         }
 
@@ -341,14 +342,14 @@ class _RealEstateFullFiltersScreenState
         // Загружаем сохраненные фильтры для этой категории
         _loadSavedCategoryFilters();
 
-        print('✅ Successfully loaded ${attributes.length} filter attributes');
+        log.d('✅ Successfully loaded ${attributes.length} filter attributes');
       } else {
-        print('❌ Response success=${response['success']}, data=${response['data']}');
+        log.d('❌ Response success=${response['success']}, data=${response['data']}');
         throw Exception(response['message'] ?? 'Failed to load filters');
       }
     } catch (e) {
-      print('❌ Error loading filters: $e');
-      print('   Stack trace: $e');
+      log.d('❌ Error loading filters: $e');
+      log.d('   Stack trace: $e');
       setState(() {
         _errorMessage = e.toString();
         _isLoadingFilters = false;
@@ -361,13 +362,13 @@ class _RealEstateFullFiltersScreenState
     final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
 
     if (savedFilters.isEmpty) {
-      print('⚠️  Сохраненных фильтров не найдено');
+      log.d('⚠️  Сохраненных фильтров не найдено');
       return;
     }
 
-    print('\n💾 ═══════════════════════════════════════');
-    print('💾 _loadSavedCategoryFilters() - RESTORING FILTERS');
-    print('💾 Количество ключей: ${savedFilters.length}');
+    log.d('\n💾 ═══════════════════════════════════════');
+    log.d('💾 _loadSavedCategoryFilters() - RESTORING FILTERS');
+    log.d('💾 Количество ключей: ${savedFilters.length}');
 
     setState(() {
       // Восстанавливаем атрибуты фильтров
@@ -387,27 +388,27 @@ class _RealEstateFullFiltersScreenState
               normalizedMap[k.toString()] = v?.toString() ?? '';
             });
             restoredValue = normalizedMap;
-            print('✅ Restored RANGE атрибут: $key');
+            log.d('✅ Restored RANGE атрибут: $key');
           } 
           // Если это List (был Set, конвертирован в List при сохранении)
           else if (value is List) {
             restoredValue = (value as List).cast<String>().toSet();
-            print('✅ Restored SET атрибут: $key');
+            log.d('✅ Restored SET атрибут: $key');
           }
           // Если это Set (выбранные значения)
           else if (value is Set) {
             restoredValue = value;
-            print('✅ Restored SET атрибут: $key');
+            log.d('✅ Restored SET атрибут: $key');
           }
           // Если это boolean
           else if (value is bool) {
             restoredValue = value;
-            print('✅ Restored BOOL атрибут: $key');
+            log.d('✅ Restored BOOL атрибут: $key');
           }
           // Обычная строка
           else {
             restoredValue = value;
-            print('✅ Restored атрибут: $key = $value');
+            log.d('✅ Restored атрибут: $key = $value');
           }
           
           _selectedValues[attrId] = restoredValue;
@@ -427,7 +428,7 @@ class _RealEstateFullFiltersScreenState
       }
     });
 
-    print('💾 ═══════════════════════════════════════\n');
+    log.d('💾 ═══════════════════════════════════════\n');
   }
   
   /// Сохраняет текущее состояние фильтров для восстановления при следующих посещениях
@@ -457,10 +458,10 @@ class _RealEstateFullFiltersScreenState
       }
     });
 
-    print('\n💾 ═══════════════════════════════════════');
-    print('💾 SAVING FILTER STATE TO HIVE');
-    print('💾 Items to save: ${stateToSave.length}');
-    print('💾 ═══════════════════════════════════════\n');
+    log.d('\n💾 ═══════════════════════════════════════');
+    log.d('💾 SAVING FILTER STATE TO HIVE');
+    log.d('💾 Items to save: ${stateToSave.length}');
+    log.d('💾 ═══════════════════════════════════════\n');
 
     await HiveService.saveCategoryFilters(widget.categoryId, stateToSave);
   }
@@ -524,7 +525,7 @@ class _RealEstateFullFiltersScreenState
     }
 
     if (_attributes.isEmpty) {
-      print(
+      log.d(
         '🔴 _attributes.isEmpty! _isLoadingFilters=$_isLoadingFilters, _errorMessage=$_errorMessage, total: ${_attributes.length}',
       );
       return Container(
@@ -563,7 +564,7 @@ class _RealEstateFullFiltersScreenState
     // Логика определения типа фильтра на основе флагов и документации
     // Приоритет: styleSingle точное совпадение > isSpecialDesign > (isTitleHidden && isMultiple) > isRange > empty > isPopup > isMultiple > Style B1 > else
 
-    print(
+    log.d(
       '    🎨 _buildFilterField: ID=${attr.id}, Title="${attr.title}", '
       'values.count=${attr.values.length}, isRange=${attr.isRange}, '
       'isMultiple=${attr.isMultiple}, isSpecialDesign=${attr.isSpecialDesign}, '
@@ -573,54 +574,54 @@ class _RealEstateFullFiltersScreenState
 
     // Style F: Popup диалог с квадратными чекбоксами - определяется по styleSingle="F"
     if (attr.styleSingle == "F" && attr.values.isNotEmpty) {
-      print('    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - styleSingle="F"');
+      log.d('    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - styleSingle="F"');
       return _buildStyleFPopupFilter(attr);
     }
 
     // Style C: Да/Нет кнопки (Ипотека, Вид сделки)
     if (attr.isSpecialDesign) {
-      print('    -> Rendering as YES/NO BUTTONS (Style C) - isSpecialDesign=true');
+      log.d('    -> Rendering as YES/NO BUTTONS (Style C) - isSpecialDesign=true');
       return _buildSpecialDesignFilter(attr);
     }
 
     // Style I: Чекбоксы без popup (Возможность торга, Без комиссии)
     if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
-      print('    -> Rendering as CHECKBOXES (Style I) - isTitleHidden && isMultiple');
+      log.d('    -> Rendering as CHECKBOXES (Style I) - isTitleHidden && isMultiple');
       return _buildCheckboxFilter(attr);
     }
 
     // Диапазоны от/до (Style A, E, G)
     if (attr.isRange) {
-      print('    -> Rendering as RANGE (Style A/E/G) - isRange=true');
+      log.d('    -> Rendering as RANGE (Style A/E/G) - isRange=true');
       return _buildRangeFilterField(attr);
     }
 
     // Текстовое поле (Style H)
     if (attr.values.isEmpty) {
-      print('    -> Rendering as TEXT INPUT (Style H) - no values');
+      log.d('    -> Rendering as TEXT INPUT (Style H) - no values');
       return _buildTextFilterField(attr);
     }
 
     // Style F: Popup диалог с чекбоксами (fallback)
     if (attr.isPopup && attr.values.isNotEmpty) {
-      print('    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - isPopup=true');
+      log.d('    -> Rendering as POPUP SELECT CHECKBOXES (Style F) - isPopup=true');
       return _buildStyleFPopupFilter(attr);
     }
 
     // Style D: Multiple select (Тип дома)
     if (attr.isMultiple) {
-      print('    -> Rendering as MULTIPLE SELECT POPUP (Style D) - isMultiple=true');
+      log.d('    -> Rendering as MULTIPLE SELECT POPUP (Style D) - isMultiple=true');
       return _buildStyleDMultipleFilter(attr);
     }
 
     // Style B1: Одиночный чекбокс
     if (attr.values.length == 1 && !attr.isRange && !attr.isSpecialDesign && !attr.isPopup) {
-      print('    -> Rendering as SINGLE CHECKBOX (Style B1) - one value only');
+      log.d('    -> Rendering as SINGLE CHECKBOX (Style B1) - one value only');
       return _buildStyleB1Filter(attr);
     }
 
     // Single select dropdown
-    print('    -> Rendering as DROPDOWN SELECT - default single select');
+    log.d('    -> Rendering as DROPDOWN SELECT - default single select');
     return _buildSingleSelectFilter(attr);
   }
 
@@ -665,7 +666,7 @@ class _RealEstateFullFiltersScreenState
                       // 🟢 Сохраняем ID, не текстовое значение!
                       _selectedValues[attr.id] =
                           isSelected ? '' : value.id.toString();
-                      print(
+                      log.d(
                         '✅ Special Design: "${value.value}" → ID=${value.id}',
                       );
                     });
@@ -945,7 +946,7 @@ class _RealEstateFullFiltersScreenState
                       );
                       if (matchingValue.id != 0) {
                         _selectedValues[attr.id] = matchingValue.id.toString();
-                        print(
+                        log.d(
                           '✅ Single Select: "${selectedText}" → ID=${matchingValue.id}',
                         );
                       } else {
@@ -1086,14 +1087,14 @@ class _RealEstateFullFiltersScreenState
         if (storedIds.contains(attrValue.id.toString())) {
           displaySelected.add(attrValue.value);
           displayValues.add(attrValue.value);
-          print(
+          log.d(
             '   🔄 Display conversion: ID=${attrValue.id} ("${attrValue.value}") is selected',
           );
         }
       }
     }
 
-    print(
+    log.d(
       '🎨 StyleD Filter Built: ID=${attr.id}, Title="${attr.title}", Current selected IDs: $storedIds, Display text: $displaySelected',
     );
 
@@ -1104,7 +1105,7 @@ class _RealEstateFullFiltersScreenState
         if (!attr.isTitleHidden) const SizedBox(height: 8),
         GestureDetector(
           onTap: () {
-            print(
+            log.d(
               '🎯 StyleD Dialog opened: ID=${attr.id}, Title="${attr.title}", Current stored IDs: $storedIds',
             );
             showDialog(
@@ -1114,7 +1115,7 @@ class _RealEstateFullFiltersScreenState
                 options: attr.values.map((v) => v.value).toList(),
                 selectedOptions: displaySelected,  // ✅ FIX: Передаем текстовые значения, не IDы
                 onSelectionChanged: (newSelected) {
-                  print(
+                  log.d(
                     '✅ StyleD Selection changed: ID=${attr.id}, newSelected=$newSelected',
                   );
                   setState(() {
@@ -1122,14 +1123,14 @@ class _RealEstateFullFiltersScreenState
                     final selectedIds = <String>{};
                     for (var value in attr.values) {
                       if (newSelected.contains(value.value)) {
-                        print(
+                        log.d(
                           '   🔄 Converting: "${value.value}" (ID=${value.id}) → added to selectedIds',
                         );
                         selectedIds.add(value.id.toString());
                       }
                     }
                     _selectedValues[attr.id] = selectedIds;
-                    print(
+                    log.d(
                       '✅ StyleD Selection saved: _selectedValues[${attr.id}] = $selectedIds',
                     );
                   });
@@ -1228,22 +1229,22 @@ class _RealEstateFullFiltersScreenState
   /// Получает все области (регионы) и их города, собирает в единый список
   Future<void> _loadCities() async {
     setState(() => isLoadingCities = true);
-    print(
+    log.d(
       '🔄 Начинаем загрузку городов с API (real_estate_full_filters_screen)...',
     );
 
     try {
       // Получаем текущий токен из Hive
       final token = HiveService.getUserData('token') as String?;
-      print('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
+      log.d('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
 
       // Получаем все области с API
       final regionsResponse = await AddressService.getRegions(token: token);
       final regions = regionsResponse.data;
-      print('✅ Загружено ${regions.length} областей');
+      log.d('✅ Загружено ${regions.length} областей');
 
       if (regions.isEmpty) {
-        print('⚠️ Регионов не найдено!');
+        log.d('⚠️ Регионов не найдено!');
         if (mounted) {
           setState(() => apiCities = []);
         }
@@ -1279,21 +1280,21 @@ class _RealEstateFullFiltersScreenState
             }
           }
         } catch (e) {
-          print('   ❌ Ошибка при загрузке городов для области $regionName: $e');
+          log.d('   ❌ Ошибка при загрузке городов для области $regionName: $e');
         }
       }
 
       var allCities = citiesMap.values
           .map((c) => c['name'] as String)
           .toList();
-      print('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
+      log.d('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
 
       // Добавляем все города ДНР из констант (чтобы не потерять те, которые API не вернул)
-      print('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
+      log.d('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
       
       final dnrSet = <String>{...allCities, ...dnrCities};
       allCities = dnrSet.toList();
-      print('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
+      log.d('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
 
       // Сортируем города для удобства
       allCities.sort();
@@ -1301,17 +1302,17 @@ class _RealEstateFullFiltersScreenState
       if (mounted && allCities.isNotEmpty) {
         setState(() {
           apiCities = allCities;
-          print(
+          log.d(
             '✅ apiCities обновлены в real_estate_full_filters_screen (${apiCities.length} городов)',
           );
-          print('🏙️ apiCities final value: ${apiCities.length} cities - $apiCities');
+          log.d('🏙️ apiCities final value: ${apiCities.length} cities - $apiCities');
         });
       } else if (mounted) {
-        print('⚠️ Города не найдены (allCities.length = ${allCities.length})');
+        log.d('⚠️ Города не найдены (allCities.length = ${allCities.length})');
         setState(() => apiCities = []);
       }
     } catch (e) {
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке городов: $e');
+      log.d('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке городов: $e');
       if (mounted) {
         setState(() => apiCities = []);
       }
@@ -1325,14 +1326,14 @@ class _RealEstateFullFiltersScreenState
   /// Загружает улицы для выбранного города с API
   Future<void> _loadStreetsForCity(String cityName) async {
     setState(() => isLoadingStreets = true);
-    print(
+    log.d(
       '🔄 Начинаем загрузку улиц для города: $cityName (real_estate_full_filters_screen)...',
     );
 
     try {
       // Получаем текущий токен из Hive
       final token = HiveService.getUserData('token') as String?;
-      print('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
+      log.d('🔑 Токен получен: ${token != null ? "✅ YES" : "❌ NO"}');
 
       // Ищем улицы по названию города
       final response = await AddressService.searchAddresses(
@@ -1341,7 +1342,7 @@ class _RealEstateFullFiltersScreenState
         types: ['street'],
       );
 
-      print('✅ Загружено ${response.data.length} результатов поиска');
+      log.d('✅ Загружено ${response.data.length} результатов поиска');
 
       // Собираем уникальные улицы
       final streetsMap = <String, String>{};
@@ -1361,24 +1362,24 @@ class _RealEstateFullFiltersScreenState
       if (mounted && allStreets.isNotEmpty) {
         setState(() {
           apiStreets = allStreets;
-          print(
+          log.d(
             '✅ apiStreets обновлены для города "$cityName" (${apiStreets.length} улиц)',
           );
         });
       } else if (mounted) {
-        print('⚠️ Улицы не найдены для города "$cityName"');
+        log.d('⚠️ Улицы не найдены для города "$cityName"');
         setState(() => apiStreets = []);
       }
     } catch (e) {
-      print('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке улиц: $e');
-      print('🔍 Stack: ${StackTrace.current}');
+      log.d('❌ КРИТИЧЕСКАЯ ОШИБКА при загрузке улиц: $e');
+      log.d('🔍 Stack: ${StackTrace.current}');
       if (mounted) {
         setState(() => apiStreets = []);
       }
     } finally {
       if (mounted) {
         setState(() => isLoadingStreets = false);
-        print('✅ Загрузка улиц завершена (isLoadingStreets = false)');
+        log.d('✅ Загрузка улиц завершена (isLoadingStreets = false)');
       }
     }
   }
@@ -1401,9 +1402,9 @@ class _RealEstateFullFiltersScreenState
         const Spacer(),
         GestureDetector(
           onTap: () async {
-            print('\n🔴 ════════════════════════════════════════');
-            print('🔴 RESET BUTTON TAPPED');
-            print('🔴 ════════════════════════════════════════');
+            log.d('\n🔴 ════════════════════════════════════════');
+            log.d('🔴 RESET BUTTON TAPPED');
+            log.d('🔴 ════════════════════════════════════════');
             
             setState(() {
               // Очищаем все фильтры
@@ -1415,13 +1416,13 @@ class _RealEstateFullFiltersScreenState
               dealType = "sell";
               isPrivate = null;
               
-              print('🔴 Cleared: all filters');
+              log.d('🔴 Cleared: all filters');
             });
             
             // Удалить сохраненные фильтры для этой категории
             await HiveService.deleteCategoryFilters(widget.categoryId);
-            print('🔴 Deleted saved filters from Hive for category 1');
-            print('🔴 ════════════════════════════════════════\n');
+            log.d('🔴 Deleted saved filters from Hive for category 1');
+            log.d('🔴 ════════════════════════════════════════\n');
           },
           child: const Text(
             "Сбросить",
@@ -1463,10 +1464,10 @@ class _RealEstateFullFiltersScreenState
           onTap: () {
             // FALLBACK: если города еще не загрузились с API, используем dnrCities сразу
             final citiesToShow = apiCities.isNotEmpty ? apiCities : dnrCities;
-            print('\n📱 Открытие диалога выбора города (real_estate_full_filters)...');
-            print('   - apiCities.length: ${apiCities.length}');
-            print('   - citiesToShow.length: ${citiesToShow.length}');
-            print('   - Using fallback dnrCities: ${apiCities.isEmpty}');
+            log.d('\n📱 Открытие диалога выбора города (real_estate_full_filters)...');
+            log.d('   - apiCities.length: ${apiCities.length}');
+            log.d('   - citiesToShow.length: ${citiesToShow.length}');
+            log.d('   - Using fallback dnrCities: ${apiCities.isEmpty}');
             showDialog(
               context: context,
               builder: (_) {

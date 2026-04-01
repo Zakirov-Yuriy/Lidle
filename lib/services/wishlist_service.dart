@@ -8,6 +8,7 @@
 // - DELETE /me/wishlist/destroy/{id} - удалить объявление из избранного
 
 import 'api_service.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Сервис для работы с API избранного (wishlist).
 ///
@@ -28,7 +29,7 @@ class WishlistService {
     required String token,
   }) async {
     try {
-      print('📤 WishlistService.addToWishlist(): Добавляем advert_id=$advertId');
+      log.i('📤 WishlistService.addToWishlist(): Добавляем advert_id=$advertId');
       
       final body = {'advert_id': advertId};
       final response = await ApiService.post(
@@ -37,10 +38,10 @@ class WishlistService {
         token: token,
       );
       
-      print('✅ WishlistService.addToWishlist(): Успешно добавлено, ответ: $response');
+      log.i('✅ WishlistService.addToWishlist(): Успешно добавлено, ответ: $response');
       return response;
     } catch (e) {
-      print('❌ WishlistService.addToWishlist(): Ошибка: $e');
+      log.e('❌ WishlistService.addToWishlist(): Ошибка: $e');
       throw Exception('Ошибка при добавлении в избранное: $e');
     }
   }
@@ -62,33 +63,33 @@ class WishlistService {
     required String token,
   }) async {
     try {
-      print('╔════════════════════════════════════════════════════════');
-      print('📤 WishlistService.removeFromWishlist(): Начало');
-      print('   endpoint: /me/wishlist/destroy/$advertId');
-      print('   advertId type: ${advertId.runtimeType}');
-      print('   advertId value: $advertId');
-      print('   token provided: ${token.isNotEmpty}');
-      print('╚════════════════════════════════════════════════════════');
+      log.d('🔓════════════════════════════════════════════════════════');
+      log.d('📤 WishlistService.removeFromWishlist(): Начало');
+      log.d('   endpoint: /me/wishlist/destroy/$advertId');
+      log.d('   advertId type: ${advertId.runtimeType}');
+      log.d('   advertId value: $advertId');
+      log.d('   token provided: ${token.isNotEmpty}');
+      log.d('🔓════════════════════════════════════════════════════════');
       
       final response = await ApiService.delete(
         '/me/wishlist/destroy/$advertId',
         token: token,
       );
       
-      print('╔════════════════════════════════════════════════════════');
-      print('✅ WishlistService.removeFromWishlist(): Успешно');
-      print('   Ответ: $response');
-      print('   Success: ${response['success']}');
-      print('   Message: ${response['message']}');
-      print('╚════════════════════════════════════════════════════════');
+      log.i('🔓════════════════════════════════════════════════════════');
+      log.i('✅ WishlistService.removeFromWishlist(): Успешно');
+      log.i('   Ответ: $response');
+      log.i('   Success: ${response['success']}');
+      log.i('   Message: ${response['message']}');
+      log.i('🔓════════════════════════════════════════════════════════');
       
       return response;
     } catch (e) {
-      print('╔════════════════════════════════════════════════════════');
-      print('❌ WishlistService.removeFromWishlist(): Ошибка');
-      print('   advertId: $advertId');
-      print('   Error: $e');
-      print('╚════════════════════════════════════════════════════════');
+      log.e('🔓════════════════════════════════════════════════════════');
+      log.e('❌ WishlistService.removeFromWishlist(): Ошибка');
+      log.e('   advertId: $advertId');
+      log.e('   Error: $e');
+      log.e('🔓════════════════════════════════════════════════════════');
       throw Exception('Ошибка при удалении из избранного: $e');
     }
   }
@@ -110,16 +111,16 @@ class WishlistService {
       if (page != null) params['page'] = page;
       if (sort != null) params['sort'] = sort;
 
-      print('🌐 WishlistService.getWishlist(): Загружаем с сервера...');
+      log.d('🌐 WishlistService.getWishlist(): Загружаем с сервера...');
       final response = await ApiService.getWithQuery(
         '/me/wishlist',
         params.isEmpty ? {} : params,
         token: token,
       );
-      print('🌐 WishlistService.getWishlist(): Ответ получен: $response');
+      log.i('🌐 WishlistService.getWishlist(): Ответ получен: $response');
       return response;
     } catch (e) {
-      print('❌ WishlistService.getWishlist(): Ошибка: $e');
+      log.e('❌ WishlistService.getWishlist(): Ошибка: $e');
       throw Exception('Ошибка при загрузке избранного: $e');
     }
   }

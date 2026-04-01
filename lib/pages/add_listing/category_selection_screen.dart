@@ -10,6 +10,7 @@ import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'real_estate_subcategories_screen.dart';
 import 'universal_category_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 /// ============================================================
 /// Виджет: Экран выбора категории объявления
@@ -68,30 +69,30 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
       final catalogsResponse = await ApiService.getCatalogs();
 
-      // print('═══════════════════════════════════════════════════════');
-      // print('📦 CATALOGS LOADED');
-      // print('Total catalogs: ${catalogsResponse.data.length}');
-      // print('═══════════════════════════════════════════════════════');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📦 CATALOGS LOADED');
+      // log.d('Total catalogs: ${catalogsResponse.data.length}');
+      // log.d('═══════════════════════════════════════════════════════');
       catalogsResponse.data.asMap().forEach((index, catalog) {
-        // print('[$index] Catalog ID: ${catalog.id}');
-        // print('    Name: ${catalog.name}');
-        // print('    Slug: ${catalog.slug}');
-        // print('    Thumbnail: ${catalog.thumbnail}');
-        // print('    Type.id: ${catalog.type.id}');
-        // print('    Type.type: ${catalog.type.type ?? 'null'}');
-        // print('    Type.path: ${catalog.type.path ?? 'null'}');
-        // print('    Type.slug: ${catalog.type.slug ?? 'null'}');
-        // print('    Order: ${catalog.order}');
-        // print('---');
+        // log.d('[$index] Catalog ID: ${catalog.id}');
+        // log.d('    Name: ${catalog.name}');
+        // log.d('    Slug: ${catalog.slug}');
+        // log.d('    Thumbnail: ${catalog.thumbnail}');
+        // log.d('    Type.id: ${catalog.type.id}');
+        // log.d('    Type.type: ${catalog.type.type ?? 'null'}');
+        // log.d('    Type.path: ${catalog.type.path ?? 'null'}');
+        // log.d('    Type.slug: ${catalog.type.slug ?? 'null'}');
+        // log.d('    Order: ${catalog.order}');
+        // log.d('---');
       });
-      // print('═══════════════════════════════════════════════════════');
+      // log.d('═══════════════════════════════════════════════════════');
 
       setState(() {
         _catalogs = catalogsResponse.data;
         _isLoading = false;
       });
     } catch (e) {
-      // print('❌ ERROR LOADING CATALOGS: $e');
+      // log.d('❌ ERROR LOADING CATALOGS: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -223,11 +224,11 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       itemCount: _catalogs.length,
                       itemBuilder: (context, index) {
                         final catalog = _catalogs[index];
-                        // print();
+                        // log.d();
 
                         return GestureDetector(
                           onTap: () {
-                            // print('👆 Tapped on catalog: ${catalog.name}');
+                            // log.d('👆 Tapped on catalog: ${catalog.name}');
                             if (catalog.name == 'Недвижимость') {
                               // Специализированный экран для Недвижимости
                               Navigator.push(
@@ -287,7 +288,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                               );
                                             },
                                         errorBuilder: (context, error, stackTrace) {
-                                          // print();
+                                          // log.d();
                                           return Container(
                                             height: 83,
                                             width: 120,

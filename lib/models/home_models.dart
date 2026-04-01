@@ -1,6 +1,7 @@
 /// Файл, содержащий модели данных для главной страницы приложения.
 /// Включает определения классов `Category` и `Listing`.
 import 'package:flutter/material.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Модель данных для категории.
 /// Используется для отображения различных категорий предложений на главной странице.
@@ -150,20 +151,20 @@ class Listing {
 
   factory Listing.fromJson(Map<String, dynamic> json) {
     // DEBUG: Логируем полный JSON адреса
-    print('');
-    print('═' * 80);
-    print('[🔍 PARSING LISTING FROM API]');
-    print('Listing ID: ${json['id']}');
-    print('Full json address object:');
-    print('  json["address"]: ${json['address']}');
-    print('  json["location"]: ${json['location']}');
-    print('  json["full_address"]: ${json['full_address']}');
+    log.d('');
+    log.d('═' * 80);
+    log.d('[🔍 PARSING LISTING FROM API]');
+    log.d('Listing ID: ${json['id']}');
+    log.d('Full json address object:');
+    log.d('  json["address"]: ${json['address']}');
+    log.d('  json["location"]: ${json['location']}');
+    log.d('  json["full_address"]: ${json['full_address']}');
     if (json['address'] is Map) {
-      print('  address is Map with keys: ${(json['address'] as Map).keys.toList()}');
-      (json['address'] as Map).forEach((k, v) => print('    $k: $v'));
+      log.d('  address is Map with keys: ${(json['address'] as Map).keys.toList()}');
+      (json['address'] as Map).forEach((k, v) => log.d('    $k: $v'));
     }
-    print('═' * 80);
-    print('');
+    log.d('═' * 80);
+    log.d('');
     // Парсим характеристики из attributes (возвращаемых API, в формате структуры attributes)
     final Map<String, dynamic> characteristics = {};
 
@@ -210,11 +211,11 @@ class Listing {
     
     // Парсим адрес если нет явных компонентов
     final parsedAddress = _parseAddressString(addressString);
-    print('[🔍 PARSED ADDRESS FROM STRING]');
-    print('  Original: $addressString');
-    print('  Parsed city: ${parsedAddress['city']}');
-    print('  Parsed street: ${parsedAddress['street']}');
-    print('  Parsed buildingNumber: ${parsedAddress['buildingNumber']}');
+    log.d('[🔍 PARSED ADDRESS FROM STRING]');
+    log.d('  Original: $addressString');
+    log.d('  Parsed city: ${parsedAddress['city']}');
+    log.d('  Parsed street: ${parsedAddress['street']}');
+    log.d('  Parsed buildingNumber: ${parsedAddress['buildingNumber']}');
 
     return Listing(
       id:

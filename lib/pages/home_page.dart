@@ -29,6 +29,7 @@ import '../pages/full_category_screen/real_estate_listings_screen.dart';
 import 'profile_menu/profile_menu_screen.dart';
 import '../pages/auth/sign_in_screen.dart';
 import '../main.dart'; // Для доступа к routeObserver
+import 'package:lidle/core/logger.dart';
 
 /// `HomePage` - это StatefulWidget, который отображает главную страницу
 /// приложения с использованием Bloc для управления состоянием.
@@ -87,7 +88,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_globalScrollPosition > 0 && _scrollController.hasClients) {
         _scrollController.jumpTo(_globalScrollPosition);
-        print('📍 Восстановлена глобальная позиция скролла: $_globalScrollPosition');
+        log.d('📍 Восстановлена глобальная позиция скролла: $_globalScrollPosition');
       }
     });
   }
@@ -103,13 +104,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
   void didPopNext() {
     // Вызывается когда экран вернулся на передний план (Navigator.pop был вызван)
     super.didPopNext();
-    print('⬅️ Вернулись на HomePage');
+    log.d('⬅️ Вернулись на HomePage');
     
     // Восстанавливаем позицию скролла
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_globalScrollPosition > 0 && _scrollController.hasClients) {
         _scrollController.jumpTo(_globalScrollPosition);
-        print('📍 Восстановлена позиция после didPopNext: $_globalScrollPosition');
+        log.d('📍 Восстановлена позиция после didPopNext: $_globalScrollPosition');
       }
     });
   }
@@ -120,7 +121,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
     if (state == AppLifecycleState.paused) {
       if (_scrollController.hasClients) {
         _globalScrollPosition = _scrollController.position.pixels;
-        print('💾 Сохранена позиция скролла при паузе: $_globalScrollPosition');
+        log.d('💾 Сохранена позиция скролла при паузе: $_globalScrollPosition');
       }
     }
   }
@@ -132,7 +133,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
     // 💾 Сохраняем позицию скролла в глобальной переменной
     if (_scrollController.hasClients) {
       _globalScrollPosition = _scrollController.position.pixels;
-      print('💾 Сохранена глобальная позиция скролла при dispose: $_globalScrollPosition');
+      log.d('💾 Сохранена глобальная позиция скролла при dispose: $_globalScrollPosition');
     }
     _scrollController.dispose();
     super.dispose();
@@ -311,7 +312,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
                                           now.difference(_lastLoadMoreTime!) >= _loadMoreDebounce;
                                       
                                       if (canLoadMore && shouldLoadMore) {
-                                        print('📥 Конец достигнут, загружаем еще... (текущих: ${state.listings.length})');
+                                        log.d('📥 Конец достигнут, загружаем еще... (текущих: ${state.listings.length})');
                                         _lastLoadMoreTime = now;
                                         context.read<ListingsBloc>().add(LoadNextPageEvent());
                                       }
@@ -637,13 +638,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
                                   category.title.contains('View All');
 
                               if (isViewAll) {
-                                // print('📍 Navigating to FullCategoryScreen');
+                                // log.d('📍 Navigating to FullCategoryScreen');
                                 Navigator.pushNamed(
                                   context,
                                   FullCategoryScreen.routeName,
                                 );
                               } else {
-                                // print();
+                                // log.d();
 
                                 // Если это основной каталог, передаем catalogId
                                 // Если это подкатегория, передаем categoryId
@@ -918,7 +919,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
                           // 💾 Сохраняем позицию скролла перед навигацией
                           if (_scrollController.hasClients) {
                             _globalScrollPosition = _scrollController.position.pixels;
-                            print('💾 Сохранена позиция перед навигацией: $_globalScrollPosition');
+                            log.d('💾 Сохранена позиция перед навигацией: $_globalScrollPosition');
                           }
                         },
                       );

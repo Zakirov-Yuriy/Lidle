@@ -15,6 +15,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'dart:async';
+import 'package:lidle/core/logger.dart';
 
 class ChatPage extends StatefulWidget {
   final Message message;
@@ -92,7 +93,7 @@ class _ChatPageState extends State<ChatPage> {
     // 🔄 Если chatId не передан, пытаемся найти существующий чат по userId
     if (_chatId == null && widget.message.userId != null) {
       try {
-        print(
+        log.d(
           '🔍 Ищем существующий чат для пользователя #${widget.message.userId}...',
         );
         final chats = await ApiService.getChats();
@@ -103,12 +104,12 @@ class _ChatPageState extends State<ChatPage> {
           final userData = chat['user'] as Map<String, dynamic>?;
           if (userData != null && userData['id'] == userId) {
             _chatId = chat['id'] as int?;
-            print('✅ Найден существующий чат с ID #$_chatId');
+            log.d('✅ Найден существующий чат с ID #$_chatId');
             break;
           }
         }
       } catch (e) {
-        print('⚠️ Ошибка при поиске существующего чата: $e');
+        log.d('⚠️ Ошибка при поиске существующего чата: $e');
       }
     }
 
@@ -133,7 +134,7 @@ class _ChatPageState extends State<ChatPage> {
         _loadMessagesBackground();
       }
     });
-    print('✅ Таймер обновления сообщений запущен (интервал 15 сек)');
+    log.d('✅ Таймер обновления сообщений запущен (интервал 15 сек)');
   }
 
   /// 💬 Загрузить сообщения в фоне (без показа лоадера)
@@ -141,7 +142,7 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _loadMessagesBackground() async {
     // 🛡️ Пропускаем если уже загружаются сообщения
     if (_isLoadingMessagesBackground) {
-      print('⏭️  Пропускаем загрузку (уже идет загрузка сообщений)');
+      log.d('⏭️  Пропускаем загрузку (уже идет загрузка сообщений)');
       return;
     }
 
@@ -165,7 +166,7 @@ class _ChatPageState extends State<ChatPage> {
 
         // Если появились новые сообщения - обновляем и прокручиваем вниз
         if (newMessagesCount > oldMessagesCount) {
-          print(
+          log.d(
             '📨 Получены новые сообщения: $newMessagesCount (было: $oldMessagesCount)',
           );
           setState(() {
@@ -185,7 +186,7 @@ class _ChatPageState extends State<ChatPage> {
         _rateLimitRetryCount++;
         // Экспоненциальная задержка: 30сек, 60сек, 120сек...
         final delaySeconds = 30 * (1 << (_rateLimitRetryCount - 1));
-        print(
+        log.d(
           '⏸️  Rate limit! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...',
         );
 
@@ -195,12 +196,12 @@ class _ChatPageState extends State<ChatPage> {
         // Запускаем новый таймер через задержку
         _rateLimitTimer = Timer(Duration(seconds: delaySeconds), () {
           if (mounted) {
-            print('🔄 Восстанавливаем периодическое обновление сообщений');
+            log.d('🔄 Восстанавливаем периодическое обновление сообщений');
             _startAutoUpdate();
           }
         });
       } else {
-        print('⚠️  Ошибка фонового обновления: $e');
+        log.d('⚠️  Ошибка фонового обновления: $e');
         _rateLimitRetryCount = 0;
       }
     } finally {
@@ -212,14 +213,14 @@ class _ChatPageState extends State<ChatPage> {
   Future<void> _loadMessages() async {
     try {
       if (_chatId == null) {
-        print('⚠️ Chat ID not available, cannot load messages');
+        log.d('⚠️ Chat ID not available, cannot load messages');
         setState(() {
           _isLoading = false;
         });
         return;
       }
 
-      print('📥 Загружаем сообщения чата #$_chatId...');
+      log.d('📥 Загружаем сообщения чата #$_chatId...');
       final messages = await ApiService.getChatMessages(_chatId!);
 
       if (mounted) {
@@ -310,7 +311,7 @@ class _ChatPageState extends State<ChatPage> {
             }
           }
         } catch (e) {
-          print(
+          log.d(
             '⚠️ Ошибка при подгрузке превью объявления после загрузки сообщений: $e',
           );
         }
@@ -322,7 +323,7 @@ class _ChatPageState extends State<ChatPage> {
         _scrollToBottom();
       }
     } catch (e) {
-      print('❌ Ошибка загрузки сообщений: $e');
+      log.d('❌ Ошибка загрузки сообщений: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -347,11 +348,11 @@ class _ChatPageState extends State<ChatPage> {
       }).toList();
 
       if (unreadIncomingMessages.isEmpty) {
-        print('✅ Нет непрочитанных входящих сообщений');
+        log.d('✅ Нет непрочитанных входящих сообщений');
         return;
       }
 
-      print(
+      log.d(
         '📨 Отмечаем ${unreadIncomingMessages.length} сообщений как прочитанные...',
       );
 
@@ -363,9 +364,9 @@ class _ChatPageState extends State<ChatPage> {
         }
       }
 
-      print('✅ Все входящие сообщения отмечены как прочитанные');
+      log.d('✅ Все входящие сообщения отмечены как прочитанные');
     } catch (e) {
-      print('⚠️ Ошибка при отметке сообщений как прочитанных: $e');
+      log.d('⚠️ Ошибка при отметке сообщений как прочитанных: $e');
       // Не критично если это не сработает
     }
   }
@@ -426,7 +427,7 @@ class _ChatPageState extends State<ChatPage> {
           throw Exception('Информация о продавце недоступна');
         }
 
-        print(
+        log.d(
           '💬 Начинаем новый чат с пользователем #${widget.message.userId}...',
         );
         chatId = await ApiService.startChat(
@@ -436,7 +437,7 @@ class _ChatPageState extends State<ChatPage> {
 
         // 🔄 Если чат не создан (возможно уже существует), ищем его в списке
         if (chatId == null) {
-          print('⚠️ chatId null, пытаемся найти существующий чат...');
+          log.d('⚠️ chatId null, пытаемся найти существующий чат...');
           final chats = await ApiService.getChats();
           final userId = int.tryParse(widget.message.userId!);
 
@@ -445,7 +446,7 @@ class _ChatPageState extends State<ChatPage> {
             final userData = chat['user'] as Map<String, dynamic>?;
             if (userData != null && userData['id'] == userId) {
               chatId = chat['id'] as int?;
-              print('✅ Найден существующий чат с ID #$chatId');
+              log.d('✅ Найден существующий чат с ID #$chatId');
               break;
             }
           }
@@ -455,14 +456,14 @@ class _ChatPageState extends State<ChatPage> {
           throw Exception('Не удалось создать или найти чат');
         }
 
-        print('✅ Будет использован чат с ID #$chatId');
+        log.d('✅ Будет использован чат с ID #$chatId');
         // 💾 Сохраняем полученный chatId в состояние
         setState(() {
           _chatId = chatId;
         });
       } else {
         // ✅ Обычная отправка сообщения в существующий чат
-        print('📤 Отправляем сообщение в чат #$chatId...');
+        log.d('📤 Отправляем сообщение в чат #$chatId...');
 
         await ApiService.sendMessage(chatId, messageText);
       }
@@ -472,7 +473,7 @@ class _ChatPageState extends State<ChatPage> {
       // Прокручиваем вниз к новому сообщению
       _scrollToBottom();
     } catch (e) {
-      print('❌ Ошибка отправки сообщения: $e');
+      log.d('❌ Ошибка отправки сообщения: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -523,7 +524,7 @@ class _ChatPageState extends State<ChatPage> {
       // Возвращаем дату в формате "yyyy-MM-dd"
       return dateTime.toString().split(' ')[0];
     } catch (e) {
-      print('⚠️ Ошибка парсирования даты: $e');
+      log.d('⚠️ Ошибка парсирования даты: $e');
       return DateTime.now().toString().split(' ')[0];
     }
   }
@@ -584,7 +585,7 @@ class _ChatPageState extends State<ChatPage> {
         return '$dayMonth $monthName';
       }
     } catch (e) {
-      print('⚠️ Ошибка форматирования даты: $e');
+      log.d('⚠️ Ошибка форматирования даты: $e');
       return 'Сегодня';
     }
   }
@@ -857,7 +858,7 @@ class _ChatPageState extends State<ChatPage> {
                                   }
 
                                   _isNavigatingToProperty = true;
-                                  print(
+                                  log.d(
                                     '🔗 Переходим на объявление #${_topAdvertId ?? widget.message.advertisementId}',
                                   );
 
@@ -874,7 +875,7 @@ class _ChatPageState extends State<ChatPage> {
                                   ).then((_) {
                                     // ✅ Возвращаемся из PropertyDetailsScreen
                                     if (mounted) {
-                                      print(
+                                      log.d(
                                         '✅ Вернулись из PropertyDetailsScreen',
                                       );
                                       setState(() {
@@ -1114,7 +1115,7 @@ class _ChatPageState extends State<ChatPage> {
           }
         }
       } catch (e) {
-        print('❌ Error parsing time: $e');
+        log.d('❌ Error parsing time: $e');
       }
     }
 

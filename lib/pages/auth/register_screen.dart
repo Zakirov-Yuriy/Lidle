@@ -11,6 +11,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'register_verify_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Экран регистрации пользователя"
@@ -78,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
-      print('❌ Ошибка при открытии ссылки: $e');
+      log.d('❌ Ошибка при открытии ссылки: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ошибка при открытии ссылки')),
@@ -92,26 +93,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ============================================================
   @override
   Widget build(BuildContext context) {
-    // print('🏗️ RegisterScreen build() called');
+    // log.d('🏗️ RegisterScreen build() called');
     const primaryBlue = Color(0xFF0EA5E9);
 
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        // print('🔍 RegisterScreen listener - New state: ${state.runtimeType}');
-        // print('🔍 State details: $state');
+        // log.d('🔍 RegisterScreen listener - New state: ${state.runtimeType}');
+        // log.d('🔍 State details: $state');
 
         if (state is AuthRegistered) {
-          // print('✅ AuthRegistered state received, email: ${state.email}');
+          // log.d('✅ AuthRegistered state received, email: ${state.email}');
           // Переходим на экран верификации с передачей email
           Navigator.of(context).pushReplacementNamed(
             RegisterVerifyScreen.routeName,
             arguments: {'email': state.email},
           );
         } else if (state is AuthAuthenticated) {
-          // print('✅ AuthAuthenticated state received');
+          // log.d('✅ AuthAuthenticated state received');
           Navigator.of(context).pushReplacementNamed('/profile-dashboard');
         } else if (state is AuthError) {
-          // print('❌ AuthError state: ${state.message}');
+          // log.d('❌ AuthError state: ${state.message}');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
@@ -128,7 +129,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       },
       builder: (context, state) {
-        // print();
+        // log.d();
         return Scaffold(
           backgroundColor: primaryBackground,
           body: SafeArea(

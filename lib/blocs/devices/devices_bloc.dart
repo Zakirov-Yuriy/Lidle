@@ -10,6 +10,7 @@ import '../../services/device_service.dart';
 import '../../services/token_service.dart';
 import '../../models/device_model.dart';
 import '../../hive_service.dart';
+import 'package:lidle/core/logger.dart';
 
 /// BLoC для управления состоянием устройств пользователя.
 /// Обрабатывает события загрузки, удаления устройств и управления сеансами.
@@ -94,9 +95,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
       // Разделяем текущее устройство и активные сеансы
       final devices = response.data;
-      print('📱 API вернул ${devices.length} устройств:');
+      log.d('📱 API вернул ${devices.length} устройств:');
       for (var device in devices) {
-        print('  - ${device.name} (${device.deviceType})');
+        log.d('  - ${device.name} (${device.deviceType})');
       }
       
       // Определяем текущее устройство по типу (iOS, Android, Web)
@@ -119,8 +120,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         activeSessions = devices.length > 1 ? devices.sublist(1) : [];
       }
       
-      print('✅ Текущее устройство: ${currentDevice?.name}');
-      print('📋 Активные сеансы: ${activeSessions.length}');
+      log.d('✅ Текущее устройство: ${currentDevice?.name}');
+      log.d('📋 Активные сеансы: ${activeSessions.length}');
 
       // Излучаем состояние успешной загрузки
       emit(DevicesLoaded(
@@ -157,7 +158,7 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
           devices.map((device) => device.toJson()).toList();
       HiveService.saveUserData('devices_cache', devicesList);
     } catch (e) {
-      // print('❌ Error saving devices to cache: $e');
+      // log.d('❌ Error saving devices to cache: $e');
     }
   }
 

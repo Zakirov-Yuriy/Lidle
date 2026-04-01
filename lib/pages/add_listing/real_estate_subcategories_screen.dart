@@ -11,6 +11,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Виджет: Экран подкатегорий недвижимости"
@@ -46,17 +47,17 @@ class _RealEstateSubcategoriesScreenState
       });
 
       final token = TokenService.currentToken;
-      // print();
+      // log.d();
 
       final catalogWithCategories = await ApiService.getCatalog(
         1,
         token: token,
       );
 
-      // print('✅ Loaded categories: ${catalogWithCategories.categories.length}');
+      // log.d('✅ Loaded categories: ${catalogWithCategories.categories.length}');
       // catalogWithCategories.categories.forEach(
       //   (category) =>
-      //       print('📋 Category: ${category.name} (ID: ${category.id})'),
+      //       log.d('📋 Category: ${category.name} (ID: ${category.id})'),
       // );
 
       setState(() {
@@ -64,7 +65,7 @@ class _RealEstateSubcategoriesScreenState
         _isLoading = false;
       });
     } catch (e) {
-      // print('❌ Error loading categories: $e');
+      // log.d('❌ Error loading categories: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -221,7 +222,7 @@ class _RealEstateSubcategoriesScreenState
                                   color: Colors.white70,
                                 ),
                                 onTap: () {
-                                  // print();
+                                  // log.d();
 
                                   // Если есть подкатегории, переходим на экран деталей
                                   if (category.children != null &&

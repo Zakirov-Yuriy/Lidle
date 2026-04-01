@@ -4,6 +4,7 @@
 
 import 'dart:io';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Модель информации об устройстве
 class DeviceInfo {
@@ -47,7 +48,7 @@ class DeviceInfoService {
       // Получаем информацию об устройстве во время инициализации
       _cachedDeviceInfo = await getDeviceInfo();
     } catch (e) {
-      // print('⚠️ Error initializing DeviceInfoService: $e');
+      // log.d('⚠️ Error initializing DeviceInfoService: $e');
     }
   }
 
@@ -84,7 +85,7 @@ class DeviceInfoService {
         return _getWebDeviceInfo();
       }
     } catch (e) {
-      // print('❌ Error getting device info: $e');
+      // log.d('❌ Error getting device info: $e');
       return DeviceInfo(
         name: 'Unknown Device',
         model: 'Unknown',
@@ -115,7 +116,7 @@ class DeviceInfoService {
         platform: 'Android',
       );
     } catch (e) {
-      // print('❌ Error getting Android device info: $e');
+      // log.d('❌ Error getting Android device info: $e');
       return DeviceInfo(
         name: 'Android Device',
         model: 'Unknown',
@@ -142,7 +143,7 @@ class DeviceInfoService {
         platform: 'iOS',
       );
     } catch (e) {
-      // print('❌ Error getting iOS device info: $e');
+      // log.d('❌ Error getting iOS device info: $e');
       return DeviceInfo(
         name: 'iPhone',
         model: 'Unknown',

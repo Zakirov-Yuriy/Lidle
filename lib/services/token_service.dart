@@ -17,6 +17,7 @@ import '../hive_service.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import 'api_service.dart';
+import 'package:lidle/core/logger.dart';
 
 /// Сервис управления жизненным циклом токена.
 ///
@@ -90,7 +91,7 @@ class TokenService with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      print(
+      log.d(
         '🔁 TokenService: приложение возвращается из фона, проверяем токен...',
       );
       // Немедленно проверяем и обновляем токен если нужно
@@ -170,13 +171,13 @@ class TokenService with WidgetsBindingObserver {
       if (timeUntilRefreshTokenRefresh.isNegative ||
           timeUntilRefreshTokenRefresh.inSeconds < _minTokenLifetimeSeconds) {
         // Refresh_token истекает скоро — обновляем немедленно
-        print(
+        log.d(
           '⚠️ TokenService: refresh_token истекает через ${timeUntilRefreshTokenExpiry.inHours}ч, обновляем немедленно',
         );
         nextRefreshDelay = Duration.zero;
       } else if (timeUntilRefreshTokenRefresh < nextRefreshDelay) {
         // Если истечение refresh_token приходит раньше — используем его
-        print(
+        log.d(
           '📅 TokenService: планируем refresh за ${timeUntilRefreshTokenRefresh.inHours}ч до истечения refresh_token',
         );
         nextRefreshDelay = timeUntilRefreshTokenRefresh;
@@ -184,7 +185,7 @@ class TokenService with WidgetsBindingObserver {
     } else {
       // refresh_token_expires_at не найден (может быть старые данные)
       // Используем fallback: короткий интервал для безопасности
-      print('⚠️ TokenService: refresh_token_expires_at не найден, используем fallback 2h');
+      log.d('⚠️ TokenService: refresh_token_expires_at не найден, используем fallback 2h');
       nextRefreshDelay = const Duration(hours: 2);
     }
 
@@ -248,14 +249,14 @@ class TokenService with WidgetsBindingObserver {
     
     if (currentToken == null || currentToken.isEmpty) {
       _isRefreshing = false;
-      print('❌ TokenService: access_token не найден в Hive');
+      log.d('❌ TokenService: access_token не найден в Hive');
       _notifyTokenExpired();
       return;
     }
     
     if (refreshToken == null || refreshToken.isEmpty) {
       _isRefreshing = false;
-      print('❌ TokenService: refresh_token не найден в Hive - невозможно обновить токен!');
+      log.d('❌ TokenService: refresh_token не найден в Hive - невозможно обновить токен!');
       _notifyTokenExpired();
       return;
     }
@@ -265,32 +266,32 @@ class TokenService with WidgetsBindingObserver {
 
       if (newToken != null && newToken.isNotEmpty) {
         // Refresh успешен — уведомляем AuthBloc и планируем следующее обновление
-        print('✅ TokenService: токен успешно обновлен');
+        log.d('✅ TokenService: токен успешно обновлен');
         _retryAttempt = 0; // Уменьшаем счетчик retry после успеха
         _notifyTokenRefreshed(newToken);
         _scheduleRefresh();
       } else {
         // refreshToken() вернул null: refresh_token истёк или невалиден на сервере (401/403).
         // Это постоянная ошибка — повторные попытки не помогут, нужна повторная авторизация.
-        print('❌ TokenService: refresh_token невалиден на сервере (401/403) - требуется повторная авторизация');
+        log.d('❌ TokenService: refresh_token невалиден на сервере (401/403) - требуется повторная авторизация');
         _notifyTokenExpired();
       }
     } catch (e) {
       // Сетевая ошибка, таймаут или другая временная проблема
-      print('⚠️  TokenService: ошибка при обновлении токена: $e');
+      log.d('⚠️  TokenService: ошибка при обновлении токена: $e');
 
       // НОВОЕ: Retry логика с экспоненциальной задержкой
       _retryAttempt++;
       if (_retryAttempt < _maxRetryAttempts) {
         // Пытаемся еще раз с растущей задержкой: 1 сек, 2 сек, 4 сек
         final delaySeconds = (1 << (_retryAttempt - 1)).clamp(1, 5);
-        print(
+        log.d(
           '🔄 TokenService: retry попытка $_retryAttempt/$_maxRetryAttempts через ${delaySeconds}с',
         );
         _startTimer(Duration(seconds: delaySeconds));
       } else {
         // Исчерпали все попытки retry — отправляем пользователя на авторизацию
-        print(
+        log.d(
           '❌ TokenService: исчерпаны все попытки retry ($_maxRetryAttempts), отправляем на авторизацию',
         );
         _notifyTokenExpired();
@@ -306,7 +307,7 @@ class TokenService with WidgetsBindingObserver {
     try {
       _context!.read<AuthBloc>().add(TokenRefreshedEvent(newToken: newToken));
     } catch (e) {
-      // print('⚠️ TokenService: не удалось уведомить AuthBloc о refresh: $e');
+      // log.d('⚠️ TokenService: не удалось уведомить AuthBloc о refresh: $e');
     }
   }
 
@@ -316,7 +317,7 @@ class TokenService with WidgetsBindingObserver {
     try {
       _context!.read<AuthBloc>().add(const TokenExpiredEvent());
     } catch (e) {
-      // print('⚠️ TokenService: не удалось уведомить AuthBloc об истечении: $e');
+      // log.d('⚠️ TokenService: не удалось уведомить AuthBloc об истечении: $e');
     }
   }
 
@@ -405,7 +406,7 @@ class TokenService with WidgetsBindingObserver {
   /// Возвращает новый токен или null если refresh не удался.
   /// Применяет защиту от частых обновлений (debounce).
   Future<String?> forceRefresh() async {
-    // print('⚡ TokenService: принудительное обновление токена...');
+    // log.d('⚡ TokenService: принудительное обновление токена...');
 
     // Защита от слишком частых попыток refresh
     final now = DateTime.now();
@@ -413,7 +414,7 @@ class TokenService with WidgetsBindingObserver {
     if (lastAttempt != null) {
       final timeSinceLastAttempt = now.difference(lastAttempt).inSeconds;
       if (timeSinceLastAttempt < _minRefreshIntervalSeconds) {
-        // print('⏳ TokenService: защита debounce - skip, слишком частые попытки');
+        // log.d('⏳ TokenService: защита debounce - skip, слишком частые попытки');
         return HiveService.getUserData('token') as String?;
       }
     }
@@ -426,13 +427,13 @@ class TokenService with WidgetsBindingObserver {
     try {
       final newToken = await ApiService.refreshToken(currentToken);
       if (newToken != null && newToken.isNotEmpty) {
-        // print('✅ TokenService: принудительный refresh успешен');
+        // log.d('✅ TokenService: принудительный refresh успешен');
         _notifyTokenRefreshed(newToken);
         _scheduleRefresh(); // Перепланируем таймер
         return newToken;
       }
     } catch (e) {
-      // print('❌ TokenService: принудительный refresh не удался: $e');
+      // log.d('❌ TokenService: принудительный refresh не удался: $e');
     }
 
     _notifyTokenExpired();

@@ -10,6 +10,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Мини-экран деталей отфильтрованной недвижимости"
@@ -755,7 +756,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       onTap: () {
         Navigator.pop(context);
 
-        // print("Share $title tapped");
+        // log.d("Share $title tapped");
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

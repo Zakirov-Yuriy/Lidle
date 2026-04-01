@@ -17,6 +17,7 @@ import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 class PriceOffersEmptyPage extends StatefulWidget {
   const PriceOffersEmptyPage({super.key});
@@ -78,7 +79,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Перезагружаем список при возвращении на экран
     if (state == AppLifecycleState.resumed) {
-      print('📱 Экран вернулся в фокус, перезагружаем список предложений');
+      log.d('📱 Экран вернулся в фокус, перезагружаем список предложений');
       _loadMyOffers();
     }
   }
@@ -99,35 +100,35 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
 
     try {
       final token = HiveService.getUserData('token') as String?;
-      print(
+      log.d(
         '🔍 Token from HiveService: ${token != null ? "✅ Found" : "❌ Not found"}',
       );
 
       if (token == null) {
-        print('❌ No token - cannot load offers');
+        log.d('❌ No token - cannot load offers');
         setState(() {
           _isLoadingMyOffers = false;
         });
         return;
       }
 
-      print('📡 Calling ApiService.getMyOffers()...');
+      log.d('📡 Calling ApiService.getMyOffers()...');
       final offersData = await ApiService.getMyOffers(token: token);
-      print('📦 API returned ${offersData.length} offers');
+      log.d('📦 API returned ${offersData.length} offers');
 
       if (mounted) {
         setState(() {
           _myOffers = offersData.map((data) {
-            print('🔄 Parsing offer: ${data['id']} - ${data['message']}');
+            log.d('🔄 Parsing offer: ${data['id']} - ${data['message']}');
             return _parseOfferFromApi(data);
           }).toList();
           itemCheckedMyOffers = List<bool>.filled(_myOffers.length, false);
-          print('✅ Successfully parsed ${_myOffers.length} offers');
+          log.d('✅ Successfully parsed ${_myOffers.length} offers');
           _isLoadingMyOffers = false;
         });
       }
     } catch (e) {
-      print('❌ Error in _loadMyOffers: $e');
+      log.d('❌ Error in _loadMyOffers: $e');
       if (mounted) {
         setState(() {
           _isLoadingMyOffers = false;
@@ -145,24 +146,24 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        print('❌ No token - cannot load received offers');
+        log.d('❌ No token - cannot load received offers');
         setState(() {
           _isLoadingOffersToMe = false;
         });
         return;
       }
 
-      print('📡 Calling ApiService.getOffersReceivedList()...');
+      log.d('📡 Calling ApiService.getOffersReceivedList()...');
       final listingsWithOffers = await ApiService.getOffersReceivedList(
         token: token,
       );
-      print(
+      log.d(
         '📦 API returned ${listingsWithOffers.length} listings with offers',
       );
 
       // Парсим объявления в объекты Offer
       final parsedListings = listingsWithOffers.map((data) {
-        print(
+        log.d(
           '🔄 Parsing received listing: ${data['id']} - '
           'Name: ${data['name']}, '
           'New offers count: ${data['new_offers_count']}',
@@ -180,7 +181,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       // 🚀 УЛУЧШЕНИЕ: Используем ApiRequestQueue вместо Future.wait()
       // Это ограничивает количество одновременных запросов до 3,
       // предотвращая 429 (Rate Limit) ошибки.
-      print(
+      log.d(
         '🔍 Prefetching offer details for ${parsedListings.length} listings (max 3 concurrent)...',
       );
 
@@ -234,7 +235,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                 });
 
             final relevantCount = relevantOffers.length;
-            print(
+            log.d(
               '   📊 Advert ${offer.advertisementId}: '
               '${offersData.length} total, $relevantCount relevant (new + accepted), '
               'allAccepted=$allAccepted',
@@ -246,7 +247,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
             });
           } catch (e) {
             // При ошибке — показываем объявление, чтобы не скрыть лишнего
-            print(
+            log.d(
               '   ⚠️ Prefetch error for advert ${offer.advertisementId}: $e',
             );
             return MapEntry(offer, {
@@ -264,7 +265,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         batchSize: 3, // Максимум 3 одновременных запроса
       );
 
-      print('✅ Prefetch завершен: ${ApiRequestQueue.instance.stats}');
+      log.d('✅ Prefetch завершен: ${ApiRequestQueue.instance.stats}');
 
       // ✅ НОВАЯ ЛОГИКА: Показываем ВСЕ объявления, включая отклонённые
       // count == 0 означает: все предложения отклонены или нет предложений → показываем 0
@@ -292,14 +293,14 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
         setState(() {
           _offersToMe = listingsWithNewOffers;
           itemCheckedOffersToMe = List<bool>.filled(_offersToMe.length, false);
-          print(
+          log.d(
             '✅ Successfully loaded ${_offersToMe.length} listings with new offers',
           );
           _isLoadingOffersToMe = false;
         });
       }
     } catch (e) {
-      print('❌ Error in _loadOffersToMe: $e');
+      log.d('❌ Error in _loadOffersToMe: $e');
       if (mounted) {
         setState(() {
           _isLoadingOffersToMe = false;
@@ -341,13 +342,13 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       final type = apiData['type'] as Map<String, dynamic>? ?? {};
       final typeSlugValue = type['slug'] as String? ?? 'adverts';
 
-      print('🔄 Parsing received offer (my advertisement):');
-      print('   advert id: ${apiData['id']}');
-      print('   name: ${apiData['name']}');
-      print('   price: ${apiData['price']}');
-      print('   slug: ${apiData['slug']}');
-      print('   type.slug: $typeSlugValue');
-      print('   new_offers_count: ${apiData['new_offers_count']}');
+      log.d('🔄 Parsing received offer (my advertisement):');
+      log.d('   advert id: ${apiData['id']}');
+      log.d('   name: ${apiData['name']}');
+      log.d('   price: ${apiData['price']}');
+      log.d('   slug: ${apiData['slug']}');
+      log.d('   type.slug: $typeSlugValue');
+      log.d('   new_offers_count: ${apiData['new_offers_count']}');
 
       return Offer(
         id: apiData['id']?.toString() ?? '', // ✅ ID объявления
@@ -371,13 +372,13 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
       final model = apiData['model'] as Map<String, dynamic>? ?? {};
       final status = apiData['status'] as Map<String, dynamic>? ?? {};
 
-      print('🔄 Parsing my offer (sent by me):');
-      print('   offer id: ${apiData['id']}');
-      print('   advert id: ${model['id']}');
-      print('   model name: ${model['name']}');
-      print('   message: ${apiData['message']}');
-      print('   offered price: ${apiData['price']}');
-      print('   original price: ${model['price']}');
+      log.d('🔄 Parsing my offer (sent by me):');
+      log.d('   offer id: ${apiData['id']}');
+      log.d('   advert id: ${model['id']}');
+      log.d('   model name: ${model['name']}');
+      log.d('   message: ${apiData['message']}');
+      log.d('   offered price: ${apiData['price']}');
+      log.d('   original price: ${model['price']}');
 
       return Offer(
         id: apiData['id']?.toString() ?? '', // ✅ ID предложения

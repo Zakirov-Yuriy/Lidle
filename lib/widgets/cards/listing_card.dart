@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/core/logger.dart';
 
 class ListingCard extends StatefulWidget {
   final Listing listing;
@@ -54,13 +55,13 @@ class _ListingCardState extends State<ListingCard> {
     if (advertId != null) {
       if (newState) {
         // Добавляем в wishlist на сервере
-        print('💗 ListingCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
+        log.i('💗 ListingCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
         context.read<WishlistBloc>().add(
           AddToWishlistEvent(listingId: advertId),
         );
       } else {
         // Удаляем из wishlist на сервере
-        print('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
+        log.i('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
         context.read<WishlistBloc>().add(
           RemoveFromWishlistEvent(listingId: advertId),
         );

@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/core/logger.dart';
 
 class _LetterHeader {
   final String letter;
@@ -38,9 +39,9 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     super.initState();
     _currentSelectedOptions = Set<String>.from(widget.selectedOptions);
     _displayOptions = []; // Инициализируем пустой список
-    print('🔍 CitySelectionDialog initState:');
-    print('   - widget.options.length: ${widget.options.length}');
-    print('   - widget.options значения: ${widget.options}');
+    log.d('🔍 CitySelectionDialog initState:');
+    log.d('   - widget.options.length: ${widget.options.length}');
+    log.d('   - widget.options значения: ${widget.options}');
     _buildDisplayOptions(widget.options); // Initial build
     _searchController.addListener(_filterOptions);
   }
@@ -68,9 +69,9 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   }
 
   void _buildDisplayOptions(List<String> cities) {
-    print('🏗️ _buildDisplayOptions called:');
-    print('   - cities.length: ${cities.length}');
-    print('   - cities (first 10): ${cities.take(10).toList()}');
+    log.d('🏇 _buildDisplayOptions called:');
+    log.d('   - cities.length: ${cities.length}');
+    log.d('   - cities (first 10): ${cities.take(10).toList()}');
     
     List<dynamic> newDisplayOptions = [];
     String? currentLetter;
@@ -94,10 +95,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
       }
       newDisplayOptions.add(city);
     }
-    print('✅ newDisplayOptions.length: ${newDisplayOptions.length}');
+    log.i('✅ newDisplayOptions.length: ${newDisplayOptions.length}');
     setState(() {
       _displayOptions = newDisplayOptions;
-      print('   📝 После setState: _displayOptions.length = ${_displayOptions.length}');
+      log.d('   📏 После setState: _displayOptions.length = ${_displayOptions.length}');
     });
   }
 

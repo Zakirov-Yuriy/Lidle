@@ -1,3 +1,4 @@
+import 'package:lidle/core/logger.dart';
 /// Кеш для результатов getPriceOffers()
 /// 
 /// Предотвращает повторные запросы для одного и того же объявления
@@ -101,7 +102,7 @@ class PriceOffersCache {
     
     // Проверяем есть ли уже такой запрос в полете (дедупликация)
     if (_pendingRequests.containsKey(key)) {
-      print('📦 PriceOffersCache: Дедупликация для advert_id=$advertId - ждем существующий запрос');
+      log.d('📦 PriceOffersCache: Дедупликация для advert_id=$advertId - ждем существующий запрос');
       return _pendingRequests[key]!;
     }
     
@@ -109,16 +110,16 @@ class PriceOffersCache {
     if (_cache.containsKey(key)) {
       final entry = _cache[key]!;
       if (entry.isValid) {
-        print('💾 PriceOffersCache: Используем кеш для advert_id=$advertId (возраст ${DateTime.now().difference(entry.createdAt).inSeconds}s)');
+        log.d('💾 PriceOffersCache: Используем кеш для advert_id=$advertId (возраст ${DateTime.now().difference(entry.createdAt).inSeconds}s)');
         return entry.data;
       } else {
-        print('⏰ PriceOffersCache: Кеш истек для advert_id=$advertId (возраст ${DateTime.now().difference(entry.createdAt).inMinutes}m)');
+        log.d('⏰ PriceOffersCache: Кеш истек для advert_id=$advertId (возраст ${DateTime.now().difference(entry.createdAt).inMinutes}m)');
         _cache.remove(key);
       }
     }
     
     // Если нет в кеше, запускаем запрос
-    print('🌐 PriceOffersCache: Запускаем запрос для advert_id=$advertId');
+    log.d('🌐 PriceOffersCache: Запускаем запрос для advert_id=$advertId');
     final requestFuture = onMiss();
     _pendingRequests[key] = requestFuture;
     
@@ -127,7 +128,7 @@ class PriceOffersCache {
       
       // Сохраняем в кеш
       _cache[key] = _CacheEntry(data: result, ttl: ttl);
-      print('✅ PriceOffersCache: Закешировано ${result.length} offers для advert_id=$advertId (TTL=${ttl.inMinutes}m)');
+      log.d('✅ PriceOffersCache: Закешировано ${result.length} offers для advert_id=$advertId (TTL=${ttl.inMinutes}m)');
       
       return result;
     } finally {
@@ -141,7 +142,7 @@ class PriceOffersCache {
     if (advertSlug != null) {
       final key = _CacheKey(advertId: advertId, advertSlug: advertSlug);
       _cache.remove(key);
-      print('🗑️ PriceOffersCache: Очищен кеш для advert_id=$advertId');
+      log.d('🗑️ PriceOffersCache: Очищен кеш для advert_id=$advertId');
     } else {
       // Очистить все объявления с этим ID (все типы)
       final keysToRemove = _cache.keys
@@ -151,7 +152,7 @@ class PriceOffersCache {
       for (final key in keysToRemove) {
         _cache.remove(key);
       }
-      print('🗑️ PriceOffersCache: Очищены ${keysToRemove.length} записей для advert_id=$advertId');
+      log.d('🗑️ PriceOffersCache: Очищены ${keysToRemove.length} записей для advert_id=$advertId');
     }
   }
   
@@ -159,7 +160,7 @@ class PriceOffersCache {
   void clear() {
     final count = _cache.length;
     _cache.clear();
-    print('🧹 PriceOffersCache: Очищен весь кеш ($count записей)');
+    log.d('🧹 PriceOffersCache: Очищен весь кеш ($count записей)');
   }
   
   /// Получить статистику кеша

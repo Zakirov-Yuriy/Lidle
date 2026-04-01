@@ -10,6 +10,7 @@ import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/core/logger.dart';
 
 /// ============================================================
 /// Виджет: Универсальный экран для отображения категорий
@@ -75,7 +76,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
 
       if (widget.catalogId != null) {
         // Загружаем категории каталога по ID
-        // print();
+        // log.d();
 
         final catalogWithCategories = await ApiService.getCatalog(
           widget.catalogId!,
@@ -84,12 +85,12 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
 
         categories = catalogWithCategories.categories;
 
-        // print();
+        // log.d();
       } else if (widget.category != null) {
         // Используем дочерние категории из переданной категории
         categories = widget.category!.children ?? [];
 
-        // print();
+        // log.d();
       }
 
       setState(() {
@@ -97,7 +98,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      // print('❌ Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
+      // log.d('❌ Level ${widget.level}: ERROR LOADING CATEGORIES: $e');
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -263,7 +264,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                         level: widget.level + 1,
                         catalogName: widget.catalogName,
                         onTap: () {
-                          // print();
+                          // log.d();
 
                           // Если есть подкатегории, переходим на экран с ними
                           if (category.children != null &&
@@ -280,7 +281,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                             );
                           } else if (category.isEndpoint) {
                             // Если это конечная точка, открываем динамический фильтр
-                            // print();
+                            // log.d();
                             Navigator.push(
                               context,
                               MaterialPageRoute(

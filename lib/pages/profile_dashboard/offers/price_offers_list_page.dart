@@ -16,6 +16,7 @@ import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/api_request_queue.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class PriceOffersListPage extends StatefulWidget {
   final Offer offer;
@@ -83,7 +84,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
 
       // Проверяем кэш (если не принудительное обновление)
       if (!forceRefresh && _isCacheValid()) {
-        print(
+        log.d(
           '💾 Using cached offers for advert: ${widget.offer.advertisementId}',
         );
         if (mounted) {
@@ -96,9 +97,9 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         return;
       }
 
-      print('📡 Loading offers for advert: ${widget.offer.advertisementId}');
-      print('   typeSlug: ${widget.offer.typeSlug}');
-      print('   slug: ${widget.offer.slug}');
+      log.d('📡 Loading offers for advert: ${widget.offer.advertisementId}');
+      log.d('   typeSlug: ${widget.offer.typeSlug}');
+      log.d('   slug: ${widget.offer.slug}');
 
       if (mounted) {
         setState(() => _isLoading = true);
@@ -116,8 +117,8 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         widget.offer.advertisementId ?? widget.offer.id,
       );
 
-      print('   typeSlug: $typeSlug');
-      print('   Final API call: /me/offers/received/$typeSlug/$advertId');
+      log.d('   typeSlug: $typeSlug');
+      log.d('   Final API call: /me/offers/received/$typeSlug/$advertId');
 
       final offersData = await ApiService.getPriceOffers(
         advertId: advertId,
@@ -125,7 +126,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         token: token,
       );
 
-      print('📦 Loaded ${offersData.length} offers');
+      log.d('📦 Loaded ${offersData.length} offers');
 
       if (offersData.isNotEmpty) {
         final parsed = await _parseOffers(offersData);
@@ -139,13 +140,13 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
           // 💾 Сохраняем в кэш
           _offersCache[_getCacheKey()] = parsed;
           _cacheTimestamps[_getCacheKey()] = DateTime.now();
-          print(
+          log.d(
             '💾 Cached ${parsed.length} offers for advert ${widget.offer.advertisementId}',
           );
 
           // ✅ Если нет никаких предложений вообще — возвращаемся
           if (parsed.isEmpty) {
-            print(
+            log.d(
               '⚡ No offers returned for advert ${widget.offer.advertisementId} '
               '— auto-popping with result=true',
             );
@@ -163,7 +164,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
           });
 
           // ✅ API вернул пустой список — тоже возвращаемся
-          print(
+          log.d(
             '⚡ No offers returned for advert ${widget.offer.advertisementId} '
             '— auto-popping with result=true',
           );
@@ -173,7 +174,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         }
       }
     } catch (e) {
-      print('❌ Error loading offers: $e');
+      log.d('❌ Error loading offers: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Ошибка загрузки предложений: $e';
@@ -196,7 +197,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
   Future<List<PriceOfferItem>> _parseOffers(
     List<Map<String, dynamic>> offersData,
   ) async {
-    print(
+    log.d(
       '🔄 _parseOffers: Starting parallel profile loading for ${offersData.length} offers (max 3 concurrent)',
     );
     final token = HiveService.getUserData('token') as String?;
@@ -217,7 +218,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
             userId: userId,
             token: token,
           ).then((profile) => {userId: profile}).catchError((e) {
-            print('   ⚠️ Error loading profile for userId $userId: $e');
+            log.d('   ⚠️ Error loading profile for userId $userId: $e');
             return {userId: <String, dynamic>{}};
           }),
         );
@@ -239,7 +240,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
       profileCache.addAll(result);
     }
 
-    print('✅ Loaded profiles for ${profileCache.length} users (${ApiRequestQueue.instance.stats})');
+    log.d('✅ Loaded profiles for ${profileCache.length} users (${ApiRequestQueue.instance.stats})');
 
     // Теперь парсим офферы, используя закэшированные профили
     List<PriceOfferItem> result = [];
@@ -530,7 +531,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                     const Spacer(),
                     // GestureDetector(
                     //   onTap: () {
-                    //     print('🔄 Manually refreshing offers cache...');
+                    //     log.d('🔄 Manually refreshing offers cache...');
                     //     _loadOffers(forceRefresh: true);
                     //   },
                     //   child: const Icon(

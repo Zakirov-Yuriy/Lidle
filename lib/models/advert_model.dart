@@ -1,4 +1,5 @@
 import 'package:lidle/models/home_models.dart';
+import 'package:lidle/core/logger.dart';
 
 class Advert {
   final int id;
@@ -73,15 +74,15 @@ class Advert {
   }
 
   factory Advert.fromJson(Map<String, dynamic> json) {
-    // print('Advert ${json['id']} images in JSON: ${json['images']}');
+    // log.d('Advert ${json['id']} images in JSON: ${json['images']}');
 
     // 🔍 DEBUG: Логируем весь JSON для объявления 157
     if (json['id'] == 157) {
-      print('═══════════════════════════════════════════════════════════');
-      print('🔍 FULL JSON для объявления 157:');
-      print(json.toString());
-      print('All keys: ${json.keys.toList()}');
-      print('═══════════════════════════════════════════════════════════');
+      log.d('═══════════════════════════════════════════════════════════');
+      log.d('🔍 FULL JSON для объявления 157:');
+      log.d(json.toString());
+      log.d('All keys: ${json.keys.toList()}');
+      log.d('═══════════════════════════════════════════════════════════');
     }
 
     // Парсим информацию о продавце из поля 'user' или 'seller'
@@ -111,7 +112,7 @@ class Advert {
               .toList(),
         );
       } catch (e) {
-        // print('Error parsing images for advert ${json['id']}: $e');
+        // log.d('Error parsing images for advert ${json['id']}: $e');
       }
     }
 

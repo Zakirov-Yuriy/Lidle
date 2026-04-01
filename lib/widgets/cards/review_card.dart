@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/review_model.dart';
 import 'package:lidle/widgets/dialogs/reply_review_dialog.dart';
 import 'package:lidle/widgets/dialogs/review_complaint_dialog.dart';
+import 'package:lidle/core/logger.dart';
 
 class ReviewCard extends StatefulWidget {
   final ReviewModel review;
@@ -115,7 +116,7 @@ class _ReviewCardState extends State<ReviewCard> {
             GestureDetector(
               onTap: () {
                 // TODO: Реализовать функционал нажатия на текст отзыва
-                // print('Отзыв нажат');
+                // log.d('Отзыв нажат');
               },
               child: Text(
                 widget.review.reviewText,

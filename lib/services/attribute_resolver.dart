@@ -16,6 +16,7 @@
 //   - attributeId = resolver.findAttributeIdByName('Частное лицо|Бизнес');
 
 import 'package:lidle/models/filter_models.dart';
+import 'package:lidle/core/logger.dart';
 
 class AttributeResolver {
   final List<Attribute> attributes;
@@ -209,9 +210,9 @@ class AttributeResolver {
         .map((a) => a.id.toString().length)
         .fold<int>(0, (max, len) => len > max ? len : max);
 
-    // print('$prefix═══════════════════════════════════════════════════');
-    // print('$prefix📋 ATTRIBUTE RESOLVER: ${attributes.length} attributes');
-    // print('$prefix═══════════════════════════════════════════════════');
+    // log.d('$prefix═══════════════════════════════════════════════════');
+    // log.d('$prefix📋 ATTRIBUTE RESOLVER: ${attributes.length} attributes');
+    // log.d('$prefix═══════════════════════════════════════════════════');
 
     for (final attr in attributes) {
       // ignore: unused_local_variable
@@ -235,51 +236,51 @@ class AttributeResolver {
           ? ' - ${attr.values.length} values'
           : '';
 
-      // print('$prefix[$idStr] ${attr.title}$dataTypeStr$flagsStr$valuesCount');
+      // log.d('$prefix[$idStr] ${attr.title}$dataTypeStr$flagsStr$valuesCount');
 
       // Логируем значения для атрибутов с предопределенными значениями
       if (attr.values.isNotEmpty && attr.values.length <= 10) {
         // ignore: unused_local_variable
         for (final val in attr.values) {
-          // print('$prefix    • ${val.value} (id=${val.id})');
+          // log.d('$prefix    • ${val.value} (id=${val.id})');
         }
       }
     }
 
-    // print('$prefix═══════════════════════════════════════════════════');
+    // log.d('$prefix═══════════════════════════════════════════════════');
   }
 
   /// Вывести отчет о найденных критических атрибутах
   void debugPrintCriticalAttributes({String prefix = ''}) {
-    // print('$prefix🔍 CRITICAL ATTRIBUTES:');
+    // log.d('$prefix🔍 CRITICAL ATTRIBUTES:');
 
     // ignore: unused_local_variable
     final offerPrice = getOfferPriceAttributeId();
-    // print(
+    // log.d(
     //   '$prefix   Offer Price: ${offerPrice != null ? '✓ ID=$offerPrice' : '✗ NOT FOUND'}',
     // );
 
     // ignore: unused_local_variable
     final area = getAreaAttributeId();
-    // print('$prefix   Area: ${area != null ? '✓ ID=$area' : '✗ NOT FOUND'}');
+    // log.d('$prefix   Area: ${area != null ? '✓ ID=$area' : '✗ NOT FOUND'}');
 
     // ignore: unused_local_variable
     final rooms = getRoomsAttributeId();
-    // print('$prefix   Rooms: ${rooms != null ? '✓ ID=$rooms' : '✗ NOT FOUND'}');
+    // log.d('$prefix   Rooms: ${rooms != null ? '✓ ID=$rooms' : '✗ NOT FOUND'}');
 
     // ignore: unused_local_variable
     final sellerType = getSellerTypeAttributeId();
-    // print(
+    // log.d(
     //   '$prefix   Seller Type: ${sellerType != null ? '✓ ID=$sellerType' : '✗ NOT FOUND'}',
     // );
 
     // ignore: unused_local_variable
     final floor = getFloorAttributeId();
-    // print('$prefix   Floor: ${floor != null ? '✓ ID=$floor' : '✗ NOT FOUND'}');
+    // log.d('$prefix   Floor: ${floor != null ? '✓ ID=$floor' : '✗ NOT FOUND'}');
 
     // ignore: unused_local_variable
     final bargain = getBargainAttributeId();
-    // print(
+    // log.d(
     //   '$prefix   Bargain: ${bargain != null ? '✓ ID=$bargain' : '✗ NOT FOUND'}',
     // );
   }

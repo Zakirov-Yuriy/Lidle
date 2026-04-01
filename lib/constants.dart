@@ -4,6 +4,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 //  Цвета приложения
@@ -221,7 +222,7 @@ Widget buildProfileImage(
         },
       );
     } catch (e) {
-      // print('❌ Error loading profile image: $e');
+      // log.d('❌ Error loading profile image: $e');
       return Container(
         width: width,
         height: height,

@@ -8,6 +8,7 @@ import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости"
@@ -97,7 +98,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     
     // 🔗 Загружаем данные объявления если указан advertisementId
     if (widget.advertisementId != null) {
-      print('📥 Загружаем объявление #${widget.advertisementId}');
+      log.d('📥 Загружаем объявление #${widget.advertisementId}');
       // TODO: Здесь можно добавить загрузку данных с API
       // _loadAdvertisement(widget.advertisementId!);
     }

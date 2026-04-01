@@ -23,6 +23,7 @@ import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+import 'package:lidle/core/logger.dart';
 
 // ============================================================
 // "Экран профиля продавца"
@@ -102,8 +103,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       }
     }
 
-    print('✅ SellerProfileScreen: загрузка с API');
-    print('   userId: $userId');
+    log.d('✅ SellerProfileScreen: загрузка с API');
+    log.d('   userId: $userId');
 
     setState(() {
       _isLoading = true;
@@ -201,7 +202,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           })
           .toList();
 
-      print('✅ Трансформировано ${listings.length} объявлений');
+      log.d('✅ Трансформировано ${listings.length} объявлений');
 
       // 💾 Сохраняем в AppCacheService (TTL 5 мин) — следующее открытие экрана
       // отдаст данные мгновенно без обращения к API

@@ -4,6 +4,7 @@
 
 import 'api_service.dart';
 import '../models/contact_model.dart';
+import 'package:lidle/core/logger.dart';
 
 class ContactService {
   /// Получить список телефонов пользователя.
@@ -55,7 +56,7 @@ class ContactService {
     String? token,
   }) async {
     try {
-      // print(
+      // log.d(
       //   '➕ ContactService.addPhone - Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
       // );
       final body = {'phone': phone};
@@ -84,7 +85,7 @@ class ContactService {
     String? token,
   }) async {
     try {
-      // print(
+      // log.d(
       //   '➕ ContactService.addEmail - Email: $email, Token: ${token != null ? 'YES' : 'NO'}',
       // );
       final body = {'email': email};
@@ -115,7 +116,7 @@ class ContactService {
     String? token,
   }) async {
     try {
-      // print(
+      // log.d(
       //   '🔄 ContactService.updatePhone - ID: $id, Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
       // );
       final body = {'phone': phone};
@@ -146,7 +147,7 @@ class ContactService {
     String? token,
   }) async {
     try {
-      // print(
+      // log.d(
       //   '🔄 ContactService.updateEmail - ID: $id, Email: $email, Token: ${token != null ? 'YES' : 'NO'}',
       // );
       final body = {'email': email};

@@ -13,6 +13,7 @@ import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
+import 'package:lidle/core/logger.dart';
 
 class ChangePhotoScreen extends StatefulWidget {
   static const routeName = '/change_photo';
@@ -344,18 +345,18 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
           return;
         }
 
-        // print('📸 change_photo_screen: Загружаем аватарку...');
-        // print('📍 Файл: ${image.path}');
+        // log.d('📸 change_photo_screen: Загружаем аватарку...');
+        // log.d('📍 Файл: ${image.path}');
 
         // Загружаем аватарку на сервер через API
         await UserService.uploadAvatar(filePath: image.path, token: token);
 
         if (mounted) Navigator.pop(context); // Закрываем loading
 
-        // print('✅ change_photo_screen: Аватарка успешно загружена на сервер');
+        // log.d('✅ change_photo_screen: Аватарка успешно загружена на сервер');
 
         // Перезагружаем профиль с сервера
-        // print('🔄 change_photo_screen: Перезагружаем профиль...');
+        // log.d('🔄 change_photo_screen: Перезагружаем профиль...');
         if (mounted) {
           context.read<ProfileBloc>().add(LoadProfileEvent());
         }
@@ -372,7 +373,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
       } catch (e) {
         if (mounted) Navigator.pop(context); // Закрываем loading
 
-        // print('❌ change_photo_screen: Ошибка при загрузке: $e');
+        // log.d('❌ change_photo_screen: Ошибка при загрузке: $e');
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -479,7 +480,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                             return;
                           }
 
-                          // print('🗑️ change_photo_screen: Удаляем аватарку...');
+                          // log.d('🗑️ change_photo_screen: Удаляем аватарку...');
 
                           // Закрываем диалог
                           if (mounted) Navigator.pop(context);
@@ -503,7 +504,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                           if (mounted)
                             Navigator.pop(context); // Закрываем loading
 
-                          // print(
+                          // log.d(
                           //   '✅ change_photo_screen: Аватарка успешно удалена',
                           // );
 
@@ -525,7 +526,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                           if (mounted)
                             Navigator.pop(context); // Закрываем loading
 
-                          // print(
+                          // log.d(
                           //   '❌ change_photo_screen: Ошибка при удалении: $e',
                           // );
 

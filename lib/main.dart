@@ -16,6 +16,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/core/logger.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
@@ -108,7 +109,7 @@ void callbackDispatcher() {
       }
       return false;
     } catch (e, st) {
-      print('❌ Background task ошибка: $e\n$st');
+      log.e('❌ Background task ошибка: $e\n$st');
       return false;
     }
   });
@@ -130,7 +131,7 @@ void main() async {
       isInDebugMode: false, // Set to true for debug logging
     );
   } catch (e) {
-    print('⚠️ Workmanager инициализация ошибка: $e');
+    log.w('⚠️ Workmanager инициализация ошибка: $e');
   }
 
   // 🚀 ОПТИМИЗАЦИЯ #1: Быстрая инициализация Hive (обязательна для кеша)
@@ -145,26 +146,26 @@ void main() async {
     await HiveService.init();
   } catch (e) {
     // Продолжаем работу даже если Hive не инициализирован
-    print('⚠️ Hive инициализация ошибка: $e');
+    log.w('⚠️ Hive инициализация ошибка: $e');
   }
 
   // 🚀 ОПТИМИЗАЦИЯ #2: DeviceInfoService инициализируется асинхронно в фоне
   // Это не блокирует холодный старт (~50-80ms экономия)
   // Инициализация запускается без await, работает параллельно с UI отрисовкой
   DeviceInfoService.initialize().catchError((e) {
-    print('⚠️ DeviceInfoService инициализация ошибка: $e');
+    log.w('⚠️ DeviceInfoService инициализация ошибка: $e');
   });
 
   // 🔔 ИНИЦИАЛИЗАЦИЯ: NotificationService для локальных пуш-уведомлений
   // Инициализируется без await, работает в фоне
   NotificationService().initialize().catchError((e) {
-    print('⚠️ NotificationService инициализация ошибка: $e');
+    log.w('⚠️ NotificationService инициализация ошибка: $e');
   });
 
   // 📩 ИНИЦИАЛИЗАЦИЯ: Загружаем сохранённые ID сообщений из хранилища
   // для восстановления Polling состояния после рестарта приложения
   MessagePollingService().loadLastMessageIds().catchError((e) {
-    print('⚠️ MessagePollingService загрузка ID ошибка: $e');
+    log.w('⚠️ MessagePollingService загрузка ID ошибка: $e');
   });
 
   SystemChrome.setSystemUIOverlayStyle(
@@ -272,7 +273,7 @@ class LidleApp extends StatelessWidget {
               initialDelay: const Duration(seconds: 30),
             );
             
-            print('🌙 Запущена фоновая задача проверки сообщений');
+            log.d('🌙 Запущена фоновая задача проверки сообщений');
           } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
             // Пользователь вышел или токен истёк — останавливаем таймер
             TokenService().dispose();
@@ -282,7 +283,7 @@ class LidleApp extends StatelessWidget {
             
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');
-            print('🌙 Отменена фоновая задача проверки сообщений');
+            log.d('🌙 Отменена фоновая задача проверки сообщений');
           }
 
           // При истечении токена — перенаправляем на экран входа
