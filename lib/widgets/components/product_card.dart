@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
-import 'package:lidle/features/cart/domain/entities/cart_screen.dart';
+import 'package:lidle/features/cart/presentation/pages/cart_screen.dart';
 import 'package:lidle/features/cart/domain/entities/cart_item_entity.dart';
 import 'package:lidle/features/cart/presentation/bloc/cart_bloc.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
