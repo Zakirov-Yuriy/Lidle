@@ -9,6 +9,11 @@ import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/network/http_client.dart';
+import 'package:lidle/core/network/token_interceptor.dart';
+
+// Re-export exceptions for backward compatibility
+export 'package:lidle/core/network/exceptions.dart';
 
 /// Исключение для 401 ошибок (токен истёк или невалиден).
 /// Используется для перехвата и автоматического refresh токена.
