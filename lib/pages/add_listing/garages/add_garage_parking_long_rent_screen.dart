@@ -11,6 +11,7 @@ import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import 'package:lidle/widgets/form_fields/photo_picker_field.dart';
+import 'package:lidle/widgets/form_fields/price_field.dart';
 
 import '../../../constants.dart';
 
@@ -49,6 +50,8 @@ class _AddGarageParkingLongRentScreenState
   }
 
   // ======================= СТЕЙТ ПЕРЕКЛЮЧАТЕЛЕЙ =======================
+
+  String _price = '';
 
   bool isIndividualSelected = true;
 
@@ -167,7 +170,14 @@ class _AddGarageParkingLongRentScreenState
               ),
               const SizedBox(height: 9),
 
-              _buildPriceInput(),
+              PriceField(
+                initialPrice: _price,
+                initialIsBargain: isBargain,
+                initialIsNoCommission: isNoCommission,
+                onPriceChanged: (value) => setState(() => _price = value),
+                onIsBargainChanged: (value) => setState(() => isBargain = value),
+                onIsNoCommissionChanged: (value) => setState(() => isNoCommission = value),
+              ),
 
               const SizedBox(height: 15),
 
@@ -692,45 +702,6 @@ class _AddGarageParkingLongRentScreenState
   // ============================================================
   // ================ ВСПОМОГАТЕЛЬНЫЕ ВИДЖЕТЫ ===================
   // ============================================================
-
-  Widget _buildPriceInput() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: const TextField(
-              keyboardType: TextInputType.number,
-              style: TextStyle(color: textPrimary),
-              decoration: InputDecoration(
-                hintText: '1 000 000',
-                hintStyle: TextStyle(color: Color.fromARGB(255, 255, 255, 255)),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          width: 55,
-          height: 48,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: formBackground,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: const Text(
-            '₽',
-            style: TextStyle(color: textPrimary, fontSize: 16),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildTextField({
     required String label,

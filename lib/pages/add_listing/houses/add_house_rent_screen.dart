@@ -11,6 +11,7 @@ import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import 'package:lidle/widgets/form_fields/photo_picker_field.dart';
+import 'package:lidle/widgets/form_fields/price_field.dart';
 
 import '../../../constants.dart';
 
@@ -54,6 +55,8 @@ class _AddHouseRentScreenState extends State<AddHouseRentScreen> {
   void _onImagesChanged(List<File> images) {
     setState(() => _images = images);
   }
+
+  String _price = '';
 
   // ======================= СТЕЙТ ПЕРЕКЛЮЧАТЕЛЕЙ =======================
 
@@ -168,71 +171,18 @@ class _AddHouseRentScreenState extends State<AddHouseRentScreen> {
               const SizedBox(height: 24),
 
               // ---------------- ЦЕНА ----------------
-              const Text(
-                'Цена*',
-                style: TextStyle(color: textPrimary, fontSize: 16),
+              PriceField(
+                initialPrice: _price,
+                initialIsBargain: isBargain,
+                initialIsNoCommission: isNoCommission,
+                onPriceChanged: (value) => setState(() => _price = value),
+                onIsBargainChanged: (value) => setState(() => isBargain = value),
+                onIsNoCommissionChanged: (value) => setState(() => isNoCommission = value),
               ),
-              const SizedBox(height: 9),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: formBackground,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              style: TextStyle(color: textPrimary),
-                              decoration: InputDecoration(
-                                hintText: '1 000 000',
-                                hintStyle: TextStyle(
-                                  color: Color.fromARGB(255, 255, 255, 255),
-                                  fontSize: 14,
-                                ),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: formBackground,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    width: 53,
-                    height: 48,
-                    alignment: Alignment.center,
-                    child: const Text(
-                      '₽',
-                      style: TextStyle(color: textPrimary, fontSize: 16),
-                    ),
-                  ),
-                ],
-              ),
+
               const SizedBox(height: 15),
 
               // ---------------- ЧЕКБОКСЫ ПОСЛЕ ЦЕНЫ ----------------
-              _buildCheckboxRow(
-                title: 'Возможен торг',
-                value: isBargain,
-                onChanged: (v) => setState(() => isBargain = v),
-              ),
-              const SizedBox(height: 12),
-              _buildCheckboxRow(
-                title: 'Без комиссии',
-                value: isNoCommission,
-                onChanged: (v) => setState(() => isNoCommission = v),
-              ),
-              const SizedBox(height: 12),
               _buildCheckboxRow(
                 title: 'Возможность обмена',
                 value: isExchange,

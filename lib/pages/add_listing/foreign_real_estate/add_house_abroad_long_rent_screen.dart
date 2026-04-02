@@ -8,6 +8,7 @@ import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
 import 'package:lidle/widgets/form_fields/photo_picker_field.dart';
+import 'package:lidle/widgets/form_fields/price_field.dart';
 import '../publication_tariff_screen.dart';
 
 import '../../../constants.dart';
@@ -57,6 +58,8 @@ class _AddHouseAbroadLongRentScreenState
   void _onImagesChanged(List<File> images) {
     setState(() => _images = images);
   }
+
+  String _price = '';
 
   final TextEditingController floorController = TextEditingController();
   final TextEditingController floorsController = TextEditingController();
@@ -169,95 +172,15 @@ class _AddHouseAbroadLongRentScreenState
 
               const SizedBox(height: 24),
 
-              const Text(
-                'Цена*',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              const SizedBox(height: 9),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: formBackground,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              keyboardType: TextInputType.number,
-                              style: const TextStyle(color: textPrimary),
-                              decoration: const InputDecoration(
-                                hintText: '1 000 000',
-                                hintStyle: TextStyle(
-                                  color: Color.fromARGB(255, 255, 255, 255),
-                                  fontSize: 14,
-                                ),
-                                border: InputBorder.none,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: formBackground,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    width: 53,
-                    height: 48,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '₽',
-                      style: TextStyle(color: textPrimary, fontSize: 16),
-                    ),
-                  ),
-                ],
+              PriceField(
+                initialPrice: _price,
+                initialIsBargain: isBargain,
+                initialIsNoCommission: isNoCommission,
+                onPriceChanged: (value) => setState(() => _price = value),
+                onIsBargainChanged: (value) => setState(() => isBargain = value),
+                onIsNoCommissionChanged: (value) => setState(() => isNoCommission = value),
               ),
               const SizedBox(height: 15),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => isBargain = !isBargain),
-                      child: const Text(
-                        'Возможен торг',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isBargain,
-                    onChanged: (v) => setState(() => isBargain = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () =>
-                          setState(() => isNoCommission = !isNoCommission),
-                      child: const Text(
-                        'Без комиссии',
-                        style: TextStyle(color: textPrimary, fontSize: 14),
-                      ),
-                    ),
-                  ),
-                  CustomCheckbox(
-                    value: isNoCommission,
-                    onChanged: (v) => setState(() => isNoCommission = v),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
 
               Row(
                 children: [
