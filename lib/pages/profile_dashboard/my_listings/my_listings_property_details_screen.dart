@@ -235,7 +235,7 @@ class _MyListingsPropertyDetailsScreenState
                             'Цена: ${_listing.price}\n'
                             'Адрес: ${_listing.location}\n\n'
                             'Присоединяйся к LIDLE!\n'
-                            'https://dev.lidle.io/ru',
+                            'https://lidle.io/ru',
                           ),
                           child: SvgPicture.asset(
                             'assets/home_page/share_outlined.svg',

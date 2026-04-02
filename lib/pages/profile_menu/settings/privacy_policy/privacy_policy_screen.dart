@@ -118,29 +118,29 @@ class PrivacyPolicyScreen extends StatelessWidget {
                             menuItem(
                               'Пользовательское соглашение',
                               url:
-                                  'https://dev.lidle.io/documents/user-agreement.pdf',
+                                  'https://lidle.io/documents/user-agreement.pdf',
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Оферта',
                               url:
-                                  'https://dev.lidle.io/documents/public-offer.pdf',
+                                  'https://lidle.io/documents/public-offer.pdf',
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Согласие на обработку персональных данных',
-                              url: 'https://dev.lidle.io/documents/consent.pdf',
+                              url: 'https://lidle.io/documents/consent.pdf',
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Политика конфиденциальности',
                               url:
-                                  'https://dev.lidle.io/documents/privacy-policy.pdf',
+                                  'https://lidle.io/documents/privacy-policy.pdf',
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Согласие получение сообщений рекламного и информационного характера',
-                              url: 'https://dev.lidle.io/documents/mailing.pdf',
+                              url: 'https://lidle.io/documents/mailing.pdf',
                             ),
                           ],
                         );

@@ -354,7 +354,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               'Профиль продавца: ${widget.sellerName}\n\n'
               'Присоединяйся к LIDLE! 🚀\n\n'
               'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
-              'https://dev.lidle.io/ru',
+              'https://lidle.io/ru',
             );
           },
         ),

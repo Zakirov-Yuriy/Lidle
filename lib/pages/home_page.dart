@@ -156,7 +156,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
         'Присоединяйся к ЛИДЛ LIDLE! 🚀\n\n'
         'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
         'Скачай приложение и получи эксклюзивные предложения!\n\n'
-        'https://dev.lidle.io/ru',
+        'https://lidle.io/ru',
         subject: 'LIDLE - маркетплейс изделий',
       );
     } catch (e) {

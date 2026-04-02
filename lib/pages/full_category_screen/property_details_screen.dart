@@ -175,7 +175,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           'Присоединяйся к LIDLE! 🚀\n\n'
                           'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
                           'Скачай приложение и получи эксклюзивные предложения!\n\n'
-                          'https://dev.lidle.io/ru',
+                          'https://lidle.io/ru',
                         ),
                       ),
                     ],

@@ -13,7 +13,7 @@ import 'package:http/http.dart' as http;
 /// Включает методы для:
 /// - Обновления access_token через refresh_token
 class AuthRemote {
-  static const String _baseUrl = 'https://dev-api.lidle.io/v1';
+  static const String _baseUrl = 'https://api.lidle.io/v1';
   static const Map<String, String> _defaultHeaders = {
     'Accept': 'application/json',
     'X-App-Client': 'mobile',

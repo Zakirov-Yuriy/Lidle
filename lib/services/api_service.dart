@@ -39,7 +39,7 @@ class RateLimitException implements Exception {
 class ApiService {
   // ОПТИМИЗАЦИЯ: Базовый URL захардкодирован чтобы не использовать dotenv при инициализации
   // dotenv.load() отнимает ~900ms, а базовый URL не меняется
-  static String get baseUrl => 'https://dev-api.lidle.io/v1';
+  static String get baseUrl => 'https://api.lidle.io/v1';
   static const int _maxRetries = 4;
   static const int _retryDelayMs =
       2000; // 🚀 ОПТИМИЗАЦИЯ: Увеличена стартовая задержка с 1000ms на 2000ms

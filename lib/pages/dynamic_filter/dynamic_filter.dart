@@ -1509,7 +1509,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           // Убедимся что URL полный
           if (!imageUrl.startsWith('http')) {
             imageUrl =
-                'https://dev-api.lidle.io' +
+                'https://api.lidle.io' +
                 (imageUrl.startsWith('/') ? '' : '/') +
                 imageUrl;
           }

@@ -256,7 +256,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://dev.lidle.io/documents/user-agreement.pdf'),
+                                ..onTap = () => _openURL('https://lidle.io/documents/user-agreement.pdf'),
                             ),
                             const TextSpan(
                               text: ', ',
@@ -269,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://dev.lidle.io/documents/offer.pdf'),
+                                ..onTap = () => _openURL('https://lidle.io/documents/offer.pdf'),
                             ),
                             const TextSpan(
                               text: ' и даю ',
@@ -282,7 +282,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://dev.lidle.io/documents/consent.pdf'),
+                                ..onTap = () => _openURL('https://lidle.io/documents/consent.pdf'),
                             ),
                             const TextSpan(
                               text: ' на обработку персональных данных на условиях ',
@@ -295,7 +295,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://dev.lidle.io/documents/privacy-policy.pdf'),
+                                ..onTap = () => _openURL('https://lidle.io/documents/privacy-policy.pdf'),
                             ),
                           ],
                         ),
@@ -317,7 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://dev.lidle.io/documents/mailing.pdf'),
+                                ..onTap = () => _openURL('https://lidle.io/documents/mailing.pdf'),
                             ),
                             const TextSpan(
                               text: 'и ',
@@ -330,7 +330,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://dev.lidle.io/documents/mailing.pdf'),
+                                ..onTap = () => _openURL('https://lidle.io/documents/mailing.pdf'),
                             ),
                           ],
                         ),

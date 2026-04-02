@@ -466,7 +466,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                                 'Цена: ${widget.listing.price}\n'
                                 'Адрес: ${widget.listing.location}\n\n'
                                 'Присоединяйся к LIDLE!\n'
-                                'https://dev.lidle.io/ru';
+                                'https://lidle.io/ru';
 
                             Share.share(textToShare);
                           },

@@ -157,7 +157,7 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
                       final textToShare =
                           'Фото объявления\n'
                           'Присоединяйся к LIDLE!\n'
-                          'https://dev.lidle.io/ru';
+                          'https://lidle.io/ru';
                       Share.share(textToShare);
                     },
                   ),

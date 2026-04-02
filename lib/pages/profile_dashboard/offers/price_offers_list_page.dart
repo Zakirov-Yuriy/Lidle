@@ -315,7 +315,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
         return avatarUrl;
       }
       // Если это относительный путь, то добавляем базовый URL
-      return 'https://dev-img.lidle.io/$avatarUrl';
+      return 'https://img.lidle.io/$avatarUrl';
     }
     // Использует default avatar если нет данных
     return _defaultAvatar();
