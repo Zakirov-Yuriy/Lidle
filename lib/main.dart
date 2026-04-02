@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:lidle/services/background_message_service.dart';
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
@@ -69,6 +71,28 @@ void callbackDispatcher() {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔧 ИНИЦИАЛИЗАЦИЯ: Загружаем конфигурацию из .env файла
+  // Это определяет окружение (dev/prod) для всех API endpoints
+  try {
+    await dotenv.load(fileName: '.env');
+    final environment = dotenv.env['APP_ENVIRONMENT'] ?? 'prod';
+    
+    // 🔍 ДЕБАГ: Выводим что прочитали из .env
+    log.w('🔍 DEBUG: APP_ENVIRONMENT из .env = "$environment"');
+    log.w('🔍 DEBUG: Все переменные .env: ${dotenv.env}');
+    
+    await AppConfig.initialize(environmentValue: environment);
+    log.i('✅ AppConfig инициализирован: ${AppConfig().environment.value}');
+    log.i('   API URL: ${AppConfig().apiBaseUrl}');
+    log.i('   WebSocket URL: ${AppConfig().wsUrl}');
+    log.i('   Images URL: ${AppConfig().imageBaseUrl}');
+  } catch (e, st) {
+    log.e('❌ AppConfig инициализация ошибка: $e\n$st');
+    // Используем production по умолчанию если .env не найден
+    await AppConfig.initialize(environmentValue: 'prod');
+    log.w('⚠️ Использован fallback - production сервер');
+  }
 
   // 🌙 ИНИЦИАЛИЗАЦИЯ: Workmanager для фоновых задач
   // Инициализируем callback dispatcher для обработки фоновых задач

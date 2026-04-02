@@ -9,6 +9,7 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/config/app_config.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости"
@@ -175,7 +176,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           'Присоединяйся к LIDLE! 🚀\n\n'
                           'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
                           'Скачай приложение и получи эксклюзивные предложения!\n\n'
-                          'https://lidle.io/ru',
+                          '${AppConfig().websiteUrl}',
                         ),
                       ),
                     ],

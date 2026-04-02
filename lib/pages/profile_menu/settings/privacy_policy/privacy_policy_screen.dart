@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PrivacyPolicyScreen extends StatelessWidget {
@@ -117,30 +118,27 @@ class PrivacyPolicyScreen extends StatelessWidget {
                           children: [
                             menuItem(
                               'Пользовательское соглашение',
-                              url:
-                                  'https://lidle.io/documents/user-agreement.pdf',
+                              url: AppConfig().userAgreementUrl,
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Оферта',
-                              url:
-                                  'https://lidle.io/documents/public-offer.pdf',
+                              url: AppConfig().publicOfferUrl,
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Согласие на обработку персональных данных',
-                              url: 'https://lidle.io/documents/consent.pdf',
+                              url: AppConfig().consentUrl,
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Политика конфиденциальности',
-                              url:
-                                  'https://lidle.io/documents/privacy-policy.pdf',
+                              url: AppConfig().privacyPolicyUrl,
                             ),
                             const Divider(color: dividerColor, height: 0),
                             menuItem(
                               'Согласие получение сообщений рекламного и информационного характера',
-                              url: 'https://lidle.io/documents/mailing.pdf',
+                              url: AppConfig().mailingUrl,
                             ),
                           ],
                         );

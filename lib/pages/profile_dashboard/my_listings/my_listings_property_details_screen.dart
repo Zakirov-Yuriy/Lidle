@@ -14,6 +14,7 @@ import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/config/app_config.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости для моих объявлений"
@@ -235,7 +236,7 @@ class _MyListingsPropertyDetailsScreenState
                             'Цена: ${_listing.price}\n'
                             'Адрес: ${_listing.location}\n\n'
                             'Присоединяйся к LIDLE!\n'
-                            'https://lidle.io/ru',
+                            '${AppConfig().websiteUrl}',
                           ),
                           child: SvgPicture.asset(
                             'assets/home_page/share_outlined.svg',

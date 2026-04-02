@@ -58,6 +58,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/
     - assets/home_page/logo.svg
     - assets/home_page/logo2.svg

@@ -9,6 +9,7 @@ import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
+import 'package:lidle/core/config/app_config.dart';
 
 class OutdoorAdvertisingScreen extends StatefulWidget {
   static const routeName = '/outdoor-advertising';
@@ -73,7 +74,7 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
                               'Присоединяйся к LIDLE! 🚀\n\n'
                               'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
                               'Скачай приложение и получи эксклюзивные предложения!\n\n'
-                              'https://lidle.io/ru',
+                              '${AppConfig().websiteUrl}',
                             ),
                             child: SvgPicture.asset(
                               'assets/home_page/share_outlined.svg',

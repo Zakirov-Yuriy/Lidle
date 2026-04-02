@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/core/config/app_config.dart';
 
 class PropertyGalleryScreen extends StatefulWidget {
   final List<String> images;
@@ -157,7 +158,7 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
                       final textToShare =
                           'Фото объявления\n'
                           'Присоединяйся к LIDLE!\n'
-                          'https://lidle.io/ru';
+                          '${AppConfig().websiteUrl}';
                       Share.share(textToShare);
                     },
                   ),

@@ -15,6 +15,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/core/network/exceptions.dart';
 import 'package:lidle/core/network/token_interceptor.dart';
 
@@ -28,9 +29,8 @@ import 'package:lidle/core/network/token_interceptor.dart';
 /// - Поддержка GET с body параметрами (нестандартное использование)
 /// - Логирование всех запросов и ответов
 class HttpClient {
-  // ОПТИМИЗАЦИЯ: Базовый URL захардкодирован чтобы не использовать dotenv при инициализации
-  // dotenv.load() отнимает ~900ms, а базовый URL не меняется
-  static String get baseUrl => 'https://api.lidle.io/v1';
+  // Получаем базовый URL из конфигурации приложения (dev или prod)
+  static String get baseUrl => AppConfig().apiBaseUrl;
   static const int _maxRetries = 4;
   static const int _retryDelayMs =
       2000; // 🚀 ОПТИМИЗАЦИЯ: Увеличена стартовая задержка с 1000ms на 2000ms

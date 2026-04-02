@@ -11,6 +11,7 @@ import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/config/app_config.dart';
 
 // ============================================================
 // "Мини-экран деталей отфильтрованной недвижимости"
@@ -169,7 +170,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           'Цена: ${widget.listing.price}\n'
                           'Адрес: ${widget.listing.location}\n\n'
                           'Присоединяйся к LIDLE!\n'
-                          'https://lidle.io/ru',
+                          '${AppConfig().websiteUrl}',
                         ),
                       ),
                     ],

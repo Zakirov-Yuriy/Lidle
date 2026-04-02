@@ -15,6 +15,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
+import 'package:lidle/core/config/app_config.dart';
 
 // Navigation targets used by bottom navigation
 import 'package:lidle/pages/home_page.dart';
@@ -354,7 +355,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               'Профиль продавца: ${widget.sellerName}\n\n'
               'Присоединяйся к LIDLE! 🚀\n\n'
               'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
-              'https://lidle.io/ru',
+              '${AppConfig().websiteUrl}',
             );
           },
         ),

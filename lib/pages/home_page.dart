@@ -18,6 +18,7 @@ import '../widgets/navigation/bottom_navigation.dart';
 import '../blocs/listings/listings_bloc.dart';
 import '../blocs/listings/listings_state.dart';
 import '../blocs/listings/listings_event.dart';
+import '../core/config/app_config.dart';
 import '../blocs/navigation/navigation_bloc.dart';
 import '../blocs/navigation/navigation_state.dart';
 import '../blocs/navigation/navigation_event.dart';
@@ -156,7 +157,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
         'Присоединяйся к ЛИДЛ LIDLE! 🚀\n\n'
         'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
         'Скачай приложение и получи эксклюзивные предложения!\n\n'
-        'https://lidle.io/ru',
+        '${AppConfig().websiteUrl}',
         subject: 'LIDLE - маркетплейс изделий',
       );
     } catch (e) {

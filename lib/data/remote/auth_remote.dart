@@ -4,6 +4,7 @@
 
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/core/network/http_client.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -13,7 +14,7 @@ import 'package:http/http.dart' as http;
 /// Включает методы для:
 /// - Обновления access_token через refresh_token
 class AuthRemote {
-  static const String _baseUrl = 'https://api.lidle.io/v1';
+  static String get _baseUrl => AppConfig().apiBaseUrl;
   static const Map<String, String> _defaultHeaders = {
     'Accept': 'application/json',
     'X-App-Client': 'mobile',
