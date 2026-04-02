@@ -30,11 +30,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Флаг для защиты от дублирования pull-to-refresh запросов.
   bool _isLoadingListings = false;
 
+  /// Флаг для защиты от параллельного выполнения фазы 2 загрузки.
+  /// Предотвращает множественные параллельные запросы при rate limiting.
+  bool _isPhase2Loading = false;
+
   /// Время последнего успешного обновления через pull-to-refresh.
   DateTime? _lastRefreshTime;
 
-  /// Минимальное время между refresh операциями (3 секунды).
-  static const Duration _refreshDebounce = Duration(seconds: 3);
+  /// Минимальное время между refresh операциями (10 секунд).
+  /// 🔧 УВЕЛИЧЕНО: Защита от rate limiting (429) при быстрых обновлениях.
+  static const Duration _refreshDebounce = Duration(seconds: 10);
 
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
@@ -116,11 +121,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       return;
     }
 
-    // Дебоунс для pull-to-refresh: минимум 3 секунды между обновлениями
+    // 🔧 Дебоунс для pull-to-refresh: минимум 10 секунд между обновлениями
+    // Это защищает от rate limiting (429) при быстрых обновлениях
     if (event.forceRefresh && _lastRefreshTime != null) {
       final timeSinceLastRefresh = DateTime.now().difference(_lastRefreshTime!);
       if (timeSinceLastRefresh < _refreshDebounce) {
-        log.d('Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями');
+        log.d('⏱️ Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями ' +
+            '(прошло ${timeSinceLastRefresh.inSeconds}s)');
         return;
       }
     }
@@ -239,6 +246,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           batchSize: 2,
         );
 
+        // 🔧 ИСПРАВЛЕНИЕ: Отслеживаем ID объявлений для дедупликации
+        // (несколько каталогов могут содержать одно и то же объявление)
+        final seenIds = <String>{};
+
         // Парсируем ответы
         for (final response in batchResponses) {
           if (response.data.isNotEmpty) {
@@ -253,7 +264,14 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               parsedListings = _parseAdvertsOnBackgroundThread(response.data);
             }
 
-            initialListings.addAll(parsedListings);
+            // 🔧 ИСПРАВЛЕНИЕ: Добавляем только уникальные объявления
+            for (final listing in parsedListings) {
+              if (!seenIds.contains(listing.id)) {
+                seenIds.add(listing.id);
+                initialListings.add(listing);
+              }
+            }
+            
             totalPages = response.meta.lastPage;
             itemsPerPage = response.meta.perPage;
           }
@@ -532,8 +550,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         return advert.toListing();
       }).toList();
 
-      // Объединяем существующие объявления с новыми
-      final allListings = [...currentState.listings, ...newListings];
+      // 🔧 ИСПРАВЛЕНИЕ: Дедупликация при объединении - избегаем дублей при пагинации
+      // Используем Set для отслеживания уже загруженных ID
+      final seenIds = currentState.listings.map((l) => l.id).toSet();
+      final uniqueNewListings = newListings
+          .where((listing) => !seenIds.contains(listing.id))
+          .toList();
+
+      // Объединяем существующие объявления с новыми (только с уникальными)
+      final allListings = [...currentState.listings, ...uniqueNewListings];
 
       // 📌 НЕ пересортируем при пагинации!
       // Пользователь ожидает видеть новые объявления внизу, а не в начале
@@ -543,7 +568,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final totalPages = advertsResponse.meta.lastPage;
       final itemsPerPage = advertsResponse.meta.perPage;
 
-      // log.d('✅ Загружено ${newListings.length} нов объявлений, всего: ${allListings.length}');
+      // log.d('✅ Загружено ${newListings.length} объявлений (${uniqueNewListings.length} уникальных), всего: ${allListings.length}');
 
       // Испускаем новое состояние с новыми объявлениями в конце
       emit(
@@ -768,6 +793,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     List<home.Listing> initialListings,
     String operationKey,
   ) {
+    // 🛡️ ЗАЩИТА: Не запускаем фазу 2 если она уже выполняется
+    // Предотвращает множественные параллельные загрузки при rate limiting
+    if (_isPhase2Loading) {
+      log.d('⚠️ ListingsBloc ФАЗА 2: Уже выполняется, пропускаем дублирование');
+      return;
+    }
+
+    _isPhase2Loading = true;
+
     // Запускаем в фоне, не ждём результата в основном обработчике события
     Future(() async {
       try {
@@ -775,10 +809,20 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         const phase2OperationKey = 'listings_load_phase2';
         LoadingTimerService().startLoadingTimer(phase2OperationKey);
 
-        // Загружаем остальные каталоги батчами по 2 одновременно
-        // (уменьшено с 4 до 2 для снижения rate limiting)
+        // 🔧 ИСПРАВЛЕНИЕ: Уменьшена параллельность с 2 до 1
+        // Это критично для избежания rate limiting (429 ошибок)
+        // При rate limiting сервер может потребовать еще больше времени между запросами
         List<home.Listing> additionalListings = [];
-        const int maxConcurrentRequests = 2;
+        const int maxConcurrentRequests = 1;  // Был 2, теперь 1
+        
+        // 📊 Отслеживаем успешные и неудачные батчи для graceful degradation
+        int successfulBatches = 0;
+        int failedBatches = 0;
+        int rateLimitErrors = 0;
+        
+        // 📈 Exponential backoff для rate limiting ошибок
+        int currentDelayMs = 500;  // Начальная задержка 500ms
+        const int maxDelayMs = 5000;  // Максимальная задержка 5 сек
         
         for (int i = 0; i < remainingCatalogIds.length; i += maxConcurrentRequests) {
           final batch = remainingCatalogIds.sublist(
@@ -800,9 +844,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           try {
             final batchResponses = await Future.wait(batchFutures);
             
-            // Задержка между батчами чтобы не перегружать сервер (500ms)
+            successfulBatches++;
+            // После успешного батча сбрасываем exponential backoff
+            currentDelayMs = 500;
+            
+            // Задержка между батчами чтобы не перегружать сервер
             if (i + maxConcurrentRequests < remainingCatalogIds.length) {
-              await Future.delayed(const Duration(milliseconds: 500));
+              await Future.delayed(Duration(milliseconds: currentDelayMs));
             }
 
             for (final response in batchResponses) {
@@ -822,23 +870,62 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               }
             }
           } catch (e) {
-            // Логируем ошибку батча но продолжаем с остальными
-            log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
+            failedBatches++;
+            final errorMsg = e.toString();
+            
+            // 🚨 Специальная обработка rate limiting (429) ошибок
+            if (errorMsg.contains('429') || errorMsg.contains('RateLimitException')) {
+              rateLimitErrors++;
+              log.d('⏱️ ListingsBloc ФАЗА 2: Rate limit (429), применяю exponential backoff...');
+              
+              // 📈 Exponential backoff: увеличиваем задержку
+              currentDelayMs = (currentDelayMs * 2).clamp(500, maxDelayMs);
+              
+              // Если слишком много 429 ошибок - останавливаем фазу 2 и используем кеш
+              if (rateLimitErrors >= 3) {
+                log.d('🛑 ListingsBloc ФАЗА 2: Слишком много rate limit ошибок (${rateLimitErrors}x 429), ' +
+                    'останавливаю фазу 2 и использую кеш...');
+                break;  // Выходим из цикла батчей
+              }
+              
+              // Ждем перед повторной попыткой
+              await Future.delayed(Duration(milliseconds: currentDelayMs));
+            } else {
+              // Для других ошибок просто логируем и продолжаем
+              log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
+            }
+            
             continue;
           }
         }
 
         // 📊 ОБЪЕДИНЯЕМ: инициальные объявления + новые объявления
-        final allListings = [...initialListings, ...additionalListings];
-        final finalSortedListings = _sortListingsByDate(allListings);
+        // 🔧 Дедупликация по ID объявления
+        final seenIds = <String>{};
+        final deduplicatedListings = <home.Listing>[];
+        
+        for (final listing in [...initialListings, ...additionalListings]) {
+          if (!seenIds.contains(listing.id)) {
+            seenIds.add(listing.id);
+            deduplicatedListings.add(listing);
+          }
+        }
+        
+        final finalSortedListings = _sortListingsByDate(deduplicatedListings);
 
         // 🔥 ТАЙМЕР: Фиксируем полное время загрузки (фаза 2)
-        LoadingTimerService().stopLoadingTimer(
-          phase2OperationKey,
-          label: 'Listings (все каталоги загружены)',
-        );
+        try {
+          LoadingTimerService().stopLoadingTimer(
+            phase2OperationKey,
+            label: 'Listings (фаза 2: $successfulBatches успешно, $failedBatches ошибок)',
+          );
+        } catch (e) {
+          // Игнорируем ошибку таймера если он не был запущен
+        }
 
-        // 📢 ОБНОВЛЯЕМ UI с полным списком объявлений
+        // 📢 GRACEFUL DEGRADATION: Всегда эмитируем успешное состояние
+        // Даже если некоторые батчи 429 - показываем данные которые удалось загрузить
+        // + уже загруженные данные из фазы 1
         emit(
           ListingsLoaded(
             listings: finalSortedListings,
@@ -866,13 +953,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             },
             persist: true,
           );
-          log.d('✅ ListingsBloc ФАЗА 2: Полный список закеширован (${finalSortedListings.length} объявлений)');
+          log.d('✅ ListingsBloc ФАЗА 2: Данные закеширован (${finalSortedListings.length} объявлений)');
         } catch (e) {
           log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
         }
       } catch (e) {
-        log.d('❌ ListingsBloc ФАЗА 2: Ошибка при загрузке остальных каталогов: $e');
-        // UI остается с первыми 12 объявлениями, пользователь может продолжить работу
+        log.d('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
+        // Даже при критической ошибке, не эмитируем ListingsError
+        // Пользователь видит уже загруженные данные из фазы 1
+      } finally {
+        _isPhase2Loading = false;  // 🛡️ Разрешаем следующую фазу 2
       }
     });
   }
