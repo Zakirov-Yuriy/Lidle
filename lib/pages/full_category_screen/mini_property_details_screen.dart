@@ -715,24 +715,106 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   /// Вспомогательный метод для безопасного отображения аватара продавца
+  /// Поддерживает: сетевые изображения (PNG, JPG), локальные ассеты и SVG файлы
+  /// При ошибке загрузки сетевого изображения показывает дефолтную SVG аватарку
   Widget _buildSellerAvatar(String? avatarUrl) {
-    final defaultAvatar = 'assets/property_details_screen/Andrey.png';
-    final url = (avatarUrl != null && avatarUrl.isNotEmpty) ? avatarUrl : defaultAvatar;
+    final defaultAvatar = 'assets/profile_dashboard/default-photo.svg';
     
-    if (url.startsWith('http')) {
-      return CircleAvatar(
-        radius: 35.5,
-        backgroundImage: NetworkImage(url),
-        onBackgroundImageError: (exception, stackTrace) {
-          // Fallback to default on error
-        },
-      );
-    } else {
-      return CircleAvatar(
-        radius: 35.5,
-        backgroundImage: AssetImage(url),
+    // Если нет аватарки или URL пуст - показываем дефолтную SVG
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return _buildDefaultAvatarContainer();
+    }
+    
+    // Для SVG файлов используем SvgPicture
+    if (avatarUrl.endsWith('.svg')) {
+      return Container(
+        width: 71,
+        height: 71,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: formBackground,
+        ),
+        child: ClipOval(
+          child: SvgPicture.asset(
+            avatarUrl,
+            fit: BoxFit.cover,
+            placeholderBuilder: (context) => Container(
+              color: formBackground,
+            ),
+          ),
+        ),
       );
     }
+    
+    // Для сетевых изображений с fallback на дефолтную аватарку
+    if (avatarUrl.startsWith('http')) {
+      return ClipOval(
+        child: SizedBox(
+          width: 71,
+          height: 71,
+          child: Image.network(
+            avatarUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) {
+              log.w('❌ Failed to load avatar from: $avatarUrl, using default');
+              return _buildDefaultAvatarContainer();
+            },
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: formBackground,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.grey.shade600,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+    
+    // Для локальных растровых изображений (PNG, JPG)
+    return ClipOval(
+      child: SizedBox(
+        width: 71,
+        height: 71,
+        child: Image.asset(
+          avatarUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            log.w('❌ Failed to load local avatar from: $avatarUrl, using default');
+            return _buildDefaultAvatarContainer();
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Вспомогательный метод для отображения дефолтной аватарки
+  Widget _buildDefaultAvatarContainer() {
+    const defaultAvatar = 'assets/profile_dashboard/default-photo.svg';
+    return Container(
+      width: 71,
+      height: 71,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: formBackground,
+      ),
+      child: ClipOval(
+        child: SvgPicture.asset(
+          defaultAvatar,
+          fit: BoxFit.cover,
+          placeholderBuilder: (context) => Container(
+            color: formBackground,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildPageIndicator(bool isActive) {

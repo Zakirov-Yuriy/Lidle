@@ -199,7 +199,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     try {
       final token = TokenService.currentToken;
 
-      // 🚀 ФАЗА 1: Загружаем каталоги один раз (НЕ дважды!)
+      //  ФАЗА 1: Загружаем каталоги один раз (НЕ дважды!)
       final catalogsResponse = await ApiService.getCatalogs(token: token);
       final allCatalogIds = catalogsResponse.data.map((c) => c.id).toList();
 
@@ -318,7 +318,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         label: 'Listings (ошибка при загрузке)',
       );
       
-      emit(ListingsError(message: e.toString()));
+      // 🔴 СЛОЙ 3: Преобразуем ошибку в понятное сообщение
+      final errorMessage = _getErrorMessage(e);
+      log.e('❌ Ошибка загрузки объявлений: $errorMessage', error: e);
+      emit(ListingsError(message: errorMessage));
     } finally {
       _isLoadingListings = false;
     }
@@ -1017,6 +1020,70 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       imagePath: json['imagePath'] ?? '',
       isCatalog: json['isCatalog'] ?? true,
     );
+  }
+
+  /// � ВОССТАНОВЛЕНИЕ ИЗ КЕША: Публичный метод для восстановления данных при возврате на страницу
+  /// Используется в didPopNext() для мгновенного показа кешированных данных
+  /// Возвращает ListingsLoaded состояние если кеш есть, иначе null
+  ListingsLoaded? restoreCachedData() {
+    try {
+      final cachedListings = AppCacheService().get<Map>(CacheKeys.listingsData);
+      if (cachedListings != null &&
+          cachedListings.containsKey('listings') &&
+          cachedListings.containsKey('categories')) {
+        try {
+          final listings = (cachedListings['listings'] as List)
+              .map((item) => _jsonToListing(item as Map<String, dynamic>))
+              .toList();
+          final categories = (cachedListings['categories'] as List)
+              .map((item) => _jsonToCategory(item as Map<String, dynamic>))
+              .toList();
+
+          log.d('🟢 Восстановлены данные из кеша! Объявлений: ${listings.length}, категорий: ${categories.length}');
+          return ListingsLoaded(
+            listings: listings,
+            categories: categories,
+            currentPage: cachedListings['currentPage'] ?? 1,
+            totalPages: cachedListings['totalPages'] ?? 1,
+            itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
+          );
+        } catch (e) {
+          log.w('⚠️ Ошибка при восстановлении из кеша: $e');
+          return null;
+        }
+      }
+    } catch (e) {
+      log.d('⚠️ Кеш недоступен: $e');
+      return null;
+    }
+    return null;
+  }
+
+  /// �🔴 СЛОЙ 3: Преобразует ошибку в понятное для пользователя сообщение
+  /// Различает TimeoutException, SocketException, 429 и другие ошибки
+  String _getErrorMessage(Object error) {
+    final errorStr = error.toString();
+    
+    if (errorStr.contains('TimeoutException')) {
+      return 'Загрузка заняла слишком много времени. Проверьте интернет и попробуйте снова.';
+    }
+    if (errorStr.contains('SocketException')) {
+      return 'Ошибка подключения. Проверьте интернет и попробуйте снова.';
+    }
+    if (errorStr.contains('429')) {
+      return 'Слишком много запросов. Подождите немного и попробуйте снова.';
+    }
+    if (errorStr.contains('401') || errorStr.contains('Unauthorized')) {
+      return 'Требуется повторная авторизация. Пожалуйста, выполните вход.';
+    }
+    if (errorStr.contains('403') || errorStr.contains('Forbidden')) {
+      return 'Доступ запрещен. Свяжитесь с поддержкой.';
+    }
+    if (errorStr.contains('500') || errorStr.contains('ServerException')) {
+      return 'Ошибка сервера. Попробуйте позже.';
+    }
+    
+    return 'Ошибка при загрузке объявлений. Попробуйте снова.';
   }
 }
 

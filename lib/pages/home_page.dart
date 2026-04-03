@@ -44,7 +44,8 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteAware {
+class _HomePageState extends State<HomePage> 
+    with WidgetsBindingObserver, RouteAware, AutomaticKeepAliveClientMixin {
   /// Контроллер для сохранения позиции скролла
   late ScrollController _scrollController;
   
@@ -59,6 +60,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
   
   /// Время последней загрузки следующей страницы
   DateTime? _lastLoadMoreTime;
+
+  /// 💾 Сохранять страницу в памяти при навигации
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -107,7 +112,41 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
     super.didPopNext();
     log.d('⬅️ Вернулись на HomePage');
     
-    // Восстанавливаем позицию скролла
+    // 🟢 СЛОЙ 1: Восстанавливаем ИЗ КЕША (если доступны данные)
+    // Даже если API не отвечает, пользователь видит кешированные данные
+    final bloc = context.read<ListingsBloc>();
+    final cachedState = bloc.restoreCachedData();
+    
+    if (cachedState != null) {
+      // ✅ Есть кеш - восстанавливаем сразу (избегаем состояния ListingsLoading)
+      log.d('✅ Восстановлены кешированные данные');
+      bloc.emit(cachedState);
+      
+      // 🔄 Помимо восстановления из кеша, стараемся загрузить свежие данные в фоне
+      // Через небольшую задержку, чтобы дать UI отрисоваться
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          // Отправляем событие загрузки в фоне БЕЗ forceRefresh
+          // Это позволит BLoC загружать фазу 2 в фоне, если данные устарели
+          bloc.add(LoadListingsEvent());
+        });
+      });
+    } else {
+      // ❌ Нет кеша - проверяем текущее состояние
+      final currentState = bloc.state;
+      
+      if (currentState is ListingsLoading) {
+        log.w('⚠️ ListingsBloc ещё загружает (нет кеша)');
+      } else if (currentState is ListingsError) {
+        log.w('⚠️ ListingsBloc в состоянии ошибки (нет кеша)');
+        // Попытаемся перезагрузить
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          bloc.add(LoadListingsEvent());
+        });
+      }
+    }
+    
+    // 📍 Восстанавливаем позицию скролла
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_globalScrollPosition > 0 && _scrollController.hasClients) {
         _scrollController.jumpTo(_globalScrollPosition);
@@ -177,6 +216,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver, RouteA
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // 💾 Требуется для AutomaticKeepAliveClientMixin
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, authState) {
         // Если пользователь не авторизован, показываем экран входа
