@@ -1251,7 +1251,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   Widget _buildSellerCard() {
-    final sellerName = _listing.sellerName ?? "Имя не указано";
+    // 📝 Парсим полное имя продавца - берем только первое слово (имя)
+    final fullSellerName = _listing.sellerName ?? "Имя не указано";
+    final nameParts = fullSellerName.trim().split(RegExp(r'\s+'));
+    final sellerName = nameParts.isNotEmpty ? nameParts.first : fullSellerName;
+    
     final sellerAvatar =
         _listing.sellerAvatar ?? "assets/property_details_screen/Andrey.png";
     final sellerRegDate = _listing.sellerRegistrationDate ?? "2024г.";

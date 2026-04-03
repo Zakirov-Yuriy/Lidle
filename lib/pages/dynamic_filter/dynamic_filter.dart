@@ -651,8 +651,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
       }
 
       if (contactName.isNotEmpty) {
-        _contactNameController.text = contactName;
-        // log.d('✅ Filled contact name: $contactName');
+        // 📝 Парсим полное имя на отдельные части - в поле только первое слово (имя)
+        final nameParts = contactName.trim().split(RegExp(r'\s+'));
+        final firstName = nameParts.isNotEmpty ? nameParts.first : contactName;
+        _contactNameController.text = firstName;
+        // log.d('✅ Filled contact name (first name only): $firstName');
       }
 
       // ✅ ЗАПОЛНЯЕМ АТРИБУТЫ ИЗ ОБЪЯВЛЕНИЯ
@@ -1763,14 +1766,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final userProfile = await UserService.getProfile(token: token);
         // log.d();
 
-        // Fill contact fields with user data
+        // Fill user profile data into controllers
         if (mounted) {
           setState(() {
-            // Fill contact name from profile
+            // 📝 Парсим полное имя на отдельные части - в поле только имя
             final fullName = '${userProfile.name} ${userProfile.lastName}'
                 .trim();
-            _contactNameController.text = fullName;
-            // log.d('✅ Filled contact name: $fullName');
+            final nameParts = fullName.split(RegExp(r'\s+'));
+            final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+            _contactNameController.text = firstName;
+            // log.d('✅ Filled contact name (first name only): $firstName');
 
             // Fill email from first available email
             if (_userEmails.isNotEmpty) {

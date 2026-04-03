@@ -38,6 +38,7 @@ class ContactDataScreen extends StatefulWidget {
 
 class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _nameController;
+  late TextEditingController _lastNameController;
   late TextEditingController _emailController;
   late TextEditingController _phone1Controller;
   late TextEditingController _phone2Controller;
@@ -47,8 +48,6 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _cityController;
 
   bool _isLoading = false;
-  bool _isLoadingData =
-      false; // ✅ Флаг чтобы не запускать одновременные загрузки
   String? _errorMessage;
 
   // Храним ID контактов для обновления
@@ -69,6 +68,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _lastNameController = TextEditingController();
     _emailController = TextEditingController();
     _phone1Controller = TextEditingController();
     _phone2Controller = TextEditingController();
@@ -106,9 +106,17 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     try {
       // Получаем профиль из ProfileBloc (уже загружен)
       final profileState = context.read<ProfileBloc>().state;
-      final name = profileState is ProfileLoaded ? profileState.name : '';
+      final fullName = profileState is ProfileLoaded ? profileState.name : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
+
+      // 📝 Парсим полное имя на имя и фамилию
+      // Формат API: "Имя Фамилия" или просто "Имя"
+      final nameParts = fullName.trim().split(RegExp(r'\s+'));
+      final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+      final lastName = nameParts.length > 1
+          ? nameParts.sublist(1).join(' ')
+          : (UserService.getLocal('lastName') as String? ?? '');
 
       // Загружаем сохраненные данные из Hive
       final region = UserService.getLocal('region') as String? ?? '';
@@ -117,7 +125,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
 
       setState(() {
-        _nameController.text = name;
+        _nameController.text = firstName;
+        _lastNameController.text = lastName;
         _emailController.text = email;
         _phone1Controller.text = phone.isEmpty
             ? ''
@@ -170,9 +179,20 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
 
       // Получаем имя пользователя из ProfileBloc (из API)
       final profileState = context.read<ProfileBloc>().state;
-      final name = profileState is ProfileLoaded ? profileState.name : '';
+      final fullName = profileState is ProfileLoaded ? profileState.name : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
+
+      // 📝 Парсим полное имя на отдельные части
+      // Формат API: "Имя Фамилия" или просто "Имя"
+      final nameParts = fullName.trim().split(RegExp(r'\s+'));
+      final firstName = nameParts.isNotEmpty ? nameParts.first : '';
+      var lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
+
+      // Загружаем фамилию из локального хранилища (если она не была парсена из fullName)
+      if (lastName.isEmpty) {
+        lastName = UserService.getLocal('lastName') as String? ?? '';
+      }
 
       // Получаем область и город из локального хранилища
       var region = UserService.getLocal('region') as String? ?? '';
@@ -276,7 +296,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       }
 
       setState(() {
-        _nameController.text = name;
+        _nameController.text = firstName;
+        _lastNameController.text = lastName;
         _emailController.text = emailValue;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
@@ -288,7 +309,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       });
 
       // 💾 Сохраняем данные в локальное хранилище для кеширования
-      await UserService.saveLocal('name', name);
+      await UserService.saveLocal('name', firstName);
+      await UserService.saveLocal('lastName', lastName);
       await UserService.saveLocal('region', region);
       await UserService.saveLocal('city', city);
       // ignore: avoid_print
@@ -343,18 +365,18 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // log.d();
 
       // Обновляем имя на API (если оно изменилось)
-      if (_nameController.text.isNotEmpty) {
+      if (_nameController.text.isNotEmpty || _lastNameController.text.isNotEmpty) {
         try {
-          // log.d('👤 Updating user name: ${_nameController.text}');
-          // Получаем фамилию из Hive или используем пустую строку
-          final lastName = UserService.getLocal('lastName') as String? ?? '';
+          // log.d('👤 Updating user name: ${_nameController.text} ${_lastNameController.text}');
+          final firstName = _nameController.text;
+          final lastName = _lastNameController.text;
 
           // log.d('🔍 DEBUG contact_data_screen._saveContactData():');
           // log.d();
           // log.d();
 
           await UserService.updateName(
-            name: _nameController.text,
+            name: firstName,
             lastName: lastName,
             token: token,
           );
@@ -366,6 +388,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
 
       // Сохраняем в локальное хранилище
       await UserService.saveLocal('name', _nameController.text);
+      await UserService.saveLocal('lastName', _lastNameController.text);
       await UserService.saveLocal('telegram', _telegramController.text);
       await UserService.saveLocal('whatsapp', _whatsappController.text);
       await UserService.saveLocal('region', _regionController.text);
@@ -482,6 +505,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phone1Controller.dispose();
     _phone2Controller.dispose();
@@ -623,6 +647,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _label('Контактное лицо'),
                       _field(_nameController, 'Введите имя контактного лица'),
 
+                      _label('Фамилия'),
+                      _field(_lastNameController, 'Введите фамилию'),
+
                       _label('Ваша область'),
                       _field(_regionController, 'Введите вашу область'),
 
@@ -736,6 +763,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Контактное лицо
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Фамилия
             _skeletonLabel(),
             _skeletonField(),
             const SizedBox(height: 8),
