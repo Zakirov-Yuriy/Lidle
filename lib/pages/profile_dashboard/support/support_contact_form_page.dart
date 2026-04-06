@@ -3,6 +3,8 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/support_mail_service.dart';
@@ -33,6 +35,8 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
   bool _isLoading = false;
   String? _errorMessage;
   bool _isSuccess = false;
+  String? _screenshotPath;
+  final ImagePicker _imagePicker = ImagePicker();
 
   final SupportMailService _mailService = SupportMailService();
 
@@ -85,6 +89,37 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
     return null;
   }
 
+  /// Выбрать скриншот из галереи
+  Future<void> _pickScreenshot() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        setState(() {
+          _screenshotPath = image.path;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Ошибка выбора файла: $e'),
+          backgroundColor: errorColor,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  /// Удалить выбранный скриншот
+  void _removeScreenshot() {
+    setState(() {
+      _screenshotPath = null;
+    });
+  }
+
   /// Отправить форму
   Future<void> _submitForm() async {
     // Убрать сообщение об ошибке
@@ -105,6 +140,7 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
       email: _emailController.text.trim(),
       subject: _subjectController.text.trim(),
       message: _messageController.text.trim(),
+      screenshotPath: _screenshotPath,
     );
 
     if (!mounted) return;
@@ -133,6 +169,9 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
       _subjectController.clear();
       _messageController.clear();
 
+      // Очистить скриншот
+      _screenshotPath = null;
+
       // Вернуться через 2 секунды
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) {
@@ -155,7 +194,7 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return  Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -252,6 +291,9 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
                         label: 'Ваше сообщение',
                         controller: _messageController,
                         maxLines: 6,
+                        showSuffixIcon: true,
+                        suffixIcon: Icons.image,
+                        onSuffixIconTap: _pickScreenshot,
                         validator: (value) {
                           if (value?.isEmpty ?? true) {
                             return 'Напишите сообщение';
@@ -263,7 +305,15 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
                         },
                       ),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 18),
+
+                      // 📎 Превью скриншота
+                      if (_screenshotPath != null) ...[
+                        _buildScreenshotPreview(),
+                        const SizedBox(height: 18),
+                      ],
+
+                      const SizedBox(height: 7),
 
                       // ───── Кнопка Отправить ─────
                       SizedBox(
@@ -276,7 +326,7 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
                               borderRadius: BorderRadius.circular(5),
                             ),
                             disabledBackgroundColor:
-                                accentColor.withOpacity(0.5),
+                                accentColor.withValues(alpha: 0.5),
                           ),
                           onPressed: _isLoading ? null : _submitForm,
                           child: _isLoading
@@ -348,8 +398,11 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
     int maxLines = 1,
     TextInputType keyboardType = TextInputType.text,
     String? Function(String?)? validator,
+    VoidCallback? onSuffixIconTap,
+    bool showSuffixIcon = false,
+    IconData suffixIcon = Icons.image,
   }) {
-    return ClipRRect(
+    final textField = ClipRRect(
       borderRadius: BorderRadius.circular(10),
       child: TextFormField(
         controller: controller,
@@ -367,7 +420,7 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
             fontSize: 14,
           ),
           hintStyle: TextStyle(
-            color: textSecondary.withOpacity(0.5),
+            color: textSecondary.withValues(alpha: 0.5),
             fontSize: 14,
           ),
           filled: true,
@@ -385,5 +438,107 @@ class _SupportContactFormPageState extends State<SupportContactFormPage> {
         ),
       ),
     );
+
+    // Если нужна иконка в углу, оборачиваем в Stack
+    if (showSuffixIcon) {
+      return Stack(
+        children: [
+          textField,
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Material(
+              color: Colors.transparent,
+              child: IconButton(
+                onPressed: _isLoading ? null : onSuffixIconTap,
+                icon: Icon(
+                  suffixIcon,
+                  color: _screenshotPath != null ? accentColor : textSecondary,
+                  size: 20,
+                ),
+                splashRadius: 24,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(
+                  minHeight: 24,
+                  minWidth: 24,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return textField;
   }
+
+  /// Построить превью скриншота
+  Widget _buildScreenshotPreview() {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Stack(
+        children: [
+          Image.file(
+            File(_screenshotPath!),
+            width: double.infinity,
+            height: 150,
+            fit: BoxFit.cover,
+          ),
+          // Кнопка удаления в углу
+          Positioned(
+            top: 8,
+            right: 8,
+            child: GestureDetector(
+              onTap: _removeScreenshot,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: errorColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ),
+          ),
+          // Индикатор внизу
+          Positioned(
+            bottom: 8,
+            left: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 16,
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    'Скриншот выбран',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Построить секцию с прикреплением скриншота (удалена, функция встроена в поле сообщения)
 }

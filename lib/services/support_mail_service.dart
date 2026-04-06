@@ -3,7 +3,7 @@
 // ============================================================
 
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'dart:io';
 import 'package:logger/logger.dart';
 
 class SupportMailService {
@@ -18,27 +18,48 @@ class SupportMailService {
 
   final Logger _logger = Logger();
 
-  /// Отправить письмо в поддержку
+  /// Отправить письмо в поддержку (с опциональным скриншотом)
   Future<Map<String, dynamic>> sendSupportEmail({
     required String name,
     required String email,
     required String subject,
     required String message,
+    String? screenshotPath,
   }) async {
     try {
       _logger.i('📧 Отправка письма в поддержку...');
 
-      final response = await http.post(
-        Uri.parse(_formspreeUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'subject': subject,
-          'message': message,
-          '_replyto': email,
-        }),
-      ).timeout(
+      final request = http.MultipartRequest('POST', Uri.parse(_formspreeUrl));
+      
+      // Добавить поля формы
+      request.fields['name'] = name;
+      request.fields['email'] = email;
+      request.fields['subject'] = subject;
+      request.fields['message'] = message;
+      request.fields['_replyto'] = email;
+
+      // Добавить скриншот, если есть
+      if (screenshotPath != null && screenshotPath.isNotEmpty) {
+        final file = File(screenshotPath);
+        if (await file.exists()) {
+          _logger.i('📎 Прикрепляем скриншот: $screenshotPath');
+          final stream = http.ByteStream(file.openRead());
+          final length = await file.length();
+          
+          request.files.add(
+            http.MultipartFile(
+              'screenshot',
+              stream,
+              length,
+              filename: 'screenshot_${DateTime.now().millisecondsSinceEpoch}.png',
+            ),
+          );
+        } else {
+          _logger.w('⚠️ Файл скриншота не найден: $screenshotPath');
+        }
+      }
+
+      final response = await request.send().timeout(
         const Duration(seconds: 30),
         onTimeout: () => throw Exception('Timeout при отправке'),
       );
