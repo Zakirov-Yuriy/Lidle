@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/profile_dashboard/support/support_contact_form_page.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
@@ -79,20 +80,20 @@ class SupportScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 25),
                     child: Column(
                       children: [
-                        _SupportCard(
-                          imagePath: 'assets/support/sale.png',
-                          iconBg: Color(0xFF3DBE8B),
-                          title: 'Скидки и акции',
-                          subtitle: 'О всех скидках и акциях \nможно узнать здесь',
-                          onTap: () => Navigator.pushNamed(context, '/discounts-and-promotions'),
-                        ),
+                        // _SupportCard(
+                        //   imagePath: 'assets/support/sale.png',
+                        //   iconBg: Color(0xFF3DBE8B),
+                        //   title: 'Скидки и акции',
+                        //   subtitle: 'О всех скидках и акциях \nможно узнать здесь',
+                        //   onTap: () => Navigator.pushNamed(context, '/discounts-and-promotions'),
+                        // ),
                         SizedBox(height: 12),
                         _SupportCard(
                           imagePath: 'assets/support/support.png',
                           iconBg: Color(0xFF4DA3FF),
                           title: 'Поддержка',
                           subtitle: 'Все вопросы про  ЛИДЛ Lidle \nможете задать тут',
-                          onTap: () => Navigator.pushNamed(context, '/support-chat'),
+                          onTap: () => Navigator.pushNamed(context, SupportContactFormPage.routeName),
                         ),
                       ],
                     ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -25,6 +26,17 @@ class _FiltersScreenState extends State<FiltersScreen> {
   DateSort? _dateSort = DateSort.newest;
   PriceSort? _priceSort;
   AccountKind _account = AccountKind.private;
+  List<Map<String, dynamic>> _cities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    // Инициализируем _cities с dnrCities (все доступные города)
+    _cities = dnrCities.map((name) => {
+      'name': name,
+      'id': name.hashCode.abs(),
+    }).toList();
+  }
 
   void _reset() async {
     setState(() {
@@ -152,35 +164,23 @@ class _FiltersScreenState extends State<FiltersScreen> {
                     color: textSecondary,
                   ),
                   onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return CitySelectionDialog(
-                          title: 'Ваш город',
-                          options: const [
-                            'Абаза',
-                            'Абакан',
-                            'Абдулино',
-                            'Абинск',
-                            'Агидель',
-                            'Агрыз',
-                            'Адыгейск',
-                            'Азнакаево',
-                            'Бабаево',
-                            'Бабушкин Бавлы',
-                            'Багратионовск',
-
-                            // Add more cities as needed
-                          ],
-                          selectedOptions: _selectedCity,
-                          onSelectionChanged: (Set<String> selected) {
-                            setState(() {
-                              _selectedCity = selected;
-                            });
-                          },
-                        );
-                      },
-                    );
+                    if (_cities.isNotEmpty) {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return CitySelectionDialog(
+                            title: 'Ваш город',
+                            options: _cities.map((c) => c['name'] as String).toList(),
+                            selectedOptions: _selectedCity,
+                            onSelectionChanged: (Set<String> selected) {
+                              setState(() {
+                                _selectedCity = selected;
+                              });
+                            },
+                          );
+                        },
+                      );
+                    }
                   },
                 ),
               ),

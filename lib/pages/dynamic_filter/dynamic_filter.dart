@@ -857,16 +857,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
       final token = TokenService.currentToken;
 
       // Загружаем города для выбранного региона
+      // Получить ВСЕ города для выбранного региона
       final response = await AddressService.searchAddresses(
-        query: 'по',
+        query: '   ',  // Минимум 3 символа для API (пустой поиск)
         token: token,
         types: ['city'],
+        filters: {
+          'main_region_id': _selectedRegionId,  // Только города этого региона
+        },
       );
 
       final uniqueCities = <String, int>{};
       for (final result in response.data) {
-        if (result.main_region?.id == _selectedRegionId &&
-            result.city != null) {
+        if (result.city != null) {
           uniqueCities[result.city!.name] = result.city!.id;
         }
       }
@@ -875,26 +878,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _cities = uniqueCities.entries
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
-
-        // 🔧 FALLBACK: закомментирована для тестирования только API
-        // if (_cities.length < 25) {
-        //   log.d('⚠️ API вернул только ${_cities.length} городов для региона, добавляем dnrCities (${dnrCities.length})');
-        //   final existingNames = <String>{
-        //     for (var city in _cities) city['name'] as String
-        //   };
-        //
-        //   for (final cityName in dnrCities) {
-        //     if (!existingNames.contains(cityName)) {
-        //       _cities.add({
-        //         'name': cityName,
-        //         'id': cityName.hashCode.abs(),
-        //       });
-        //     }
-        //   }
-        //   log.d('✅ После merge: _cities.length = ${_cities.length}');
-        // }
+        
+        log.d('✅ Loaded ${_cities.length} cities for region ID $_selectedRegionId');
       });
-      log.d('   📦 Loaded ${_cities.length} cities for region');
 
       // Ищем город по названию
       final city = _cities.firstWhere(
@@ -4025,20 +4011,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     // СКРЫТО НА ЭКРАНЕ - логика отправки остается в _collectFormData()
                     // и _publishAdvert(), но UI не отображается
                     // GestureDetector и checkbox для 1048 удалены из build()
-                    _buildButton(
-                      'Предпросмотр',
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const PublicationTariffScreen(),
-                          ),
-                        );
-                      },
-                      isPrimary: _selectedAction == 'preview',
-                    ),
-                    const SizedBox(height: 10),
+                    // _buildButton(
+                    //   'Предпросмотр',
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) =>
+                    //             const PublicationTariffScreen(),
+                    //       ),
+                    //     );
+                    //   },
+                    //   isPrimary: _selectedAction == 'preview',
+                    // ),
+                    // const SizedBox(height: 10),
                     if (_isPublishing)
                       Column(
                         children: [

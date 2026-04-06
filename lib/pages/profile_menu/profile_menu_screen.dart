@@ -154,14 +154,33 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Личная информация',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                // ───── Back / Cancel ─────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 0),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          child: const Icon(
+                            Icons.arrow_back_ios,
+                            color: Color.fromARGB(255, 255, 255, 255),
+                            size: 16,
+                          ),
+                        ),
+                        const Text(
+                          'Личная информация',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        
+                      ],
+                    ),
                   ),
-                ),
+               
                 const SizedBox(height: 16),
 
                 _buildMainProfile(context),
@@ -184,14 +203,14 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                   'QR код',
                   onTap: () => Navigator.pushNamed(context, '/user_qr'),
                 ),
-                _buildMenuItem(
-                  Image.asset(
-                    'assets/profile_menu/Icon2.png',
-                    width: 22,
-                    height: 22,
-                  ),
-                  'Ваши карты',
-                ),
+                // _buildMenuItem(
+                //   Image.asset(
+                //     'assets/profile_menu/Icon2.png',
+                //     width: 22,
+                //     height: 22,
+                //   ),
+                //   'Ваши карты',
+                // ),
                 _buildMenuItem(
                   Image.asset(
                     'assets/profile_menu/Icon3.png',
@@ -310,7 +329,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                         state is ProfileLoaded ? state.name : 'Name',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -371,13 +390,13 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
               padding: EdgeInsets.only(left: 30.0),
               child: Text(
                 'Владислав',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: Colors.white, fontSize: 14),
               ),
             ),
             Spacer(),
             Text(
               'Компания',
-              style: TextStyle(color: Color(0xFF19D849), fontSize: 15),
+              style: TextStyle(color: Color(0xFF19D849), fontSize: 14),
             ),
           ],
         ),

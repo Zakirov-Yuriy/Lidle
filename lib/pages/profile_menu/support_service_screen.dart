@@ -4,7 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
+import 'package:lidle/pages/profile_dashboard/support/support_contact_form_page.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class SupportServiceScreen extends StatelessWidget {
@@ -126,7 +126,7 @@ class SupportServiceScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),
-                  onPressed: () => Navigator.pushNamed(context, SupportChatPage.routeName),
+                  onPressed: () => Navigator.pushNamed(context, SupportContactFormPage.routeName),
                   child: const Text(
                     'Написать в поддержку',
                     style: TextStyle(

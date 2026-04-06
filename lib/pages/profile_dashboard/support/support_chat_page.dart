@@ -150,19 +150,19 @@ class SupportChatPage extends StatelessWidget {
             ),
 
             // ───── Quick Actions ─────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: const [
-                  _QuickChip(title: 'Что такое ЛИДЛ'),
-                  _QuickChip(title: 'Что может ЛИДЛ'),
-                  _QuickChip(title: 'Как вернуть деньги'),
-                  _QuickChip(title: 'Как забрать товар'),
-                ],
-              ),
-            ),
+            // Padding(
+            //   padding: const EdgeInsets.symmetric(horizontal: 25),
+            //   child: Wrap(
+            //     spacing: 8,
+            //     runSpacing: 8,
+            //     children: const [
+            //       _QuickChip(title: 'Что такое ЛИДЛ'),
+            //       _QuickChip(title: 'Что может ЛИДЛ'),
+            //       _QuickChip(title: 'Как вернуть деньги'),
+            //       _QuickChip(title: 'Как забрать товар'),
+            //     ],
+            //   ),
+            // ),
 
             const SizedBox(height: 12),
 
@@ -268,23 +268,23 @@ class _IncomingMessage extends StatelessWidget {
 // QUICK CHIP
 // ─────────────────────────────────────────────
 
-class _QuickChip extends StatelessWidget {
-  final String title;
+// class _QuickChip extends StatelessWidget {
+//   final String title;
 
-  const _QuickChip({required this.title});
+//   const _QuickChip({required this.title});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: SupportChatPage.chipColor,
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-      ),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+//       decoration: BoxDecoration(
+//         color: SupportChatPage.chipColor,
+//         borderRadius: BorderRadius.circular(5),
+//       ),
+//       child: Text(
+//         title,
+//         style: const TextStyle(color: Colors.white, fontSize: 14),
+//       ),
+//     );
+//   }
+// }

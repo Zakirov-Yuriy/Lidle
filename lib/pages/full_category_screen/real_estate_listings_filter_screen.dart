@@ -2475,27 +2475,29 @@ class _RealEstateListingsFilterScreenState
   Widget _buildStyleHeader(Attribute attr) {
     // Use styleSingle from API (e.g., E1, H, D1)
     // This is the actual submission style code returned by API
-    final displayStyle = attr.styleSingle ?? '';
-    if (displayStyle.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    // final displayStyle = attr.styleSingle ?? '';
+    // if (displayStyle.isEmpty) {
+    //   return const SizedBox.shrink();
+    // }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Показывает стили над полями для отладки и валидации
-        Text(
-          'Style2: $displayStyle',
-          style: const TextStyle(
-            color: Color(0xFFFF1744), // Red color for debug visibility
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
-          ),
-        ),
-        const SizedBox(height: 4),
-      ],
-    );
+    // return Column(
+    //   crossAxisAlignment: CrossAxisAlignment.start,
+    //   children: [
+    //     // Показывает стили над полями для отладки и валидации
+    //     Text(
+    //       'Style2: $displayStyle',
+    //       style: const TextStyle(
+    //         color: Color(0xFFFF1744), // Red color for debug visibility
+    //         fontSize: 12,
+    //         fontWeight: FontWeight.w600,
+    //         letterSpacing: 0.3,
+    //       ),
+    //     ),
+    //     const SizedBox(height: 4),
+    //   ],
+    // );
+    
+    return const SizedBox.shrink(); // Скрыли вывод стилей
   }
 
   /// Загружает регионы из API при инициализации экрана

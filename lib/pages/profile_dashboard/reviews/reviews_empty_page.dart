@@ -25,36 +25,38 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
   int _currentTab = 0;
 
 
-  List<ReviewModel> _myReviews = [
-    ReviewModel(
-      id: '1',
-      productImage: 'assets/home_page/studio.png',
-      productName: 'Due Bambini Комплект \nдетский стол + стул,50x50x50см',
-      reviewDate: '6 апреля',
-      rating: 4.0,
-      reviewText: 'Дочька в восторге ,очень удобный столик. правда нужно для него клеенку. Т.к краска любая в него прям въедается ( материал очень прочный ,поэтому мы спокойны',
-      commentCount: 1,
-      commentAuthor: 'Андрей Коломойский',
-      commentDate: '6 апреля',
-      commentText: 'Эмилия, Здравствуйте! Благодарим за выбор нашего бренда и высокую оценку! Нам очень приятно, что Ваши ожидания оправдались. Мы стараемся, чтобы наша продукция была не только практичной и функциональной, но и качественной. Нам важно, чтобы наши покупатели были довольны своим выбором. Спасибо, что выбрали нас, ждём Вас снова. С заботой о самых маленьких, команда Due Bambini',
-      canEdit: true,
-      canDelete: true,
-    ),
-  ];
+  // List<ReviewModel> _myReviews = [
+  //   ReviewModel(
+  //     id: '1',
+  //     productImage: 'assets/home_page/studio.png',
+  //     productName: 'Due Bambini Комплект \nдетский стол + стул,50x50x50см',
+  //     reviewDate: '6 апреля',
+  //     rating: 4.0,
+  //     reviewText: 'Дочька в восторге ,очень удобный столик. правда нужно для него клеенку. Т.к краска любая в него прям въедается ( материал очень прочный ,поэтому мы спокойны',
+  //     commentCount: 1,
+  //     commentAuthor: 'Андрей Коломойский',
+  //     commentDate: '6 апреля',
+  //     commentText: 'Эмилия, Здравствуйте! Благодарим за выбор нашего бренда и высокую оценку! Нам очень приятно, что Ваши ожидания оправдались. Мы стараемся, чтобы наша продукция была не только практичной и функциональной, но и качественной. Нам важно, чтобы наши покупатели были довольны своим выбором. Спасибо, что выбрали нас, ждём Вас снова. С заботой о самых маленьких, команда Due Bambini',
+  //     canEdit: true,
+  //     canDelete: true,
+  //   ),
+  // ];
+  List<ReviewModel> _myReviews = [];
 
-  List<ReviewModel> _reviewsOnMyListings = [
-    ReviewModel(
-      id: '2',
-      productImage: 'assets/home_page/studio.png',
-      productName: 'Due Bambini Комплект \nдетский стол + стул,50x50x50см',
-      reviewDate: '6 апреля',
-      rating: 4.0,
-      reviewText: 'Дочька в восторге ,очень удобный столик. правда нужно для него клеенку. Т.к краска любая в него прям въедается ( материал очень прочный ,поэтому мы спокойны',
-      commentCount: 0,
-      canEdit: true,
-      canDelete: true,
-    ),
-  ];
+  // List<ReviewModel> _reviewsOnMyListings = [
+  //   ReviewModel(
+  //     id: '2',
+  //     productImage: 'assets/home_page/studio.png',
+  //     productName: 'Due Bambini Комплект \nдетский стол + стул,50x50x50см',
+  //     reviewDate: '6 апреля',
+  //     rating: 4.0,
+  //     reviewText: 'Дочька в восторге ,очень удобный столик. правда нужно для него клеенку. Т.к краска любая в него прям въедается ( материал очень прочный ,поэтому мы спокойны',
+  //     commentCount: 0,
+  //     canEdit: true,
+  //     canDelete: true,
+  //   ),
+  // ];
+  List<ReviewModel> _reviewsOnMyListings = [];
 
 
   @override
@@ -241,11 +243,21 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
           ),
           const SizedBox(height: 24),
           const Text(
-            'Due Bambini Комплект \nдетский стол + стул,50x50x50см',
+            'У вас нет отзывов',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 9),
+          const Text(
+            'У вас нет отзывов на ваших товарах, \nкак только клиенты оставят их они \nпоявятся здесь.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),

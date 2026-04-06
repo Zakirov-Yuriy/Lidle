@@ -54,6 +54,7 @@ import 'package:lidle/pages/profile_dashboard/offers/user_account_only_page.dart
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/support/discounts_and_promotions_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_chat_page.dart';
+import 'package:lidle/pages/profile_dashboard/support/support_contact_form_page.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
@@ -180,6 +181,7 @@ class AppRoutes {
     DiscountsAndPromotionsPage.routeName: (context) =>
         const DiscountsAndPromotionsPage(),
     SupportChatPage.routeName: (context) => const SupportChatPage(),
+    SupportContactFormPage.routeName: (context) => const SupportContactFormPage(),
     ResponsesEmptyPage.routeName: (context) =>
         const ResponsesEmptyPage(),
     ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
