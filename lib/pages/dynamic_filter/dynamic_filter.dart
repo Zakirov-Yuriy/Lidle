@@ -103,6 +103,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
   final TextEditingController _streetController = TextEditingController();
   final TextEditingController _buildingController = TextEditingController();
 
+  // Scroll controller for error handling
+  final ScrollController _scrollController = ScrollController();
+
   // Address data from API
   List<Map<String, dynamic>> _regions = [];
   List<Map<String, dynamic>> _cities = [];
@@ -121,6 +124,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
   int? _selectedStreetId;
   // ignore: unused_field
   int? _selectedBuildingId;
+
+  // =============== Validation Errors ===============
+  Map<String, String?> _fieldErrors = {}; // Stores validation error messages
 
   @override
   void initState() {
@@ -258,6 +264,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
@@ -859,11 +866,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // Загружаем города для выбранного региона
       // Получить ВСЕ города для выбранного региона
       final response = await AddressService.searchAddresses(
-        query: '   ',  // Минимум 3 символа для API (пустой поиск)
+        query: '   ', // Минимум 3 символа для API (пустой поиск)
         token: token,
         types: ['city'],
         filters: {
-          'main_region_id': _selectedRegionId,  // Только города этого региона
+          'main_region_id': _selectedRegionId, // Только города этого региона
         },
       );
 
@@ -878,8 +885,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _cities = uniqueCities.entries
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
-        
-        log.d('✅ Loaded ${_cities.length} cities for region ID $_selectedRegionId');
+
+        log.d(
+          '✅ Loaded ${_cities.length} cities for region ID $_selectedRegionId',
+        );
       });
 
       // Ищем город по названию
@@ -1984,6 +1993,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
     if (pickedFile != null) {
       setState(() {
         _images.add(File(pickedFile.path));
+        _fieldErrors.remove('images');
       });
     }
   }
@@ -1997,6 +2007,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         for (final pickedFile in pickedFiles) {
           _images.add(File(pickedFile.path));
         }
+        _fieldErrors.remove('images');
       });
       if (mounted) {
         // log.d();
@@ -2431,48 +2442,111 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
+  /// Scrolls to top of form to show validation errors
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  /// Validates all required fields and populates _fieldErrors map
+  /// Returns true if all validations pass, false otherwise
+  bool _validateForm() {
+    // Clear previous errors
+    _fieldErrors.clear();
+
+    // Validate images
+    if (_images.isEmpty) {
+      _fieldErrors['images'] = 'Добавьте хотя бы одно изображение';
+    }
+
+    // Validate required text fields
+    if (_titleController.text.isEmpty) {
+      _fieldErrors['title'] = 'Заполните заголовок объявления';
+    } else if (_titleController.text.length < 16) {
+      _fieldErrors['title'] = 'Введите не менее 16 символов';
+    }
+
+    if (_descriptionController.text.isEmpty) {
+      _fieldErrors['description'] = 'Заполните описание';
+    } else if (_descriptionController.text.length < 70) {
+      _fieldErrors['description'] = 'Введите не менее 70 символов';
+    }
+
+    if (_priceController.text.isEmpty) {
+      _fieldErrors['price'] = 'Заполните цену';
+    }
+
+    if (_contactNameController.text.isEmpty) {
+      _fieldErrors['contactName'] = 'Заполните контактное лицо';
+    }
+
+    if (_phone1Controller.text.isEmpty) {
+      _fieldErrors['phone1'] = 'Заполните номер телефона';
+    }
+
+    // Validate required address fields
+    if (_selectedRegion.isEmpty) {
+      _fieldErrors['region'] = 'Выберите область';
+    }
+
+    if (_selectedCity.isEmpty) {
+      _fieldErrors['city'] = 'Выберите город';
+    }
+
+    if (_selectedStreet.isEmpty) {
+      _fieldErrors['street'] = 'Выберите улицу';
+    }
+
+    // Validate required attributes from API
+    for (final attr in _attributes) {
+      if (attr.isRequired) {
+        final value = _selectedValues[attr.id];
+        if (value == null) {
+          _fieldErrors['attr_${attr.id}'] = 'Заполните поле "${attr.title}"';
+        } else if (value is String && value.isEmpty) {
+          _fieldErrors['attr_${attr.id}'] = 'Заполните поле "${attr.title}"';
+        } else if (value is Map) {
+          final minVal = (value['min']?.toString() ?? '').trim();
+          final maxVal = (value['max']?.toString() ?? '').trim();
+          if (minVal.isEmpty && maxVal.isEmpty) {
+            _fieldErrors['attr_${attr.id}'] = 'Заполните поле "${attr.title}"';
+          }
+        } else if (value is Set<String> && value.isEmpty) {
+          _fieldErrors['attr_${attr.id}'] = 'Заполните поле "${attr.title}"';
+        }
+      }
+    }
+
+    // Validate special attribute: "Вам предложат цену" (ID varies by category)
+    final offerPriceAttrId = _getOfferPriceAttributeId();
+    if (offerPriceAttrId != null) {
+      if (!_selectedValues.containsKey(offerPriceAttrId) ||
+          _selectedValues[offerPriceAttrId] != true) {
+        _fieldErrors['offerPrice'] =
+            'Необходимо согласиться принимать предложения по цене';
+      }
+    }
+
+    return _fieldErrors.isEmpty;
+  }
+
   Future<void> _publishAdvert() async {
     try {
-      // Validate required fields
-      if (_titleController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Заполните заголовок объявления')),
-        );
-        return;
-      }
-      if (_descriptionController.text.length < 70) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Описание должно содержать не менее 70 символов'),
-          ),
-        );
-        return;
-      }
-      if (_priceController.text.isEmpty) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Заполните цену')));
-        return;
-      }
-      if (_contactNameController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Заполните контактное лицо')),
-        );
-        return;
-      }
-      if (_phone1Controller.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Заполните номер телефона')),
-        );
+      // Validate all fields
+      if (!_validateForm()) {
+        // Update UI to show validation errors
+        setState(() {});
+        // Scroll to top to see errors
+        _scrollToTop();
         return;
       }
 
-      // Debug logging for phone validation
-      // log.d('🔍 Publishing advert - phone validation:');
-      // log.d('   _userPhones.length: ${_userPhones.length}');
-      // log.d('   _userPhones content: $_userPhones');
-      // log.d('   _phone1Controller.text: ${_phone1Controller.text}');
-
+      // Validate user phones
       if (_userPhones.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2488,59 +2562,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
             ),
           ),
         );
-        return;
-      }
-
-      // Validate required attributes
-      bool isValid = true;
-      String errorMessage = '';
-      for (final attr in _attributes) {
-        if (attr.isRequired) {
-          final value = _selectedValues[attr.id];
-          if (value == null) {
-            isValid = false;
-            errorMessage = 'Заполните поле "${attr.title}"';
-            break;
-          }
-          if (value is String && value.isEmpty) {
-            isValid = false;
-            errorMessage = 'Заполните поле "${attr.title}"';
-            break;
-          }
-          if (value is Map) {
-            final minVal = (value['min']?.toString() ?? '').trim();
-            final maxVal = (value['max']?.toString() ?? '').trim();
-            if (minVal.isEmpty && maxVal.isEmpty) {
-              isValid = false;
-              errorMessage = 'Заполните поле "${attr.title}"';
-              break;
-            }
-          }
-          if (value is Set<String> && value.isEmpty) {
-            isValid = false;
-            errorMessage = 'Заполните поле "${attr.title}"';
-            break;
-          }
-        }
-      }
-
-      // Validate special attribute: "Вам предложат цену" (ID varies by category)
-      // Проверяем только если атрибут существует в этой категории
-      final offerPriceAttrId = _getOfferPriceAttributeId();
-      if (offerPriceAttrId != null) {
-        // Атрибут существует - проверяем, что он установлен в true
-        if (!_selectedValues.containsKey(offerPriceAttrId) ||
-            _selectedValues[offerPriceAttrId] != true) {
-          isValid = false;
-          errorMessage = 'Необходимо согласиться принимать предложения по цене';
-        }
-      }
-      // Если атрибут не существует для этой категории - пропускаем валидацию
-
-      if (!isValid) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(errorMessage)));
         return;
       }
 
@@ -2576,15 +2597,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
             // ============ Prepare address from selected API data ============
             // Use already loaded IDs from API searches during dropdown selections
             if (_selectedRegionId == null) {
-              errorMessage = 'Пожалуйста, выберите область';
               throw Exception('Region not selected');
             }
             if (_selectedCityId == null) {
-              errorMessage = 'Пожалуйста, выберите город';
               throw Exception('City not selected');
             }
             if (_selectedStreetId == null) {
-              errorMessage = 'Пожалуйста, выберите улицу';
               throw Exception('Street not selected');
             }
 
@@ -3173,6 +3191,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             backgroundColor: primaryBackground,
             body: SafeArea(
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.symmetric(
                   horizontal: defaultPadding,
                   vertical: 19,
@@ -3215,7 +3234,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: _images.isEmpty
-                              ? secondaryBackground
+                              ? (_fieldErrors.containsKey('images')
+                                    ? const Color(0xFF381a1a)
+                                    : secondaryBackground)
                               : primaryBackground,
                           borderRadius: BorderRadius.circular(5),
                         ),
@@ -3223,22 +3244,30 @@ class _DynamicFilterState extends State<DynamicFilter> {
                             ? Center(
                                 child: Column(
                                   mainAxisSize: MainAxisSize.min,
-                                  children: const [
+                                  children: [
                                     Padding(
-                                      padding: EdgeInsets.only(top: 28.0),
+                                      padding: const EdgeInsets.only(top: 28.0),
                                       child: Icon(
                                         Icons.add_circle_outline,
-                                        color: textSecondary,
+                                        color:
+                                            _fieldErrors.containsKey('images')
+                                            ? const Color(0xFFff7272)
+                                            : textSecondary,
                                         size: 40,
                                       ),
                                     ),
-                                    SizedBox(height: 3),
+                                    const SizedBox(height: 3),
                                     Padding(
-                                      padding: EdgeInsets.only(bottom: 27.0),
+                                      padding: const EdgeInsets.only(
+                                        bottom: 27.0,
+                                      ),
                                       child: Text(
                                         'Добавить изображение',
                                         style: TextStyle(
-                                          color: textSecondary,
+                                          color:
+                                              _fieldErrors.containsKey('images')
+                                              ? const Color(0xFFff7272)
+                                              : textSecondary,
                                           fontSize: 16,
                                         ),
                                       ),
@@ -3325,22 +3354,40 @@ class _DynamicFilterState extends State<DynamicFilter> {
                               ),
                       ),
                     ),
+                    if (_fieldErrors.containsKey('images'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 7),
+                        child: Text(
+                          _fieldErrors['images'] ??
+                              'Добавьте хотя бы одно изображение',
+                          style: const TextStyle(
+                            color: Color(0xFFFF1744),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 13),
 
                     _buildTextField(
                       label: 'Заголовок объявления',
                       hint: 'Например, уютная 2-комнатная квартира',
+                      fieldKey: 'title',
                       controller: _titleController,
                     ),
-                    const SizedBox(height: 7),
-                    Text(
-                      'Введите не менее 16 символов',
-                      style: TextStyle(color: textSecondary, fontSize: 12),
-                    ),
+                    if (!_fieldErrors.containsKey('title'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 7),
+                        child: Text(
+                          'Введите не менее 16 символов',
+                          style: TextStyle(color: textSecondary, fontSize: 12),
+                        ),
+                      ),
                     const SizedBox(height: 15),
 
                     _buildDropdown(
                       label: 'Категория',
+                      fieldKey: 'category',
                       hint: _categoryName.isEmpty
                           ? 'Загрузка...'
                           : _categoryName,
@@ -3362,6 +3409,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       label: 'Описание',
                       hint:
                           'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
+                      fieldKey: 'description',
                       minLength: 70,
                       maxLength: 1000,
                       maxLines: 4,
@@ -3370,9 +3418,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
                     const SizedBox(height: 24),
 
-                    const Text(
-                      'Цена*',
-                      style: TextStyle(color: textPrimary, fontSize: 16),
+                    Row(
+                      children: [
+                        const Text(
+                          'Цена*',
+                          style: TextStyle(color: textPrimary, fontSize: 16),
+                        ),
+                        if (_fieldErrors.containsKey('price'))
+                          const Text(
+                            ' *',
+                            style: TextStyle(
+                              color: Color(0xFFFF1744),
+                              fontSize: 16,
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 9),
                     Row(
@@ -3380,7 +3440,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
-                              color: formBackground,
+                              color: _fieldErrors.containsKey('price')
+                                  ? const Color(0xFF381a1a)
+                                  : formBackground,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -3390,11 +3452,25 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                   child: TextField(
                                     controller: _priceController,
                                     keyboardType: TextInputType.number,
-                                    style: const TextStyle(color: textPrimary),
-                                    decoration: const InputDecoration(
+                                    style: TextStyle(
+                                      color: _fieldErrors.containsKey('price')
+                                          ? const Color(0xFFff7272)
+                                          : textPrimary,
+                                    ),
+                                    onChanged: (value) {
+                                      // Очищаем ошибку при вводе цены
+                                      if (value.isNotEmpty) {
+                                        setState(() {
+                                          _fieldErrors.remove('price');
+                                        });
+                                      }
+                                    },
+                                    decoration: InputDecoration(
                                       hintText: '1 000 000',
                                       hintStyle: TextStyle(
-                                        color: textSecondary,
+                                        color: _fieldErrors.containsKey('price')
+                                            ? const Color(0xFFff7272)
+                                            : textSecondary,
                                         fontSize: 14,
                                       ),
                                       border: InputBorder.none,
@@ -3421,6 +3497,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
                         ),
                       ],
                     ),
+                    if (_fieldErrors.containsKey('price'))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 7),
+                        child: Text(
+                          _fieldErrors['price'] ?? 'Ошибка заполнения',
+                          style: const TextStyle(
+                            color: Color(0xFFFF1744),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 15),
 
                     if (_isLoading)
@@ -3480,6 +3568,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     // Region field
                     _buildDropdown(
                       label: 'Ваша область*',
+                      fieldKey: 'region',
                       hint: _selectedRegion.isEmpty
                           ? 'Выберите область'
                           : _selectedRegion.join(', '),
@@ -3519,6 +3608,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                   setState(() {
                                     _selectedRegion = selected;
                                     _selectedRegionId = regionId;
+                                    _fieldErrors.remove(
+                                      'region',
+                                    ); // Clear error on selection
                                     _selectedCity.clear();
                                     _selectedStreet.clear();
                                     _selectedCityId = null;
@@ -3542,6 +3634,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     // City field
                     _buildDropdown(
                       label: 'Ваш город*',
+                      fieldKey: 'city',
                       hint: _selectedCity.isEmpty
                           ? 'Выберите город'
                           : _selectedCity.join(', '),
@@ -3731,6 +3824,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                           _selectedCity = selected;
                                           _selectedCityId = cityId;
                                           _selectedRegionId = mainRegionId;
+                                          _fieldErrors.remove(
+                                            'city',
+                                          ); // Clear error on selection
                                           _selectedStreet.clear();
                                           _selectedStreetId = null;
                                           _streets.clear();
@@ -3754,6 +3850,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     // Street field
                     _buildDropdown(
                       label: 'Улица*',
+                      fieldKey: 'street',
                       hint: _selectedStreet.isEmpty
                           ? 'Выберите улицу'
                           : _selectedStreet.join(', '),
@@ -3853,6 +3950,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                             _selectedStreet = selected;
                                             _selectedStreetId = streetId;
                                             _selectedCityId = cityIdFromStreet;
+                                            _fieldErrors.remove(
+                                              'street',
+                                            ); // Clear error on selection
                                             _selectedBuilding.clear();
                                             _selectedBuildingId = null;
                                             _buildings.clear();
@@ -3965,6 +4065,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     _buildTextField(
                       label: 'Контактное лицо*',
                       hint: 'Александр',
+                      fieldKey: 'contactName',
                       controller: _contactNameController,
                     ),
                     const SizedBox(height: 9),
@@ -3972,6 +4073,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     _buildTextField(
                       label: 'Электронная почта',
                       hint: 'AlexAlex@mail.ru',
+                      fieldKey: 'email',
                       keyboardType: TextInputType.emailAddress,
                       controller: _emailController,
                     ),
@@ -3980,6 +4082,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     _buildTextField(
                       label: 'Номер телефона 1*',
                       hint: '+7 949 456 65 56',
+                      fieldKey: 'phone1',
                       keyboardType: TextInputType.phone,
                       controller: _phone1Controller,
                     ),
@@ -3988,6 +4091,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     _buildTextField(
                       label: 'Номер телефона 2',
                       hint: '+7 949 456 65 56',
+                      fieldKey: 'phone2',
                       keyboardType: TextInputType.phone,
                       controller: _phone2Controller,
                     ),
@@ -3996,6 +4100,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     _buildTextField(
                       label: 'Ссылка на ваш чат в Max',
                       hint: 'https://Namename',
+                      fieldKey: 'telegram',
                       controller: _telegramController,
                     ),
                     const SizedBox(height: 9),
@@ -4124,6 +4229,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Widget _buildTextField({
     required String label,
     required String hint,
+    String? fieldKey,
     int maxLines = 1,
     int minLength = 0,
     int? maxLength,
@@ -4131,15 +4237,33 @@ class _DynamicFilterState extends State<DynamicFilter> {
     TextEditingController? controller,
     ValueChanged<String>? onChanged,
   }) {
+    final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
+    final errorMessage = hasError ? _fieldErrors[fieldKey] : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        Row(
+          children: [
+            Text(
+              label,
+              style: const TextStyle(color: textPrimary, fontSize: 16),
+            ),
+            if (hasError)
+              const Text(
+                ' *',
+                style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
+              ),
+          ],
+        ),
         const SizedBox(height: 9),
         Container(
           decoration: BoxDecoration(
-            color: formBackground,
+            color: hasError ? const Color(0xFF381a1a) : formBackground,
             borderRadius: BorderRadius.circular(6),
+            // border: hasError
+            //     ? Border.all(color: const Color(0xFFFF1744), width: 1)
+            //     : null,
           ),
           child: TextField(
             controller: controller,
@@ -4148,12 +4272,28 @@ class _DynamicFilterState extends State<DynamicFilter> {
             maxLength: maxLength,
             keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.newline,
-            style: const TextStyle(color: textPrimary),
-            onChanged: onChanged,
+            style: TextStyle(
+              color: hasError
+                  ? const Color(0xFFff7272)
+                  : const Color.fromARGB(255, 255, 255, 255),
+            ),
+            onChanged: (value) {
+              // Очищаем ошибку при вводе текста в обязательное поле
+              if (fieldKey != null && value.isNotEmpty) {
+                setState(() {
+                  _fieldErrors.remove(fieldKey);
+                });
+              }
+              // Вызываем оригинальный обработчик если есть
+              onChanged?.call(value);
+            },
             expands: false,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: textSecondary, fontSize: 14),
+              hintStyle: TextStyle(
+                color: hasError ? const Color(0xFFff7272) : textSecondary,
+                fontSize: 14,
+              ),
               filled: false,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 12,
@@ -4164,7 +4304,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
             ),
           ),
         ),
-        if (minLength > 0)
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              errorMessage ?? 'Ошибка заполнения',
+              style: const TextStyle(
+                color: Color(0xFFFF1744),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          )
+        else if (minLength > 0)
           Padding(
             padding: const EdgeInsets.only(top: 7),
             child: Text(
@@ -4179,19 +4331,32 @@ class _DynamicFilterState extends State<DynamicFilter> {
   Widget _buildDropdown({
     required String label,
     required String hint,
+    String? fieldKey,
     VoidCallback? onTap,
     String? subtitle,
     Widget? icon,
     bool showChangeText = false,
   }) {
+    final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
+    final errorMessage = hasError ? _fieldErrors[fieldKey] : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
           onTap: onTap,
-          child: Text(
-            label,
-            style: const TextStyle(color: textPrimary, fontSize: 16),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              if (hasError)
+                const Text(
+                  ' *',
+                  style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 9),
@@ -4202,7 +4367,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12.0),
             decoration: BoxDecoration(
-              color: formBackground,
+              color: hasError ? const Color(0xFF381a1a) : formBackground,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -4218,9 +4383,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
                               hint,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: hint == 'Выбрать' || hint.isEmpty
-                                    ? const Color(0xFF7A7A7A)
-                                    : const Color.fromARGB(255, 255, 255, 255),
+                                color: hasError
+                                    ? const Color(0xFFff7272)
+                                    : (hint == 'Выбрать' || hint.isEmpty
+                                          ? const Color(0xFF7A7A7A)
+                                          : const Color.fromARGB(
+                                              255,
+                                              255,
+                                              255,
+                                              255,
+                                            )),
                                 fontSize: 14,
                               ),
                             ),
@@ -4238,9 +4410,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
                           hint,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: hint == 'Выбрать' || hint.isEmpty
-                                ? const Color(0xFF7A7A7A)
-                                : const Color.fromARGB(255, 255, 255, 255),
+                            color: hasError
+                                ? const Color(0xFFff7272)
+                                : (hint == 'Выбрать' || hint.isEmpty
+                                      ? const Color(0xFF7A7A7A)
+                                      : const Color.fromARGB(
+                                          255,
+                                          255,
+                                          255,
+                                          255,
+                                        )),
                             fontSize: 14,
                           ),
                         ),
@@ -4255,6 +4434,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
             ),
           ),
         ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              errorMessage ?? 'Ошибка заполнения',
+              style: const TextStyle(
+                color: Color(0xFFFF1744),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -5069,6 +5260,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _buildTextField(
           label: attr.title + (attr.isRequired ? '*' : ''),
           hint: 'Цифрами',
+          fieldKey: 'attr_${attr.id}',
           keyboardType: TextInputType.number,
           controller: controller,
           onChanged: (value) => _selectedValues[attr.id] = value.trim(),
@@ -5098,22 +5290,55 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // Style C1 (styleSingle=C1): Show as button group (submission mode)
     // Can have 2, 3, or more button options (Да/Нет, Совместная/Продажа/Аренда, etc.)
 
+    final fieldKey = 'attr_${attr.id}';
+    final hasError = _fieldErrors.containsKey(fieldKey);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStyleHeader(attr),
         if (!attr.isTitleHidden)
-          Text(
-            attr.title + (attr.isRequired ? '*' : ''),
-            style: const TextStyle(color: textPrimary, fontSize: 16),
+          Row(
+            children: [
+              Text(
+                attr.title,
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+              if (attr.isRequired)
+                Text(
+                  ' *',
+                  style: TextStyle(
+                    color: hasError
+                        ? const Color(0xFFFF1744)
+                        : const Color(0xFFFF1744),
+                    fontSize: 16,
+                  ),
+                ),
+            ],
           ),
         const SizedBox(height: 12),
         if (attr.values.isNotEmpty)
           _buildButtonGrid(
             buttons: attr.values,
             selectedValue: selected,
-            onButtonPressed: (value) =>
-                setState(() => _selectedValues[attr.id] = value),
+            onButtonPressed: (value) {
+              setState(() {
+                _selectedValues[attr.id] = value;
+                _fieldErrors.remove(fieldKey);
+              });
+            },
+          ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              'Обязательное поле',
+              style: const TextStyle(
+                color: Color(0xFFFF1744),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
       ],
     );
@@ -5209,6 +5434,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       label: attr.isTitleHidden
           ? ''
           : attr.title + (attr.isRequired ? '*' : ''),
+      fieldKey: 'attr_${attr.id}',
       hint: selected.isEmpty ? 'Выбрать' : selected,
       icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
       onTap: () {
@@ -5224,6 +5450,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   _selectedValues[attr.id] = newSelected.isEmpty
                       ? ''
                       : newSelected.first;
+                  _fieldErrors.remove('attr_${attr.id}');
                 });
               },
               allowMultipleSelection: false,
@@ -5252,6 +5479,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           label: attr.isTitleHidden
               ? ''
               : attr.title + (attr.isRequired ? '*' : ''),
+          fieldKey: 'attr_${attr.id}',
           hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
           icon: const Icon(
             Icons.keyboard_arrow_down_rounded,
@@ -5268,6 +5496,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                   onSelectionChanged: (Set<String> newSelected) {
                     setState(() {
                       _selectedValues[attr.id] = newSelected;
+                      _fieldErrors.remove('attr_${attr.id}');
                     });
                   },
                   allowMultipleSelection: attr.isMultiple,
@@ -5310,6 +5539,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
       keyboardType = TextInputType.number;
     }
 
+    final fieldKey = 'attr_${attr.id}';
+    final hasError = _fieldErrors.containsKey(fieldKey);
+    final hintColor = hasError ? const Color(0xFFff7272) : textSecondary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -5325,23 +5558,29 @@ class _DynamicFilterState extends State<DynamicFilter> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: formBackground,
+                  color: hasError ? const Color(0xFF381a1a) : formBackground,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: TextField(
                   controller: controllerMin,
                   keyboardType: keyboardType,
-                  style: const TextStyle(color: textPrimary),
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: hasError ? const Color(0xFFff7272) : textPrimary,
+                  ),
+                  decoration: InputDecoration(
                     hintText: 'От',
-                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
+                    hintStyle: TextStyle(color: hintColor, fontSize: 14),
                     border: InputBorder.none,
                   ),
                   onChanged: (value) {
                     setState(() {
                       range['min'] = value;
                       _selectedValues[attr.id] = range;
+                      // Clear error when user inputs
+                      if (value.isNotEmpty) {
+                        _fieldErrors.remove(fieldKey);
+                      }
                     });
                   },
                 ),
@@ -5352,8 +5591,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
               child: Center(
                 child: Text(
                   'Из',
-                  style: const TextStyle(
-                    color: textSecondary,
+                  style: TextStyle(
+                    color: hasError ? const Color(0xFFff7272) : textSecondary,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
@@ -5363,23 +5602,29 @@ class _DynamicFilterState extends State<DynamicFilter> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: formBackground,
+                  color: hasError ? const Color(0xFF381a1a) : formBackground,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: TextField(
                   controller: controllerMax,
                   keyboardType: keyboardType,
-                  style: const TextStyle(color: textPrimary),
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: hasError ? const Color(0xFFff7272) : textPrimary,
+                  ),
+                  decoration: InputDecoration(
                     hintText: 'До',
-                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
+                    hintStyle: TextStyle(color: hintColor, fontSize: 14),
                     border: InputBorder.none,
                   ),
                   onChanged: (value) {
                     setState(() {
                       range['max'] = value;
                       _selectedValues[attr.id] = range;
+                      // Clear error when user inputs
+                      if (value.isNotEmpty) {
+                        _fieldErrors.remove(fieldKey);
+                      }
                     });
                   },
                 ),
@@ -5387,6 +5632,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
             ),
           ],
         ),
+        if (hasError)
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              'Заполните минимальное и максимальное значение',
+              style: const TextStyle(
+                color: Color(0xFFFF1744),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -5471,6 +5728,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         _buildStyleHeader(attr),
         _buildDropdown(
           label: displayLabel,
+          fieldKey: 'attr_${attr.id}',
           hint: processedSelected.isEmpty
               ? 'Выбрать'
               : processedSelected.join(', '),
@@ -5493,6 +5751,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     }).toSet();
                     setState(() {
                       _selectedValues[attr.id] = originalSelected;
+                      _fieldErrors.remove('attr_${attr.id}');
                     });
                   },
                   allowMultipleSelection: attr.isMultiple,
