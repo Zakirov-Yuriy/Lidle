@@ -182,7 +182,7 @@ class _MessagesPageState extends State<MessagesPage>
         _loadMessagesBackground();
       }
     });
-    log.d('✅ Таймер обновления счетчика сообщений запущен (интервал 15 сек)');
+    // log.d('✅ Таймер обновления счетчика сообщений запущен (интервал 15 сек)');
   }
 
   /// 💬 Загрузить список чатов в фоне (без показа лоадера)
@@ -190,7 +190,7 @@ class _MessagesPageState extends State<MessagesPage>
   Future<void> _loadMessagesBackground() async {
     // 🛡️ Пропускаем если уже загружаются чаты
     if (_isLoadingChatsBackground) {
-      log.d('⏭️  Пропускаем загрузку (уже идет загрузка списка чатов)');
+      // log.d('⏭️  Пропускаем загрузку (уже идет загрузка списка чатов)');
       return;
     }
 
@@ -261,7 +261,7 @@ class _MessagesPageState extends State<MessagesPage>
                 (entry.key < messages.length ? messages[entry.key].unreadCount : -1));
 
         if (hasChanges) {
-          log.d('📨 Счетчик сообщений обновлен');
+          // log.d('📨 Счетчик сообщений обновлен');
           setState(() {
             messages = loadedMessages;
           });
@@ -276,7 +276,7 @@ class _MessagesPageState extends State<MessagesPage>
         _rateLimitRetryCount++;
         // Экспоненциальная задержка: 30сек, 60сек, 120сек...
         final delaySeconds = 30 * (1 << (_rateLimitRetryCount - 1));
-        log.d('⏸️  Rate limit на списке чатов! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...');
+        // log.d('⏸️  Rate limit на списке чатов! Попытка $_rateLimitRetryCount. Ждем ${delaySeconds}сек перед повторной попыткой...');
         
         // Отменяем текущий таймер
         _updateTimer?.cancel();
@@ -284,7 +284,7 @@ class _MessagesPageState extends State<MessagesPage>
         // Запускаем новый таймер через задержку
         _rateLimitTimer = Timer(Duration(seconds: delaySeconds), () {
           if (mounted) {
-            log.d('🔄 Восстанавливаем периодическое обновление списка чатов');
+            // log.d('🔄 Восстанавливаем периодическое обновление списка чатов');
             _startAutoUpdate();
           }
         });

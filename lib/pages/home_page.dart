@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_globalScrollPosition > 0 && _scrollController.hasClients) {
         _scrollController.jumpTo(_globalScrollPosition);
-        log.d('📍 Восстановлена глобальная позиция скролла: $_globalScrollPosition');
+        // log.d('📋 Восстановлена глобальная позиция скролла: $_globalScrollPosition');
       }
     });
   }
@@ -110,7 +110,7 @@ class _HomePageState extends State<HomePage>
   void didPopNext() {
     // Вызывается когда экран вернулся на передний план (Navigator.pop был вызван)
     super.didPopNext();
-    log.d('⬅️ Вернулись на HomePage');
+    // log.d('⬅️ Вернулись на HomePage');
     
     // 🟢 СЛОЙ 1: Восстанавливаем ИЗ КЕША (если доступны данные)
     // Даже если API не отвечает, пользователь видит кешированные данные
@@ -119,7 +119,7 @@ class _HomePageState extends State<HomePage>
     
     if (cachedState != null) {
       // ✅ Есть кеш - восстанавливаем сразу (избегаем состояния ListingsLoading)
-      log.d('✅ Восстановлены кешированные данные');
+      // log.d('✅ Восстановлены кешированные данные');
       bloc.emit(cachedState);
       
       // 🔄 Помимо восстановления из кеша, стараемся загрузить свежие данные в фоне

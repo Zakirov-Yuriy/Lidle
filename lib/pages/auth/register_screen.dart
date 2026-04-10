@@ -79,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
       }
     } catch (e) {
-      log.d('❌ Ошибка при открытии ссылки: $e');
+      // log.d('❌ Ошибка при открытии ссылки: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ошибка при открытии ссылки')),

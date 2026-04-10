@@ -91,9 +91,9 @@ class TokenService with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      log.d(
-        '🔁 TokenService: приложение возвращается из фона, проверяем токен...',
-      );
+      // log.d(
+      //   '🔁 TokenService: приложение возвращается из фона, проверяем токен...',
+      // );
       // Немедленно проверяем и обновляем токен если нужно
       _scheduleRefresh();
     }
@@ -171,15 +171,15 @@ class TokenService with WidgetsBindingObserver {
       if (timeUntilRefreshTokenRefresh.isNegative ||
           timeUntilRefreshTokenRefresh.inSeconds < _minTokenLifetimeSeconds) {
         // Refresh_token истекает скоро — обновляем немедленно
-        log.d(
-          '⚠️ TokenService: refresh_token истекает через ${timeUntilRefreshTokenExpiry.inHours}ч, обновляем немедленно',
-        );
+        // log.d(
+        //   '⚠️ TokenService: refresh_token истекает через ${timeUntilRefreshTokenExpiry.inHours}ч, обновляем немедленно',
+        // );
         nextRefreshDelay = Duration.zero;
       } else if (timeUntilRefreshTokenRefresh < nextRefreshDelay) {
         // Если истечение refresh_token приходит раньше — используем его
-        log.d(
-          '📅 TokenService: планируем refresh за ${timeUntilRefreshTokenRefresh.inHours}ч до истечения refresh_token',
-        );
+        // log.d(
+        //   '📅 TokenService: планируем refresh за ${timeUntilRefreshTokenRefresh.inHours}ч до истечения refresh_token',
+        // );
         nextRefreshDelay = timeUntilRefreshTokenRefresh;
       }
     } else {

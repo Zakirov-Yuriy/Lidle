@@ -49,6 +49,7 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 //  Callback Dispatcher для фоновых задач workmanager'а
 // Эта функция вызывается в изолированном контексте (вне UI потока)
 // ============================================================
+@pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((task, inputData) async {
     try {
@@ -58,7 +59,7 @@ void callbackDispatcher() {
       }
       return false;
     } catch (e, st) {
-      log.e('❌ Background task ошибка: $e\n$st');
+      // log.e('❌ Background task ошибка: $e\n$st');
       return false;
     }
   });
@@ -79,19 +80,19 @@ void main() async {
     final environment = dotenv.env['APP_ENVIRONMENT'] ?? 'prod';
     
     // 🔍 ДЕБАГ: Выводим что прочитали из .env
-    log.w('🔍 DEBUG: APP_ENVIRONMENT из .env = "$environment"');
-    log.w('🔍 DEBUG: Все переменные .env: ${dotenv.env}');
+    // log.w('🔍 DEBUG: APP_ENVIRONMENT из .env = "$environment"');
+    // log.w('🔍 DEBUG: Все переменные .env: ${dotenv.env}');
     
     await AppConfig.initialize(environmentValue: environment);
-    log.i('✅ AppConfig инициализирован: ${AppConfig().environment.value}');
-    log.i('   API URL: ${AppConfig().apiBaseUrl}');
-    log.i('   WebSocket URL: ${AppConfig().wsUrl}');
-    log.i('   Images URL: ${AppConfig().imageBaseUrl}');
+    // log.i('✅ AppConfig инициализирован: ${AppConfig().environment.value}');
+    // log.i('   API URL: ${AppConfig().apiBaseUrl}');
+    // log.i('   WebSocket URL: ${AppConfig().wsUrl}');
+    // log.i('   Images URL: ${AppConfig().imageBaseUrl}');
   } catch (e, st) {
-    log.e('❌ AppConfig инициализация ошибка: $e\n$st');
+    // log.e('❌ AppConfig инициализация ошибка: $e\n$st');
     // Используем production по умолчанию если .env не найден
     await AppConfig.initialize(environmentValue: 'prod');
-    log.w('⚠️ Использован fallback - production сервер');
+    // log.w('⚠️ Использован fallback - production сервер');
   }
 
   // 🌙 ИНИЦИАЛИЗАЦИЯ: Workmanager для фоновых задач
@@ -102,7 +103,7 @@ void main() async {
       isInDebugMode: false, // Set to true for debug logging
     );
   } catch (e) {
-    log.w('⚠️ Workmanager инициализация ошибка: $e');
+    // log.w('⚠️ Workmanager инициализация ошибка: $e');
   }
 
   // 🚀 ОПТИМИЗАЦИЯ #1: Быстрая инициализация Hive (обязательна для кеша)
@@ -117,26 +118,26 @@ void main() async {
     await HiveService.init();
   } catch (e) {
     // Продолжаем работу даже если Hive не инициализирован
-    log.w('⚠️ Hive инициализация ошибка: $e');
+    // log.w('⚠️ Hive инициализация ошибка: $e');
   }
 
   // � ОПТИМИЗАЦИЯ #2: DeviceInfoService инициализируется асинхронно в фоне
   // Это не блокирует холодный старт (~50-80ms экономия)
   // Инициализация запускается без await, работает параллельно с UI отрисовкой
   DeviceInfoService.initialize().catchError((e) {
-    log.w('⚠️ DeviceInfoService инициализация ошибка: $e');
+    // log.w('⚠️ DeviceInfoService инициализация ошибка: $e');
   });
 
   // 🔔 ИНИЦИАЛИЗАЦИЯ: NotificationService для локальных пуш-уведомлений
   // Инициализируется без await, работает в фоне
   NotificationService().initialize().catchError((e) {
-    log.w('⚠️ NotificationService инициализация ошибка: $e');
+    // log.w('⚠️ NotificationService инициализация ошибка: $e');
   });
 
   // 📩 ИНИЦИАЛИЗАЦИЯ: Загружаем сохранённые ID сообщений из хранилища
   // для восстановления Polling состояния после рестарта приложения
   MessagePollingService().loadLastMessageIds().catchError((e) {
-    log.w('⚠️ MessagePollingService загрузка ID ошибка: $e');
+    // log.w('⚠️ MessagePollingService загрузка ID ошибка: $e');
   });
 
   SystemChrome.setSystemUIOverlayStyle(
@@ -254,7 +255,7 @@ class LidleApp extends StatelessWidget {
             
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');
-            log.d('🌙 Отменена фоновая задача проверки сообщений');
+            // log.d('🌙 Отменена фоновая задача проверки сообщений');
           }
 
           // При истечении токена — перенаправляем на экран входа

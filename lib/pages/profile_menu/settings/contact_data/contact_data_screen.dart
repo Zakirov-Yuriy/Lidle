@@ -29,7 +29,7 @@ class ContactDataScreen extends StatefulWidget {
   static void clearCache() {
     _ContactDataScreenState._lastContactDataLoadTime = null;
     // ignore: avoid_print
-    log.d('🧹 ContactDataScreen: кеш очищен при logout');
+    // log.d('🕺 ContactDataScreen: кеш очищен при logout');
   }
 
   @override
@@ -82,7 +82,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // ignore: avoid_print
-    log.d('🔵 ContactDataScreen: didChangeDependencies() called');
+    // log.d('🔵 ContactDataScreen: didChangeDependencies() called');
 
     // 💾 КЕШИРОВАНИЕ: Проверяем нужно ли обновлять данные
     if (_shouldRefreshContactData()) {
@@ -141,7 +141,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     } catch (e) {
       // Если восстановление не удалось, загружаем свежие данные
       // ignore: avoid_print
-      log.d('❌ Error restoring from cache: $e');
+      // log.d('❌ Error restoring from cache: $e');
       _loadContactData();
       _lastContactDataLoadTime = DateTime.now();
     }
@@ -210,9 +210,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           );
 
           // ignore: avoid_print
-          log.d('📢 MyAdvertsResponse:');
+          // log.d('📢 MyAdvertsResponse:');
           // ignore: avoid_print
-          log.d('   Data count: ${myAdvertsResponse.data.length}');
+          // log.d('   Data count: ${myAdvertsResponse.data.length}');
 
           if (myAdvertsResponse.data.isNotEmpty) {
             final firstAdvert = myAdvertsResponse.data.first;
@@ -232,21 +232,21 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                   .map((s) => s.trim())
                   .toList();
               // ignore: avoid_print
-              log.d('   Address parts: $addressParts');
+              // log.d('   Address parts: $addressParts');
 
               if (addressParts.length >= 2) {
                 region = addressParts[0]; // Первая часть - область
                 city = addressParts[1]; // Вторая часть - город
                 // ignore: avoid_print
-                log.d('   ✅ Extracted - region: "$region", city: "$city"');
+                // log.d('   ✅ Extracted - region: "$region", city: "$city"');
               }
             } else {
               // ignore: avoid_print
-              log.d('   ❌ Address is empty or null');
+              // log.d('   ❌ Address is empty or null');
             }
           } else {
             // ignore: avoid_print
-            log.d('   ❌ No adverts found for user');
+            // log.d('   ❌ No adverts found for user');
           }
         } catch (e) {
           // Если не удаётся получить из объявления, используем сохранённые или пустые значения

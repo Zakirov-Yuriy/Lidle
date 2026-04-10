@@ -72,27 +72,27 @@ class PublicationTariffScreen extends StatelessWidget {
                       price: 'Бесплатно',
                       isPrimary: true,
                     ),
-                    const SizedBox(height: 10),
-                    _buildTariffCard(
-                      context,
-                      tariffName: 'Стандарт',
-                      features: [
-                        'Публикация в топ',
-                        'Помощь в ведении публикации',
-                      ],
-                      price: '400р',
-                    ),
-                    const SizedBox(height: 10),
-                    _buildTariffCard(
-                      context,
-                      tariffName: 'Премиум',
-                      features: [
-                        'Публикация в топ',
-                        'Помощь в ведении публикации',
-                        'Вип позиции',
-                      ],
-                      price: '700р',
-                    ),
+                    // const SizedBox(height: 10),
+                    // _buildTariffCard(
+                    //   context,
+                    //   tariffName: 'Стандарт',
+                    //   features: [
+                    //     'Публикация в топ',
+                    //     'Помощь в ведении публикации',
+                    //   ],
+                    //   price: '400р',
+                    // ),
+                    // const SizedBox(height: 10),
+                    // _buildTariffCard(
+                    //   context,
+                    //   tariffName: 'Премиум',
+                    //   features: [
+                    //     'Публикация в топ',
+                    //     'Помощь в ведении публикации',
+                    //     'Вип позиции',
+                    //   ],
+                    //   price: '700р',
+                    // ),
                     const SizedBox(height: 79),
                   ],
                 ),
@@ -158,11 +158,34 @@ class PublicationTariffScreen extends StatelessWidget {
                           fontSize: 14,
                         ),
                       ),
+                      
                     ],
                   ),
                 ),
               )
               .toList(),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/publication_tariff/icon.svg',
+                  width: 20,
+                  height: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Для более быстрой модерации используйте платную модерации.',
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 15),
           const Divider(color: textMuted),
           const SizedBox(height: 4),

@@ -27,7 +27,7 @@ class LoadingTimerService {
     _skeletonStartTimes[operationKey] = DateTime.now();
     
     if (kDebugMode) {
-      _logger.i('⏱️  Таймер загрузки запущен: [$operationKey]');
+      // _logger.i('⏱️  Таймер загрузки запущен: [$operationKey]');
     }
   }
 
@@ -97,18 +97,18 @@ class LoadingTimerService {
     final label = customLabel ?? result.operationKey;
     
     if (kDebugMode) {
-      _logger.i(
-        '''
-╔════════════════════════════════════════════════════╗
-║          📊 РЕЗУЛЬТАТЫ ИЗМЕРЕНИЯ ВРЕМЕНИ ЗАГРУЗКИ   ║
-╠════════════════════════════════════════════════════╣
-║ Операция:      $label
-║ 🦴 Скелет:     ${result.skeletonDurationMs}ms
-║ ✅ Всего:       ${result.totalDurationMs}ms
-║ 📈 Прирост:    ${result.totalDurationMs - result.skeletonDurationMs}ms
-╚════════════════════════════════════════════════════╝
-''',
-      );
+      // _logger.i(
+      //   '''
+      // ╔════════════════════════════════════════════════════╗
+      // ║          📊 РЕЗУЛЬТАТЫ ИЗМЕРЕНИЯ ВРЕМЕНИ ЗАГРУЗКИ   ║
+      // ╠════════════════════════════════════════════════════╣
+      // ║ Операция:      $label
+      // ║ 🦴 Скелет:     ${result.skeletonDurationMs}ms
+      // ║ ✅ Всего:       ${result.totalDurationMs}ms
+      // ║ 📈 Прирост:    ${result.totalDurationMs - result.skeletonDurationMs}ms
+      // ╚════════════════════════════════════════════════════╝
+      // ''',
+      // );
     }
   }
 }

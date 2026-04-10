@@ -151,20 +151,20 @@ class Listing {
 
   factory Listing.fromJson(Map<String, dynamic> json) {
     // DEBUG: Логируем полный JSON адреса
-    log.d('');
-    log.d('═' * 80);
-    log.d('[🔍 PARSING LISTING FROM API]');
-    log.d('Listing ID: ${json['id']}');
-    log.d('Full json address object:');
-    log.d('  json["address"]: ${json['address']}');
-    log.d('  json["location"]: ${json['location']}');
-    log.d('  json["full_address"]: ${json['full_address']}');
+    // log.d('');
+    // log.d('═' * 80);
+    // log.d('[🔍 PARSING LISTING FROM API]');
+    // log.d('Listing ID: ${json['id']}');
+    // log.d('Full json address object:');
+    // log.d('  json["address"]: ${json['address']}');
+    // log.d('  json["location"]: ${json['location']}');
+    // log.d('  json["full_address"]: ${json['full_address']}');
     if (json['address'] is Map) {
-      log.d('  address is Map with keys: ${(json['address'] as Map).keys.toList()}');
-      (json['address'] as Map).forEach((k, v) => log.d('    $k: $v'));
+      // log.d('  address is Map with keys: ${(json['address'] as Map).keys.toList()}');
+      // (json['address'] as Map).forEach((k, v) => log.d('    $k: $v'));
     }
-    log.d('═' * 80);
-    log.d('');
+    // log.d('═' * 80);
+    // log.d('');
     // Парсим характеристики из attributes (возвращаемых API, в формате структуры attributes)
     final Map<String, dynamic> characteristics = {};
 
@@ -211,11 +211,11 @@ class Listing {
     
     // Парсим адрес если нет явных компонентов
     final parsedAddress = _parseAddressString(addressString);
-    log.d('[🔍 PARSED ADDRESS FROM STRING]');
-    log.d('  Original: $addressString');
-    log.d('  Parsed city: ${parsedAddress['city']}');
-    log.d('  Parsed street: ${parsedAddress['street']}');
-    log.d('  Parsed buildingNumber: ${parsedAddress['buildingNumber']}');
+    // log.d('[🔍 PARSED ADDRESS FROM STRING]');
+    // log.d('  Original: $addressString');
+    // log.d('  Parsed city: ${parsedAddress['city']}');
+    // log.d('  Parsed street: ${parsedAddress['street']}');
+    // log.d('  Parsed buildingNumber: ${parsedAddress['buildingNumber']}');
 
     return Listing(
       id:

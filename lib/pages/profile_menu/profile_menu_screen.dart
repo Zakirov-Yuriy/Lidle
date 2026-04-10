@@ -30,7 +30,7 @@ class ProfileMenuScreen extends StatefulWidget {
     _ProfileMenuScreenState._lastProfileLoadTime = null;
     _ProfileMenuScreenState._lastPhoneLoadTime = null;
     _ProfileMenuScreenState._cachedMainPhone = null;
-    log.d('🧹 ProfileMenuScreen: кеш очищен при logout');
+    // log.d('🕺 ProfileMenuScreen: кеш очищен при logout');
   }
 
   @override
@@ -83,10 +83,10 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         context,
       ).add(LoadProfileEvent(forceRefresh: true));
       _lastProfileLoadTime = DateTime.now();
-      log.d('✅ ProfileMenuScreen: загружен профиль (кеш обновлен)');
+      // log.d('✅ ProfileMenuScreen: загружен профиль (кеш обновлен)');
     } else {
       final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
-      log.d('⏳ ProfileMenuScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+      // log.d('⏳ ProfileMenuScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
     }
     
     // 🧠 ОПТИМИЗАЦИЯ: Загружаем телефоны только если кеш старше 10 минут
@@ -100,7 +100,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
           _mainPhoneValue = _cachedMainPhone;
         });
         final timeSinceLastLoad = DateTime.now().difference(_lastPhoneLoadTime!);
-        log.d('⏳ ProfileMenuScreen: используется кеш телефона (осталось ${_phoneCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+        // log.d('⏳ ProfileMenuScreen: используется кеш телефона (осталось ${_phoneCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
       }
     }
   }
@@ -121,7 +121,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
             // 💾 КЕШИРОВАНИЕ: Сохраняем телефон в статический кеш
             _cachedMainPhone = phone;
           });
-          log.d('✅ ProfileMenuScreen: загружен телефон (кеш обновлен)');
+          // log.d('✅ ProfileMenuScreen: загружен телефон (кеш обновлен)');
         } else {
           setState(() {
             _mainPhoneValue = null;
@@ -130,7 +130,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         }
       }
     } catch (e) {
-      log.e('Error loading main phone: $e');
+      // log.e('Error loading main phone: $e');
     }
   }
 

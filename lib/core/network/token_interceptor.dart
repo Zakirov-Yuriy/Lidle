@@ -45,7 +45,7 @@ class TokenInterceptor {
       // Если уже идёт refresh - ждём его завершения
       final existingCompleter = _tokenRefreshCompleter;
       if (existingCompleter != null) {
-        log.d('🔔 TokenInterceptor: refresh уже в процессе, ждём завершения');
+        // log.d('🔔 TokenInterceptor: refresh уже в процессе, ждём завершения');
         return await existingCompleter.future;
       }
 
@@ -53,12 +53,12 @@ class TokenInterceptor {
       final completer = Completer<String?>();
       _tokenRefreshCompleter = completer;
 
-      log.d('🔄 TokenInterceptor: начинаем refresh токена');
+      // log.d('🔄 TokenInterceptor: начинаем refresh токена');
 
       // Читаем refresh_token из Hive для использования в AuthRemote
       final refreshToken = HiveService.getUserData('refresh_token') as String?;
       if (refreshToken == null) {
-        log.e('❌ TokenInterceptor: refresh_token не найден в Hive');
+        // log.e('❌ TokenInterceptor: refresh_token не найден в Hive');
         completer.completeError('refresh_token not found');
         return null;
       }
@@ -69,11 +69,11 @@ class TokenInterceptor {
       final newAccessToken = await AuthRemote.refreshToken(refreshToken);
 
       if (newAccessToken != null) {
-        log.i('✅ TokenInterceptor: успешно получен новый access_token');
+        // log.i('✅ TokenInterceptor: успешно получен новый access_token');
         // Сохраняем новый токен в Hive (делает AuthRemote)
         // Здесь просто подтверждаем успех
       } else {
-        log.e('❌ TokenInterceptor: refresh_token истёк или невалиден (401/403)');
+        // log.e('❌ TokenInterceptor: refresh_token истёк или невалиден (401/403)');
       }
 
       // Завершаем Completer с результатом
@@ -81,7 +81,7 @@ class TokenInterceptor {
       return newAccessToken;
     } catch (e, st) {
       // Если произошла ошибка - должны очистить Completer
-      log.e('❌ TokenInterceptor error: $e\n$st');
+      // log.e('❌ TokenInterceptor error: $e\n$st');
       _tokenRefreshCompleter?.completeError(e);
       return null;
     } finally {

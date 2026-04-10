@@ -564,13 +564,13 @@ class _RealEstateFullFiltersScreenState
     // Логика определения типа фильтра на основе флагов и документации
     // Приоритет: styleSingle точное совпадение > isSpecialDesign > (isTitleHidden && isMultiple) > isRange > empty > isPopup > isMultiple > Style B1 > else
 
-    log.d(
-      '    🎨 _buildFilterField: ID=${attr.id}, Title="${attr.title}", '
-      'values.count=${attr.values.length}, isRange=${attr.isRange}, '
-      'isMultiple=${attr.isMultiple}, isSpecialDesign=${attr.isSpecialDesign}, '
-      'isTitleHidden=${attr.isTitleHidden}, isPopup=${attr.isPopup}, '
-      'styleSingle="${attr.styleSingle ?? ""}"',
-    );
+    // log.d(
+    //   '    🎨 _buildFilterField: ID=${attr.id}, Title="${attr.title}", '
+    //   'values.count=${attr.values.length}, isRange=${attr.isRange}, '
+    //   'isMultiple=${attr.isMultiple}, isSpecialDesign=${attr.isSpecialDesign}, '
+    //   'isTitleHidden=${attr.isTitleHidden}, isPopup=${attr.isPopup}, '
+    //   'styleSingle="${attr.styleSingle ?? ""}"',
+    // );
 
     // Style F: Popup диалог с квадратными чекбоксами - определяется по styleSingle="F"
     if (attr.styleSingle == "F" && attr.values.isNotEmpty) {

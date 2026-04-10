@@ -24,7 +24,7 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
     // ВАЖНО: Инициализируем предпочтение ПЕРВЫМ
     _userPreference = HiveService.getSetting('network_preference', defaultValue: 'any') ?? 'any';
     
-    log.d('📱 ConnectivityBloc: Инициализирована с предпочтением: $_userPreference');
+    // log.d('📱 ConnectivityBloc: Инициализирована с предпочтением: $_userPreference');
     
     // ПОТОМ регистрируем обработчики
     on<CheckConnectivityEvent>(_onCheckConnectivity);
@@ -69,45 +69,45 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
         results.contains(ConnectivityResult.ethernet);
     final hasMobile = results.contains(ConnectivityResult.mobile);
 
-    log.d('📡 _getAvailableTypes():');
-    log.d('   Результаты от системы: $results');
-    log.d('   Есть Wi-Fi: $hasWifi');
-    log.d('   Есть мобильный: $hasMobile');
-    log.d('   Предпочтение пользователя: $_userPreference');
+    // log.d('📡 _getAvailableTypes():');
+    // log.d('   Результаты от системы: $results');
+    // log.d('   Есть Wi-Fi: $hasWifi');
+    // log.d('   Есть мобильный: $hasMobile');
+    // log.d('   Предпочтение пользователя: $_userPreference');
 
     // Фильтруем в зависимости от предпочтения пользователя
     if (_userPreference == 'mobile') {
       // Пользователь выбрал мобильный -> игнорируем Wi-Fi
-      log.d('   🎯 Режим: ТОЛЬКО МОБИЛЬНЫЙ (Wi-Fi ИГНОРИРУЕМ)');
+      // log.d('   🎯 Режим: ТОЛЬКО МОБИЛЬНЫЙ (Wi-Fi ИГНОРИРУЕМ)');
       if (hasMobile) {
         types.add('mobile');
-        log.d('   ✅ Добавлен: mobile');
+        // log.d('   ✅ Добавлен: mobile');
       } else {
-        log.d('   ❌ Мобильный НЕ ДОСТУПЕН!');
+        // log.d('   ❌ Мобильный НЕ ДОСТУПЕН!');
       }
     } else if (_userPreference == 'wifi') {
       // Пользователь выбрал Wi-Fi -> игнорируем мобильный
-      log.d('   🎯 Режим: ТОЛЬКО WI-FI (мобильный ИГНОРИРУЕМ)');
+      // log.d('   🎯 Режим: ТОЛЬКО WI-FI (мобильный ИГНОРИРУЕМ)');
       if (hasWifi) {
         types.add('wifi');
-        log.d('   ✅ Добавлен: wifi');
+        // log.d('   ✅ Добавлен: wifi');
       } else {
-        log.d('   ❌ Wi-Fi НЕ ДОСТУПЕН!');
+        // log.d('   ❌ Wi-Fi НЕ ДОСТУПЕН!');
       }
     } else {
       // Пользователь выбрал 'any' -> берем все доступные, Wi-Fi в приоритете
-      log.d('   🎯 Режим: ЛЮБОЙ (Wi-Fi имеет приоритет)');
+      // log.d('   🎯 Режим: ЛЮБОЙ (Wi-Fi имеет приоритет)');
       if (hasWifi) {
         types.add('wifi');
-        log.d('   ✅ Добавлен: wifi');
+        // log.d('   ✅ Добавлен: wifi');
       }
       if (hasMobile) {
         types.add('mobile');
-        log.d('   ✅ Добавлен: mobile');
+        // log.d('   ✅ Добавлен: mobile');
       }
     }
 
-    log.d('   👉 Результат _getAvailableTypes: $types');
+    // log.d('   👉 Результат _getAvailableTypes: $types');
     return types;
   }
 
@@ -136,14 +136,14 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
       final hasConnection = availableTypes.isNotEmpty;
 
       // 📱 Отладочная информация
-      log.d('🔍 ConnectivityBloc: Проверка соединения');
-      log.d('   Доступные типы: $availableTypes');
-      log.d('   Предпочтение пользователя: $_userPreference');
-      log.d('   Соединение есть: $hasConnection');
+      // log.d('🔍 ConnectivityBloc: Проверка соединения');
+      // log.d('   Доступные типы: $availableTypes');
+      // log.d('   Предпочтение пользователя: $_userPreference');
+      // log.d('   Соединение есть: $hasConnection');
 
       if (!hasConnection) {
         // Нет соединения вообще
-        log.d('   ❌ Соединения нет');
+        // log.d('   ❌ Соединения нет');
         emit(
           DisconnectedState(
             reason: 'no_internet',
@@ -156,7 +156,7 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
 
       // Есть соединение, но проверяем соответствует ли оно предпочтениям
       if (_isConnectionAllowed(availableTypes)) {
-        log.d('   ✅ Соединение доступно и соответствует предпочтениям');
+        // log.d('   ✅ Соединение доступно и соответствует предпочтениям');
         emit(
           ConnectedState(
             availableTypes: availableTypes,
@@ -166,7 +166,7 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
       } else {
         // Соединение есть, но не того типа что выбрал пользователь
         final activeType = _getActiveConnectionType(availableTypes);
-        log.d('   ❌ Соединение есть ($activeType), но не соответствует предпочтению ($_userPreference)');
+        // log.d('   ❌ Соединение есть ($activeType), но не соответствует предпочтению ($_userPreference)');
         emit(
           DisconnectedState(
             reason: 'preference_not_met',
@@ -177,7 +177,7 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
       }
     } catch (e) {
       // По умолчанию считаем что есть соединение при ошибке
-      log.d('⚠️  Ошибка при проверке соединения: $e');
+      // log.d('⚠️  Ошибка при проверке соединения: $e');
       emit(
         const ConnectedState(
           availableTypes: ['wifi', 'mobile'],
@@ -197,12 +197,12 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
       final result = await _connectivity.checkConnectivity();
       final availableTypes = _getAvailableTypes(result);
 
-      log.d('🔄 ConnectivityBloc: Событие подключения');
-      log.d('   Доступные типы: $availableTypes');
-      log.d('   Предпочтение пользователя: $_userPreference');
+      // log.d('🔄 ConnectivityBloc: Событие подключения');
+      // log.d('   Доступные типы: $availableTypes');
+      // log.d('   Предпочтение пользователя: $_userPreference');
 
       if (_isConnectionAllowed(availableTypes)) {
-        log.d('   ✅ Подключение OK');
+        // log.d('   ✅ Подключение OK');
         emit(
           ConnectedState(
             availableTypes: availableTypes,
@@ -210,7 +210,7 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
           ),
         );
       } else {
-        log.d('   ❌ Подключение не соответствует предпочтению');
+        // log.d('   ❌ Подключение не соответствует предпочтению');
         emit(
           DisconnectedState(
             reason: 'preference_not_met',
@@ -220,7 +220,7 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
         );
       }
     } catch (e) {
-      log.d('⚠️  Ошибка при обработке подключения: $e');
+      // log.d('⚠️  Ошибка при обработке подключения: $e');
       emit(
         const ConnectedState(
           availableTypes: ['wifi', 'mobile'],
@@ -249,18 +249,18 @@ class ConnectivityBloc extends Bloc<ConnectivityEvent, ConnectivityState> {
     SetNetworkPreferenceEvent event,
     Emitter<ConnectivityState> emit,
   ) async {
-    log.d('⚙️ _onSetNetworkPreference: Изменение предпочтения');
-    log.d('   Старое значение: $_userPreference');
-    log.d('   Новое значение: ${event.preference}');
+    // log.d('⚙️ _onSetNetworkPreference: Изменение предпочтения');
+    // log.d('   Старое значение: $_userPreference');
+    // log.d('   Новое значение: ${event.preference}');
     
     _userPreference = event.preference;
     
     // Сохраняем предпочтение в хранилище
     await HiveService.saveSetting('network_preference', _userPreference);
-    log.d('   ✅ Сохранено в HiveService');
+    // log.d('   ✅ Сохранено в HiveService');
     
     // Переоценяем текущий статус с новым предпочтением
-    log.d('   🔄 Переоценка статуса с новым предпочтением...');
+    // log.d('   🔄 Переоценка статуса с новым предпочтением...');
     add(const CheckConnectivityEvent());
   }
 }

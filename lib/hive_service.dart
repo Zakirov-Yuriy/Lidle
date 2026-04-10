@@ -334,7 +334,7 @@ class HiveService {
   ) async {
     final key = 'category_filters_$categoryId';
     await settingsBox.put(key, filters);
-    log.i('💾 Фильтры сохранены для категории $categoryId');
+    // log.i('💾 Фильтры сохранены для категории $categoryId');
   }
 
   /// Загружает сохраненные фильтры категории.
@@ -344,10 +344,10 @@ class HiveService {
     final key = 'category_filters_$categoryId';
     final filters = settingsBox.get(key, defaultValue: <String, dynamic>{});
     if (filters is Map) {
-      log.i('📋 Фильтры загружены для категории $categoryId: $filters');
+      // log.i('📋 Фильтры загружены для категории $categoryId: $filters');
       return Map<String, dynamic>.from(filters);
     }
-    log.w('⚠️  Фильтры не найдены для категории $categoryId');
+    // log.w('⚠️  Фильтры не найдены для категории $categoryId');
     return <String, dynamic>{};
   }
 
@@ -356,7 +356,7 @@ class HiveService {
   static Future<void> deleteCategoryFilters(int categoryId) async {
     final key = 'category_filters_$categoryId';
     await settingsBox.delete(key);
-    log.i('🗑️  Фильтры удалены для категории $categoryId');
+    // log.i('🗑️  Фильтры удалены для категории $categoryId');
   }
 }
 

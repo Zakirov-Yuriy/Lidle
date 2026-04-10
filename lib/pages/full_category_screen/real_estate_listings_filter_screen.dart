@@ -1106,9 +1106,9 @@ class _RealEstateListingsFilterScreenState
       children: [
         // const SizedBox(height: 16),
         ..._attributes.map((attr) {
-          log.d(
-            '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
-          );
+          // log.d(
+          //   '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
+          // );
 
           // Пропустить скрытые поля
           if (attr.isHidden) {

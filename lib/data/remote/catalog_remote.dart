@@ -130,7 +130,7 @@ class CatalogRemote {
       // Логирование структуры фильтров для отладки
       if (data['filters'] is List) {
         final filtersList = data['filters'] as List;
-        log.d('📊 CatalogRemote.getMetaFilters: loaded ${filtersList.length} filters');
+        // log.d('📊 CatalogRemote.getMetaFilters: loaded ${filtersList.length} filters');
 
         // Поиск специального фильтра "Вам предложат цену"
         bool found = false;
@@ -140,19 +140,19 @@ class CatalogRemote {
               title.contains('цену') ||
               title.contains('offer') ||
               title.contains('price')) {
-            log.d('   ✅ Found price offer filter: ID=${filter['id']}, Title=$title');
+            // log.d('   ✅ Found price offer filter: ID=${filter['id']}, Title=$title');
             found = true;
           }
         }
         if (!found) {
-          log.d('   ℹ️ Price offer filter not found in API response');
+          // log.d('   ℹ️ Price offer filter not found in API response');
         }
       }
 
       try {
         return MetaFiltersResponse.fromJson(data);
       } catch (parseError) {
-        log.d('🔴 ERROR parsing MetaFiltersResponse: $parseError');
+        // log.d('🔴 ERROR parsing MetaFiltersResponse: $parseError');
         rethrow;
       }
     } catch (e) {

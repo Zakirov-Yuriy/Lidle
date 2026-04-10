@@ -55,13 +55,13 @@ class _ListingCardState extends State<ListingCard> {
     if (advertId != null) {
       if (newState) {
         // Добавляем в wishlist на сервере
-        log.i('💗 ListingCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
+        // log.i('💗 ListingCard: Отправляем AddToWishlistEvent для advert_id=$advertId');
         context.read<WishlistBloc>().add(
           AddToWishlistEvent(listingId: advertId),
         );
       } else {
         // Удаляем из wishlist на сервере
-        log.i('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
+        // log.i('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
         context.read<WishlistBloc>().add(
           RemoveFromWishlistEvent(listingId: advertId),
         );

@@ -95,9 +95,9 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
 
       // Разделяем текущее устройство и активные сеансы
       final devices = response.data;
-      log.d('📱 API вернул ${devices.length} устройств:');
+      // log.d('📱 API вернул ${devices.length} устройств:');
       for (var device in devices) {
-        log.d('  - ${device.name} (${device.deviceType})');
+        // log.d('  - ${device.name} (${device.deviceType})');
       }
       
       // Определяем текущее устройство по типу (iOS, Android, Web)
@@ -120,8 +120,8 @@ class DevicesBloc extends Bloc<DevicesEvent, DevicesState> {
         activeSessions = devices.length > 1 ? devices.sublist(1) : [];
       }
       
-      log.d('✅ Текущее устройство: ${currentDevice?.name}');
-      log.d('📋 Активные сеансы: ${activeSessions.length}');
+      // log.d('✅ Текущее устройство: ${currentDevice?.name}');
+      // log.d('📋 Активные сеансы: ${activeSessions.length}');
 
       // Излучаем состояние успешной загрузки
       emit(DevicesLoaded(

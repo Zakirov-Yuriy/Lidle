@@ -460,7 +460,7 @@ class HttpClient {
         try {
           final currentToken = HiveService.getUserData('token') as String?;
           if (currentToken == null || currentToken.isEmpty) {
-            log.d('🔒 HttpClient: нет сохраненного токена для обновления');
+            // log.d('🔒 HttpClient: нет сохраненного токена для обновления');
             final error = TokenExpiredException('No saved token to refresh');
             completer.completeError(error);
             throw error;
@@ -494,10 +494,10 @@ class HttpClient {
       } on RateLimitException {
         if (attempt < _maxRetries - 1) {
           final delayMs = _retryDelayMs * (1 << attempt); // Exponential backoff
-          log.d('⏳ HttpClient: rate limit - ждем ${delayMs}ms перед повтором...');
+          // log.d('⏳ HttpClient: rate limit - ждем ${delayMs}ms перед повтором...');
           await Future.delayed(Duration(milliseconds: delayMs));
         } else {
-          log.d('❌ Максимум попыток достигнут. Прекращаю retry.');
+          // log.d('❌ Максимум попыток достигнут. Прекращаю retry.');
           rethrow;
         }
       }
@@ -509,7 +509,7 @@ class HttpClient {
   static Map<String, dynamic> _handleResponse(http.Response response) {
     // ✅ Обработка пустого ответа (204 No Content или пустое тело при 2xx)
     if (response.body.isEmpty && response.statusCode >= 200 && response.statusCode < 300) {
-      log.d('✅ HttpClient._handleResponse: Успешный пустой ответ (${response.statusCode})');
+      // log.d('✅ HttpClient._handleResponse: Успешный пустой ответ (${response.statusCode})');
       return {'success': true, 'message': 'Success', 'data': null};
     }
 
@@ -523,8 +523,8 @@ class HttpClient {
     } catch (_) {
       // ❌ Если статус 2xx но JSON парсинг не удался - это ошибка API
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        log.d('⚠️ HttpClient._handleResponse: Статус ${response.statusCode} но не валидный JSON');
-        log.d('   Тело ответа: "${response.body}"');
+        // log.d('⚠️ HttpClient._handleResponse: Статус ${response.statusCode} но не валидный JSON');
+        // log.d('   Тело ответа: "${response.body}"');
         // Возвращаем успешный ответ с пустыми данными
         return {'success': true, 'message': 'Success', 'data': null};
       }
@@ -552,13 +552,13 @@ class HttpClient {
       throw Exception(data['message'] ?? 'Ошибка сервера');
     } else if (response.statusCode >= 400 && response.statusCode < 500) {
       // 4xx ошибки (404, 400, 403, и т.д.) - выбрасываем исключение
-      log.d('❌ Error with status ${response.statusCode}');
-      log.d('   Message: ${data['message'] ?? 'Ошибка сервера'}');
+      // log.d('❌ Error with status ${response.statusCode}');
+      // log.d('   Message: ${data['message'] ?? 'Ошибка сервера'}');
       throw Exception('${data['message'] ?? 'Ошибка запроса'} (статус ${response.statusCode})');
     } else {
       // Остальные статусы (не обработанные выше)
-      log.d('❌ Error with status ${response.statusCode}');
-      log.d('   Message: ${data['message'] ?? 'Ошибка сервера'}');
+      // log.d('❌ Error with status ${response.statusCode}');
+      // log.d('   Message: ${data['message'] ?? 'Ошибка сервера'}');
       throw Exception('${data['message'] ?? 'Ошибка сервера'} (статус ${response.statusCode})');
     }
   }

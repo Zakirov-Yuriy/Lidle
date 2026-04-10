@@ -45,7 +45,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
       Future.microtask(() {
         if (mounted) {
           context.read<WishlistBloc>().add(const LoadWishlistEvent());
-          log.d('🔄 FavoritesScreen.initState: Загружаем wishlist');
+          // log.d('🔄 FavoritesScreen.initState: Загружаем wishlist');
         }
       });
     }
@@ -64,7 +64,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
         })
         .toList();
     
-    log.d('📊 FavoritesScreen._getFavoritedListings: Всего объявлений: ${allListings.length}, Избранных: ${favorited.length}, IDs избранного: $ids');
+    // log.d('📊 FavoritesScreen._getFavoritedListings: Всего объявлений: ${allListings.length}, Избранных: ${favorited.length}, IDs избранного: $ids');
     
     return favorited;
   }
@@ -185,7 +185,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   if (state is WishlistLoaded || 
                       state is WishlistItemAdded || 
                       state is WishlistItemRemoved) {
-                    log.d('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
+                    // log.d('🔄 FavoritesScreen: WishlistBloc обновился, переотчитываемся');
                     setState(() {});
                   }
                 },

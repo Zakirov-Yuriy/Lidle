@@ -86,7 +86,7 @@ class ListingsRemote {
 
       // Обработка сложной структуры фильтров с поддержкой вложенных параметров
       if (filters != null && filters.isNotEmpty) {
-        log.d('📦 ListingsRemote.getAdverts - Processing filters');
+        // log.d('📦 ListingsRemote.getAdverts - Processing filters');
         filters.forEach((key, value) {
           if (key == 'value_selected' && value is Map<String, dynamic>) {
             value.forEach((attrId, attrValue) {
@@ -201,7 +201,7 @@ class ListingsRemote {
       }
       return null;
     } catch (e) {
-      log.d('⚠️ Failed to load attributes for advert $id: $e');
+      // log.d('⚠️ Failed to load attributes for advert $id: $e');
       return null;
     }
   }
@@ -245,7 +245,7 @@ class ListingsRemote {
   }) async {
     try {
       final json = request.toJson();
-      log.d('🚀 ListingsRemote.createAdvert: POST /adverts');
+      // log.d('🚀 ListingsRemote.createAdvert: POST /adverts');
       
       final response = await HttpClient.post('/adverts', json, token: token);
       return response;
@@ -262,7 +262,7 @@ class ListingsRemote {
   }) async {
     try {
       final json = request.toJson();
-      log.d('🔄 ListingsRemote.updateAdvert: PUT /adverts/$advertId');
+      // log.d('🔄 ListingsRemote.updateAdvert: PUT /adverts/$advertId');
 
       final response = await HttpClient.put('/adverts/$advertId', json, token: token);
       return response;
@@ -327,7 +327,7 @@ class ListingsRemote {
       await HttpClient.post('/adverts/$advertId/view', {}, token: token);
     } catch (e) {
       // Не пробрасываем ошибку, так как это некритично
-      log.d('Failed to save advert view: $e');
+      // log.d('Failed to save advert view: $e');
     }
   }
 
@@ -336,7 +336,7 @@ class ListingsRemote {
     try {
       await HttpClient.post('/adverts/$advertId/share', {}, token: token);
     } catch (e) {
-      log.d('Failed to share advert: $e');
+      // log.d('Failed to share advert: $e');
     }
   }
 

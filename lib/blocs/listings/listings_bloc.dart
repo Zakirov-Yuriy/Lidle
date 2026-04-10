@@ -117,7 +117,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   ) async {
     // Защита от дублирования pull-to-refresh запросов
     if (_isLoadingListings) {
-      log.d('LoadListingsEvent уже выполняется, игнорируем дублирование');
+      // log.d('LoadListingsEvent уже выполняется, игнорируем дублирование');
       return;
     }
 
@@ -126,8 +126,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     if (event.forceRefresh && _lastRefreshTime != null) {
       final timeSinceLastRefresh = DateTime.now().difference(_lastRefreshTime!);
       if (timeSinceLastRefresh < _refreshDebounce) {
-        log.d('⏱️ Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями ' +
-            '(прошло ${timeSinceLastRefresh.inSeconds}s)');
+      // log.d('⏱️ Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями ' +
+            //     '(прошло ${timeSinceLastRefresh.inSeconds}s)');
         return;
       }
     }
@@ -320,8 +320,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       
       // 🔴 СЛОЙ 3: Преобразуем ошибку в понятное сообщение
       final errorMessage = _getErrorMessage(e);
-      log.e('❌ Ошибка загрузки объявлений: $errorMessage', error: e);
-      emit(ListingsError(message: errorMessage));
+      // log.e('❌ Ошибка загрузки объявлений: $errorMessage', error: e);
+      // Скрываем ошибки по сети в production
+      emit(ListingsError(message: 'Unable to load listings'));
+    } catch (e) {
+      // Logcat show:
+      // log.e('❌ Неожиданная ошибка в LoadListingsEvent: $e');
+      emit(ListingsError(message: 'Unable to load listings'));
     } finally {
       _isLoadingListings = false;
     }
@@ -458,12 +463,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           return;
         } catch (e) {
           // Если не удалось восстановить из кеша, загружаем заново
-          log.d('⚠️ ListingsBloc: Ошибка восстановления из кеша: $e');
+          // log.d('⚠️ ListingsBloc: Ошибка восстановления из кеша: $e');
         }
       }
     } catch (e) {
       // Игнорируем ошибки кеша и продолжаем загрузку
-      log.d('⚠️ ListingsBloc: Ошибка доступа к кешу: $e');
+      // log.d('⚠️ ListingsBloc: Ошибка доступа к кешу: $e');
     }
 
     emit(ListingsLoading());
@@ -488,7 +493,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Обернуто в try-catch т.к. Hive может быть не инициализирован
       try {
         final jsonToCache = _listingToJson(listing);
-        log.d('💾 Caching listing ${listing.id} with isBargain=${jsonToCache['isBargain']}');
+        // log.d('💾 Caching listing ${listing.id} with isBargain=${jsonToCache['isBargain']}');
         AppCacheService().set<Map<String, dynamic>>(
           cacheKey,
           jsonToCache,
@@ -799,7 +804,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // 🛡️ ЗАЩИТА: Не запускаем фазу 2 если она уже выполняется
     // Предотвращает множественные параллельные загрузки при rate limiting
     if (_isPhase2Loading) {
-      log.d('⚠️ ListingsBloc ФАЗА 2: Уже выполняется, пропускаем дублирование');
+      // log.d('⚠️ ListingsBloc ФАЗА 2: Уже выполняется, пропускаем дублирование');
       return;
     }
 
@@ -879,15 +884,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             // 🚨 Специальная обработка rate limiting (429) ошибок
             if (errorMsg.contains('429') || errorMsg.contains('RateLimitException')) {
               rateLimitErrors++;
-              log.d('⏱️ ListingsBloc ФАЗА 2: Rate limit (429), применяю exponential backoff...');
+              // log.d('⏱️ ListingsBloc ФАЗА 2: Rate limit (429), применяю exponential backoff...');
               
               // 📈 Exponential backoff: увеличиваем задержку
               currentDelayMs = (currentDelayMs * 2).clamp(500, maxDelayMs);
               
               // Если слишком много 429 ошибок - останавливаем фазу 2 и используем кеш
               if (rateLimitErrors >= 3) {
-                log.d('🛑 ListingsBloc ФАЗА 2: Слишком много rate limit ошибок (${rateLimitErrors}x 429), ' +
-                    'останавливаю фазу 2 и использую кеш...');
+                // log.d('🛑 ListingsBloc ФАЗА 2: Слишком много rate limit ошибок (${rateLimitErrors}x 429), ' +
+                //     'останавливаю фазу 2 и использую кеш...');
                 break;  // Выходим из цикла батчей
               }
               
@@ -895,7 +900,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               await Future.delayed(Duration(milliseconds: currentDelayMs));
             } else {
               // Для других ошибок просто логируем и продолжаем
-              log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
+              // log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка батча ($i-${i + maxConcurrentRequests}): $e');
             }
             
             continue;
@@ -956,12 +961,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             },
             persist: true,
           );
-          log.d('✅ ListingsBloc ФАЗА 2: Данные закеширован (${finalSortedListings.length} объявлений)');
+        // log.d('✅ ListingsBloc ФАЗА 2: Данные закеширован (${finalSortedListings.length} объявлений)');
         } catch (e) {
-          log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
+          // log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
         }
       } catch (e) {
-        log.d('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
+        // log.d('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
         // Даже при критической ошибке, не эмитируем ListingsError
         // Пользователь видит уже загруженные данные из фазы 1
       } finally {
@@ -1001,12 +1006,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             },
             persist: true,
           );
-          log.d('✅ ListingsBloc ФАЗА 2: Данные успешно закеширован');
+          // log.d('✅ ListingsBloc ФАЗА 2: Данные успешно закеширован');
         } catch (e) {
-          log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
+          // log.d('⚠️ ListingsBloc ФАЗА 2: Ошибка кеширования: $e');
         }
       } catch (e) {
-        log.d('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
+        // log.d('❌ ListingsBloc ФАЗА 2: Критическая ошибка: $e');
       }
     });
   }
@@ -1039,7 +1044,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               .map((item) => _jsonToCategory(item as Map<String, dynamic>))
               .toList();
 
-          log.d('🟢 Восстановлены данные из кеша! Объявлений: ${listings.length}, категорий: ${categories.length}');
+          // log.d('🟢 Восстановлены данные из кеша! Объявлений: ${listings.length}, категорий: ${categories.length}');
           return ListingsLoaded(
             listings: listings,
             categories: categories,
@@ -1048,12 +1053,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             itemsPerPage: cachedListings['itemsPerPage'] ?? 20,
           );
         } catch (e) {
-          log.w('⚠️ Ошибка при восстановлении из кеша: $e');
+          // log.w('⚠️ Ошибка при восстановлении из кеша: $e');
           return null;
         }
       }
     } catch (e) {
-      log.d('⚠️ Кеш недоступен: $e');
+      // log.d('⚠️ Кеш недоступен: $e');
       return null;
     }
     return null;

@@ -50,9 +50,9 @@ class AuthRemote {
 
       // Если refresh_token не найден - это критическая ошибка
       if (refreshTokenValue == null || refreshTokenValue.isEmpty) {
-        log.d(
-          '❌ AuthRemote.refreshToken: refresh_token не найден в Hive, невозможно обновить токен',
-        );
+        // log.d(
+        //   '❌ AuthRemote.refreshToken: refresh_token не найден в Hive, невозможно обновить токен',
+        // );
         return null;
       }
 
@@ -80,16 +80,16 @@ class AuthRemote {
       // 401 = токен истёк, 403 = токен невалиден.
       // Оба случая означают что нужна повторная авторизация (нет автоматического рефреша).
       if (response.statusCode == 401 || response.statusCode == 403) {
-        log.d(
-          '🔒 AuthRemote.refreshToken: токен истёк/невалиден (${response.statusCode})',
-        );
+        // log.d(
+        //   '🔒 AuthRemote.refreshToken: токен истёк/невалиден (${response.statusCode})',
+        // );
         return null;
       }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        log.d(
-          '❌ AuthRemote.refreshToken: сервер вернул ${response.statusCode}',
-        );
+        // log.d(
+        //   '❌ AuthRemote.refreshToken: сервер вернул ${response.statusCode}',
+        // );
         return null;
       }
 
@@ -97,7 +97,7 @@ class AuthRemote {
 
       // Проверяем флаг success
       if (data['success'] != true) {
-        log.d('❌ AuthRemote.refreshToken: success=false');
+        // log.d('❌ AuthRemote.refreshToken: success=false');
         return null;
       }
 
@@ -105,9 +105,9 @@ class AuthRemote {
       final newAccessToken = data['access_token'] as String?;
       if (newAccessToken != null && newAccessToken.isNotEmpty) {
         await HiveService.saveUserData('token', newAccessToken);
-        log.d('✅ AuthRemote.refreshToken: новый access_token сохранён');
+        // log.d('✅ AuthRemote.refreshToken: новый access_token сохранён');
       } else {
-        log.d('❌ AuthRemote.refreshToken: access_token не найден в ответе');
+        // log.d('❌ AuthRemote.refreshToken: access_token не найден в ответе');
         return null;
       }
 
@@ -116,9 +116,9 @@ class AuthRemote {
       final newRefreshToken = data['refresh_token'] as String?;
       if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
         await HiveService.saveUserData('refresh_token', newRefreshToken);
-        log.d('✅ AuthRemote.refreshToken: новый refresh_token сохранён (ротация)');
+        // log.d('✅ AuthRemote.refreshToken: новый refresh_token сохранён (ротация)');
       } else {
-        log.d('❌ AuthRemote.refreshToken: refresh_token не найден в ответе');
+        // log.d('❌ AuthRemote.refreshToken: refresh_token не найден в ответе');
         return null;
       }
 
@@ -130,9 +130,9 @@ class AuthRemote {
           .add(Duration(seconds: expiresIn))
           .millisecondsSinceEpoch;
       await HiveService.saveUserData('token_expires_at', expiresAtMs);
-      log.d(
-        '✅ AuthRemote.refreshToken: access_token expires_in=$expiresIn сек',
-      );
+      // log.d(
+      //   '✅ AuthRemote.refreshToken: access_token expires_in=$expiresIn сек',
+      // );
 
       // ОБНОВЛЕНО: Сохраняем время истечения refresh_token для проактивного обновления
       final refreshExpiresIn =
@@ -144,21 +144,21 @@ class AuthRemote {
         'refresh_token_expires_at',
         refreshExpiresAtMs,
       );
-      log.d(
-        '✅ AuthRemote.refreshToken: refresh_token expires_in=$refreshExpiresIn сек (14 дней)',
-      );
+      // log.d(
+      //   '✅ AuthRemote.refreshToken: refresh_token expires_in=$refreshExpiresIn сек (14 дней)',
+      // );
 
       // КРИТИЧНО: Перед возвратом проверяем что токен действительно сохранен в Hive
       final savedToken = HiveService.getUserData('token') as String?;
       if (savedToken == null || savedToken.isEmpty) {
-        log.d('❌ AuthRemote.refreshToken: токен не был сохранен в Hive!');
+        // log.d('❌ AuthRemote.refreshToken: токен не был сохранен в Hive!');
         return null;
       }
 
-      log.d('✅ AuthRemote.refreshToken: токен успешно сохранен');
+      // log.d('✅ AuthRemote.refreshToken: токен успешно сохранен');
       return newAccessToken;
     } catch (e) {
-      log.d('❌ AuthRemote.refreshToken exception: $e');
+      // log.d('❌ AuthRemote.refreshToken exception: $e');
       return null;
     }
   }

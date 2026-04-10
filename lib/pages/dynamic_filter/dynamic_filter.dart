@@ -144,9 +144,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
           },
         )
         .toList();
-    log.d(
-      '✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)',
-    );
+    // log.d(
+    //   '✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)',
+    // );
 
     // Проверить режим редактирования
     _isEditMode = widget.advertId != null;
@@ -180,24 +180,24 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Инициализация для редактирования объявления
   Future<void> _initializeForEditing() async {
-    log.d(
-      '📝 [EDIT MODE] Step 1: Loading advert data FIRST to get category...',
-    );
+    // log.d(
+    //   '📝 [EDIT MODE] Step 1: Loading advert data FIRST to get category...',
+    // );
 
     // 1️⃣ СНАЧАЛА загружаем только ID категории из объявления
     // НЕ заполняем данные в контроллеры еще - им нужны атрибуты
     await _loadAdvertCategoryOnly();
 
-    log.d(
-      '📝 [EDIT MODE] Step 2: Now loading attributes for category $_editAdvertCategoryId...',
-    );
+    // log.d(
+    //   '📝 [EDIT MODE] Step 2: Now loading attributes for category $_editAdvertCategoryId...',
+    // );
 
     // 2️⃣ Теперь загружаем атрибуты для ПРАВИЛЬНОЙ категории
     await _loadAttributes();
 
-    log.d(
-      '📝 [EDIT MODE] Step 3: Attributes loaded. Now loading full advert data...',
-    );
+    // log.d(
+    //   '📝 [EDIT MODE] Step 3: Attributes loaded. Now loading full advert data...',
+    // );
 
     // ✅ Add delay for setState() to process attribute changes in UI
     await Future.delayed(const Duration(milliseconds: 100));
@@ -205,22 +205,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // 3️⃣ ПОТОМ загружаем все данные объявления (используем правильные атрибуты)
     await _loadAdvertDataForEditing();
 
-    log.d(
-      '📝 [EDIT MODE] Step 4: Repopulating controllers after attributes + advert data loaded...',
-    );
+    // log.d(
+    //   '📝 [EDIT MODE] Step 4: Repopulating controllers after attributes + advert data loaded...',
+    // );
 
     // 4️⃣ Пересоздаем контроллеры с правильными значениями
     if (_isEditMode && _editAdvertData != null) {
       _repopulateControllersAfterAttributesLoaded();
     }
 
-    log.d('📝 [EDIT MODE] Step 5: Loading contacts and regions...');
+    // log.d('📝 [EDIT MODE] Step 5: Loading contacts and regions...');
 
     // 5️⃣ Загружаем вспомогательные данные
     await _loadUserContacts();
     await _loadRegions();
 
-    log.d('📝 [EDIT MODE] Initialization complete!');
+    // log.d('📝 [EDIT MODE] Initialization complete!');
   }
 
   /// Перезагружает данные фильтра при восстановлении подключения
@@ -4558,9 +4558,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // );
 
     // Also print all field names in a compact way to find the exact "За месяц" name
-    log.d(
-      '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
-    );
+    // log.d(
+    //   '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
+    // );
 
     // Special logging for "За месяц" field to debug its parameters
     // Check multiple variations of the field name
@@ -5655,11 +5655,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
 
-    log.d(
-      '🔍 Building multiple select popup for attr ${attr.id} "${attr.title}"',
-    );
-    log.d('   selected values: ${selected.toList()}');
-    log.d('   available options: ${attr.values.map((v) => v.value).toList()}');
+    // log.d(
+    //   '🔍 Building multiple select popup for attr ${attr.id} "${attr.title}"',
+    // );
+    // log.d('   selected values: ${selected.toList()}');
+    // log.d('   available options: ${attr.values.map((v) => v.value).toList()}');
 
     // According to documentation:
     // Style F: Always popup with checkboxes

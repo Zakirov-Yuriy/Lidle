@@ -91,10 +91,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             .millisecondsSinceEpoch;
         await UserService.saveLocal('refresh_token_expires_at', refreshExpiresAtMs);
 
-        log.d(
-          '✅ auth_bloc: сохранены токены - access_token действует ${expiresIn ~/ 60}мин, '
-          'refresh_token действует ${refreshExpiresIn ~/ 86400} дней',
-        );
+        // log.d(
+        //   '✅ auth_bloc: сохранены токены - access_token действует ${expiresIn ~/ 60}мин, '
+        //   'refresh_token действует ${refreshExpiresIn ~/ 86400} дней',
+        // );
 
         // Сохраняем возможные данные пользователя из ответа сразу локально
         final data = response['data'] ?? response;
@@ -349,14 +349,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               // Токен еще действителен более чем на 5 минут - не обновляем
               shouldRefresh = false;
               final minutesRemaining = timeUntilExpiryMs ~/ (60 * 1000);
-              log.d('✅ AuthBloc: токен еще действителен, обновление пропущено ($minutesRemaining мин осталось)');
+              // log.d('✅ AuthBloc: токен еще действителен, обновление пропущено ($minutesRemaining мин осталось)');
             } else if (timeUntilExpiryMs > 0) {
               // Токен истекает в ближайшие 5 минут - обновляем профилактически
-              log.d('⚠️  AuthBloc: токен истекает скоро, выполняем профилактический refresh');
+              // log.d('⚠️  AuthBloc: токен истекает скоро, выполняем профилактический refresh');
               shouldRefresh = true;
             } else {
               // Токен полностью истек - обновляем обязательно
-              log.d('❌ AuthBloc: токен полностью истек');
+              // log.d('❌ AuthBloc: токен полностью истек');
               shouldRefresh = true;
             }
           } catch (_) {
@@ -371,9 +371,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           // ApiService.refreshToken() использует refresh_token из Hive, но мы проверяем его первым.
           final refreshToken = await UserService.getLocal('refresh_token') as String?;
           if (refreshToken == null || refreshToken.isEmpty) {
-            log.d(
-              '⚠️  AuthBloc: refresh_token не найден, отправляем на авторизацию (первый запуск?)',
-            );
+            // log.d(
+            //   '⚠️  AuthBloc: refresh_token не найден, отправляем на авторизацию (первый запуск?)',
+            // );
             await AuthService.logout();
             await UserService.deleteLocal('token');
             await UserService.deleteLocal('refresh_token');
@@ -387,14 +387,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             // Успешно обновили токен — эмитируем AuthAuthenticated
             // Это запустит TokenService.init() в BlocListener, который будет
             // периодически обновлять токен согласно его таймеру.
-            log.d('✅ AuthBloc: токен успешно обновлен при запуске приложения');
+            // log.d('✅ AuthBloc: токен успешно обновлен при запуске приложения');
             emit(AuthAuthenticated(token: newToken));
           } else {
             // Refresh не сработал (401/403 на сервере) — refresh_token истёк
             // или невалиден. Отправляем пользователя на авторизацию.
-            log.d(
-              '❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию',
-            );
+            // log.d(
+            //   '❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию',
+            // );
             await AuthService.logout();
             await UserService.deleteLocal('token');
             await UserService.deleteLocal('refresh_token');
@@ -414,12 +414,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // или пользователь без интернета. В этом случае эмитируем AuthAuthenticated
       // чтобы приложение попыталось продолжить работу с наличным токеном.
       // TokenService.init() будет пытаться обновить токен при возвращении в foreground.
-      log.d(
-        '⚠️  AuthBloc: сетевая ошибка при обновлении токена при запуске: $e',
-      );
+      // log.d(
+      //   '⚠️  AuthBloc: сетевая ошибка при обновлении токена при запуске: $e',
+      // );
       final token = TokenService.currentToken;
       if (token != null && token.isNotEmpty) {
-        log.d('⚠️  AuthBloc: продолжаем работу с существующим токеном...');
+        // log.d('⚠️  AuthBloc: продолжаем работу с существующим токеном...');
         emit(AuthAuthenticated(token: token));
       } else {
         emit(AuthError(message: e.toString()));

@@ -29,7 +29,7 @@ class SettingsScreen extends StatefulWidget {
   /// Вызывается из AuthBloc при LogoutEvent
   static void clearCache() {
     _SettingsScreenState._lastProfileLoadTime = null;
-    log.d('🧹 SettingsScreen: кеш очищен при logout');
+    // log.d('🧹 SettingsScreen: кеш очищен при logout');
   }
 
   @override
@@ -68,7 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_shouldRefreshProfile()) {
       context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
       _lastProfileLoadTime = DateTime.now();
-      log.d('✅ SettingsScreen: загружен профиль (кеш обновлен)');
+      // log.d('✅ SettingsScreen: загружен профиль (кеш обновлен)');
     } else {
       final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
       log.d('⏳ SettingsScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');

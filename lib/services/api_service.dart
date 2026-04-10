@@ -181,28 +181,28 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      log.d('═══════════════════════════════════════════════════════');
-      log.d('📤 POST REQUEST');
-      log.d('URL: $baseUrl$endpoint');
-      log.d('Token provided: ${effectiveToken != null}');
-      if (effectiveToken != null) {
-        log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
-        log.d('Token type: JWT');
-      }
-      log.d('Headers:');
-      headers.forEach((key, value) {
-        if (key == 'Authorization') {
-          log.d('  $key: Bearer [HIDDEN]');
-        } else {
-          log.d('  $key: $value');
-        }
-      });
-      log.d('Body: $body');
-      log.d('Body keys: ${body.keys.toList()}');
-      body.forEach((key, value) {
-        log.d('  $key: $value (type: ${value.runtimeType})');
-      });
-      log.d('═══════════════════════════════════════════════════════');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('📤 POST REQUEST');
+      // log.d('URL: $baseUrl$endpoint');
+      // log.d('Token provided: ${effectiveToken != null}');
+      // if (effectiveToken != null) {
+      //   log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
+      //   log.d('Token type: JWT');
+      // }
+      // log.d('Headers:');
+      // headers.forEach((key, value) {
+      //   if (key == 'Authorization') {
+      //     log.d('  $key: Bearer [HIDDEN]');
+      //   } else {
+      //     log.d('  $key: $value');
+      //   }
+      // });
+      // log.d('Body: $body');
+      // log.d('Body keys: ${body.keys.toList()}');
+      // body.forEach((key, value) {
+      //   log.d('  $key: $value (type: ${value.runtimeType})');
+      // });
+      // log.d('═══════════════════════════════════════════════════════');
 
       final response = await http
           .post(
@@ -214,8 +214,8 @@ class ApiService {
           // Сервер обычно отвечает за 500-800ms, 5s безопасный лимит
           .timeout(const Duration(seconds: 5));
 
-      log.d('📥 Response status: ${response.statusCode}');
-      log.d('📥 Response body: ${response.body}');
+      // log.d('📥 Response status: ${response.statusCode}');
+      // log.d('📥 Response body: ${response.body}');
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -464,26 +464,26 @@ class ApiService {
         headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
-      log.d('═══════════════════════════════════════════════════════');
-      log.d('🗑️ DELETE REQUEST');
-      log.d('URL: $baseUrl$endpoint');
-      log.d('Token provided: ${effectiveToken != null}');
-      if (effectiveToken != null) {
-        log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
-        log.d('Token type: JWT');
-      }
-      log.d('Headers:');
-      headers.forEach((key, value) {
-        if (key == 'Authorization') {
-          log.d('  $key: Bearer [HIDDEN]');
-        } else {
-          log.d('  $key: $value');
-        }
-      });
-      if (body != null) {
-        log.d('Body: $body');
-      }
-      log.d('═══════════════════════════════════════════════════════');
+      // log.d('═══════════════════════════════════════════════════════');
+      // log.d('🗑️ DELETE REQUEST');
+      // log.d('URL: $baseUrl$endpoint');
+      // log.d('Token provided: ${effectiveToken != null}');
+      // if (effectiveToken != null) {
+      //   log.d('Token preview: ${effectiveToken.substring(0, 30)}...');
+      //   log.d('Token type: JWT');
+      // }
+      // log.d('Headers:');
+      // headers.forEach((key, value) {
+      //   if (key == 'Authorization') {
+      //     log.d('  $key: Bearer [HIDDEN]');
+      //   } else {
+      //     log.d('  $key: $value');
+      //   }
+      // });
+      // if (body != null) {
+      //   log.d('Body: $body');
+      // }
+      // log.d('═══════════════════════════════════════════════════════');
 
       final response = await http
           .delete(
@@ -494,12 +494,12 @@ class ApiService {
           // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
           .timeout(const Duration(seconds: 5));
       
-      log.d('📥 DELETE RESPONSE received:');
-      log.d('   Status: ${response.statusCode}');
-      log.d('   Body length: ${response.body.length}');
-      if (response.body.isNotEmpty) {
-        log.d('   Body: ${response.body}');
-      }
+      // log.d('📥 DELETE RESPONSE received:');
+      // log.d('   Status: ${response.statusCode}');
+      // log.d('   Body length: ${response.body.length}');
+      // if (response.body.isNotEmpty) {
+      //   log.d('   Body: ${response.body}');
+      // }
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -2335,7 +2335,7 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      log.d('📥 Загружаем список чатов (страница $page)...');
+      // log.d('📥 Загружаем список чатов (страница $page)...');
 
       final response = await getWithQuery(
         '/chats',
@@ -2345,13 +2345,13 @@ class ApiService {
 
       if (response['data'] != null && response['data'] is List) {
         final chats = List<Map<String, dynamic>>.from(response['data'] as List);
-        log.d('✅ Загружено чатов: ${chats.length}');
+        // log.d('✅ Загружено чатов: ${chats.length}');
         return chats;
       }
 
       return [];
     } catch (e) {
-      log.d('❌ Ошибка загрузки чатов: $e');
+      // log.d('❌ Ошибка загрузки чатов: $e');
       rethrow;
     }
   }
@@ -2370,7 +2370,7 @@ class ApiService {
         throw Exception('Требуется авторизация');
       }
 
-      log.d('📥 Загружаем сообщения чата #$chatId (страница $page)...');
+      // log.d('📥 Загружаем сообщения чата #$chatId (страница $page)...');
 
       final response = await getWithQuery(
         '/chats/$chatId/messages',
@@ -2381,13 +2381,13 @@ class ApiService {
       if (response['data'] != null && response['data'] is List) {
         final messages =
             List<Map<String, dynamic>>.from(response['data'] as List);
-        log.d('✅ Загружено сообщений: ${messages.length}');
+        // log.d('✅ Загружено сообщений: ${messages.length}');
         return messages;
       }
 
       return [];
     } catch (e) {
-      log.d('❌ Ошибка загрузки сообщений: $e');
+      // log.d('❌ Ошибка загрузки сообщений: $e');
       rethrow;
     }
   }

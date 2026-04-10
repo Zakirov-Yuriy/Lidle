@@ -22,7 +22,7 @@ class PhoneDialog extends StatelessWidget {
       // Очищаем номер от всех символов кроме цифр и +
       final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
       
-      log.d('📋 Attempting to call: $cleanedNumber (original: $phoneNumber)');
+      // log.d('📋 Attempting to call: $cleanedNumber (original: $phoneNumber)');
 
       // Создаём tel: URI
       final Uri launchUri = Uri(
@@ -32,15 +32,15 @@ class PhoneDialog extends StatelessWidget {
 
       // Проверяем, можно ли открыть этот URI
       if (await canLaunchUrl(launchUri)) {
-        log.i('✅ Launching call to: $cleanedNumber');
+        // log.i('✅ Launching call to: $cleanedNumber');
         await launchUrl(launchUri);
       } else {
-        log.w('❌ Could not launch tel: $launchUri, trying SMS fallback...');
+        // log.w('❌ Could not launch tel: $launchUri, trying SMS fallback...');
         // Fallback на SMS
         await _showPhoneOptions(phoneNumber, cleanedNumber, context);
       }
     } catch (e) {
-      log.e('❌ Error making phone call: $e');
+      // log.e('❌ Error making phone call: $e');
       if (context.mounted) {
         await _showPhoneOptions(phoneNumber, phoneNumber, context);
       }
@@ -109,7 +109,7 @@ class PhoneDialog extends StatelessWidget {
         );
       }
     } catch (e) {
-      log.e('❌ Error copying to clipboard: $e');
+      // log.e('❌ Error copying to clipboard: $e');
     }
   }
 
@@ -122,7 +122,7 @@ class PhoneDialog extends StatelessWidget {
       );
 
       if (await canLaunchUrl(smsUri)) {
-        log.i('✅ Launching SMS to: $phoneNumber');
+        // log.i('✅ Launching SMS to: $phoneNumber');
         await launchUrl(smsUri);
       } else {
         if (context.mounted) {
@@ -135,7 +135,7 @@ class PhoneDialog extends StatelessWidget {
         }
       }
     } catch (e) {
-      log.e('❌ Error sending SMS: $e');
+      // log.e('❌ Error sending SMS: $e');
     }
   }
 

@@ -51,10 +51,10 @@ class AppConfig {
   ///   'prod' - production (api.lidle.io)
   static Future<void> initialize({required String environmentValue}) async {
     _instance._setEnvironment(environmentValue);
-    _logger.i('🔧 AppConfig инициализирован: ${_instance._environment.value}');
-    _logger.i('   API: ${_instance._apiBaseUrl}');
-    _logger.i('   WS: ${_instance._wsUrl}');
-    _logger.i('   Images: ${_instance._imageBaseUrl}');
+    // _logger.i('🔧 AppConfig инициализирован: ${_instance._environment.value}');
+    // _logger.i('   API: ${_instance._apiBaseUrl}');
+    // _logger.i('   WS: ${_instance._wsUrl}');
+    // _logger.i('   Images: ${_instance._imageBaseUrl}');
   }
 
   /// Установить окружение и все связанные URLs
