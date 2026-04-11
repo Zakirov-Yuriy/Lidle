@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/api_service.dart';
@@ -105,10 +104,8 @@ class _RealEstateFullFiltersScreenState
     super.initState();
     log.d('🚀 RealEstateFullFiltersScreen.initState() called');
     
-    // 🔧 ВАЖНО: Инициализируем apiCities сразу с dnrCities (69 городов)
-    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
-    apiCities = List<String>.from(dnrCities);
-    log.d('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
+    // Initialize with empty list, will be populated from API
+    apiCities = [];
     
     // Инициализируем выбранный город если он передан с промежуточного экрана
     if (widget.selectedCity != null && widget.selectedCity!.isNotEmpty) {
@@ -1264,6 +1261,7 @@ class _RealEstateFullFiltersScreenState
             query: regionName,
             token: token,
             types: ['city'],
+            filters: region.id != null ? {'main_region_id': region.id} : null,
           );
 
           // Получаем города из результатов
@@ -1288,12 +1286,6 @@ class _RealEstateFullFiltersScreenState
           .map((c) => c['name'] as String)
           .toList();
       log.d('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
-
-      // Добавляем все города ДНР из констант (чтобы не потерять те, которые API не вернул)
-      log.d('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
-      
-      final dnrSet = <String>{...allCities, ...dnrCities};
-      allCities = dnrSet.toList();
       log.d('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
 
       // Сортируем города для удобства
@@ -1462,12 +1454,10 @@ class _RealEstateFullFiltersScreenState
         _buildSelector(
           selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
           onTap: () {
-            // FALLBACK: если города еще не загрузились с API, используем dnrCities сразу
-            final citiesToShow = apiCities.isNotEmpty ? apiCities : dnrCities;
+            final citiesToShow = apiCities;
             log.d('\n📱 Открытие диалога выбора города (real_estate_full_filters)...');
             log.d('   - apiCities.length: ${apiCities.length}');
             log.d('   - citiesToShow.length: ${citiesToShow.length}');
-            log.d('   - Using fallback dnrCities: ${apiCities.isEmpty}');
             showDialog(
               context: context,
               builder: (_) {

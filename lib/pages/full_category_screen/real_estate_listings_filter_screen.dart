@@ -4,7 +4,6 @@ import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
@@ -83,14 +82,10 @@ class _RealEstateListingsFilterScreenState
   void initState() {
     super.initState();
     
-    // 🔧 ВАЖНО: Инициализируем _cities сразу с dnrCities (69 городов)
-    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
-    _cities = dnrCities.map((name) => {
-      'name': name,
-      'id': name.hashCode.abs(),
-      'main_region_id': 1,
-    }).toList();
-    log.d('✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)');
+    // 🔧 ВАЖНО: Инициализируем _cities как пустой список
+    // Города будут загружены динамически с API
+    _cities = [];
+    log.d('✅ initState: _cities инициализирован как пустой список (будут загружены с API)');
     
     _loadFilters();
     _loadRegions();
@@ -2576,6 +2571,7 @@ class _RealEstateListingsFilterScreenState
             query: searchQuery,
             token: token,
             types: ['city'],
+            filters: {'main_region_id': regionId},
           );
 
           log.d('   ✅ API returned ${response.data.length} results');
@@ -2606,26 +2602,6 @@ class _RealEstateListingsFilterScreenState
           log.d('   ❌ Ошибка загрузки городов для "$regionName": $e');
         }
       }
-
-      // Добавляем города из dnrCities констант (fallback если API не вернул их)
-      log.d('📦 dnrCities констант имеет ${dnrCities.length} уникальных городов');
-      for (final cityName in dnrCities) {
-        // Проверяем есть ли такой город уже в карте (по имени, без ID)
-        final exists = citiesMap.values.any((c) => c['name'] == cityName);
-        if (!exists) {
-          // Генерируем уникальный ID для города из констант
-          // ID = хеш от имени города (для консистентности)
-          final tempId = cityName.hashCode.abs();
-          citiesMap[tempId] = {
-            'name': cityName,
-            'id': tempId,
-            'main_region_id': 1, // ДНР = регион 1
-            'from_dnr_cities': true, // Отметим что это из констант
-          };
-          log.d('      + City (from dnrCities): "$cityName" (ID=$tempId)');
-        }
-      }
-      log.d('   📊 Cities map after dnrCities merge has ${citiesMap.length} total unique cities');
 
       // Обновить состояние с объединённым списком городов
       if (mounted) {
@@ -2676,6 +2652,7 @@ class _RealEstateListingsFilterScreenState
         query: searchQuery,
         token: token,
         types: ['city'],
+        filters: {'main_region_id': regionId},
       );
 
       log.d('✅ API вернул ${response.data.length} результатов');
@@ -2690,23 +2667,6 @@ class _RealEstateListingsFilterScreenState
             },
           )
           .toList();
-
-      // Добавляем все 72 города ДНР из констант когда выбран ДНР (ID: 1)
-      if (regionId == 1) {
-        final existingNames = cities.map((c) => c['name']).toSet();
-        for (final cityName in dnrCities) {
-          if (!existingNames.contains(cityName)) {
-            cities.add({
-              'name': cityName,
-              'id': -1, // Используем -1 как плейсхолдер для городов из констант
-              'main_region_id': regionId,
-            });
-          }
-        }
-        log.d('✅ Добавлены все 72 города ДНР из констант. Итого городов: ${cities.length}');
-        // Сортируем для удобства
-        cities.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
-      }
 
       if (mounted) {
         setState(() {

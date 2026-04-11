@@ -30,64 +30,72 @@ class AddressService {
   }) async {
     try {
       // API requires minimum 3 characters in 'q' parameter
-      // If query is empty or too short, use a 3-char minimum search
-      final searchQuery = query.isEmpty || query.length < 3 ? '   ' : query;
+      // 🔧 ИСПРАВКА: Используем "ули" (3 символа) вместо пробелов
+      // Это позволяет получить всех адресов с "ули" в составе
+      final searchQuery = query.isEmpty || query.length < 3 ? 'ули' : query;
+      
+      // 🔍 Логирование трансформации query если произошла
+      if (query != searchQuery) {
+        log.d('   ⚠️ Query трансформирована: "$query" → "$searchQuery"');
+      }
 
       final headers = <String, String>{
         'Accept': 'application/json',
         'X-App-Client': 'mobile',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Content-Type': 'application/json',
       };
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      // Build request body for GET request with proper JSON serialization
-      final bodyMap = <String, dynamic>{'q': searchQuery};
+      // Build query parameters (как на веб-сайте)
+      final queryParams = <String, dynamic>{'q': searchQuery};
+      
       if (types != null && types.isNotEmpty) {
-        bodyMap['types'] = types;
+        // Add types as array parameters: types[]=city&types[]=street
+        for (int i = 0; i < types.length; i++) {
+          queryParams['types[$i]'] = types[i];
+        }
       }
+      
       if (filters != null && filters.isNotEmpty) {
-        bodyMap['filters'] = filters;
+        // Add filters as nested parameters: filters[main_region_id]=1
+        filters.forEach((key, value) {
+          queryParams['filters[$key]'] = value.toString();
+        });
       }
 
-      final uri = Uri.parse('${ApiService.baseUrl}/addresses/search');
+      final uri = Uri.parse('${ApiService.baseUrl}/addresses/search')
+          .replace(queryParameters: queryParams);
 
-      // log.d('📥 GET REQUEST /addresses/search');
-      // log.d('URL: $uri');
-      // log.d('Body: ${jsonEncode(bodyMap)}');
+      log.d('📥 GET REQUEST /addresses/search');
+      log.d('URL: $uri');
+      log.d('');
 
-      // Use http.Request to send GET with JSON body
-      final request = http.Request('GET', uri);
-      request.headers.addAll(headers);
-      request.body = jsonEncode(bodyMap);
-
-      final streamResponse = await request.send().timeout(
+      final response = await http.get(uri, headers: headers).timeout(
         const Duration(seconds: 30),
       );
-      final response = await http.Response.fromStream(streamResponse);
 
-      // log.d('✅ API Response status: ${response.statusCode}');
-      // log.d();
+      log.d('✅ API Response status: ${response.statusCode}');
+      log.d('Response length: ${response.body.length}');
+      log.d('');
 
       if (response.statusCode == 200) {
-        // log.d('🔄 Parsing JSON response...');
         final Map<String, dynamic> jsonResponse = json.decode(response.body);
-        // log.d('🔄 JSON decoded successfully');
-
         final result = AddressesResponse.fromJson(jsonResponse);
-        // log.d();
+        
+        log.d('✅ Успешно распарсили ${result.data.length} результатов');
 
         return result;
       } else {
-        // log.d('❌ ${response.statusCode} Error');
-        // log.d('Response: ${response.body}');
+        log.d('❌ ${response.statusCode} Error');
+        final errorBody = response.body.length > 200 ? response.body.substring(0, 200) : response.body;
+        log.d('Response: $errorBody');
         throw Exception('Failed to search addresses: ${response.statusCode}');
       }
-    } catch (e) {
-      // log.d('❌ Exception in searchAddresses: $e');
-      // log.d('Stack trace: ${StackTrace.current}');
+    } catch (e, st) {
+      log.d('❌ Exception in searchAddresses: $e');
+      log.d('Stack: $st');
       throw Exception('Failed to search addresses: $e');
     }
   }

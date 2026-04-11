@@ -2,6 +2,7 @@
 //  "Диалог выбора города"
 // ============================================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
@@ -16,6 +17,8 @@ class CitySelectionDialog extends StatefulWidget {
   final List<String> options;
   final Set<String> selectedOptions;
   final Function(Set<String>) onSelectionChanged;
+  // 🆕 Callback функция для поиска через API
+  final Future<List<String>> Function(String query)? onSearchQuery;
 
   const CitySelectionDialog({
     super.key,
@@ -23,6 +26,7 @@ class CitySelectionDialog extends StatefulWidget {
     required this.options,
     required this.selectedOptions,
     required this.onSelectionChanged,
+    this.onSearchQuery,
   });
 
   @override
@@ -33,29 +37,81 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   late Set<String> _currentSelectedOptions;
   late List<dynamic> _displayOptions;
   final TextEditingController _searchController = TextEditingController();
+  
+  // 🆕 Debounce таймер для API поиска
+  Timer? _debounceTimer;
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _currentSelectedOptions = Set<String>.from(widget.selectedOptions);
-    _displayOptions = []; // Инициализируем пустой список
-    // log.d('🔍 CitySelectionDialog initState:');
-    // log.d('   - widget.options.length: ${widget.options.length}');
-    // log.d('   - widget.options значения: ${widget.options}');
-    _buildDisplayOptions(widget.options); // Initial build
-    _searchController.addListener(_filterOptions);
+    _displayOptions = [];
+    _buildDisplayOptions(widget.options);
+    _searchController.addListener(_onSearchChanged); // 🔄 Новый обработчик
   }
 
   @override
   void dispose() {
-    _searchController.removeListener(_filterOptions);
+    _debounceTimer?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
 
+  /// 🆕 Обработчик изменения текста поиска с debounce для API
+  void _onSearchChanged() {
+    // Отменяем предыдущий таймер
+    _debounceTimer?.cancel();
+    
+    final query = _searchController.text.trim();
+    
+    // Если запрос пустой, показываем предзагруженные города
+    if (query.isEmpty) {
+      setState(() {
+        _isSearching = false;
+      });
+      _buildDisplayOptions(widget.options);
+      return;
+    }
+    
+    // Если есть callback для API поиска — ждем и ищем
+    if (widget.onSearchQuery != null) {
+      // Показываем индикатор загрузки
+      setState(() {
+        _isSearching = true;
+      });
+      
+      // Debounce 400ms перед отправкой запроса
+      _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
+        log.d('🔍 Поиск через API: "$query"');
+        try {
+          final results = await widget.onSearchQuery!(query);
+          log.d('   API вернула ${results.length} результатов');
+          
+          if (mounted) {
+            setState(() {
+              _isSearching = false;
+            });
+            _buildDisplayOptions(results);
+          }
+        } catch (e) {
+          log.d('   ❌ Ошибка поиска: $e');
+          if (mounted) {
+            setState(() {
+              _isSearching = false;
+            });
+          }
+        }
+      });
+    } else {
+      // Без callback — фильтруем клиентский список как раньше
+      _filterOptionsLocal(query);
+    }
+  }
+
   /// Извлекает основное название города, удаляя префиксы (г., м.о., с. и т.д.)
   String _getCityMainName(String fullCityName) {
-    // Удаляем префиксы: "г. ", "м.о. ", "с. ", "г.о. ", "пгт. " и т.д.
     String mainName = fullCityName
         .replaceAll(RegExp(r'^г\.\s+'), '')
         .replaceAll(RegExp(r'^м\.о\.\s+'), '')
@@ -69,15 +125,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   }
 
   void _buildDisplayOptions(List<String> cities) {
-    // log.d('🏇 _buildDisplayOptions called:');
-    // log.d('   - cities.length: ${cities.length}');
-    // log.d('   - cities (first 10): ${cities.take(10).toList()}');
-    
     List<dynamic> newDisplayOptions = [];
     String? currentLetter;
     List<String> mutableCities = List<String>.from(cities);
 
-    // Сортируем по основному названию города, игнорируя префиксы
     mutableCities.sort((a, b) {
       String mainA = _getCityMainName(a);
       String mainB = _getCityMainName(b);
@@ -85,7 +136,6 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     });
 
     for (var city in mutableCities) {
-      // Берем первую букву основного названия для группировки
       String mainName = _getCityMainName(city);
       final firstLetter = mainName[0].toUpperCase();
 
@@ -95,18 +145,29 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
       }
       newDisplayOptions.add(city);
     }
-    // log.i('✅ newDisplayOptions.length: ${newDisplayOptions.length}');
+    
     setState(() {
       _displayOptions = newDisplayOptions;
-      // log.d('   📏 После setState: _displayOptions.length = ${_displayOptions.length}');
     });
   }
 
-  void _filterOptions() {
-    final query = _searchController.text.toLowerCase();
+  /// 🆕 Локальный фильтр (если нет API callback)
+  void _filterOptionsLocal(String query) {
+    final queryLower = query.toLowerCase();
+    
     List<String> filteredCities = widget.options.where((option) {
-      return option.toLowerCase().contains(query);
+      if (option.toLowerCase().contains(queryLower)) {
+        return true;
+      }
+      
+      String mainName = _getCityMainName(option).toLowerCase();
+      if (mainName.contains(queryLower)) {
+        return true;
+      }
+      
+      return false;
     }).toList();
+    
     _buildDisplayOptions(filteredCities);
   }
 
@@ -159,65 +220,88 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
             ),
             const SizedBox(height: 15),
             Expanded(
-              child: ScrollbarTheme(
-                data: ScrollbarThemeData(
-                  thumbColor: WidgetStateProperty.all<Color?>(
-                    const Color(0xFF3C3C3C),
-                  ),
-                  trackColor: WidgetStateProperty.all<Color?>(
-                    const Color.fromARGB(255, 43, 23, 26),
-                  ),
-                ),
-                child: Scrollbar(
-                  child: ListView.builder(
-                    itemCount: _displayOptions.length,
-                    itemBuilder: (context, index) {
-                      final item = _displayOptions[index];
-                      if (item is _LetterHeader) {
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8.0),
-                          child: Text(
-                            item.letter,
-                            style: const TextStyle(
-                              color: textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        );
-                      } else {
-                        final option = item as String;
-                        final isSelected = _currentSelectedOptions.contains(
-                          option,
-                        );
-                        return GestureDetector(
-                          onTap: () {
-                            _currentSelectedOptions.clear();
-                            _currentSelectedOptions.add(option);
-                            widget.onSelectionChanged(_currentSelectedOptions);
-                            Navigator.of(context).pop();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Text(
-                              option,
-                              style: TextStyle(
-                                color: isSelected
-                                    ? activeIconColor
-                                    : textPrimary,
-                                fontSize: 16,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
+              child: _isSearching
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(activeIconColor),
+                      ),
+                    )
+                  : ScrollbarTheme(
+                      data: ScrollbarThemeData(
+                        thumbColor: WidgetStateProperty.all<Color?>(
+                          const Color(0xFF3C3C3C),
+                        ),
+                        trackColor: WidgetStateProperty.all<Color?>(
+                          const Color.fromARGB(255, 43, 23, 26),
+                        ),
+                      ),
+                      child: Scrollbar(
+                        child: _displayOptions.isEmpty
+                            ? Center(
+                                child: Text(
+                                  _searchController.text.isEmpty
+                                      ? 'Введите название города'
+                                      : 'Город не найден',
+                                  style: const TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: _displayOptions.length,
+                                itemBuilder: (context, index) {
+                                  final item = _displayOptions[index];
+                                  if (item is _LetterHeader) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8.0),
+                                      child: Text(
+                                        item.letter,
+                                        style: const TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    );
+                                  } else {
+                                    final option = item as String;
+                                    final isSelected =
+                                        _currentSelectedOptions.contains(
+                                      option,
+                                    );
+                                    return GestureDetector(
+                                      onTap: () {
+                                        _currentSelectedOptions.clear();
+                                        _currentSelectedOptions.add(option);
+                                        widget.onSelectionChanged(
+                                            _currentSelectedOptions);
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8.0),
+                                        child: Text(
+                                          option,
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? activeIconColor
+                                                : textPrimary,
+                                            fontSize: 16,
+                                            fontWeight: isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                ),
-              ),
+                      ),
+                    ),
             ),
             const SizedBox(height: 20),
             Row(

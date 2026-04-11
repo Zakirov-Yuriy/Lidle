@@ -21,7 +21,6 @@ import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import '../../../constants.dart';
-import '../../../constants/dnr_cities.dart';
 import '../../../services/api_service.dart';
 import '../../../services/address_service.dart';
 import '../../../services/user_service.dart';
@@ -125,6 +124,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
   // ignore: unused_field
   int? _selectedBuildingId;
 
+  // 🆕 Cache для результатов поиска городов (city name -> city id)
+  // Используется для получения ID города при выборе из диалога
+  Map<String, int> _lastCitiesSearchResults = {};
+
+  // 🆕 Cache для результатов поиска улиц (street name -> street id)
+  // Используется для получения ID улицы при выборе из диалога
+  Map<String, int> _lastStreetsSearchResults = {};
+
+  // 🆕 Cache для subregion ID из результатов поиска (street name -> region_id)
+  // Используется для получения ID суб-региона при выборе улицы
+  Map<String, int?> _lastStreetsSubregionResults = {};
+
   // =============== Validation Errors ===============
   Map<String, String?> _fieldErrors = {}; // Stores validation error messages
 
@@ -132,20 +143,11 @@ class _DynamicFilterState extends State<DynamicFilter> {
   void initState() {
     super.initState();
 
-    // 🔧 ВАЖНО: Инициализируем _cities сразу с dnrCities (69 городов)
-    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
-    _cities = dnrCities
-        .map(
-          (name) => {
-            'name': name,
-            'id': name.hashCode.abs(),
-            'main_region_id': 1,
-            'region_id': 1,
-          },
-        )
-        .toList();
+    // 🔧 ВАЖНО: Инициализируем _cities как пустой список
+    // Города будут загружены ТОЛЬКО с API после выбора региона
+    _cities = [];
     // log.d(
-    //   '✅ initState: _cities инициализирован с dnrCities (${_cities.length} городов)',
+    //   '✅ initState: _cities инициализирован как пустой список (будут загружены с API)',
     // );
 
     // Проверить режим редактирования
@@ -935,6 +937,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         query: 'у',
         token: token,
         types: ['street'],
+        filters: _selectedCityId != null ? {'city_id': _selectedCityId} : null,
       );
 
       final uniqueStreets = <String, int>{};
@@ -995,6 +998,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
         query: '1',
         token: token,
         types: ['building'],
+        filters: _selectedStreetId != null
+            ? {'street_id': _selectedStreetId}
+            : null,
       );
 
       final uniqueBuildings = <String, int>{};
@@ -1618,6 +1624,14 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       final regions = await ApiService.getRegions(token: token);
 
+      // Логируем все регионы с их ID
+      log.d('📍 Загруженные регионы:');
+      for (final region in regions) {
+        final regionId = region['id'];
+        final regionName = region['name'];
+        log.d('   ID $regionId: $regionName');
+      }
+
       if (mounted) {
         setState(() {
           _regions = regions;
@@ -1824,6 +1838,167 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   /// Загружает города для выбранного региона при автозаполнении
   // ignore: unused_element
+  /// 🆕 Поиск городов через API по пользовательскому вводу (для диалога)
+  /// Вызывается из CitySelectionDialog когда пользователь вводит текст
+  Future<List<String>> _searchCitiesAPI(String query) async {
+    if (_selectedRegionId == null) {
+      log.d('🔍 _searchCitiesAPI: regionId not selected');
+      return [];
+    }
+
+    // Проверяем минимальную длину (API требует >= 3)
+    if (query.trim().length < 3) {
+      log.d('🔍 _searchCitiesAPI: query too short: "$query" (need 3+)');
+      return [];
+    }
+
+    try {
+      final token = TokenService.currentToken;
+      final cleanQuery = query.trim();
+
+      log.d('');
+      log.d('🔍 _searchCitiesAPI called:');
+      log.d('   - query: "$cleanQuery"');
+      log.d('   - regionId: $_selectedRegionId');
+
+      final response = await AddressService.searchAddresses(
+        query: cleanQuery,
+        token: token,
+        types: ['city'],
+        filters: {'main_region_id': _selectedRegionId},
+      );
+
+      log.d('   - API вернула ${response.data.length} результатов');
+
+      // 🆕 Очищаем предыдущие результаты и сохраняем новые
+      _lastCitiesSearchResults.clear();
+
+      // Фильтруем результаты по выбранному региону и извлекаем только имена
+      final cities = <String>[];
+      int filtered = 0;
+
+      for (final result in response.data) {
+        final cityName = result.city?.name ?? 'N/A';
+        final cityId = result.city?.id;
+        final resultRegionId = result.main_region?.id;
+
+        log.d(
+          '   [API] $cityName [id=$cityId, main_region.id=$resultRegionId]',
+        );
+
+        if (result.main_region?.id == _selectedRegionId &&
+            result.city != null) {
+          final cityName = result.city!.name;
+          // Сохраняем в кеш всегда (нужно для ID lookup)
+          _lastCitiesSearchResults[cityName] = result.city!.id;
+          // В список показа добавляем только если имя содержит запрос
+          if (cityName.toLowerCase().contains(cleanQuery.toLowerCase())) {
+            cities.add(cityName);
+            log.d('       ✅ СОХРАНЕНО в кеш и список');
+          } else {
+            log.d('       📦 СОХРАНЕНО в кеш (не совпало с запросом)');
+          }
+        } else {
+          filtered++;
+          if (result.main_region?.id != _selectedRegionId) {
+            log.d(
+              '       ❌ Фильтр: main_region.id=$resultRegionId != $_selectedRegionId',
+            );
+          } else {
+            log.d('       ❌ Фильтр: city is null');
+          }
+        }
+      }
+
+      log.d(
+        '   ✅ Возвращаем ${cities.length} городов (отфильтровано: $filtered)',
+      );
+      log.d('   📦 Cache содержит: ${_lastCitiesSearchResults.keys.toList()}');
+      log.d('');
+      return cities;
+    } catch (e) {
+      log.d('   ❌ Error searching cities: $e');
+      return [];
+    }
+  }
+
+  /// 🆕 Поиск улиц через API по пользовательскому вводу (для диалога)
+  /// Вызывается из StreetSelectionDialog когда пользователь вводит текст
+  Future<List<String>> _searchStreetsAPI(String query) async {
+    if (_selectedCityId == null) {
+      log.d('🔍 _searchStreetsAPI: cityId not selected');
+      return [];
+    }
+
+    // Проверяем минимальную длину (API требует >= 3)
+    if (query.trim().length < 3) {
+      log.d('🔍 _searchStreetsAPI: query too short: "$query" (need 3+)');
+      return [];
+    }
+
+    try {
+      final token = TokenService.currentToken;
+      final cleanQuery = query.trim();
+
+      log.d('');
+      log.d('🔍 _searchStreetsAPI called:');
+      log.d('   - query: "$cleanQuery"');
+      log.d('   - cityId: $_selectedCityId');
+
+      final response = await AddressService.searchAddresses(
+        query: cleanQuery,
+        token: token,
+        types: ['street'],
+        filters: {'city_id': _selectedCityId},
+      );
+
+      log.d('   - API вернула ${response.data.length} результатов');
+
+      // 🆕 Очищаем предыдущие результаты и сохраняем новые
+      _lastStreetsSearchResults.clear();
+
+      // Фильтруем результаты по выбранному городу и извлекаем только имена
+      final streets = <String>[];
+      int filtered = 0;
+
+      for (final result in response.data) {
+        final streetName = result.street?.name ?? 'N/A';
+        final streetId = result.street?.id;
+        final resultCityId = result.city?.id;
+
+        log.d('   [API] $streetName [id=$streetId, city.id=$resultCityId]');
+
+        if (result.city?.id == _selectedCityId && result.street != null) {
+          streets.add(result.street!.name);
+          // 🆕 Сохраняем mapping имя улицы -> ID
+          _lastStreetsSearchResults[result.street!.name] = result.street!.id;
+          // 🆕 Сохраняем subregion ID
+          _lastStreetsSubregionResults[result.street!.name] = result.region?.id;
+          log.d(
+            '       ✅ СОХРАНЕНО в кеш (street.id=${result.street!.id}, region.id=${result.region?.id})',
+          );
+        } else {
+          filtered++;
+          if (result.city?.id != _selectedCityId) {
+            log.d('       ❌ Фильтр: city.id=$resultCityId != $_selectedCityId');
+          } else {
+            log.d('       ❌ Фильтр: street is null');
+          }
+        }
+      }
+
+      log.d(
+        '   ✅ Возвращаем ${streets.length} улиц (отфильтровано: $filtered)',
+      );
+      log.d('   📦 Cache содержит: ${_lastStreetsSearchResults.keys.toList()}');
+      log.d('');
+      return streets;
+    } catch (e) {
+      log.d('   ❌ Error searching streets: $e');
+      return [];
+    }
+  }
+
   Future<void> _loadCitiesForSelectedRegion() async {
     if (_selectedRegionId == null) return;
 
@@ -1846,29 +2021,31 @@ class _DynamicFilterState extends State<DynamicFilter> {
         query: searchQuery,
         token: token,
         types: ['city'],
+        filters: _selectedRegionId != null
+            ? {'main_region_id': _selectedRegionId}
+            : null,
       );
 
-      // log.d();
+      log.d(
+        '🔍 [AUTO] Загрузка для области ID: $_selectedRegionId, query: "$searchQuery"',
+      );
+      log.d('📋 [AUTO] API вернул ${response.data.length} результатов');
 
       final uniqueCities = <String, int>{};
+      int filtered = 0;
       for (final result in response.data) {
         if (result.main_region?.id == _selectedRegionId &&
             result.city != null) {
           uniqueCities[result.city!.name] = result.city!.id;
+          _lastCitiesSearchResults[result.city!.name] =
+              result.city!.id; // ← ДОБАВИТЬ
+          log.d('   ✅ ${result.city!.name}');
+        } else if (result.city != null) {
+          filtered++;
+          log.d(
+            '   ❌ ${result.city!.name} - main_region.id=${result.main_region?.id}, ожидаем $_selectedRegionId',
+          );
         }
-      }
-
-      // Добавляем все 72 города ДНР из констант когда выбран ДНР (ID: 1)
-      if (_selectedRegionId == 1) {
-        for (final cityName in dnrCities) {
-          if (!uniqueCities.containsKey(cityName)) {
-            // Используем -1 как ID для городов из констант (они уже есть в API)
-            uniqueCities[cityName] = -1;
-          }
-        }
-        log.d(
-          '✅ Добавлены все 72 города ДНР из констант. Итого городов: ${uniqueCities.length}',
-        );
       }
 
       if (mounted) {
@@ -1912,14 +2089,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
         query: searchQuery,
         token: token,
         types: ['street'],
+        filters: _selectedCityId != null ? {'city_id': _selectedCityId} : null,
       );
-
-      // log.d();
 
       final uniqueStreets = <String, int>{};
       for (final result in response.data) {
         if (result.city?.id == _selectedCityId && result.street != null) {
           uniqueStreets[result.street!.name] = result.street!.id;
+          log.d('   + ${result.street!.name}');
+        } else if (result.street != null) {
+          log.d(
+            '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
+          );
         }
       }
 
@@ -1929,10 +2110,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
               .map((e) => {'name': e.key, 'id': e.value})
               .toList();
         });
-        // log.d('✅ Auto-loaded ${_streets.length} streets');
+        log.d('✅ Auto-loaded ${_streets.length} streets');
       }
     } catch (e) {
-      // log.d('❌ Error auto-loading streets: $e');
+      log.d('❌ Error auto-loading streets: $e');
     }
   }
 
@@ -1959,14 +2140,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
         query: searchQuery,
         token: token,
         types: ['building'],
+        filters: _selectedStreetId != null
+            ? {'street_id': _selectedStreetId}
+            : null,
       );
-
-      // log.d();
 
       final uniqueBuildings = <String, int>{};
       for (final result in response.data) {
         if (result.street?.id == _selectedStreetId && result.building != null) {
           uniqueBuildings[result.building!.name] = result.building!.id;
+          log.d('   + ${result.building!.name}');
+        } else if (result.building != null) {
+          log.d(
+            '   ❌ ${result.building!.name} - street.id=${result.street?.id}, ожидаем $_selectedStreetId',
+          );
         }
       }
 
@@ -1976,10 +2163,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
               .map((e) => {'name': e.key, 'id': e.value})
               .toList();
         });
-        // log.d('✅ Auto-loaded ${_buildings.length} buildings');
+        log.d('✅ Auto-loaded ${_buildings.length} buildings');
       }
     } catch (e) {
-      // log.d('❌ Error auto-loading buildings: $e');
+      log.d('❌ Error auto-loading buildings: $e');
     }
   }
 
@@ -2609,42 +2796,42 @@ class _DynamicFilterState extends State<DynamicFilter> {
             // 🔧 Номер дома не требуется - поле необязательное
             // Пользователь может оставить его пустым как при создании, так и при редактировании
 
-            // Extract region.id (subregion) from selected city/street/building
+            
+
+            // Строим ЧИСТЫЙ адрес - только плоские ID поля
+            address = <String, dynamic>{
+              'city_id': _selectedCityId,
+              'street_id': _selectedStreetId,
+            };
+
+            // region_id для адреса - ищем в порядке приоритета
             int? addressRegionId;
 
-            // Try to get region_id from selected building first
-            final buildingIndex = _buildings.indexWhere(
-              (b) => b['name'] == _selectedBuilding.first,
-            );
-            if (buildingIndex >= 0) {
-              addressRegionId = _buildings[buildingIndex]['region_id'] as int?;
+            // 1. Из кеша поиска улиц
+            if (_selectedStreet.isNotEmpty) {
+              addressRegionId = _lastStreetsSubregionResults[_selectedStreet.first];
             }
 
-            // If not found in building, try street
+            // 2. Из локального списка улиц
             if (addressRegionId == null && _selectedStreet.isNotEmpty) {
               final streetIndex = _streets.indexWhere(
                 (s) => s['name'] == _selectedStreet.first,
               );
               if (streetIndex >= 0) {
                 addressRegionId = _streets[streetIndex]['region_id'] as int?;
+                addressRegionId ??= _streets[streetIndex]['main_region_id'] as int?;
               }
             }
 
-            // If not found in street, try city
-            if (addressRegionId == null && _selectedCity.isNotEmpty) {
-              final cityIndex = _cities.indexWhere(
-                (c) => c['name'] == _selectedCity.first,
-              );
-              if (cityIndex >= 0) {
-                addressRegionId = _cities[cityIndex]['region_id'] as int?;
-              }
+            // 3. Финальный fallback — выбранный пользователем регион
+            addressRegionId ??= _selectedRegionId;
+
+            if (addressRegionId != null) {
+              address['region_id'] = addressRegionId;
             }
+            
 
-            address['region_id'] = addressRegionId;
-            address['city_id'] = _selectedCityId;
-            address['street_id'] = _selectedStreetId;
-
-            // 🔧 Получаем номер дома либо из _selectedBuilding (новое), либо парсим из _buildingController (редактирование)
+            // Дом: building_id если есть, иначе building_number
             String buildingNumber = '';
             if (_selectedBuilding.isNotEmpty) {
               buildingNumber = _selectedBuilding.first;
@@ -2659,71 +2846,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 buildingNumber = parts.last; // последний элемент - номер дома
               }
             }
-
-            // Не отправляем building_id, так как номер дома вводится вручную
-            address['building_number'] = buildingNumber;
-
-            // Формируем полный адрес для отображения
-            String fullAddress = '';
-            if (_selectedRegion.isNotEmpty) {
-              fullAddress += _selectedRegion.first;
-            }
-            if (_selectedCity.isNotEmpty) {
-              if (fullAddress.isNotEmpty) fullAddress += ', ';
-              fullAddress += _selectedCity.first;
-            }
-            if (_selectedStreet.isNotEmpty) {
-              if (fullAddress.isNotEmpty) fullAddress += ', ';
-              fullAddress += _selectedStreet.first;
-            }
-            if (buildingNumber.isNotEmpty) {
-              if (fullAddress.isNotEmpty) fullAddress += ', ';
-              fullAddress += buildingNumber;
-            }
-            address['full_address'] = fullAddress;
-
-            // Добавляем отдельные компоненты адреса в соответствии с API документацией
-            // API ожидает структуру с вложенными объектами для каждого уровня адреса
-            address['region'] = _selectedRegion.isNotEmpty
-                ? _selectedRegion.first
-                : null;
-            address['city'] = _selectedCity.isNotEmpty
-                ? _selectedCity.first
-                : null;
-            address['street'] = _selectedStreet.isNotEmpty
-                ? _selectedStreet.first
-                : null;
-            address['building_number'] = buildingNumber.isNotEmpty
-                ? buildingNumber
-                : null;
-
-            // Добавляем вложенные объекты для main_region, region, district в соответствии с API
-            if (_selectedRegion.isNotEmpty && _selectedRegionId != null) {
-              address['main_region'] = {
-                'id': _selectedRegionId,
-                'name': _selectedRegion.first,
-              };
-            }
-
-            if (_selectedCity.isNotEmpty && _selectedCityId != null) {
-              address['city'] = {
-                'id': _selectedCityId,
-                'name': _selectedCity.first,
-              };
-            }
-
-            if (_selectedStreet.isNotEmpty && _selectedStreetId != null) {
-              address['street'] = {
-                'id': _selectedStreetId,
-                'name': _selectedStreet.first,
-              };
-            }
-
-            if (buildingNumber.isNotEmpty) {
-              address['building'] = {
-                'id': _selectedBuildingId,
-                'name': buildingNumber,
-              };
+            if (_selectedBuildingId != null) {
+              address['building_id'] = _selectedBuildingId;
+            } else if (buildingNumber.isNotEmpty) {
+              address['building_number'] = buildingNumber;
             }
 
             // log.d('✅ Address prepared from selections:');
@@ -2867,21 +2993,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       );
       log.d('================================================================');
 
-      // VERIFY address has region_id and city_id
-      if (!request.address.containsKey('region_id') ||
-          request.address['region_id'] == null) {
-        // log.d('❌ ERROR: region_id is missing or null in address!');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Ошибка: регион не найден. Пожалуйста, выберите другой адрес',
-            ),
-          ),
-        );
-        setState(() => _isPublishing = false);
-        return;
-      }
-
+      // VERIFY address has city_id (region_id is optional subregion)
       if (!request.address.containsKey('city_id') ||
           request.address['city_id'] == null) {
         // log.d('❌ ERROR: city_id is missing or null in address!');
@@ -3608,6 +3720,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                   setState(() {
                                     _selectedRegion = selected;
                                     _selectedRegionId = regionId;
+                                    mainRegionId = regionId;
                                     _fieldErrors.remove(
                                       'region',
                                     ); // Clear error on selection
@@ -3620,7 +3733,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                     _selectedBuilding.clear();
                                     _selectedBuildingId = null;
                                     _buildings.clear();
+                                    // 🆕 Очищаем кеш результатов поиска городов
+                                    _lastCitiesSearchResults.clear();
                                   });
+
+                                  log.d(
+                                    '🎯 Пользователь выбрал регион: "$selectedRegionName" (ID: $regionId)',
+                                  );
+
+                                  // 🔄 Загружаем города с API сразу после выбора региона
+                                  if (regionId != null) {
+                                    _loadCitiesForSelectedRegion();
+                                  }
                                 }
                               },
                               allowMultipleSelection: false,
@@ -3644,202 +3768,64 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       ),
                       onTap: _selectedRegionId == null
                           ? null
-                          : () async {
-                              // Load cities for selected region
-                              if (_cities.isEmpty &&
-                                  _selectedRegionId != null) {
-                                try {
-                                  final token = TokenService.currentToken;
-                                  // Get the region name to use as search query
-                                  // API requires q parameter to be at least 3 characters
-                                  String searchQuery =
-                                      'по'; // Default search term
-                                  if (_selectedRegion.isNotEmpty) {
-                                    final regionName = _selectedRegion.first;
-                                    // Ensure minimum 3 characters for API
-                                    if (regionName.length >= 3) {
-                                      // Use up to first 50 chars, but not more than length
-                                      searchQuery = regionName.length > 50
-                                          ? regionName.substring(0, 50)
-                                          : regionName;
-                                    } else {
-                                      searchQuery =
-                                          regionName +
-                                          '   '; // Pad to at least 3
-                                    }
-                                  }
-
-                                  final response =
-                                      await AddressService.searchAddresses(
-                                        query: searchQuery,
-                                        token: token,
-                                        types: ['city'],
-                                      );
-
-                                  // log.d('🔍 Поиск для области: "${_selectedRegion.isNotEmpty ? _selectedRegion.first : 'неизвестна'}" (ID: $_selectedRegionId)');
-                                  // log.d('🔍 Поисковый запрос: "$searchQuery"');
-                                  // log.d();
-
-                                  // log.d('📋 City API response details:');
-                                  for (
-                                    int i = 0;
-                                    i < response.data.take(3).length;
-                                    i++
-                                  ) {
-                                    // debug: response.data[i] here
-                                  }
-
-                                  final uniqueCities =
-                                      <String, Map<String, dynamic>>{};
-                                  // ignore: unused_local_variable
-                                  int filtered = 0;
-                                  for (
-                                    int i = 0;
-                                    i < response.data.length;
-                                    i++
-                                  ) {
-                                    final result = response.data[i];
-                                    bool passed = false;
-                                    // ignore: unused_local_variable
-                                    String reason = '';
-
-                                    // Filter by main_region on client side
-                                    if (result.main_region == null) {
-                                      reason = 'main_region is null';
-                                    } else if (result.main_region?.id !=
-                                        _selectedRegionId) {
-                                      reason =
-                                          'main_region.id=${result.main_region?.id}, ожидаем $_selectedRegionId';
-                                    } else if (result.city == null) {
-                                      reason = 'city is null';
-                                    } else {
-                                      // IMPORTANT: Store both main_region and region IDs from API response
-                                      uniqueCities[result.city!.name] = {
-                                        'name': result.city!.name,
-                                        'id': result.city!.id,
-                                        'main_region_id':
-                                            result.main_region?.id,
-                                        'region_id': result.region?.id,
-                                      };
-                                      passed = true;
-                                    }
-
-                                    if (!passed) {
-                                      filtered++;
-                                    }
-                                  }
-
-                                  // log.d('   ✅ Прошло фильтр: ${uniqueCities.length}');
-                                  // log.d('   ❌ Отфильтровано: $filtered');
-
-                                  setState(() {
-                                    _cities = uniqueCities.values.toList();
-
-                                    // 🔧 FALLBACK: закомментирована для тестирования только API
-                                    // if (_cities.length < 25) {
-                                    //   log.d('⚠️ API вернул только ${_cities.length} городов, добавляем dnrCities (${dnrCities.length})');
-                                    //   final existingNames = <String>{
-                                    //     for (var city in _cities) city['name'] as String
-                                    //   };
-                                    //
-                                    //   for (final cityName in dnrCities) {
-                                    //     if (!existingNames.contains(cityName)) {
-                                    //       _cities.add({
-                                    //         'name': cityName,
-                                    //         'id': cityName.hashCode.abs(),
-                                    //         'main_region_id': 1,
-                                    //         'region_id': 1,
-                                    //       });
-                                    //     }
-                                    //   }
-                                    //   log.d('✅ После merge: _cities.length = ${_cities.length}');
-                                    // }
-
-                                    // log.d();
-                                    for (var i = 0; i < _cities.length; i++) {
-                                      // log.d(
-                                      //   '   ${i + 1}. ${_cities[i]['name']} (ID: ${_cities[i]['id']})',
-                                      // );
-                                    }
-                                  });
-                                } catch (e) {
-                                  // log.d('Error loading cities: $e');
-                                }
-                              }
-
-                              // FALLBACK: закомментирована для тестирования только API
-                              // final List<Map<String, dynamic>> citiesToShow = _cities.isNotEmpty
-                              //     ? _cities
-                              //     : dnrCities.map((name) => {
-                              //       'name': name,
-                              //       'id': name.hashCode.abs(), // Генерируем ID из хеша
-                              //       'main_region_id': 1, // ДНР = регион 1
-                              //       'region_id': 1,
-                              //     }).toList();
-
-                              // Используем только API данные БЕЗ fallback
-                              final List<Map<String, dynamic>> citiesToShow =
-                                  _cities;
-
-                              log.d(
-                                '\n🟦 dynamic_filter.dart: Открытие диалога города:',
-                              );
-                              log.d('   - _cities.length: ${_cities.length}');
-                              log.d(
-                                '   - dnrCities.length: ${dnrCities.length}',
-                              );
-                              log.d(
-                                '   - citiesToShow.length: ${citiesToShow.length}',
-                              );
-                              log.d('   - Using fallback: ${_cities.isEmpty}');
-
+                          : () {
+                              // 🆕 Упрощенное открытие диалога города
+                              // Поиск теперь делается ДИНАМИЧЕСКИ в диалоге при вводе пользователя
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
                                   return CitySelectionDialog(
                                     title: 'Ваш город',
-                                    options: citiesToShow
+                                    options: _cities
                                         .map((c) => c['name'] as String)
-                                        .toList(),
+                                        .toList(), // показываем уже загруженные города
                                     selectedOptions: _selectedCity,
                                     onSelectionChanged: (Set<String> selected) {
                                       if (selected.isNotEmpty) {
                                         final selectedCityName = selected.first;
-                                        final cityIndex = citiesToShow
-                                            .indexWhere(
-                                              (c) =>
-                                                  c['name'] == selectedCityName,
-                                            );
-                                        int? cityId;
-                                        int? mainRegionId;
-                                        if (cityIndex >= 0) {
-                                          cityId =
-                                              citiesToShow[cityIndex]['id']
-                                                  as int?;
-                                          mainRegionId =
-                                              citiesToShow[cityIndex]['main_region_id']
-                                                  as int?;
+
+                                        // 🆕 Ищем ID города в кеше результатов поиска API
+                                        int? cityId =
+                                            _lastCitiesSearchResults[selectedCityName];
+                                        int? mainRegionId = _selectedRegionId;
+
+                                        log.d('');
+                                        log.d('✅ City selected from dialog:');
+                                        log.d('   - Name: "$selectedCityName"');
+                                        log.d(
+                                          '   - Looking in cache: ${_lastCitiesSearchResults.keys.toList()}',
+                                        );
+                                        log.d('   - Found ID: $cityId');
+                                        log.d('   - Region ID: $mainRegionId');
+
+                                        if (cityId == null) {
+                                          log.w(
+                                            '   ⚠️ WARNING: City not found in cache! This should not happen.',
+                                          );
+                                          log.w(
+                                            '   ⚠️ Will try to search for city ID via API...',
+                                          );
                                         }
+
                                         setState(() {
                                           _selectedCity = selected;
                                           _selectedCityId = cityId;
                                           _selectedRegionId = mainRegionId;
-                                          _fieldErrors.remove(
-                                            'city',
-                                          ); // Clear error on selection
+                                          _fieldErrors.remove('city');
                                           _selectedStreet.clear();
                                           _selectedStreetId = null;
                                           _streets.clear();
                                           _selectedBuilding.clear();
                                           _selectedBuildingId = null;
                                           _buildings.clear();
+                                          // 🆕 Очищаем кеш результатов поиска улиц при смене города
+                                          _lastStreetsSearchResults.clear();
                                         });
-                                        // log.d('✅ City selected:');
-                                        // log.d('   Name: $selectedCityName');
-                                        // log.d('   ID: $cityId');
-                                        // log.d();
+                                        log.d('');
                                       }
                                     },
+                                    // 🆕 Callback для поиска через API
+                                    onSearchQuery: _searchCitiesAPI,
                                   );
                                 },
                               );
@@ -3861,37 +3847,54 @@ class _DynamicFilterState extends State<DynamicFilter> {
                       onTap: _selectedCityId == null
                           ? null
                           : () async {
+                              log.d('');
+                              log.d(
+                                '🔍 [STREET] Пользователь нажал на "Улица"',
+                              );
+                              log.d(
+                                '   - _selectedCity: ${_selectedCity.toList()}',
+                              );
+                              log.d('   - _selectedCityId: $_selectedCityId');
+                              log.d('   - _streets.length: ${_streets.length}');
+
                               // Load streets for selected city
                               if (_streets.isEmpty && _selectedCityId != null) {
+                                log.d('   → Загружаем улицы с API...');
                                 try {
                                   final token = TokenService.currentToken;
-                                  // Get the city name to use as search query
-                                  // API requires q parameter to be at least 3 characters
-                                  String searchQuery =
-                                      'ул'; // Default search term
-                                  if (_selectedCity.isNotEmpty) {
-                                    final cityName = _selectedCity.first;
-                                    // Ensure minimum 3 characters for API
-                                    if (cityName.length >= 3) {
-                                      // Use up to first 50 chars, but not more than length
-                                      searchQuery = cityName.length > 50
-                                          ? cityName.substring(0, 50)
-                                          : cityName;
-                                    } else {
-                                      searchQuery =
-                                          cityName + '   '; // Pad to at least 3
-                                    }
-                                  }
+
+                                  // 🔧 ИСПРАВКА: Используем "ул" вместо названия города
+                                  // Это позволяет API вернуть ВСЕ улицы города (до 20)
+                                  // вместо фильтрации по названию города
+                                  const String searchQuery = 'ул';
+
+                                  log.d(
+                                    '   - Поисковый запрос БЕЗ обработки: "$searchQuery"',
+                                  );
+                                  log.d(
+                                    '   - Длина строки: ${searchQuery.length} символов',
+                                  );
 
                                   final response =
                                       await AddressService.searchAddresses(
                                         query: searchQuery,
                                         token: token,
                                         types: ['street'],
+                                        filters: _selectedCityId != null
+                                            ? {'city_id': _selectedCityId}
+                                            : null,
                                       );
+
+                                  log.d(
+                                    '🔍 Поиск улиц для города ID: $_selectedCityId',
+                                  );
+                                  log.d(
+                                    '📋 API вернул ${response.data.length} результатов',
+                                  );
 
                                   final uniqueStreets =
                                       <String, Map<String, dynamic>>{};
+                                  int filteredStreets = 0;
                                   for (final result in response.data) {
                                     // Filter by city on client side
                                     if (result.city?.id == _selectedCityId &&
@@ -3905,18 +3908,63 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                             result.main_region?.id,
                                         'region_id': result.region?.id,
                                       };
+                                      log.d(
+                                        '   ✅ ${result.street!.name} [id=${result.street!.id}]',
+                                      );
+                                    } else if (result.street != null) {
+                                      filteredStreets++;
+                                      log.d(
+                                        '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
+                                      );
                                     }
                                   }
+
+                                  log.d(
+                                    '   ✅ Прошло фильтр: ${uniqueStreets.length}',
+                                  );
+                                  log.d('   ❌ Отфильтровано: $filteredStreets');
+
+                                  if (uniqueStreets.isEmpty) {
+                                    log.w(
+                                      '   ⚠️ WARNING: Не найдено ни одной улицы!',
+                                    );
+                                    log.w(
+                                      '   На сумму ${response.data.length} результатов от API',
+                                    );
+                                  }
+
+                                  log.d('');
 
                                   setState(() {
                                     _streets = uniqueStreets.values.toList();
                                   });
                                 } catch (e) {
-                                  // log.d('Error loading streets: $e');
+                                  log.d('❌ Error loading streets: $e');
+                                  log.d('');
                                 }
+                              } else if (_streets.isEmpty) {
+                                log.d('   ❌ Не могу загрузить улицы:');
+                                log.d(
+                                  '       - _selectedCityId: $_selectedCityId',
+                                );
+                                log.d(
+                                  '       - _streets.isEmpty: ${_streets.isEmpty}',
+                                );
+                                log.d('');
+                              } else {
+                                log.d(
+                                  '   → Улицы уже в кеше, показываем диалог',
+                                );
+                                log.d('');
                               }
 
                               if (_streets.isNotEmpty) {
+                                log.d(
+                                  '🔓 Открываем диалог улиц (${_streets.length} улиц)',
+                                );
+                                log.d(
+                                  '   Улицы: ${_streets.map((s) => s['name']).toList()}',
+                                );
                                 showDialog(
                                   context: context,
                                   builder: (BuildContext context) {
@@ -3930,39 +3978,75 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                         if (selected.isNotEmpty) {
                                           final selectedStreetName =
                                               selected.first;
-                                          final streetIndex = _streets
-                                              .indexWhere(
-                                                (s) =>
-                                                    s['name'] ==
-                                                    selectedStreetName,
-                                              );
-                                          int? streetId;
+
+                                          // 🆕 Сначала ищем ID в кеше результатов поиска API
+                                          int? streetId =
+                                              _lastStreetsSearchResults[selectedStreetName];
                                           int? cityIdFromStreet;
-                                          if (streetIndex >= 0) {
-                                            streetId =
-                                                _streets[streetIndex]['id']
-                                                    as int?;
-                                            cityIdFromStreet =
-                                                _streets[streetIndex]['city_id']
-                                                    as int?;
+
+                                          log.d('');
+                                          log.d(
+                                            '✅ Street selected from dialog:',
+                                          );
+                                          log.d(
+                                            '   - Name: "$selectedStreetName"',
+                                          );
+                                          log.d(
+                                            '   - Looking in cache: ${_lastStreetsSearchResults.keys.toList()}',
+                                          );
+                                          log.d(
+                                            '   - Found ID in cache: $streetId',
+                                          );
+
+                                          // Если не нашли в кеше - ищем в локальном списке _streets
+                                          if (streetId == null) {
+                                            log.d(
+                                              '   → Searching in local _streets list...',
+                                            );
+                                            final streetIndex = _streets
+                                                .indexWhere(
+                                                  (s) =>
+                                                      s['name'] ==
+                                                      selectedStreetName,
+                                                );
+                                            if (streetIndex >= 0) {
+                                              streetId =
+                                                  _streets[streetIndex]['id']
+                                                      as int?;
+                                              cityIdFromStreet =
+                                                  _streets[streetIndex]['city_id']
+                                                      as int?;
+                                              log.d(
+                                                '   ✅ Found in local list: ID=$streetId, cityId=$cityIdFromStreet',
+                                              );
+                                            } else {
+                                              log.w(
+                                                '   ❌ Not found in local list either!',
+                                              );
+                                            }
+                                          } else {
+                                            log.d('   ✅ Found in cache');
                                           }
+
                                           setState(() {
                                             _selectedStreet = selected;
                                             _selectedStreetId = streetId;
-                                            _selectedCityId = cityIdFromStreet;
-                                            _fieldErrors.remove(
-                                              'street',
-                                            ); // Clear error on selection
+                                            if (cityIdFromStreet != null) {
+                                              _selectedCityId =
+                                                  cityIdFromStreet;
+                                            }
+                                            _fieldErrors.remove('street');
                                             _selectedBuilding.clear();
                                             _selectedBuildingId = null;
                                             _buildings.clear();
                                           });
-                                          // log.d('✅ Street selected:');
-                                          // log.d('   Name: $selectedStreetName');
-                                          // log.d('   ID: $streetId');
-                                          // log.d();
+
+                                          log.d('   - Final ID: $streetId');
+                                          log.d('');
                                         }
                                       },
+                                      // 🆕 Добавляем callback для поиска через API
+                                      onSearchQuery: _searchStreetsAPI,
                                     );
                                   },
                                 );

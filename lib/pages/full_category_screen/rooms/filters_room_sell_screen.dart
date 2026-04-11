@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -812,7 +811,7 @@ class _FiltersRoomShellScreenState extends State<FiltersRoomShellScreen> {
               builder: (_) {
                 return CitySelectionDialog(
                   title: 'Ваш город',
-                  options: dnrCities,
+                  options: [], // 🔤 Города должны быть загружены с API
                   selectedOptions: _selectedCity,
                   onSelectionChanged: (s) {
                     setState(() => _selectedCity = s);

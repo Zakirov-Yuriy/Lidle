@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -31,11 +30,8 @@ class _FiltersScreenState extends State<FiltersScreen> {
   @override
   void initState() {
     super.initState();
-    // Инициализируем _cities с dnrCities (все доступные города)
-    _cities = dnrCities.map((name) => {
-      'name': name,
-      'id': name.hashCode.abs(),
-    }).toList();
+    // Города загружаются динамически с API
+    _cities = [];
   }
 
   void _reset() async {

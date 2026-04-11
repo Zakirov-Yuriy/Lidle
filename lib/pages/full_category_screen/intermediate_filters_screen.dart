@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/constants/dnr_cities.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_subcategories_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
@@ -64,13 +63,11 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   @override
   void initState() {
     super.initState();
-    // 🔧 ВАЖНО: Инициализируем apiCities сразу с dnrCities (69 городов)
-    // Чтобы диалог ВСЕГДА имел города, даже если API еще загружается
-    apiCities = List<String>.from(dnrCities);
-    log.d('✅ initState: apiCities инициализирован с dnrCities (${apiCities.length} городов)');
+    // Initialize with empty list, will be populated from API
+    apiCities = [];
     
-    _loadCities(); // Загружаем города с API и объединяем с dnrCities
-    _loadRealEstateCategories(); // Загружаем категории для маппинга
+    _loadCities(); // Load cities from API
+    _loadRealEstateCategories(); // Load real estate categories
   }
 
   @override
@@ -166,6 +163,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             query: regionName,
             token: token,
             types: ['city'],
+            filters: region.id != null ? {'main_region_id': region.id} : null,
           );
           
           log.d('   ✅ Получено ${response.data.length} результатов поиска');
@@ -198,12 +196,6 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
 
       var allCities = citiesMap.values.map((c) => c['name'] as String).toList();
       log.d('✅ ИТОГО загружено уникальных городов с API: ${allCities.length}');
-
-      // Добавляем все города ДНР из констант (чтобы не потерять те, которые API не вернул)
-      log.d('📦 dnrCities konstans имеет ${dnrCities.length} уникальных городов (после удаления дубликатов)');
-      
-      final dnrSet = <String>{...allCities, ...dnrCities};
-      allCities = dnrSet.toList();
       log.d('✅ ИТОГО города после объединения: ${allCities.length} (дедупликация через Set)');
 
       // Сортируем города для удобства
@@ -499,12 +491,10 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         _buildSelector(
           selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
           onTap: () {
-            // FALLBACK: если города еще не загрузились с API, используем dnrCities сразу
-            final citiesToShow = apiCities.isNotEmpty ? apiCities : dnrCities;
+            final citiesToShow = apiCities;
             log.d('\n📱 Открытие диалога выбора города:');
             log.d('   - apiCities.length: ${apiCities.length}');
             log.d('   - citiesToShow.length: ${citiesToShow.length}');
-            log.d('   - Using fallback dnrCities: ${apiCities.isEmpty}');
             showDialog(
               context: context,
               builder: (_) {
