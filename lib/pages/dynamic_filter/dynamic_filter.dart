@@ -3234,46 +3234,40 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
   void _showModerationDialog() {
     final isEditMode = _isEditMode;
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            isEditMode ? 'Объявление обновлено' : 'Объявление на модерации',
-          ),
-          content: Text(
-            isEditMode
-                ? 'Изменения в объявлении отправлены на модерацию. После проверки они будут применены.'
-                : 'Ваше объявление отправлено на модерацию. После проверки оно будет опубликовано.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
+    
+    // Получить ID категории
+    final categoryId = widget.categoryId ?? _editAdvertCategoryId;
 
-                // Получить ID категории
-                final categoryId = widget.categoryId ?? _editAdvertCategoryId;
+    log.d('═══════════════════════════════════════════════════════');
+    log.d('🔄 НАВИГАЦИЯ НА PUBLICATION_TARIFF_SCREEN');
+    log.d('═══════════════════════════════════════════════════════');
+    log.d('   isEditMode: $isEditMode');
+    log.d('   categoryId: $categoryId');
+    log.d('   widget.categoryId: ${widget.categoryId}');
+    log.d('   _editAdvertCategoryId: $_editAdvertCategoryId');
+    log.d('═══════════════════════════════════════════════════════');
 
-                // Навигировать на my_listings_screen с параметрами
-                if (categoryId != null) {
-                  Navigator.of(context).pushReplacementNamed(
-                    MyListingsScreen.routeName,
-                    arguments: {
-                      'categoryId': categoryId,
-                      'tabIndex': 3, // Вкладка "На модерации"
-                    },
-                  );
-                } else {
-                  // Если нет categoryId, просто вернуться
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+    // Используем Future для безопасной навигации
+    Future.microtask(() {
+      if (mounted && context.mounted) {
+        try {
+          Navigator.of(context).pushReplacementNamed(
+            PublicationTariffScreen.routeName,
+            arguments: {
+              'isEditMode': isEditMode,
+              'categoryId': categoryId,
+            },
+          );
+          log.d('✅ Навигация выполнена успешно');
+        } catch (e) {
+          log.d('❌ Ошибка навигации: $e');
+          // Fallback: просто закрыть экран
+          if (mounted) {
+            Navigator.of(context).pop();
+          }
+        }
+      }
+    });
   }
 
   @override

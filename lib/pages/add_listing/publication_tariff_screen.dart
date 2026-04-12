@@ -1,16 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lidle/widgets/dialogs/moderation_dialog.dart';
 import '../../constants.dart';
 import '../../widgets/components/header.dart';
-import '../../widgets/dialogs/moderation_dialog.dart'; // Added import
+import '../profile_dashboard/my_listings/my_listings_screen.dart';
+
 
 // ============================================================
 // "Виджет: Экран выбора тарифа публикации"
 // ============================================================
-class PublicationTariffScreen extends StatelessWidget {
+class PublicationTariffScreen extends StatefulWidget {
   static const String routeName = '/publication-tariff';
 
-  const PublicationTariffScreen({super.key});
+  final bool isEditMode;
+  final int? categoryId;
+
+  const PublicationTariffScreen({
+    super.key,
+    this.isEditMode = false,
+    this.categoryId,
+  });
+
+  @override
+  State<PublicationTariffScreen> createState() =>
+      _PublicationTariffScreenState();
+}
+
+class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Если переданы arguments через Route
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        // Аргументы успешно переданы
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -158,7 +186,6 @@ class PublicationTariffScreen extends StatelessWidget {
                           fontSize: 14,
                         ),
                       ),
-                      
                     ],
                   ),
                 ),
@@ -177,10 +204,7 @@ class PublicationTariffScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Для более быстрой модерации используйте платную модерации.',
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: textPrimary, fontSize: 14),
                   ),
                 ),
               ],
@@ -223,14 +247,32 @@ class PublicationTariffScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              onPressed: () {
+              onPressed: () async {
                 if (isPrimary) {
-                  showDialog(
+                  final categoryId = widget.categoryId;
+
+                  // Показываем диалог модерации
+                  await showDialog(
                     context: context,
-                    builder: (BuildContext context) => const ModerationDialog(),
+                    barrierDismissible: false,
+                    builder: (_) => ModerationDialog(
+                      onContinue: () {
+                        Navigator.of(context).pop(); // закрыть диалог
+                        if (categoryId != null) {
+                          Navigator.of(context).pushReplacementNamed(
+                            MyListingsScreen.routeName,
+                            arguments: {
+                              'categoryId': categoryId,
+                              'tabIndex': 3,
+                            },
+                          );
+                        } else {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                    ),
                   );
                 } else {
-                  // Переход к оплате через Юкасса (заглушка)
                   Navigator.pushNamed(
                     context,
                     '/payment',

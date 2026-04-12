@@ -35,6 +35,7 @@ import 'package:lidle/pages/favorites_screen.dart';
 import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/add_listing/payment_screen.dart';
+import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/pages/full_category_screen/property_details_screen.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
@@ -201,5 +202,14 @@ class AppRoutes {
     '/contacts': (context) => const ContactsScreen(),
     '/user_qr': (context) => const UserQrScreen(),
     '/qr_print_templates': (context) => const QrPrintTemplatesScreen(),
+    PublicationTariffScreen.routeName: (context) {
+      // Обработка параметров для перехода из dynamic_filter при публикации
+      final args = ModalRoute.of(context)?.settings.arguments
+          as Map<String, dynamic>?;
+      return PublicationTariffScreen(
+        isEditMode: args?['isEditMode'] as bool? ?? false,
+        categoryId: args?['categoryId'] as int?,
+      );
+    },
   };
 }

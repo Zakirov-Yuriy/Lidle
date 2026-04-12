@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:lidle/pages/add_listing/published_screen.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:lidle/services/background_message_service.dart';
 import 'package:flutter/foundation.dart';
@@ -289,6 +290,7 @@ class LidleApp extends StatelessWidget {
 
           // Production home с обёрткой для проверки интернета
           home: const AppWrapper(),
+          // home: const PublishedScreen(),
           // home: const PropertyDetailsScreen(),
           routes: AppRoutes.routes,
         ),
