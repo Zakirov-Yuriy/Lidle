@@ -100,7 +100,7 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
   }
 
   // Для списка улиц (новый формат)
-  void _buildDisplayOptionsFromList(List<String> streets) {
+  void _buildDisplayOptionsFromList(List<String> streets, {bool addSections = true}) {
     List<dynamic> newDisplayOptions = [];
     String? currentLetter;
     List<String> mutableStreets = List<String>.from(streets);
@@ -112,12 +112,15 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
     });
 
     for (var street in mutableStreets) {
-      String mainName = _getStreetMainName(street);
-      final firstLetter = mainName[0].toUpperCase();
+      // Добавляем секции только если addSections=true (когда нет поиска)
+      if (addSections) {
+        String mainName = _getStreetMainName(street);
+        final firstLetter = mainName[0].toUpperCase();
 
-      if (firstLetter != currentLetter) {
-        newDisplayOptions.add(_SectionHeader(firstLetter));
-        currentLetter = firstLetter;
+        if (firstLetter != currentLetter) {
+          newDisplayOptions.add(_SectionHeader(firstLetter));
+          currentLetter = firstLetter;
+        }
       }
       newDisplayOptions.add(street);
     }
@@ -159,15 +162,27 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
       try {
         final apiResults = await widget.onSearchQuery!(query);
         log.d('   ✅ API results: ${apiResults.length} улиц');
-        if (apiResults.isNotEmpty) {
-          for (var i = 0; i < apiResults.length && i < 10; i++) {
-            log.d('   ✓ ${apiResults[i]}');
+        
+        // 🎯 Фильтруем API результаты - ТОЛЬКО точные совпадения по началу названия
+        List<String> filteredApiResults = apiResults
+            .where((street) {
+              final mainName = _getStreetMainName(street).toLowerCase();
+              return mainName.startsWith(query);
+            })
+            .toList();
+        
+        log.d('   ✅ Отфильтровано: ${filteredApiResults.length} улиц (было ${apiResults.length})');
+        if (filteredApiResults.isNotEmpty) {
+          for (var i = 0; i < filteredApiResults.length && i < 10; i++) {
+            log.d('   ✓ ${filteredApiResults[i]}');
           }
-          if (apiResults.length > 10) {
-            log.d('   ... и ещё ${apiResults.length - 10}');
+          if (filteredApiResults.length > 10) {
+            log.d('   ... и ещё ${filteredApiResults.length - 10}');
           }
         }
-        _buildDisplayOptionsFromList(apiResults);
+        
+        // 🎯 При поиске НЕ добавляем секции заголовков
+        _buildDisplayOptionsFromList(filteredApiResults, addSections: false);
         return;
       } catch (e) {
         log.e('   ❌ API search failed: $e, falling back to local filtering');
@@ -180,9 +195,12 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
       Map<String, List<String>> filteredGroupedStreets = {};
 
       widget.groupedOptions!.forEach((sectionKey, streets) {
+        // 🎯 ТОЛЬКО точные совпадения по началу основного названия
         final filteredStreets = streets.where((street) {
-          return street.toLowerCase().contains(query);
+          final mainName = _getStreetMainName(street).toLowerCase();
+          return mainName.startsWith(query);
         }).toList();
+        
         if (filteredStreets.isNotEmpty) {
           filteredGroupedStreets[sectionKey] = filteredStreets;
         }
@@ -194,22 +212,26 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
 
       _buildDisplayOptions(filteredGroupedStreets);
     } else if (widget.options != null) {
-      // Фильтр для списка улиц
-      List<String> filteredStreets = widget.options!
-          .where((option) => option.toLowerCase().contains(query))
+      // Фильтр для списка улиц - 🎯 ТОЛЬКО точные совпадения по началу
+      List<String> exactMatches = widget.options!
+          .where((option) {
+            final mainName = _getStreetMainName(option).toLowerCase();
+            return mainName.startsWith(query);
+          })
           .toList();
       
       if (query.isNotEmpty) {
-        log.d('   Найдено ${filteredStreets.length} результатов');
-        for (var i = 0; i < filteredStreets.length && i < 10; i++) {
-          log.d('   ✅ ${filteredStreets[i]}');
+        log.d('   Найдено ${exactMatches.length} результатов');
+        for (var i = 0; i < exactMatches.length && i < 10; i++) {
+          log.d('   ✅ ${exactMatches[i]}');
         }
-        if (filteredStreets.length > 10) {
-          log.d('   ... и ещё ${filteredStreets.length - 10}');
+        if (exactMatches.length > 10) {
+          log.d('   ... и ещё ${exactMatches.length - 10}');
         }
       }
       
-      _buildDisplayOptionsFromList(filteredStreets);
+      // 🎯 При поиске НЕ добавляем секции заголовков - только отсортированный список
+      _buildDisplayOptionsFromList(exactMatches, addSections: query.isEmpty);
     }
   }
 

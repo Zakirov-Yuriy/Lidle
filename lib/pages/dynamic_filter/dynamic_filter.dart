@@ -3527,17 +3527,16 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     Row(
                       children: [
                         const Text(
-                          'Цена*',
+                          'Цена',
                           style: TextStyle(color: textPrimary, fontSize: 16),
                         ),
-                        if (_fieldErrors.containsKey('price'))
-                          const Text(
-                            ' *',
-                            style: TextStyle(
-                              color: Color(0xFFFF1744),
-                              fontSize: 16,
-                            ),
+                        const Text(
+                          '*',
+                          style: TextStyle(
+                            color: Color(0xFFFF1744),
+                            fontSize: 16,
                           ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 9),
@@ -4149,7 +4148,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                     const SizedBox(height: 9),
 
                     _buildTextField(
-                      label: 'Электронная почта',
+                      label: 'Электронная почта*',
                       hint: 'AlexAlex@mail.ru',
                       fieldKey: 'email',
                       keyboardType: TextInputType.emailAddress,
@@ -4317,6 +4316,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }) {
     final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
     final errorMessage = hasError ? _fieldErrors[fieldKey] : null;
+    
+    // Проверяем наличие * в конце метки
+    final hasRedAsterisk = label.endsWith('*');
+    final labelText = hasRedAsterisk ? label.substring(0, label.length - 1) : label;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4324,10 +4327,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
         Row(
           children: [
             Text(
-              label,
+              labelText,
               style: const TextStyle(color: textPrimary, fontSize: 16),
             ),
-            if (hasError)
+            if (hasRedAsterisk)
+              const Text(
+                '*',
+                style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
+              ),
+            if (hasError && !hasRedAsterisk)
               const Text(
                 ' *',
                 style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
@@ -4417,6 +4425,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }) {
     final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
     final errorMessage = hasError ? _fieldErrors[fieldKey] : null;
+    
+    // Проверяем наличие * в конце метки
+    final hasRedAsterisk = label.endsWith('*');
+    final labelText = hasRedAsterisk ? label.substring(0, label.length - 1) : label;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4426,10 +4438,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
           child: Row(
             children: [
               Text(
-                label,
+                labelText,
                 style: const TextStyle(color: textPrimary, fontSize: 16),
               ),
-              if (hasError)
+              if (hasRedAsterisk)
+                const Text(
+                  '*',
+                  style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
+                ),
+              if (hasError && !hasRedAsterisk)
                 const Text(
                   ' *',
                   style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
@@ -4614,6 +4631,46 @@ class _DynamicFilterState extends State<DynamicFilter> {
           });
         },
       ),
+    );
+  }
+
+  /// Вспомогательный метод для отрисовки метки с потенциально красной звездочкой
+  Widget _buildLabel(String label, bool isRequired, {double fontSize = 16}) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: textPrimary, fontSize: fontSize),
+        ),
+        if (isRequired)
+          Text(
+            '*',
+            style: TextStyle(color: Color(0xFFFF1744), fontSize: fontSize),
+          ),
+      ],
+    );
+  }
+
+  /// Вспомогательный метод для отрисовки текста с потенциальной красной звездочкой
+  /// Возвращает либо обычный текст, либо Row с красной звездочкой
+  Widget _buildCheckboxLabel(String text, bool showAsterisk, {double fontSize = 14}) {
+    if (showAsterisk) {
+      return Row(
+        children: [
+          Text(
+            text,
+            style: TextStyle(color: textPrimary, fontSize: fontSize),
+          ),
+          Text(
+            '*',
+            style: TextStyle(color: Color(0xFFFF1744), fontSize: fontSize),
+          ),
+        ],
+      );
+    }
+    return Text(
+      text,
+      style: TextStyle(color: textPrimary, fontSize: fontSize),
     );
   }
 
@@ -4971,10 +5028,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  attr.title + (attr.isRequired ? '*' : ''),
-                  style: const TextStyle(color: textPrimary, fontSize: 16),
-                ),
+                child: _buildLabel(attr.title, attr.isRequired),
               ),
               const SizedBox(width: 12),
               CustomCheckbox(
@@ -5022,12 +5076,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  attr.values.isNotEmpty
-                      ? attr.values[0].value
-                      : (attr.title + (attr.isRequired ? '*' : '')),
-                  style: const TextStyle(color: textPrimary, fontSize: 14),
-                ),
+                child: attr.values.isNotEmpty
+                    ? Text(
+                        attr.values[0].value,
+                        style: const TextStyle(color: textPrimary, fontSize: 14),
+                      )
+                    : _buildCheckboxLabel(attr.title, attr.isRequired, fontSize: 14),
               ),
               const SizedBox(width: 12),
               CustomCheckbox(
@@ -5078,10 +5132,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       children: [
         _buildStyleHeader(attr),
         if (!attr.isTitleHidden)
-          Text(
-            attr.title + (attr.isRequired ? '*' : ''),
-            style: const TextStyle(color: textPrimary, fontSize: 16),
-          ),
+          _buildLabel(attr.title, attr.isRequired),
         if (!attr.isTitleHidden) const SizedBox(height: 9),
         RentTimeWidget(
           dateFrom: timeData['dateFrom'] as String?,
@@ -5172,10 +5223,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       children: [
         _buildStyleHeader(attr),
         if (!attr.isTitleHidden)
-          Text(
-            attr.title + (attr.isRequired ? '*' : ''),
-            style: const TextStyle(color: textPrimary, fontSize: 16),
-          ),
+          _buildLabel(attr.title, attr.isRequired),
         if (!attr.isTitleHidden) const SizedBox(height: 9),
         KRentTimeWidget(
           dateFrom: timeData['dateFrom'] as String?,
@@ -5252,10 +5300,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildStyleHeader(attr),
-        Text(
-          attr.title + (attr.isRequired ? '*' : ''),
-          style: const TextStyle(color: textPrimary, fontSize: 16),
-        ),
+        _buildLabel(attr.title, attr.isRequired),
         const SizedBox(height: 9),
         Row(
           children: [
@@ -5626,10 +5671,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
       children: [
         _buildStyleHeader(attr),
         if (!attr.isTitleHidden)
-          Text(
-            attr.title + (attr.isRequired ? '*' : ''),
-            style: const TextStyle(color: textPrimary, fontSize: 16),
-          ),
+          _buildLabel(attr.title, attr.isRequired),
         const SizedBox(height: 9),
         Row(
           children: [
