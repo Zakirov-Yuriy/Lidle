@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:lidle/pages/add_listing/published_screen.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/new_listing_notifier.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:lidle/services/background_message_service.dart';
 import 'package:flutter/foundation.dart';
@@ -41,10 +42,14 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'package:lidle/app/routes.dart';
+import 'dart:async';                                              // ← добавить
+  
 
 // RouteObserver для отслеживания навигации
 final RouteObserver<ModalRoute<void>> routeObserver =
     RouteObserver<ModalRoute<void>>();
+// ── Добавить рядом с routeObserver ──────────────
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 // ============================================================
 //  Callback Dispatcher для фоновых задач workmanager'а
@@ -79,11 +84,11 @@ void main() async {
   try {
     await dotenv.load(fileName: '.env');
     final environment = dotenv.env['APP_ENVIRONMENT'] ?? 'prod';
-    
+
     // 🔍 ДЕБАГ: Выводим что прочитали из .env
     // log.w('🔍 DEBUG: APP_ENVIRONMENT из .env = "$environment"');
     // log.w('🔍 DEBUG: Все переменные .env: ${dotenv.env}');
-    
+
     await AppConfig.initialize(environmentValue: environment);
     // log.i('✅ AppConfig инициализирован: ${AppConfig().environment.value}');
     // log.i('   API URL: ${AppConfig().apiBaseUrl}');
@@ -165,18 +170,38 @@ class AppWrapper extends StatefulWidget {
 }
 
 class _AppWrapperState extends State<AppWrapper> {
+  StreamSubscription? _newListingSubscription;   // ← добавить
+
+  @override
+  void initState() {                              // ← добавить весь блок
+    super.initState();
+    _newListingSubscription =
+        NewListingNotifier.instance.onNewListing.listen((advert) {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => PublishedScreen(advert: advert)),
+      );
+    });
+  }
+
+  @override
+  void dispose() {                                // ← добавить весь блок
+    _newListingSubscription?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<ConnectivityBloc, ConnectivityState>(
+    // ... дальше всё без изменений
       builder: (context, state) {
         // Показываем экран отсутствия интернета или несоответствия типа подключения
         if (state is DisconnectedState) {
           return NoInternetScreen(
             onRetry: () {
               // Проверяем соединение снова
-              context
-                  .read<ConnectivityBloc>()
-                  .add(const CheckConnectivityEvent());
+              context.read<ConnectivityBloc>().add(
+                const CheckConnectivityEvent(),
+              );
             },
             reason: state.reason,
             availableTypes: state.availableTypes,
@@ -228,7 +253,7 @@ class LidleApp extends StatelessWidget {
           if (state is AuthAuthenticated) {
             // Пользователь авторизован — запускаем фоновое обновление токена
             TokenService().init(context);
-            
+
             // Загружаем wishlist (избранное) с сервера
             context.read<WishlistBloc>().add(const LoadWishlistEvent());
 
@@ -236,7 +261,7 @@ class LidleApp extends StatelessWidget {
             MessagePollingService().startPolling(
               interval: const Duration(seconds: 15),
             );
-            
+
             // 🌙 Запускаем BACKGROUND задачу для проверки сообщений
             // Эта задача запускается периодически даже когда приложение свернуто
             Workmanager().registerPeriodicTask(
@@ -245,15 +270,15 @@ class LidleApp extends StatelessWidget {
               frequency: const Duration(minutes: 15),
               initialDelay: const Duration(seconds: 30),
             );
-            
+
             log.d('🌙 Запущена фоновая задача проверки сообщений');
           } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
             // Пользователь вышел или токен истёк — останавливаем таймер
             TokenService().dispose();
-            
+
             // 🔔 Останавливаем мониторинг новых сообщений (FOREGROUND)
             MessagePollingService().stopPolling();
-            
+
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');
             // log.d('🌙 Отменена фоновая задача проверки сообщений');
@@ -279,6 +304,7 @@ class LidleApp extends StatelessWidget {
         child: MaterialApp(
           title: appTitle,
           debugShowCheckedModeBanner: false,
+          navigatorKey: navigatorKey,   // ← добавить эту строку
           theme: ThemeData(fontFamily: 'Roboto', brightness: Brightness.dark),
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: const [Locale('en', ''), Locale('ru', '')],

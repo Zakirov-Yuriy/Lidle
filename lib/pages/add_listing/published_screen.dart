@@ -1,17 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+import 'package:lidle/models/main_content_model.dart';
+import 'package:lidle/models/home_models.dart';
+import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 
 class PublishedScreen extends StatelessWidget {
-  const PublishedScreen({super.key});
+  final UserAdvert? advert;
+
+  const PublishedScreen({
+    super.key,
+    this.advert,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF13131F),
+      backgroundColor: primaryBackground,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildTopNav(context),
+            // ── Лого ────────────────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.only(
+                // left: 20,
+                // top: 12,
+                right: 20,
+              ),
+              child: const Header(),
+            ),
             _buildSecondaryNav(context),
             const SizedBox(height: 8),
             Expanded(
@@ -32,22 +52,6 @@ class PublishedScreen extends StatelessWidget {
     );
   }
 
-  // ── Лого ────────────────────────────────────────────────────────────────
-  Widget _buildTopNav(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-      child: Text(
-        'LIDLE',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 22,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 2,
-        ),
-      ),
-    );
-  }
-
   // ── Назад / Отмена ──────────────────────────────────────────────────────
   Widget _buildSecondaryNav(BuildContext context) {
     return Padding(
@@ -56,7 +60,13 @@ class PublishedScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.maybePop(context),
+            onTap: () {
+              // Гарантированный переход на MyListingsScreen и очистка стека
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                MyListingsScreen.routeName,
+                (route) => false,
+              );
+            },
             child: Row(
               children: const [
                 Icon(
@@ -76,7 +86,13 @@ class PublishedScreen extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => Navigator.maybePop(context),
+            onTap: () {
+              // Гарантированный переход на MyListingsScreen и очистка стека
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                MyListingsScreen.routeName,
+                (route) => false,
+              );
+            },
             child: const Text(
               'Отмена',
               style: TextStyle(
@@ -96,7 +112,7 @@ class PublishedScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2E),
+        color: formBackground,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -129,11 +145,39 @@ class PublishedScreen extends StatelessWidget {
 
   // ── Карточка объявления ─────────────────────────────────────────────────
   Widget _buildListingCard(BuildContext context) {
+    if (advert == null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Center(
+          child: Text(
+            'Объявление не найдено',
+            style: TextStyle(color: Colors.white54),
+          ),
+        ),
+      );
+    }
+
+    // Форматируем цену
+    final priceText = (advert!.price != null && advert!.price!.isNotEmpty)
+        ? '${advert!.price} ₽'
+        : 'Договорная';
+
+    // Получаем основное описание (название)
+    final title = advert!.name ?? 'Без названия';
+
+    // Получаем изображение
+    final imageUrl = advert!.thumbnail;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E2E),
+        color: formBackground,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
@@ -145,22 +189,39 @@ class PublishedScreen extends StatelessWidget {
             child: SizedBox(
               width: 100,
               height: 80,
-              // Замените на Image.network(...) или Image.asset(...)
-              // когда будет реальное фото объявления:
-              // child: Image.network(listingImageUrl, fit: BoxFit.cover),
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF2C3E50),
-                      Color(0xFF3D5A6E),
-                      Color(0xFF4A6C82),
-                    ],
-                  ),
-                ),
-              ),
+              child: imageUrl != null && imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF2C3E50),
+                                Color(0xFF3D5A6E),
+                                Color(0xFF4A6C82),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF2C3E50),
+                            Color(0xFF3D5A6E),
+                            Color(0xFF4A6C82),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
           ),
 
@@ -171,36 +232,50 @@ class PublishedScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  '3-к. квартира, 125,5 м², 5/17 эт.',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                const Text(
-                  '44 500 000 ₽',
-                  style: TextStyle(
+                Text(
+                  priceText,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 3),
-                const Text(
-                  '354 582 ₽ за м²',
-                  style: TextStyle(
-                    color: Color(0xFF6E6E7E),
-                    fontSize: 12,
-                  ),
-                ),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
-                    // TODO: открыть объявление
+                    // Конвертируем UserAdvert в Listing
+                    final listing = Listing(
+                      id: advert!.id.toString(),
+                      slug: advert!.slug,
+                      imagePath: advert!.thumbnail ?? '',
+                      title: advert!.name ?? 'Без названия',
+                      price: advert!.price ?? 'Договорная',
+                      location: advert!.address ?? 'Адрес не указан',
+                      date: advert!.createdAt ?? '',
+                      images: advert!.thumbnail != null
+                          ? [advert!.thumbnail!]
+                          : [],
+                    );
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            MiniPropertyDetailsScreen(listing: listing),
+                      ),
+                    );
                   },
                   child: Row(
                     children: const [
