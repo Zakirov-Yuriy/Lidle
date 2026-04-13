@@ -76,13 +76,20 @@ class Advert {
   factory Advert.fromJson(Map<String, dynamic> json) {
     // log.d('Advert ${json['id']} images in JSON: ${json['images']}');
 
-    // 🔍 DEBUG: Логируем весь JSON для объявления 157
-    if (json['id'] == 157) {
-      // log.d('═══════════════════════════════════════════════════════════');
-      // log.d('🔍 FULL JSON для объявления 157:');
-      // log.d(json.toString());
-      // log.d('All keys: ${json.keys.toList()}');
-      // log.d('═══════════════════════════════════════════════════════════');
+    // 🔍 DEBUG: Логируем весь JSON для объявления 159
+    if (json['id'] == 159) {
+      log.i('═══════════════════════════════════════════════════════════');
+      log.i('🔍 ADVERT 159 JSON PARSING:');
+      log.i('  ID: ${json['id']}');
+      log.i('  Name: ${json['name']}');
+      log.i('  Address: ${json['address']}');
+      log.i('  Description: ${json['description']}');
+      log.i('  Has attributes key: ${json.containsKey('attributes')}');
+      if (json.containsKey('attributes')) {
+        log.i('  Attributes type: ${json['attributes'].runtimeType}');
+        log.i('  Attributes: ${json['attributes']}');
+      }
+      log.i('═══════════════════════════════════════════════════════════');
     }
 
     // Парсим информацию о продавце из поля 'user' или 'seller'

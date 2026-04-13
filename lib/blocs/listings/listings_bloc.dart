@@ -41,6 +41,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// 🔧 УВЕЛИЧЕНО: Защита от rate limiting (429) при быстрых обновлениях.
   static const Duration _refreshDebounce = Duration(seconds: 10);
 
+  /// 💾 Кеш полного списка объявлений для корректной работы поиска.
+  /// Используется для фильтрации при вводе/удалении текста в поиск.
+  /// Остается неизменным даже когда состояние меняется на ListingsSearchResults.
+  List<home.Listing> _cachedAllListings = [];
+
+  /// 💾 Кеш категорий для отображения при поиске.
+  /// Загружается вместе с объявлениями и остается доступен при поиске.
+  List<home.Category> _cachedCategories = [];
+
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
   ListingsBloc() : super(ListingsInitial()) {
@@ -175,6 +184,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               label: 'Listings (из кеша)',
             );
 
+            // 💾 Обновляем кеш для корректной работы поиска
+            _cachedAllListings = listings;
+            _cachedCategories = categories;
+
             emit(
               ListingsLoaded(
                 listings: listings,
@@ -282,11 +295,78 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final allSortedListings = _sortListingsByDate(initialListings);
       final firstBatchListings = allSortedListings.take(12).toList();
 
-      // 🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит первые 12 объявлений почти сразу!
+      // � НОВОЕ: Загружаем атрибуты для первых 12 объявлений
+      // API не возвращает атрибуты в списке, только при запросе конкретного объявления с ?with=attributes
+      log.i('⏳ Загружаем атрибуты для первых 12 объявлений...');
+      try {
+        final firstBatchIds = firstBatchListings
+            .map((listing) => int.parse(listing.id))
+            .toList();
+        
+        // Загружаем полные данные с атрибутами (параллельно, по 5 за раз)
+        final advertsWithAttributes = await ApiService.getAdvertsWithAttributes(
+          firstBatchIds,
+          token: token,
+        );
+        
+        // Обновляем characteristics в первом батче
+        for (int i = 0; i < firstBatchListings.length; i++) {
+          final listing = firstBatchListings[i];
+          final advertId = int.parse(listing.id);
+          final fullAdvert = advertsWithAttributes[advertId];
+          
+          if (fullAdvert != null && fullAdvert.characteristics != null) {
+            // Создаем новый объект Listing с атрибутами
+            firstBatchListings[i] = home.Listing(
+              id: listing.id,
+              slug: listing.slug,
+              imagePath: listing.imagePath,
+              images: listing.images,
+              title: listing.title,
+              price: listing.price,
+              location: listing.location,
+              date: listing.date,
+              isFavorited: listing.isFavorited,
+              isBargain: listing.isBargain,
+              sellerName: listing.sellerName,
+              sellerAvatar: listing.sellerAvatar,
+              sellerRegistrationDate: listing.sellerRegistrationDate,
+              userId: listing.userId,
+              description: listing.description,
+              characteristics: fullAdvert.characteristics ?? {}, // 🔥 Вот атрибуты!
+              region: listing.region,
+              city: listing.city,
+              street: listing.street,
+              buildingNumber: listing.buildingNumber,
+              mainRegion: listing.mainRegion,
+              subRegion: listing.subRegion,
+              district: listing.district,
+            );
+            
+            log.i('✅ Загружены атрибуты для объявления ${listing.id}');
+          }
+        }
+        
+        log.i('✅ Атрибуты загружены для первых 12 объявлений');
+      } catch (e) {
+        // Не критично, просто продолжаем без атрибутов для поиска
+        log.w('⚠️ Не удалось загрузить атрибуты: $e');
+      }
+
+      // �🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит первые 12 объявлений почти сразу!
       LoadingTimerService().stopLoadingTimer(
         operationKey,
         label: 'Listings (первые 12 объявлений)',
       );
+      
+      // 💾 Кешируем ВСЕ отсортированные объявления, не только первые 12
+      // Это необходимо для корректной работы поиска при вводе/удалении текста
+      // 🔥 ОБНОВЛЯЕМ: первые 12 теперь имеют атрибуты
+      _cachedAllListings = [
+        ...firstBatchListings, // Первые 12 С атрибутами
+        ...allSortedListings.skip(12) // Остальные БЕЗ атрибутов (пока)
+      ];
+      _cachedCategories = loadedCategories;
       
       emit(
         ListingsLoaded(
@@ -338,9 +418,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     SearchListingsEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    if (state is! ListingsLoaded) return;
+    // 🔍 Используем кеш полного списка, независимо от текущего состояния
+    // Это позволяет правильно фильтровать при удалении текста из поиска
+    if (_cachedAllListings.isEmpty) {
+      log.w('⚠️ Кеш объявлений пуст, поиск невозможен');
+      return;
+    }
 
-    final currentState = state as ListingsLoaded;
     emit(ListingsLoading());
 
     try {
@@ -348,17 +432,218 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       await Future.delayed(const Duration(milliseconds: _searchDelayMs));
 
       final query = event.query.toLowerCase();
-      final searchResults = currentState.listings.where((listing) {
-        return listing.title.toLowerCase().contains(query) ||
-            listing.location.toLowerCase().contains(query);
+      
+      // 📋 ЛОГИРОВАНИЕ: Показываем структуру первого объявления и ищем нужное
+      if (_cachedAllListings.isNotEmpty) {
+        // Показываем первое объявление
+        final firstListing = _cachedAllListings.first;
+        log.i('');
+        log.i('═' * 80);
+        log.i('📊 ПЕРВОЕ ОБЪЯВЛЕНИЕ (ID: ${firstListing.id}):');
+        log.i('  Title: ${firstListing.title}');
+        log.i('  Характеристик: ${firstListing.characteristics.length}');
+        firstListing.characteristics.forEach((k, v) {
+          log.i('    [$k] = $v (тип: ${v.runtimeType})');
+          if (v is Map) {
+            (v as Map).forEach((mk, mv) => log.i('      - $mk: $mv'));
+          }
+          if (v is List) {
+            (v as List).asMap().forEach((idx, item) => 
+              log.i('      [$idx] $item${item is Map ? ' ${(item as Map).toString()}' : ''}'));
+          }
+        });
+        
+        // Ищем объявление с ID 159
+        try {
+          final listing159 = _cachedAllListings.firstWhere((l) => l.id == '159');
+          log.i('');
+          log.i('═' * 80);
+          log.i('🎯 ОБЪЯВЛЕНИЕ 159:');
+          log.i('  ID: ${listing159.id}');
+          log.i('  Title: ${listing159.title}');
+          log.i('  Location: ${listing159.location}');
+          log.i('  Description: ${listing159.description ?? "N/A"}');
+          log.i('  Price: ${listing159.price}');
+          log.i('  Характеристик: ${listing159.characteristics.length}');
+          if (listing159.characteristics.isNotEmpty) {
+            listing159.characteristics.forEach((k, v) {
+              log.i('    [$k] = $v (тип: ${v.runtimeType})');
+              if (v is Map) {
+                (v as Map).forEach((mk, mv) => log.i('      - $mk: $mv'));
+              }
+              if (v is List) {
+                for (int i = 0; i < (v as List).length; i++) {
+                  final item = (v as List)[i];
+                  log.i('      [$i] $item');
+                  if (item is Map) {
+                    (item as Map).forEach((ik, iv) => log.i('        - $ik: $iv'));
+                  }
+                }
+              }
+            });
+          }
+          log.i('═' * 80);
+          log.i('');
+        } catch (e) {
+          log.w('⚠️ Объявление 159 не найдено');
+        }
+      }
+      
+      final searchResults = _cachedAllListings.where((listing) {
+        return _matchesSearchQuery(listing, query);
       }).toList();
 
+      // 📊 Логирование результатов поиска
+      log.i('🔍 Поиск: "$query" | Найдено: ${searchResults.length} из ${_cachedAllListings.length} объявлений');
+      if (searchResults.isEmpty && _cachedAllListings.length > 0) {
+        log.w('⚠️ Результатов не найдено. Проверьте логи выше для структуры данных.');
+      }
+
       emit(
-        ListingsSearchResults(searchResults: searchResults, query: event.query),
+        ListingsSearchResults(
+          searchResults: searchResults,
+          query: event.query,
+          categories: _cachedCategories, // 🔥 Передаем кешированные категории
+        ),
       );
     } catch (e) {
+      log.e('❌ Ошибка при поиске: $e');
       emit(ListingsError(message: e.toString()));
     }
+  }
+
+  /// Проверяет, соответствует ли объявление поисковому запросу.
+  /// Ищет в названии, локации, городе, улице, описании и характеристиках.
+  bool _matchesSearchQuery(home.Listing listing, String query) {
+    // 🔍 Поиск в основных текстовых полях
+    if (listing.title.toLowerCase().contains(query)) {
+      log.d('  ✅ Совпадение в title: ${listing.title}');
+      return true;
+    }
+    
+    if (listing.location.toLowerCase().contains(query)) {
+      log.d('  ✅ Совпадение в location: ${listing.location}');
+      return true;
+    }
+
+    // 🔍 Поиск по адресным компонентам
+    if (listing.city?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в city: ${listing.city}');
+      return true;
+    }
+    if (listing.street?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в street: ${listing.street}');
+      return true;
+    }
+    if (listing.region?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в region: ${listing.region}');
+      return true;
+    }
+    if (listing.mainRegion?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в mainRegion: ${listing.mainRegion}');
+      return true;
+    }
+    if (listing.subRegion?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в subRegion: ${listing.subRegion}');
+      return true;
+    }
+    if (listing.district?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в district: ${listing.district}');
+      return true;
+    }
+
+    // 🔍 Поиск в описании
+    if (listing.description?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Совпадение в description: ${listing.description}');
+      return true;
+    }
+
+    // 🔍 Поиск в характеристиках (рекурсивный поиск по всем вложенным значениям)
+    if (_searchInCharacteristics(listing.characteristics, query)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Рекурсивно ищет текст в структуре характеристик.
+  /// Поддерживает поиск в Map, List и простых значениях.
+  bool _searchInCharacteristics(Map<String, dynamic> characteristics, String query) {
+    if (characteristics.isEmpty) return false;
+
+    for (final entry in characteristics.entries) {
+      final key = entry.key.toLowerCase();
+      final value = entry.value;
+
+      // 🔍 Ищем в названии ключа характеристики
+      if (key.contains(query)) {
+        log.d('  ✅ Найдено совпадение в ключе: $key');
+        return true;
+      }
+
+      // 🔍 Рекурсивно ищем в значении
+      if (_searchInValue(value, query)) {
+        log.d('  ✅ Найдено совпадение в значении для ключа: $key (значение: $value)');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Рекурсивно ищет текст в значении любого типа.
+  /// Поддерживает Map, List, String, int, double и другие типы.
+  bool _searchInValue(dynamic value, String query) {
+    if (value == null) return false;
+
+    // 🔍 Если это Map - ищем во всех значениях и ключах
+    if (value is Map) {
+      for (final entry in value.entries) {
+        // Ищем в ключах Map (например: "label", "title", "name")
+        final key = entry.key.toString().toLowerCase();
+        if (key.contains(query)) return true;
+
+        // Ищем в значениях Map (рекурсивно)
+        if (_searchInValue(entry.value, query)) return true;
+      }
+      return false;
+    }
+
+    // 🔍 Если это List - ищем во всех элементах
+    if (value is List) {
+      for (final item in value) {
+        if (_searchInValue(item, query)) return true;
+      }
+      return false;
+    }
+
+    // 🔍 Если это String - простой поиск (с удалением пробелов)
+    if (value is String) {
+      // Обычный поиск
+      if (value.toLowerCase().contains(query)) return true;
+      
+      // Также ищем без пробелов и спецсимволов (если есть)
+      final normalized = value.toLowerCase()
+          .replaceAll(RegExp(r'[\s\-_]+'), '')  // Удаляем пробелы, дефисы, подчеркивания
+          .replaceAll(RegExp(r'[ёЁ]'), 'е');     // Нормализуем ё на е
+      final normalizedQuery = query.replaceAll(RegExp(r'[\s\-_]+'), '');
+      if (normalized.contains(normalizedQuery)) return true;
+      
+      return false;
+    }
+
+    // 🔍 Если это число (int, double) - конвертируем в строку и ищем
+    if (value is int || value is double) {
+      if (value.toString().contains(query)) return true;
+    }
+
+    // 🔍 Если это bool - конвертируем и ищем
+    if (value is bool) {
+      if (value ? 'да'.contains(query) : 'нет'.contains(query)) return true;
+      if (value ? 'yes'.contains(query) : 'no'.contains(query)) return true;
+      if (value.toString().toLowerCase().contains(query)) return true;
+    }
+
+    return false;
   }
 
   /// Обработчик события фильтрации объявлений по категории.
@@ -421,22 +706,29 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ResetFiltersEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    if (state is! ListingsLoaded) return;
+    // 🔍 Используем кеш для восстановления полного списка
+    if (_cachedAllListings.isEmpty) {
+      log.w('⚠️ Кеш пуст, невозможно сбросить фильтры');
+      return;
+    }
 
-    final currentState = state as ListingsLoaded;
     emit(ListingsLoading());
 
     try {
       // Имитация задержки сброса фильтров
       await Future.delayed(const Duration(milliseconds: _filterDelayMs));
 
+      // 🔥 Используем кешированные категории вместо текущего состояния
+      // Это обеспечивает корректное отображение категорий при сбросе поиска
+
       emit(
         ListingsLoaded(
-          listings: currentState.listings,
-          categories: currentState.categories,
+          listings: _cachedAllListings,
+          categories: _cachedCategories,
         ),
       );
     } catch (e) {
+      log.e('❌ Ошибка при сбросе фильтров: $e');
       emit(ListingsError(message: e.toString()));
     }
   }
@@ -578,6 +870,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
       // log.d('✅ Загружено ${newListings.length} объявлений (${uniqueNewListings.length} уникальных), всего: ${allListings.length}');
 
+      // 💾 Обновляем кеш полного списка для корректной работы поиска
+      _cachedAllListings = allListings;
+      _cachedCategories = currentState.categories;
+
       // Испускаем новое состояние с новыми объявлениями в конце
       emit(
         ListingsLoaded(
@@ -644,6 +940,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Извлекаем информацию о пагинации
       final totalPages = advertsResponse.meta.lastPage;
       final itemsPerPage = advertsResponse.meta.perPage;
+
+      // 💾 Обновляем кеш полного списка для корректной работы поиска
+      _cachedAllListings = sortedListings;
+      _cachedCategories = currentState.categories;
 
       // Испускаем новое состояние с объявлениями указанной страницы
       emit(
@@ -919,6 +1219,81 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           }
         }
         
+        // 🔥 НОВОЕ: Загружаем атрибуты для объявлений из Фазы 2
+        // (У объявлений из Фазы 1 уже есть атрибуты, поэтому пропускаем их)
+        if (additionalListings.isNotEmpty) {
+          log.i('⏳ Загружаем атрибуты для ${additionalListings.length} объявлений из Фазы 2...');
+          try {
+            // Создаем Map для быстрого обновления Listing по ID
+            final listingById = <int, home.Listing>{};
+            for (final listing in additionalListings) {
+              listingById[int.parse(listing.id)] = listing;
+            }
+            
+            final phase2AdvertIds = listingById.keys.toList();
+            
+            // Загружаем полные данные с атрибутами (параллельно, батчами)
+            const batchSize = 3;
+            for (int batchStart = 0; batchStart < phase2AdvertIds.length; batchStart += batchSize) {
+              final batchEnd = (batchStart + batchSize > phase2AdvertIds.length) 
+                ? phase2AdvertIds.length 
+                : batchStart + batchSize;
+              final batch = phase2AdvertIds.sublist(batchStart, batchEnd);
+              
+              final advertsWithAttributes = await ApiService.getAdvertsWithAttributes(
+                batch,
+                token: token,
+              );
+              
+              // Обновляем только те объявления которые были в этом батче
+              advertsWithAttributes.forEach((advertId, fullAdvert) {
+                final listing = listingById[advertId];
+                if (listing != null && fullAdvert.characteristics != null) {
+                  // Создаем новый объект Listing с атрибутами
+                  listingById[advertId] = home.Listing(
+                    id: listing.id,
+                    slug: listing.slug,
+                    imagePath: listing.imagePath,
+                    images: listing.images,
+                    title: listing.title,
+                    price: listing.price,
+                    location: listing.location,
+                    date: listing.date,
+                    isFavorited: listing.isFavorited,
+                    isBargain: listing.isBargain,
+                    sellerName: listing.sellerName,
+                    sellerAvatar: listing.sellerAvatar,
+                    sellerRegistrationDate: listing.sellerRegistrationDate,
+                    userId: listing.userId,
+                    description: listing.description,
+                    characteristics: fullAdvert.characteristics ?? {}, // 🔥 Атрибуты!
+                    region: listing.region,
+                    city: listing.city,
+                    street: listing.street,
+                    buildingNumber: listing.buildingNumber,
+                    mainRegion: listing.mainRegion,
+                    subRegion: listing.subRegion,
+                    district: listing.district,
+                  );
+                }
+              });
+              
+              // Задержка между батчами чтобы не перегружать API
+              if (batchEnd < phase2AdvertIds.length) {
+                await Future.delayed(const Duration(milliseconds: 300));
+              }
+            }
+            
+            // Обновляем additionalListings с новыми объектами с атрибутами
+            additionalListings = listingById.values.toList();
+            
+            log.i('✅ Атрибуты загружены для ${additionalListings.length} объявлений Фазы 2');
+          } catch (e) {
+            // Не критично - продолжаем с объявлениями без атрибутов
+            log.w('⚠️ Не удалось загрузить атрибуты для Фазы 2: $e');
+          }
+        }
+        
         final finalSortedListings = _sortListingsByDate(deduplicatedListings);
 
         // 🔥 ТАЙМЕР: Фиксируем полное время загрузки (фаза 2)
@@ -931,7 +1306,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           // Игнорируем ошибку таймера если он не был запущен
         }
 
-        // 📢 GRACEFUL DEGRADATION: Всегда эмитируем успешное состояние
+        // � Обновляем кеш полного списка для корректной работы поиска
+        _cachedAllListings = finalSortedListings;
+        _cachedCategories = loadedCategories;
+
+        // �📢 GRACEFUL DEGRADATION: Всегда эмитируем успешное состояние
         // Даже если некоторые батчи 429 - показываем данные которые удалось загрузить
         // + уже загруженные данные из фазы 1
         emit(
@@ -1045,6 +1424,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
               .toList();
 
           // log.d('🟢 Восстановлены данные из кеша! Объявлений: ${listings.length}, категорий: ${categories.length}');
+          
+          // 💾 Обновляем кеш для корректной работы поиска
+          _cachedAllListings = listings;
+          _cachedCategories = categories;
+          
           return ListingsLoaded(
             listings: listings,
             categories: categories,

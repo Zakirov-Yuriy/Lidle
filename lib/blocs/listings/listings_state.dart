@@ -47,12 +47,17 @@ class ListingsError extends ListingsState {
 }
 
 /// Состояние поиска объявлений.
-/// Содержит результаты поиска.
+/// Содержит результаты поиска и категории для отображения.
 class ListingsSearchResults extends ListingsState {
   final List<Listing> searchResults;
   final String query;
+  final List<Category> categories; // 🔥 Добавлены категории для отображения
 
-  ListingsSearchResults({required this.searchResults, required this.query});
+  ListingsSearchResults({
+    required this.searchResults,
+    required this.query,
+    this.categories = const [],
+  });
 }
 
 /// Состояние фильтрации объявлений по категории.

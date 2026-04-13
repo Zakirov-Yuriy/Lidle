@@ -573,6 +573,8 @@ class _HomePageState extends State<HomePage>
 
     final categories = (state is ListingsLoaded)
         ? state.categories
+        : (state is ListingsSearchResults)
+        ? state.categories
         : <Category>[];
 
     // Отфильтруем категории, исключив "Смотреть все"
