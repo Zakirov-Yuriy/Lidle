@@ -24,7 +24,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
   Set<String> _selectedCategories = {}; // «Выберите категорию»
   DateSort? _dateSort = DateSort.newest;
   PriceSort? _priceSort;
-  AccountKind _account = AccountKind.private;
+  AccountKind _account = AccountKind.all; // 👈 По умолчанию кнопка "Все" нажата
   List<Map<String, dynamic>> _cities = [];
 
   @override
@@ -40,7 +40,7 @@ class _FiltersScreenState extends State<FiltersScreen> {
       _selectedCategories = {};
       _dateSort = DateSort.newest;
       _priceSort = null;
-      _account = AccountKind.private;
+      _account = AccountKind.all; // 👈 При сбросе тоже выбираем "Все"
     });
     await HiveService.saveSelectedCity('г. Мариуполь. ДНР');
   }

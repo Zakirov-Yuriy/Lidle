@@ -962,17 +962,52 @@ class ApiService {
       }, token: token);
       final data = response['data'];
       
-      // 🔍 DEBUG: Логируем сырой JSON для проверки is_bargain
-      log.d('\n>>> API getAdvert($id) RESPONSE <<<');
+      // 🔍 DEBUG: Логируем ВСЕ данные из API
+      log.d('\n═══════════════════════════════════════════════════════');
+      log.d('🔔 API getAdvert($id) ПОЛНЫЙ ОТВЕТ:');
       if (data is Map<String, dynamic>) {
-        log.d('STATUS: MAP > is_bargain=${data['is_bargain']} name=${data['name']}');
+        log.d('📌 Тип: MAP');
+        log.d('   - id: ${data['id']}');
+        log.d('   - name: ${data['name'] ?? "EMPTY"}');
+        log.d('   - price: ${data['price'] ?? "EMPTY"}');
+        log.d('   - is_bargain: ${data['is_bargain'] ?? false}');
+        log.d('   - description: ${(data['description'] as String?)?.isNotEmpty ?? false ? "✅" : "❌ EMPTY"}');
+        log.d('   - address: ${data['address'] ?? "EMPTY"}');
+        
+        // Проверяем характеристики
+        final attrs = data['attributes'];
+        if (attrs is Map || attrs is List) {
+          log.d('   - attributes: type=${attrs.runtimeType}, items=${attrs is Map ? attrs.length : (attrs as List).length}');
+        } else {
+          log.d('   - attributes: ${attrs ?? "NULL"}');
+        }
+        
+        // Проверяем информацию о пользователе
+        final user = data['user'] as Map<String, dynamic>?;
+        if (user != null) {
+          log.d('   - user.id: ${user['id'] ?? "EMPTY"}');
+          log.d('   - user.name: ${user['name'] ?? "EMPTY"}');
+          log.d('   - user.avatar: ${user['avatar'] ?? "EMPTY"}');
+          log.d('   - user.created_at: ${user['created_at'] ?? "EMPTY"}');
+        } else {
+          log.d('   - user: ❌ NULL');
+        }
       } else if (data is List && data.isNotEmpty) {
         final firstItem = data[0] as Map<String, dynamic>;
-        log.d('STATUS: LIST > is_bargain=${firstItem['is_bargain']} name=${firstItem['name']}');
+        log.d('📌 Тип: LIST[0]');
+        log.d('   - id: ${firstItem['id']}');
+        log.d('   - name: ${firstItem['name'] ?? "EMPTY"}');
+        log.d('   - description: ${(firstItem['description'] as String?)?.isNotEmpty ?? false ? "✅" : "❌ EMPTY"}');
+        final user = firstItem['user'] as Map<String, dynamic>?;
+        if (user != null) {
+          log.d('   - user.name: ${user['name'] ?? "EMPTY"}');
+        } else {
+          log.d('   - user: ❌ NULL');
+        }
       } else {
-        log.d('STATUS: UNKNOWN TYPE');
+        log.d('⚠️  STATUS: UNKNOWN TYPE or EMPTY');
       }
-      log.d('>>> END <<<\n');
+      log.d('═══════════════════════════════════════════════════════\n');
       
       if (data is List) {
         return Advert.fromJson(data[0] as Map<String, dynamic>);
@@ -980,6 +1015,7 @@ class ApiService {
         return Advert.fromJson(data as Map<String, dynamic>);
       }
     } catch (e) {
+      log.e('❌ getAdvert($id) ERROR: $e');
       throw Exception('Failed to load advert: $e');
     }
   }

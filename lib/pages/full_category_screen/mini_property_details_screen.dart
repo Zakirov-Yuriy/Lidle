@@ -151,18 +151,37 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.initState();
     _listing = widget.listing;
     _imagesPrecached = false;
-    // log.d();
+    
+    // 🔍 DEBUG: Логируем какие данные пришли с объявлением
+    log.d('📥 MiniPropertyDetailsScreen initState:');
+    log.d('  ID: ${_listing.id}');
+    log.d('  Title: ${_listing.title}');
+    log.d('  Images count: ${_listing.images.length}');
+    log.d('  Has description: ${_listing.description?.isNotEmpty ?? false}');
+    log.d('  Has characteristics: ${_listing.characteristics?.isNotEmpty ?? false}');
+    log.d('  Seller name: ${_listing.sellerName ?? "EMPTY"}');
+    log.d('  Seller avatar: ${_listing.sellerAvatar ?? "EMPTY"}');
 
-    // 🔄 Загружаем полное объявление, если:
-    // 1. Нет изображений (значит это базовые данные со списка)
-    // 2. Нет достаточно информации для отображения
-    // Если объявление уже полностью загружено, не загружаем повторно
-    if (_listing.images.isEmpty) {
-      // log.d('📥 MiniPropertyDetailsScreen: Загружаем полные данные объявления');
+    // 🔄 ВСЕГДА загружаем полное объявление если:
+    // 1. Нет изображений
+    // 2. Нет характеристик / описания
+    // 3. Нет информации о продавце
+    final needsFullLoad = _listing.images.isEmpty || 
+                          (_listing.characteristics?.isEmpty ?? true) ||
+                          (_listing.description?.isEmpty ?? true) ||
+                          (_listing.sellerName?.isEmpty ?? true);
+    
+    if (needsFullLoad) {
+      log.d('🔄 ТРЕБУЕТСЯ загрузка полных данных объявления');
       _isAdvertLoaded = false;
-      context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
+      // Добавляем задержку для стабилизации
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) {
+          context.read<ListingsBloc>().add(LoadAdvertEvent(advertId: _listing.id));
+        }
+      });
     } else {
-      // log.d('✅ MiniPropertyDetailsScreen: Используем уже загруженные данные');
+      log.d('✅ Используем уже загруженные полные данные');
       _isAdvertLoaded = true;
     }
 
@@ -370,20 +389,28 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           // Показываем обычный контент
           return BlocListener<ListingsBloc, ListingsState>(
       listener: (context, state) {
-        // log.d('BlocListener in MiniPropertyDetailsScreen: $state');
+        log.d('🔔 BlocListener state in MiniPropertyDetailsScreen: ${state.runtimeType}');
+        
         if (state is AdvertLoaded) {
-          // log.d();
+          log.d('✅ AdvertLoaded:');
+          log.d('  - ID: ${state.listing.id}');
+          log.d('  - Has description: ${state.listing.description?.isNotEmpty ?? false}');
+          log.d('  - Characteristics: ${state.listing.characteristics?.keys.length ?? 0} items');
+          log.d('  - Seller: ${state.listing.sellerName ?? "EMPTY"}');
+          
           setState(() {
             _isAdvertLoaded = true;
             if (state.listing.images.isNotEmpty) {
-              // Use the new images from API
+              // API вернул изображения - используем их
               _listing = state.listing;
+              log.d('📸 Используем изображения из API: ${state.listing.images.length} шт');
             } else {
-              // API returned empty images, keep the initial images but update other data
+              // API вернул пустые изображения - сохраняем старые
               _listing = Listing(
                 id: state.listing.id,
+                slug: state.listing.slug,
                 imagePath: state.listing.imagePath,
-                images: _listing.images, // Keep initial images
+                images: _listing.images, // Сохраняем изображения
                 title: state.listing.title,
                 price: state.listing.price,
                 location: state.listing.location,
@@ -397,18 +424,25 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                 userId: state.listing.userId,
                 isBargain: state.listing.isBargain,
               );
+              log.d('📸 Сохранили изображения из предыдущих данных');
             }
-            // 🔍 DEBUG: Логируем значение isBargain после загрузки
-            // log.d('🔍 DEBUG: Loaded listing ID=${_listing.id}, isBargain=${_listing.isBargain}');
+            
+            // ВАЖНО: Логируем что пришло от API
+            if ((_listing.characteristics?.isEmpty ?? true) && 
+                (_listing.description?.isEmpty ?? true)) {
+              log.w('⚠️ ВНИМАНИЕ: API вернул объявление БЕЗ характеристик и описания!');
+              log.w('   Это может быть ошибка при создании объявления.');
+            }
           });
-          // Precache images after loading the advert
+          
           _precacheImages();
-
-          // 🔄 Загружаем похожие объявления из API
           _loadSimilarListings();
-
-          // 💰 Загружаем предложения цены
           _loadPriceOffers();
+        } else if (state is ListingsError) {
+          log.e('❌ ОШИБКА загрузки объявления: ${state.message}');
+          setState(() {
+            _isAdvertLoaded = true;
+          });
         }
       },
       child: Scaffold(
@@ -867,15 +901,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            "354 582 ₽ за м²",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          // const SizedBox(height: 4),
+          // const Text(
+          //   "354 582 ₽ за м²",
+          //   style: TextStyle(
+          //     color: Colors.white70,
+          //     fontSize: 13,
+          //     fontWeight: FontWeight.w500,
+          //   ),
+          // ),
           const SizedBox(height: 4),
           const Text(
             "Без скидки",

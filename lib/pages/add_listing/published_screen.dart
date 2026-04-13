@@ -255,7 +255,7 @@ class PublishedScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () {
-                    // Конвертируем UserAdvert в Listing
+                    // Конвертируем UserAdvert в Listing с ПОЛНЫМИ данными
                     final listing = Listing(
                       id: advert!.id.toString(),
                       slug: advert!.slug,
@@ -267,6 +267,16 @@ class PublishedScreen extends StatelessWidget {
                       images: advert!.thumbnail != null
                           ? [advert!.thumbnail!]
                           : [],
+                      // ✅ Добавлены поля для полной информации
+                      // Все полные данные будут загружены из API после открытия экрана
+                      description: '', // Will be loaded from API
+                      characteristics: {}, // Will be loaded from API
+                      sellerName: '', // Will be loaded from API
+                      sellerAvatar: '', // Will be loaded from API
+                      sellerRegistrationDate: '', // Will be loaded from API
+                      userId: null, // Will be loaded from API
+                      isBargain: false, // Will be loaded from API
+                      isFavorited: false,
                     );
 
                     Navigator.push(
