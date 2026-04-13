@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/cities_filter_dialog.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 
 class FiltersScreen extends StatefulWidget {
@@ -20,12 +20,13 @@ enum PriceSort { expensive, cheap }
 enum AccountKind { all, private, business }
 
 class _FiltersScreenState extends State<FiltersScreen> {
-  Set<String> _selectedCity = {'Мариуполь'};
+  Set<String> _selectedCity = {'Выберете город'};
   Set<String> _selectedCategories = {}; // «Выберите категорию»
   DateSort? _dateSort = DateSort.newest;
   PriceSort? _priceSort;
   AccountKind _account = AccountKind.all; // 👈 По умолчанию кнопка "Все" нажата
   List<Map<String, dynamic>> _cities = [];
+  bool _showCategoryError = false;  // 🔴 Показывать ошибку валидации категории
 
   @override
   void initState() {
@@ -36,17 +37,26 @@ class _FiltersScreenState extends State<FiltersScreen> {
 
   void _reset() async {
     setState(() {
-      _selectedCity = {'Мариуполь'};
+      _selectedCity = {'Выберете город'};
       _selectedCategories = {};
       _dateSort = DateSort.newest;
       _priceSort = null;
       _account = AccountKind.all; // 👈 При сбросе тоже выбираем "Все"
+      _showCategoryError = false;  // 🔴 Очистить ошибку при сбросе
     });
     await HiveService.saveSelectedCity('г. Мариуполь. ДНР');
   }
 
   void _submit() async {
-    // Сохранить выбранный город
+    // 🔴 Проверяем валидность категории
+    if (_selectedCategories.isEmpty) {
+      setState(() {
+        _showCategoryError = true;
+      });
+      return;  // Не закрываем экран пока не выбрана категория
+    }
+
+    // ✅ Категория выбрана, сохраняем выбранный город
     if (_selectedCity.isNotEmpty) {
       await HiveService.saveSelectedCity(_selectedCity.first);
     }
@@ -160,23 +170,21 @@ class _FiltersScreenState extends State<FiltersScreen> {
                     color: textSecondary,
                   ),
                   onTap: () {
-                    if (_cities.isNotEmpty) {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return CitySelectionDialog(
-                            title: 'Ваш город',
-                            options: _cities.map((c) => c['name'] as String).toList(),
-                            selectedOptions: _selectedCity,
-                            onSelectionChanged: (Set<String> selected) {
-                              setState(() {
-                                _selectedCity = selected;
-                              });
-                            },
-                          );
-                        },
-                      );
-                    }
+                    // ✅ Новый диалог загружает города с API
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return CitiesFilterDialog(
+                          title: 'Выберете город',
+                          selectedCities: _selectedCity,
+                          onSelectionChanged: (Set<String> selected) {
+                            setState(() {
+                              _selectedCity = selected;
+                            });
+                          },
+                        );
+                      },
+                    );
                   },
                 ),
               ),
@@ -185,38 +193,57 @@ class _FiltersScreenState extends State<FiltersScreen> {
               // Выбор категории
               Padding(
                 padding: const EdgeInsets.only(left: 25.0, right: 25.0),
-                child: _buildDropdown(
-                  label: 'Выберите категорию',
-                  hint: _selectedCategories.isEmpty
-                      ? 'Выберите категорию'
-                      : _selectedCategories.join(', '),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_right_outlined,
-                    color: textSecondary,
-                  ),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return SelectionDialog(
-                          title: 'Выберите категорию',
-                          options: const [
-                            'Недвижимость',
-                            'Авто и мото',
-                            'Работа',
-                            'Подработка',
-                          ],
-                          selectedOptions: _selectedCategories,
-                          onSelectionChanged: (Set<String> selected) {
-                            setState(() {
-                              _selectedCategories = selected;
-                            });
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDropdown(
+                      label: 'Выберите категорию',
+                      hint: _selectedCategories.isEmpty
+                          ? 'Выберите категорию'
+                          : _selectedCategories.join(', '),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_right_outlined,
+                        color: textSecondary,
+                      ),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return SelectionDialog(
+                              title: 'Выберите категорию',
+                              options: const [
+                                'Недвижимость',
+                                'Авто и мото',
+                                'Работа',
+                                'Подработка',
+                              ],
+                              selectedOptions: _selectedCategories,
+                              onSelectionChanged: (Set<String> selected) {
+                                setState(() {
+                                  _selectedCategories = selected;
+                                  _showCategoryError = false;  // 🔴 Скрыть ошибку при выборе
+                                });
+                              },
+                              allowMultipleSelection: true,
+                            );
                           },
-                          allowMultipleSelection: true,
                         );
                       },
-                    );
-                  },
+                    ),
+                    // 🔴 Сообщение об ошибке
+                    if (_showCategoryError)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text(
+                          'Выберите категорию',
+                          style: TextStyle(
+                            color: Color(0xFFFF4444),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
@@ -346,9 +373,10 @@ class _FiltersScreenState extends State<FiltersScreen> {
           height: 52,
           width: double.infinity,
           child: ElevatedButton(
+            // ✅ Кнопка всегда активна
             onPressed: _submit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: activeIconColor,
+              backgroundColor: activeIconColor,  // Всегда голубая
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
