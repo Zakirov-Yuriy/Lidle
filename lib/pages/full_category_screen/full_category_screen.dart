@@ -19,7 +19,21 @@ import 'universal_browse_category_screen.dart';
 class FullCategoryScreen extends StatefulWidget {
   static const String routeName = '/full-category';
 
-  const FullCategoryScreen({super.key});
+  /// Флаг: пришли ли мы с экрана filters_screen
+  final bool isFromFiltersScreen;
+  
+  /// Предварительно выбранный город при переходе с filters_screen
+  final String? preSelectedCity;
+  
+  /// Callback при выборе категории и подкатегории
+  final Function(String categoryName, int categoryId)? onCategorySelected;
+
+  const FullCategoryScreen({
+    super.key,
+    this.isFromFiltersScreen = false,
+    this.preSelectedCity,
+    this.onCategorySelected,
+  });
 
   @override
   State<FullCategoryScreen> createState() => _FullCategoryScreenState();
@@ -171,6 +185,9 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                                     UniversalBrowseCategoryScreen(
                                       catalogId: catalog.id,
                                       catalogName: catalog.name,
+                                      isFromFiltersScreen: widget.isFromFiltersScreen,
+                                      preSelectedCity: widget.preSelectedCity,
+                                      onCategorySelected: widget.onCategorySelected,
                                     ),
                               ),
                             );

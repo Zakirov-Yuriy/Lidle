@@ -12,6 +12,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_rent_listings_screen.dart';
 import 'package:lidle/pages/full_category_screen/map_screen.dart';
+import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
 import 'package:lidle/core/logger.dart';
 
 /// ============================================================
@@ -31,12 +32,24 @@ class UniversalBrowseCategoryScreen extends StatefulWidget {
   /// Уровень вложенности для отладки
   final int level;
 
+  /// Флаг: пришли ли мы с экрана filters_screen
+  final bool isFromFiltersScreen;
+  
+  /// Предварительно выбранный город при переходе с filters_screen
+  final String? preSelectedCity;
+  
+  /// Callback при выборе категории и подкатегории
+  final Function(String categoryName, int categoryId)? onCategorySelected;
+
   const UniversalBrowseCategoryScreen({
     super.key,
     this.catalogId,
     this.category,
     this.catalogName,
     this.level = 0,
+    this.isFromFiltersScreen = false,
+    this.preSelectedCity,
+    this.onCategorySelected,
   }) : assert(
          (catalogId != null && catalogName != null) || category != null,
          'Необходимо указать либо catalogId с catalogName, либо category',
@@ -115,6 +128,21 @@ class _UniversalBrowseCategoryScreenState
   void _navigateToListings(Category category) {
     final categoryName = category.name.toLowerCase();
 
+    // 🎯 Если переход с filters_screen, используем RealEstateListingsFilterScreen
+    if (widget.isFromFiltersScreen) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RealEstateListingsFilterScreen(
+            categoryId: category.id,
+            categoryName: category.name,
+            preSelectedCity: widget.preSelectedCity,
+          ),
+        ),
+      );
+      return;
+    }
+
     // Логика определения типа экрана на основе названия категории
     // (аналогично логике из FullRealEstateApartmentsScreen)
     if (categoryName.contains('продажа') &&
@@ -129,6 +157,7 @@ class _UniversalBrowseCategoryScreenState
             categoryId: category.id,
             categoryName: category.name,
             isFromFullCategory: true,
+            preSelectedCity: widget.preSelectedCity,
           ),
         ),
       );
@@ -152,6 +181,7 @@ class _UniversalBrowseCategoryScreenState
             categoryId: category.id,
             categoryName: category.name,
             isFromFullCategory: true,
+            preSelectedCity: widget.preSelectedCity,
           ),
         ),
       );
@@ -164,6 +194,7 @@ class _UniversalBrowseCategoryScreenState
             categoryId: category.id,
             categoryName: category.name,
             isFromFullCategory: true,
+            preSelectedCity: widget.preSelectedCity,
           ),
         ),
       );

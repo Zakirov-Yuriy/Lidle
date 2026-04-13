@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'dart:async';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+import 'package:lidle/widgets/dialogs/cities_filter_dialog.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/j_calendar/j_calendar_widget.dart';
 import 'package:lidle/widgets/components/k_calendar/k_calendar_widget.dart';
@@ -14,6 +15,7 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/core/logger.dart';
 
@@ -42,12 +44,16 @@ class RealEstateListingsFilterScreen extends StatefulWidget {
   final int categoryId;
   final String categoryName;
   final Map<String, dynamic>? appliedFilters;
+  
+  /// Предварительно выбранный город при переходе с filters_screen
+  final String? preSelectedCity;
 
   const RealEstateListingsFilterScreen({
     super.key,
     required this.categoryId,
     required this.categoryName,
     this.appliedFilters,
+    this.preSelectedCity,
   });
 
   @override
@@ -95,6 +101,10 @@ class _RealEstateListingsFilterScreenState
     }
     // Загрузить сохраненные фильтры для этой категории
     _loadSavedCategoryFilters();
+    
+    // 🎯 НЕ вызываем _initializePreSelectedCity() здесь!
+    // Города еще не загружены. Инициализация произойдет в _loadAllCitiesFromAllRegions()
+    // когда города будут загружены
   }
 
   @override
@@ -103,6 +113,168 @@ class _RealEstateListingsFilterScreenState
       controller.dispose();
     }
     super.dispose();
+  }
+
+  /// 🎯 Инициализирует город из параметра preSelectedCity или из Service
+  /// Вызывается в initState если город передан с экрана filters_screen
+  void _initializePreSelectedCity([String? cityFromService]) {
+    int attempts = 0;
+    final selectedCityName = cityFromService ?? widget.preSelectedCity;
+    
+    if (selectedCityName == null || selectedCityName.isEmpty) {
+      log.d('⚠️  _initializePreSelectedCity: No city to initialize');
+      return;
+    }
+
+    log.d('\n🎯 ═══════════════════════════════════════');
+    log.d('🎯 _initializePreSelectedCity() - STARTING');
+    log.d('🎯 Looking for city: "$selectedCityName"');
+    log.d('🎯 Cities available: ${_cities.length}');
+    log.d('🎯 ═══════════════════════════════════════');
+    
+    final timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      attempts++;
+      
+      if (_cities.isEmpty) {
+        if (attempts == 1) {
+          log.d('⏳ Attempt $attempts: Waiting for cities to load...');
+        }
+        return;
+      }
+      
+      // 🎯 ПЕРВАЯ ПОПЫТКА - выводим ВСЕ доступные города для диагностики
+      if (attempts == 1) {
+        log.d('\n📋 ═══════════════════════════════════════');
+        log.d('📋 AVAILABLE CITIES (${_cities.length} total):');
+        log.d('📋 Searching for: "$selectedCityName"');
+        log.d('📋 ═══════════════════════════════════════');
+        
+        // 1. Выводим все города с визуальными маркерами
+        for (int i = 0; i < _cities.length; i++) {
+          final cityName = _cities[i]['name'].toString();
+          final cityId = _cities[i]['id'];
+          
+          // 3 уровня маркеров для быстрой диагностики
+          String marker = '';
+          
+          // Уровень 1: Точное совпадение
+          if (cityName.toLowerCase() == selectedCityName.toLowerCase()) {
+            marker = '✅ EXACT MATCH!';
+          }
+          // Уровень 2: Содержит или содержится в
+          else if (cityName.toLowerCase().contains(selectedCityName.toLowerCase()) ||
+                   selectedCityName.toLowerCase().contains(cityName.toLowerCase())) {
+            marker = '⭐ SIMILAR';
+          }
+          // Уровень 3: После удаления префикса
+          else {
+            final cleanCityName = cityName.replaceAll(RegExp(r'^(пгт\.|г\.|с\.|д\.)\s*'), '').toLowerCase().trim();
+            final cleanSearchName = selectedCityName.replaceAll(RegExp(r'^(пгт\.|г\.|с\.|д\.)\s*'), '').toLowerCase().trim();
+            if (cleanCityName == cleanSearchName) {
+              marker = '🔄 PREFIX_MATCH';
+            }
+          }
+          
+          final markerPad = marker.isEmpty ? '   ' : marker;
+          log.d('[$i] $markerPad | ID=$cityId | "$cityName"');
+        }
+        
+        log.d('📋 ═══════════════════════════════════════');
+        log.d('📋 Legend: ✅=EXACT | ⭐=SIMILAR | 🔄=PREFIX_REMOVED\n');
+      }
+      
+      // 🎯 Стратегия поиска: точное совпадение → удаление префиксов → partial match
+      int cityIndex = -1;
+      String matchType = '';
+      String debugInfo = '';
+      
+      // 1️⃣ Точное совпадение
+      cityIndex = _cities.indexWhere(
+        (c) => c['name'].toString().toLowerCase() == selectedCityName.toLowerCase(),
+      );
+      
+      if (cityIndex >= 0) {
+        matchType = 'EXACT';
+        debugInfo = '${_cities[cityIndex]['name']} == $selectedCityName';
+      } else {
+        // 2️⃣ Удаляем префиксы (пгт., г., с., д.) и ищем снова
+        final cleanSearchName = selectedCityName
+            .replaceAll(RegExp(r'^(пгт\.|г\.|с\.|д\.)\s*'), '')
+            .toLowerCase()
+            .trim();
+        
+        if (cleanSearchName.isNotEmpty && cleanSearchName != selectedCityName.toLowerCase()) {
+          cityIndex = _cities.indexWhere(
+            (c) {
+              final cleanCityName = c['name']
+                  .toString()
+                  .replaceAll(RegExp(r'^(пгт\.|г\.|с\.|д\.)\s*'), '')
+                  .toLowerCase()
+                  .trim();
+              return cleanCityName == cleanSearchName;
+            },
+          );
+          
+          if (cityIndex >= 0) {
+            matchType = 'PREFIX_REMOVED';
+            debugInfo = 'Removed prefix: "$selectedCityName" → "$cleanSearchName" matched "${_cities[cityIndex]['name']}"';
+          }
+        }
+      }
+      
+      // 3️⃣ Partial match как последняя попытка
+      if (cityIndex < 0) {
+        cityIndex = _cities.indexWhere(
+          (c) {
+            final cityName = c['name'].toString().toLowerCase();
+            return cityName.contains(selectedCityName.toLowerCase()) ||
+                   selectedCityName.toLowerCase().contains(cityName);
+          },
+        );
+        
+        if (cityIndex >= 0) {
+          matchType = 'PARTIAL';
+          debugInfo = 'Partial match: found "${_cities[cityIndex]['name']}"';
+        }
+      }
+      
+      // Результат
+      if (cityIndex >= 0) {
+        setState(() {
+          _selectedCity = {_cities[cityIndex]['name'] as String};
+          _selectedCityId = _cities[cityIndex]['id'] as int?;
+        });
+        
+        log.d('✅ City found after $attempts attempts!');
+        log.d('   Match type: $matchType');
+        log.d('   Searched for: "$selectedCityName"');
+        log.d('   Found: "${_cities[cityIndex]['name']}" (ID: ${_cities[cityIndex]['id']})');
+        log.d('   Debug: $debugInfo');
+        log.d('🎯 ═══════════════════════════════════════\n');
+        
+        timer.cancel();
+      } else if (attempts >= 300) {
+        // Максимум 30 секунд поиска
+        log.d('⚠️  City NOT found in loaded list!');
+        log.d('⚠️  Searched for: "$selectedCityName"');
+        log.d('⚠️  Total cities loaded: ${_cities.length}');
+        log.d('⚠️  ');
+        log.d('⚠️  USING FALLBACK: Setting city text directly without ID');
+        log.d('⚠️  City text: "$selectedCityName"');
+        log.d('⚠️  Note: City ID will be null - only text will be displayed');
+        log.d('⚠️  Reason: City not in API list (may be from another region)');
+        log.d('⚠️  ');
+        log.d('🎯 ═══════════════════════════════════════\n');
+        
+        // 🎯 FALLBACK: Установляем город как текст, без ID
+        setState(() {
+          _selectedCity = {selectedCityName};
+          _selectedCityId = null; // Нет ID в списке
+        });
+        
+        timer.cancel();
+      }
+    });
   }
 
   Future<void> _loadFilters() async {
@@ -845,54 +1017,38 @@ class _RealEstateListingsFilterScreenState
         _buildSelector(
           _selectedCity.isEmpty ? "Выберите город" : _selectedCity.first,
           onTap: () {
-            if (_cities.isNotEmpty) {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return CitySelectionDialog(
-                    title: 'Выберите город',
-                    options: _cities.map((c) => c['name'] as String).toList(),
-                    selectedOptions: _selectedCity,
-                    onSelectionChanged: (Set<String> selected) {
-                      if (selected.isNotEmpty) {
-                        final selectedCityName = selected.first;
-                        final cityIndex = _cities.indexWhere(
-                          (c) => c['name'] == selectedCityName,
-                        );
-
-                        int? cityId;
-                        if (cityIndex >= 0) {
-                          cityId = _cities[cityIndex]['id'] as int?;
+            // 🎯 Используем CitiesFilterDialog как на filters_screen
+            // Она автоматически загружает города с API и показывает их в диалоге
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return CitiesFilterDialog(
+                  title: 'Выберите город',
+                  selectedCities: _selectedCity,
+                  onSelectionChanged: (Set<String> selected) {
+                    if (selected.isNotEmpty) {
+                      final selectedCityName = selected.first;
+                      
+                      // 🎯 Если город найден в _cities, берем его ID
+                      int? cityId;
+                      for (final city in _cities) {
+                        if (city['name'] == selectedCityName) {
+                          cityId = city['id'] as int?;
+                          break;
                         }
-
-                        setState(() {
-                          _selectedCity = selected;
-                          _selectedCityId = cityId;
-                        });
-
-                        log.d('✅ Выбран город: $selectedCityName (ID: $cityId)');
                       }
-                    },
-                  );
-                },
-              );
-            } else if (_citiesLoading) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('⏳ Города загружаются...')),
+
+                      setState(() {
+                        _selectedCity = selected;
+                        _selectedCityId = cityId;
+                      });
+
+                      log.d('✅ Выбран город: $selectedCityName (ID: $cityId)');
+                    }
+                  },
                 );
-              }
-            } else {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      '❌ Города не найдены. Проверьте подключение.',
-                    ),
-                  ),
-                );
-              }
-            }
+              },
+            );
           },
           showArrow: true,
         ),
@@ -2622,6 +2778,28 @@ class _RealEstateListingsFilterScreenState
           log.d('⚠️  На городов не найдено');
         }
         log.d('🔍 ═══════════════════════════════════════\n');
+        
+        // 🎯 ВАЖНО: Инициализируем город ПОСЛЕ загрузки городов списка
+        if (citiesMap.isNotEmpty) {
+          // Получаем город из параметра или из Service
+          String? cityToInitialize;
+          
+          if (widget.preSelectedCity != null && widget.preSelectedCity!.isNotEmpty) {
+            cityToInitialize = widget.preSelectedCity;
+          } else {
+            final cityService = SelectedCityService();
+            if (cityService.isFromFiltersScreen && 
+                cityService.selectedCity != null && 
+                cityService.selectedCity!.isNotEmpty) {
+              cityToInitialize = cityService.selectedCity!;
+            }
+          }
+          
+          if (cityToInitialize != null && cityToInitialize.isNotEmpty) {
+            log.d('🎯 Initializing city after cities loaded: $cityToInitialize');
+            _initializePreSelectedCity(cityToInitialize);
+          }
+        }
       }
     } catch (e) {
       log.d('❌ Ошибка при загрузке городов из регионов: $e');

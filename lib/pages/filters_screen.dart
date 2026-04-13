@@ -3,6 +3,8 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/dialogs/cities_filter_dialog.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+import 'package:lidle/services/selected_city_service.dart';
 
 class FiltersScreen extends StatefulWidget {
   static const routeName = '/filters';
@@ -206,27 +208,32 @@ class _FiltersScreenState extends State<FiltersScreen> {
                         color: textSecondary,
                       ),
                       onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return SelectionDialog(
-                              title: 'Выберите категорию',
-                              options: const [
-                                'Недвижимость',
-                                'Авто и мото',
-                                'Работа',
-                                'Подработка',
-                              ],
-                              selectedOptions: _selectedCategories,
-                              onSelectionChanged: (Set<String> selected) {
+                        // 🎯 Переход на экран выбора категорий из full_category_screen
+                        // с передачей выбранного города через Service
+                        final selectedCity = _selectedCity.first;
+                        
+                        // Сохраняем город в Service для использования на других экранах
+                        SelectedCityService().setSelectedCity(
+                          selectedCity,
+                          isFromFiltersScreen: true,
+                        );
+
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => FullCategoryScreen(
+                              isFromFiltersScreen: true,
+                              preSelectedCity: selectedCity,
+                              onCategorySelected: (categoryName, categoryId) {
+                                // После выбора категории и подкатегории,
+                                // вернёмся с выбранной категорией
                                 setState(() {
-                                  _selectedCategories = selected;
-                                  _showCategoryError = false;  // 🔴 Скрыть ошибку при выборе
+                                  _selectedCategories = {categoryName};
+                                  _showCategoryError = false;
                                 });
                               },
-                              allowMultipleSelection: true,
-                            );
-                          },
+                            ),
+                          ),
                         );
                       },
                     ),

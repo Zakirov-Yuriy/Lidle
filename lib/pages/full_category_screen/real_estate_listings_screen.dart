@@ -16,6 +16,7 @@ import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen
 import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/selected_city_service.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/home_page.dart';
@@ -40,6 +41,9 @@ class RealEstateListingsScreen extends StatefulWidget {
   final String? categoryName; // Имя категории для отображения в заголовке
   final bool
   isFromFullCategory; // true если переход с full_category_screen, false если с home_page
+  
+  /// Предварительно выбранный город при переходе с filters_screen
+  final String? preSelectedCity;
 
   const RealEstateListingsScreen({
     super.key,
@@ -47,6 +51,7 @@ class RealEstateListingsScreen extends StatefulWidget {
     this.catalogId,
     this.categoryName,
     this.isFromFullCategory = false,
+    this.preSelectedCity,
   });
 
   @override
@@ -83,6 +88,24 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   void initState() {
     super.initState();
     _selectedSortOptions.add('Сначала новые');
+    
+    // 🎯 Инициализировать город из preSelectedCity если он передан
+    if (widget.preSelectedCity != null && widget.preSelectedCity!.isNotEmpty) {
+      _selectedCityName = widget.preSelectedCity!;
+      log.d('✅ City initialized from widget parameter: $_selectedCityName');
+    } else {
+      // 🎯 Пытаемся получить город из Service если есть
+      final cityService = SelectedCityService();
+      if (cityService.isFromFiltersScreen && 
+          cityService.selectedCity != null && 
+          cityService.selectedCity!.isNotEmpty) {
+        _selectedCityName = cityService.selectedCity!;
+        log.d('✅ City initialized from Service: $_selectedCityName');
+      } else {
+        log.d('⚠️  No city provided via parameter or Service, using default: $_selectedCityName');
+      }
+    }
+    
     _loadAttributes();
     _loadAdverts();
     _updateSelectedIndex();
@@ -364,9 +387,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       }
       log.d('═══════════════════════════════════════════════════════════════\n');
 
+      // ✅ ФИЛЬТРАЦИЯ ПО ГОРОДУ: Всегда добавляем выбранный город в фильтры
+      final filtersWithCity = Map<String, dynamic>.from(_appliedFilters);
+      if (_selectedCityName.isNotEmpty) {
+        filtersWithCity['city_name'] = _selectedCityName;
+        log.d('🟢 CITY FILTER ADDED: $_selectedCityName');
+      }
+
       var sortedNewListings = _applyClientSideFiltering(
         listingsToFilter,
-        _appliedFilters,
+        filtersWithCity,
       );
 
       // 🔀 КЛИЕНТСКАЯ СОРТИРОВКА
@@ -833,6 +863,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                       categoryId: widget.categoryId!,
                       categoryName: widget.categoryName ?? 'Недвижимость',
                       appliedFilters: _appliedFilters,
+                      preSelectedCity: _selectedCityName,
                     ),
                   ),
                 ).then((filters) {
