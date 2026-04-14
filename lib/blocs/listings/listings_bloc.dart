@@ -391,7 +391,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           operationKey,
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // 🔥 ТАЙМЕР: Зафиксируем время загрузки перед ошибкой
       LoadingTimerService().stopLoadingTimer(
         operationKey,
@@ -400,12 +400,18 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       
       // 🔴 СЛОЙ 3: Преобразуем ошибку в понятное сообщение
       final errorMessage = _getErrorMessage(e);
-      // log.e('❌ Ошибка загрузки объявлений: $errorMessage', error: e);
-      // Скрываем ошибки по сети в production
-      emit(ListingsError(message: 'Unable to load listings'));
-    } catch (e) {
-      // Logcat show:
-      // log.e('❌ Неожиданная ошибка в LoadListingsEvent: $e');
+      
+      // 🔴 Логируем РЕАЛЬНУЮ ошибку для диагностики
+      log.e(
+        '❌ КРИТИЧЕСКАЯ ОШИБКА в LoadListingsEvent:\n'
+        '   Сообщение: $errorMessage\n'
+        '   Тип: ${e.runtimeType}\n'
+        '   Ошибка: $e',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      
+      // Показываем пользователю понятное сообщение или общую ошибку
       emit(ListingsError(message: 'Unable to load listings'));
     } finally {
       _isLoadingListings = false;

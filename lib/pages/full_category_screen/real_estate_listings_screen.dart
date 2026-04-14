@@ -90,6 +90,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     _selectedSortOptions.add('Сначала новые');
     
     // 🎯 Инициализировать город из preSelectedCity если он передан
+    String previousCity = _selectedCityName;
     if (widget.preSelectedCity != null && widget.preSelectedCity!.isNotEmpty) {
       _selectedCityName = widget.preSelectedCity!;
       log.d('✅ City initialized from widget parameter: $_selectedCityName');
@@ -101,9 +102,17 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           cityService.selectedCity!.isNotEmpty) {
         _selectedCityName = cityService.selectedCity!;
         log.d('✅ City initialized from Service: $_selectedCityName');
+        previousCity = ''; // Помечаем как новый город из сервиса
       } else {
         log.d('⚠️  No city provided via parameter or Service, using default: $_selectedCityName');
       }
+    }
+    
+    // 🟢 Если город изменился - инвалидируем кеш
+    if (_selectedCityName != previousCity) {
+      log.d('🗑️  Город изменился с "$previousCity" на "$_selectedCityName" - очищаем кеш');
+      _cacheTimestamps.clear();
+      _listingsCache.clear();
     }
     
     _loadAttributes();
@@ -125,7 +134,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     final filters = _appliedFilters.entries
         .map((e) => '${e.key}=${e.value}')
         .join('&');
-    return 'listings_${widget.categoryId}_${widget.catalogId}_${sort ?? _currentSort}_$filters';
+    // 🟢 ВАЖНО: Добавляем город в ключ кеша, чтобы при смене города кеш инвалидировался
+    return 'listings_${widget.categoryId}_${widget.catalogId}_${sort ?? _currentSort}_${_selectedCityName}_$filters';
   }
 
   /// Проверяет является ли кеш валидным
@@ -320,21 +330,46 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         }
       }
 
+      // 🟢 ВАЖНО: НЕ отправляем город в API (он его игнорирует)
+      // Будем фильтровать по городу на КЛИЕНТЕ используя address field!
+      final filtersForApi = Map<String, dynamic>.from(_appliedFilters);
+      log.d('🌍 CITY FILTERING: Будет применены КЛИЕНТСКАЯ фильтрация по городу: "$_selectedCityName"');
+
       // Используем переданные параметры как есть:
       // - Если catalogId передан → используем для фильтрации по каталогу
       // - Если categoryId передан (и catalogId == null) → используем для фильтрации по подкатегории
-      // - Применённые фильтры передаём в API
+      // - Применённые фильтры ПЛЮС ГОРОД передаём в API
+
+      log.d('\n🔶 ═══════════════════════════════════════════════════════════════');
+      log.d('🔶 API REQUEST PARAMETERS:');
+      log.d('   categoryId: ${widget.categoryId}');
+      log.d('   catalogId: ${widget.catalogId}');
+      log.d('   sort: $sort');
+      log.d('   filters: ${filtersForApi.isNotEmpty ? filtersForApi : "null"}');
+      log.d('   _selectedCityName: $_selectedCityName');
+      log.d('🔶 ═══════════════════════════════════════════════════════════════\n');
 
       var response = await ApiService.getAdverts(
         categoryId: widget.categoryId,
         catalogId: widget.catalogId,
         sort: sort,
-        filters: _appliedFilters.isNotEmpty ? _appliedFilters : null,
+        filters: filtersForApi.isNotEmpty ? filtersForApi : null,
         page: isNextPage ? _currentPage + 1 : 1,
         limit: 20,
         token: token,
-        withAttributes: _appliedFilters.isNotEmpty, // 🟢 Запрашиваем атрибуты если есть фильтры для клиентской фильтрации
+        withAttributes: filtersForApi.isNotEmpty, // 🟢 Запрашиваем атрибуты если есть фильтры для клиентской фильтрации
       );
+
+      log.d('\n🔶 API RESPONSE:');
+      log.d('   Listings received: ${response.data.length}');
+      if (response.data.isNotEmpty) {
+        log.d('   First 5 addresses:');
+        for (int i = 0; i < response.data.take(5).length; i++) {
+          final advert = response.data[i];
+          log.d('      [$i] ID=${advert.id}, address="${advert.address}"');
+        }
+      }
+      log.d('🔶 ═══════════════════════════════════════════════════════════════\n');
 
       // ✅ ОПТИМИЗАЦИЯ: Убрали fallback загрузку 100 объявлений!
       // Если API вернул 0 результатов - просто показываем это пользователю.
@@ -387,15 +422,18 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       }
       log.d('═══════════════════════════════════════════════════════════════\n');
 
-      // ✅ ФИЛЬТРАЦИЯ ПО ГОРОДУ: Всегда добавляем выбранный город в фильтры
-      final filtersWithCity = Map<String, dynamic>.from(_appliedFilters);
+      // ✅ ФИЛЬТРАЦИЯ ПО ГОРОДУ: КЛИЕНТСКАЯ!
+      // API не поддерживает фильтрацию по городу, поэтому делаем это на клиенте
+      var result = listingsToFilter;
       if (_selectedCityName.isNotEmpty) {
-        filtersWithCity['city_name'] = _selectedCityName;
-        log.d('🟢 CITY FILTER ADDED: $_selectedCityName');
+        result = _filterByCity(result, _selectedCityName);
       }
+      
+      final filtersWithCity = Map<String, dynamic>.from(_appliedFilters);
+      // Город больше НЕ добавляем сюда, так как фильтруем его на клиенте перед остальными фильтрами
 
       var sortedNewListings = _applyClientSideFiltering(
-        listingsToFilter,
+        result,
         filtersWithCity,
       );
 
@@ -1346,11 +1384,24 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       return listings;
     }
 
+    // DEBUG: Проверяем наличие ID 3 в начале
+    final has3AtStart = listings.any((l) => l.id == 3);
+
     log.d(
       '\n🟢 ═══════════════════════════════════════════════════════════════',
     );
     log.d('🟢 CLIENT-SIDE FILTERING STARTED');
     log.d('🟢 Initial listings: ${listings.length}');
+    
+    // DEBUG: Проверяем наличие ID 3
+    if (has3AtStart) {
+      final listing3 = listings.firstWhere((l) => l.id == 3);
+      log.d('🔍 ID=3 присутствует на входе');
+      log.d('   - location: ${listing3.location}');
+      log.d('   - city: ${listing3.city}');
+      log.d('   - characteristics: ${listing3.characteristics.keys.toList()}');
+    }
+    
     log.d('🟢 Filters to apply: ${filters.keys.toList()}');
     log.d(
       '🟢 ═══════════════════════════════════════════════════════════════\n',
@@ -1369,12 +1420,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       log.d('⏭️  SKIPPING CLIENT-SIDE FILTERING - API ALREADY FILTERED');
       log.d('   API фильтры уже применены на сервере, используем результаты как есть\n');
     } else {
-      // 1️⃣ ФИЛЬТРАЦИЯ ПО ГОРОДУ
-      if (filters.containsKey('city_name') &&
-          filters['city_name'] != null &&
-          (filters['city_name'] as String).isNotEmpty) {
-        result = _filterByCity(result, filters['city_name'] as String);
-      }
+      // 1️⃣ ФИЛЬТРАЦИЯ ПО ГОРОДУ: УЖЕ СДЕЛАНА ПЕРЕД этим методом!
+      // Город фильтруется в _loadAdverts() на клиенте перед вызовом этого метода
+      // поэтому здесь нам не нужно его обрабатывать
 
       // 2️⃣ ФИЛЬТРАЦИЯ ПО value_selected АТРИБУТАМ (Ландшафт, Инфраструктура и т.д.)
       if (filters.containsKey('value_selected') &&
@@ -1428,6 +1476,17 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
     log.d('🟢 CLIENT-SIDE FILTERING COMPLETED');
     log.d('🟢 Final listings: ${result.length}');
+    
+    // DEBUG: Проверяем где закончилось ID 3
+    if (has3AtStart) {
+      final still3 = result.any((l) => l.id == 3);
+      if (still3) {
+        log.d('✅ ID=3 ОСТАЛАСЬ после всех фильтров');
+      } else {
+        log.d('❌ ID=3 БЫ ИСКЛЮЧЕНА на этапе клиентской фильтрации!');
+      }
+    }
+    
     log.d(
       '🟢 ═══════════════════════════════════════════════════════════════\n',
     );
@@ -1437,6 +1496,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
   /// Фильтрует объявления по названию города
   List<Listing> _filterByCity(List<Listing> listings, String cityName) {
+    log.d('\n🟢 ════════════════════════════════════════════════════════════════');
     log.d('🟢 FILTER BY CITY: "$cityName"');
     log.d('   BEFORE: ${listings.length} listings');
 
@@ -1445,10 +1505,26 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       if (!matches) {
         log.d('      ❌ ID=${listing.id}: ${listing.location}');
       }
+      
+      // DEBUG для ID 3
+      if (listing.id == 3) {
+        log.d('   🔍 ID=3: location="${listing.location}", startsWith("$cityName")? $matches');
+      }
+      
       return matches;
     }).toList();
 
-    log.d('   AFTER: ${filtered.length} listings\n');
+    log.d('   AFTER: ${filtered.length} listings');
+    
+    // Проверяем прошла ли ID 3 фильтр по городу
+    if (listings.any((l) => l.id == 3)) {
+      if (filtered.any((l) => l.id == 3)) {
+        log.d('   ✅ ID=3 ПРОШЛО фильтр по городу');
+      } else {
+        log.d('   ❌ ID=3 НЕ ПРОШЛО фильтр по городу и было ИСКЛЮЧЕНО');
+      }
+    }
+    log.d('🟢 ════════════════════════════════════════════════════════════════\n');
     return filtered;
   }
 
@@ -1503,7 +1579,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         final characteristic = listing.characteristics[attrIdStr];
 
         // DEBUG для этого конкретного объявления
-        if (listing.id == 104 || listing.id == 103) {
+        if (listing.id == 3 || listing.id == 104 || listing.id == 103) {
           log.d('   🔍🔍 ID=${listing.id}, атрибут $attrIdStr:');
           log.d('      От фильтра ожидаем: $selectedValueIds (type=${selectedValueIds.runtimeType})');
           log.d('      В объявлении: $characteristic (type=${characteristic?.runtimeType})');
@@ -1512,8 +1588,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         // 🔴 ВАЖНО: Если нет характеристики - ИСКЛЮЧАЕМ объявление
         // (не пропускаем фильтр, а полностью исключаем объявление)
         if (characteristic == null) {
-          if (listing.id == 104 || listing.id == 103) {
-            log.d('      ❌ БЕЗ ХАРАКТЕРИСТИКИ\n');
+          if (listing.id == 3 || listing.id == 104 || listing.id == 103) {
+            log.d('      ❌ БЕЗ ХАРАКТЕРИСТИКИ - ИСКЛЮЧЕНО\n');
           }
           return false; // Объявление НЕ прходит фильтр
         }
@@ -1529,7 +1605,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         // Нормализуем selectedValueIds в Set<String> (значения из фильтра могут быть ID или названия)
         final selectedIds = _normalizeToSet(selectedValueIds);
 
-        if (listing.id == 104 || listing.id == 103) {
+        if (listing.id == 3 || listing.id == 104 || listing.id == 103) {
           log.d('      Основное значение: $characteristicSet');
           log.d('      Все значения: $allValues');
           log.d('      Ожидаемые значения (нормализованные): $selectedIds');
@@ -1553,15 +1629,21 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           hasMatch = allValues.any((val) => selectedIds.contains(val));
         }
 
-        if (listing.id == 104 || listing.id == 103) {
+        if (listing.id == 3 || listing.id == 104 || listing.id == 103) {
           log.d('      Результат: ${hasMatch ? '✅ СОВПАДАЕТ' : '❌ НЕ СОВПАДАЕТ'}\n');
         }
 
         if (!hasMatch) {
+          if (listing.id == 3 || listing.id == 104 || listing.id == 103) {
+            log.d('   ⛔ ОБЪЯВЛЕНИЕ ИСКЛЮЧЕНО: не совпадает фильтр атрибута $attrIdStr\n');
+          }
           return false;
         }
       }
 
+      if (listing.id == 3 || listing.id == 104 || listing.id == 103) {
+        log.d('   ✅ ОБЪЯВЛЕНИЕ ПРОШЛО ВСЕ ФИЛЬТРЫ value_selected\n');
+      }
       return true;
     }).toList();
 

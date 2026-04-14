@@ -941,6 +941,18 @@ class ApiService {
         // log.d('DEBUG: Filters sent = ' + filters.toString());
       }
 
+      // 🔍 DEBUG: Логируем ответ для диагностики
+      log.i('📋 API getAdverts() response keys: ${response.keys.toList()}');
+      if (response.containsKey('data')) {
+        log.i('   - data type: ${response['data'].runtimeType}');
+        if (response['data'] is List) {
+          log.i('   - data length: ${(response['data'] as List).length}');
+        }
+      } else {
+        log.w('⚠️  ВНИМАНИЕ: API response для adverts НЕ содержит поле "data"!');
+        log.w('   - Полный ответ: $response');
+      }
+
       // DEBUG: Check how many results came back
       if (response is Map && response['data'] is List) {
         final count = (response['data'] as List).length;
@@ -948,7 +960,15 @@ class ApiService {
       }
 
       return AdvertsResponse.fromJson(response);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      log.e(
+        '❌ ОШИБКА при загрузке объявлений: $e\n'
+        '   - catalogId: $catalogId\n'
+        '   - page: $page\n'
+        '   - limit: $limit',
+        error: e,
+        stackTrace: stackTrace,
+      );
       throw Exception('Failed to load adverts: $e');
     }
   }
@@ -1079,8 +1099,26 @@ class ApiService {
   static Future<catalog_models.CatalogsResponse> getCatalogs({String? token}) async {
     try {
       final response = await get('/content/catalogs', token: token);
+      
+      // 🔍 DEBUG: Логируем сырой ответ для диагностики
+      log.i('📦 API getCatalogs() response keys: ${response.keys.toList()}');
+      if (response.containsKey('data')) {
+        log.i('   - data type: ${response['data'].runtimeType}');
+        if (response['data'] is List) {
+          log.i('   - data length: ${(response['data'] as List).length}');
+        }
+      } else {
+        log.w('⚠️  ВНИМАНИЕ: API response НЕ содержит поле "data"!');
+        log.w('   - Полный ответ: $response');
+      }
+      
       return catalog_models.CatalogsResponse.fromJson(response);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      log.e(
+        '❌ ОШИБКА при загрузке каталогов: $e',
+        error: e,
+        stackTrace: stackTrace,
+      );
       throw Exception('Failed to load catalogs: $e');
     }
   }
