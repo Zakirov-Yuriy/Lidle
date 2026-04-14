@@ -67,7 +67,7 @@ class AppConfig {
       _apiBaseUrl = 'https://dev-api.lidle.io/v1';
       _wsUrl = 'wss://dev-api.lidle.io/ws';
       _imageBaseUrl = 'https://dev-img.lidle.io';
-      _documentDomain = 'https://dev-lidle.io';
+      _documentDomain = 'https://dev.lidle.io';
     } else {
       _apiBaseUrl = 'https://api.lidle.io/v1';
       _wsUrl = 'wss://api.lidle.io/ws';
