@@ -30,6 +30,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/pages/profile_dashboard/financial_support_dialog.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -110,6 +111,11 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       _loadListingsCounts(useCache: true);
       _loadPriceOffersCount(useCache: true);
     }
+  }
+
+  /// Показывает диалоговое окно финансовой поддержки
+  void _showFinancialSupportDialog() {
+    FinancialSupportDialog.show(context);
   }
 
   /// Загрузить количество объявлений.
@@ -530,7 +536,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                     color: Color(0xFF474747),
                                     height: 8,
                                   ),
-                                  const SizedBox(height: 58),
+                                  
+                                  
+                                  const SizedBox(height: 12),
                                   Align(
                                     alignment: Alignment.centerLeft,
                                     child: Container(
@@ -544,6 +552,16 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                           context,
                                         ).pushNamed(SupportScreen.routeName),
                                       ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 12),
+                                  
+                                  // Финансовая поддержка владельца ЛИДЛЕ (адаптивная ширина)
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: _FinancialSupportCard(
+                                      onTap: _showFinancialSupportDialog,
                                     ),
                                   ),
                                 ],
@@ -864,6 +882,72 @@ class _MessageCard extends StatelessWidget {
                 color: highlight ? const Color(0xFFE3E335) : textSecondary,
                 fontSize: 10,
                 fontWeight: highlight ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return onTap != null ? GestureDetector(onTap: onTap, child: card) : card;
+  }
+}
+
+/// Виджет "Финансовая поддержка владельца ЛИДЛЕ LIDLE"
+/// Отображает информацию о программе финансовой поддержки продавцов
+class _FinancialSupportCard extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const _FinancialSupportCard({
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      decoration: BoxDecoration(
+        color: primaryBackground,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: const Color(0xFF474747)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 1.0),
+              child: RichText(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Финансовая поддержка владельца ЛИДЛЕ ',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'LIDLE',
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Text(
+              'Ваш выход - энергия для новых функций и быстро...',
+              style: const TextStyle(
+                color: textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],

@@ -18,6 +18,7 @@ import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/indoor_advertising_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/outdoor_advertising_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_property_details_screen.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/advert_qr_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/models/home_models.dart';
@@ -1484,19 +1485,72 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               ),
               const SizedBox(height: 20),
             ] else ...[
-              Text(
-                'Просмотров: ${advert.viewsCount}',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Переходов: ${advert.clickCount}',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Поделились: ${advert.shareCount}',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Просмотров: ${advert.viewsCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Переходов: ${advert.clickCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Поделились: ${advert.shareCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // QR код
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AdvertQrScreen(
+                            advertId: advert.id,
+                            advertTitle: advert.name ?? "Объявление",
+                            advertPrice: advert.price ?? "0",
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.qr_code,
+                            color: accentColor,
+                            size: 24,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'QR код',
+                            style: TextStyle(
+                              color: accentColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),

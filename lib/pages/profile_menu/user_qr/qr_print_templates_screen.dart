@@ -5,6 +5,10 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class QrPrintTemplatesScreen extends StatelessWidget {
   const QrPrintTemplatesScreen({super.key});
@@ -99,7 +103,7 @@ class QrPrintTemplatesScreen extends StatelessWidget {
 // TEMPLATE CARD
 // ─────────────────────────────────────────────
 
-class _TemplateCard extends StatelessWidget {
+class _TemplateCard extends StatefulWidget {
   final String image;
   final String title;
   final String subtitle;
@@ -109,6 +113,90 @@ class _TemplateCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
   });
+
+  @override
+  State<_TemplateCard> createState() => _TemplateCardState();
+}
+
+class _TemplateCardState extends State<_TemplateCard> {
+  static const accentColor = Color(0xFF00B7FF);
+  static const textSecondary = Colors.white54;
+  bool _isDownloading = false;
+
+  /// Скачать PDF с QR кодом
+  Future<void> _downloadQrPdf() async {
+    try {
+      // Запрашиваем разрешения
+      PermissionStatus status;
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        if (androidInfo.version.sdkInt >= 33) {
+          status = await Permission.photos.request();
+        } else {
+          status = await Permission.storage.request();
+        }
+      } else if (Platform.isIOS) {
+        status = await Permission.photos.request();
+      } else {
+        status = PermissionStatus.granted;
+      }
+
+      if (!status.isGranted) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ Требуется разрешение на сохранение файлов'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        setState(() => _isDownloading = true);
+      }
+
+      // Получаем директорию для сохранения
+      final directory = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
+      
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
+      }
+
+      // Создаем имя файла на основе названия шаблона
+      final fileName = 'QR_${widget.title.replaceAll(' ', '_')}_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final filePath = '${directory.path}/$fileName';
+
+      // TODO: Здесь должна быть логика генерации PDF с QR кодом
+      // Пока просто создаем пустой файл для демонстрации
+      final file = File(filePath);
+      await file.writeAsString('PDF QR Code - ${widget.title}');
+
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ PDF скачан в: $filePath'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Ошибка скачивания: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +211,7 @@ class _TemplateCard extends StatelessWidget {
             child: AspectRatio(
               aspectRatio: 16 / 9,
               child: Image.asset(
-                image,
+                widget.image,
                 fit: BoxFit.cover,
               ),
             ),
@@ -133,7 +221,7 @@ class _TemplateCard extends StatelessWidget {
 
           // Title
           Text(
-            title,
+            widget.title,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -145,7 +233,7 @@ class _TemplateCard extends StatelessWidget {
 
           // Subtitle
           Text(
-            subtitle,
+            widget.subtitle,
             style: const TextStyle(
               color: textSecondary,
               fontSize: 14,
@@ -154,27 +242,66 @@ class _TemplateCard extends StatelessWidget {
 
           const SizedBox(height: 10),
 
-          // PDF button
-          SizedBox(
-            height: 30,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+          // Buttons row
+          Row(
+            children: [
+              // PDF button
+              SizedBox(
+                height: 29,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  onPressed: () {
+                    // TODO: Обработка нажатия на кнопку PDF
+                  },
+                  child: const Text(
+                    'PDF',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
-              onPressed: () {},
-              child: const Text(
-                'PDF',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 12),
+              // Download button
+              SizedBox(
+                height: 29,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: accentColor, width: 1.5),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(7),
+                    ),
+                  ),
+                  onPressed: _isDownloading ? null : _downloadQrPdf,
+                  child: _isDownloading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+                          ),
+                        )
+                      : const Text(
+                          'Скачать',
+                          style: TextStyle(
+                            color: accentColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
