@@ -82,6 +82,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   int _currentPage = 1;
   int _totalPages = 1;
 
+  // Поисковая функция
+  late final TextEditingController _searchController;
+  List<Listing> _searchResults = []; // Результаты поиска
+  String _currentSearchQuery = ''; // Текущий поисковый запрос
+
   late final ScrollController _scrollController;
 
   @override
@@ -117,6 +122,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       _listingsCache.clear();
     }
     
+    _searchController = TextEditingController();
     _loadAttributes();
     _loadAdverts();
     _updateSelectedIndex();
@@ -128,6 +134,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -593,6 +600,151 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     }
   }
 
+  /// 🔍 Выполняет поиск по объявлениям
+  void _performSearch(String query) {
+    _currentSearchQuery = query.toLowerCase();
+    
+    if (_currentSearchQuery.isEmpty) {
+      // Если поле поиска пусто - показываем все объявления
+      setState(() {
+        _searchResults.clear();
+      });
+      log.d('🔍 Search cleared');
+      return;
+    }
+
+    log.d('\n🔍 ═══════════════════════════════════════════════════════════');
+    log.d('🔍 SEARCH STARTED: "$query"');
+    log.d('🔍 Total listings to search: ${_listings.length}');
+    log.d('🔍 ═══════════════════════════════════════════════════════════\n');
+
+    final results = _listings.where((listing) {
+      return _matchesSearchQuery(listing, _currentSearchQuery);
+    }).toList();
+
+    setState(() {
+      _searchResults = results;
+    });
+
+    log.d('\n🔍 ═══════════════════════════════════════════════════════════');
+    log.d('🔍 SEARCH COMPLETED: Найдено ${results.length} из ${_listings.length} объявлений');
+    log.d('🔍 ═══════════════════════════════════════════════════════════\n');
+  }
+
+  /// Проверяет, соответствует ли объявление поисковому запросу
+  bool _matchesSearchQuery(Listing listing, String query) {
+    // 🔍 Поиск в заголовке
+    if (listing.title.toLowerCase().contains(query)) {
+      log.d('  ✅ Match in title: ${listing.title}');
+      return true;
+    }
+
+    // 🔍 Поиск в локации
+    if (listing.location.toLowerCase().contains(query)) {
+      log.d('  ✅ Match in location: ${listing.location}');
+      return true;
+    }
+
+    // 🔍 Поиск в городе
+    if (listing.city?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in city: ${listing.city}');
+      return true;
+    }
+
+    // 🔍 Поиск в улице
+    if (listing.street?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in street: ${listing.street}');
+      return true;
+    }
+
+    // 🔍 Поиск в регионе
+    if (listing.region?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in region: ${listing.region}');
+      return true;
+    }
+
+    // 🔍 Поиск в главном регионе
+    if (listing.mainRegion?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in mainRegion: ${listing.mainRegion}');
+      return true;
+    }
+
+    // 🔍 Поиск в подрегионе
+    if (listing.subRegion?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in subRegion: ${listing.subRegion}');
+      return true;
+    }
+
+    // 🔍 Поиск в районе
+    if (listing.district?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in district: ${listing.district}');
+      return true;
+    }
+
+    // 🔍 Поиск в описании
+    if (listing.description?.toLowerCase().contains(query) ?? false) {
+      log.d('  ✅ Match in description');
+      return true;
+    }
+
+    // 🔍 Поиск в характеристиках
+    if (_searchInCharacteristics(listing.characteristics, query)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Рекурсивно ищет текст в структуре характеристик
+  bool _searchInCharacteristics(Map<String, dynamic> characteristics, String query) {
+    if (characteristics.isEmpty) return false;
+
+    for (final entry in characteristics.entries) {
+      final key = entry.key.toLowerCase();
+      final value = entry.value;
+
+      // Ищем в ключе
+      if (key.contains(query)) {
+        log.d('  ✅ Match in characteristic key: $key');
+        return true;
+      }
+
+      // Ищем в значении
+      if (_searchInValue(value, query)) {
+        log.d('  ✅ Match in characteristic value for key: $key');
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Рекурсивно ищет текст в значении любого типа
+  bool _searchInValue(dynamic value, String query) {
+    if (value == null) return false;
+
+    // Если это Map - ищем во всех значениях
+    if (value is Map) {
+      for (final entry in value.entries) {
+        final key = entry.key.toString().toLowerCase();
+        if (key.contains(query)) return true;
+        if (_searchInValue(entry.value, query)) return true;
+      }
+      return false;
+    }
+
+    // Если это List - ищем во всех элементах
+    if (value is List) {
+      for (final item in value) {
+        if (_searchInValue(item, query)) return true;
+      }
+      return false;
+    }
+
+    // Для простых типов - преобразуем в String и ищем
+    final valueStr = value.toString().toLowerCase();
+    return valueStr.contains(query);
+  }
+
   // ============================================================
   //                        BUILD
   // ============================================================
@@ -756,6 +908,47 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                         ),
                       ),
                     )
+                  else if (_currentSearchQuery.isNotEmpty && _searchResults.isEmpty)
+                    // Результатов поиска не найдено
+                    SliverToBoxAdapter(
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 80.0,
+                            horizontal: 20.0,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.search_off,
+                                size: 60,
+                                color: Colors.grey[600],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Поиск не дал результатов',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'По запросу "$_currentSearchQuery" не найдено объявлений',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
                   else
                     SliverPadding(
                       padding: const EdgeInsets.only(left: 12, right: 12, bottom: 7),
@@ -769,22 +962,26 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                             ),
                         delegate: SliverChildBuilderDelegate(
                           (context, i) {
-                            final displayCount = _listings.length > MAX_LISTINGS ? MAX_LISTINGS : _listings.length;
+                            // Если есть активный поиск - показываем результаты поиска
+                            final listToDisplay = _currentSearchQuery.isNotEmpty ? _searchResults : _listings;
+                            final displayCount = listToDisplay.length > MAX_LISTINGS ? MAX_LISTINGS : listToDisplay.length;
                             
                             // Показываем карточки до лимита
                             if (i < displayCount) {
-                              return ListingCard(listing: _listings[i]);
+                              return ListingCard(listing: listToDisplay[i]);
                             }
                             
                             // Показываем надпись если достигнут лимит и есть ещё объявления
                             return const SizedBox.shrink();
                           },
-                          childCount: _listings.length > MAX_LISTINGS ? MAX_LISTINGS : _listings.length,
+                          childCount: _currentSearchQuery.isNotEmpty 
+                              ? (_searchResults.length > MAX_LISTINGS ? MAX_LISTINGS : _searchResults.length)
+                              : (_listings.length > MAX_LISTINGS ? MAX_LISTINGS : _listings.length),
                         ),
                       ),
                     ),
                   // Сообщение если достигнут лимит объявлений
-                  if (!_isLoading && _listings.length >= MAX_LISTINGS)
+                  if (!_isLoading && !_currentSearchQuery.isEmpty && _listings.length >= MAX_LISTINGS)
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.only( bottom: 45.0),
@@ -853,13 +1050,27 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                 color: const Color(0xFF1A2536),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: const TextField(
-                style: TextStyle(color: Colors.white),
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   border: InputBorder.none,
                   hintText: "Поиск",
-                  hintStyle: TextStyle(color: Colors.white54),
+                  hintStyle: const TextStyle(color: Colors.white54),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchController.clear();
+                            _performSearch('');
+                          },
+                          child: const Icon(Icons.close, color: Colors.white54, size: 20),
+                        )
+                      : null,
                 ),
+                onChanged: (query) {
+                  setState(() {});
+                  _performSearch(query);
+                },
               ),
             ),
           ),
