@@ -75,7 +75,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   bool _isLoadingMore = false; // Для индикатора подгрузки
   String? _errorMessage;
   Map<String, dynamic> _appliedFilters = {}; // Применённые фильтры
-  String _selectedCityName = 'Мариуполь'; // Выбранный из фильтра город
+  String _selectedCityName = 'Ваш город'; // Выбранный из фильтра город (по умолчанию показываются все города)
   List<Attribute> _attributes = []; // Атрибуты для отображения фильтров
 
   // Пагинация
@@ -104,7 +104,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         log.d('✅ City initialized from Service: $_selectedCityName');
         previousCity = ''; // Помечаем как новый город из сервиса
       } else {
-        log.d('⚠️  No city provided via parameter or Service, using default: $_selectedCityName');
+        // 🎯 Если город не выбран - используем "Ваш город" (показываем все объявления)
+        _selectedCityName = 'Ваш город';
+        log.d('⚠️  No city provided via parameter or Service, using default: $_selectedCityName (all cities)');
       }
     }
     
@@ -423,10 +425,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       log.d('═══════════════════════════════════════════════════════════════\n');
 
       // ✅ ФИЛЬТРАЦИЯ ПО ГОРОДУ: КЛИЕНТСКАЯ!
-      // API не поддерживает фильтрацию по городу, поэтому делаем это на клиенте
+      // Если выбран город отличный от "Ваш город", то фильтруем по городу
+      // Если выбран "Ваш город" - показываем все объявления всех городов
       var result = listingsToFilter;
-      if (_selectedCityName.isNotEmpty) {
+      if (_selectedCityName.isNotEmpty && _selectedCityName != 'Ваш город') {
         result = _filterByCity(result, _selectedCityName);
+      } else if (_selectedCityName == 'Ваш город') {
+        log.d('🌍 CITY FILTERING: Показываются ВСЕ города (Selected: "$_selectedCityName")');
       }
       
       final filtersWithCity = Map<String, dynamic>.from(_appliedFilters);
