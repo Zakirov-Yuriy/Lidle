@@ -254,9 +254,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
             .toList();
 
         // Используем ApiRequestQueue для ограничения параллельных запросов
+        // 🔧 ОПТИМИЗАЦИЯ: Уменьшена параллельность с 2 до 1 (последовательная загрузка)
+        // Это уменьшает нагрузку на медленное интернет соединение
         final batchResponses = await ApiRequestQueue.instance.queueBatch(
           requestFunctions,
-          batchSize: 2,
+          batchSize: 1,
         );
 
         // 🔧 ИСПРАВЛЕНИЕ: Отслеживаем ID объявлений для дедупликации
@@ -266,16 +268,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         // Парсируем ответы
         for (final response in batchResponses) {
           if (response.data.isNotEmpty) {
-            List<home.Listing> parsedListings;
-
-            if (response.data.length > 50) {
-              parsedListings = await compute<List<Advert>, List<home.Listing>>(
-                (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                response.data,
-              );
-            } else {
-              parsedListings = _parseAdvertsOnBackgroundThread(response.data);
-            }
+            // 🔧 ОПТИМИЗАЦИЯ: Всегда переносим парсинг JSON на фоновый поток
+            // Это предотвращает блокировку UI даже при небольших списках
+            List<home.Listing> parsedListings = await compute<List<Advert>, List<home.Listing>>(
+              (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+              response.data,
+            );
 
             // 🔧 ИСПРАВЛЕНИЕ: Добавляем только уникальные объявления
             for (final listing in parsedListings) {
@@ -1169,16 +1167,12 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
             for (final response in batchResponses) {
               if (response.data.isNotEmpty) {
-                List<home.Listing> parsedListings;
-
-                if (response.data.length > 50) {
-                  parsedListings = await compute<List<Advert>, List<home.Listing>>(
-                    (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-                    response.data,
-                  );
-                } else {
-                  parsedListings = _parseAdvertsOnBackgroundThread(response.data);
-                }
+                // 🔧 ОПТИМИЗАЦИЯ: Всегда переносим парсинг JSON на фоновый поток
+                // Это предотвращает блокировку UI даже при небольших списках
+                List<home.Listing> parsedListings = await compute<List<Advert>, List<home.Listing>>(
+                  (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                  response.data,
+                );
 
                 additionalListings.addAll(parsedListings);
               }

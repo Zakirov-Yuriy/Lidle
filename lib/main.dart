@@ -109,7 +109,7 @@ void main() async {
       isInDebugMode: false, // Set to true for debug logging
     );
   } catch (e) {
-    // log.w('⚠️ Workmanager инициализация ошибка: $e');
+    log.w('⚠️ Workmanager инициализация ошибка: $e');
   }
 
   // 🚀 ОПТИМИЗАЦИЯ #1: Быстрая инициализация Hive (обязательна для кеша)
@@ -124,26 +124,26 @@ void main() async {
     await HiveService.init();
   } catch (e) {
     // Продолжаем работу даже если Hive не инициализирован
-    // log.w('⚠️ Hive инициализация ошибка: $e');
+    log.w('⚠️ Hive инициализация ошибка: $e');
   }
 
   // � ОПТИМИЗАЦИЯ #2: DeviceInfoService инициализируется асинхронно в фоне
   // Это не блокирует холодный старт (~50-80ms экономия)
   // Инициализация запускается без await, работает параллельно с UI отрисовкой
   DeviceInfoService.initialize().catchError((e) {
-    // log.w('⚠️ DeviceInfoService инициализация ошибка: $e');
+    log.w('⚠️ DeviceInfoService инициализация ошибка: $e');
   });
 
   // 🔔 ИНИЦИАЛИЗАЦИЯ: NotificationService для локальных пуш-уведомлений
   // Инициализируется без await, работает в фоне
   NotificationService().initialize().catchError((e) {
-    // log.w('⚠️ NotificationService инициализация ошибка: $e');
+    log.w('⚠️ NotificationService инициализация ошибка: $e');
   });
 
   // 📩 ИНИЦИАЛИЗАЦИЯ: Загружаем сохранённые ID сообщений из хранилища
   // для восстановления Polling состояния после рестарта приложения
   MessagePollingService().loadLastMessageIds().catchError((e) {
-    // log.w('⚠️ MessagePollingService загрузка ID ошибка: $e');
+    log.w('⚠️ MessagePollingService загрузка ID ошибка: $e');
   });
 
   SystemChrome.setSystemUIOverlayStyle(

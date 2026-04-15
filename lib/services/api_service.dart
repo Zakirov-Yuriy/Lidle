@@ -127,9 +127,9 @@ class ApiService {
 
       final response = await http
           .get(Uri.parse('$baseUrl$endpoint'), headers: headers)
-          // 🚀 ОПТИМИЗАЦИЯ #2: Timeout 10s → 5s для фазы 1 запросов
-          // Сервер обычно отвечает за 500-800ms, 5s - безопасный лимит
-          .timeout(const Duration(seconds: 5));
+          // 🚀 ОПТИМИЗАЦИЯ #2: Timeout 5s → 30s
+          // Медленное интернет соединение требует больше времени
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -210,9 +210,9 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s для фазы 1 запросов
-          // Сервер обычно отвечает за 500-800ms, 5s безопасный лимит
-          .timeout(const Duration(seconds: 5));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 5s → 30s
+          // Медленное интернет соединение требует больше времени
+          .timeout(const Duration(seconds: 30));
 
       // log.d('📥 Response status: ${response.statusCode}');
       // log.d('📥 Response body: ${response.body}');
@@ -351,8 +351,9 @@ class ApiService {
 
       final response = await http
           .get(uri, headers: headers)
-          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
-          .timeout(const Duration(seconds: 5));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 5s → 30s
+          // Медленное интернет соединение требует больше времени
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -419,8 +420,9 @@ class ApiService {
             headers: headers,
             body: jsonEncode(body),
           )
-          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
-          .timeout(const Duration(seconds: 5));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 5s → 30s
+          // Медленное интернет соединение требует больше времени
+          .timeout(const Duration(seconds: 30));
 
       return _handleResponse(response);
     } on TokenExpiredException {
@@ -491,8 +493,9 @@ class ApiService {
             headers: headers,
             body: body != null ? jsonEncode(body) : null,
           )
-          // 🚀 ОПТИМИЗАЦИЯ: Timeout 10s → 5s
-          .timeout(const Duration(seconds: 5));
+          // 🚀 ОПТИМИЗАЦИЯ: Timeout 5s → 30s
+          // Медленное интернет соединение требует больше времени
+          .timeout(const Duration(seconds: 30));
       
       // log.d('📥 DELETE RESPONSE received:');
       // log.d('   Status: ${response.statusCode}');

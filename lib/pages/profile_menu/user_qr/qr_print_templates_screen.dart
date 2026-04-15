@@ -70,22 +70,22 @@ class QrPrintTemplatesScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 children: const [
                   _TemplateCard(
-                    image: 'assets/user_qr/image1.png',
+                    image: 'assets/user_qr/image1.jpg',
                     title: 'QR-код для печати',
                     subtitle: '1000 x 1000 px (10 на 10 см)',
                   ),
                   _TemplateCard(
-                    image: 'assets/user_qr/image2.png',
+                    image: 'assets/user_qr/image2.jpg',
                     title: 'Визитка для типографии',
                     subtitle: '50 на 90 мм',
                   ),
                   _TemplateCard(
-                    image: 'assets/user_qr/image3.png',
+                    image: 'assets/user_qr/image3.jpg',
                     title: 'Форма для печати тейбл тент A5',
                     subtitle: 'A5 - 14,8 x 21 см',
                   ),
                   _TemplateCard(
-                    image: 'assets/user_qr/image4.png',
+                    image: 'assets/user_qr/image4.jpg',
                     title: 'Форма для печати стикер A4',
                     subtitle: 'A4 - 29,7 x 29,7 см',
                   ),

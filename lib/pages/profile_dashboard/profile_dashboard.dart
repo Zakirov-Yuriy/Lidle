@@ -943,7 +943,7 @@ class _FinancialSupportCard extends StatelessWidget {
               ),
             ),
             Text(
-              'Ваш выход - энергия для новых функций и быстро...',
+              'Ваш вклад - энергия для новых функций и быстро...',
               style: const TextStyle(
                 color: textSecondary,
                 fontSize: 10,
