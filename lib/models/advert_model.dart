@@ -358,6 +358,19 @@ class AdvertToListing {
 // Extension to convert Advert to Listing for compatibility with existing UI
 extension AdvertToListingExtension on Advert {
   Listing toListing() {
+    // 🌍 Парсим город из address (первая часть до запятой)
+    String? extractedCity;
+    if (address.isNotEmpty) {
+      final parts = address.split(',');
+      if (parts.isNotEmpty) {
+        final firstPart = parts[0].trim();
+        // Проверяем, что это не пустая строка
+        if (firstPart.isNotEmpty) {
+          extractedCity = firstPart;
+        }
+      }
+    }
+    
     return Listing(
       id: id.toString(),
       slug: slug,
@@ -376,6 +389,7 @@ extension AdvertToListingExtension on Advert {
       userId: sellerId,
       description: description,
       characteristics: characteristics ?? {},
+      city: extractedCity, // 🌍 ДОБАВИЛИ ГОРОД ИЗ АДРЕСА
     );
   }
 }

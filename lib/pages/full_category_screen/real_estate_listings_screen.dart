@@ -76,6 +76,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   String? _errorMessage;
   Map<String, dynamic> _appliedFilters = {}; // Применённые фильтры
   String _selectedCityName = 'Ваш город'; // Выбранный из фильтра город (по умолчанию показываются все города)
+  String _baseCityName = 'Ваш город'; // 🌍 Базовый город (сохраняется при поиске, восстанавливается при очистке)
   List<Attribute> _attributes = []; // Атрибуты для отображения фильтров
 
   // Пагинация
@@ -121,6 +122,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       _cacheTimestamps.clear();
       _listingsCache.clear();
     }
+    
+    // 🌍 Сохраняем базовый город (исходно выбранный)
+    _baseCityName = _selectedCityName;
+    log.d('🌍 Base city saved: $_baseCityName');
     
     _searchController = TextEditingController();
     _loadAttributes();
@@ -604,30 +609,92 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   void _performSearch(String query) {
     _currentSearchQuery = query.toLowerCase();
     
+    log.d('\n🔍 ═══════════════════════════════════════════════════════════');
+    log.d('🔍 _performSearch() CALLED');
+    log.d('🔍 Query: "$query" (lowercase: "$_currentSearchQuery")');
+    log.d('🔍 Total listings available: ${_listings.length}');
+    log.d('🔍 ═══════════════════════════════════════════════════════════\n');
+    
     if (_currentSearchQuery.isEmpty) {
-      // Если поле поиска пусто - показываем все объявления
+      // Если поле поиска пусто - показываем все объявления и восстанавливаем базовый город
       setState(() {
         _searchResults.clear();
+        _selectedCityName = _baseCityName; // 🌍 Восстанавливаем базовый город
+        log.d('🔍 Search cleared');
+        log.d('🌍 City restored to base: $_baseCityName');
       });
-      log.d('🔍 Search cleared');
       return;
     }
 
-    log.d('\n🔍 ═══════════════════════════════════════════════════════════');
     log.d('🔍 SEARCH STARTED: "$query"');
-    log.d('🔍 Total listings to search: ${_listings.length}');
-    log.d('🔍 ═══════════════════════════════════════════════════════════\n');
+    log.d('🔍 Searching in ${_listings.length} listings...\n');
 
     final results = _listings.where((listing) {
       return _matchesSearchQuery(listing, _currentSearchQuery);
     }).toList();
 
+    // 🌍 Автоматическое определение города из результатов поиска
+    String displayCityName = _baseCityName; // По умолчанию используем базовый город
+    
+    if (results.isNotEmpty) {
+      // Получаем все уникальные города из результатов
+      final citiesInResults = <String>{};
+      
+      log.d('\n📍 COLLECTING CITIES FROM RESULTS:');
+      log.d('   Total results: ${results.length}');
+      
+      for (int i = 0; i < results.length; i++) {
+        final listing = results[i];
+        log.d('\n   Result #$i:');
+        log.d('      ID: ${listing.id}');
+        log.d('      Title: ${listing.title}');
+        log.d('      City: "${listing.city}"');
+        log.d('      Location: "${listing.location}"');
+        log.d('      City is empty? ${listing.city?.isEmpty ?? true}');
+        log.d('      City is null? ${listing.city == null}');
+        
+        if (listing.city != null && listing.city!.isNotEmpty) {
+          citiesInResults.add(listing.city!);
+          log.d('      ✅ ADDED to cities set');
+        } else {
+          log.d('      ❌ SKIPPED (null or empty)');
+        }
+      }
+      
+      log.d('\n   📊 Final cities set: $citiesInResults');
+      log.d('   📊 Number of unique cities: ${citiesInResults.length}');
+      
+      // Если все результаты из одного города - показываем этот город
+      if (citiesInResults.length == 1) {
+        displayCityName = citiesInResults.first;
+        log.d('   ✅ SINGLE CITY FOUND: "$displayCityName"');
+      } else if (citiesInResults.length > 1) {
+        // Если результаты из разных городов - показываем "Несколько городов"
+        displayCityName = 'Несколько городов';
+        log.d('   ⚠️ MULTIPLE CITIES FOUND: $citiesInResults');
+      } else {
+        log.d('   ⚠️ NO CITIES FOUND IN RESULTS (using base city)');
+      }
+    } else {
+      log.d('\n📍 NO RESULTS - using base city');
+    }
+
+    log.d('\n🔍 BEFORE setState:');
+    log.d('   _selectedCityName: "$_selectedCityName"');
+    log.d('   displayCityName: "$displayCityName"');
+    log.d('   _searchResults.length: ${_searchResults.length}');
+
     setState(() {
       _searchResults = results;
+      _selectedCityName = displayCityName;
+      
+      log.d('\n🔍 AFTER setState (inside):');
+      log.d('   _selectedCityName: "$_selectedCityName"');
+      log.d('   _searchResults.length: ${_searchResults.length}');
     });
 
-    log.d('\n🔍 ═══════════════════════════════════════════════════════════');
-    log.d('🔍 SEARCH COMPLETED: Найдено ${results.length} из ${_listings.length} объявлений');
+    log.d('\n🔍 AFTER setState (outside):');
+    log.d('   _selectedCityName: "$_selectedCityName"');
     log.d('🔍 ═══════════════════════════════════════════════════════════\n');
   }
 
@@ -1080,6 +1147,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }
 
   Widget _buildLocationAndFilters() {
+    log.d('🏗️ _buildLocationAndFilters() BUILDING');
+    log.d('   _selectedCityName: "$_selectedCityName"');
+    log.d('   _currentSearchQuery: "$_currentSearchQuery"');
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Row(
@@ -1144,6 +1215,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                       // 🟢 Обновляем выбранный город из фильтров
                       if (filters.containsKey('city_name') && filters['city_name'] is String) {
                         _selectedCityName = filters['city_name'] as String;
+                        _baseCityName = _selectedCityName; // 🌍 Также обновляем базовый город
                         log.d('🌍 City updated from filters: $_selectedCityName');
                       }
                       _currentPage = 1;
