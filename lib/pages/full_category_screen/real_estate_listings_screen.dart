@@ -36,7 +36,8 @@ const String messageIconAssetLocal =
 const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateListingsScreen extends StatefulWidget {
-  final int? categoryId; // ID категории для фильтрации
+  final int? categoryId; // ID категории для фильтрации (одна категория)
+  final List<int>? categoryIds; // ID категорий для фильтрации (несколько категорий)
   final int? catalogId; // ID каталога для фильтрации
   final String? categoryName; // Имя категории для отображения в заголовке
   final bool
@@ -48,6 +49,7 @@ class RealEstateListingsScreen extends StatefulWidget {
   const RealEstateListingsScreen({
     super.key,
     this.categoryId,
+    this.categoryIds,
     this.catalogId,
     this.categoryName,
     this.isFromFullCategory = false,
@@ -357,7 +359,65 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       log.d('\n🔶 ═══════════════════════════════════════════════════════════════');
       log.d('🔶 API REQUEST PARAMETERS:');
       log.d('   categoryId: ${widget.categoryId}');
+      log.d('   categoryIds: ${widget.categoryIds}');
       log.d('   catalogId: ${widget.catalogId}');
+      
+      // 🔍 Если передан массив categoryIds - загружаем из каждого и объединяем
+      if (widget.categoryIds != null && widget.categoryIds!.isNotEmpty) {
+        log.d('✅ Using MULTIPLE CATEGORY MODE (categoryIds=${widget.categoryIds})');
+        log.d('   Loading from ${widget.categoryIds!.length} categories');
+        
+        var allListings = <Advert>[];
+        for (final catId in widget.categoryIds!) {
+          log.d('   Loading from categoryId=$catId...');
+          var response = await ApiService.getAdverts(
+            categoryId: catId,
+            sort: sort,
+            filters: filtersForApi.isNotEmpty ? filtersForApi : null,
+            page: 1,
+            limit: 100, // Увеличиваем лимит для получения всех объявлений
+            token: token,
+            withAttributes: filtersForApi.isNotEmpty,
+          );
+          allListings.addAll(response.data);
+          log.d('   ✅ Loaded ${response.data.length} listings from categoryId=$catId');
+        }
+        
+        log.d('   Total listings loaded: ${allListings.length}');
+        
+        // Преобразуем в Listing и применяем фильтрацию
+        final listingsToFilter = allListings.map((advert) => advert.toListing()).toList();
+        
+        var result = listingsToFilter;
+        if (_selectedCityName.isNotEmpty && _selectedCityName != 'Ваш город') {
+          result = _filterByCity(result, _selectedCityName);
+        }
+        
+        var sortedListings = _applyClientSideFiltering(result, filtersForApi);
+        
+        setState(() {
+          _listings = sortedListings;
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      // 🔍 Валидация: должно быть передано минимум одно из значений
+      if (widget.categoryId == null && widget.catalogId == null) {
+        log.d('⚠️  WARNING: Both categoryId and catalogId are null!');
+        log.d('   This might result in loading all adverts from the database');
+      }
+      
+      // 🔍 Показываем какой параметр используется
+      if (widget.catalogId != null && widget.categoryId == null) {
+        log.d('✅ Using CATALOG MODE (catalogId=${widget.catalogId})');
+      } else if (widget.categoryId != null && widget.catalogId == null) {
+        log.d('✅ Using CATEGORY MODE (categoryId=${widget.categoryId})');
+      } else if (widget.catalogId != null && widget.categoryId != null) {
+        log.d('⚠️  CONFLICT: Both catalogId and categoryId are set!');
+        log.d('   API will only use catalogId (categoryId will be ignored)');
+      }
+      
       log.d('   sort: $sort');
       log.d('   filters: ${filtersForApi.isNotEmpty ? filtersForApi : "null"}');
       log.d('   _selectedCityName: $_selectedCityName');
@@ -544,6 +604,25 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           '💾 CACHED: Saved ${fullListings.length} listings to cache (key=$cacheKey)',
         );
       }
+
+      // 🔍 FINAL DIAGNOSTICS
+      log.d('\n✅ ═══════════════════════════════════════════════════════════════');
+      log.d('✅ FINAL RESULT BEFORE setState():');
+      log.d('   categoryId: ${widget.categoryId}');
+      log.d('   catalogId: ${widget.catalogId}');
+      log.d('   categoryName: ${widget.categoryName}');
+      log.d('   isFromFullCategory: ${widget.isFromFullCategory}');
+      log.d('   Final listings count: ${fullListings.length}');
+      if (fullListings.isNotEmpty) {
+        log.d('   First 3 listings:');
+        for (int i = 0; i < fullListings.take(3).length; i++) {
+          final listing = fullListings[i];
+          log.d('      [$i] ID=${listing.id}, Title="${listing.title}", Price="${listing.price}"');
+        }
+      } else {
+        log.d('   ⚠️  No listings returned!');
+      }
+      log.d('✅ ═══════════════════════════════════════════════════════════════\n');
 
       setState(() {
         if (isNextPage) {
@@ -818,6 +897,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    log.d('\n🎨 BUILD() called - _isLoading=$_isLoading, _listings.length=${_listings.length}');
+    
     return BlocListener<ConnectivityBloc, ConnectivityState>(
       listener: (context, connectivityState) {
         // Когда интернет восстановлен - перезагружаем объявления

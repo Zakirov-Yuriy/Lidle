@@ -796,8 +796,20 @@ class ApiService {
   }) async {
     try {
       final queryParams = <String, dynamic>{};
-      if (categoryId != null) queryParams['category_id'] = categoryId;
-      if (catalogId != null) queryParams['catalog_id'] = catalogId;
+      
+      // 🔴 ВАЖНО: API НЕ ПРИНИМАЕТ ОБА ПАРАМЕТРА ОДНОВРЕМЕННО!
+      // Если передан catalogId - используем его и игнорируем categoryId
+      // Если передан только categoryId - используем его
+      if (catalogId != null) {
+        queryParams['catalog_id'] = catalogId;
+        log.d('📦 API getAdverts - Using CATALOG_ID mode (catalogId=$catalogId)');
+      } else if (categoryId != null) {
+        queryParams['category_id'] = categoryId;
+        log.d('📦 API getAdverts - Using CATEGORY_ID mode (categoryId=$categoryId)');
+      } else {
+        log.w('⚠️  API getAdverts: Neither catalogId nor categoryId provided!');
+      }
+      
       if (sort != null) queryParams['sort'] = sort;
       if (page != null) queryParams['page'] = page;
       if (limit != null) queryParams['limit'] = limit;

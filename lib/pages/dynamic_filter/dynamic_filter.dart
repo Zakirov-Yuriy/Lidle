@@ -5470,7 +5470,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
   /// Builds a flexible grid of buttons that adapts to screen width
   /// 2 buttons: 2 columns (50% each) in Row
   /// 3 buttons: 3 columns (33% each) in Row
-  /// 4+ buttons: 3 columns per row with wrapping
+  /// 4 buttons: 2x2 grid (2 buttons per row)
+  /// 5+ buttons: 3 columns per row with wrapping
   Widget _buildButtonGrid({
     required List<Value> buttons,
     required String selectedValue,
@@ -5521,7 +5522,56 @@ class _DynamicFilterState extends State<DynamicFilter> {
       );
     }
 
-    // For 4+ buttons: Wrap with flexible sizing
+    // For exactly 4 buttons: 2x2 grid (2 buttons per row)
+    if (buttons.length == 4) {
+      return Column(
+        children: [
+          // First row: buttons 0 and 1
+          Row(
+            children: [
+              Expanded(
+                child: _buildChoiceButton(
+                  buttons[0].value,
+                  selectedValue == buttons[0].value,
+                  () => onButtonPressed(buttons[0].value),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildChoiceButton(
+                  buttons[1].value,
+                  selectedValue == buttons[1].value,
+                  () => onButtonPressed(buttons[1].value),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Second row: buttons 2 and 3
+          Row(
+            children: [
+              Expanded(
+                child: _buildChoiceButton(
+                  buttons[2].value,
+                  selectedValue == buttons[2].value,
+                  () => onButtonPressed(buttons[2].value),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildChoiceButton(
+                  buttons[3].value,
+                  selectedValue == buttons[3].value,
+                  () => onButtonPressed(buttons[3].value),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    // For 5+ buttons: Wrap with flexible sizing
     // Each button takes appropriate width and wraps to next row if needed
     return Wrap(
       spacing: spacing,

@@ -40,6 +40,10 @@ class UniversalBrowseCategoryScreen extends StatefulWidget {
   
   /// Callback при выборе категории и подкатегории
   final Function(String categoryName, int categoryId)? onCategorySelected;
+  
+  /// 🔍 Текущая "родительская" категория для отслеживания уровня
+  /// Используется для кнопки "Показать все" на промежуточных уровнях
+  final Category? currentLevelCategory;
 
   const UniversalBrowseCategoryScreen({
     super.key,
@@ -50,6 +54,7 @@ class UniversalBrowseCategoryScreen extends StatefulWidget {
     this.isFromFiltersScreen = false,
     this.preSelectedCity,
     this.onCategorySelected,
+    this.currentLevelCategory,
   }) : assert(
          (catalogId != null && catalogName != null) || category != null,
          'Необходимо указать либо catalogId с catalogName, либо category',
@@ -116,6 +121,21 @@ class _UniversalBrowseCategoryScreenState
     }
   }
 
+  /// 🔍 Рекурсивно собирает все листовые (конечные) categoryId из категории
+  List<int> _getAllLeafCategoryIds(Category category) {
+    if (category.children == null || category.children!.isEmpty) {
+      // Это конечная категория
+      return [category.id];
+    } else {
+      // Это родительская категория - собираем ID из всех подкатегорий
+      List<int> allIds = [];
+      for (var child in category.children!) {
+        allIds.addAll(_getAllLeafCategoryIds(child));
+      }
+      return allIds;
+    }
+  }
+
   /// Получить название для заголовка
   String _getTitle() {
     if (widget.category != null) {
@@ -126,8 +146,6 @@ class _UniversalBrowseCategoryScreenState
 
   /// Определяет, какой экран списков открыть для данной категории
   void _navigateToListings(Category category) {
-    final categoryName = category.name.toLowerCase();
-
     // 🎯 Если переход с filters_screen, используем RealEstateListingsFilterScreen
     if (widget.isFromFiltersScreen) {
       Navigator.push(
@@ -143,13 +161,13 @@ class _UniversalBrowseCategoryScreenState
       return;
     }
 
-    // Логика определения типа экрана на основе названия категории
-    // (аналогично логике из FullRealEstateApartmentsScreen)
-    if (categoryName.contains('продажа') &&
-        categoryName.contains('коммерческ') &&
-        categoryName.contains('недвижимост')) {
-      // Для коммерческой недвижимости продажи можно создать специальный экран
-      // или использовать универсальный
+    // ✅ Используем универсальный экран RealEstateListingsScreen для всех категорий
+    // Это предотвращает краши при несовместимых экранах
+    try {
+      log.d('📍 _navigateToListings() - Opening RealEstateListingsScreen');
+      log.d('   categoryId: ${category.id}');
+      log.d('   categoryName: ${category.name}');
+      
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -161,41 +179,12 @@ class _UniversalBrowseCategoryScreenState
           ),
         ),
       );
-    } else if (categoryName.contains('аренда') &&
-        categoryName.contains('коммерческ') &&
-        categoryName.contains('недвижимост')) {
-      // Для коммерческой недвижимости аренды
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              RealEstateRentListingsScreen(title: category.name),
-        ),
-      );
-    } else if (categoryName.contains('продажа')) {
-      // Для всех типов продажи используем основной экран списков
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RealEstateListingsScreen(
-            categoryId: category.id,
-            categoryName: category.name,
-            isFromFullCategory: true,
-            preSelectedCity: widget.preSelectedCity,
-          ),
-        ),
-      );
-    } else {
-      // Для аренды и других случаев используем универсальный экран списков
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RealEstateListingsScreen(
-            categoryId: category.id,
-            categoryName: category.name,
-            isFromFullCategory: true,
-            preSelectedCity: widget.preSelectedCity,
-          ),
+    } catch (e) {
+      log.e('❌ Error navigating to listings: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ошибка загрузки категории: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -373,6 +362,8 @@ class _UniversalBrowseCategoryScreenState
                                             category: category,
                                             catalogName: widget.catalogName,
                                             level: widget.level + 1,
+                                            // 🔍 Сохраняем текущую категорию для отслеживания уровня
+                                            currentLevelCategory: category,
                                           ),
                                     ),
                                   );
@@ -402,17 +393,51 @@ class _UniversalBrowseCategoryScreenState
                               height: 51,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // Показать все объявления каталога
+                                  // Показать все объявления в зависимости от уровня
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          RealEstateListingsScreen(
-                                            // Передаем catalogId для показа всех объявлений этого каталога
+                                      builder: (context) {
+                                        log.d('📢 "Показать все" button pressed');
+                                        log.d('   level: ${widget.level}');
+                                        log.d('   catalogId: ${widget.catalogId}');
+                                        log.d('   category: ${widget.category?.name} (ID=${widget.category?.id})');
+                                        log.d('   currentLevelCategory: ${widget.currentLevelCategory?.name} (ID=${widget.currentLevelCategory?.id})');
+                                        
+                                        // На первом уровне (когда есть catalogId) - показываем всё из каталога
+                                        if (widget.catalogId != null && widget.level == 0) {
+                                          log.d('✅ Using CATALOG MODE (catalogId=${widget.catalogId})');
+                                          return RealEstateListingsScreen(
                                             catalogId: widget.catalogId,
                                             categoryName: widget.catalogName,
                                             isFromFullCategory: true,
-                                          ),
+                                          );
+                                        }
+                                        // На промежуточных уровнях - используем currentLevelCategory или category
+                                        else if (widget.currentLevelCategory != null || widget.category != null) {
+                                          final currentCategory = widget.currentLevelCategory ?? widget.category;
+                                          
+                                          // Собираем все листовые categoryId из текущей категории
+                                          final leafIds = _getAllLeafCategoryIds(currentCategory!);
+                                          log.d('✅ Using MULTIPLE CATEGORY MODE');
+                                          log.d('   currentCategory: ${currentCategory.name} (ID=${currentCategory.id})');
+                                          log.d('   Leaf category IDs: $leafIds');
+                                          
+                                          return RealEstateListingsScreen(
+                                            categoryIds: leafIds,
+                                            categoryName: currentCategory.name,
+                                            isFromFullCategory: true,
+                                          );
+                                        }
+                                        // Fallback - не должно случиться
+                                        else {
+                                          log.d('⚠️  Using FALLBACK MODE (no params!)');
+                                          return RealEstateListingsScreen(
+                                            categoryName: widget.catalogName,
+                                            isFromFullCategory: true,
+                                          );
+                                        }
+                                      },
                                     ),
                                   );
                                 },
