@@ -51,5 +51,5 @@
 		<false/>
 		<key>NSUserNotificationUsageDescription</key>
 		<string>Приложение использует уведомления для оповещения о новых сообщениях в чатах</string>
-	</dict>
-</plist>
+	<key>NSContactsUsageDescription</key>
+	<string>Приложение использует доступ к контактам для приглашения друзей в LIDLE</string>

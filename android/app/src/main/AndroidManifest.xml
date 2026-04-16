@@ -21,6 +21,9 @@
     <!-- Позволяет приложению предотвращать переход устройства в спящий режим -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
+    <!-- Разрешение для доступа к контактам -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
+
     <application
         android:label="LIDLE"
         android:name="${applicationName}"

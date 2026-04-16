@@ -45,6 +45,7 @@ dependencies:
   workmanager: ^0.9.0
   connectivity_plus: ^6.0.0 # Для мониторинга подключения к интернету
   app_links: ^3.5.0 # Для обработки deep links flutter
+  flutter_contacts: ^1.1.9 # Для работы с контактами телефона
 
   flutter_lints: ^5.0.0
   mockito: ^5.4.6 # CORRECTED LINE
