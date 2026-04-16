@@ -292,77 +292,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Сортируем и берем ПЕРВЫЕ 12 объявлений для быстрого показа
       final allSortedListings = _sortListingsByDate(initialListings);
       final firstBatchListings = allSortedListings.take(12).toList();
-
-      // � НОВОЕ: Загружаем атрибуты для первых 12 объявлений
-      // API не возвращает атрибуты в списке, только при запросе конкретного объявления с ?with=attributes
-      log.i('⏳ Загружаем атрибуты для первых 12 объявлений...');
-      try {
-        final firstBatchIds = firstBatchListings
-            .map((listing) => int.parse(listing.id))
-            .toList();
-        
-        // Загружаем полные данные с атрибутами (параллельно, по 5 за раз)
-        final advertsWithAttributes = await ApiService.getAdvertsWithAttributes(
-          firstBatchIds,
-          token: token,
-        );
-        
-        // Обновляем characteristics в первом батче
-        for (int i = 0; i < firstBatchListings.length; i++) {
-          final listing = firstBatchListings[i];
-          final advertId = int.parse(listing.id);
-          final fullAdvert = advertsWithAttributes[advertId];
-          
-          if (fullAdvert != null && fullAdvert.characteristics != null) {
-            // Создаем новый объект Listing с атрибутами
-            firstBatchListings[i] = home.Listing(
-              id: listing.id,
-              slug: listing.slug,
-              imagePath: listing.imagePath,
-              images: listing.images,
-              title: listing.title,
-              price: listing.price,
-              location: listing.location,
-              date: listing.date,
-              isFavorited: listing.isFavorited,
-              isBargain: listing.isBargain,
-              sellerName: listing.sellerName,
-              sellerAvatar: listing.sellerAvatar,
-              sellerRegistrationDate: listing.sellerRegistrationDate,
-              userId: listing.userId,
-              description: listing.description,
-              characteristics: fullAdvert.characteristics ?? {}, // 🔥 Вот атрибуты!
-              region: listing.region,
-              city: listing.city,
-              street: listing.street,
-              buildingNumber: listing.buildingNumber,
-              mainRegion: listing.mainRegion,
-              subRegion: listing.subRegion,
-              district: listing.district,
-            );
-            
-            log.i('✅ Загружены атрибуты для объявления ${listing.id}');
-          }
-        }
-        
-        log.i('✅ Атрибуты загружены для первых 12 объявлений');
-      } catch (e) {
-        // Не критично, просто продолжаем без атрибутов для поиска
-        log.w('⚠️ Не удалось загрузить атрибуты: $e');
-      }
-
       // �🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит первые 12 объявлений почти сразу!
       LoadingTimerService().stopLoadingTimer(
         operationKey,
         label: 'Listings (первые 12 объявлений)',
       );
       
-      // 💾 Кешируем ВСЕ отсортированные объявления, не только первые 12
-      // Это необходимо для корректной работы поиска при вводе/удалении текста
-      // 🔥 ОБНОВЛЯЕМ: первые 12 теперь имеют атрибуты
+      // 💾 Кешируем все отсортированные объявления
+      // Необходимо для корректной работы поиска при вводе/удалении текста
       _cachedAllListings = [
-        ...firstBatchListings, // Первые 12 С атрибутами
-        ...allSortedListings.skip(12) // Остальные БЕЗ атрибутов (пока)
+        ...firstBatchListings,
+        ...allSortedListings.skip(12)
       ];
       _cachedCategories = loadedCategories;
       

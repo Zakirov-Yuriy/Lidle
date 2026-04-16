@@ -387,7 +387,7 @@ class _UniversalBrowseCategoryScreenState
                         ),
                         child: Column(
                           children: [
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 0),
                             SizedBox(
                               width: double.infinity,
                               height: 51,
