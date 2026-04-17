@@ -67,8 +67,23 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
 
       // Получаем сохраненные фильтры
       final savedFilters = HiveService.getCategoryFilters(widget.categoryId);
-      log.d('� Фильтры загружены для категории ${widget.categoryId}: $savedFilters');
+      log.d('💾 Фильтры загружены для категории ${widget.categoryId}: $savedFilters');
       log.d('📋 [API] Загруженные фильтры из Hive: $savedFilters');
+
+      // 🟢 ЗАГРУЖАЕМ ГОРОД ИЗ HIVE
+      String? cityFilter;
+      if (savedFilters.containsKey('_city') && savedFilters['_city'] is List) {
+        final cityList = (savedFilters['_city'] as List).cast<String>();
+        if (cityList.isNotEmpty) {
+          cityFilter = cityList.first;
+          log.d('🏙️ Город восстановлен из Hive: $cityFilter');
+        }
+      }
+      // Если город не в Hive, используем переданное значение
+      if (cityFilter == null && widget.selectedCity != null) {
+        cityFilter = widget.selectedCity;
+        log.d('🏙️ Город взят из параметра widget: $cityFilter');
+      }
 
       // Получаем токен
       final token = TokenService.currentToken;
@@ -118,8 +133,15 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
 
       log.d('✅ [Result] Успешно сконвертировано ${listings.length} объявлений из ${allAdverts.length}');
 
-      // ✨ ПРИМЕНЯЕМ СОХРАНЕННЫЕ ФИЛЬТРЫ
-      final filteredListings = _applyClientSideFiltering(listings, savedFilters);
+      // ✨ ПРИМЕНЯЕМ СОХРАНЕННЫЕ ФИЛЬТРЫ И ФИЛЬТР ПО ГОРОДУ
+      var filteredListings = _applyClientSideFiltering(listings, savedFilters);
+      
+      // 🟢 ПРИМЕНЯЕМ ФИЛЬТР ПО ГОРОДУ (если выбран)
+      if (cityFilter != null && cityFilter.isNotEmpty) {
+        log.d('🏙️ Применяем фильтр по городу: $cityFilter');
+        filteredListings = _filterByCity(filteredListings, cityFilter);
+        log.d('🏙️ После фильтра по городу: ${filteredListings.length} объявлений');
+      }
 
       setState(() {
         _listings = filteredListings;
@@ -1050,6 +1072,12 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
     final booleanMap = <String, dynamic>{};
 
     flatFilters.forEach((keyStr, value) {
+      // 🟢 ПРОПУСКАЕМ СПЕЦИАЛЬНЫЕ КЛЮЧИ (город, сортировка и т.д.) - они не передаются серверу
+      if (keyStr.startsWith('_')) {
+        log.d('   🔍 ПРОПУСКАЕМ специальный ключ: $keyStr (клиентская фильтрация)');
+        return;
+      }
+
       // Конвертируем ключ в int для определения типа
       final attrId = int.tryParse(keyStr) ?? 0;
 
@@ -1094,5 +1122,37 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
     log.d('🔵 ════════════════════════════════════════════════════════════════\n');
 
     return structured;
+  }
+
+  /// Фильтрует объявления по названию города в адресе
+  /// Проверяет, содержит ли адрес название выбранного города
+  List<Listing> _filterByCity(List<Listing> listings, String cityName) {
+    if (cityName.isEmpty || listings.isEmpty) {
+      return listings;
+    }
+
+    log.d('\n🏙️ ═══════════════════════════════════════════════════════════════');
+    log.d('🏙️ ФИЛЬТР ПО ГОРОДУ');
+    log.d('🏙️ Город для фильтрации: "$cityName"');
+    log.d('🏙️ Объявлений до фильтра: ${listings.length}');
+
+    final filtered = listings.where((listing) {
+      // Проверяем, содержит ли адрес название города (case-insensitive)
+      final address = listing.location.toLowerCase();
+      final city = cityName.toLowerCase();
+      
+      final matches = address.contains(city);
+      
+      if (!matches) {
+        log.d('   ❌ ID=${listing.id}: адрес "$address" не содержит город "$city"');
+      }
+      
+      return matches;
+    }).toList();
+
+    log.d('🏙️ Объявлений после фильтра: ${filtered.length}');
+    log.d('🏙️ ═══════════════════════════════════════════════════════════════\n');
+
+    return filtered;
   }
 }

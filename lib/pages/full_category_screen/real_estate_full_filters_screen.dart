@@ -62,6 +62,7 @@ class _RealEstateFullFiltersScreenState
 
   Set<String> selectedCity = {};
   Set<String> selectedStreet = {};
+  String? _cityFromWidget; // 🟢 Город из параметра widget - имеет приоритет над сохраненным городом
   Set<String> selectedBuildingTypes = {};
   Set<String> selectedWallTypes = {};
   Set<String> selectedLayout = {};
@@ -107,11 +108,14 @@ class _RealEstateFullFiltersScreenState
     // Initialize with empty list, will be populated from API
     apiCities = [];
     
+    // 🟢 ЗАПОМИНАЕМ город из параметра - он имеет приоритет над сохраненным городом из Hive!
+    final cityFromWidget = widget.selectedCity;
+    
     // Инициализируем выбранный город если он передан с промежуточного экрана
-    if (widget.selectedCity != null && widget.selectedCity!.isNotEmpty) {
-      selectedCity = {widget.selectedCity!};
+    if (cityFromWidget != null && cityFromWidget.isNotEmpty) {
+      selectedCity = {cityFromWidget};
       log.d(
-        '🟢 Город инициализирован в RealEstateFullFiltersScreen: ${widget.selectedCity}',
+        '🟢 Город инициализирован в RealEstateFullFiltersScreen: $cityFromWidget',
       );
     }
     // Инициализируем сортировку если она передана с промежуточного экрана
@@ -152,6 +156,10 @@ class _RealEstateFullFiltersScreenState
     if (selectedCity.isNotEmpty) {
       _loadStreetsForCity(selectedCity.first);
     }
+    
+    // 🟢 СОХРАНЯЕМ город из параметра чтобы потом восстановить его после _loadSavedCategoryFilters()
+    _cityFromWidget = cityFromWidget;
+    
     log.d('✅ initState() completed');
   }
 
@@ -368,10 +376,40 @@ class _RealEstateFullFiltersScreenState
     log.d('💾 Количество ключей: ${savedFilters.length}');
 
     setState(() {
+      // 🟢 ВОССТАНАВЛИВАЕМ ГОРОД ИЗ HIVE ТОЛЬКО ЕСЛИ ОН НЕ БЫЛ ПЕРЕДАН ИЗ ПАРАМЕТРА!
+      if (_cityFromWidget == null || _cityFromWidget!.isEmpty) {
+        // Город НЕ передан из параметра - восстанавливаем из Hive
+        if (savedFilters.containsKey('_city') && savedFilters['_city'] is List) {
+          final cityList = (savedFilters['_city'] as List).cast<String>();
+          if (cityList.isNotEmpty) {
+            selectedCity = cityList.toSet();
+            log.d('✅ Город восстановлен из Hive: ${selectedCity.first}');
+          }
+        }
+      } else {
+        // Город ПЕРЕДАН из параметра - используем его (НЕ перезаписываем!)
+        log.d('🟢 Город из параметра widget сохранен (приоритет над Hive): $_cityFromWidget');
+      }
+
+      // 🟢 ВОССТАНАВЛИВАЕМ СОРТИРОВКУ
+      if (savedFilters.containsKey('_sortDate') && savedFilters['_sortDate'] is String) {
+        _selectedDateSort = savedFilters['_sortDate'] as String;
+        log.d('✅ Сортировка по дате восстановлена: $_selectedDateSort');
+      }
+      if (savedFilters.containsKey('_sortPrice') && savedFilters['_sortPrice'] is String) {
+        _selectedPriceSort = savedFilters['_sortPrice'] as String;
+        log.d('✅ Сортировка по цене восстановлена: $_selectedPriceSort');
+      }
+
       // Восстанавливаем атрибуты фильтров
       for (final entry in savedFilters.entries) {
         final key = entry.key;
         final value = entry.value;
+
+        // Пропускаем специальные ключи (город, сортировка)
+        if (key.startsWith('_')) {
+          continue;
+        }
 
         // Пытаемся распарсить ключ как ID атрибута
         final attrId = int.tryParse(key);
@@ -454,6 +492,22 @@ class _RealEstateFullFiltersScreenState
         stateToSave[key.toString()] = value;
       }
     });
+
+    // 🟢 ИСПРАВЛЕНИЕ: Сохраняем выбранный город!
+    if (selectedCity.isNotEmpty) {
+      stateToSave['_city'] = selectedCity.toList(); // Преобразуем Set в List
+      log.d('✅ Город сохранен: ${selectedCity.first}');
+    }
+
+    // 🟢 Сохраняем сортировку
+    if (_selectedDateSort.isNotEmpty) {
+      stateToSave['_sortDate'] = _selectedDateSort;
+      log.d('✅ Сортировка по дате сохранена: $_selectedDateSort');
+    }
+    if (_selectedPriceSort.isNotEmpty) {
+      stateToSave['_sortPrice'] = _selectedPriceSort;
+      log.d('✅ Сортировка по цене сохранена: $_selectedPriceSort');
+    }
 
     log.d('\n💾 ═══════════════════════════════════════');
     log.d('💾 SAVING FILTER STATE TO HIVE');
@@ -1971,7 +2025,7 @@ class _RealEstateFullFiltersScreenState
                     builder: (context) => RealEstateFilteredScreen(
                       selectedCategory: widget.selectedCategory,
                       categoryId: widget.categoryId,
-                      selectedCity: widget.selectedCity,
+                      selectedCity: selectedCity.isNotEmpty ? selectedCity.first : null,  // 🟢 ИСПРАВЛЕНО: используем текущий выбранный город
                     ),
                   ),
                 );

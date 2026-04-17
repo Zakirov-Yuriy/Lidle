@@ -76,10 +76,12 @@ class _HomePageState extends State<HomePage>
     // 🔄 Кеширование: загружаем данные только если их ещё нет и нет ошибок
     final currentState = context.read<ListingsBloc>().state;
 
-    // Загружаем данные НЕЗАВИСИМО от авторизации
-    // (пользователь может просматривать контент как гость)
+    // 🚀 ОПТИМИЗАЦИЯ: Отложить загрузку после отрисовки UI
+    // Это позволяет показать скелетоны немедленно вместо замороженного экрана
     if (currentState is ListingsInitial || currentState is ListingsError) {
-      context.read<ListingsBloc>().add(LoadListingsEvent());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ListingsBloc>().add(LoadListingsEvent());
+      });
     }
   }
 

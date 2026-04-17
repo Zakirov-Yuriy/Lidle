@@ -1877,6 +1877,17 @@ class ApiService {
     try {
       log.d('🔵 [ApiService.getListingsFilterAttributes] START - categoryId=$categoryId, token=${token != null ? 'YES' : 'NO'}');
       
+      // 🔒 Проверка: если нет токена, пользователь не авторизован
+      // Возвращаем пустые атрибуты вместо ошибки
+      if (token == null || token.isEmpty) {
+        log.d('⚠️ [ApiService.getListingsFilterAttributes] Пользователь не авторизован (нет токена)');
+        return {
+          'success': true,
+          'data': [],
+          'message': 'User not authenticated',
+        };
+      }
+      
       final response = await getWithQuery('/adverts/create', {
         'category_id': categoryId,
       }, token: token);

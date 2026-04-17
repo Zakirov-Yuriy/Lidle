@@ -130,11 +130,19 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     log.d('🌍 Base city saved: $_baseCityName');
     
     _searchController = TextEditingController();
-    _loadAttributes();
+    // 🚀 ОПТИМИЗАЦИЯ: Отложить загрузку атрибутов после отрисовки UI
+    // Сначала загружаем объявления, потом атрибуты в фоне
     _loadAdverts();
     _updateSelectedIndex();
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
+    
+    // 🎯 Загружаем атрибуты в фоне с задержкой
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _loadAttributes();
+      });
+    });
   }
 
   @override
@@ -1257,83 +1265,19 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
             onTap: () {
               log.d('\n🟣 ════════════════════════════════════════');
               log.d('🟣 FILTERS BUTTON TAPPED on listings_screen');
-              log.d('🟣 Current applied filters: $_appliedFilters');
+              log.d('🟣 Opening IntermediateFiltersScreen');
               log.d('🟣 ════════════════════════════════════════\n');
 
-              // Открыть динамический фильтр для листинга
-              if (widget.categoryId != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RealEstateListingsFilterScreen(
-                      categoryId: widget.categoryId!,
-                      categoryName: widget.categoryName ?? 'Недвижимость',
-                      appliedFilters: _appliedFilters,
-                      preSelectedCity: _selectedCityName,
-                    ),
+              // Открыть IntermediateFiltersScreen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => IntermediateFiltersScreen(
+                    displayTitle: widget.categoryName ?? 'Недвижимость',
+                    catalogId: widget.catalogId,
                   ),
-                ).then((filters) {
-                  log.d('\n🟣 ════════════════════════════════════════');
-                  log.d('🟣 RETURNED FROM FILTER SCREEN');
-                  log.d('🟣 Filter type: ${filters?.runtimeType}');
-                  log.d('🟣 Filter is null? ${filters == null}');
-                  log.d('🟣 Filter is Map? ${filters is Map<String, dynamic>}');
-                  log.d('🟣 ════════════════════════════════════════\n');
-
-                  if (filters != null && filters is Map<String, dynamic>) {
-                    // Применить фильтры и перезагрузить объявления
-                    log.d('\n✅ ═══════════════════════════════════════');
-                    log.d('✅ FILTERS RETURNED FROM FILTER SCREEN');
-                    log.d('✅ ═══════════════════════════════════════');
-                    log.d('✅ Filter count: ${filters.length}');
-                    filters.forEach((key, value) {
-                      log.d('   [$key] = ${value is Map ? "${(value as Map).keys.toList()}" : value} (type: ${value.runtimeType})');
-                    });
-                    log.d('✅ ═══════════════════════════════════════\n');
-
-                    setState(() {
-                      _appliedFilters = filters;
-                      // 🟢 Обновляем выбранный город из фильтров
-                      if (filters.containsKey('city_name') && filters['city_name'] is String) {
-                        _selectedCityName = filters['city_name'] as String;
-                        _baseCityName = _selectedCityName; // 🌍 Также обновляем базовый город
-                        log.d('🌍 City updated from filters: $_selectedCityName');
-                      }
-                      _currentPage = 1;
-                      _listings.clear();
-                      // 🟢 ВАЖНО: Инвалидируем кеш при изменении фильтров
-                      _cacheTimestamps.clear();
-                      _listingsCache.clear();
-                      log.d('🗑️  Cache cleared due to filter change');
-                    });
-                    _loadAdverts(forceRefresh: true);
-                  } else {
-                    log.d('❌ No filters returned or filters is not a Map');
-                  }
-                });
-              } else {
-                // Fallback: если нет categoryId, открыть old filter screen
-                if (widget.isFromFullCategory) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RealEstateFullFiltersScreen(
-                        selectedCategory: widget.categoryName ?? 'Недвижимость',
-                      ),
-                    ),
-                  );
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => IntermediateFiltersScreen(
-                        displayTitle: widget.categoryName ?? 'Недвижимость',
-                        catalogId: widget.catalogId,
-                      ),
-                    ),
-                  );
-                }
-              }
+                ),
+              );
             },
             child: Row(
               children: [
