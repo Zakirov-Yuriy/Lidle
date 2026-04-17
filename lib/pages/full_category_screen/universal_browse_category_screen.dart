@@ -74,6 +74,35 @@ class _UniversalBrowseCategoryScreenState
   @override
   void initState() {
     super.initState();
+    // 🎯 ДИАГНОСТИКА: Логируем какой catalogId получил UniversalBrowseCategoryScreen
+    log.d('\n🎯 ════════════════════════════════════════════════════');
+    log.d('🎯 UniversalBrowseCategoryScreen OPENED');
+    log.d('   Level: ${widget.level}');
+    log.d('   catalogId: ${widget.catalogId}');
+    log.d('   catalogName: ${widget.catalogName}');
+    log.d('   category.name: ${widget.category?.name}');
+    log.d('   category.children count: ${widget.category?.children?.length ?? 0}');
+    
+    // 🔴 ЗАЩИТА: Если level слишком высокий, не загружаем дальше
+    if (widget.level > 10) {
+      log.e('⚠️  РЕКУРСИЯ СЛИШКОМ ГЛУБОКАЯ (Level=${widget.level})! Останавливаем загрузку.');
+      setState(() {
+        _categories = [];
+        _isLoading = false;
+      });
+      return;
+    }
+    
+    // 🔍 Логируем дочерние категории
+    if (widget.category?.children != null && widget.category!.children!.isNotEmpty) {
+      log.d('   Дочерние категории (первые 5):');
+      for (int i = 0; i < widget.category!.children!.length && i < 5; i++) {
+        final child = widget.category!.children![i];
+        log.d('      [$i] ${child.name} (ID=${child.id}, hasChildren=${child.children != null && child.children!.isNotEmpty})');
+      }
+    }
+    
+    log.d('🎯 ════════════════════════════════════════════════════\n');
     _loadCategories();
   }
 
@@ -89,9 +118,15 @@ class _UniversalBrowseCategoryScreenState
 
       List<Category> categories = [];
 
-      if (widget.catalogId != null) {
-        // Загружаем категории каталога по ID
-        // log.d();
+      // 🎯 КРИТИЧЕСКИ ВАЖНО: Сначала проверяем widget.category, потом widget.catalogId!
+      // Иначе при рекурсивном открытии мы загружаем весь каталог вместо детей текущей категории
+      if (widget.category != null) {
+        // 🔥 ПРАВИЛЬНЫЙ ПУТЬ: Используем дочерние категории из переданной категории
+        log.d('   📂 Используем дочерние категории из widget.category (${widget.category!.children?.length ?? 0} элементов)');
+        categories = widget.category!.children ?? [];
+      } else if (widget.catalogId != null) {
+        // Загружаем категории каталога по ID (только на уровне 0, когда widget.category == null)
+        log.d('   📂 Загружаем все категории из каталога по ID');
 
         final catalogWithCategories = await ApiService.getCatalog(
           widget.catalogId!,
@@ -99,13 +134,6 @@ class _UniversalBrowseCategoryScreenState
         );
 
         categories = catalogWithCategories.categories;
-
-        // log.d();
-      } else if (widget.category != null) {
-        // Используем дочерние категории из переданной категории
-        categories = widget.category!.children ?? [];
-
-        // log.d();
       }
 
       setState(() {
@@ -167,6 +195,7 @@ class _UniversalBrowseCategoryScreenState
       log.d('📍 _navigateToListings() - Opening RealEstateListingsScreen');
       log.d('   categoryId: ${category.id}');
       log.d('   categoryName: ${category.name}');
+      log.d('   catalogId: ${widget.catalogId}'); // 🎯 Логируем какой catalogId передаём
       
       Navigator.push(
         context,
@@ -174,8 +203,10 @@ class _UniversalBrowseCategoryScreenState
           builder: (context) => RealEstateListingsScreen(
             categoryId: category.id,
             categoryName: category.name,
+            catalogId: widget.catalogId, // 🎯 КРИТИЧЕСКИ ВАЖНО: передаём catalogId!
             isFromFullCategory: true,
             preSelectedCity: widget.preSelectedCity,
+            catalogName: widget.catalogName, // 🎯 Передаём название каталога
           ),
         ),
       );
@@ -354,12 +385,37 @@ class _UniversalBrowseCategoryScreenState
                                 // Если есть подкатегории, переходим глубже
                                 if (category.children != null &&
                                     category.children!.isNotEmpty) {
+                                  
+                                  // 🔴 ЗАЩИТА: Проверяем что дочерние категории не содержат саму категорию (циклическая ссылка)
+                                  bool hasSelfReference = false;
+                                  for (var child in category.children!) {
+                                    if (child.id == category.id) {
+                                      hasSelfReference = true;
+                                      log.e('⚠️  ЦИКЛИЧЕСКАЯ ССЫЛКА: категория "${category.name}" содержит саму себя!');
+                                      break;
+                                    }
+                                  }
+                                  
+                                  if (hasSelfReference) {
+                                    log.d('🛑 Прерываем открытие рекурсивного экрана из-за циклической ссылки');
+                                    _navigateToListings(category);
+                                    return;
+                                  }
+                                  
+                                  // 🔴 ЗАЩИТА: Проверяем что мы открываем экран уровня +1
+                                  if (widget.level >= 9) {
+                                    log.e('⚠️  МАКСИМАЛЬНАЯ ГЛУБИНА РЕКУРСИИ (Level=${widget.level})! Открываем список объявлений.');
+                                    _navigateToListings(category);
+                                    return;
+                                  }
+                                  
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           UniversalBrowseCategoryScreen(
                                             category: category,
+                                            catalogId: widget.catalogId, // 🎯 КРИТИЧЕСКИ ВАЖНО: передаём catalogId на все уровни!
                                             catalogName: widget.catalogName,
                                             level: widget.level + 1,
                                             // 🔍 Сохраняем текущую категорию для отслеживания уровня
@@ -427,6 +483,8 @@ class _UniversalBrowseCategoryScreenState
                                             categoryIds: leafIds,
                                             categoryName: currentCategory.name,
                                             isFromFullCategory: true,
+                                            catalogId: widget.catalogId, // 🎯 Передаём catalogId для правильного выбора категорий
+                                            catalogName: widget.catalogName, // 🎯 Передаём название каталога
                                           );
                                         }
                                         // Fallback - не должно случиться

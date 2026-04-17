@@ -705,6 +705,7 @@ class _HomePageState extends State<HomePage>
                                               ? category.id
                                               : null,
                                           categoryName: category.title,
+                                          catalogName: category.isCatalog ? category.title : null, // 🎯 Если это каталог, передаём его название
                                         ),
                                   ),
                                 );

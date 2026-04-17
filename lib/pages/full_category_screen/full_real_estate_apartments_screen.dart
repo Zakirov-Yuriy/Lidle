@@ -258,7 +258,11 @@ class _FullRealEstateApartmentsScreenState
             context,
             MaterialPageRoute(
               builder: (context) =>
-                  const RealEstateListingsScreen(isFromFullCategory: true),
+                  RealEstateListingsScreen(
+                    isFromFullCategory: true,
+                    catalogId: 1, // 🎯 Недвижимость всегда ID=1
+                    catalogName: 'Недвижимость',
+                  ),
             ),
           );
         } else {
@@ -269,6 +273,8 @@ class _FullRealEstateApartmentsScreenState
                 categoryId: subcategory.id,
                 categoryName: subcategory.name,
                 isFromFullCategory: true,
+                catalogId: 1, // 🎯 Недвижимость всегда ID=1
+                catalogName: 'Недвижимость',
               ),
             ),
           );

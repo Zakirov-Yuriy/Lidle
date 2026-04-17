@@ -40,6 +40,7 @@ class RealEstateListingsScreen extends StatefulWidget {
   final List<int>? categoryIds; // ID категорий для фильтрации (несколько категорий)
   final int? catalogId; // ID каталога для фильтрации
   final String? categoryName; // Имя категории для отображения в заголовке
+  final String? catalogName; // 🎯 Название каталога (Недвижимость, Автомобили и т.д.)
   final bool
   isFromFullCategory; // true если переход с full_category_screen, false если с home_page
   
@@ -54,6 +55,7 @@ class RealEstateListingsScreen extends StatefulWidget {
     this.categoryName,
     this.isFromFullCategory = false,
     this.preSelectedCity,
+    this.catalogName,
   });
 
   @override
@@ -1275,6 +1277,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                   builder: (_) => IntermediateFiltersScreen(
                     displayTitle: widget.categoryName ?? 'Недвижимость',
                     catalogId: widget.catalogId,
+                    categoryId: widget.categoryId, // 🎯 Передаём categoryId напрямую
+                    catalogName: widget.catalogName, // 🎯 Передаём название каталога
                   ),
                 ),
               );

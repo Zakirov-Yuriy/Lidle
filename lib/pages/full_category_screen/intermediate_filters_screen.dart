@@ -20,8 +20,10 @@ class IntermediateFiltersScreen extends StatefulWidget {
   final String?
   displayTitle; // Динамически подтягиваемый заголовок из real_estate_listings_screen
   final int? catalogId; // ID каталога для загрузки категорий (Недвижимость=1, Работа=2 и т.д.)
+  final int? categoryId; // 🎯 ПРЯМОЙ ID категории (чтобы не искать по имени)
+  final String? catalogName; // 🎯 Название каталога для отображения в фильтрах (Недвижимость, Автомобили и т.д.)
 
-  const IntermediateFiltersScreen({super.key, this.displayTitle, this.catalogId});
+  const IntermediateFiltersScreen({super.key, this.displayTitle, this.catalogId, this.categoryId, this.catalogName});
 
   @override
   State<IntermediateFiltersScreen> createState() =>
@@ -71,8 +73,22 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
     // Initialize with empty list, will be populated from API
     apiCities = [];
     
+    // 🎯 ЕСЛИ categoryId передан напрямую, используем его сразу (без поиска по имени)
+    if (widget.categoryId != null) {
+      selectedSubcategoryId = widget.categoryId!;
+      log.d('✅ Using direct categoryId from parameter: ${widget.categoryId}');
+    }
+    
+    // 🎯 ИНИЦИАЛИЗИРУЕМ КАТЕГОРИЮ из displayTitle (передаётся из real_estate_listings_screen)
+    // Это исправляет проблему: визуально категория была видна, но валидация падала
+    if (widget.displayTitle != null && widget.displayTitle!.isNotEmpty) {
+      selectedSubcategory = widget.displayTitle!.replaceAll('\n', ' ').trim();
+      log.d('✅ INITIALIZED selectedSubcategory from displayTitle: "$selectedSubcategory"');
+      // ⏳ selectedSubcategoryId будет найден ПОСЛЕ загрузки категорий в _loadRealEstateCategories()
+    }
+    
     _loadCities(); // Load cities from API
-    _loadRealEstateCategories(); // Load real estate categories
+    _loadRealEstateCategories(); // Load real estate categories - ВАЖНО: это найдёт ID для категории!
   }
 
   @override
@@ -87,44 +103,133 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   Future<void> _loadRealEstateCategories() async {
     try {
       final token = TokenService.currentToken;
-      final catalog = await ApiService.getCatalog(1, token: token); // catalogId = 1 для Недвижимости
+      log.d('🔑 Loading categories with token: ${token != null ? 'YES' : 'NO'}');
+      final catalogIdToLoad = widget.catalogId ?? 1; // 🎯 Используем передаваемый catalogId, по умолчанию 1
+      log.d('📦 Загружаем каталог ID=$catalogIdToLoad');
+      final catalog = await ApiService.getCatalog(catalogIdToLoad, token: token);
       
       if (mounted) {
         setState(() {
           realEstateCategories = catalog.categories;
-          log.d('Loaded ${realEstateCategories.length} real estate categories');
+          log.d('\n📂 ════════════════════════════════════════════════════');
+          log.d('📂 Loaded ${realEstateCategories.length} MAIN categories');
+          log.d('📂 All available MAIN categories:');
+          for (int i = 0; i < realEstateCategories.length; i++) {
+            final cat = realEstateCategories[i];
+            try {
+              if (cat is Map) {
+                log.d('   [$i] ID=${cat['id']}, Name="${cat['name']}", IsEndpoint=${cat['is_endpoint']}, Children=${cat['children']?.length ?? 0}');
+              } else {
+                log.d('   [$i] ID=${cat.id}, Name="${cat.name}", IsEndpoint=${cat.isEndpoint}, Children=${cat.children?.length ?? 0}');
+              }
+            } catch (e) {
+              log.d('   [$i] Error parsing: $e');
+            }
+          }
+          log.d('📂 ════════════════════════════════════════════════════\n');
+          
+          // 🎯 ВАЖНО: Теперь когда категории загружены, найдём ID для selectedSubcategory
+          // Но только если categoryId не был передан напрямую в конструктор
+          if (widget.categoryId == null) {
+            if (selectedSubcategory != null && selectedSubcategory!.isNotEmpty) {
+              log.d('🔍 Looking for category: "$selectedSubcategory"');
+              selectedSubcategoryId = _findCategoryIdByName(selectedSubcategory!);
+              log.d('✅ Found category ID: "$selectedSubcategory" → ID=$selectedSubcategoryId');
+            } else {
+              log.d('⚠️ selectedSubcategory is null or empty, using default ID=1');
+            }
+          } else {
+            log.d('✅ categoryId already set from parameter: $selectedSubcategoryId');
+          }
         });
       }
     } catch (e) {
-      log.d('Error loading real estate categories: $e');
+      log.d('❌ Error loading real estate categories: $e');
     }
   }
 
-  /// Находит ID категории по её названию
+  /// Находит ID категории по её названию (ищет в главных категориях и подкатегориях)
   int _findCategoryIdByName(String categoryName) {
+    log.d('\n🔎 ════════════════════════════════════════════════════');
+    log.d('🔎 _findCategoryIdByName() searching for: "$categoryName"');
+    log.d('🔎 Total MAIN categories to search: ${realEstateCategories.length}');
+    
     try {
-      for (var cat in realEstateCategories) {
-        // Пытаемся получить id и name обычным способом
+      // 1️⃣ Сначала ищем в главных категориях
+      for (int idx = 0; idx < realEstateCategories.length; idx++) {
+        var cat = realEstateCategories[idx];
         try {
+          String mainName = '';
+          int mainId = 0;
+          bool isEndpoint = false;
+          List<dynamic> children = [];
+          
           // Если это Map
           if (cat is Map) {
-            if (cat['name'] == categoryName) {
-              return cat['id'] as int;
-            }
+            mainName = cat['name']?.toString() ?? '';
+            mainId = cat['id'] ?? 0;
+            isEndpoint = cat['is_endpoint'] ?? false;
+            children = cat['children'] ?? [];
           } else {
-            // Если это объект с полями id и name
-            if (cat.name == categoryName) {
-              return cat.id as int;
+            // Если это объект
+            mainName = cat.name?.toString() ?? '';
+            mainId = cat.id ?? 0;
+            isEndpoint = cat.isEndpoint ?? false;
+            children = cat.children ?? [];
+          }
+          
+          log.d('   [$idx] MAIN: name="$mainName" (ID=$mainId, isEndpoint=$isEndpoint, childrenCount=${children.length})');
+          
+          // Проверяем главную категорию
+          if (mainName == categoryName && isEndpoint) {
+            log.d('   ✅ MATCH in MAIN category!');
+            log.d('🔎 ════════════════════════════════════════════════════\n');
+            return mainId;
+          }
+          
+          // 2️⃣ Если есть дети - ищем в подкатегориях
+          if (children.isNotEmpty) {
+            log.d('      Searching in ${children.length} sub-categories...');
+            for (int cidx = 0; cidx < children.length; cidx++) {
+              var child = children[cidx];
+              try {
+                String childName = '';
+                int childId = 0;
+                bool childIsEndpoint = false;
+                
+                if (child is Map) {
+                  childName = child['name']?.toString() ?? '';
+                  childId = child['id'] ?? 0;
+                  childIsEndpoint = child['is_endpoint'] ?? false;
+                } else {
+                  childName = child.name?.toString() ?? '';
+                  childId = child.id ?? 0;
+                  childIsEndpoint = child.isEndpoint ?? false;
+                }
+                
+                log.d('         [$cidx] SUB: name="$childName" (ID=$childId, isEndpoint=$childIsEndpoint) → ${childName == categoryName ? '✅ MATCH!' : '❌ no match'}');
+                
+                if (childName == categoryName && childIsEndpoint) {
+                  log.d('   ✅ MATCH in SUB-category!');
+                  log.d('🔎 ════════════════════════════════════════════════════\n');
+                  return childId;
+                }
+              } catch (e) {
+                log.d('         [$cidx] Error parsing sub-category: $e');
+              }
             }
           }
         } catch (e) {
-          // Пропускаем если не удалось обработать элемент
+          log.d('   [$idx] Error parsing main category: $e');
           continue;
         }
       }
     } catch (e) {
-      log.d('Error finding category ID: $e');
+      log.d('❌ Error in _findCategoryIdByName: $e');
     }
+    
+    log.d('❌ Category "$categoryName" NOT FOUND in MAIN or SUB categories! Returning default ID=1');
+    log.d('🔎 ════════════════════════════════════════════════════\n');
     return 1; // Fallback к ID=1 если не найдено
   }
 
@@ -468,6 +573,26 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             // Переход на экран фильтра с подтянутыми данными из промежуточного фильтра
             final selectedCityName = selectedCity.isNotEmpty ? selectedCity.first : null;
             
+            // 🎯 ВАЛИДАЦИЯ: Если пришли с основной категорией (catalogId), проверяем что выбрана подкатегория
+            if (widget.categoryId == null && widget.catalogId != null && selectedSubcategoryId == 1) {
+              log.w('⚠️  VALIDATION FAILED: пользователь не выбрал подкатегорию');
+              setState(() {
+                showCategoryError = true;
+              });
+              return; // Прерываем навигацию
+            }
+            
+            log.d('\n🟢 ════════════════════════════════════════════════════');
+            log.d('🟢 APPLYING FILTERS - NavigatingTo RealEstateFullFiltersScreen');
+            log.d('🟢 Parameters:');
+            log.d('   selectedCategory: "$selectedSubcategory"');
+            log.d('   categoryId: $selectedSubcategoryId ⚠️ CHECK THIS!');
+            log.d('   selectedCity: "$selectedCityName"');
+            log.d('   selectedDateSort: "$selectedDateSort"');
+            log.d('   selectedPriceSort: "$selectedPriceSort"');
+            log.d('   selectedSellerType: "$sellerType"');
+            log.d('🟢 ════════════════════════════════════════════════════\n');
+            
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -481,6 +606,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                   selectedDateSort: selectedDateSort.isNotEmpty ? selectedDateSort : null,
                   selectedPriceSort: selectedPriceSort.isNotEmpty ? selectedPriceSort : null,
                   selectedSellerType: sellerType.isNotEmpty ? sellerType : null,
+                  catalogName: widget.catalogName ?? 'Недвижимость', // 🎯 Передаём название каталога
                 ),
               ),
             );
@@ -579,11 +705,19 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             _isNavigating = true;
             
             try {
+              // 🎯 Определяем какой catalogId использовать при открытии диалога
+              // Если пришли с конкретной категории (widget.categoryId != null) и 
+              // знаем из какого каталога она (widget.catalogId), используем его
+              // Если пришли с основной категории (catalogId известен), используем его
+              final catalogIdForDialog = widget.catalogId ?? 1;
+              
+              log.d('📢 Opening category selection dialog for catalogId=$catalogIdForDialog');
+              
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => RealEstateFullSubcategoriesScreen(
-                    catalogId: widget.catalogId ?? 1, // Передаём ID каталога, по умолчанию 1 (Недвижимость)
+                    catalogId: catalogIdForDialog, // 🎯 Теперь используем правильный catalogId
                   ),
                 ),
               );

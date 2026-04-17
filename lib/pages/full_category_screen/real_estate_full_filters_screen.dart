@@ -24,6 +24,7 @@ class RealEstateFullFiltersScreen extends StatefulWidget {
   final String? selectedDateSort; // Сортировка по дате (new/old)
   final String? selectedPriceSort; // Сортировка по цене (expensive/cheap)
   final String? selectedSellerType; // Тип продавца (private/business/all)
+  final String? catalogName; // 🎯 Название каталога (Недвижимость, Автомобили и т.д.)
 
   const RealEstateFullFiltersScreen({
     super.key,
@@ -33,6 +34,7 @@ class RealEstateFullFiltersScreen extends StatefulWidget {
     this.selectedDateSort,
     this.selectedPriceSort,
     this.selectedSellerType,
+    this.catalogName, // 🎯 По умолчанию null, будет использовано значение из параметра
   });
 
   @override
@@ -103,7 +105,16 @@ class _RealEstateFullFiltersScreenState
   @override
   void initState() {
     super.initState();
-    log.d('🚀 RealEstateFullFiltersScreen.initState() called');
+    log.d('\n🚀 ════════════════════════════════════════════════════');
+    log.d('🚀 RealEstateFullFiltersScreen.initState() CALLED');
+    log.d('🚀 Received parameters:');
+    log.d('   selectedCategory: "${widget.selectedCategory}"');
+    log.d('   categoryId: ${widget.categoryId} ⚠️ THIS WILL BE USED TO LOAD FILTERS');
+    log.d('   selectedCity: "${widget.selectedCity}"');
+    log.d('   selectedDateSort: "${widget.selectedDateSort}"');
+    log.d('   selectedPriceSort: "${widget.selectedPriceSort}"');
+    log.d('   selectedSellerType: "${widget.selectedSellerType}"');
+    log.d('🚀 ════════════════════════════════════════════════════\n');
     
     // Initialize with empty list, will be populated from API
     apiCities = [];
@@ -304,11 +315,16 @@ class _RealEstateFullFiltersScreenState
       });
 
       final token = TokenService.currentToken;
-      log.d('🔑 Filter load - Token: ${token != null ? 'Present' : 'Missing'}');
-      log.d('📂 Category: ${widget.selectedCategory}');
+      log.d('\n🟢 ════════════════════════════════════════════════════');
+      log.d('🟢 _loadDynamicFilters() CALLED');
+      log.d('🟢 Token: ${token != null ? 'Present' : 'Missing'}');
+      log.d('🟢 selectedCategory (from widget): "${widget.selectedCategory}"');
 
       // Используем categoryId переданный в конструктор (конечная категория)
       int categoryId = widget.categoryId; // Должна быть конечная категория (is_endpoint=true)
+      
+      log.d('🟢 categoryId (from widget): $categoryId ⚠️ THIS IS WHAT WILL BE USED FOR API CALL');
+      log.d('🟢 ════════════════════════════════════════════════════\n');
       
       log.d('🔄 Fetching filters for categoryId: $categoryId (from widget)');
 
@@ -1617,7 +1633,9 @@ class _RealEstateFullFiltersScreenState
   }
 
   String _getCategorySubtitle() {
-    return 'Недвижимость / ${widget.selectedCategory}';
+    // 🎯 Используем передаваемое название каталога, если оно есть, иначе "Недвижимость"
+    final catalogName = widget.catalogName ?? 'Недвижимость';
+    return '$catalogName / ${widget.selectedCategory}';
   }
 
   Widget _sortButton(String label, String key) {
