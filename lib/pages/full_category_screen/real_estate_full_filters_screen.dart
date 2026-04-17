@@ -1929,26 +1929,27 @@ class _RealEstateFullFiltersScreenState
           ),
         ),
         const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.white70),
-              minimumSize: const Size.fromHeight(51),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              // TODO: Показать на карте
-            },
-            child: const Text(
-              "Показать на карте",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
+        // const SizedBox(height: 14),
+        // SizedBox(
+        //   width: double.infinity,
+        //   child: OutlinedButton(
+        //     style: OutlinedButton.styleFrom(
+        //       side: const BorderSide(color: Colors.white70),
+        //       minimumSize: const Size.fromHeight(51),
+        //       shape: RoundedRectangleBorder(
+        //         borderRadius: BorderRadius.circular(8),
+        //       ),
+        //     ),
+        //     onPressed: () {
+        //       // TODO: Показать на карте
+        //     },
+        //     child: const Text(
+        //       "Показать на карте",
+        //       style: TextStyle(color: Colors.white),
+        //     ),
+        //   ),
+        // ),
+        // const SizedBox(height: 14),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(

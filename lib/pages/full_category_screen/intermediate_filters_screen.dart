@@ -43,6 +43,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   int selectedSubcategoryId = 1; // По умолчанию используем 1, но переписывается при выборе
   String? selectedApartmentType;
   bool showCategoryError = false; // Показывает ошибку если категория не выбрана
+  bool showCityError = false; // Показывает ошибку если город не выбран
 
   Set<String> selectedCities = {};
   Set<String> selectedStreet = {};
@@ -56,6 +57,9 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   List<dynamic> realEstateCategories = [];
   
   bool _isNavigating = false; // Флаг для предотвращения множественных навигаций
+  
+  // Для прокрутки к ошибкам
+  late ScrollController _scrollController;
 
   final TextEditingController priceFrom = TextEditingController();
   final TextEditingController priceTo = TextEditingController();
@@ -63,6 +67,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     // Initialize with empty list, will be populated from API
     apiCities = [];
     
@@ -74,6 +79,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   void dispose() {
     priceFrom.dispose();
     priceTo.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -235,6 +241,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
+                controller: _scrollController,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 25,
                   vertical: 10,
@@ -302,6 +309,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                     viewMode = "gallery";
                     selectedSubcategory = null;
                     showCategoryError = false;
+                    showCityError = false;
                   });
                 },
                 child: const Text(
@@ -416,10 +424,43 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
             ),
           ),
           onPressed: () {
+            // Очищаем предыдущие ошибки
+            setState(() {
+              showCategoryError = false;
+              showCityError = false;
+            });
+            
+            // Проверяем валидность полей (без ранних возвратов, чтобы показать все ошибки)
+            bool hasErrors = false;
+            
             // Проверяем что категория выбрана
             if (selectedSubcategory == null || selectedSubcategory!.isEmpty) {
+              log.d('🔴 Ошибка валидации: категория не выбрана!');
               setState(() {
                 showCategoryError = true;
+              });
+              hasErrors = true;
+            }
+            
+            // Проверяем что город выбран
+            if (selectedCity.isEmpty) {
+              log.d('🔴 Ошибка валидации: город не выбран!');
+              setState(() {
+                showCityError = true;
+              });
+              log.d('✅ showCityError установлен в true');
+              hasErrors = true;
+            }
+            
+            // Если есть ошибки, прокручиваем вверх и выходим
+            if (hasErrors) {
+              // Прокручиваем вверх к ошибкам (больше расстояния для видимости обеих)
+              Future.delayed(const Duration(milliseconds: 150), () {
+                _scrollController.animateTo(
+                  _scrollController.position.minScrollExtent,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOut,
+                );
               });
               return; // Прерываем навигацию
             }
@@ -502,14 +543,30 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
                   title: "Выберите город",
                   options: citiesToShow,
                   selectedOptions: selectedCity,
-                  onSelectionChanged: (v) => setState(() => selectedCity = v),
+                  onSelectionChanged: (v) => setState(() {
+                    selectedCity = v;
+                    showCityError = false;
+                  }),
                 );
               },
             );
           },
           showArrow: true,
         ),
-        const SizedBox(height: 16),
+        // Сообщение об ошибке если город не выбран
+        if (showCityError)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Выберите город',
+              style: const TextStyle(
+                color: Color(0xFFFF4444), // Красный цвет как на скриншоте
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        SizedBox(height: showCityError ? 24 : 16),
         _buildTitle("Выберите категорию"),
         GestureDetector(
           onTap: () async {
