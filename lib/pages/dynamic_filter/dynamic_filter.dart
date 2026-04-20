@@ -2552,617 +2552,13 @@ class _DynamicFilterState extends State<DynamicFilter>
                     _buildAutoRenewalToggle(),
                     const SizedBox(height: 18),
 
-                    // ADDRESS SECTION WITH API
-                    // Region field
-                    _buildDropdown(
-                      label: 'Ваша область*',
-                      fieldKey: 'region',
-                      hint: _selectedRegion.isEmpty
-                          ? 'Выберите область'
-                          : _selectedRegion.join(', '),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: textSecondary,
-                      ),
-                      onTap: () {
-                        if (_regions.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Области загружаются...'),
-                            ),
-                          );
-                          return;
-                        }
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return SelectionDialog(
-                              title: 'Выберите область',
-                              options: _regions
-                                  .map((r) => r['name'] as String)
-                                  .toList(),
-                              selectedOptions: _selectedRegion,
-                              onSelectionChanged: (Set<String> selected) {
-                                if (selected.isNotEmpty) {
-                                  final selectedRegionName = selected.first;
-                                  final regionIndex = _regions.indexWhere(
-                                    (r) => r['name'] == selectedRegionName,
-                                  );
-                                  int? regionId;
-                                  if (regionIndex >= 0) {
-                                    regionId =
-                                        _regions[regionIndex]['id'] as int?;
-                                  }
-                                  setState(() {
-                                    _selectedRegion = selected;
-                                    _selectedRegionId = regionId;
-                                    mainRegionId = regionId;
-                                    _fieldErrors.remove(
-                                      'region',
-                                    ); // Clear error on selection
-                                    _selectedCity.clear();
-                                    _selectedStreet.clear();
-                                    _selectedCityId = null;
-                                    _selectedStreetId = null;
-                                    // 🆕 Сбрасываем информацию о регионе города при смене региона
-                                    _selectedCityRegionId = null;
-                                    _selectedCityMainRegionId = null;
-                                    _cities.clear();
-                                    _streets.clear();
-                                    _selectedBuilding.clear();
-                                    _selectedBuildingId = null;
-                                    _buildings.clear();
-                                    // 🆕 Очищаем кеш результатов поиска городов и их регионов
-                                    _lastCitiesSearchResults.clear();
-                                    _lastCitiesRegionResults.clear();
-                                    // 🆕 Очищаем кеш результатов поиска улиц
-                                    _lastStreetsSearchResults.clear();
-                                  });
-
-                                  log.d(
-                                    '🎯 Пользователь выбрал регион: "$selectedRegionName" (ID: $regionId)',
-                                  );
-
-                                  // 🔄 Загружаем города с API сразу после выбора региона
-                                  if (regionId != null) {
-                                    _loadCitiesForSelectedRegion();
-                                  }
-                                }
-                              },
-                              allowMultipleSelection: false,
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 9),
-
-                    // City field
-                    _buildDropdown(
-                      label: 'Ваш город*',
-                      fieldKey: 'city',
-                      hint: _selectedCity.isEmpty
-                          ? 'Выберите город'
-                          : _selectedCity.join(', '),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: textSecondary,
-                      ),
-                      onTap: _selectedRegionId == null
-                          ? null
-                          : () {
-                              // 🆕 Упрощенное открытие диалога города
-                              // Поиск теперь делается ДИНАМИЧЕСКИ в диалоге при вводе пользователя
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return CitySelectionDialog(
-                                    title: 'Ваш город',
-                                    options: _cities
-                                        .map((c) => c['name'] as String)
-                                        .toList(), // показываем уже загруженные города
-                                    selectedOptions: _selectedCity,
-                                    onSelectionChanged: (Set<String> selected) {
-                                      if (selected.isNotEmpty) {
-                                        final selectedCityName = selected.first;
-
-                                        // 🆕 Ищем ID города в кеше результатов поиска API
-                                        int? cityId =
-                                            _lastCitiesSearchResults[selectedCityName];
-                                        int? mainRegionId = _selectedRegionId;
-                                        
-                                        // 🆕 Загружаем информацию о регионе города из кеша
-                                        int? cityRegionId;
-                                        int? cityMainRegionId;
-                                        if (_lastCitiesRegionResults.containsKey(selectedCityName)) {
-                                          final regionInfo = _lastCitiesRegionResults[selectedCityName];
-                                          cityRegionId = regionInfo?['region_id'];
-                                          cityMainRegionId = regionInfo?['main_region_id'];
-                                        }
-
-                                        log.d('');
-                                        log.d('✅ City selected from dialog:');
-                                        log.d('   - Name: "$selectedCityName"');
-                                        log.d(
-                                          '   - Looking in cache: ${_lastCitiesSearchResults.keys.toList()}',
-                                        );
-                                        log.d('   - Found ID: $cityId');
-                                        log.d('   - Region ID: $mainRegionId');
-                                        log.d('   - City region_id: $cityRegionId, main_region_id: $cityMainRegionId');
-
-                                        if (cityId == null) {
-                                          log.w(
-                                            '   ⚠️ WARNING: City not found in cache! This should not happen.',
-                                          );
-                                          log.w(
-                                            '   ⚠️ Will try to search for city ID via API...',
-                                          );
-                                        }
-
-                                        setState(() {
-                                          _selectedCity = selected;
-                                          _selectedCityId = cityId;
-                                          _selectedRegionId = mainRegionId;
-                                          // 🆕 Сохраняем информацию о регионе выбранного города
-                                          _selectedCityRegionId = cityRegionId;
-                                          _selectedCityMainRegionId = cityMainRegionId;
-                                          _fieldErrors.remove('city');
-                                          _selectedStreet.clear();
-                                          _selectedStreetId = null;
-                                          _streets.clear();
-                                          _selectedBuilding.clear();
-                                          _selectedBuildingId = null;
-                                          _buildings.clear();
-                                          // 🆕 Очищаем кеш результатов поиска улиц при смене города
-                                          _lastStreetsSearchResults.clear();
-                                        });
-                                        log.d('');
-                                      }
-                                    },
-                                    // 🆕 Callback для поиска через API
-                                    onSearchQuery: _searchCitiesAPI,
-                                  );
-                                },
-                              );
-                            },
-                    ),
-                    const SizedBox(height: 9),
-
-                    // Street field
-                    _buildDropdown(
-                      label: 'Улица*',
-                      fieldKey: 'street',
-                      hint: _selectedStreet.isEmpty
-                          ? 'Выберите улицу'
-                          : _selectedStreet.join(', '),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: textSecondary,
-                      ),
-                      onTap: _selectedCityId == null
-                          ? null
-                          : () async {
-                              log.d('');
-                              log.d(
-                                '🔍 [STREET] Пользователь нажал на "Улица"',
-                              );
-                              log.d(
-                                '   - _selectedCity: ${_selectedCity.toList()}',
-                              );
-                              log.d('   - _selectedCityId: $_selectedCityId');
-                              log.d('   - _streets.length: ${_streets.length}');
-
-                              // Load streets for selected city
-                              if (_streets.isEmpty && _selectedCityId != null) {
-                                log.d('   → Загружаем улицы с API...');
-                                try {
-                                  final token = TokenService.currentToken;
-
-                                  // 🔧 ИСПРАВКА: Используем "ул" вместо названия города
-                                  // Это позволяет API вернуть ВСЕ улицы города (до 20)
-                                  // вместо фильтрации по названию города
-                                  const String searchQuery = 'ул';
-
-                                  log.d(
-                                    '   - Поисковый запрос БЕЗ обработки: "$searchQuery"',
-                                  );
-                                  log.d(
-                                    '   - Длина строки: ${searchQuery.length} символов',
-                                  );
-
-                                  final response =
-                                      await AddressService.searchAddresses(
-                                        query: searchQuery,
-                                        token: token,
-                                        types: ['street'],
-                                        filters: _selectedCityId != null
-                                            ? {'city_id': _selectedCityId}
-                                            : null,
-                                      );
-
-                                  log.d(
-                                    '🔍 Поиск улиц для города ID: $_selectedCityId',
-                                  );
-                                  log.d(
-                                    '📋 API вернул ${response.data.length} результатов',
-                                  );
-
-                                  final uniqueStreets =
-                                      <String, Map<String, dynamic>>{};
-                                  int filteredStreets = 0;
-                                  for (final result in response.data) {
-                                    // Filter by city on client side
-                                    if (result.city?.id == _selectedCityId &&
-                                        result.street != null) {
-                                      // IMPORTANT: Store both main_region and region IDs from API response
-                                      uniqueStreets[result.street!.name] = {
-                                        'name': result.street!.name,
-                                        'id': result.street!.id,
-                                        'city_id': result.city!.id,
-                                        'main_region_id':
-                                            result.main_region?.id,
-                                        'region_id': result.region?.id,
-                                      };
-                                      log.d(
-                                        '   ✅ ${result.street!.name} [id=${result.street!.id}]',
-                                      );
-                                    } else if (result.street != null) {
-                                      filteredStreets++;
-                                      log.d(
-                                        '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
-                                      );
-                                    }
-                                  }
-
-                                  log.d(
-                                    '   ✅ Прошло фильтр: ${uniqueStreets.length}',
-                                  );
-                                  log.d('   ❌ Отфильтровано: $filteredStreets');
-
-                                  if (uniqueStreets.isEmpty) {
-                                    log.w(
-                                      '   ⚠️ WARNING: Не найдено ни одной улицы!',
-                                    );
-                                    log.w(
-                                      '   На сумму ${response.data.length} результатов от API',
-                                    );
-                                  }
-
-                                  log.d('');
-
-                                  setState(() {
-                                    _streets = uniqueStreets.values.toList();
-                                  });
-                                } catch (e) {
-                                  log.d('❌ Error loading streets: $e');
-                                  log.d('');
-                                }
-                              } else if (_streets.isEmpty) {
-                                log.d('   ❌ Не могу загрузить улицы:');
-                                log.d(
-                                  '       - _selectedCityId: $_selectedCityId',
-                                );
-                                log.d(
-                                  '       - _streets.isEmpty: ${_streets.isEmpty}',
-                                );
-                                log.d('');
-                              } else {
-                                log.d(
-                                  '   → Улицы уже в кеше, показываем диалог',
-                                );
-                                log.d('');
-                              }
-
-                              if (_streets.isNotEmpty) {
-                                log.d(
-                                  '🔓 Открываем диалог улиц (${_streets.length} улиц)',
-                                );
-                                log.d(
-                                  '   Улицы: ${_streets.map((s) => s['name']).toList()}',
-                                );
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return StreetSelectionDialog(
-                                      title: 'Выберите улицу',
-                                      options: _streets
-                                          .map((s) => s['name'] as String)
-                                          .toList(),
-                                      selectedOptions: _selectedStreet,
-                                      onSelectionChanged: (Set<String> selected) {
-                                        if (selected.isNotEmpty) {
-                                          final selectedStreetName =
-                                              selected.first;
-
-                                          // 🆕 Сначала ищем ID в кеше результатов поиска API
-                                          int? streetId =
-                                              _lastStreetsSearchResults[selectedStreetName];
-                                          int? cityIdFromStreet;
-
-                                          log.d('');
-                                          log.d(
-                                            '✅ Street selected from dialog:',
-                                          );
-                                          log.d(
-                                            '   - Name: "$selectedStreetName"',
-                                          );
-                                          log.d(
-                                            '   - Looking in cache: ${_lastStreetsSearchResults.keys.toList()}',
-                                          );
-                                          log.d(
-                                            '   - Found ID in cache: $streetId',
-                                          );
-
-                                          // Если не нашли в кеше - ищем в локальном списке _streets
-                                          if (streetId == null) {
-                                            log.d(
-                                              '   → Searching in local _streets list...',
-                                            );
-                                            final streetIndex = _streets
-                                                .indexWhere(
-                                                  (s) =>
-                                                      s['name'] ==
-                                                      selectedStreetName,
-                                                );
-                                            if (streetIndex >= 0) {
-                                              streetId =
-                                                  _streets[streetIndex]['id']
-                                                      as int?;
-                                              cityIdFromStreet =
-                                                  _streets[streetIndex]['city_id']
-                                                      as int?;
-                                              log.d(
-                                                '   ✅ Found in local list: ID=$streetId, cityId=$cityIdFromStreet',
-                                              );
-                                            } else {
-                                              log.w(
-                                                '   ❌ Not found in local list either!',
-                                              );
-                                            }
-                                          } else {
-                                            log.d('   ✅ Found in cache');
-                                          }
-
-                                          setState(() {
-                                            _selectedStreet = selected;
-                                            _selectedStreetId = streetId;
-                                            if (cityIdFromStreet != null) {
-                                              _selectedCityId =
-                                                  cityIdFromStreet;
-                                            }
-                                            _fieldErrors.remove('street');
-                                            _selectedBuilding.clear();
-                                            _selectedBuildingId = null;
-                                            _buildings.clear();
-                                          });
-
-                                          log.d('   - Final ID: $streetId');
-                                          log.d('');
-                                        }
-                                      },
-                                      // 🆕 Добавляем callback для поиска через API
-                                      onSearchQuery: _searchStreetsAPI,
-                                    );
-                                  },
-                                );
-                              }
-                            },
-                    ),
-                    const SizedBox(height: 9),
-
-                    // Building number field - dropdown selection
-                    _buildDropdown(
-                      label: 'Номер дома',
-                      hint: _selectedBuilding.isEmpty
-                          ? 'Выберите номер дома'
-                          : _selectedBuilding.join(', '),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: textSecondary,
-                      ),
-                      onTap: _selectedStreetId == null
-                          ? null
-                          : () async {
-                              // Load buildings for selected street
-                              if (_buildings.isEmpty &&
-                                  _selectedStreetId != null) {
-                                await _loadBuildingsForSelectedStreet();
-                              }
-
-                              if (_buildings.isNotEmpty) {
-                                showDialog(
-                                  context: context,
-                                  builder: (BuildContext context) {
-                                    return SelectionDialog(
-                                      title: 'Выберите номер дома',
-                                      options: _buildings
-                                          .map((b) => b['name'] as String)
-                                          .toList(),
-                                      selectedOptions: _selectedBuilding,
-                                      onSelectionChanged: (Set<String> selected) {
-                                        if (selected.isNotEmpty) {
-                                          final selectedBuildingName =
-                                              selected.first;
-                                          final buildingIndex = _buildings
-                                              .indexWhere(
-                                                (b) =>
-                                                    b['name'] ==
-                                                    selectedBuildingName,
-                                              );
-                                          int? buildingId;
-                                          if (buildingIndex >= 0) {
-                                            buildingId =
-                                                _buildings[buildingIndex]['id']
-                                                    as int?;
-                                          }
-                                          setState(() {
-                                            _selectedBuilding = selected;
-                                            _selectedBuildingId = buildingId;
-                                            _buildingController.text =
-                                                selectedBuildingName;
-                                          });
-                                        }
-                                      },
-                                      allowMultipleSelection: false,
-                                    );
-                                  },
-                                );
-                              }
-                            },
-                    ),
-                    const SizedBox(height: 9),
-
-                    const Text(
-                      'Местоположение на карте',
-                      style: TextStyle(color: textPrimary, fontSize: 14),
-                    ),
-                    const SizedBox(height: 9),
-
-                    Container(
-                      height: 160,
-                      decoration: BoxDecoration(
-                        color: formBackground,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.map_outlined,
-                          color: textSecondary,
-                          size: 40,
-                        ),
-                      ),
-                    ),
-
+                    _buildAddressSection(context),
                     const SizedBox(height: 27),
 
-                    const Text(
-                      'Ваши контактные данные',
-                      style: TextStyle(color: textPrimary, fontSize: 16),
-                    ),
-                    const SizedBox(height: 18),
-
-                    _buildTextField(
-                      label: 'Контактное лицо*',
-                      hint: 'Александр',
-                      fieldKey: 'contactName',
-                      controller: _contactNameController,
-                    ),
-                    const SizedBox(height: 9),
-
-                    _buildTextField(
-                      label: 'Электронная почта*',
-                      hint: 'AlexAlex@mail.ru',
-                      fieldKey: 'email',
-                      keyboardType: TextInputType.emailAddress,
-                      controller: _emailController,
-                    ),
-                    const SizedBox(height: 9),
-
-                    _buildTextField(
-                      label: 'Номер телефона 1*',
-                      hint: '+7 949 456 65 56',
-                      fieldKey: 'phone1',
-                      keyboardType: TextInputType.phone,
-                      controller: _phone1Controller,
-                    ),
-                    const SizedBox(height: 9),
-
-                    _buildTextField(
-                      label: 'Номер телефона 2',
-                      hint: '+7 949 456 65 56',
-                      fieldKey: 'phone2',
-                      keyboardType: TextInputType.phone,
-                      controller: _phone2Controller,
-                    ),
-                    const SizedBox(height: 9),
-
-                    _buildTextField(
-                      label: 'Ссылка на ваш чат в Max',
-                      hint: 'https://Namename',
-                      fieldKey: 'telegram',
-                      controller: _telegramController,
-                    ),
-                    const SizedBox(height: 9),
-
-                    // _buildTextField(
-                    //   label: 'Ссылка на ваш whatsapp',
-                    //   hint: 'https://whatsapp/Namename',
-                    //   controller: _whatsappController,
-                    // ),
+                    _buildContactsSection(),
                     const SizedBox(height: 22),
 
-                    // ============ Special attribute: "Вам предложат цену" ============
-                    // СКРЫТО НА ЭКРАНЕ - логика отправки остается в _collectFormData()
-                    // и _publishAdvert(), но UI не отображается
-                    // GestureDetector и checkbox для 1048 удалены из build()
-                    // _buildButton(
-                    //   'Предпросмотр',
-                    //   onPressed: () {
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (context) =>
-                    //             const PublicationTariffScreen(),
-                    //       ),
-                    //     );
-                    //   },
-                    //   isPrimary: _selectedAction == 'preview',
-                    // ),
-                    // const SizedBox(height: 10),
-                    if (_isPublishing)
-                      Column(
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey,
-                                minimumSize: const Size.fromHeight(51),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                              ),
-                              onPressed: null,
-                              icon: const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                              label: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    _isEditMode
-                                        ? 'Обновление объявления...'
-                                        : 'Публикация объявления...',
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _publishingProgress,
-                                    style: const TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                    else
-                      _buildButton(
-                        _isEditMode ? 'Обновить' : 'Опубликовать',
-                        onPressed: _publishAdvert,
-                        isPrimary: _selectedAction == 'publish',
-                      ),
-                    const SizedBox(height: 32),
+                    _buildSubmitSection(),
                   ],
                 ),
               ),
@@ -4272,6 +3668,660 @@ class _DynamicFilterState extends State<DynamicFilter>
           value: isAutoRenewal,
           onChanged: (v) => setState(() => isAutoRenewal = v),
         ),
+      ],
+    );
+  }
+
+  /// Секция ввода адреса: четыре каскадных дропдауна
+  /// (область → город → улица → номер дома) плюс плейсхолдер
+  /// карты ниже.
+  ///
+  /// Каждое поле показывает loader-тост если зависимые данные
+  /// ещё не загружены, либо открывает соответствующий диалог
+  /// выбора. Выбор в дропдауне более высокого уровня очищает
+  /// все зависимые поля (город/улица/дом) и их ID.
+  Widget _buildAddressSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ADDRESS SECTION WITH API
+        // Region field
+        _buildDropdown(
+          label: 'Ваша область*',
+          fieldKey: 'region',
+          hint: _selectedRegion.isEmpty
+              ? 'Выберите область'
+              : _selectedRegion.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: () {
+            if (_regions.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Области загружаются...'),
+                ),
+              );
+              return;
+            }
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return SelectionDialog(
+                  title: 'Выберите область',
+                  options: _regions
+                      .map((r) => r['name'] as String)
+                      .toList(),
+                  selectedOptions: _selectedRegion,
+                  onSelectionChanged: (Set<String> selected) {
+                    if (selected.isNotEmpty) {
+                      final selectedRegionName = selected.first;
+                      final regionIndex = _regions.indexWhere(
+                        (r) => r['name'] == selectedRegionName,
+                      );
+                      int? regionId;
+                      if (regionIndex >= 0) {
+                        regionId =
+                            _regions[regionIndex]['id'] as int?;
+                      }
+                      setState(() {
+                        _selectedRegion = selected;
+                        _selectedRegionId = regionId;
+                        mainRegionId = regionId;
+                        _fieldErrors.remove(
+                          'region',
+                        ); // Clear error on selection
+                        _selectedCity.clear();
+                        _selectedStreet.clear();
+                        _selectedCityId = null;
+                        _selectedStreetId = null;
+                        // 🆕 Сбрасываем информацию о регионе города при смене региона
+                        _selectedCityRegionId = null;
+                        _selectedCityMainRegionId = null;
+                        _cities.clear();
+                        _streets.clear();
+                        _selectedBuilding.clear();
+                        _selectedBuildingId = null;
+                        _buildings.clear();
+                        // 🆕 Очищаем кеш результатов поиска городов и их регионов
+                        _lastCitiesSearchResults.clear();
+                        _lastCitiesRegionResults.clear();
+                        // 🆕 Очищаем кеш результатов поиска улиц
+                        _lastStreetsSearchResults.clear();
+                      });
+
+                      log.d(
+                        '🎯 Пользователь выбрал регион: "$selectedRegionName" (ID: $regionId)',
+                      );
+
+                      // 🔄 Загружаем города с API сразу после выбора региона
+                      if (regionId != null) {
+                        _loadCitiesForSelectedRegion();
+                      }
+                    }
+                  },
+                  allowMultipleSelection: false,
+                );
+              },
+            );
+          },
+        ),
+        const SizedBox(height: 9),
+
+        // City field
+        _buildDropdown(
+          label: 'Ваш город*',
+          fieldKey: 'city',
+          hint: _selectedCity.isEmpty
+              ? 'Выберите город'
+              : _selectedCity.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: _selectedRegionId == null
+              ? null
+              : () {
+                  // 🆕 Упрощенное открытие диалога города
+                  // Поиск теперь делается ДИНАМИЧЕСКИ в диалоге при вводе пользователя
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return CitySelectionDialog(
+                        title: 'Ваш город',
+                        options: _cities
+                            .map((c) => c['name'] as String)
+                            .toList(), // показываем уже загруженные города
+                        selectedOptions: _selectedCity,
+                        onSelectionChanged: (Set<String> selected) {
+                          if (selected.isNotEmpty) {
+                            final selectedCityName = selected.first;
+
+                            // 🆕 Ищем ID города в кеше результатов поиска API
+                            int? cityId =
+                                _lastCitiesSearchResults[selectedCityName];
+                            int? mainRegionId = _selectedRegionId;
+                                        
+                            // 🆕 Загружаем информацию о регионе города из кеша
+                            int? cityRegionId;
+                            int? cityMainRegionId;
+                            if (_lastCitiesRegionResults.containsKey(selectedCityName)) {
+                              final regionInfo = _lastCitiesRegionResults[selectedCityName];
+                              cityRegionId = regionInfo?['region_id'];
+                              cityMainRegionId = regionInfo?['main_region_id'];
+                            }
+
+                            log.d('');
+                            log.d('✅ City selected from dialog:');
+                            log.d('   - Name: "$selectedCityName"');
+                            log.d(
+                              '   - Looking in cache: ${_lastCitiesSearchResults.keys.toList()}',
+                            );
+                            log.d('   - Found ID: $cityId');
+                            log.d('   - Region ID: $mainRegionId');
+                            log.d('   - City region_id: $cityRegionId, main_region_id: $cityMainRegionId');
+
+                            if (cityId == null) {
+                              log.w(
+                                '   ⚠️ WARNING: City not found in cache! This should not happen.',
+                              );
+                              log.w(
+                                '   ⚠️ Will try to search for city ID via API...',
+                              );
+                            }
+
+                            setState(() {
+                              _selectedCity = selected;
+                              _selectedCityId = cityId;
+                              _selectedRegionId = mainRegionId;
+                              // 🆕 Сохраняем информацию о регионе выбранного города
+                              _selectedCityRegionId = cityRegionId;
+                              _selectedCityMainRegionId = cityMainRegionId;
+                              _fieldErrors.remove('city');
+                              _selectedStreet.clear();
+                              _selectedStreetId = null;
+                              _streets.clear();
+                              _selectedBuilding.clear();
+                              _selectedBuildingId = null;
+                              _buildings.clear();
+                              // 🆕 Очищаем кеш результатов поиска улиц при смене города
+                              _lastStreetsSearchResults.clear();
+                            });
+                            log.d('');
+                          }
+                        },
+                        // 🆕 Callback для поиска через API
+                        onSearchQuery: _searchCitiesAPI,
+                      );
+                    },
+                  );
+                },
+        ),
+        const SizedBox(height: 9),
+
+        // Street field
+        _buildDropdown(
+          label: 'Улица*',
+          fieldKey: 'street',
+          hint: _selectedStreet.isEmpty
+              ? 'Выберите улицу'
+              : _selectedStreet.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: _selectedCityId == null
+              ? null
+              : () async {
+                  log.d('');
+                  log.d(
+                    '🔍 [STREET] Пользователь нажал на "Улица"',
+                  );
+                  log.d(
+                    '   - _selectedCity: ${_selectedCity.toList()}',
+                  );
+                  log.d('   - _selectedCityId: $_selectedCityId');
+                  log.d('   - _streets.length: ${_streets.length}');
+
+                  // Load streets for selected city
+                  if (_streets.isEmpty && _selectedCityId != null) {
+                    log.d('   → Загружаем улицы с API...');
+                    try {
+                      final token = TokenService.currentToken;
+
+                      // 🔧 ИСПРАВКА: Используем "ул" вместо названия города
+                      // Это позволяет API вернуть ВСЕ улицы города (до 20)
+                      // вместо фильтрации по названию города
+                      const String searchQuery = 'ул';
+
+                      log.d(
+                        '   - Поисковый запрос БЕЗ обработки: "$searchQuery"',
+                      );
+                      log.d(
+                        '   - Длина строки: ${searchQuery.length} символов',
+                      );
+
+                      final response =
+                          await AddressService.searchAddresses(
+                            query: searchQuery,
+                            token: token,
+                            types: ['street'],
+                            filters: _selectedCityId != null
+                                ? {'city_id': _selectedCityId}
+                                : null,
+                          );
+
+                      log.d(
+                        '🔍 Поиск улиц для города ID: $_selectedCityId',
+                      );
+                      log.d(
+                        '📋 API вернул ${response.data.length} результатов',
+                      );
+
+                      final uniqueStreets =
+                          <String, Map<String, dynamic>>{};
+                      int filteredStreets = 0;
+                      for (final result in response.data) {
+                        // Filter by city on client side
+                        if (result.city?.id == _selectedCityId &&
+                            result.street != null) {
+                          // IMPORTANT: Store both main_region and region IDs from API response
+                          uniqueStreets[result.street!.name] = {
+                            'name': result.street!.name,
+                            'id': result.street!.id,
+                            'city_id': result.city!.id,
+                            'main_region_id':
+                                result.main_region?.id,
+                            'region_id': result.region?.id,
+                          };
+                          log.d(
+                            '   ✅ ${result.street!.name} [id=${result.street!.id}]',
+                          );
+                        } else if (result.street != null) {
+                          filteredStreets++;
+                          log.d(
+                            '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
+                          );
+                        }
+                      }
+
+                      log.d(
+                        '   ✅ Прошло фильтр: ${uniqueStreets.length}',
+                      );
+                      log.d('   ❌ Отфильтровано: $filteredStreets');
+
+                      if (uniqueStreets.isEmpty) {
+                        log.w(
+                          '   ⚠️ WARNING: Не найдено ни одной улицы!',
+                        );
+                        log.w(
+                          '   На сумму ${response.data.length} результатов от API',
+                        );
+                      }
+
+                      log.d('');
+
+                      setState(() {
+                        _streets = uniqueStreets.values.toList();
+                      });
+                    } catch (e) {
+                      log.d('❌ Error loading streets: $e');
+                      log.d('');
+                    }
+                  } else if (_streets.isEmpty) {
+                    log.d('   ❌ Не могу загрузить улицы:');
+                    log.d(
+                      '       - _selectedCityId: $_selectedCityId',
+                    );
+                    log.d(
+                      '       - _streets.isEmpty: ${_streets.isEmpty}',
+                    );
+                    log.d('');
+                  } else {
+                    log.d(
+                      '   → Улицы уже в кеше, показываем диалог',
+                    );
+                    log.d('');
+                  }
+
+                  if (_streets.isNotEmpty) {
+                    log.d(
+                      '🔓 Открываем диалог улиц (${_streets.length} улиц)',
+                    );
+                    log.d(
+                      '   Улицы: ${_streets.map((s) => s['name']).toList()}',
+                    );
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return StreetSelectionDialog(
+                          title: 'Выберите улицу',
+                          options: _streets
+                              .map((s) => s['name'] as String)
+                              .toList(),
+                          selectedOptions: _selectedStreet,
+                          onSelectionChanged: (Set<String> selected) {
+                            if (selected.isNotEmpty) {
+                              final selectedStreetName =
+                                  selected.first;
+
+                              // 🆕 Сначала ищем ID в кеше результатов поиска API
+                              int? streetId =
+                                  _lastStreetsSearchResults[selectedStreetName];
+                              int? cityIdFromStreet;
+
+                              log.d('');
+                              log.d(
+                                '✅ Street selected from dialog:',
+                              );
+                              log.d(
+                                '   - Name: "$selectedStreetName"',
+                              );
+                              log.d(
+                                '   - Looking in cache: ${_lastStreetsSearchResults.keys.toList()}',
+                              );
+                              log.d(
+                                '   - Found ID in cache: $streetId',
+                              );
+
+                              // Если не нашли в кеше - ищем в локальном списке _streets
+                              if (streetId == null) {
+                                log.d(
+                                  '   → Searching in local _streets list...',
+                                );
+                                final streetIndex = _streets
+                                    .indexWhere(
+                                      (s) =>
+                                          s['name'] ==
+                                          selectedStreetName,
+                                    );
+                                if (streetIndex >= 0) {
+                                  streetId =
+                                      _streets[streetIndex]['id']
+                                          as int?;
+                                  cityIdFromStreet =
+                                      _streets[streetIndex]['city_id']
+                                          as int?;
+                                  log.d(
+                                    '   ✅ Found in local list: ID=$streetId, cityId=$cityIdFromStreet',
+                                  );
+                                } else {
+                                  log.w(
+                                    '   ❌ Not found in local list either!',
+                                  );
+                                }
+                              } else {
+                                log.d('   ✅ Found in cache');
+                              }
+
+                              setState(() {
+                                _selectedStreet = selected;
+                                _selectedStreetId = streetId;
+                                if (cityIdFromStreet != null) {
+                                  _selectedCityId =
+                                      cityIdFromStreet;
+                                }
+                                _fieldErrors.remove('street');
+                                _selectedBuilding.clear();
+                                _selectedBuildingId = null;
+                                _buildings.clear();
+                              });
+
+                              log.d('   - Final ID: $streetId');
+                              log.d('');
+                            }
+                          },
+                          // 🆕 Добавляем callback для поиска через API
+                          onSearchQuery: _searchStreetsAPI,
+                        );
+                      },
+                    );
+                  }
+                },
+        ),
+        const SizedBox(height: 9),
+
+        // Building number field - dropdown selection
+        _buildDropdown(
+          label: 'Номер дома',
+          hint: _selectedBuilding.isEmpty
+              ? 'Выберите номер дома'
+              : _selectedBuilding.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: _selectedStreetId == null
+              ? null
+              : () async {
+                  // Load buildings for selected street
+                  if (_buildings.isEmpty &&
+                      _selectedStreetId != null) {
+                    await _loadBuildingsForSelectedStreet();
+                  }
+
+                  if (_buildings.isNotEmpty) {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return SelectionDialog(
+                          title: 'Выберите номер дома',
+                          options: _buildings
+                              .map((b) => b['name'] as String)
+                              .toList(),
+                          selectedOptions: _selectedBuilding,
+                          onSelectionChanged: (Set<String> selected) {
+                            if (selected.isNotEmpty) {
+                              final selectedBuildingName =
+                                  selected.first;
+                              final buildingIndex = _buildings
+                                  .indexWhere(
+                                    (b) =>
+                                        b['name'] ==
+                                        selectedBuildingName,
+                                  );
+                              int? buildingId;
+                              if (buildingIndex >= 0) {
+                                buildingId =
+                                    _buildings[buildingIndex]['id']
+                                        as int?;
+                              }
+                              setState(() {
+                                _selectedBuilding = selected;
+                                _selectedBuildingId = buildingId;
+                                _buildingController.text =
+                                    selectedBuildingName;
+                              });
+                            }
+                          },
+                          allowMultipleSelection: false,
+                        );
+                      },
+                    );
+                  }
+                },
+        ),
+        const SizedBox(height: 9),
+
+        const Text(
+          'Местоположение на карте',
+          style: TextStyle(color: textPrimary, fontSize: 14),
+        ),
+        const SizedBox(height: 9),
+
+        Container(
+          height: 160,
+          decoration: BoxDecoration(
+            color: formBackground,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.map_outlined,
+              color: textSecondary,
+              size: 40,
+            ),
+          ),
+        ),
+
+      ],
+    );
+  }
+
+  /// Секция контактных данных: блок-заголовок «Ваши контактные
+  /// данные» и пять текстовых полей — контактное лицо, email,
+  /// два телефона и ссылка на чат (Max). Поле WhatsApp
+  /// закомментировано в исходнике, сохраняем идентичность.
+  ///
+  /// Все контроллеры (`_contactNameController`, `_emailController`
+  /// и т.д.) и `_fieldErrors` живут в State — методу они доступны
+  /// напрямую.
+  Widget _buildContactsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Ваши контактные данные',
+          style: TextStyle(color: textPrimary, fontSize: 16),
+        ),
+        const SizedBox(height: 18),
+
+        _buildTextField(
+          label: 'Контактное лицо*',
+          hint: 'Александр',
+          fieldKey: 'contactName',
+          controller: _contactNameController,
+        ),
+        const SizedBox(height: 9),
+
+        _buildTextField(
+          label: 'Электронная почта*',
+          hint: 'AlexAlex@mail.ru',
+          fieldKey: 'email',
+          keyboardType: TextInputType.emailAddress,
+          controller: _emailController,
+        ),
+        const SizedBox(height: 9),
+
+        _buildTextField(
+          label: 'Номер телефона 1*',
+          hint: '+7 949 456 65 56',
+          fieldKey: 'phone1',
+          keyboardType: TextInputType.phone,
+          controller: _phone1Controller,
+        ),
+        const SizedBox(height: 9),
+
+        _buildTextField(
+          label: 'Номер телефона 2',
+          hint: '+7 949 456 65 56',
+          fieldKey: 'phone2',
+          keyboardType: TextInputType.phone,
+          controller: _phone2Controller,
+        ),
+        const SizedBox(height: 9),
+
+        _buildTextField(
+          label: 'Ссылка на ваш чат в Max',
+          hint: 'https://Namename',
+          fieldKey: 'telegram',
+          controller: _telegramController,
+        ),
+        const SizedBox(height: 9),
+
+        // _buildTextField(
+        //   label: 'Ссылка на ваш whatsapp',
+        //   hint: 'https://whatsapp/Namename',
+        //   controller: _whatsappController,
+        // ),
+      ],
+    );
+  }
+
+  /// Секция публикации: закомментированный блок «Вам предложат
+  /// цену» (оставлен как исторический артефакт), затем либо
+  /// кнопка-заглушка с индикатором загрузки во время публикации
+  /// (`_isPublishing == true`), либо обычная кнопка
+  /// «Опубликовать» / «Обновить» (в зависимости от режима).
+  ///
+  /// Под блоком — отступ 32px до нижнего края скролла.
+  Widget _buildSubmitSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ============ Special attribute: "Вам предложат цену" ============
+        // СКРЫТО НА ЭКРАНЕ - логика отправки остается в _collectFormData()
+        // и _publishAdvert(), но UI не отображается
+        // GestureDetector и checkbox для 1048 удалены из build()
+        // _buildButton(
+        //   'Предпросмотр',
+        //   onPressed: () {
+        //     Navigator.push(
+        //       context,
+        //       MaterialPageRoute(
+        //         builder: (context) =>
+        //             const PublicationTariffScreen(),
+        //       ),
+        //     );
+        //   },
+        //   isPrimary: _selectedAction == 'preview',
+        // ),
+        // const SizedBox(height: 10),
+        if (_isPublishing)
+          Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey,
+                    minimumSize: const Size.fromHeight(51),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  onPressed: null,
+                  icon: const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.white,
+                      ),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                  label: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        _isEditMode
+                            ? 'Обновление объявления...'
+                            : 'Публикация объявления...',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _publishingProgress,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          )
+        else
+          _buildButton(
+            _isEditMode ? 'Обновить' : 'Опубликовать',
+            onPressed: _publishAdvert,
+            isPrimary: _selectedAction == 'publish',
+          ),
+        const SizedBox(height: 32),
       ],
     );
   }
