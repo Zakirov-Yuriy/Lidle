@@ -68,6 +68,11 @@ import 'dynamic_filter_field_resolver.dart';
 import 'widgets/checkbox_field.dart';
 import 'widgets/hidden_checkbox_field.dart';
 
+// Part-файлы со stateful-миксинами (шаг 4 рефакторинга).
+// Используем `part` вместо отдельных библиотек, чтобы сохранить
+// приватность (underscore-имена) для полей и методов state.
+part 'state/address_api_mixin.dart';
+
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
 // ============================================================
@@ -87,7 +92,8 @@ class DynamicFilter extends StatefulWidget {
 // ============================================================
 // "Класс состояния: Управление состоянием экрана аренды квартиры"
 // ============================================================
-class _DynamicFilterState extends State<DynamicFilter> {
+class _DynamicFilterState extends State<DynamicFilter>
+    with _AddressApiMixin {
   // =============== UI Mode ===============
   static const bool _isSubmissionMode =
       true; // DynamicFilter is for creating/submitting ads
@@ -130,53 +136,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
   final TextEditingController _phone2Controller = TextEditingController();
   final TextEditingController _telegramController = TextEditingController();
   final TextEditingController _whatsappController = TextEditingController();
-  final TextEditingController _regionController = TextEditingController();
-  final TextEditingController _cityController = TextEditingController();
-  final TextEditingController _streetController = TextEditingController();
-  final TextEditingController _buildingController = TextEditingController();
+  // NOTE: контроллеры _regionController/_cityController/_streetController/
+  // _buildingController живут в `_AddressApiMixin` (методы миксина
+  // пишут в них напрямую). Доступны здесь через `with _AddressApiMixin`.
 
   // Scroll controller for error handling
   final ScrollController _scrollController = ScrollController();
 
-  // Address data from API
-  List<Map<String, dynamic>> _regions = [];
-  List<Map<String, dynamic>> _cities = [];
-  List<Map<String, dynamic>> _streets = [];
-  List<Map<String, dynamic>> _buildings = [];
-
-  // Selected address values
-  Set<String> _selectedRegion = {};
-  Set<String> _selectedCity = {};
-  Set<String> _selectedStreet = {};
-  Set<String> _selectedBuilding = {};
-
-  // Store IDs for API submission
-  int? _selectedRegionId;
-  int? _selectedCityId;
-  int? _selectedStreetId;
-  // ignore: unused_field
-  int? _selectedBuildingId;
-  
-  // 🆕 Сохраняем информацию о регионе выбранного города
-  // Нужна для правильного поиска улиц через API
-  int? _selectedCityRegionId; // region_id (подрегион города)
-  int? _selectedCityMainRegionId; // main_region_id (основной регион города)
-
-  // 🆕 Cache для результатов поиска городов (city name -> city id)
-  // Используется для получения ID города при выборе из диалога
-  Map<String, int> _lastCitiesSearchResults = {};
-  
-  // 🆕 Cache для информации о регионе города (city name -> region info)
-  // Сохраняет region_id и main_region_id для каждого города
-  Map<String, Map<String, int>> _lastCitiesRegionResults = {};
-
-  // 🆕 Cache для результатов поиска улиц (street name -> street id)
-  // Используется для получения ID улицы при выборе из диалога
-  Map<String, int> _lastStreetsSearchResults = {};
-
-  // 🆕 Cache для subregion ID из результатов поиска (street name -> region_id)
-  // Используется для получения ID суб-региона при выборе улицы
-  Map<String, int?> _lastStreetsSubregionResults = {};
+  // NOTE: Все адресные поля (regions/cities/streets/buildings lists,
+  // search caches, selected values/IDs) живут в `_AddressApiMixin`
+  // (part-файл этой же библиотеки). Они доступны тут благодаря
+  // `with _AddressApiMixin` — обращайся к ним напрямую по имени.
 
   // =============== Validation Errors ===============
   Map<String, String?> _fieldErrors = {}; // Stores validation error messages
@@ -730,438 +700,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
   }
 
-  /// 🔧 Заполняет все поля адреса при редактировании объявления
-  /// Парсит адрес и заполняет контроллеры: область, город, улица, номер дома
-  /// Также вызывает загрузку данных для каждого уровня иерархии
-  Future<void> _populateAddressFieldsFromEdit(String fullAddress) async {
-    try {
-      if (fullAddress.isEmpty) {
-        log.d('⚠️ Empty address provided');
-        return;
-      }
-
-      log.d('🔍 Populating address fields from: $fullAddress');
-
-      // Адрес может быть в разных форматах:
-      // 1. "г. Донецк, ул. Донецкая" - 2 части (город, улица)
-      // 2. "г. Донецк, ул. Донецкая, д. 70" - 3 части (город, улица, дом)
-      // 3. "Донецкая Народная респ., г. Донецк, ул. Донецкая, д. 70" - 4 части (область, город, улица, дом)
-
-      final parts = fullAddress.split(',').map((p) => p.trim()).toList();
-
-      log.d('   Parts: $parts (${parts.length} parts)');
-
-      if (parts.isEmpty) return;
-
-      // ✅ ВАРИАНТ 1: 4 части - полный адрес с областью
-      if (parts.length == 4) {
-        log.d('   📍 Full address with region detected');
-        await _selectAddressFromParts(
-          region: parts[0],
-          city: parts[1],
-          street: parts[2],
-          building: parts[3],
-        );
-      }
-      // ✅ ВАРИАНТ 2: 3 части - адрес с номером дома (без области)
-      else if (parts.length == 3) {
-        log.d('   📍 Address with building detected');
-        await _selectAddressFromParts(
-          city: parts[0],
-          street: parts[1],
-          building: parts[2],
-        );
-      }
-      // ✅ ВАРИАНТ 3: 2 части - только город и улица
-      else if (parts.length == 2) {
-        log.d('   📍 Address without building detected');
-        await _selectAddressFromParts(city: parts[0], street: parts[1]);
-      }
-
-      log.d('✅ Address fields populated successfully');
-    } catch (e) {
-      log.d('❌ Error populating address fields: $e');
-    }
-  }
-
-  /// 🔧 Выбирает адрес из составляющих частей
-  /// Заполняет контроллеры и _selected* переменные
-  Future<void> _selectAddressFromParts({
-    String? region,
-    String? city,
-    String? street,
-    String? building,
-  }) async {
-    try {
-      // ✅ ЗАПОЛНЯЕМ КОНТРОЛЛЕРЫ СРАЗУ
-      if (region != null && region.isNotEmpty) {
-        setState(() => _regionController.text = region);
-        log.d('   ✅ Set _regionController = "$region"');
-      }
-
-      if (city != null && city.isNotEmpty) {
-        setState(() => _cityController.text = city);
-        log.d('   ✅ Set _cityController = "$city"');
-      }
-
-      if (street != null && street.isNotEmpty) {
-        setState(() => _streetController.text = street);
-        log.d('   ✅ Set _streetController = "$street"');
-      }
-
-      if (building != null && building.isNotEmpty) {
-        setState(() => _buildingController.text = building);
-        log.d('   ✅ Set _buildingController = "$building"');
-      }
-
-      // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ РЕГИОН (если он указан)
-      if (region != null && region.isNotEmpty) {
-        await _selectRegionByName(region);
-
-        // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ ГОРОД (если регион выбран)
-        if (city != null && city.isNotEmpty && _selectedRegionId != null) {
-          await _selectCityByName(city);
-
-          // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ УЛИЦУ (если город выбран)
-          if (street != null && street.isNotEmpty && _selectedCityId != null) {
-            await _selectStreetByName(street);
-
-            // ✅ ЗАГРУЖАЕМ И ВЫБИРАЕМ НОМ ЕР ДОМА (если улица выбрана)
-            if (building != null &&
-                building.isNotEmpty &&
-                _selectedStreetId != null) {
-              await _selectBuildingByName(building);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      log.d('❌ Error selecting address from parts: $e');
-    }
-  }
-
-  /// 🔍 找ет и выбирает регион по названию
-  Future<void> _selectRegionByName(String regionName) async {
-    try {
-      final token = TokenService.currentToken;
-
-      // Загружаем все регионы если их нет
-      if (_regions.isEmpty) {
-        final response = await AddressService.searchAddresses(
-          query: 'р',
-          token: token,
-          types: ['region'],
-        );
-
-        final uniqueRegions = <String, int>{};
-        for (final result in response.data) {
-          if (result.main_region != null) {
-            uniqueRegions[result.main_region!.name] = result.main_region!.id;
-          }
-        }
-
-        setState(() {
-          _regions = uniqueRegions.entries
-              .map((e) => {'name': e.key, 'id': e.value})
-              .toList();
-        });
-        log.d('   📦 Loaded ${_regions.length} regions from API');
-      }
-
-      // Ищем регион по названию (точное совпадение или частичное)
-      final region = _regions.firstWhere(
-        (r) => (r['name'] as String).toLowerCase() == regionName.toLowerCase(),
-        orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
-          return _regions.firstWhere(
-            (r) => (r['name'] as String).toLowerCase().contains(
-              regionName.toLowerCase(),
-            ),
-            orElse: () => {},
-          );
-        },
-      );
-
-      if (region.isNotEmpty) {
-        setState(() {
-          _selectedRegionId = region['id'] as int;
-          _selectedRegion.clear();
-          _selectedRegion.add(region['name'] as String);
-        });
-        log.d('   ✅ Selected region: ${region['name']} (ID: ${region['id']})');
-      } else {
-        log.d('   ⚠️ Region "$regionName" not found in list');
-      }
-    } catch (e) {
-      log.d('   ❌ Error selecting region: $e');
-    }
-  }
-
-  /// 🔍 Ищет и выбирает город по названию
-  Future<void> _selectCityByName(String cityName) async {
-    try {
-      if (_selectedRegionId == null) {
-        log.d('   ⚠️ Cannot select city: no region selected');
-        return;
-      }
-
-      final token = TokenService.currentToken;
-
-      // Загружаем города для выбранного региона
-      // Получить ВСЕ города для выбранного региона
-      final response = await AddressService.searchAddresses(
-        query: '   ', // Минимум 3 символа для API (пустой поиск)
-        token: token,
-        types: ['city'],
-        filters: {
-          'main_region_id': _selectedRegionId, // Только города этого региона
-        },
-      );
-
-      final uniqueCities = <String, int>{};
-      for (final result in response.data) {
-        if (result.city != null) {
-          uniqueCities[result.city!.name] = result.city!.id;
-        }
-      }
-
-      setState(() {
-        _cities = uniqueCities.entries
-            .map((e) => {'name': e.key, 'id': e.value})
-            .toList();
-
-        log.d(
-          '✅ Loaded ${_cities.length} cities for region ID $_selectedRegionId',
-        );
-      });
-
-      // Ищем город по названию
-      final city = _cities.firstWhere(
-        (c) => (c['name'] as String).toLowerCase() == cityName.toLowerCase(),
-        orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
-          return _cities.firstWhere(
-            (c) => (c['name'] as String).toLowerCase().contains(
-              cityName.toLowerCase(),
-            ),
-            orElse: () => {},
-          );
-        },
-      );
-
-      if (city.isNotEmpty) {
-        final cityName = city['name'] as String;
-        setState(() {
-          _selectedCityId = city['id'] as int;
-          _selectedCity.clear();
-          _selectedCity.add(cityName);
-          // 🆕 Сохраняем информацию о регионе города из кеша
-          if (_lastCitiesRegionResults.containsKey(cityName)) {
-            final regionInfo = _lastCitiesRegionResults[cityName];
-            _selectedCityRegionId = regionInfo?['region_id'];
-            _selectedCityMainRegionId = regionInfo?['main_region_id'];
-            log.d('   ℹ️ Loaded region info: region_id=$_selectedCityRegionId, main_region_id=$_selectedCityMainRegionId');
-          }
-        });
-        log.d('   ✅ Selected city: $cityName (ID: ${city['id']})');
-      } else {
-        log.d('   ⚠️ City "$cityName" not found in list');
-      }
-    } catch (e) {
-      log.d('   ❌ Error selecting city: $e');
-    }
-  }
-
-  /// 🔍 Ищет и выбирает улицу по названию
-  Future<void> _selectStreetByName(String streetName) async {
-    try {
-      if (_selectedCityId == null) {
-        log.d('   ⚠️ Cannot select street: no city selected');
-        return;
-      }
-
-      final token = TokenService.currentToken;
-
-      // 🆕 Строим фильтры с информацией о регионе города
-      final filters = <String, dynamic>{'city_id': _selectedCityId};
-      if (_selectedCityRegionId != null && _selectedCityRegionId != 0) {
-        filters['region_id'] = _selectedCityRegionId;
-      }
-      if (_selectedCityMainRegionId != null && _selectedCityMainRegionId != 0) {
-        filters['main_region_id'] = _selectedCityMainRegionId;
-      }
-
-      // Загружаем улицы для выбранного города с информацией о регионе
-      final response = await AddressService.searchAddresses(
-        query: 'у',
-        token: token,
-        types: ['street'],
-        filters: filters,
-      );
-
-      final uniqueStreets = <String, int>{};
-      for (final result in response.data) {
-        if (result.city?.id == _selectedCityId && result.street != null) {
-          uniqueStreets[result.street!.name] = result.street!.id;
-        }
-      }
-
-      setState(() {
-        _streets = uniqueStreets.entries
-            .map((e) => {'name': e.key, 'id': e.value})
-            .toList();
-      });
-      log.d('   📦 Loaded ${_streets.length} streets for city');
-
-      // Ищем улицу по названию
-      final street = _streets.firstWhere(
-        (s) => (s['name'] as String).toLowerCase() == streetName.toLowerCase(),
-        orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
-          return _streets.firstWhere(
-            (s) => (s['name'] as String).toLowerCase().contains(
-              streetName.toLowerCase(),
-            ),
-            orElse: () => {},
-          );
-        },
-      );
-
-      if (street.isNotEmpty) {
-        setState(() {
-          _selectedStreetId = street['id'] as int;
-          _selectedStreet.clear();
-          _selectedStreet.add(street['name'] as String);
-        });
-        log.d('   ✅ Selected street: ${street['name']} (ID: ${street['id']})');
-      } else {
-        log.d('   ⚠️ Street "$streetName" not found in list');
-      }
-    } catch (e) {
-      log.d('   ❌ Error selecting street: $e');
-    }
-  }
-
-  /// 🔍 Ищет и выбирает номер дома по названию
-  Future<void> _selectBuildingByName(String buildingName) async {
-    try {
-      if (_selectedStreetId == null) {
-        log.d('   ⚠️ Cannot select building: no street selected');
-        return;
-      }
-
-      final token = TokenService.currentToken;
-
-      // Загружаем номера домов для выбранной улицы
-      final response = await AddressService.searchAddresses(
-        query: '1',
-        token: token,
-        types: ['building'],
-        filters: _selectedStreetId != null
-            ? {'street_id': _selectedStreetId}
-            : null,
-      );
-
-      final uniqueBuildings = <String, int>{};
-      for (final result in response.data) {
-        if (result.street?.id == _selectedStreetId && result.building != null) {
-          uniqueBuildings[result.building!.name] = result.building!.id;
-        }
-      }
-
-      setState(() {
-        _buildings = uniqueBuildings.entries
-            .map((e) => {'name': e.key, 'id': e.value})
-            .toList();
-      });
-      log.d('   📦 Loaded ${_buildings.length} buildings for street');
-
-      // Ищем номер дома по названию
-      final building = _buildings.firstWhere(
-        (b) =>
-            (b['name'] as String).toLowerCase() == buildingName.toLowerCase(),
-        orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
-          return _buildings.firstWhere(
-            (b) => (b['name'] as String).toLowerCase().contains(
-              buildingName.toLowerCase(),
-            ),
-            orElse: () => {},
-          );
-        },
-      );
-
-      if (building.isNotEmpty) {
-        setState(() {
-          _selectedBuilding.clear();
-          _selectedBuilding.add(building['name'] as String);
-        });
-        log.d('   ✅ Selected building: ${building['name']}');
-      } else {
-        log.d('   ⚠️ Building "$buildingName" not found in list');
-      }
-    } catch (e) {
-      log.d('   ❌ Error selecting building: $e');
-    }
-  }
-
-  /// 🔧 Парсит адрес из API при редактировании объявления
-  /// API возвращает адрес строкой: "г. Донецк, ул. Бутовская" или "г. Донецк, ул. Бутовская, 1А"
-  /// Нужно распарсить и выделить номер дома в _selectedBuilding
-  void _parseAddressForEdit(String fullAddress) {
-    try {
-      if (fullAddress.isEmpty) return;
-
-      // Адрес имеет формат: "город, улица[, номер_дома]"
-      // Примеры:
-      // "г. Донецк, ул. Бутовская" - БЕЗ номера дома
-      // "г. Донецк, пр-кт 301-й Донецкой дивизии, 1А" - С номером дома
-
-      final parts = fullAddress.split(',').map((p) => p.trim()).toList();
-
-      log.d('🔍 Parsing address: $fullAddress');
-      log.d('   Parts: $parts (${parts.length} parts)');
-
-      if (parts.isEmpty) return;
-
-      // Логика парсинга:
-      // [0] = город (г. Донецк)
-      // [1] = улица (ул. Бутовская)
-      // [2] = номер дома (1А) - ОПЦИОНАЛЬНО
-
-      String? buildingNumber;
-
-      if (parts.length >= 3) {
-        // Если 3+ части, последняя - это номер дома
-        buildingNumber = parts.last;
-        log.d('   ✅ Found building number: "$buildingNumber" (last part)');
-      } else if (parts.length == 2) {
-        // Только 2 части - нет номера дома в API
-        log.d('   ⚠️ No building number in address (only 2 parts)');
-        // Это нормально, может быть просто "г. Донецк, ул. Бутовская"
-      }
-
-      // Заполняем _selectedBuilding если найден номер дома
-      if (buildingNumber != null && buildingNumber.isNotEmpty) {
-        setState(() {
-          _selectedBuilding.clear();
-          _selectedBuilding.add(
-            buildingNumber!,
-          ); // ! для force unwrap, так как проверили что not null
-        });
-        log.d('   ✅ Set _selectedBuilding = {"$buildingNumber"}');
-      } else {
-        // Если номера дома нет, делаем _selectedBuilding пустым
-        setState(() {
-          _selectedBuilding.clear();
-        });
-        log.d('   ℹ️ _selectedBuilding cleared (no building number)');
-      }
-    } catch (e) {
-      log.d('❌ Error parsing address: $e');
-    }
-  }
-
   /// 🔧 Заполняет атрибуты формы из загруженного объявления
   /// Парсит структуру attributes из API ответа и заполняет _selectedValues
   void _populateAttributesFromAdvert(Map<String, dynamic> advertData) {
@@ -1670,42 +1208,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
     }
   }
 
-  Future<void> _loadRegions() async {
-    try {
-      final token = TokenService.currentToken;
-
-      // Если нет токена, регионы все равно можно загрузить (API поддерживает без токена)
-      // но если есть токен, используем его
-      // Логируем для отладки
-      if (token == null) {
-        log.d('ℹ️ _loadRegions: Токен не найден, загружаем без токена');
-      }
-
-      final regions = await ApiService.getRegions(token: token);
-
-      // Логируем все регионы с их ID
-      log.d('📍 Загруженные регионы:');
-      for (final region in regions) {
-        final regionId = region['id'];
-        final regionName = region['name'];
-        log.d('   ID $regionId: $regionName');
-      }
-
-      if (mounted) {
-        setState(() {
-          _regions = regions;
-        });
-      }
-      log.d('✅ Loaded ${regions.length} regions');
-    } catch (e) {
-      log.d('❌ Error loading regions: $e');
-      // Retry after 3 seconds
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) _loadRegions();
-      });
-    }
-  }
-
   Future<void> _loadCategoryInfo() async {
     try {
       if (widget.categoryId == null) {
@@ -1892,364 +1394,6 @@ class _DynamicFilterState extends State<DynamicFilter> {
       // log.d('   Only initialized required attribute $offerPriceAttrId = true');
     } else {
       // log.d('🧪 Auto-fill DISABLED - could not find offer price attribute');
-    }
-  }
-
-  /// Загружает города для выбранного региона при автозаполнении
-  // ignore: unused_element
-  /// 🆕 Поиск городов через API по пользовательскому вводу (для диалога)
-  /// Вызывается из CitySelectionDialog когда пользователь вводит текст
-  Future<List<String>> _searchCitiesAPI(String query) async {
-    if (_selectedRegionId == null) {
-      log.d('🔍 _searchCitiesAPI: regionId not selected');
-      return [];
-    }
-
-    // Проверяем минимальную длину (API требует >= 3)
-    if (query.trim().length < 3) {
-      log.d('🔍 _searchCitiesAPI: query too short: "$query" (need 3+)');
-      return [];
-    }
-
-    try {
-      final token = TokenService.currentToken;
-      final cleanQuery = query.trim();
-
-      log.d('');
-      log.d('🔍 _searchCitiesAPI called:');
-      log.d('   - query: "$cleanQuery"');
-      log.d('   - regionId: $_selectedRegionId');
-
-      final response = await AddressService.searchAddresses(
-        query: cleanQuery,
-        token: token,
-        types: ['city'],
-        filters: {'main_region_id': _selectedRegionId},
-      );
-
-      log.d('   - API вернула ${response.data.length} результатов');
-
-      // 🆕 Очищаем предыдущие результаты и сохраняем новые
-      _lastCitiesSearchResults.clear();
-      _lastCitiesRegionResults.clear();
-
-      // Фильтруем результаты по выбранному региону и извлекаем только имена
-      final cities = <String>[];
-      int filtered = 0;
-
-      for (final result in response.data) {
-        final cityName = result.city?.name ?? 'N/A';
-        final cityId = result.city?.id;
-        final resultRegionId = result.main_region?.id;
-        final resultSubregionId = result.region?.id;
-
-        log.d(
-          '   [API] $cityName [id=$cityId, main_region.id=$resultRegionId, region.id=$resultSubregionId]',
-        );
-
-        if (result.main_region?.id == _selectedRegionId &&
-            result.city != null) {
-          final cityName = result.city!.name;
-          // 🆕 Сохраняем в кеш: ID города
-          _lastCitiesSearchResults[cityName] = result.city!.id;
-          // 🆕 Сохраняем информацию о регионе города
-          _lastCitiesRegionResults[cityName] = {
-            'region_id': result.region?.id ?? 0,
-            'main_region_id': result.main_region?.id ?? 0,
-          };
-          // В список показа добавляем только если имя содержит запрос
-          if (cityName.toLowerCase().contains(cleanQuery.toLowerCase())) {
-            cities.add(cityName);
-            log.d('       ✅ СОХРАНЕНО в кеш и список');
-          } else {
-            log.d('       📦 СОХРАНЕНО в кеш (не совпало с запросом)');
-          }
-        } else {
-          filtered++;
-          if (result.main_region?.id != _selectedRegionId) {
-            log.d(
-              '       ❌ Фильтр: main_region.id=$resultRegionId != $_selectedRegionId',
-            );
-          } else {
-            log.d('       ❌ Фильтр: city is null');
-          }
-        }
-      }
-
-      log.d(
-        '   ✅ Возвращаем ${cities.length} городов (отфильтровано: $filtered)',
-      );
-      log.d('   📦 Cache содержит: ${_lastCitiesSearchResults.keys.toList()}');
-      log.d('   📦 Region info cache: ${_lastCitiesRegionResults.keys.toList()}');
-      log.d('');
-      return cities;
-    } catch (e) {
-      log.d('   ❌ Error searching cities: $e');
-      return [];
-    }
-  }
-
-  /// 🆕 Поиск улиц через API по пользовательскому вводу (для диалога)
-  /// Вызывается из StreetSelectionDialog когда пользователь вводит текст
-  Future<List<String>> _searchStreetsAPI(String query) async {
-    if (_selectedCityId == null) {
-      log.d('🔍 _searchStreetsAPI: cityId not selected');
-      return [];
-    }
-
-    // Проверяем минимальную длину (API требует >= 3)
-    if (query.trim().length < 3) {
-      log.d('🔍 _searchStreetsAPI: query too short: "$query" (need 3+)');
-      return [];
-    }
-
-    try {
-      final token = TokenService.currentToken;
-      final cleanQuery = query.trim();
-
-      log.d('');
-      log.d('🔍 _searchStreetsAPI called:');
-      log.d('   - query: "$cleanQuery"');
-      log.d('   - cityId: $_selectedCityId');
-      log.d('   - cityRegionId: $_selectedCityRegionId');
-      log.d('   - cityMainRegionId: $_selectedCityMainRegionId');
-
-      // 🆕 Строим фильтры с информацией о регионе города
-      final filters = <String, dynamic>{'city_id': _selectedCityId};
-      if (_selectedCityRegionId != null && _selectedCityRegionId != 0) {
-        filters['region_id'] = _selectedCityRegionId;
-      }
-      if (_selectedCityMainRegionId != null && _selectedCityMainRegionId != 0) {
-        filters['main_region_id'] = _selectedCityMainRegionId;
-      }
-
-      final response = await AddressService.searchAddresses(
-        query: cleanQuery,
-        token: token,
-        types: ['street'],
-        filters: filters,
-      );
-
-      log.d('   - API вернула ${response.data.length} результатов');
-
-      // 🆕 Очищаем предыдущие результаты и сохраняем новые
-      _lastStreetsSearchResults.clear();
-
-      // Фильтруем результаты по выбранному городу и извлекаем только имена
-      final streets = <String>[];
-      int filtered = 0;
-
-      for (final result in response.data) {
-        final streetName = result.street?.name ?? 'N/A';
-        final streetId = result.street?.id;
-        final resultCityId = result.city?.id;
-
-        log.d('   [API] $streetName [id=$streetId, city.id=$resultCityId]');
-
-        if (result.city?.id == _selectedCityId && result.street != null) {
-          streets.add(result.street!.name);
-          // 🆕 Сохраняем mapping имя улицы -> ID
-          _lastStreetsSearchResults[result.street!.name] = result.street!.id;
-          // 🆕 Сохраняем subregion ID
-          _lastStreetsSubregionResults[result.street!.name] = result.region?.id;
-          log.d(
-            '       ✅ СОХРАНЕНО в кеш (street.id=${result.street!.id}, region.id=${result.region?.id})',
-          );
-        } else {
-          filtered++;
-          if (result.city?.id != _selectedCityId) {
-            log.d('       ❌ Фильтр: city.id=$resultCityId != $_selectedCityId');
-          } else {
-            log.d('       ❌ Фильтр: street is null');
-          }
-        }
-      }
-
-      log.d(
-        '   ✅ Возвращаем ${streets.length} улиц (отфильтровано: $filtered)',
-      );
-      log.d('   📦 Cache содержит: ${_lastStreetsSearchResults.keys.toList()}');
-      log.d('');
-      return streets;
-    } catch (e) {
-      log.d('   ❌ Error searching streets: $e');
-      return [];
-    }
-  }
-
-  Future<void> _loadCitiesForSelectedRegion() async {
-    if (_selectedRegionId == null) return;
-
-    try {
-      final token = TokenService.currentToken;
-      String searchQuery = 'по'; // Default search term
-
-      if (_selectedRegion.isNotEmpty) {
-        final regionName = _selectedRegion.first;
-        if (regionName.length >= 3) {
-          searchQuery = regionName.length > 50
-              ? regionName.substring(0, 50)
-              : regionName;
-        } else {
-          searchQuery = regionName + '   '; // Pad to at least 3
-        }
-      }
-
-      final response = await AddressService.searchAddresses(
-        query: searchQuery,
-        token: token,
-        types: ['city'],
-        filters: _selectedRegionId != null
-            ? {'main_region_id': _selectedRegionId}
-            : null,
-      );
-
-      log.d(
-        '🔍 [AUTO] Загрузка для области ID: $_selectedRegionId, query: "$searchQuery"',
-      );
-      log.d('📋 [AUTO] API вернул ${response.data.length} результатов');
-
-      final uniqueCities = <String, int>{};
-      int filtered = 0;
-      for (final result in response.data) {
-        if (result.main_region?.id == _selectedRegionId &&
-            result.city != null) {
-          uniqueCities[result.city!.name] = result.city!.id;
-          _lastCitiesSearchResults[result.city!.name] =
-              result.city!.id;
-          // 🆕 Сохраняем информацию о регионе города
-          _lastCitiesRegionResults[result.city!.name] = {
-            'region_id': result.region?.id ?? 0,
-            'main_region_id': result.main_region?.id ?? 0,
-          };
-          log.d('   ✅ ${result.city!.name}');
-        } else if (result.city != null) {
-          filtered++;
-          log.d(
-            '   ❌ ${result.city!.name} - main_region.id=${result.main_region?.id}, ожидаем $_selectedRegionId',
-          );
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _cities = uniqueCities.entries
-              .map((e) => {'name': e.key, 'id': e.value})
-              .toList();
-          // Сортируем для удобства
-          _cities.sort(
-            (a, b) => (a['name'] as String).compareTo(b['name'] as String),
-          );
-        });
-        log.d('✅ Auto-loaded ${_cities.length} cities');
-      }
-    } catch (e) {
-      log.d('❌ Error auto-loading cities: $e');
-    }
-  }
-
-  /// Загружает улицы для выбранного города при автозаполнении
-  // ignore: unused_element
-  Future<void> _loadStreetsForSelectedCity() async {
-    if (_selectedCityId == null) return;
-
-    try {
-      final token = TokenService.currentToken;
-      String searchQuery = 'у';
-
-      if (_selectedCity.isNotEmpty) {
-        final cityName = _selectedCity.first;
-        if (cityName.length >= 3) {
-          searchQuery = cityName.length > 50
-              ? cityName.substring(0, 50)
-              : cityName;
-        } else {
-          searchQuery = cityName + '   ';
-        }
-      }
-
-      final response = await AddressService.searchAddresses(
-        query: searchQuery,
-        token: token,
-        types: ['street'],
-        filters: _selectedCityId != null ? {'city_id': _selectedCityId} : null,
-      );
-
-      final uniqueStreets = <String, int>{};
-      for (final result in response.data) {
-        if (result.city?.id == _selectedCityId && result.street != null) {
-          uniqueStreets[result.street!.name] = result.street!.id;
-          log.d('   + ${result.street!.name}');
-        } else if (result.street != null) {
-          log.d(
-            '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
-          );
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _streets = uniqueStreets.entries
-              .map((e) => {'name': e.key, 'id': e.value})
-              .toList();
-        });
-        log.d('✅ Auto-loaded ${_streets.length} streets');
-      }
-    } catch (e) {
-      log.d('❌ Error auto-loading streets: $e');
-    }
-  }
-
-  /// Загружает номера домов для выбранной улицы
-  Future<void> _loadBuildingsForSelectedStreet() async {
-    if (_selectedStreetId == null) return;
-
-    try {
-      final token = TokenService.currentToken;
-      String searchQuery = '1'; // Default search term
-
-      if (_selectedStreet.isNotEmpty) {
-        final streetName = _selectedStreet.first;
-        if (streetName.length >= 3) {
-          searchQuery = streetName.length > 50
-              ? streetName.substring(0, 50)
-              : streetName;
-        } else {
-          searchQuery = streetName + '   ';
-        }
-      }
-
-      final response = await AddressService.searchAddresses(
-        query: searchQuery,
-        token: token,
-        types: ['building'],
-        filters: _selectedStreetId != null
-            ? {'street_id': _selectedStreetId}
-            : null,
-      );
-
-      final uniqueBuildings = <String, int>{};
-      for (final result in response.data) {
-        if (result.street?.id == _selectedStreetId && result.building != null) {
-          uniqueBuildings[result.building!.name] = result.building!.id;
-          log.d('   + ${result.building!.name}');
-        } else if (result.building != null) {
-          log.d(
-            '   ❌ ${result.building!.name} - street.id=${result.street?.id}, ожидаем $_selectedStreetId',
-          );
-        }
-      }
-
-      if (mounted) {
-        setState(() {
-          _buildings = uniqueBuildings.entries
-              .map((e) => {'name': e.key, 'id': e.value})
-              .toList();
-        });
-        log.d('✅ Auto-loaded ${_buildings.length} buildings');
-      }
-    } catch (e) {
-      log.d('❌ Error auto-loading buildings: $e');
     }
   }
 
@@ -3388,174 +2532,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: const Icon(
-                            Icons.close,
-                            color: Color.fromARGB(255, 255, 255, 255),
-                          ),
-                        ),
-                        const SizedBox(width: 13),
-                        const Text(
-                          'Создайте объявление',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildHeader(context),
                     const SizedBox(height: 17),
-
-                    const Text(
-                      'Опишите товар или услугу',
-                      style: TextStyle(color: textPrimary, fontSize: 16),
-                    ),
-                    const SizedBox(height: 17),
-
-                    GestureDetector(
-                      onTap: () {
-                        _showImageSourceActionSheet(context);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: _images.isEmpty
-                              ? (_fieldErrors.containsKey('images')
-                                    ? const Color(0xFF381a1a)
-                                    : secondaryBackground)
-                              : primaryBackground,
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                        child: _images.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 28.0),
-                                      child: Icon(
-                                        Icons.add_circle_outline,
-                                        color:
-                                            _fieldErrors.containsKey('images')
-                                            ? const Color(0xFFff7272)
-                                            : textSecondary,
-                                        size: 40,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        bottom: 27.0,
-                                      ),
-                                      child: Text(
-                                        'Добавить изображение',
-                                        style: TextStyle(
-                                          color:
-                                              _fieldErrors.containsKey('images')
-                                              ? const Color(0xFFff7272)
-                                              : textSecondary,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : GridView.builder(
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 3,
-                                      crossAxisSpacing: 10,
-                                      mainAxisSpacing: 10,
-                                      childAspectRatio: 115 / 89,
-                                    ),
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _images.length + 1,
-                                itemBuilder: (context, index) {
-                                  if (index == _images.length) {
-                                    return GestureDetector(
-                                      onTap: () =>
-                                          _showImageSourceActionSheet(context),
-                                      child: Container(
-                                        width: 115,
-                                        height: 89,
-                                        decoration: BoxDecoration(
-                                          color: formBackground,
-                                          borderRadius: BorderRadius.circular(
-                                            5,
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: Icon(
-                                            Icons.add_circle_outline_rounded,
-                                            color: textSecondary,
-                                            size: 30,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  return Container(
-                                    width: 115,
-                                    height: 89,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: Stack(
-                                      children: [
-                                        Positioned.fill(
-                                          child: Image.file(
-                                            _images[index],
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                        Positioned(
-                                          top: 7,
-                                          right: 11,
-                                          child: GestureDetector(
-                                            onTap: () => _removeImage(index),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(2),
-                                              decoration: BoxDecoration(
-                                                color: Colors.black.withOpacity(
-                                                  0.5,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: const Icon(
-                                                Icons.close,
-                                                color: Colors.white,
-                                                size: 18,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                      ),
-                    ),
-                    if (_fieldErrors.containsKey('images'))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          _fieldErrors['images'] ??
-                              'Добавьте хотя бы одно изображение',
-                          style: const TextStyle(
-                            color: Color(0xFFFF1744),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                    _buildImagesSection(context),
                     const SizedBox(height: 13),
 
                     _buildTextField(
@@ -5089,6 +4068,185 @@ class _DynamicFilterState extends State<DynamicFilter> {
           _selectedValues[attr.id] = v;
         });
       },
+    );
+  }
+
+  // ========================================================================
+  // Секции build() (шаг 5 рефакторинга).
+  //
+  // Эти методы рисуют отдельные логические куски экрана и остаются
+  // внутри State, чтобы сохранить прямой доступ к полям формы и
+  // `setState`. Цель — разгрузить один гигантский `build()` на
+  // читаемые секции. UI/логику не меняют — просто переносят блоки
+  // Widget-дерева 1-в-1.
+  // ========================================================================
+
+  /// Шапка экрана: крестик «закрыть» + заголовок «Создайте объявление».
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: const Icon(
+            Icons.close,
+            color: Color.fromARGB(255, 255, 255, 255),
+          ),
+        ),
+        const SizedBox(width: 13),
+        const Text(
+          'Создайте объявление',
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Блок добавления фотографий: подпись «Опишите товар или услугу»,
+  /// плашка-пикер изображений (либо «+» по центру, либо сетка из
+  /// миниатюр), и сообщение об ошибке, если она есть.
+  Widget _buildImagesSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Опишите товар или услугу',
+          style: TextStyle(color: textPrimary, fontSize: 16),
+        ),
+        const SizedBox(height: 17),
+        GestureDetector(
+          onTap: () {
+            _showImageSourceActionSheet(context);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: _images.isEmpty
+                  ? (_fieldErrors.containsKey('images')
+                        ? const Color(0xFF381a1a)
+                        : secondaryBackground)
+                  : primaryBackground,
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: _images.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 28.0),
+                          child: Icon(
+                            Icons.add_circle_outline,
+                            color: _fieldErrors.containsKey('images')
+                                ? const Color(0xFFff7272)
+                                : textSecondary,
+                            size: 40,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 27.0),
+                          child: Text(
+                            'Добавить изображение',
+                            style: TextStyle(
+                              color: _fieldErrors.containsKey('images')
+                                  ? const Color(0xFFff7272)
+                                  : textSecondary,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : GridView.builder(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 115 / 89,
+                        ),
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _images.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == _images.length) {
+                        return GestureDetector(
+                          onTap: () => _showImageSourceActionSheet(context),
+                          child: Container(
+                            width: 115,
+                            height: 89,
+                            decoration: BoxDecoration(
+                              color: formBackground,
+                              borderRadius: BorderRadius.circular(5),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.add_circle_outline_rounded,
+                                color: textSecondary,
+                                size: 30,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return Container(
+                        width: 115,
+                        height: 89,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: Image.file(
+                                _images[index],
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 7,
+                              right: 11,
+                              child: GestureDetector(
+                                onTap: () => _removeImage(index),
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.5),
+                                    borderRadius: BorderRadius.circular(5),
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ),
+        if (_fieldErrors.containsKey('images'))
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              _fieldErrors['images'] ?? 'Добавьте хотя бы одно изображение',
+              style: const TextStyle(
+                color: Color(0xFFFF1744),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
