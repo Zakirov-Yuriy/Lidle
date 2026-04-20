@@ -2537,164 +2537,10 @@ class _DynamicFilterState extends State<DynamicFilter>
                     _buildImagesSection(context),
                     const SizedBox(height: 13),
 
-                    _buildTextField(
-                      label: 'Заголовок объявления',
-                      hint: 'Например, уютная 2-комнатная квартира',
-                      fieldKey: 'title',
-                      controller: _titleController,
-                    ),
-                    if (!_fieldErrors.containsKey('title'))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          'Введите не менее 16 символов',
-                          style: TextStyle(color: textSecondary, fontSize: 12),
-                        ),
-                      ),
+                    _buildBasicInfoSection(context),
                     const SizedBox(height: 15),
 
-                    _buildDropdown(
-                      label: 'Категория',
-                      fieldKey: 'category',
-                      hint: _categoryName.isEmpty
-                          ? 'Загрузка...'
-                          : _categoryName,
-                      subtitle: 'Недвижимость',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const RealEstateSubcategoriesScreen(),
-                          ),
-                        );
-                      },
-                      showChangeText: true,
-                    ),
-                    const SizedBox(height: 13),
-
-                    _buildTextField(
-                      label: 'Описание',
-                      hint:
-                          'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
-                      fieldKey: 'description',
-                      minLength: 70,
-                      maxLength: 1000,
-                      maxLines: 4,
-                      controller: _descriptionController,
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    Row(
-                      children: [
-                        const Text(
-                          'Цена',
-                          style: TextStyle(color: textPrimary, fontSize: 16),
-                        ),
-                        const Text(
-                          '*',
-                          style: TextStyle(
-                            color: Color(0xFFFF1744),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 9),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: _fieldErrors.containsKey('price')
-                                  ? const Color(0xFF381a1a)
-                                  : formBackground,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _priceController,
-                                    keyboardType: TextInputType.number,
-                                    style: TextStyle(
-                                      color: _fieldErrors.containsKey('price')
-                                          ? const Color(0xFFff7272)
-                                          : textPrimary,
-                                    ),
-                                    onChanged: (value) {
-                                      // Очищаем ошибку при вводе цены
-                                      if (value.isNotEmpty) {
-                                        setState(() {
-                                          _fieldErrors.remove('price');
-                                        });
-                                      }
-                                    },
-                                    decoration: InputDecoration(
-                                      hintText: '1 000 000',
-                                      hintStyle: TextStyle(
-                                        color: _fieldErrors.containsKey('price')
-                                            ? const Color(0xFFff7272)
-                                            : textSecondary,
-                                        fontSize: 14,
-                                      ),
-                                      border: InputBorder.none,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: formBackground,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          width: 53,
-                          height: 48,
-                          alignment: Alignment.center,
-                          child: Text(
-                            '₽',
-                            style: TextStyle(color: textPrimary, fontSize: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_fieldErrors.containsKey('price'))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          _fieldErrors['price'] ?? 'Ошибка заполнения',
-                          style: const TextStyle(
-                            color: Color(0xFFFF1744),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 15),
-
-                    if (_isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      ...(List<Attribute>.from(_attributes)
-                            ..sort((a, b) => a.order.compareTo(b.order)))
-                          .where((attr) {
-                            return attr.title.isNotEmpty;
-                          })
-                          .map(
-                            (attr) => Column(
-                              children: [
-                                _buildDynamicFilter(attr),
-                                const SizedBox(height: 9),
-                              ],
-                            ),
-                          )
-                          .toList(),
+                    _buildAttributesList(),
 
                     // ============================================================
                     // REQUIRED CONSENT ATTRIBUTE: "Вам предложат цену"
@@ -2703,32 +2549,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                     // When user checks "Возможен торг", this attribute is automatically set to true
                     const SizedBox(height: 18),
 
-                    Row(
-                      children: [
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Автопродление',
-                              style: TextStyle(
-                                color: textPrimary,
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              'Обьявление будет деактивирано\n через 30 дней',
-                              style: TextStyle(color: textMuted, fontSize: 11),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-
-                        CustomSwitch(
-                          value: isAutoRenewal,
-                          onChanged: (v) => setState(() => isAutoRenewal = v),
-                        ),
-                      ],
-                    ),
+                    _buildAutoRenewalToggle(),
                     const SizedBox(height: 18),
 
                     // ADDRESS SECTION WITH API
@@ -4246,6 +4067,211 @@ class _DynamicFilterState extends State<DynamicFilter>
               ),
             ),
           ),
+      ],
+    );
+  }
+
+  /// Основной блок текстовой информации объявления:
+  /// заголовок, категория (переход на выбор подкатегории), описание
+  /// и цена с символом ₽. Все поля — обязательные, с валидацией и
+  /// показом ошибок.
+  ///
+  /// Поле «Цена» нарисовано inline (а не через [PriceInputField]) —
+  /// это основная цена объявления, которая живёт в `_priceController`
+  /// и отличается от атрибута-цены из фильтров.
+  Widget _buildBasicInfoSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField(
+          label: 'Заголовок объявления',
+          hint: 'Например, уютная 2-комнатная квартира',
+          fieldKey: 'title',
+          controller: _titleController,
+        ),
+        if (!_fieldErrors.containsKey('title'))
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              'Введите не менее 16 символов',
+              style: TextStyle(color: textSecondary, fontSize: 12),
+            ),
+          ),
+        const SizedBox(height: 15),
+
+        _buildDropdown(
+          label: 'Категория',
+          fieldKey: 'category',
+          hint: _categoryName.isEmpty ? 'Загрузка...' : _categoryName,
+          subtitle: 'Недвижимость',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const RealEstateSubcategoriesScreen(),
+              ),
+            );
+          },
+          showChangeText: true,
+        ),
+        const SizedBox(height: 13),
+
+        _buildTextField(
+          label: 'Описание',
+          hint:
+              'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
+          fieldKey: 'description',
+          minLength: 70,
+          maxLength: 1000,
+          maxLines: 4,
+          controller: _descriptionController,
+        ),
+
+        const SizedBox(height: 24),
+
+        // Поле «Цена» с символом ₽ в отдельной плашке справа.
+        Row(
+          children: [
+            const Text(
+              'Цена',
+              style: TextStyle(color: textPrimary, fontSize: 16),
+            ),
+            const Text(
+              '*',
+              style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
+            ),
+          ],
+        ),
+        const SizedBox(height: 9),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _fieldErrors.containsKey('price')
+                      ? const Color(0xFF381a1a)
+                      : formBackground,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _priceController,
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(
+                          color: _fieldErrors.containsKey('price')
+                              ? const Color(0xFFff7272)
+                              : textPrimary,
+                        ),
+                        onChanged: (value) {
+                          // Очищаем ошибку при вводе цены.
+                          if (value.isNotEmpty) {
+                            setState(() {
+                              _fieldErrors.remove('price');
+                            });
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: '1 000 000',
+                          hintStyle: TextStyle(
+                            color: _fieldErrors.containsKey('price')
+                                ? const Color(0xFFff7272)
+                                : textSecondary,
+                            fontSize: 14,
+                          ),
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              width: 53,
+              height: 48,
+              alignment: Alignment.center,
+              child: Text(
+                '₽',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        if (_fieldErrors.containsKey('price'))
+          Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(
+              _fieldErrors['price'] ?? 'Ошибка заполнения',
+              style: const TextStyle(
+                color: Color(0xFFFF1744),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Список динамических фильтров-атрибутов. Показывает индикатор
+  /// загрузки, пока атрибуты не пришли с API, затем сортирует по
+  /// `order`, фильтрует по непустому title и рендерит каждый через
+  /// [_buildDynamicFilter] — внутренний диспетчер сам выбирает
+  /// нужный виджет по стилю атрибута.
+  Widget _buildAttributesList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final sorted = List<Attribute>.from(_attributes)
+      ..sort((a, b) => a.order.compareTo(b.order));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final attr in sorted.where((a) => a.title.isNotEmpty))
+          Column(
+            children: [
+              _buildDynamicFilter(attr),
+              const SizedBox(height: 9),
+            ],
+          ),
+      ],
+    );
+  }
+
+  /// Блок автопродления: слева «Автопродление» + пояснение мелким
+  /// текстом, справа [CustomSwitch]. Значение хранится в [isAutoRenewal]
+  /// и уходит в `CreateAdvertRequest.isAutoRenew` при публикации.
+  Widget _buildAutoRenewalToggle() {
+    return Row(
+      children: [
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Автопродление',
+              style: TextStyle(color: textPrimary, fontSize: 16),
+            ),
+            Text(
+              'Обьявление будет деактивирано\n через 30 дней',
+              style: TextStyle(color: textMuted, fontSize: 11),
+            ),
+          ],
+        ),
+        const Spacer(),
+        CustomSwitch(
+          value: isAutoRenewal,
+          onChanged: (v) => setState(() => isAutoRenewal = v),
+        ),
       ],
     );
   }
