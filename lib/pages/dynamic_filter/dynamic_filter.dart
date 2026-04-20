@@ -35,6 +35,39 @@ import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/core/logger.dart';
 
+// Выделенные чистые виджеты (шаг 2 рефакторинга).
+// Логику/состояние они не знают — принимают всё параметрами.
+import 'widgets/style_header.dart';
+import 'widgets/labeled_text_field.dart';
+import 'widgets/labeled_dropdown.dart';
+import 'widgets/choice_button.dart';
+import 'widgets/form_primary_button.dart';
+import 'widgets/required_label.dart';
+import 'widgets/checkbox_label.dart';
+// Виджеты полей (шаг 3.1 рефакторинга).
+import 'widgets/price_input_field.dart';
+import 'widgets/numeric_input_field.dart';
+import 'widgets/dynamic_text_input_field.dart';
+import 'widgets/area_range_field.dart';
+// Виджеты полей (шаг 3.2 рефакторинга).
+import 'widgets/checkbox_field.dart';
+import 'widgets/hidden_checkbox_field.dart';
+// Виджеты полей (шаг 3.3 рефакторинга).
+import 'widgets/boolean_field.dart';
+import 'widgets/choice_button_grid.dart';
+import 'widgets/button_group_field.dart';
+// Виджеты полей (шаг 3.4 рефакторинга).
+import 'widgets/single_select_dropdown_field.dart';
+import 'widgets/multiple_select_dropdown_field.dart';
+import 'widgets/multiple_select_popup_field.dart';
+// Виджеты полей (шаг 3.5 рефакторинга).
+import 'widgets/range_field.dart';
+// Логика диспетчеризации полей (шаг 3.6 рефакторинга).
+import 'dynamic_filter_field_resolver.dart';
+// Виджеты полей (шаг 3.2 рефакторинга) — чекбоксы.
+import 'widgets/checkbox_field.dart';
+import 'widgets/hidden_checkbox_field.dart';
+
 // ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
 // ============================================================
@@ -4340,38 +4373,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
     );
   }
 
-  /// Builds style header that displays submission style (styleSingle)
-  /// Shows the attribute style code above the field label
-  /// styleSingle is used during form submission and contains values like A1, B1, C1, D1, E1, F, G1, H, I
+  /// Адаптер над [StyleHeader]. Поведение 1-в-1 с исходником:
+  /// сам заголовок-текст был закомментирован, виджет просто добавляет
+  /// небольшой отступ, если у атрибута задан style/styleSingle.
   Widget _buildStyleHeader(Attribute attr) {
-    // For submission mode, use styleSingle (API style for form submission)
-    // For viewing mode, use style (usually empty from API)
-    final displayStyle = _isSubmissionMode
-        ? (attr.styleSingle ?? '')
-        : attr.style;
-    final stylePrefix = _isSubmissionMode ? 'Style2' : 'Style';
-
-    // ALWAYS show style for debugging - remove isEmpty check
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        /* // Показывает стили над полями для отладки и валидации правильности отображения */
-        if (displayStyle.isNotEmpty)
-          /* // Показывает стили над полями для отладки и валидации правильности отображения */
-          // Text(
-          //   '$stylePrefix: $displayStyle',
-          //   style: const TextStyle(
-          //     color: Color(0xFFFF1744), // Red color for debug visibility
-          //     fontSize: 12,
-          //     fontWeight: FontWeight.w600,
-          //     letterSpacing: 0.3,
-          //   ),
-          // ),
-          if (displayStyle.isNotEmpty) const SizedBox(height: 4),
-      ],
+    return StyleHeader(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
     );
   }
 
+  /// Адаптер над [LabeledTextField]. Сохраняет прежнюю сигнатуру,
+  /// чтобы не править все места вызова. Логика очистки ошибки из
+  /// `_fieldErrors` при вводе оставлена здесь — сам виджет про
+  /// глобальную мапу ошибок не знает.
   Widget _buildTextField({
     required String label,
     required String hint,
@@ -4384,105 +4399,31 @@ class _DynamicFilterState extends State<DynamicFilter> {
     ValueChanged<String>? onChanged,
   }) {
     final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
-    final errorMessage = hasError ? _fieldErrors[fieldKey] : null;
-    
-    // Проверяем наличие * в конце метки
-    final hasRedAsterisk = label.endsWith('*');
-    final labelText = hasRedAsterisk ? label.substring(0, label.length - 1) : label;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              labelText,
-              style: const TextStyle(color: textPrimary, fontSize: 16),
-            ),
-            if (hasRedAsterisk)
-              const Text(
-                '*',
-                style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
-              ),
-            if (hasError && !hasRedAsterisk)
-              const Text(
-                ' *',
-                style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
-              ),
-          ],
-        ),
-        const SizedBox(height: 9),
-        Container(
-          decoration: BoxDecoration(
-            color: hasError ? const Color(0xFF381a1a) : formBackground,
-            borderRadius: BorderRadius.circular(6),
-            // border: hasError
-            //     ? Border.all(color: const Color(0xFFFF1744), width: 1)
-            //     : null,
-          ),
-          child: TextField(
-            controller: controller,
-            minLines: maxLines == 1 ? 1 : maxLines,
-            maxLines: null,
-            maxLength: maxLength,
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            style: TextStyle(
-              color: hasError
-                  ? const Color(0xFFff7272)
-                  : const Color.fromARGB(255, 255, 255, 255),
-            ),
-            onChanged: (value) {
-              // Очищаем ошибку при вводе текста в обязательное поле
-              if (fieldKey != null && value.isNotEmpty) {
-                setState(() {
-                  _fieldErrors.remove(fieldKey);
-                });
-              }
-              // Вызываем оригинальный обработчик если есть
-              onChanged?.call(value);
-            },
-            expands: false,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                color: hasError ? const Color(0xFFff7272) : textSecondary,
-                fontSize: 14,
-              ),
-              filled: false,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
-              border: InputBorder.none,
-              counterText: '',
-            ),
-          ),
-        ),
-        if (hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              errorMessage ?? 'Ошибка заполнения',
-              style: const TextStyle(
-                color: Color(0xFFFF1744),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          )
-        else if (minLength > 0)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              'Введите не менее $minLength символов',
-              style: const TextStyle(color: textSecondary, fontSize: 12),
-            ),
-          ),
-      ],
+    return LabeledTextField(
+      label: label,
+      hint: hint,
+      controller: controller,
+      errorMessage: hasError ? _fieldErrors[fieldKey] : null,
+      hasError: hasError,
+      maxLines: maxLines,
+      minLength: minLength,
+      maxLength: maxLength,
+      keyboardType: keyboardType,
+      onChanged: (value) {
+        // Очищаем ошибку при вводе текста в обязательное поле.
+        if (fieldKey != null && value.isNotEmpty) {
+          setState(() {
+            _fieldErrors.remove(fieldKey);
+          });
+        }
+        // Вызываем оригинальный обработчик, если есть.
+        onChanged?.call(value);
+      },
     );
   }
 
+  /// Адаптер над [LabeledDropdown]. Ошибки вычисляются здесь, сам
+  /// виджет про `_fieldErrors` не знает.
   Widget _buildDropdown({
     required String label,
     required String hint,
@@ -4493,124 +4434,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
     bool showChangeText = false,
   }) {
     final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
-    final errorMessage = hasError ? _fieldErrors[fieldKey] : null;
-    
-    // Проверяем наличие * в конце метки
-    final hasRedAsterisk = label.endsWith('*');
-    final labelText = hasRedAsterisk ? label.substring(0, label.length - 1) : label;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: onTap,
-          child: Row(
-            children: [
-              Text(
-                labelText,
-                style: const TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              if (hasRedAsterisk)
-                const Text(
-                  '*',
-                  style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
-                ),
-              if (hasError && !hasRedAsterisk)
-                const Text(
-                  ' *',
-                  style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 9),
-        GestureDetector(
-          onTap: onTap,
-          child: Container(
-            height: subtitle != null ? 60 : 45,
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            decoration: BoxDecoration(
-              color: hasError ? const Color(0xFF381a1a) : formBackground,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: subtitle != null
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              hint,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: hasError
-                                    ? const Color(0xFFff7272)
-                                    : (hint == 'Выбрать' || hint.isEmpty
-                                          ? const Color(0xFF7A7A7A)
-                                          : const Color.fromARGB(
-                                              255,
-                                              255,
-                                              255,
-                                              255,
-                                            )),
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitle,
-                              style: const TextStyle(
-                                color: Color(0xFF7A7A7A),
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Text(
-                          hint,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: hasError
-                                ? const Color(0xFFff7272)
-                                : (hint == 'Выбрать' || hint.isEmpty
-                                      ? const Color(0xFF7A7A7A)
-                                      : const Color.fromARGB(
-                                          255,
-                                          255,
-                                          255,
-                                          255,
-                                        )),
-                            fontSize: 14,
-                          ),
-                        ),
-                ),
-                if (showChangeText)
-                  Text(
-                    'Изменить',
-                    style: TextStyle(color: Colors.blue, fontSize: 14),
-                  ),
-                if (icon != null) icon,
-              ],
-            ),
-          ),
-        ),
-        if (hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              errorMessage ?? 'Ошибка заполнения',
-              style: const TextStyle(
-                color: Color(0xFFFF1744),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
+    return LabeledDropdown(
+      label: label,
+      hint: hint,
+      onTap: onTap,
+      errorMessage: hasError ? _fieldErrors[fieldKey] : null,
+      hasError: hasError,
+      subtitle: subtitle,
+      icon: icon,
+      showChangeText: showChangeText,
     );
   }
 
@@ -4619,22 +4451,10 @@ class _DynamicFilterState extends State<DynamicFilter> {
     bool isSelected,
     VoidCallback onPressed,
   ) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        backgroundColor: isSelected ? activeIconColor : Colors.transparent,
-        side: isSelected ? null : const BorderSide(color: Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
+    return ChoiceButton(
+      text: text,
+      isSelected: isSelected,
       onPressed: onPressed,
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isSelected ? Colors.white : textPrimary,
-          fontSize: 14,
-        ),
-        textAlign: TextAlign.center,
-      ),
     );
   }
 
@@ -4643,27 +4463,18 @@ class _DynamicFilterState extends State<DynamicFilter> {
     required VoidCallback onPressed,
     bool isPrimary = false,
   }) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? activeIconColor : primaryBackground,
-          side: isPrimary ? null : const BorderSide(color: Colors.white),
-          minimumSize: const Size.fromHeight(51),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-        ),
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: TextStyle(color: isPrimary ? Colors.white : textPrimary),
-        ),
-      ),
+    return FormPrimaryButton(
+      text: text,
+      onPressed: onPressed,
+      isPrimary: isPrimary,
     );
   }
 
   // ignore: unused_element
+  /// Адаптер над [AreaRangeField]. Помечен `unused_element` для
+  /// идентичности с исходником — сам метод в оригинале тоже нигде
+  /// не вызывался. Логика поиска атрибута «площадь» остаётся здесь.
   Widget _buildAreaRangeField() {
-    // Build special field for total area - dynamically get attribute ID
     final areaAttrId = _attributeResolver.getAreaAttributeId();
 
     if (areaAttrId == null) {
@@ -4678,495 +4489,115 @@ class _DynamicFilterState extends State<DynamicFilter> {
       () => TextEditingController(text: _selectedValues[areaAttrId] ?? ''),
     );
 
-    return Container(
-      decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        style: const TextStyle(color: textPrimary),
-        decoration: const InputDecoration(
-          hintText: 'Введите',
-          hintStyle: TextStyle(color: textSecondary, fontSize: 14),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        ),
-        onChanged: (value) {
-          // log.d('onChanged for $areaAttrId area: $value');
-          setState(() {
-            _selectedValues[areaAttrId] = value;
-          });
-        },
-      ),
+    return AreaRangeField(
+      controller: controller,
+      onChanged: (value) {
+        // log.d('onChanged for $areaAttrId area: $value');
+        setState(() {
+          _selectedValues[areaAttrId] = value;
+        });
+      },
     );
   }
 
   /// Вспомогательный метод для отрисовки метки с потенциально красной звездочкой
   Widget _buildLabel(String label, bool isRequired, {double fontSize = 16}) {
-    return Row(
-      children: [
-        Text(
-          label,
-          style: TextStyle(color: textPrimary, fontSize: fontSize),
-        ),
-        if (isRequired)
-          Text(
-            '*',
-            style: TextStyle(color: Color(0xFFFF1744), fontSize: fontSize),
-          ),
-      ],
+    return RequiredLabel(
+      label: label,
+      isRequired: isRequired,
+      fontSize: fontSize,
     );
   }
 
   /// Вспомогательный метод для отрисовки текста с потенциальной красной звездочкой
   /// Возвращает либо обычный текст, либо Row с красной звездочкой
   Widget _buildCheckboxLabel(String text, bool showAsterisk, {double fontSize = 14}) {
-    if (showAsterisk) {
-      return Row(
-        children: [
-          Text(
-            text,
-            style: TextStyle(color: textPrimary, fontSize: fontSize),
-          ),
-          Text(
-            '*',
-            style: TextStyle(color: Color(0xFFFF1744), fontSize: fontSize),
-          ),
-        ],
-      );
-    }
-    return Text(
-      text,
-      style: TextStyle(color: textPrimary, fontSize: fontSize),
+    return CheckboxLabel(
+      text: text,
+      showAsterisk: showAsterisk,
+      fontSize: fontSize,
     );
   }
 
+  /// Выбирает виджет для рендера динамического атрибута.
+  ///
+  /// Вся логика определения «что строить» вынесена в чистую функцию
+  /// [resolveFilterField] (см. `dynamic_filter_field_resolver.dart`).
+  /// Здесь только диспатч enum-значения в соответствующий адаптер.
+  /// Важно: резолвер может вернуть изменённый атрибут (например, с
+  /// `copyWith(isMultiple: true)` для style F) — строим именно его.
   Widget _buildDynamicFilter(Attribute attr) {
-    // Render based on ATTRIBUTES FLAGS FIRST, then style
-    // According to ui_filter_styles.md documentation:
-    // - Флаги (is_range, is_multiple, is_popup, is_special_design, is_title_hidden) имеют ВЫСШИЙ приоритет
-    // - Style (A-I) используется как подтверждение
-    // - Названия полей используются только для исключений/переопределений
-    //
-    // ВАЖНО: Эта логика должна работать с ДИНАМИЧЕСКИ добавляемыми полями,
-    // которые могут добавиться на сервере ПОСЛЕ написания этого кода!
-
-    // Debug logging for style mapping
-    // log.d(
-    //   '🎨 Building filter: ID=${attr.id}, Title=${attr.title}, Style=${attr.style}, styleSingle=${attr.styleSingle ?? 'null'}, '
-    //   'is_range=${attr.isRange}, is_multiple=${attr.isMultiple}, '
-    //   'is_popup=${attr.isPopup}, is_special_design=${attr.isSpecialDesign}, '
-    //   'is_title_hidden=${attr.isTitleHidden}, values_count=${attr.values.length}',
-    // );
-
-    // Also print all field names in a compact way to find the exact "За месяц" name
-    // log.d(
-    //   '📋 FIELD: ID=${attr.id.toString().padLeft(4)} | Title: ${attr.title} | Style: ${attr.style}${attr.styleSingle != null ? ', styleSingle: ${attr.styleSingle}' : ''}',
-    // );
-
-    // Special logging for "За месяц" field to debug its parameters
-    // Check multiple variations of the field name
-    bool isMonthField =
-        attr.title.toLowerCase().contains('месяц') ||
-        attr.title.toLowerCase().contains('month') ||
-        attr.title.toLowerCase().contains('year') ||
-        attr.title.toLowerCase().contains('период') ||
-        attr.title.toLowerCase().contains('время') ||
-        attr.title.contains('месяц') ||
-        attr.id == 999;
-
-    if (isMonthField) {
-      // log.d('');
-      // log.d('═════════════════════════════════════════════════════════════');
-      // log.d('🔍 SPECIAL DEBUG: Field "${attr.title}" (ID=${attr.id})');
-      // log.d('═════════════════════════════════════════════════════════════');
-      // log.d('📊 FULL PARAMETERS:');
-      // log.d('  • style: "${attr.style}"');
-      // log.d('  • is_range: ${attr.isRange}');
-      // log.d('  • is_multiple: ${attr.isMultiple}');
-      // log.d('  • is_popup: ${attr.isPopup}');
-      // log.d('  • is_special_design: ${attr.isSpecialDesign}');
-      // log.d('  • is_title_hidden: ${attr.isTitleHidden}');
-      // log.d('  • is_required: ${attr.isRequired}');
-      // log.d('  • is_hidden: ${attr.isHidden}');
-      // log.d('  • is_filter: ${attr.isFilter}');
-      // log.d('  • data_type: "${attr.dataType}"');
-      // log.d('  • values_count: ${attr.values.length}');
-      // log.d('  • values: ${attr.values.map((v) => v.value).toList()}');
-      // log.d('═════════════════════════════════════════════════════════════');
-      // log.d('');
-    }
-
-    // =================================================================
-    // PRIORITY 1: Используем ФЛАГИ И СВОЙСТВА атрибута
-    // Это работает для ЛЮБЫХ новых полей, которые добавят на сервере
-    // =================================================================
-
-    // Случай 1: Скрытые чекбоксы (Style I)
-    // Флаги: is_title_hidden=true, is_multiple=true
-    // Пример: Без комиссии, Возможность обмена, Только с доставкой и т.д.
-    if (attr.isTitleHidden && attr.isMultiple && attr.values.isNotEmpty) {
-      // log.d();
-      return _buildCheckboxField(attr);
-    }
-
-    // Случай 1.5: Скрытый одиночный чекбокс (Style I - одиночный)
-    // Флаги: is_title_hidden=true, is_multiple=false, есть values
-    // Пример: Только с доставкой, Только с исполнителем (styleSingle=I)
-    if (attr.isTitleHidden && !attr.isMultiple && attr.values.isNotEmpty) {
-      // log.d();
-      return _buildCheckboxField(attr);
-    }
-
-    // Случай 1.5.5: Стиль A1 (текстовое поле с валютой)
-    // Флаги: styleSingle='A1'
-    // Пример: Цена, Средний чек (числовое поле с суффиксом валюты)
-    if (attr.styleSingle == 'A1') {
-      // log.d();
-      return _buildA1Field(attr);
-    }
-
-    // Случай 1.5.6: Стиль B1 (одиночный чекбокс - SUBMISSION MODE)
-    // Флаги: styleSingle='B1'
-    // Пример: Возможен торг, Без комиссии, Возможность обмена (при подаче объявления)
-    if (attr.styleSingle == 'B1') {
-      // log.d();
-      return _buildB1Field(attr);
-    }
-
-    // Случай 1.6: Специальное числовое поле (styleSingle=G1)
-    // Флаги: styleSingle='G1'
-    // Пример: Общее площадь, Жилая площадь (одиночное числовое поле)
-    if (attr.styleSingle == 'G1') {
-      // log.d();
-      return _buildG1Field(attr);
-    }
-
-    // Случай 1.7: Стиль F - Множественный выбор в popUp (styleSingle=F - SUBMISSION MODE)
-    // Флаги: styleSingle='F'
-    // Пример: Множественный выбор, Инфраструктура (много опций в popUp)
-    // ВАЖНО: F это ВСЕГДА множественный выбор с SQUARE CHECKBOXES
-    if (attr.styleSingle == 'F') {
-      // log.d();
-      // Гарантируем isMultiple=true для множественного выбора с чекбоксами
-      Attribute fAttr = attr.copyWith(isMultiple: true);
-      return _buildMultipleSelectPopup(fAttr);
-    }
-
-    // Случай 1.8: Стиль E1 - Диапазон (styleSingle=E1 - SUBMISSION MODE)
-    // Флаги: styleSingle='E1'
-    // Пример: Этажи, Площадь (диапазон при подаче объявления)
-    if (attr.styleSingle == 'E1') {
-      // log.d();
-      return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
-    }
-
-    // Случай 1.9: Стиль J1 - Календарь выбора дат и времени (styleSingle=J1 - SUBMISSION MODE)
-    // Флаги: styleSingle='J1'
-    // Пример: Календарь аренды, Время и дата для услуг (виджет с двумя датами/временем)
-    if (attr.styleSingle == 'J1') {
-      // log.d();
-      return _buildJ1Field(attr);
-    }
-
-    // Случай 1.10: Стиль K1/K - K-Calendar выбора дат и времени (styleSingle=K1 или K - SUBMISSION MODE)
-    // Флаги: styleSingle='K1' или styleSingle='K'
-    // Пример: K-Calendar аренда, Время и дата для услуг (компактный формат)
-    if (attr.styleSingle == 'K1' || attr.styleSingle == 'K') {
-      // log.d();
-      return _buildK1Field(attr);
-    }
-
-    // Случай 1.11: Стиль C1 - Кнопки (styleSingle=C1 - SUBMISSION MODE)
-    // Флаги: styleSingle='C1'
-    // Пример: Меблированная, Вид объекта, Ипотека (кнопки при подаче объявления)
-    // ВАЖНО: это одиночный выбор в виде кнопок (как D1 для dropdown, E1 для range)
-    if (attr.styleSingle == 'C1') {
-      // log.d();
-      return _buildSpecialDesignField(attr);
-    }
-
-    // Случай 2: Простой чекбокс (Style B)
-    // Флаги: НЕ is_multiple (или is_multiple=false), есть values
-    // Но НЕ is_title_hidden
-    // Пример: Возможен торг, Меблированная (когда это одиночный чекбокс)
-    if (!attr.isMultiple &&
-        !attr.isTitleHidden &&
-        attr.values.isNotEmpty &&
-        attr.values.length <= 2) {
-      // log.d();
-      return _buildCheckboxField(attr);
-    }
-
-    // Случай 3: Диапазон (Style E)
-    // Флаг: is_range=true
-    // Пример: Этаж, Площадь, Цена и т.д.
-    if (attr.isRange) {
-      // log.d();
-      return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
-    }
-
-    // Случай 3.5: Style D1 Popup с RADIO BUTTONS (Одиночный выбор - SUBMISSION MODE)
-    // Флаги: is_popup=true, is_multiple=true (но это API quirk), НЕ Style F
-    // Пример: Тип дома (13 вариантов, но RADIO buttons - только ОДНО значение можно выбрать)
-    // ВАЖНО: несмотря на флаг is_multiple=true, это показывает RADIO BUTTONS и одиночный выбор
-
-    // Логика: D1 Popup это popup + multiple, но БЕЗ явного Style F marker
-    // Style F обычно определяется через values.length > 5 в Case 7
-    // D1 Popup это "другие" popup + multiple поля (типа ID=1)
-    bool isD1PopupWithoutF =
-        (attr.styleSingle == 'D1' || attr.style == 'D') &&
-        attr.isMultiple &&
-        attr
-            .values
-            .isNotEmpty; // Note: is_popup может быть false в API, но мы переопределим его
-
-    if (attr.id == 1) {
-      // log.d();
-    }
-
-    if (isD1PopupWithoutF) {
-      // log.d();
-      // D1 должен показывать POPUP с RADIO buttons - переопределяем isMultiple=false и is_popup=true
-      Attribute d1Attr = attr.copyWith(isMultiple: false, isPopup: true);
-      return _buildMultipleSelectPopup(d1Attr);
-    }
-
-    // Случай 4: Style D Popup с CHECKBOXES (Множественный выбор - VIEWING MODE)
-    // Флаги: is_popup=true, is_multiple=true, есть values, style='D' (БЕЗ styleSingle=D1)
-    // Пример: Все поля которые имеют is_popup=true из API и НЕ имеют styleSingle=D1
-    // ВАЖНО: это показывает CHECKBOXES и позволяет выбрать НЕСКОЛЬКО значений
-    if (attr.isPopup &&
-        attr.isMultiple &&
-        attr.styleSingle != 'D1' &&
-        attr.values.isNotEmpty) {
-      // log.d();
-      // D (без D1) должен показывать CHECKBOXES - оставляем isMultiple=true
-      return _buildMultipleSelectPopup(attr);
-    }
-
-    // Случай 5: Группа кнопок (Style C)
-    // Флаги: is_special_design=true, есть values (2, 3 или больше)
-    // Примеры: Меблированная (2 кнопки), Вид сделки (3 кнопки)
-    if (attr.isSpecialDesign && attr.values.isNotEmpty) {
-      // log.d();
-      return _buildSpecialDesignField(attr);
-    }
-
-    // Случай 6: Множественный выбор (Style D)
-    // Флаги: is_multiple=true, есть values, НО НЕ is_popup
-    // Пример: Комфорт, Инфраструктура (как dropdown, не popup)
-    if (attr.isMultiple && !attr.isPopup && attr.values.isNotEmpty) {
-      // log.d();
-      return _buildMultipleSelectDropdown(attr);
-    }
-
-    // Случай 7: Один выбор из значений (Single select dropdown/popup)
-    // Флаги: есть values, НО НЕ is_multiple, НЕ is_range, НЕ is_special_design
-    if (!attr.isMultiple &&
-        !attr.isRange &&
-        !attr.isSpecialDesign &&
-        attr.values.isNotEmpty) {
-      // Style F: Много вариантов (> 5) - POPUP с CHECKBOXES (MULTIPLE selection)
-      // Examples: Тип сделки, Ландшафт, Инфраструктура (7, 20, 16 опций)
-      if (attr.values.length > 5) {
-        // log.d();
-        // Override: Allow multiple selection for Style F with many options
-        Attribute multiAttr = attr.copyWith(isMultiple: true);
-        return _buildMultipleSelectPopup(multiAttr);
-      } else {
-        // Мало вариантов (2-5) - Single select dropdown
-        // Example: Санузел (5 опций)
-        // log.d();
-        return _buildSingleSelectDropdown(attr);
-      }
-    }
-
-    // Случай 8: Текстовое поле (Style A, H)
-    // Флаги: НЕТ values (текстовое поле без предопределенных вариантов)
-    // Пример: Название ЖК, Описание и т.д.
-    if (attr.values.isEmpty) {
-      // log.d();
-      return _buildTextInputField(attr);
-    }
-
-    // =================================================================
-    // PRIORITY 2: Если не совпадает ни один случай выше - используем STYLE
-    // =================================================================
-    // log.d();
-
-    switch (attr.style) {
-      case 'A':
-      case 'A1':
-        // Style A/A1: Текстовое поле (text input)
-        return _buildTextInputField(attr);
-
-      case 'B':
-        // Style B: Чекбокс (single value checkbox)
-        return _buildCheckboxField(attr);
-
-      case 'C':
-        // Style C: Да/Нет переключатель (buttons for yes/no)
-        // With is_special_design flag for button styling
-        return _buildSpecialDesignField(attr);
-
-      case 'D':
-      case 'D1':
-        // Style D/D1: Множественный выбор
-        // If is_popup=true: show as modal, else show as dropdown list
-        if (attr.isPopup) {
-          return _buildMultipleSelectPopup(attr);
-        } else {
-          return _buildMultipleSelectDropdown(attr);
-        }
-
-      case 'E':
-      case 'E1':
-        // Style E/E1: Диапазон (range with от/до)
-        return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
-
-      case 'F':
-        // Style F: Множественный выбор в попапе (modal/popup selection)
-        // Always show as popup with checkboxes
-        return _buildMultipleSelectPopup(attr);
-
-      case 'G':
-      case 'G1':
-        // Style G/G1: Числовое поле (numeric input)
-        // If is_range=true: show range fields, else single input
-        if (attr.isRange) {
-          return _buildRangeField(attr, isInteger: false);
-        } else {
-          return _buildTextInputField(attr);
-        }
-
-      case 'H':
-        // Style H: Текстовое поле (text input)
-        return _buildTextInputField(attr);
-
-      case 'I':
-        // Style I: Скрытые чекбоксы (hidden without title, checkbox list)
-        // Multiple checkboxes with is_title_hidden=true
-        return _buildHiddenCheckboxField(attr);
-
-      case 'manual':
-        // Manual style - custom UI rendering
-        return _buildTextInputField(attr);
-
-      default:
-        // =================================================================
-        // PRIORITY 3: Finale fallback для неизвестных стилей
-        // Используем логику на основе флагов еще раз
-        // =================================================================
-        // log.d('❌ Unknown style "${attr.style}", using final fallback logic');
-        if (attr.isPopup && attr.isMultiple && attr.values.isNotEmpty) {
-          return _buildMultipleSelectPopup(attr);
-        } else if (attr.isRange) {
-          return _buildRangeField(attr, isInteger: attr.dataType == 'integer');
-        } else if (attr.isMultiple && attr.values.isNotEmpty) {
-          return _buildMultipleSelectDropdown(attr);
-        } else if (attr.values.isNotEmpty) {
-          return _buildSpecialDesignField(attr);
-        } else {
-          return _buildTextInputField(attr);
-        }
+    final plan = resolveFilterField(attr);
+    final a = plan.attribute;
+    switch (plan.kind) {
+      case FilterFieldKind.checkbox:
+        return _buildCheckboxField(a);
+      case FilterFieldKind.hiddenCheckbox:
+        return _buildHiddenCheckboxField(a);
+      case FilterFieldKind.boolean:
+        return _buildB1Field(a);
+      case FilterFieldKind.price:
+        return _buildA1Field(a);
+      case FilterFieldKind.numericInput:
+        return _buildG1Field(a);
+      case FilterFieldKind.textInput:
+        return _buildTextInputField(a);
+      case FilterFieldKind.range:
+        return _buildRangeField(a, isInteger: a.dataType == 'integer');
+      case FilterFieldKind.singleSelect:
+        return _buildSingleSelectDropdown(a);
+      case FilterFieldKind.multipleSelect:
+        return _buildMultipleSelectDropdown(a);
+      case FilterFieldKind.multipleSelectPopup:
+        return _buildMultipleSelectPopup(a);
+      case FilterFieldKind.buttonGroup:
+        return _buildSpecialDesignField(a);
+      case FilterFieldKind.rentTime:
+        return _buildJ1Field(a);
+      case FilterFieldKind.rentTimeCompact:
+        return _buildK1Field(a);
     }
   }
 
   // Style B1: Single checkbox (SUBMISSION MODE)
+  /// Адаптер над [BooleanField]. В отличие от [CheckboxField]
+  /// использует `attribute.title` с 16pt через [RequiredLabel].
   Widget _buildB1Field(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
-    bool selected = _selectedValues[attr.id] is bool
-        ? _selectedValues[attr.id]
+    final selected = _selectedValues[attr.id] is bool
+        ? _selectedValues[attr.id] as bool
         : false;
 
-    // StyleSingle B1: Display as single checkbox with label
-    // Example: Возможен торг, Без комиссии, Возможность обмена (submission mode)
-    // Shows label text left and checkbox right in a row
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        GestureDetector(
-          onTap: () => setState(() {
-            _selectedValues[attr.id] = !selected;
-          }),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildLabel(attr.title, attr.isRequired),
-              ),
-              const SizedBox(width: 12),
-              CustomCheckbox(
-                value: selected,
-                onChanged: (v) {
-                  setState(() {
-                    _selectedValues[attr.id] = v;
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
+    return BooleanField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      value: selected,
+      onChanged: (v) {
+        setState(() {
+          _selectedValues[attr.id] = v;
+        });
+      },
     );
   }
 
   // Style B: Single checkbox
+  /// Адаптер над [CheckboxField]. Приводит `_selectedValues[attr.id]`
+  /// к `bool` и пробрасывает изменения обратно в state через setState.
   Widget _buildCheckboxField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
-    bool selected = _selectedValues[attr.id] is bool
-        ? _selectedValues[attr.id]
+    final selected = _selectedValues[attr.id] is bool
+        ? _selectedValues[attr.id] as bool
         : false;
 
-    // According to documentation:
-    // Style B: Single checkbox (usually for one value like "Возможен торг")
-    // If no title is hidden, show as row with label and checkbox
-
-    // Check if this is "Возможен торг" checkbox to link it with "предложат цену" attribute
-    bool isBargainCheckbox = attr.title.toLowerCase().contains('торг');
-    final offerPriceAttrId = isBargainCheckbox
-        ? _attributeResolver.getOfferPriceAttributeId()
-        : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        GestureDetector(
-          onTap: () => setState(() {
-            _selectedValues[attr.id] = !selected;
-            // "Возможен торг" и "Вам предложат цену" теперь независимы
-            // "Вам предложат цену" всегда true по умолчанию и не меняется
-          }),
-          child: Row(
-            children: [
-              Expanded(
-                child: attr.values.isNotEmpty
-                    ? Text(
-                        attr.values[0].value,
-                        style: const TextStyle(color: textPrimary, fontSize: 14),
-                      )
-                    : _buildCheckboxLabel(attr.title, attr.isRequired, fontSize: 14),
-              ),
-              const SizedBox(width: 12),
-              CustomCheckbox(
-                value: selected,
-                onChanged: (v) {
-                  setState(() {
-                    _selectedValues[attr.id] = v;
-                    // "Возможен торг" и "Вам предложат цену" теперь независимы
-                    // "Вам предложат цену" всегда true по умолчанию и не меняется
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
+    return CheckboxField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      value: selected,
+      onChanged: (v) {
+        setState(() {
+          _selectedValues[attr.id] = v;
+        });
+      },
     );
   }
 
@@ -5353,6 +4784,8 @@ class _DynamicFilterState extends State<DynamicFilter> {
   }
 
   // Style A1: Numeric field with currency (price field)
+  /// Адаптер над [PriceInputField]. Сохраняет логику создания
+  /// контроллера из `_selectedValues` и trim-приведение значения.
   Widget _buildA1Field(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
     final controller = _controllers.putIfAbsent(attr.id, () {
@@ -5363,61 +4796,17 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
     // StyleSingle A1: Display as single numeric input field with currency suffix
     // Example: Цена, Средний чек
-    // Shows number input with ₽ (ruble) symbol in separate container
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        _buildLabel(attr.title, attr.isRequired),
-        const SizedBox(height: 9),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: formBackground,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: TextField(
-                  controller: controller,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: textPrimary, fontSize: 16),
-                  decoration: const InputDecoration(
-                    hintText: '1 000 000',
-                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
-                    filled: false,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) => _selectedValues[attr.id] = value.trim(),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              decoration: BoxDecoration(
-                color: formBackground,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              width: 53,
-              height: 48,
-              alignment: Alignment.center,
-              child: const Text(
-                '₽',
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-      ],
+    return PriceInputField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      controller: controller,
+      onChanged: (value) => _selectedValues[attr.id] = value.trim(),
     );
   }
 
-  // Style G1: Special numeric field (single numeric input)
+  /// Адаптер над [NumericInputField]. Отладочные `log.d` сохранены
+  /// ровно в тех же местах, что в исходнике: один набор логов при
+  /// создании контроллера, один — на каждый ребилд виджета.
   Widget _buildG1Field(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
 
@@ -5444,323 +4833,154 @@ class _DynamicFilterState extends State<DynamicFilter> {
     // StyleSingle G1: Display as single numeric input field
     // Example: Общее площадь, Жилая площадь
     // Uses same styling as other text input fields (style A/H)
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        _buildTextField(
-          label: attr.title + (attr.isRequired ? '*' : ''),
-          hint: 'Цифрами',
-          fieldKey: 'attr_${attr.id}',
-          keyboardType: TextInputType.number,
-          controller: controller,
-          onChanged: (value) => _selectedValues[attr.id] = value.trim(),
-        ),
-      ],
+    final fieldKey = 'attr_${attr.id}';
+    final hasError = _fieldErrors.containsKey(fieldKey);
+    return NumericInputField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      controller: controller,
+      errorMessage: hasError ? _fieldErrors[fieldKey] : null,
+      hasError: hasError,
+      onChanged: (value) {
+        // Очищаем ошибку при вводе — как было в адаптере _buildTextField.
+        if (value.isNotEmpty) {
+          setState(() {
+            _fieldErrors.remove(fieldKey);
+          });
+        }
+        _selectedValues[attr.id] = value.trim();
+      },
     );
   }
 
   // Style C / C1: Special design (button group with variable number of options)
+  /// Адаптер над [ButtonGroupField]. Разбирает значение
+  /// (`String` или `Set<String>` — последнее для совместимости со
+  /// старыми данными, где одиночный выбор хранился как Set) и
+  /// сохраняет обратно как `String`.
   Widget _buildSpecialDesignField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
 
-    // ✅ Обработка различных типов значений (String или Set)
+    // ✅ Обработка различных типов значений (String или Set).
     String selected = '';
     final value = _selectedValues[attr.id];
 
     if (value is String) {
       selected = value;
     } else if (value is Set<String> && value.isNotEmpty) {
-      // Если значение это Set - берем первый элемент (одиночный выбор для C1)
+      // Если значение это Set — берем первый элемент (одиночный выбор для C1).
       selected = value.first;
       log.d('   ✅ C1/C field: Extracted value from Set: $selected');
     }
 
-    // According to documentation:
-    // Style C with is_special_design=true: Show as button group
-    // Style C1 (styleSingle=C1): Show as button group (submission mode)
-    // Can have 2, 3, or more button options (Да/Нет, Совместная/Продажа/Аренда, etc.)
-
     final fieldKey = 'attr_${attr.id}';
     final hasError = _fieldErrors.containsKey(fieldKey);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        if (!attr.isTitleHidden)
-          Row(
-            children: [
-              Text(
-                attr.title,
-                style: TextStyle(color: textPrimary, fontSize: 16),
-              ),
-              if (attr.isRequired)
-                Text(
-                  ' *',
-                  style: TextStyle(
-                    color: hasError
-                        ? const Color(0xFFFF1744)
-                        : const Color(0xFFFF1744),
-                    fontSize: 16,
-                  ),
-                ),
-            ],
-          ),
-        const SizedBox(height: 12),
-        if (attr.values.isNotEmpty)
-          _buildButtonGrid(
-            buttons: attr.values,
-            selectedValue: selected,
-            onButtonPressed: (value) {
-              setState(() {
-                _selectedValues[attr.id] = value;
-                _fieldErrors.remove(fieldKey);
-              });
-            },
-          ),
-        if (hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              'Обязательное поле',
-              style: const TextStyle(
-                color: Color(0xFFFF1744),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
+    return ButtonGroupField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      selectedValue: selected,
+      hasError: hasError,
+      onChanged: (newValue) {
+        setState(() {
+          _selectedValues[attr.id] = newValue;
+          _fieldErrors.remove(fieldKey);
+        });
+      },
     );
   }
 
-  /// Builds a flexible grid of buttons that adapts to screen width
-  /// 2 buttons: 2 columns (50% each) in Row
-  /// 3 buttons: 3 columns (33% each) in Row
-  /// 4 buttons: 2x2 grid (2 buttons per row)
-  /// 5+ buttons: 3 columns per row with wrapping
+  // ignore: unused_element
+  /// Адаптер над [ChoiceButtonGrid]. После перевода
+  /// [_buildSpecialDesignField] на [ButtonGroupField] этот метод
+  /// стал неиспользуемым (помечен `unused_element`). Оставлен как
+  /// тонкая обёртка на случай, если где-то снаружи обнаружится
+  /// вызов. Для полного удаления достаточно убрать этот метод
+  /// и проверить `flutter analyze`.
   Widget _buildButtonGrid({
     required List<Value> buttons,
     required String selectedValue,
     required Function(String) onButtonPressed,
   }) {
-    if (buttons.isEmpty) return const SizedBox.shrink();
-
-    final spacing = 10.0;
-
-    // For 2 buttons: Row with 50% width each
-    if (buttons.length == 2) {
-      return Row(
-        children: [
-          Expanded(
-            child: _buildChoiceButton(
-              buttons[0].value,
-              selectedValue == buttons[0].value,
-              () => onButtonPressed(buttons[0].value),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _buildChoiceButton(
-              buttons[1].value,
-              selectedValue == buttons[1].value,
-              () => onButtonPressed(buttons[1].value),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // For 3 buttons: Row with 33% width each (all in one row)
-    if (buttons.length == 3) {
-      return Row(
-        children: [
-          for (int i = 0; i < buttons.length; i++) ...[
-            Expanded(
-              child: _buildChoiceButton(
-                buttons[i].value,
-                selectedValue == buttons[i].value,
-                () => onButtonPressed(buttons[i].value),
-              ),
-            ),
-            if (i < buttons.length - 1) const SizedBox(width: 10),
-          ],
-        ],
-      );
-    }
-
-    // For exactly 4 buttons: 2x2 grid (2 buttons per row)
-    if (buttons.length == 4) {
-      return Column(
-        children: [
-          // First row: buttons 0 and 1
-          Row(
-            children: [
-              Expanded(
-                child: _buildChoiceButton(
-                  buttons[0].value,
-                  selectedValue == buttons[0].value,
-                  () => onButtonPressed(buttons[0].value),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildChoiceButton(
-                  buttons[1].value,
-                  selectedValue == buttons[1].value,
-                  () => onButtonPressed(buttons[1].value),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Second row: buttons 2 and 3
-          Row(
-            children: [
-              Expanded(
-                child: _buildChoiceButton(
-                  buttons[2].value,
-                  selectedValue == buttons[2].value,
-                  () => onButtonPressed(buttons[2].value),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildChoiceButton(
-                  buttons[3].value,
-                  selectedValue == buttons[3].value,
-                  () => onButtonPressed(buttons[3].value),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-    }
-
-    // For 5+ buttons: Wrap with flexible sizing
-    // Each button takes appropriate width and wraps to next row if needed
-    return Wrap(
-      spacing: spacing,
-      runSpacing: spacing,
-      children: [
-        for (int i = 0; i < buttons.length; i++)
-          Flexible(
-            flex: 1,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: _buildChoiceButton(
-                buttons[i].value,
-                selectedValue == buttons[i].value,
-                () => onButtonPressed(buttons[i].value),
-              ),
-            ),
-          ),
-      ],
+    return ChoiceButtonGrid(
+      buttons: buttons,
+      selectedValue: selectedValue,
+      onButtonPressed: onButtonPressed,
     );
   }
 
   // Style D: Multiple select (dropdown list or popup based on is_popup flag)
+  /// Адаптер над [SingleSelectDropdownField]. Приводит значение из
+  /// `_selectedValues` к строке и пробрасывает изменения обратно
+  /// через setState.
   Widget _buildSingleSelectDropdown(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
-    String selected = _selectedValues[attr.id] is String
+    final selected = _selectedValues[attr.id] is String
         ? (_selectedValues[attr.id] as String)
         : '';
 
-    // Single select dropdown (not multiple, not buttons)
-    // Example: Санузел (Раздельный/Смежный)
+    final fieldKey = 'attr_${attr.id}';
+    final hasError = _fieldErrors.containsKey(fieldKey);
 
-    return _buildDropdown(
-      label: attr.isTitleHidden
-          ? ''
-          : attr.title + (attr.isRequired ? '*' : ''),
-      fieldKey: 'attr_${attr.id}',
-      hint: selected.isEmpty ? 'Выбрать' : selected,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: textSecondary),
-      onTap: () {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SelectionDialog(
-              title: attr.title.isEmpty ? 'Выбор' : attr.title,
-              options: attr.values.map((v) => v.value).toList(),
-              selectedOptions: selected.isEmpty ? {} : {selected},
-              onSelectionChanged: (Set<String> newSelected) {
-                setState(() {
-                  _selectedValues[attr.id] = newSelected.isEmpty
-                      ? ''
-                      : newSelected.first;
-                  _fieldErrors.remove('attr_${attr.id}');
-                });
-              },
-              allowMultipleSelection: false,
-            );
-          },
-        );
+    return SingleSelectDropdownField(
+      attribute: attr,
+      selectedValue: selected,
+      hasError: hasError,
+      errorMessage: hasError ? _fieldErrors[fieldKey] : null,
+      onChanged: (newValue) {
+        setState(() {
+          _selectedValues[attr.id] = newValue;
+          _fieldErrors.remove(fieldKey);
+        });
       },
     );
   }
 
+  /// Адаптер над [MultipleSelectDropdownField]. Обрабатывает случай,
+  /// когда в `_selectedValues` уже лежит `Set` (возможно нетипизированный).
   Widget _buildMultipleSelectDropdown(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
-    Set<String> selected = _selectedValues[attr.id] is Set
+    final selected = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
 
-    // According to documentation:
-    // - Style D with is_popup=false: show as dropdown/selection dialog
-    // - Style D with is_popup=true: show as popup modal
+    final fieldKey = 'attr_${attr.id}';
+    final hasError = _fieldErrors.containsKey(fieldKey);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        _buildDropdown(
-          label: attr.isTitleHidden
-              ? ''
-              : attr.title + (attr.isRequired ? '*' : ''),
-          fieldKey: 'attr_${attr.id}',
-          hint: selected.isEmpty ? 'Выбрать' : selected.join(', '),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: textSecondary,
-          ),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return SelectionDialog(
-                  title: attr.title.isEmpty ? 'Выбор' : attr.title,
-                  options: attr.values.map((v) => v.value).toList(),
-                  selectedOptions: selected,
-                  onSelectionChanged: (Set<String> newSelected) {
-                    setState(() {
-                      _selectedValues[attr.id] = newSelected;
-                      _fieldErrors.remove('attr_${attr.id}');
-                    });
-                  },
-                  allowMultipleSelection: attr.isMultiple,
-                );
-              },
-            );
-          },
-        ),
-      ],
+    return MultipleSelectDropdownField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      selectedValues: selected,
+      hasError: hasError,
+      errorMessage: hasError ? _fieldErrors[fieldKey] : null,
+      onChanged: (newSelected) {
+        setState(() {
+          _selectedValues[attr.id] = newSelected;
+          _fieldErrors.remove(fieldKey);
+        });
+      },
     );
   }
 
   // Style E/E1 & G/G1: Range fields (E for integer, G for decimal)
+  /// Адаптер над [RangeField]. Создаёт два контроллера (min/max)
+  /// с синтетическими ключами в `_controllers` (`attr.id*2` и
+  /// `attr.id*2+1` — как в исходнике), и пробрасывает изменения
+  /// обратно в `_selectedValues` как Map `{'min': ..., 'max': ...}`.
+  ///
+  /// Параметр `isInteger` в исходном методе принимался, но нигде
+  /// не использовался (клавиатура выбирается по `dataType`/`style`).
+  /// Оставлен для обратной совместимости с 5 местами вызова
+  /// в [_buildDynamicFilter], но внутрь виджета не передаётся.
   Widget _buildRangeField(Attribute attr, {required bool isInteger}) {
     _selectedValues[attr.id] ??= {'min': '', 'max': ''};
-    Map<String, dynamic> rangeMap = _selectedValues[attr.id] is Map
+    final rangeMap = _selectedValues[attr.id] is Map
         ? _selectedValues[attr.id] as Map<String, dynamic>
         : {'min': '', 'max': ''};
 
     final minStr = rangeMap['min']?.toString() ?? '';
     final maxStr = rangeMap['max']?.toString() ?? '';
-    Map<String, String> range = {'min': minStr, 'max': maxStr};
+    final range = <String, String>{'min': minStr, 'max': maxStr};
 
     final minKey = attr.id * 2;
     final maxKey = attr.id * 2 + 1;
@@ -5773,237 +4993,68 @@ class _DynamicFilterState extends State<DynamicFilter> {
       () => TextEditingController(text: range['max']),
     );
 
-    // Determine keyboard type based on style and data_type
-    TextInputType keyboardType;
-    if (attr.dataType == 'numeric' || attr.style == 'G' || attr.style == 'G1') {
-      keyboardType = TextInputType.numberWithOptions(decimal: true);
-    } else {
-      keyboardType = TextInputType.number;
-    }
-
     final fieldKey = 'attr_${attr.id}';
     final hasError = _fieldErrors.containsKey(fieldKey);
-    final hintColor = hasError ? const Color(0xFFff7272) : textSecondary;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        if (!attr.isTitleHidden)
-          _buildLabel(attr.title, attr.isRequired),
-        const SizedBox(height: 9),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: hasError ? const Color(0xFF381a1a) : formBackground,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TextField(
-                  controller: controllerMin,
-                  keyboardType: keyboardType,
-                  style: TextStyle(
-                    color: hasError ? const Color(0xFFff7272) : textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'От',
-                    hintStyle: TextStyle(color: hintColor, fontSize: 14),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      range['min'] = value;
-                      _selectedValues[attr.id] = range;
-                      // Clear error when user inputs
-                      if (value.isNotEmpty) {
-                        _fieldErrors.remove(fieldKey);
-                      }
-                    });
-                  },
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Center(
-                child: Text(
-                  'Из',
-                  style: TextStyle(
-                    color: hasError ? const Color(0xFFff7272) : textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: hasError ? const Color(0xFF381a1a) : formBackground,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TextField(
-                  controller: controllerMax,
-                  keyboardType: keyboardType,
-                  style: TextStyle(
-                    color: hasError ? const Color(0xFFff7272) : textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'До',
-                    hintStyle: TextStyle(color: hintColor, fontSize: 14),
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      range['max'] = value;
-                      _selectedValues[attr.id] = range;
-                      // Clear error when user inputs
-                      if (value.isNotEmpty) {
-                        _fieldErrors.remove(fieldKey);
-                      }
-                    });
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (hasError)
-          Padding(
-            padding: const EdgeInsets.only(top: 7),
-            child: Text(
-              'Заполните минимальное и максимальное значение',
-              style: const TextStyle(
-                color: Color(0xFFFF1744),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-      ],
+    return RangeField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      controllerMin: controllerMin,
+      controllerMax: controllerMax,
+      hasError: hasError,
+      onMinChanged: (value) {
+        setState(() {
+          range['min'] = value;
+          _selectedValues[attr.id] = range;
+          if (value.isNotEmpty) {
+            _fieldErrors.remove(fieldKey);
+          }
+        });
+      },
+      onMaxChanged: (value) {
+        setState(() {
+          range['max'] = value;
+          _selectedValues[attr.id] = range;
+          if (value.isNotEmpty) {
+            _fieldErrors.remove(fieldKey);
+          }
+        });
+      },
     );
   }
 
   // Style F & D (with is_popup=true): Multiple select (popup/modal)
+  /// Адаптер над [MultipleSelectPopupField]. Логика переноса длинного
+  /// текста и маппинга wrapped ↔ original инкапсулирована в самом
+  /// виджете — снаружи передаются и возвращаются оригинальные строки.
   Widget _buildMultipleSelectPopup(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? <String>{};
-    Set<String> selected = _selectedValues[attr.id] is Set
+    final selected = _selectedValues[attr.id] is Set
         ? (_selectedValues[attr.id] as Set).cast<String>()
         : <String>{};
 
-    // log.d(
-    //   '🔍 Building multiple select popup for attr ${attr.id} "${attr.title}"',
-    // );
-    // log.d('   selected values: ${selected.toList()}');
-    // log.d('   available options: ${attr.values.map((v) => v.value).toList()}');
+    final fieldKey = 'attr_${attr.id}';
+    final hasError = _fieldErrors.containsKey(fieldKey);
 
-    // According to documentation:
-    // Style F: Always popup with checkboxes
-    // Style D with is_popup=true: Popup with radio or checkboxes
-    // If is_multiple=true: checkboxes, else: radio buttons
-
-    // Специальная обработка заголовка для переноса строки
-    String displayLabel = attr.isTitleHidden
-        ? ''
-        : attr.title + (attr.isRequired ? '*' : '');
-
-    // Helper function to intelligently wrap long text with line breaks
-    // Instead of hardcoding specific field names
-    String _wrapLongText(String text) {
-      const maxCharsPerLine = 20; // Максимум символов в одной строке
-      if (text.length <= maxCharsPerLine) {
-        return text;
-      }
-
-      // Пытаемся разбить по пробелам
-      final words = text.split(' ');
-      if (words.length == 1) {
-        // Слово без пробелов - разбиваем в середине
-        return '${text.substring(0, text.length ~/ 2)}\n${text.substring(text.length ~/ 2)}';
-      }
-
-      // Ищем оптимальную точку разрыва
-      String line1 = '';
-      String line2 = '';
-      for (int i = 0; i < words.length; i++) {
-        if ((line1 + ' ' + words[i]).length <= maxCharsPerLine) {
-          line1 += (line1.isEmpty ? '' : ' ') + words[i];
-        } else {
-          line2 = words.sublist(i).join(' ');
-          break;
-        }
-      }
-
-      return line2.isEmpty ? text : '$line1\n$line2';
-    }
-
-    // Заголовок для диалога с переносом строки для длинных названий
-    String dialogTitle = attr.title.isEmpty ? 'Выбор' : attr.title;
-    dialogTitle = _wrapLongText(dialogTitle);
-
-    // Обработка длинных значений опций с переносом строки
-    List<String> processedOptions = attr.values.map((v) {
-      String value = v.value;
-      return _wrapLongText(value);
-    }).toList();
-
-    // Также обрабатываем выбранные значения для отображения в hint
-    // Но сохраняем маппинг для восстановления оригинальных значений
-    Map<String, String> wrappedToOriginal = {};
-    Set<String> processedSelected = selected.map((s) {
-      String wrapped = _wrapLongText(s);
-      if (wrapped != s) {
-        wrappedToOriginal[wrapped] = s;
-      }
-      return wrapped;
-    }).toSet();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        _buildDropdown(
-          label: displayLabel,
-          fieldKey: 'attr_${attr.id}',
-          hint: processedSelected.isEmpty
-              ? 'Выбрать'
-              : processedSelected.join(', '),
-          icon: const Icon(
-            Icons.keyboard_arrow_down_rounded,
-            color: textSecondary,
-          ),
-          onTap: () {
-            showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return SelectionDialog(
-                  title: dialogTitle,
-                  options: processedOptions,
-                  selectedOptions: processedSelected,
-                  onSelectionChanged: (Set<String> newSelected) {
-                    // Восстанавливаем оригинальные значения перед сохранением
-                    Set<String> originalSelected = newSelected.map((s) {
-                      return wrappedToOriginal[s] ?? s;
-                    }).toSet();
-                    setState(() {
-                      _selectedValues[attr.id] = originalSelected;
-                      _fieldErrors.remove('attr_${attr.id}');
-                    });
-                  },
-                  allowMultipleSelection: attr.isMultiple,
-                );
-              },
-            );
-          },
-        ),
-      ],
+    return MultipleSelectPopupField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      selectedValues: selected,
+      hasError: hasError,
+      errorMessage: hasError ? _fieldErrors[fieldKey] : null,
+      onChanged: (newSelected) {
+        setState(() {
+          _selectedValues[attr.id] = newSelected;
+          _fieldErrors.remove(fieldKey);
+        });
+      },
     );
   }
 
   // Style A/A1/H: Text input field
+  /// Адаптер над [DynamicTextInputField]. Тип клавиатуры и подсказка
+  /// вычисляются внутри самого виджета по `attribute.dataType` — сюда
+  /// не проникают, логика остаётся в одном месте.
   Widget _buildTextInputField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? '';
     final controller = _controllers.putIfAbsent(attr.id, () {
@@ -6012,79 +5063,32 @@ class _DynamicFilterState extends State<DynamicFilter> {
       return TextEditingController(text: textValue);
     });
 
-    // Determine keyboard type based on data_type
-    TextInputType keyboardType = TextInputType.text;
-    if (attr.dataType == 'integer') {
-      keyboardType = TextInputType.number;
-    } else if (attr.dataType == 'numeric') {
-      keyboardType = TextInputType.numberWithOptions(decimal: true);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        _buildTextField(
-          label: attr.isTitleHidden
-              ? ''
-              : attr.title + (attr.isRequired ? '*' : ''),
-          hint: attr.dataType == 'integer'
-              ? 'Цифрами'
-              : (attr.dataType == 'numeric' ? 'Число' : 'Текст'),
-          keyboardType: keyboardType,
-          controller: controller,
-          onChanged: (value) => _selectedValues[attr.id] = value.trim(),
-        ),
-      ],
+    return DynamicTextInputField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      controller: controller,
+      onChanged: (value) => _selectedValues[attr.id] = value.trim(),
     );
   }
 
   // Style I: Hidden checkbox (no title, checkbox list)
+  /// Адаптер над [HiddenCheckboxField]. Логика выбора лейбла
+  /// (values[0].value → title → пропуск) инкапсулирована в самом виджете.
   Widget _buildHiddenCheckboxField(Attribute attr) {
     _selectedValues[attr.id] = _selectedValues[attr.id] ?? false;
-    bool selected = _selectedValues[attr.id] is bool
-        ? _selectedValues[attr.id]
+    final selected = _selectedValues[attr.id] is bool
+        ? _selectedValues[attr.id] as bool
         : false;
 
-    // According to documentation:
-    // Style I: Hidden checkbox with is_title_hidden=true
-    // Show checkbox label from values[0].value, not from title
-    // Example: "Без комиссии", "Возможность обмена", etc.
-
-    String checkboxLabel = '';
-    if (attr.values.isNotEmpty) {
-      checkboxLabel = attr.values[0].value;
-    } else if (attr.title.isNotEmpty && !attr.isTitleHidden) {
-      checkboxLabel = attr.title;
-    }
-
-    if (checkboxLabel.isEmpty) {
-      return const SizedBox.shrink(); // Skip rendering if no label
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildStyleHeader(attr),
-        GestureDetector(
-          onTap: () => setState(() => _selectedValues[attr.id] = !selected),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  checkboxLabel,
-                  style: const TextStyle(color: textPrimary, fontSize: 14),
-                ),
-              ),
-              const SizedBox(width: 12),
-              CustomCheckbox(
-                value: selected,
-                onChanged: (v) => setState(() => _selectedValues[attr.id] = v),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return HiddenCheckboxField(
+      attribute: attr,
+      isSubmissionMode: _isSubmissionMode,
+      value: selected,
+      onChanged: (v) {
+        setState(() {
+          _selectedValues[attr.id] = v;
+        });
+      },
     );
   }
 }
