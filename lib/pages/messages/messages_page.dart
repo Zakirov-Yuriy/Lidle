@@ -53,103 +53,6 @@ class _MessagesPageState extends State<MessagesPage>
 
   bool _isInitialized = false; // 🔄 Флаг для загрузки только один раз
 
-  // Dummy data for messages
-  List<Message> dummyMessages = [
-    // Юзеры - внутренний чат
-    Message(
-      senderName: 'Виталий Покрышкин',
-      senderAvatar:
-          'assets/profile_dashboard/Ellipse.png', // Assuming this asset exists
-      lastMessageTime: 'был(а) сегодня',
-      unreadCount: 4,
-      isInternal: true,
-      isCompany: false,
-    ),
-    Message(
-      senderName: 'Григорий Цех',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) сегодня',
-      unreadCount: 15,
-      isInternal: true,
-      isCompany: false,
-    ),
-    Message(
-      senderName: 'Иван Петров',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) вчера',
-      unreadCount: 2,
-      isInternal: true,
-      isCompany: false,
-    ),
-    // Юзеры - внешний чат
-    Message(
-      senderName: 'Данил',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) 5 августа',
-      unreadCount: 3,
-      isInternal: false,
-      isCompany: false,
-    ),
-    Message(
-      senderName: 'Сергей',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) неделю назад',
-      unreadCount: 1,
-      isInternal: false,
-      isCompany: false,
-    ),
-    // Компании - внутренний чат
-    Message(
-      senderName: 'ОККО',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) сегодня',
-      unreadCount: 4,
-      isInternal: true,
-      isCompany: true,
-    ),
-    Message(
-      senderName: 'Цветы Донец',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) 5 августа',
-      unreadCount: 3,
-      isInternal: true,
-      isCompany: true,
-    ),
-    Message(
-      senderName: 'Колбасы и мясо',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) сегодня',
-      unreadCount: 15,
-      isInternal: true,
-      isCompany: true,
-    ),
-    // Компании - внешний чат
-    Message(
-      senderName: 'H&M',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) недавно',
-      unreadCount: 1,
-      isInternal: false,
-      isCompany: true,
-    ),
-    Message(
-      senderName: 'Адидас',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) день назад',
-      unreadCount: 2,
-      isInternal: false,
-      isCompany: true,
-    ),
-    Message(
-      senderName: 'Nike',
-      senderAvatar: null,
-      lastMessageTime: 'был(а) неделю назад',
-      unreadCount: 0,
-      isInternal: false,
-      isCompany: true,
-    ),
-  ];
-
   // Keep track of selected messages for deletion/archive
   Map<int, bool> selectedMessages = {};
 
@@ -352,16 +255,12 @@ class _MessagesPageState extends State<MessagesPage>
         loadedMessages.add(message);
       }
 
-      // 🔄 Если API не вернул чаты, используем дамми данные
-      if (loadedMessages.isEmpty) {
-        messages = dummyMessages;
-      } else {
-        messages = loadedMessages;
-      }
+      // Используем загруженные сообщения (пустой список если нет чатов)
+      messages = loadedMessages;
     } catch (e) {
       log.d('❌ Ошибка загрузки чатов: $e');
-      // Fallback на дамми данные при ошибке
-      messages = dummyMessages;
+      // Используем пустой список при ошибке вместо фейковых данных
+      messages = [];
     }
 
     // Сохраняем в локальное хранилище для офлайн режима

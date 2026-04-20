@@ -872,7 +872,7 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
         child: Row(
           children: [
             Expanded(
-              child: Text(text, style: const TextStyle(color: Colors.white)),
+              child: Text(text, style: const TextStyle(color: Colors.white70)),
             ),
             if (showArrow)
               const Icon(Icons.chevron_right, color: Colors.white70),

@@ -340,8 +340,73 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     });
 
     _debounceTimer = Timer(const Duration(milliseconds: 400), () async {
-      await _searchCitiesAPI(query);
+      // 🆕 Если передан callback для поиска, используем его
+      if (widget.onSearchQuery != null) {
+        await _searchCitiesViaCallback(query);
+      } else {
+        // Fallback на локальный поиск
+        await _searchCitiesAPI(query);
+      }
     });
+  }
+
+  /// 🆕 Поиск городов через переданный callback
+  Future<void> _searchCitiesViaCallback(String query) async {
+    try {
+      final searchResults = <String, int>{};
+      
+      // Вызываем переданный callback для поиска
+      final cityNames = await widget.onSearchQuery!(query);
+      
+      log.d('🔍 Поиск API (via callback): "$query"');
+      log.d('   ✅ Callback вернул ${cityNames.length} городов');
+
+      // Нужно получить ID для каждого города
+      // Если callback вернул имена городов, нам нужно их ID
+      // Мы можем использовать локальный кеш или другой механизм
+      
+      final token = TokenService.currentToken;
+      
+      // Получаем полные данные городов через API
+      try {
+        final response = await AddressService.searchAddresses(
+          query: query,
+          token: token,
+          types: ['city'],
+        );
+
+        for (final result in response.data) {
+          if (result.type == 'city' && result.city != null) {
+            final cityName = result.city!.name;
+            final cityId = result.city!.id;
+            
+            if (_isCityNameValid(cityName) && cityNames.contains(cityName)) {
+              searchResults[cityName] = cityId;
+              _citiesIdCache[cityName] = cityId;
+            }
+          }
+        }
+      } catch (e) {
+        log.d('   ❌ Ошибка получения полных данных: $e');
+      }
+
+      final citiesList = searchResults.keys.toList();
+      log.d('   ✅ Найдено ${citiesList.length} городов');
+
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+        _buildDisplayOptions(citiesList, searchQuery: query);
+      }
+    } catch (e) {
+      log.d('   ❌ Ошибка поиска (callback): $e');
+      if (mounted) {
+        setState(() {
+          _isSearching = false;
+        });
+      }
+    }
   }
 
   /// Поиск городов через API

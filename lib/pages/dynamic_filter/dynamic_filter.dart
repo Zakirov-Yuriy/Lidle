@@ -123,10 +123,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
   int? _selectedStreetId;
   // ignore: unused_field
   int? _selectedBuildingId;
+  
+  // 🆕 Сохраняем информацию о регионе выбранного города
+  // Нужна для правильного поиска улиц через API
+  int? _selectedCityRegionId; // region_id (подрегион города)
+  int? _selectedCityMainRegionId; // main_region_id (основной регион города)
 
   // 🆕 Cache для результатов поиска городов (city name -> city id)
   // Используется для получения ID города при выборе из диалога
   Map<String, int> _lastCitiesSearchResults = {};
+  
+  // 🆕 Cache для информации о регионе города (city name -> region info)
+  // Сохраняет region_id и main_region_id для каждого города
+  Map<String, Map<String, int>> _lastCitiesRegionResults = {};
 
   // 🆕 Cache для результатов поиска улиц (street name -> street id)
   // Используется для получения ID улицы при выборе из диалога
@@ -908,12 +917,20 @@ class _DynamicFilterState extends State<DynamicFilter> {
       );
 
       if (city.isNotEmpty) {
+        final cityName = city['name'] as String;
         setState(() {
           _selectedCityId = city['id'] as int;
           _selectedCity.clear();
-          _selectedCity.add(city['name'] as String);
+          _selectedCity.add(cityName);
+          // 🆕 Сохраняем информацию о регионе города из кеша
+          if (_lastCitiesRegionResults.containsKey(cityName)) {
+            final regionInfo = _lastCitiesRegionResults[cityName];
+            _selectedCityRegionId = regionInfo?['region_id'];
+            _selectedCityMainRegionId = regionInfo?['main_region_id'];
+            log.d('   ℹ️ Loaded region info: region_id=$_selectedCityRegionId, main_region_id=$_selectedCityMainRegionId');
+          }
         });
-        log.d('   ✅ Selected city: ${city['name']} (ID: ${city['id']})');
+        log.d('   ✅ Selected city: $cityName (ID: ${city['id']})');
       } else {
         log.d('   ⚠️ City "$cityName" not found in list');
       }
@@ -932,12 +949,21 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       final token = TokenService.currentToken;
 
-      // Загружаем улицы для выбранного города
+      // 🆕 Строим фильтры с информацией о регионе города
+      final filters = <String, dynamic>{'city_id': _selectedCityId};
+      if (_selectedCityRegionId != null && _selectedCityRegionId != 0) {
+        filters['region_id'] = _selectedCityRegionId;
+      }
+      if (_selectedCityMainRegionId != null && _selectedCityMainRegionId != 0) {
+        filters['main_region_id'] = _selectedCityMainRegionId;
+      }
+
+      // Загружаем улицы для выбранного города с информацией о регионе
       final response = await AddressService.searchAddresses(
         query: 'у',
         token: token,
         types: ['street'],
-        filters: _selectedCityId != null ? {'city_id': _selectedCityId} : null,
+        filters: filters,
       );
 
       final uniqueStreets = <String, int>{};
@@ -1872,6 +1898,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
 
       // 🆕 Очищаем предыдущие результаты и сохраняем новые
       _lastCitiesSearchResults.clear();
+      _lastCitiesRegionResults.clear();
 
       // Фильтруем результаты по выбранному региону и извлекаем только имена
       final cities = <String>[];
@@ -1881,16 +1908,22 @@ class _DynamicFilterState extends State<DynamicFilter> {
         final cityName = result.city?.name ?? 'N/A';
         final cityId = result.city?.id;
         final resultRegionId = result.main_region?.id;
+        final resultSubregionId = result.region?.id;
 
         log.d(
-          '   [API] $cityName [id=$cityId, main_region.id=$resultRegionId]',
+          '   [API] $cityName [id=$cityId, main_region.id=$resultRegionId, region.id=$resultSubregionId]',
         );
 
         if (result.main_region?.id == _selectedRegionId &&
             result.city != null) {
           final cityName = result.city!.name;
-          // Сохраняем в кеш всегда (нужно для ID lookup)
+          // 🆕 Сохраняем в кеш: ID города
           _lastCitiesSearchResults[cityName] = result.city!.id;
+          // 🆕 Сохраняем информацию о регионе города
+          _lastCitiesRegionResults[cityName] = {
+            'region_id': result.region?.id ?? 0,
+            'main_region_id': result.main_region?.id ?? 0,
+          };
           // В список показа добавляем только если имя содержит запрос
           if (cityName.toLowerCase().contains(cleanQuery.toLowerCase())) {
             cities.add(cityName);
@@ -1914,6 +1947,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
         '   ✅ Возвращаем ${cities.length} городов (отфильтровано: $filtered)',
       );
       log.d('   📦 Cache содержит: ${_lastCitiesSearchResults.keys.toList()}');
+      log.d('   📦 Region info cache: ${_lastCitiesRegionResults.keys.toList()}');
       log.d('');
       return cities;
     } catch (e) {
@@ -1944,12 +1978,23 @@ class _DynamicFilterState extends State<DynamicFilter> {
       log.d('🔍 _searchStreetsAPI called:');
       log.d('   - query: "$cleanQuery"');
       log.d('   - cityId: $_selectedCityId');
+      log.d('   - cityRegionId: $_selectedCityRegionId');
+      log.d('   - cityMainRegionId: $_selectedCityMainRegionId');
+
+      // 🆕 Строим фильтры с информацией о регионе города
+      final filters = <String, dynamic>{'city_id': _selectedCityId};
+      if (_selectedCityRegionId != null && _selectedCityRegionId != 0) {
+        filters['region_id'] = _selectedCityRegionId;
+      }
+      if (_selectedCityMainRegionId != null && _selectedCityMainRegionId != 0) {
+        filters['main_region_id'] = _selectedCityMainRegionId;
+      }
 
       final response = await AddressService.searchAddresses(
         query: cleanQuery,
         token: token,
         types: ['street'],
-        filters: {'city_id': _selectedCityId},
+        filters: filters,
       );
 
       log.d('   - API вернула ${response.data.length} результатов');
@@ -2038,7 +2083,12 @@ class _DynamicFilterState extends State<DynamicFilter> {
             result.city != null) {
           uniqueCities[result.city!.name] = result.city!.id;
           _lastCitiesSearchResults[result.city!.name] =
-              result.city!.id; // ← ДОБАВИТЬ
+              result.city!.id;
+          // 🆕 Сохраняем информацию о регионе города
+          _lastCitiesRegionResults[result.city!.name] = {
+            'region_id': result.region?.id ?? 0,
+            'main_region_id': result.main_region?.id ?? 0,
+          };
           log.d('   ✅ ${result.city!.name}');
         } else if (result.city != null) {
           filtered++;
@@ -3721,13 +3771,19 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                     _selectedStreet.clear();
                                     _selectedCityId = null;
                                     _selectedStreetId = null;
+                                    // 🆕 Сбрасываем информацию о регионе города при смене региона
+                                    _selectedCityRegionId = null;
+                                    _selectedCityMainRegionId = null;
                                     _cities.clear();
                                     _streets.clear();
                                     _selectedBuilding.clear();
                                     _selectedBuildingId = null;
                                     _buildings.clear();
-                                    // 🆕 Очищаем кеш результатов поиска городов
+                                    // 🆕 Очищаем кеш результатов поиска городов и их регионов
                                     _lastCitiesSearchResults.clear();
+                                    _lastCitiesRegionResults.clear();
+                                    // 🆕 Очищаем кеш результатов поиска улиц
+                                    _lastStreetsSearchResults.clear();
                                   });
 
                                   log.d(
@@ -3781,6 +3837,15 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                         int? cityId =
                                             _lastCitiesSearchResults[selectedCityName];
                                         int? mainRegionId = _selectedRegionId;
+                                        
+                                        // 🆕 Загружаем информацию о регионе города из кеша
+                                        int? cityRegionId;
+                                        int? cityMainRegionId;
+                                        if (_lastCitiesRegionResults.containsKey(selectedCityName)) {
+                                          final regionInfo = _lastCitiesRegionResults[selectedCityName];
+                                          cityRegionId = regionInfo?['region_id'];
+                                          cityMainRegionId = regionInfo?['main_region_id'];
+                                        }
 
                                         log.d('');
                                         log.d('✅ City selected from dialog:');
@@ -3790,6 +3855,7 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                         );
                                         log.d('   - Found ID: $cityId');
                                         log.d('   - Region ID: $mainRegionId');
+                                        log.d('   - City region_id: $cityRegionId, main_region_id: $cityMainRegionId');
 
                                         if (cityId == null) {
                                           log.w(
@@ -3804,6 +3870,9 @@ class _DynamicFilterState extends State<DynamicFilter> {
                                           _selectedCity = selected;
                                           _selectedCityId = cityId;
                                           _selectedRegionId = mainRegionId;
+                                          // 🆕 Сохраняем информацию о регионе выбранного города
+                                          _selectedCityRegionId = cityRegionId;
+                                          _selectedCityMainRegionId = cityMainRegionId;
                                           _fieldErrors.remove('city');
                                           _selectedStreet.clear();
                                           _selectedStreetId = null;
