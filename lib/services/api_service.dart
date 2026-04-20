@@ -12,6 +12,13 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/core/network/http_client.dart';
 import 'package:lidle/core/network/token_interceptor.dart';
+import 'package:lidle/services/api/attributes_api.dart';
+import 'package:lidle/services/api/catalog_api.dart';
+import 'package:lidle/services/api/chat_api.dart';
+import 'package:lidle/services/api/geography_api.dart';
+import 'package:lidle/services/api/offers_api.dart';
+import 'package:lidle/services/api/user_api.dart';
+import 'package:lidle/services/api/wishlist_api.dart';
 
 // Re-export exceptions for backward compatibility
 export 'package:lidle/core/network/exceptions.dart';
@@ -718,70 +725,11 @@ class ApiService {
   static Future<List<Attribute>> getAdvertCreationAttributes({
     required int categoryId,
     String? token,
-  }) async {
-    try {
-      final response = await getWithQuery('/adverts/create', {
-        'category_id': categoryId,
-      }, token: token);
-
-      // log.d();
-      // log.d('   response type: ${response.runtimeType}');
-      // log.d('   data type: ${response['data']?.runtimeType}');
-
-      // API возвращает: {"success":true,"data":[{"type":{...},"attributes":[...]}]}
-      // data - это List с одним элементом
-      final dataNode = response['data'];
-
-      List<dynamic>? attributesJson;
-
-      if (dataNode is List && dataNode.isNotEmpty) {
-        // data это List - берём первый элемент
-        final firstItem = dataNode[0] as Map<String, dynamic>?;
-        attributesJson = firstItem?['attributes'] as List<dynamic>?;
-        // log.d();
-      } else if (dataNode is Map<String, dynamic>) {
-        // data это Map - берём attributes напрямую
-        attributesJson = dataNode['attributes'] as List<dynamic>?;
-        // log.d();
-      }
-
-      if (attributesJson == null || attributesJson.isEmpty) {
-        // log.d('   ❌ No attributes found in response');
-        throw Exception('No attributes found in response');
-      }
-
-      // Парсим атрибуты с обработкой ошибок
-      final attributes = <Attribute>[];
-      for (int i = 0; i < attributesJson.length; i++) {
-        try {
-          final json = attributesJson[i];
-          if (json is Map<String, dynamic>) {
-            final attr = Attribute.fromJson(json);
-            attributes.add(attr);
-            // log.d();
-          }
-        } catch (e) {
-          // log.d('   ⚠️ Failed to parse attribute at index $i: $e');
-        }
-      }
-
-      // log.d('   ✅ Total parsed: ${attributes.length} attributes');
-      return attributes;
-    } catch (e) {
-      // log.d('❌ getAdvertCreationAttributes error: $e');
-      if (e.toString().contains('Token expired') && token != null) {
-        // Попытка обновить токен и повторить запрос
-        final newToken = await refreshToken(token);
-        if (newToken != null) {
-          return getAdvertCreationAttributes(
-            categoryId: categoryId,
-            token: newToken,
-          );
-        }
-      }
-      throw Exception('Failed to load advert creation attributes: $e');
-    }
-  }
+  }) =>
+      AttributesApi.getAdvertCreationAttributes(
+        categoryId: categoryId,
+        token: token,
+      );
 
   /// Получить список объявлений.
   static Future<AdvertsResponse> getAdverts({
@@ -1111,174 +1059,46 @@ class ApiService {
   }
 
   /// Получить все каталоги.
-  static Future<catalog_models.CatalogsResponse> getCatalogs({String? token}) async {
-    try {
-      final response = await get('/content/catalogs', token: token);
-      
-      // 🔍 DEBUG: Логируем сырой ответ для диагностики
-      log.i('📦 API getCatalogs() response keys: ${response.keys.toList()}');
-      if (response.containsKey('data')) {
-        log.i('   - data type: ${response['data'].runtimeType}');
-        if (response['data'] is List) {
-          log.i('   - data length: ${(response['data'] as List).length}');
-        }
-      } else {
-        log.w('⚠️  ВНИМАНИЕ: API response НЕ содержит поле "data"!');
-        log.w('   - Полный ответ: $response');
-      }
-      
-      return catalog_models.CatalogsResponse.fromJson(response);
-    } catch (e, stackTrace) {
-      log.e(
-        '❌ ОШИБКА при загрузке каталогов: $e',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      throw Exception('Failed to load catalogs: $e');
-    }
-  }
+  static Future<catalog_models.CatalogsResponse> getCatalogs({String? token}) =>
+      CatalogApi.getCatalogs(token: token);
 
   /// Получить каталог с категориями по ID.
   static Future<catalog_models.CatalogWithCategories> getCatalog(
     int catalogId, {
     String? token,
-  }) async {
-    try {
-      final response = await get('/content/catalogs/$catalogId', token: token);
-
-      // Проверяем наличие data и что это не null
-      if (response['data'] == null || response['data'] is! List) {
-        throw Exception('Invalid catalog response: data is null or not a list');
-      }
-
-      final dataList = response['data'] as List<dynamic>;
-      if (dataList.isEmpty) {
-        throw Exception('Catalog not found');
-      }
-
-      return catalog_models.CatalogWithCategories.fromJson(
-        dataList[0] as Map<String, dynamic>,
-      );
-    } catch (e) {
-      throw Exception('Failed to load catalog: $e');
-    }
-  }
+  }) =>
+      CatalogApi.getCatalog(catalogId, token: token);
 
   /// Получить категорию по ID.
-  static Future<catalog_models.Category> getCategory(int categoryId, {String? token}) async {
-    try {
-      final response = await get(
-        '/content/categories/$categoryId',
-        token: token,
-      );
-
-      // Проверяем наличие data и что это не null
-      if (response['data'] == null || response['data'] is! List) {
-        throw Exception(
-          'Invalid category response: data is null or not a list',
-        );
-      }
-
-      final dataList = response['data'] as List<dynamic>;
-      if (dataList.isEmpty) {
-        throw Exception('Category not found');
-      }
-
-      return catalog_models.Category.fromJson(dataList[0] as Map<String, dynamic>);
-    } catch (e) {
-      throw Exception('Failed to load category: $e');
-    }
-  }
+  static Future<catalog_models.Category> getCategory(
+    int categoryId, {
+    String? token,
+  }) =>
+      CatalogApi.getCategory(categoryId, token: token);
 
   /// Поиск категорий.
   static Future<catalog_models.CategoriesResponse> searchCategories({
     required int catalogId,
     required String query,
     String? token,
-  }) async {
-    try {
-      final response = await getWithQuery('/content/categories/search', {
-        'catalog_id': catalogId,
-        'q': query,
-      }, token: token);
-      return catalog_models.CategoriesResponse.fromJson(response);
-    } catch (e) {
-      throw Exception('Failed to search categories: $e');
-    }
-  }
+  }) =>
+      CatalogApi.searchCategories(
+        catalogId: catalogId,
+        query: query,
+        token: token,
+      );
 
   /// Получить фильтры для категории.
   static Future<MetaFiltersResponse> getMetaFilters({
     int? categoryId,
     int? catalogId,
     String? token,
-  }) async {
-    try {
-      final queryParams = <String, dynamic>{};
-      if (categoryId != null) queryParams['category_id'] = categoryId;
-      if (catalogId != null) queryParams['catalog_id'] = catalogId;
-
-      final response = await getWithQuery(
-        '/meta/filters',
-        queryParams,
+  }) =>
+      AttributesApi.getMetaFilters(
+        categoryId: categoryId,
+        catalogId: catalogId,
         token: token,
       );
-      // API returns { "success": true, "data": {"sort": [...], "filters": [...]} }
-      // Extract the data object which contains sort and filters
-      final data = response['data'] ?? response;
-      // log.d('📊 Full filter JSON keys: ${data.keys.toList()}');
-      if (data['filters'] is List) {
-        final filtersList = data['filters'] as List;
-        // log.d('📊 Filters count: ${filtersList.length}');
-        for (int i = 0; i < filtersList.length; i++) {
-          // log.d('  [$i] ID=${filtersList[i]['id']}, Title=${filtersList[i]['title']}, Values=${filtersList[i]['values']?.length ?? 0}');
-          // log.d('       is_title_hidden=${filtersList[i]['is_title_hidden']}, is_special_design=${filtersList[i]['is_special_design']}');
-        }
-        // Сканируем все фильтры на предмет "Вам предложат цену"
-        // log.d('🔍 Searching for "Вам предложат цену" filter...');
-        bool found = false;
-        for (final filter in filtersList) {
-          final title = filter['title']?.toString() ?? '';
-          if (title.contains('предложат') ||
-              title.contains('цену') ||
-              title.contains('offer') ||
-              title.contains('price')) {
-            // log.d('   ✅ Found possible match: ID=${filter['id']}, Title=$title');
-            found = true;
-          }
-        }
-        if (!found) {
-          // log.d('   ❌ "Вам предложат цену" filter NOT found in API response!');
-          // log.d('   NOTE: This filter is REQUIRED but not returned by API');
-          // log.d('   It will be added programmatically in _loadAttributes()');
-        }
-      }
-      try {
-        // API returns: {"success":true,"data":{"sort":[...],"filters":[...]}}
-        // data already contains {"sort": [...], "filters": [...]}
-        // So we pass it directly to fromJson
-        return MetaFiltersResponse.fromJson(data);
-      } catch (parseError) {
-        // log.d('🔴 ERROR parsing MetaFiltersResponse:');
-        // log.d('   Error: $parseError');
-        // log.d('   Data keys: ${data.keys}');
-        rethrow;
-      }
-    } catch (e) {
-      if (e.toString().contains('Token expired') && token != null) {
-        // Попытка обновить токен и повторить запрос
-        final newToken = await refreshToken(token);
-        if (newToken != null) {
-          return getMetaFilters(
-            categoryId: categoryId,
-            catalogId: catalogId,
-            token: newToken,
-          );
-        }
-      }
-      throw Exception('Failed to load meta filters: $e');
-    }
-  }
 
   /// Создать объявление.
   static Future<Map<String, dynamic>> createAdvert(
@@ -1739,56 +1559,8 @@ class ApiService {
 
   /// Получить список регионов
   /// Может работать с токеном или без (параллельно для анонимных пользователей)
-  static Future<List<Map<String, dynamic>>> getRegions({String? token}) async {
-    try {
-      final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-
-      final uri = Uri.parse('$baseUrl/addresses/regions');
-
-      // log.d('═══════════════════════════════════════════════════════');
-      // log.d('📥 GET REQUEST /addresses/regions');
-      // log.d('URL: $uri');
-
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(
-            const Duration(seconds: 30),
-          ); // Увеличен timeout для регионов
-
-      // log.d('✅ API Response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
-
-        if (jsonResponse['data'] != null) {
-          final List<dynamic> data = jsonResponse['data'] ?? [];
-          return List<Map<String, dynamic>>.from(
-            data.whereType<Map<String, dynamic>>(),
-          );
-        }
-        return [];
-      } else if (response.statusCode == 401 && token != null) {
-        // Токен истёк, но это non-critical эндпоинт
-        // Не пробуем refresh, просто возвращаем пустой список
-        // Пользователь сможет повторить позже
-        log.d(
-          '⚠️ getRegions: 401 Unauthorized (token expired, skipping refresh)',
-        );
-        return [];
-      } else {
-        throw Exception('Failed to get regions: ${response.statusCode}');
-      }
-    } on TimeoutException {
-      throw Exception('Timeout при загрузке регионов (превышено 30 сек)');
-    } catch (e) {
-      // Логируем ошибку но возвращаем пустой список чтобы не сломать приложение
-      log.d('⚠️ getRegions error: $e');
-      return [];
-    }
-  }
+  static Future<List<Map<String, dynamic>>> getRegions({String? token}) =>
+      GeographyApi.getRegions(token: token);
 
   /// Вспомогательный метод для парсинга JSON на фоновом потоке.
   /// Используется compute() для больших ответов.
@@ -1799,375 +1571,78 @@ class ApiService {
   /// Поиск адресов по запросу
   /// Возвращает список результатов поиска с ID region, city, street, building
   /// Note: API expects GET request with JSON body (unusual but required)
+  /// Поиск адресов по запросу
+  /// Возвращает список результатов поиска с ID region, city, street, building
   static Future<List<Map<String, dynamic>>> searchAddresses(
     String query, {
     String? token,
     List<String>? types,
     Map<String, dynamic>? filters,
-  }) async {
-    try {
-      final headers = {...defaultHeaders};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-
-      // Build request body for GET request (API requires JSON body, not query params)
-      final bodyMap = <String, dynamic>{'q': query};
-      if (types != null && types.isNotEmpty) {
-        bodyMap['types'] = types;
-      }
-      if (filters != null && filters.isNotEmpty) {
-        bodyMap['filters'] = filters;
-      }
-
-      final uri = Uri.parse('$baseUrl/addresses/search');
-
-      // log.d('═══════════════════════════════════════════════════════');
-      // log.d('📥 GET REQUEST /addresses/search');
-      // log.d('URL: $uri');
-      // log.d('Token provided: ${token != null}');
-      if (token != null) {
-        // log.d('Token preview: ${token.substring(0, 30)}...');
-      }
-      // log.d('Headers:');
-      headers.forEach((key, value) {
-        if (key == 'Authorization') {
-          // log.d('  $key: Bearer [HIDDEN]');
-        } else {
-          // log.d('  $key: $value');
-        }
-      });
-      // log.d('Body: ${jsonEncode(bodyMap)}');
-
-      // Use http.Request to send GET with JSON body (unusual but API requires it)
-      final request = http.Request('GET', uri);
-      request.headers.addAll(headers);
-      request.body = jsonEncode(bodyMap);
-
-      final streamResponse = await request.send().timeout(
-        const Duration(seconds: 10),
+  }) =>
+      GeographyApi.searchAddresses(
+        query,
+        token: token,
+        types: types,
+        filters: filters,
       );
-      final response = await http.Response.fromStream(streamResponse);
-
-      // log.d('✅ API Response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> jsonResponse = json.decode(response.body);
-
-        if (jsonResponse['success'] == true || jsonResponse['data'] != null) {
-          final List<dynamic> data = jsonResponse['data'] ?? [];
-          return List<Map<String, dynamic>>.from(
-            data.whereType<Map<String, dynamic>>(),
-          );
-        }
-        return [];
-      } else {
-        throw Exception('Failed to search addresses: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Error searching addresses: $e');
-    }
-  }
 
   /// Получить фильтры для листинга объявлений
   static Future<Map<String, dynamic>> getListingsFilterAttributes({
     required int categoryId,
     String? token,
-  }) async {
-    try {
-      log.d('🔵 [ApiService.getListingsFilterAttributes] START - categoryId=$categoryId, token=${token != null ? 'YES' : 'NO'}');
-      
-      // 🔒 Проверка: если нет токена, пользователь не авторизован
-      // Возвращаем пустые атрибуты вместо ошибки
-      if (token == null || token.isEmpty) {
-        log.d('⚠️ [ApiService.getListingsFilterAttributes] Пользователь не авторизован (нет токена)');
-        return {
-          'success': true,
-          'data': [],
-          'message': 'User not authenticated',
-        };
-      }
-      
-      final response = await getWithQuery('/adverts/create', {
-        'category_id': categoryId,
-      }, token: token);
-
-      log.d('🔵 [ApiService] Raw response: $response');
-      log.d('🔵 [ApiService] Response data type: ${response['data'].runtimeType}');
-
-      // Если требуется токен и он истёк, обновить и повторить
-      if (response['message'] != null &&
-          response['message'].toString().contains('Token expired') &&
-          token != null) {
-        final newToken = await refreshToken(token);
-        if (newToken != null) {
-          return getListingsFilterAttributes(
-            categoryId: categoryId,
-            token: newToken,
-          );
-        }
-      }
-
-      // Структура ответа: {"data": [{"type": {...}, "attributes": [...]}]}
-      // Берём attributes из первого элемента
-      List<dynamic> attributes = [];
-      if (response['data'] is List) {
-        final dataList = response['data'] as List<dynamic>;
-        log.d('🔵 [ApiService] dataList length: ${dataList.length}');
-        if (dataList.isNotEmpty && dataList[0] is Map) {
-          final firstItem = dataList[0] as Map<String, dynamic>;
-          log.d('🔵 [ApiService] firstItem keys: ${firstItem.keys.toList()}');
-          attributes = firstItem['attributes'] as List<dynamic>? ?? [];
-          log.d('🔵 [ApiService] Extracted ${attributes.length} attributes');
-        } else {
-          log.d('🔵 [ApiService] dataList is empty or first item is not Map');
-        }
-      } else {
-        log.d('🔵 [ApiService] response[data] is not List, it is: ${response['data'].runtimeType}');
-      }
-
-      // Вернуть весь ответ
-      log.d('🔵 [ApiService.getListingsFilterAttributes] SUCCESS - returning ${attributes.length} attributes');
-      return {
-        'success': true,
-        'data': attributes,
-        'message': response['message'],
-      };
-    } catch (e) {
-      log.d('🔴 [ApiService.getListingsFilterAttributes] ERROR: $e');
-      log.d('🔴 [ApiService] Stack: ${StackTrace.current}');
-      return {'success': false, 'data': [], 'message': e.toString()};
-    }
-  }
+  }) =>
+      AttributesApi.getListingsFilterAttributes(
+        categoryId: categoryId,
+        token: token,
+      );
 
   /// 💰 Отправить предложение цены для объявления
-  /// POST /v1/adverts/{id}/offer
-  /// Параметры:
-  /// - advertId: ID объявления
-  /// - price: Предложенная цена (число)
-  /// - message: Сообщение продавцу
-  /// - token: Bearer токен пользователя
   static Future<Map<String, dynamic>> submitPriceOffer({
     required int advertId,
     required double price,
     required String message,
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
-
-      final body = {'price': price, 'message': message};
-
-      final response = await post(
-        '/adverts/$advertId/offer',
-        body,
-        token: effectiveToken,
+  }) =>
+      OffersApi.submitPriceOffer(
+        advertId: advertId,
+        price: price,
+        message: message,
+        token: token,
       );
 
-      // log.d('✅ Price offer sent successfully for advert $advertId');
-      return response;
-    } catch (e) {
-      // log.d('❌ Error submitting price offer: $e');
-      rethrow;
-    }
-  }
-
-  /// 💵 Получить список предложений цены для объявления
-  /// GET /v1/me/offers/received/{slug}/{id}
-  /// Возвращает список предложений с информацией о пользователе
-  /// 📥 Получить список предложений для конкретного объявления
-  /// GET /v1/me/offers/received/{slug}/{id}
-  /// Возвращает список предложений цены для конкретного объявления пользователя
   static Future<List<Map<String, dynamic>>> getPriceOffers({
     required int advertId,
     required String advertSlug,
     String? token,
     int page = 1,
     List<String> sort = const ['new'],
-  }) async {
-    try {
-      log.d(
-        '🔗 getPriceOffers() calling: /me/offers/received/$advertSlug/$advertId',
+  }) =>
+      OffersApi.getPriceOffers(
+        advertId: advertId,
+        advertSlug: advertSlug,
+        token: token,
+        page: page,
+        sort: sort,
       );
 
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
-
-      // Endpoint принимает параметры через query string (sort — опциональный)
-      final queryParams = <String, dynamic>{'page': page};
-
-      final response = await getWithQuery(
-        '/me/offers/received/$advertSlug/$advertId',
-        queryParams,
-        token: effectiveToken,
-      );
-
-      log.d('📊 getPriceOffers() response:');
-      log.d('   Keys: ${response.keys.toList()}');
-      log.d('   Full response: $response');
-
-      if (response['data'] is List) {
-        final offers = List<Map<String, dynamic>>.from(
-          (response['data'] as List).whereType<Map<String, dynamic>>(),
-        );
-        log.d('✅ getPriceOffers() returning ${offers.length} offers');
-        return offers;
-      }
-
-      log.d('⚠️ getPriceOffers() data is not a List, returning empty');
-      return [];
-    } catch (e) {
-      log.d('❌ Error getting price offers: $e');
-      rethrow;
-    }
-  }
-
-  /// 📤 Получить список МОЕ ОТПРАВЛЕННЫХ предложений цены
-  /// GET /v1/me/offers
-  /// Возвращает список предложений, которые пользователь отправил на объявления
   static Future<List<Map<String, dynamic>>> getMyOffers({
     String? token,
     int page = 1,
     List<String> sort = const ['new'],
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
+  }) =>
+      OffersApi.getMyOffers(token: token, page: page, sort: sort);
 
-      final body = {'sort': sort, 'page': page};
-
-      final response = await getWithBody(
-        '/me/offers',
-        body,
-        token: effectiveToken,
-      );
-
-      // Возвращаем список предложений
-      // Если нет предложений, API возвращает data: null вместо пустого массива
-      if (response['data'] is List) {
-        final offers = List<Map<String, dynamic>>.from(
-          (response['data'] as List).whereType<Map<String, dynamic>>(),
-        );
-
-        // log.d('📊 getMyOffers() returned ${offers.length} offers');
-        if (offers.isNotEmpty) {
-          // log.d('   First offer structure:');
-          // offers.first.forEach((key, value) {
-          //   if (value is Map || value is List) {
-          //     log.d('      $key: [object with keys]');
-          //   } else {
-          //     log.d('      $key: $value (${value.runtimeType})');
-          //   }
-          // });
-        }
-
-        return offers;
-      } else if (response['data'] == null) {
-        return [];
-      }
-
-      // Другие типы - значит ошибка структуры
-
-      return [];
-    } catch (e) {
-      log.d('❌ Error in getMyOffers: $e');
-      return [];
-    }
-  }
-
-  /// 💵 Получить список объявлений с полученными предложениями
-  /// GET /v1/me/offers/received - получает список объявлений где пользователь получил предложения
   static Future<List<Map<String, dynamic>>> getOffersReceivedList({
     String? token,
     int page = 1,
     List<String> sort = const ['new'],
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
+  }) =>
+      OffersApi.getOffersReceivedList(token: token, page: page, sort: sort);
 
-      final body = {'sort': sort, 'page': page};
-
-      final response = await getWithBody(
-        '/me/offers/received',
-        body,
-        token: effectiveToken,
-      );
-
-      // Возвращаем список объявлений с информацией о предложениях
-      // API может вернуть data: null если нет объявлений
-      if (response['data'] is List) {
-        return List<Map<String, dynamic>>.from(
-          (response['data'] as List).whereType<Map<String, dynamic>>(),
-        );
-      } else if (response['data'] == null) {
-        return [];
-      }
-
-      return [];
-    } catch (e) {
-      // log.d('❌ Error getting offers received list: $e');
-      return [];
-    }
-  }
-
-  /// 💵 Получить все полученные предложения со всех объявлений
-  /// Комбинирует getOffersReceivedList + getPriceOffers для всех объявлений
   static Future<List<Map<String, dynamic>>> getAllReceivedOffers({
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
-
-      // Сначала получаем список объявлений с полученными предложениями
-      final listingsWithOffers = await getOffersReceivedList(
-        token: effectiveToken,
-      );
-
-      if (listingsWithOffers.isEmpty) {
-        return [];
-      }
-
-      // Теперь для каждого объявления получаем список всех предложений
-      List<Map<String, dynamic>> allOffers = [];
-
-      for (final listing in listingsWithOffers) {
-        final id = listing['id'];
-        final slug = listing['slug'];
-
-        if (id != null && slug != null) {
-          final offers = await getPriceOffers(
-            advertId: id as int,
-            advertSlug: slug as String,
-            token: effectiveToken,
-          );
-          allOffers.addAll(offers);
-        }
-      }
-
-      return allOffers;
-    } catch (e) {
-      // log.d('❌ Error getting all received offers: $e');
-      return [];
-    }
-  }
+  }) =>
+      OffersApi.getAllReceivedOffers(token: token);
 
   /// � Обновить статус ПОЛУЧЕННОГО предложения
   /// PUT /v1/me/offers/received/{id}
@@ -2282,46 +1757,11 @@ class ApiService {
     }
   }
 
-  /// 👤 Получить информацию о пользователе по ID
-  /// GET /v1/users/{id}
-  /// Возвращает профиль пользователя с контактной информацией
   static Future<Map<String, dynamic>> getUserProfile({
     required int userId,
     String? token,
-  }) async {
-    try {
-      log.d('👤 Getting user profile for userId: $userId');
-
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
-
-      final response = await get('/users/$userId', token: effectiveToken);
-
-      log.d('📦 getUserProfile() response keys: ${response.keys.toList()}');
-
-      if (response['data'] is List && (response['data'] as List).isNotEmpty) {
-        final userData = (response['data'] as List)[0] as Map<String, dynamic>;
-        log.d('✅ Got user profile for: ${userData['name']}');
-        log.d('   Fields: name, created_at, avatar, contacts, qrCode');
-        log.d(
-          '   ⚠️ NOTE: /users/{id} endpoint does NOT include nickname field',
-        );
-        log.d('   According to docs/api/users_user_profile_report_adverts.md');
-        log.d('   Using @name as fallback for display name');
-
-        return userData;
-      }
-
-      log.d('⚠️ No data in user profile response');
-      return {};
-    } catch (e) {
-      log.d('❌ Error getting user profile: $e');
-      return {};
-    }
-  }
+  }) =>
+      UserApi.getUserProfile(userId: userId, token: token);
 
   /// 📞 Получить список телефонов пользователя по ID
   /// Извлекает поле contacts из профиля пользователя и парсит телефоны
@@ -2422,153 +1862,32 @@ class ApiService {
     }
   }
 
-  /// 💬 Получить список всех чатов
-  /// GET /v1/chats
   static Future<List<Map<String, dynamic>>> getChats({
     int page = 1,
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
+  }) =>
+      ChatApi.getChats(page: page, token: token);
 
-      // log.d('📥 Загружаем список чатов (страница $page)...');
-
-      final response = await getWithQuery(
-        '/chats',
-        {'page': page.toString()},
-        token: effectiveToken,
-      );
-
-      if (response['data'] != null && response['data'] is List) {
-        final chats = List<Map<String, dynamic>>.from(response['data'] as List);
-        // log.d('✅ Загружено чатов: ${chats.length}');
-        return chats;
-      }
-
-      return [];
-    } catch (e) {
-      // log.d('❌ Ошибка загрузки чатов: $e');
-      rethrow;
-    }
-  }
-
-  /// 💬 Получить сообщения из конкретного чата
-  /// GET /v1/chats/{chatId}/messages
   static Future<List<Map<String, dynamic>>> getChatMessages(
     int chatId, {
     int page = 1,
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
+  }) =>
+      ChatApi.getChatMessages(chatId, page: page, token: token);
 
-      // log.d('📥 Загружаем сообщения чата #$chatId (страница $page)...');
-
-      final response = await getWithQuery(
-        '/chats/$chatId/messages',
-        {'page': page.toString()},
-        token: effectiveToken,
-      );
-
-      if (response['data'] != null && response['data'] is List) {
-        final messages =
-            List<Map<String, dynamic>>.from(response['data'] as List);
-        // log.d('✅ Загружено сообщений: ${messages.length}');
-        return messages;
-      }
-
-      return [];
-    } catch (e) {
-      // log.d('❌ Ошибка загрузки сообщений: $e');
-      rethrow;
-    }
-  }
-
-  /// 💬 Отправить сообщение в чат
-  /// POST /v1/chats/{chatId}/messages
   static Future<Map<String, dynamic>> sendMessage(
     int chatId,
     String messageText, {
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
+  }) =>
+      ChatApi.sendMessage(chatId, messageText, token: token);
 
-      if (messageText.isEmpty) {
-        throw Exception('Сообщение не может быть пустым');
-      }
-
-      log.d('📤 Отправляем сообщение в чат #$chatId...');
-
-      final response = await post(
-        '/chats/$chatId/messages',
-        {'message': messageText},
-        token: effectiveToken,
-      );
-
-      log.d('✅ Сообщение отправлено: $response');
-      return response;
-    } catch (e) {
-      log.d('❌ Ошибка отправки сообщения: $e');
-      rethrow;
-    }
-  }
-
-  /// 💬 Начать новый чат с пользователем
-  /// POST /v1/chats/start
   static Future<int?> startChat(
     int userId,
     String messageText, {
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
-
-      if (messageText.isEmpty) {
-        throw Exception('Сообщение не может быть пустым');
-      }
-
-      log.d('💬 Начинаем чат с пользователем #$userId...');
-
-      final response = await post(
-        '/chats/start',
-        {
-          'user_id': userId,
-          'message': messageText,
-        },
-        token: effectiveToken,
-      );
-
-      log.d('✅ Чат создан: $response');
-
-      // Пытаемся получить ID чата из ответа
-      if (response['data'] != null && response['data'] is List) {
-        final data = (response['data'] as List).first as Map<String, dynamic>;
-        return data['id'] as int?;
-      }
-
-      return null;
-    } catch (e) {
-      log.d('❌ Ошибка создания чата: $e');
-      rethrow;
-    }
-  }
+  }) =>
+      ChatApi.startChat(userId, messageText, token: token);
 
   /// 🗑️ Удалить чат
   /// DELETE /v1/chats/{chatId}
@@ -2598,36 +1917,12 @@ class ApiService {
     }
   }
 
-  /// ✅ Отметить сообщение как прочитанное
-  /// POST /v1/chats/{chatId}/messages/{messageId}/read
   static Future<bool> markMessageAsRead(
     int chatId,
     int messageId, {
     String? token,
-  }) async {
-    try {
-      final effectiveToken =
-          token ?? (HiveService.getUserData('token') as String?);
-      if (effectiveToken == null) {
-        throw Exception('Требуется авторизация');
-      }
-
-      log.d('✅ Отмечаем сообщение #$messageId как прочитанное...');
-
-      final response = await post(
-        '/chats/$chatId/messages/$messageId/read',
-        {},
-        token: effectiveToken,
-      );
-
-      log.d('✅ Сообщение отмечено как прочитанное: $response');
-      return response['success'] == true;
-    } catch (e) {
-      log.d('⚠️ Ошибка при отметке сообщения как прочитанного: $e');
-      // Не выбрасываем исключение, так как это не критично
-      return false;
-    }
-  }
+  }) =>
+      ChatApi.markMessageAsRead(chatId, messageId, token: token);
 
   /// 🗑️ Удалить объявление из избранного
   /// DELETE /v1/me/wishlist/destroy/{advertId}

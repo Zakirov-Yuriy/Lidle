@@ -108,3 +108,37 @@ workspace.code-workspace
 /docs/
 /logs/
 /.github/
+
+# Мусор, который сейчас трекается в репо
+node_modules/
+package-lock.json
+commits_today.txt
+build_log.txt
+run_filter_debug.sh
+replace_prints.bat
+replace_prints.ps1
+replace_prints_simple.ps1
+replace_prints.py
+
+# Диагностические скрипты (если будут перенесены в tool/diagnostics/)
+# tool/diagnostics/
+
+# Flutter/Dart стандарт (проверить что есть)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.idea/
+.vscode/
+*.iml
+*.log
+
+# Секреты (!)
+.env
+.env.local
+.env.*.local
