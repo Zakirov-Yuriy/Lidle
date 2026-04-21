@@ -17,7 +17,7 @@ import '../../../constants.dart';
 // "Виджет: Экран добавления квартиры в недвижимость"
 // ============================================================
 class AddApartmentAbroadLongRentScreen extends StatefulWidget {
-  static const String routeName = '/add-real-estate-apt';
+  static const String routeName = '/add-apartment-abroad-rent';
 
   const AddApartmentAbroadLongRentScreen({super.key});
 

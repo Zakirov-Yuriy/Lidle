@@ -19,7 +19,7 @@ import '../../../constants.dart';
 /// Экран: Создание объявления — Долгосрочная аренда гаражей
 /// ============================================================
 class AddGarageParkingLongRentScreen extends StatefulWidget {
-  static const String routeName = '/add-land-sell';
+  static const String routeName = '/add-garage-rent';
 
   const AddGarageParkingLongRentScreen({super.key});
 

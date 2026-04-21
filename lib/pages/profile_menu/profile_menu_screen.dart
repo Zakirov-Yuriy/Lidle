@@ -17,21 +17,13 @@ import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/pages/profile_menu/invite_friends/invite_friends_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/settings_screen.dart';
 import 'package:lidle/pages/profile_menu/support_service_screen.dart';
+import 'package:lidle/core/cache/screen_cache_manager.dart';
 import 'package:lidle/core/logger.dart';
 
 class ProfileMenuScreen extends StatefulWidget {
   static const routeName = '/profile-menu';
 
   const ProfileMenuScreen({super.key});
-  
-  /// 🧹 Очищает кеш профиля при logout
-  /// Вызывается из AuthBloc при LogoutEvent
-  static void clearCache() {
-    _ProfileMenuScreenState._lastProfileLoadTime = null;
-    _ProfileMenuScreenState._lastPhoneLoadTime = null;
-    _ProfileMenuScreenState._cachedMainPhone = null;
-    // log.d('🕺 ProfileMenuScreen: кеш очищен при logout');
-  }
 
   @override
   State<ProfileMenuScreen> createState() => _ProfileMenuScreenState();
@@ -39,68 +31,42 @@ class ProfileMenuScreen extends StatefulWidget {
 
 class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
   String? _mainPhoneValue;
-  
-  // 🚀 ОПТИМИЗАЦИЯ: Кеширование данных профиля на 10 минут
-  // Это предотвращает ненужную перезагрузку при каждом переходе на экран
-  static DateTime? _lastProfileLoadTime;
+
   static const Duration _profileCacheDuration = Duration(minutes: 10);
-  
-  // 🚀 ОПТИМИЗАЦИЯ: Кеширование телефонов отдельно (также 10 минут)
-  static DateTime? _lastPhoneLoadTime;
   static const Duration _phoneCacheDuration = Duration(minutes: 10);
-  static String? _cachedMainPhone;
 
   bool _shouldRefreshProfile() {
-    if (_lastProfileLoadTime == null) {
-      return true; // Первый запуск - загружаем обязательно
-    }
-    
-    final now = DateTime.now();
-    final timeSinceLastLoad = now.difference(_lastProfileLoadTime!);
-    
-    return timeSinceLastLoad.inMinutes >= _profileCacheDuration.inMinutes;
+    final last = ScreenCacheManager.profileMenuLastLoadTime;
+    if (last == null) return true;
+    return DateTime.now().difference(last).inMinutes >= _profileCacheDuration.inMinutes;
   }
 
   bool _shouldRefreshPhones() {
-    if (_lastPhoneLoadTime == null) {
-      return true; // Первый запуск - загружаем обязательно
-    }
-    
-    final now = DateTime.now();
-    final timeSinceLastLoad = now.difference(_lastPhoneLoadTime!);
-    
-    return timeSinceLastLoad.inMinutes >= _phoneCacheDuration.inMinutes;
+    final last = ScreenCacheManager.profileMenuLastPhoneLoadTime;
+    if (last == null) return true;
+    return DateTime.now().difference(last).inMinutes >= _phoneCacheDuration.inMinutes;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
-    // 🧠 ОПТИМИЗАЦИЯ: Загружаем профиль только если кеш старше 10 минут
-    // Это значительно снижает нагрузку на API и улучшает UX
+
     if (_shouldRefreshProfile()) {
       BlocProvider.of<ProfileBloc>(
         context,
       ).add(LoadProfileEvent(forceRefresh: true));
-      _lastProfileLoadTime = DateTime.now();
-      // log.d('✅ ProfileMenuScreen: загружен профиль (кеш обновлен)');
-    } else {
-      final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
-      // log.d('⏳ ProfileMenuScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+      ScreenCacheManager.profileMenuLastLoadTime = DateTime.now();
     }
-    
-    // 🧠 ОПТИМИЗАЦИЯ: Загружаем телефоны только если кеш старше 10 минут
+
     if (_shouldRefreshPhones()) {
       _loadMainPhoneValue();
-      _lastPhoneLoadTime = DateTime.now();
+      ScreenCacheManager.profileMenuLastPhoneLoadTime = DateTime.now();
     } else {
-      // Используем кешированный телефон
-      if (_cachedMainPhone != null) {
+      final cached = ScreenCacheManager.profileMenuCachedPhone;
+      if (cached != null) {
         setState(() {
-          _mainPhoneValue = _cachedMainPhone;
+          _mainPhoneValue = cached;
         });
-        final timeSinceLastLoad = DateTime.now().difference(_lastPhoneLoadTime!);
-        // log.d('⏳ ProfileMenuScreen: используется кеш телефона (осталось ${_phoneCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
       }
     }
   }
@@ -112,21 +78,18 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
         final phonesResponse = await ContactService.getPhones(token: token);
         if (phonesResponse.data.isNotEmpty) {
           setState(() {
-            // Ensure phone is in correct format with +
             String phone = phonesResponse.data.first.phone;
             if (!phone.startsWith('+')) {
               phone = '+$phone';
             }
             _mainPhoneValue = phone;
-            // 💾 КЕШИРОВАНИЕ: Сохраняем телефон в статический кеш
-            _cachedMainPhone = phone;
+            ScreenCacheManager.profileMenuCachedPhone = phone;
           });
-          // log.d('✅ ProfileMenuScreen: загружен телефон (кеш обновлен)');
         } else {
           setState(() {
             _mainPhoneValue = null;
           });
-          _cachedMainPhone = null;
+          ScreenCacheManager.profileMenuCachedPhone = null;
         }
       }
     } catch (e) {

@@ -17,7 +17,7 @@ import '../../../constants.dart';
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
 // ============================================================
 class AddRoomRentScreen extends StatefulWidget {
-  static const String routeName = '/add-real-estate-apt';
+  static const String routeName = '/add-room-rent';
 
   const AddRoomRentScreen({super.key});
 

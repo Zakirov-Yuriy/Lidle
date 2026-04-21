@@ -19,18 +19,12 @@ import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/cache/screen_cache_manager.dart';
 
 class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
 
   const SettingsScreen({super.key});
-  
-  /// 🧹 Очищает кеш настроек при logout
-  /// Вызывается из AuthBloc при LogoutEvent
-  static void clearCache() {
-    _SettingsScreenState._lastProfileLoadTime = null;
-    // log.d('🧹 SettingsScreen: кеш очищен при logout');
-  }
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -41,39 +35,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   static const cardColor = Color(0xFF1F2C3A);
   static const dangerColor = Color(0xFFFF3B30);
 
-  int? _mainPhoneId; // ID основного номера телефона для обновления
-  String? _mainPhoneValue; // Значение основного телефона
-  
-  // 🚀 ОПТИМИЗАЦИЯ: Кеширование данных профиля на 10 минут (как на profile_menu_screen)
-  static DateTime? _lastProfileLoadTime;
+  int? _mainPhoneId;
+  String? _mainPhoneValue;
+
   static const Duration _profileCacheDuration = Duration(minutes: 10);
 
   bool _shouldRefreshProfile() {
-    if (_lastProfileLoadTime == null) {
-      return true; // Первый запуск - загружаем обязательно
-    }
-    
-    final now = DateTime.now();
-    final timeSinceLastLoad = now.difference(_lastProfileLoadTime!);
-    
-    return timeSinceLastLoad.inMinutes >= _profileCacheDuration.inMinutes;
+    final last = ScreenCacheManager.settingsLastLoadTime;
+    if (last == null) return true;
+    return DateTime.now().difference(last).inMinutes >= _profileCacheDuration.inMinutes;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
-    // 🧠 ОПТИМИЗАЦИЯ: Загружаем профиль только если кеш старше 10 минут
-    // Это предотвращает ненужные перезагрузки при каждом открытии экрана
+
     if (_shouldRefreshProfile()) {
       context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
-      _lastProfileLoadTime = DateTime.now();
-      // log.d('✅ SettingsScreen: загружен профиль (кеш обновлен)');
+      ScreenCacheManager.settingsLastLoadTime = DateTime.now();
     } else {
-      final timeSinceLastLoad = DateTime.now().difference(_lastProfileLoadTime!);
-      log.d('⏳ SettingsScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - timeSinceLastLoad.inMinutes} мин)');
+      final last = ScreenCacheManager.settingsLastLoadTime!;
+      log.d('⏳ SettingsScreen: используется кеш профиля (осталось ${_profileCacheDuration.inMinutes - DateTime.now().difference(last).inMinutes} мин)');
     }
-    
+
     _loadMainPhoneId();
   }
 

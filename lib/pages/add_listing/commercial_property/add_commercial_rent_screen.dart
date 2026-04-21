@@ -19,7 +19,7 @@ import '../../../constants.dart';
 /// Экран: Создание объявления — Аренда торговых помещений
 /// ============================================================
 class AddCommercialRentScreen extends StatefulWidget {
-  static const String routeName = '/add-commercial-sell';
+  static const String routeName = '/add-commercial-rent';
 
   final String? initialCategory;
 

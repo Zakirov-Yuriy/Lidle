@@ -19,7 +19,7 @@ import '../../../constants.dart';
 /// Экран: Создание объявления — Аренда домов
 /// ============================================================
 class AddHouseRentScreen extends StatefulWidget {
-  static const String routeName = '/add-house-sell';
+  static const String routeName = '/add-house-rent';
 
   const AddHouseRentScreen({super.key});
 

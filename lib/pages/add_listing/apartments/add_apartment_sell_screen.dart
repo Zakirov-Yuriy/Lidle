@@ -32,7 +32,7 @@ import '../../../constants.dart';
 // Например для "adverts" берем translations['adverts']
 // ============================================================
 class AddApartmentSellScreen extends StatefulWidget {
-  static const String routeName = '/add-real-estate-apt';
+  static const String routeName = '/add-apartment-sell';
 
   const AddApartmentSellScreen({super.key});
 

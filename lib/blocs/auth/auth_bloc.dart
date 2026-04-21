@@ -9,9 +9,7 @@ import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
 import '../../services/user_service.dart';
-import '../../pages/profile_menu/profile_menu_screen.dart'; // 🧹 Для очистки кеша профиля при logout
-import '../../pages/profile_menu/settings/settings_screen.dart'; // 🧹 Для очистки кеша настроек при logout
-import '../../pages/profile_menu/settings/contact_data/contact_data_screen.dart'; // 🧹 Для очистки кеша контактных данных при logout
+import '../../core/cache/screen_cache_manager.dart';
 import 'package:lidle/core/logger.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -40,97 +38,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
 
       // API v1.3.3+: ответ содержит access_token и refresh_token
-      final token =
-          response['data']?['access_token'] ??
-          response['data']?['token'] ??
-          response['access_token'] ??
-          response['token'];
+      final token = await _saveAuthResponse(response);
       if (token != null) {
-        // Очищаем данные предыдущего пользователя перед сохранением новых.
-        // Это гарантирует, что profile_dashboard никогда не покажет данные
-        // старой сессии при входе под другим аккаунтом.
-        await UserService.clearLocalProfileData();
-
-        await UserService.saveLocal('token', token);
-
-        // Сохраняем refresh_token для дальнейшего обновления access_token
-        final refreshToken =
-            response['data']?['refresh_token'] ?? response['refresh_token'];
-        if (refreshToken != null) {
-          await UserService.saveLocal('refresh_token', refreshToken);
-        }
-
-        // ОБНОВЛЕНО: Сохраняем время истечения access_token И refresh_token для TokenService.
-        // Sanctum opaque токены (формат "153|abc...") — не JWT, нельзя декодировать exp.
-        // Поэтому сохраняем expires_at из ответа API, чтобы TokenService мог
-        // запустить таймер refresh за 5 минут до истечения access_token.
-        // И за 24 часа до истечения refresh_token (критично для пользователя).
-        // ИСПРАВЛЕНИЕ: Сохраняем как INT (миллисекунды), как и в apiService.refreshToken()
-        // Это обеспечивает консистентность типов и избегает ошибок приведения типов
-        
-        // Access token expiry (обычно 900 сек = 15 минут)
-        final expiresIn =
-            ((response['data']?['expires_in'] ?? response['expires_in'])
-                    as num?)
-                ?.toInt() ??
-            900;
-        final expiresAtMs = DateTime.now()
-            .add(Duration(seconds: expiresIn))
-            .millisecondsSinceEpoch;
-        await UserService.saveLocal('token_expires_at', expiresAtMs);
-
-        // ОБНОВЛЕНО: Refresh token expiry (обычно 1209600 сек = 14 дней)
-        // Это критично! Если refresh_token истечет, пользователь потеряет доступ
-        final refreshExpiresIn =
-            ((response['data']?['refresh_expires_in'] ??
-                    response['refresh_expires_in']) as num?)
-                ?.toInt() ??
-            1209600; // По документации API: 1209600 сек (14 дней)
-        final refreshExpiresAtMs = DateTime.now()
-            .add(Duration(seconds: refreshExpiresIn))
-            .millisecondsSinceEpoch;
-        await UserService.saveLocal('refresh_token_expires_at', refreshExpiresAtMs);
-
-        // log.d(
-        //   '✅ auth_bloc: сохранены токены - access_token действует ${expiresIn ~/ 60}мин, '
-        //   'refresh_token действует ${refreshExpiresIn ~/ 86400} дней',
-        // );
-
-        // Сохраняем возможные данные пользователя из ответа сразу локально
-        final data = response['data'] ?? response;
-        Map<String, dynamic>? userData;
-        if (data is Map<String, dynamic>) {
-          if (data.containsKey('user') &&
-              data['user'] is Map<String, dynamic>) {
-            userData = Map<String, dynamic>.from(data['user']);
-          } else {
-            userData = Map<String, dynamic>.from(data);
-          }
-        }
-
-        if (userData != null) {
-          if (userData.containsKey('name')) {
-            await UserService.saveLocal('name', userData['name'] ?? '');
-          }
-          if (userData.containsKey('email')) {
-            await UserService.saveLocal('email', userData['email'] ?? '');
-          }
-          if (userData.containsKey('phone')) {
-            await UserService.saveLocal('phone', userData['phone'] ?? '');
-          }
-          if (userData.containsKey('id')) {
-            await UserService.saveLocal('userId', '${userData['id']}');
-          }
-          if (userData.containsKey('username')) {
-            await UserService.saveLocal('username', userData['username'] ?? '');
-          }
-          if (userData.containsKey('avatar')) {
-            await UserService.saveLocal(
-              'profileImage',
-              userData['avatar'] ?? '',
-            );
-          }
-        }
 
         emit(AuthAuthenticated(token: token));
       } else {
@@ -252,48 +161,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         log.d('📦 AuthBloc: Ответ от сервера: access_token=${loginResponse['access_token'] != null ? '***' : 'null'}, refresh_token=${loginResponse['refresh_token'] != null ? '***' : 'null'}');
 
         if (loginResponse['access_token'] != null) {
-          final token = loginResponse['access_token'] as String;
-
-          // 🔐 Очистить старые данные профиля перед сохранением новых
-          await UserService.clearLocalProfileData();
-          log.d('🔐 AuthBloc: Очищены старые данные профиля');
-
-          // ✅ Сохраняем access_token
-          await UserService.saveLocal('token', token);
-          log.d('✅ AuthBloc: Сохранён token');
-
-          // ✅ Сохраняем refresh_token для дальнейшего обновления
-          final refreshToken = loginResponse['data']?['refresh_token'] ??
-              loginResponse['refresh_token'];
-          if (refreshToken != null) {
-            await UserService.saveLocal('refresh_token', refreshToken);
-            log.d('✅ AuthBloc: Сохранён refresh_token');
-          } else {
-            log.w('⚠️ AuthBloc: refresh_token не найден в ответе после верификации');
+          final token = await _saveAuthResponse(loginResponse);
+          if (token == null) {
+            log.e('❌ AuthBloc: ошибка сохранения токенов после верификации');
+            emit(AuthError(message: 'Ошибка при автоматическом входе'));
+            return;
           }
 
-          // ✅ Сохраняем время истечения access_token
-          final expiresIn = ((loginResponse['data']?['expires_in'] ??
-                  loginResponse['expires_in']) as num?)
-              ?.toInt() ??
-              900; // 15 минут по умолчанию
-          final expiresAtMs = DateTime.now()
-              .add(Duration(seconds: expiresIn))
-              .millisecondsSinceEpoch;
-          await UserService.saveLocal('token_expires_at', expiresAtMs);
-          log.d('✅ AuthBloc: Сохранён token_expires_at ($expiresIn сек)');
-
-          // ✅ Сохраняем время истечения refresh_token
-          final refreshExpiresIn = ((loginResponse['data']?['refresh_expires_in'] ??
-                  loginResponse['refresh_expires_in']) as num?)
-              ?.toInt() ??
-              1209600; // 14 дней по умолчанию
-          final refreshExpiresAtMs = DateTime.now()
-              .add(Duration(seconds: refreshExpiresIn))
-              .millisecondsSinceEpoch;
-          await UserService.saveLocal(
-              'refresh_token_expires_at', refreshExpiresAtMs);
-          log.d('✅ AuthBloc: Сохранён refresh_token_expires_at ($refreshExpiresIn сек)');
+          log.d('🔐 AuthBloc: Очищены старые данные профиля');
+          log.d('✅ AuthBloc: Все токены и данные пользователя сохранены');
 
           // 🎉 Сохраняем флаг верификации и удаляем временные данные
           await UserService.saveLocal('isEmailVerified', 'true');
@@ -373,23 +249,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onLogout(LogoutEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      // 🧹 ОПТИМИЗАЦИЯ: Очищаем кеши экранов при logout
-      ProfileMenuScreen.clearCache();
-      SettingsScreen.clearCache();
-      ContactDataScreen.clearCache();
-      
-      // AuthService.logout() сам удаляет токены из Hive
+      ScreenCacheManager.clearAll();
+
       await AuthService.logout();
-      // Очищаем весь профиль и кеши — следующий пользователь увидит свои данные
       await UserService.clearLocalProfileData();
       emit(AuthLoggedOut());
     } catch (e) {
-      // 🧹 ОПТИМИЗАЦИЯ: Очищаем кеши экранов даже при ошибке
-      ProfileMenuScreen.clearCache();
-      SettingsScreen.clearCache();
-      ContactDataScreen.clearCache();
-      
-      // Даже если logout на сервере не удался, очищаем данные локально
+      ScreenCacheManager.clearAll();
+
       await UserService.deleteLocal('token');
       await UserService.deleteLocal('refresh_token');
       await UserService.clearLocalProfileData();
@@ -556,9 +423,81 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     TokenRefreshedEvent event,
     Emitter<AuthState> emit,
   ) async {
-    // log.d('✅ AuthBloc: токен обновлён в фоне: ${event.newToken.substring(0, 20)}...');
-    // Токен уже сохранён в Hive через ApiService.refreshToken()
-    // Просто обновляем состояние с новым токеном
     emit(AuthAuthenticated(token: event.newToken));
+  }
+
+  /// Сохраняет токены и данные пользователя из ответа API авторизации.
+  ///
+  /// Используется в [_onLogin] и [_onVerifyEmail] — оба получают
+  /// идентичную структуру ответа и выполняют одинаковые операции сохранения.
+  Future<String?> _saveAuthResponse(Map<String, dynamic> response) async {
+    final token =
+        response['data']?['access_token'] ??
+        response['data']?['token'] ??
+        response['access_token'] ??
+        response['token'];
+
+    if (token == null) return null;
+
+    await UserService.clearLocalProfileData();
+    await UserService.saveLocal('token', token);
+
+    // refresh_token
+    final refreshToken =
+        response['data']?['refresh_token'] ?? response['refresh_token'];
+    if (refreshToken != null) {
+      await UserService.saveLocal('refresh_token', refreshToken);
+    }
+
+    // access_token expiry (по умолчанию 15 мин)
+    final expiresIn =
+        ((response['data']?['expires_in'] ?? response['expires_in']) as num?)
+            ?.toInt() ??
+        900;
+    await UserService.saveLocal(
+      'token_expires_at',
+      DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
+    );
+
+    // refresh_token expiry (по умолчанию 14 дней)
+    final refreshExpiresIn =
+        ((response['data']?['refresh_expires_in'] ??
+                response['refresh_expires_in']) as num?)
+            ?.toInt() ??
+        1209600;
+    await UserService.saveLocal(
+      'refresh_token_expires_at',
+      DateTime.now()
+          .add(Duration(seconds: refreshExpiresIn))
+          .millisecondsSinceEpoch,
+    );
+
+    // Данные пользователя
+    final data = response['data'] ?? response;
+    if (data is Map<String, dynamic>) {
+      final userData = data.containsKey('user') && data['user'] is Map
+          ? Map<String, dynamic>.from(data['user'] as Map)
+          : Map<String, dynamic>.from(data);
+
+      final fields = {
+        'name': userData['name'],
+        'email': userData['email'],
+        'phone': userData['phone'],
+        'username': userData['username'],
+      };
+      for (final entry in fields.entries) {
+        if (userData.containsKey(entry.key)) {
+          await UserService.saveLocal(entry.key, entry.value ?? '');
+        }
+      }
+      if (userData.containsKey('id')) {
+        await UserService.saveLocal('userId', '${userData['id']}');
+      }
+      if (userData.containsKey('avatar')) {
+        await UserService.saveLocal('profileImage', userData['avatar'] ?? '');
+      }
+    }
+
+    return token as String;
   }
 }

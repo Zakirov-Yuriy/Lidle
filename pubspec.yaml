@@ -47,8 +47,9 @@ dependencies:
   app_links: ^3.5.0 # Для обработки deep links flutter
   flutter_contacts: ^1.1.9 # Для работы с контактами телефона
 
+dev_dependencies:
   flutter_lints: ^5.0.0
-  mockito: ^5.4.6 # CORRECTED LINE
+  mockito: ^5.4.6
   bloc_test: ^9.1.7
 
 flutter:

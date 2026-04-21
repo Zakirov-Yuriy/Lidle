@@ -19,7 +19,7 @@ import '../../../constants.dart';
 /// Экран: Создание объявления — Продажа гаражей
 /// ============================================================
 class AddGarageParkingSellScreen extends StatefulWidget {
-  static const String routeName = '/add-land-sell';
+  static const String routeName = '/add-garage-sell';
 
   const AddGarageParkingSellScreen({super.key});
 

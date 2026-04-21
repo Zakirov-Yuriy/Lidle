@@ -18,19 +18,12 @@ import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/core/cache/screen_cache_manager.dart';
 
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
 
   const ContactDataScreen({super.key});
-
-  /// 🧹 Очищает кеш контактных данных при logout
-  /// Вызывается из AuthBloc при LogoutEvent
-  static void clearCache() {
-    _ContactDataScreenState._lastContactDataLoadTime = null;
-    // ignore: avoid_print
-    // log.d('🕺 ContactDataScreen: кеш очищен при logout');
-  }
 
   @override
   State<ContactDataScreen> createState() => _ContactDataScreenState();
@@ -50,13 +43,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Храним ID контактов для обновления
   int? _phone1Id;
   int? _phone2Id;
   int? _emailId;
 
-  // 💾 КЕШИРОВАНИЕ: Отслеживаем время последней загрузки
-  static DateTime? _lastContactDataLoadTime;
   static const Duration _contactDataCacheDuration = Duration(minutes: 10);
 
   static const bgColor = Color(0xFF243241);
@@ -91,7 +81,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         '🔄 ContactDataScreen: Cache expired или первый вход, загружаем свежие данные',
       );
       _loadContactData();
-      _lastContactDataLoadTime = DateTime.now();
+      ScreenCacheManager.contactDataLastLoadTime = DateTime.now();
     } else {
       // Кеш ещё актуален - восстанавливаем данные из локального хранилища
       // ignore: avoid_print
@@ -143,14 +133,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // ignore: avoid_print
       // log.d('❌ Error restoring from cache: $e');
       _loadContactData();
-      _lastContactDataLoadTime = DateTime.now();
+      ScreenCacheManager.contactDataLastLoadTime = DateTime.now();
     }
   }
 
   /// 💾 Проверяет нужно ли обновлять кеш контактных данных
   bool _shouldRefreshContactData() {
-    if (_lastContactDataLoadTime == null) return true;
-    return DateTime.now().difference(_lastContactDataLoadTime!).inMinutes >=
+    if (ScreenCacheManager.contactDataLastLoadTime == null) return true;
+    return DateTime.now().difference(ScreenCacheManager.contactDataLastLoadTime!).inMinutes >=
         _contactDataCacheDuration.inMinutes;
   }
 
@@ -534,7 +524,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
                 _loadContactData();
-                _lastContactDataLoadTime = DateTime.now();
+                ScreenCacheManager.contactDataLastLoadTime = DateTime.now();
               }
             });
           }

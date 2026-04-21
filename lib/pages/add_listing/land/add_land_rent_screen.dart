@@ -19,7 +19,7 @@ import '../../../constants.dart';
 /// Экран: Создание объявления — Аренда земли
 /// ============================================================
 class AddLandRentScreen extends StatefulWidget {
-  static const String routeName = '/add-land-sell';
+  static const String routeName = '/add-land-rent';
 
   const AddLandRentScreen({super.key});
 

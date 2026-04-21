@@ -18,7 +18,7 @@ import '../../../constants.dart';
 /// Экран: Создание объявления — Посуточная аренда квартир
 /// ============================================================
 class AddApartmentDailyRentScreen extends StatefulWidget {
-  static const String routeName = '/add-land-sell';
+  static const String routeName = '/add-apartment-daily-rent';
 
   const AddApartmentDailyRentScreen({super.key});
 
