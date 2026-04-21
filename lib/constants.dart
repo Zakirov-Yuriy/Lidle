@@ -69,95 +69,53 @@ const String userIconAsset = 'assets/BottomNavigation/user-01.png';
 
 /// Возвращает List<TextSpan> для форматирования заголовка возможностей
 /// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
-List<TextSpan> getCapabilitiesTitleSpans() {
+/// Универсальная функция для создания заголовка в стиле "ТЕКСТ ЛИДЛ [LIDLE]".
+///
+/// Префикс отображается белым цветом с заданным размером и весом.
+/// Суффикс "LIDLE" — всегда синим [activeIconColor], размер 13.
+///
+/// Пример использования:
+/// ```dart
+/// RichText(text: TextSpan(children: getLidleTitleSpans('Поддержка ЛИДЛ ')))
+/// ```
+List<TextSpan> getLidleTitleSpans(
+  String prefix, {
+  double fontSize = 16,
+  FontWeight fontWeight = FontWeight.w400,
+}) {
   return [
-    const TextSpan(
-      text: 'Возможности ЛИДЛ ',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-      ),
-    ),
-    const TextSpan(
-      text: 'LIDLE',
-      style: TextStyle(
-        color: activeIconColor,
-        fontSize: 13,
-        fontWeight: FontWeight.w400,
-      ),
-    ),
-  ];
-}
-
-/// Возвращает List<TextSpan> для форматирования заголовка приложения
-/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
-List<TextSpan> getAppTitleSpans() {
-  return [
-    const TextSpan(
-      text: 'ЛИДЛ ',
+    TextSpan(
+      text: prefix,
       style: TextStyle(
         color: textPrimary,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
+        fontSize: fontSize,
+        fontWeight: fontWeight,
       ),
     ),
-    const TextSpan(
+    TextSpan(
       text: 'LIDLE',
       style: TextStyle(
         color: activeIconColor,
         fontSize: 13,
-        fontWeight: FontWeight.w400,
+        fontWeight: fontWeight,
       ),
     ),
   ];
 }
 
-/// Возвращает List<TextSpan> для форматирования заголовка поддержки
-/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
-List<TextSpan> getSupportTitleSpans() {
-  return [
-    const TextSpan(
-      text: 'Поддержка ЛИДЛ ',
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 18,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-    const TextSpan(
-      text: 'LIDLE',
-      style: TextStyle(
-        color: activeIconColor,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-  ];
-}
+// ── Обёртки для обратной совместимости ───────────────────────────────────────
 
-/// Возвращает List<TextSpan> для форматирования заголовка с категориями
-/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
-List<TextSpan> getCategoriesTitleSpans() {
-  return [
-    const TextSpan(
-      text: 'Предложения на ЛИДЛ ',
-      style: TextStyle(
-        color: textPrimary,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-      ),
-    ),
-    const TextSpan(
-      text: 'LIDLE',
-      style: TextStyle(
-        color: activeIconColor,
-        fontSize: 13,
-        fontWeight: FontWeight.w400,
-      ),
-    ),
-  ];
-}
+List<TextSpan> getCapabilitiesTitleSpans() =>
+    getLidleTitleSpans('Возможности ЛИДЛ ');
+
+List<TextSpan> getAppTitleSpans() =>
+    getLidleTitleSpans('ЛИДЛ ');
+
+List<TextSpan> getSupportTitleSpans() =>
+    getLidleTitleSpans('Поддержка ЛИДЛ ', fontSize: 18, fontWeight: FontWeight.w500);
+
+List<TextSpan> getCategoriesTitleSpans() =>
+    getLidleTitleSpans('Предложения на ЛИДЛ ');
 
 /// Возвращает Widget для отображения изображения профиля
 /// Если imagePath это URL (начинается с http), использует Image.network
