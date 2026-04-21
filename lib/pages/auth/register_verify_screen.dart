@@ -8,6 +8,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'sign_in_screen.dart';
+import '../home_page.dart';
 
 // ============================================================
 // "Экран верификации email при регистрации"
@@ -147,7 +148,15 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Код отправлен')));
+        } else if (state is AuthAuthenticated) {
+          // 🎉 Пользователь автоматически авторизован после верификации
+          // Отправляем на главный экран (home page)
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            HomePage.routeName,
+            (route) => route.settings.name == '/' || route.isFirst,
+          );
         } else if (state is AuthEmailVerified) {
+          // Fallback если верификация прошла без автоматического логина
           Navigator.of(context).pushNamedAndRemoveUntil(
             SignInScreen.routeName,
             (route) => route.settings.name == '/' || route.isFirst,
