@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -390,7 +391,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
   void _showDeletePhotoDialog() {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return Dialog(
           backgroundColor: const Color(0xFF1F2C3A),
           shape: RoundedRectangleBorder(
@@ -405,7 +406,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () => Navigator.pop(dialogContext),
                       child: const Icon(Icons.close, color: Colors.white),
                     ),
                   ],
@@ -450,7 +451,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () => Navigator.pop(dialogContext),
                       child: const Text(
                         'Отмена',
                         style: TextStyle(
@@ -464,11 +465,10 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         try {
-                          // Получаем токен
                           final token = TokenService.currentToken;
                           if (token == null) {
+                            Navigator.pop(dialogContext);
                             if (mounted) {
-                              Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -480,40 +480,30 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                             return;
                           }
 
-                          // log.d('🗑️ change_photo_screen: Удаляем аватарку...');
+                          // Закрываем диалог подтверждения через dialogContext
+                          Navigator.pop(dialogContext);
 
-                          // Закрываем диалог
-                          if (mounted) Navigator.pop(context);
-
-                          // Показываем loading
-                          if (mounted) {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: false,
-                              builder: (context) => Center(
-                                child: CircularProgressIndicator(
-                                  color: const Color(0xFF00B7FF),
-                                ),
+                          // Показываем loading через context экрана
+                          if (!mounted) return;
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF00B7FF),
                               ),
-                            );
-                          }
+                            ),
+                          );
 
                           // Удаляем аватарку через API
                           await UserService.deleteAvatar(token: token);
 
-                          if (mounted)
-                            Navigator.pop(context); // Закрываем loading
+                          if (mounted) Navigator.pop(context); // Закрываем loading
 
-                          // log.d(
-                          //   '✅ change_photo_screen: Аватарка успешно удалена',
-                          // );
-
-                          // Перезагружаем профиль с сервера
                           if (mounted) {
                             context.read<ProfileBloc>().add(LoadProfileEvent());
                           }
 
-                          // Показываем успешное сообщение
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
@@ -523,12 +513,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                             );
                           }
                         } catch (e) {
-                          if (mounted)
-                            Navigator.pop(context); // Закрываем loading
-
-                          // log.d(
-                          //   '❌ change_photo_screen: Ошибка при удалении: $e',
-                          // );
+                          if (mounted) Navigator.pop(context); // Закрываем loading
 
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

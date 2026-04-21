@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';

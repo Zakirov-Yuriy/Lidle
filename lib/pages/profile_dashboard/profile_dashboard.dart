@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
