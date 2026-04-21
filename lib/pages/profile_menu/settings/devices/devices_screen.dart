@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:io';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/lidle_title_spans.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/devices/devices_bloc.dart';
 import 'package:lidle/blocs/devices/devices_event.dart';

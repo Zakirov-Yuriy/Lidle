@@ -3,7 +3,6 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:lidle/core/logger.dart';
 
 // ============================================================
 //  Цвета приложения
@@ -57,63 +56,7 @@ const String homeIconAsset = 'assets/BottomNavigation/home-02.png';
 const String heartIconAsset = 'assets/BottomNavigation/heart-rounded.png';
 const String gridIconAsset = 'assets/BottomNavigation/grid-01.png';
 const String plusIconAsset = 'assets/BottomNavigation/plus-circle.png';
-const String shoppingCartIconAsset =
-    'assets/BottomNavigation/shopping-cart-01.png';
+const String shoppingCartIconAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 const String messageIconAsset = 'assets/BottomNavigation/message-circle-01.png';
 const String userIconAsset = 'assets/BottomNavigation/user-01.png';
-
-// ============================================================
-//  Вспомогательные функции
-// ============================================================
-
-/// Возвращает List<TextSpan> для форматирования заголовка возможностей
-/// ЛИДЛ отображается обычным цветом, LIDLE - цветом activeIconColor и размером 13
-/// Универсальная функция для создания заголовка в стиле "ТЕКСТ ЛИДЛ [LIDLE]".
-///
-/// Префикс отображается белым цветом с заданным размером и весом.
-/// Суффикс "LIDLE" — всегда синим [activeIconColor], размер 13.
-///
-/// Пример использования:
-/// ```dart
-/// RichText(text: TextSpan(children: getLidleTitleSpans('Поддержка ЛИДЛ ')))
-/// ```
-List<TextSpan> getLidleTitleSpans(
-  String prefix, {
-  double fontSize = 16,
-  FontWeight fontWeight = FontWeight.w400,
-}) {
-  return [
-    TextSpan(
-      text: prefix,
-      style: TextStyle(
-        color: textPrimary,
-        fontSize: fontSize,
-        fontWeight: fontWeight,
-      ),
-    ),
-    TextSpan(
-      text: 'LIDLE',
-      style: TextStyle(
-        color: activeIconColor,
-        fontSize: 13,
-        fontWeight: fontWeight,
-      ),
-    ),
-  ];
-}
-
-// ── Обёртки для обратной совместимости ───────────────────────────────────────
-
-List<TextSpan> getCapabilitiesTitleSpans() =>
-    getLidleTitleSpans('Возможности ЛИДЛ ');
-
-List<TextSpan> getAppTitleSpans() =>
-    getLidleTitleSpans('ЛИДЛ ');
-
-List<TextSpan> getSupportTitleSpans() =>
-    getLidleTitleSpans('Поддержка ЛИДЛ ', fontSize: 18, fontWeight: FontWeight.w500);
-
-List<TextSpan> getCategoriesTitleSpans() =>
-    getLidleTitleSpans('Предложения на ЛИДЛ ');
-
 

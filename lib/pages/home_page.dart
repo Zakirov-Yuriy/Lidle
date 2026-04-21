@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
 import '../constants.dart';
+import '../widgets/components/lidle_title_spans.dart';
 import '../models/home_models.dart';
 import '../widgets/components/header.dart';
 import '../widgets/components/search_bar.dart' as custom_widgets;

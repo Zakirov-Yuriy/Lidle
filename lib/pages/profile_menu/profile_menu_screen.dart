@@ -5,7 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/lidle_title_spans.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -95,6 +97,22 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
       }
     } catch (e) {
       // log.e('Error loading main phone: $e');
+    }
+  }
+
+  Future<void> _openLidleVkGroup() async {
+    const url = 'https://vk.com/club237395109';
+    try {
+      if (await canLaunchUrl(Uri.parse(url))) {
+        await launchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        log.w('Could not launch $url');
+      }
+    } catch (e) {
+      log.e('Error launching URL: $e');
     }
   }
 
@@ -236,6 +254,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                   textWidget: Text.rich(
                     TextSpan(children: getCapabilitiesTitleSpans()),
                   ),
+                  onTap: _openLidleVkGroup,
                 ),
               ],
             ),

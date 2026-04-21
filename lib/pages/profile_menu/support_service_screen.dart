@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/lidle_title_spans.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_contact_form_page.dart';
 import 'package:lidle/widgets/components/header.dart';
 

@@ -14,6 +14,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/lidle_title_spans.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';

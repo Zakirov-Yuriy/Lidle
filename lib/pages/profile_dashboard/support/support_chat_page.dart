@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/lidle_title_spans.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class SupportChatPage extends StatelessWidget {
