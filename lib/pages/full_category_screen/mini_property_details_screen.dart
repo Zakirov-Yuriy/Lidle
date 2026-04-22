@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/message_model.dart';
@@ -1362,6 +1363,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget _buildComplaintButton() {
     return GestureDetector(
       onTap: () {
+        // Проверяем авторизацию перед открытием диалога жалобы
+        final token = TokenService.currentToken;
+        if (token == null || token.isEmpty) {
+          SnackBarHelper.showWarning(context, 'Требуется авторизация');
+          return;
+        }
+        
         showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -1435,17 +1443,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
   /// 📞 Загрузить номера телефонов владельца объявления и показать диалог
   Future<void> _loadAndShowPhoneDialog() async {
+    // ✅ Неавторизованный пользователь может просмотреть номер
+    // (проверка авторизации будет в API при необходимости)
+    
     // Проверяем, есть ли userId (sellerId)
     final userId = _listing.userId;
     if (userId == null || userId.isEmpty) {
       // Если нет userId, показываем заглушку с сообщением об ошибке
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Информация о продавце недоступна'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      SnackBarHelper.showWarning(context, 'Информация о продавце недоступна');
       return;
     }
 
@@ -1488,12 +1494,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       final userIdInt = int.tryParse(userId);
       if (userIdInt == null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Некорректный ID продавца'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        SnackBarHelper.showError(context, 'Некорректный ID продавца');
         Navigator.of(context).pop();
         return;
       }
@@ -1510,12 +1511,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       // Если телефонов нет
       if (phoneNumbers.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Номера телефонов не найдены'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        SnackBarHelper.showInfo(context, 'Номера телефонов не найдены');
         return;
       }
 
@@ -1537,28 +1533,26 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
       // Показываем ошибку
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ошибка загрузки номеров: $e'),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      SnackBarHelper.showError(context, 'Ошибка загрузки номеров: $e');
     }
   }
 
   /// 💬 Открыть чат с продавцом объявления
   Future<void> _openChatWithSeller() async {
+    // Проверяем авторизацию перед открытием чата
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      SnackBarHelper.showWarning(context, 'Требуется авторизация');
+      return;
+    }
+    
     // Проверяем, есть ли информация о продавце
     final sellerName = _listing.sellerName;
     final userId = _listing.userId;
     if (sellerName == null || sellerName.isEmpty || userId == null || userId.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Информация о продавце недоступна'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      SnackBarHelper.showWarning(context, 'Информация о продавце недоступна');
       return;
     }
 

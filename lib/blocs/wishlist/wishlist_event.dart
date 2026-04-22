@@ -65,3 +65,14 @@ class SyncWishlistEvent extends WishlistEvent {
   @override
   List<Object?> get props => [fullSync];
 }
+
+/// Событие для синхронизации локального избранного при авторизации.
+///
+/// Вызывается автоматически когда пользователь авторизуется.
+/// Синхронизирует локальное избранное (из Hive) с серверным.
+class SyncLocalWishlistOnAuthEvent extends WishlistEvent {
+  const SyncLocalWishlistOnAuthEvent();
+
+  @override
+  List<Object?> get props => [];
+}

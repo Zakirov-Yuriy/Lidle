@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 
 class OfferPriceDialog extends StatefulWidget {
   final int advertId;
@@ -42,6 +43,15 @@ class _OfferPriceDialogState extends State<OfferPriceDialog> {
 
   /// Отправить предложение цены на сервер
   Future<void> _submitOffer() async {
+    // ✅ Проверяем авторизацию перед отправкой
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      setState(() {
+        _errorMessage = 'Требуется авторизация';
+      });
+      return;
+    }
+
     if (_priceController.text.isEmpty || _messageController.text.isEmpty) {
       setState(() {
         _errorMessage = 'Заполните все поля';
@@ -87,9 +97,17 @@ class _OfferPriceDialogState extends State<OfferPriceDialog> {
         _errorMessage = 'Введите корректную цену';
       });
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Ошибка: $e';
-      });
+      // Проверяем если ошибка о авторизации
+      final errorText = e.toString();
+      if (errorText.contains('авторизация') || errorText.contains('401') || errorText.contains('Unauthorized')) {
+        setState(() {
+          _errorMessage = 'Требуется авторизация';
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'Ошибка: $e';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {

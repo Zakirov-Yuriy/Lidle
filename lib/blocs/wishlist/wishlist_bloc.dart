@@ -1,17 +1,20 @@
 // ============================================================
-// "BLoC: Управление избранным на сервере"
+// "BLoC: Управление избранным (локальное + серверное)"
 // ============================================================
 //
 // Синхронизирует локальное хранилище избранного с серверным API.
 // Использует оптимистичные обновления для быстрого отклика UI.
 // При ошибке сохраняет локальное состояние и повторяет попытку.
+//
+// Поддерживает две режима:
+// 1. Неавторизованный пользователь: работает только с локальным Hive
+// 2. Авторизованный пользователь: синхронизирует с серверным API
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../hive_service.dart';
 import '../../services/favorites_service.dart';
 import '../../services/wishlist_service.dart';
-import 'package:lidle/core/logger.dart';
 
 part 'wishlist_event.dart';
 part 'wishlist_state.dart';
@@ -19,14 +22,19 @@ part 'wishlist_state.dart';
 /// BLoC для управления избранным объявлениями.
 ///
 /// Отвечает за:
-/// 1. Загрузку списка избранных с сервера при старте
+/// 1. Загрузку списка избранных (с сервера для авторизованных, локально для неавторизованных)
 /// 2. Добавление/удаление объявлений в/из избранного
 /// 3. Синхронизацию локального кеша с серверным состоянием
 /// 4. Обработку ошибок (auth, network, rate limit)
+/// 5. Синхронизацию локального избранного при авторизации пользователя
 ///
 /// Использует двухуровневое хранилище:
 /// - Локальное (Hive) для быстрого доступа и оптимистичных обновлений
-/// - Серверное (API) как источник истины для состояния после синхронизации
+/// - Серверное (API) как источник истины для авторизованных пользователей
+///
+/// Поведение по статусу авторизации:
+/// - Неавторизованный: работает только с Hive (локальное избранное)
+/// - Авторизованный: синхронизирует локальное с серверным при загрузке
 class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   /// Кеш ID избранных объявлений для отслеживания изменений
   Set<int> _cachedWishlistIds = {};
@@ -42,11 +50,15 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
   static const Duration _loadWishlistDebounce = Duration(seconds: 2);
 
   /// Конструктор WishlistBloc.
+  /// 
+  /// Инициализирует события и начинает слушать AuthBloc
+  /// для синхронизации при авторизации.
   WishlistBloc() : super(const WishlistInitial()) {
     on<LoadWishlistEvent>(_onLoadWishlist);
     on<AddToWishlistEvent>(_onAddToWishlist);
     on<RemoveFromWishlistEvent>(_onRemoveFromWishlist);
     on<SyncWishlistEvent>(_onSyncWishlist);
+    on<SyncLocalWishlistOnAuthEvent>(_onSyncLocalWishlistOnAuth);
   }
 
   /// Получить свежий токен из HiveService каждый раз.
@@ -65,8 +77,9 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
 
   /// Обработчик события LoadWishlistEvent.
   ///
-  /// Загружает список избранного с сервера и синхронизирует
-  /// с локальным хранилищем (Hive).
+  /// Поведение зависит от статуса авторизации:
+  /// 1. Для авторизованных: загружает со сервера и синхронизирует с локальным
+  /// 2. Для неавторизованных: загружает из локального Hive хранилища
   /// 
   /// ⏱️ Дебоунс: Игнорирует событие если последний запрос был менее 2 секунд назад
   /// Это предотвращает слишком частые запросы при Hot Reload или множественных
@@ -92,19 +105,41 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
 
     try {
       final token = _getToken();
-      if (token == null) {
-        // log.e('❌ WishlistBloc: Токен не найден');
-        emit(const WishlistError(
-          message: 'Требуется авторизация для доступа к избранному',
-          code: 'auth',
+      
+      // 🔐 Проверяем авторизацию
+      if (token == null || token.isEmpty) {
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 📱 РЕЖИМ 1: НЕАВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // log.i('👤 WishlistBloc: Пользователь НЕ авторизован, загружаем локальное избранное из Hive');
+        
+        // Получаем ID из локального хранилища
+        final localFavorites = FavoritesService.getFavorites();
+        final localIds = localFavorites
+            .map((id) => int.tryParse(id))
+            .whereType<int>()
+            .toSet();
+        
+        _cachedWishlistIds = localIds;
+        
+        // log.i('✅ WishlistBloc: Локальное избранное загружено: $localIds (${localIds.length} товаров)');
+        emit(WishlistLoaded(
+          wishlistIds: localIds,
+          syncedAt: DateTime.now(),
+          isLocal: true, // Флаг что это локальное избранное
         ));
         return;
       }
 
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🔐 РЕЖИМ 2: АВТОРИЗОВАННЫЙ ПОЛЬЗОВАТЕЛЬ
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // log.i('🔐 WishlistBloc: Пользователь авторизован, загружаем со сервера');
+      
       // Загружаем со сервера
       // log.d('🔄 WishlistBloc: Загружаем wishlist с сервера...');
       final response = await WishlistService.getWishlist(token: token);
-      // log.i('✅ WishlistBloc: Ответ от сервера получен: $response');
+      // log.i('✅ WishlistBloc: Ответ от сервера получен');
 
       // Парсим IDs из ответа
       final wishlistIds = _parseWishlistIds(response);
@@ -122,6 +157,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       emit(WishlistLoaded(
         wishlistIds: wishlistIds,
         syncedAt: DateTime.now(),
+        isLocal: false,
       ));
     } on Exception catch (e) {
       // log.e('❌ WishlistBloc: Ошибка при загрузке: $e');
@@ -131,12 +167,16 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
 
   /// Обработчик события AddToWishlistEvent.
   ///
+  /// Поведение зависит от статуса авторизации:
+  /// 1. Для неавторизованных: добавляет только в локальное Hive
+  /// 2. Для авторизованных: добавляет в Hive и синхронизирует с сервером
+  ///
   /// Выполняет оптимистичное обновление локального хранилища,
-  /// затем отправляет POST запрос на сервер для добавления объявления в wishlist.
+  /// затем отправляет POST запрос на сервер (если авторизован).
   /// 
   /// 📤 Шаги:
   /// 1. Обновляет локальное хранилище (Hive) оптимистично
-  /// 2. Отправляет асинхронный запрос на сервер
+  /// 2. Отправляет асинхронный запрос на сервер (если авторизован)
   /// 3. При ошибке откатывает локальное изменение
   Future<void> _onAddToWishlist(
     AddToWishlistEvent event,
@@ -153,19 +193,23 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       // Уведомляем UI об успехе локального обновления
       emit(WishlistItemAdded(listingId: event.listingId));
 
-      // 2. Отправляем на сервер в фоне (асинхронно)
+      // 2. Проверяем авторизацию - если есть токен, синхронизируем с сервером
       final token = _getToken();
       
       if (token == null || token.isEmpty) {
-        // log.e('❌ WishlistBloc: Токен НЕ ПЕРЕДАН! Не могу отправить запрос на сервер');
-        // log.e('❌ WishlistBloc: Откатываем локальное изменение т.к. нет токена');
-        FavoritesService.toggleFavorite(event.listingId.toString());
-        _cachedWishlistIds.remove(event.listingId);
+        // 📱 Пользователь НЕ авторизован - просто сохраняем локально
+        // log.i('📱 WishlistBloc: Пользователь не авторизован, добавлено в локальное избранное');
         
-        _emitError(emit, Exception('Токен авторизации не найден. Требуется авторизация.'));
+        // Эмитим обновленное состояние
+        emit(WishlistLoaded(
+          wishlistIds: _cachedWishlistIds,
+          syncedAt: DateTime.now(),
+          isLocal: true,
+        ));
         return;
       }
       
+      // 🔐 Пользователь авторизован - отправляем на сервер
       try {
         // log.d('═══════════════════════════════════════════════════════');
         // log.d('📤 WishlistBloc: Отправляем POST запрос на /me/wishlist/add');
@@ -196,6 +240,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         emit(WishlistLoaded(
           wishlistIds: _cachedWishlistIds,
           syncedAt: DateTime.now(),
+          isLocal: false,
         ));
       } catch (e) {
         // Если сервер вернул ошибку, откатываем локальное изменение
@@ -215,12 +260,16 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
 
   /// Обработчик события RemoveFromWishlistEvent.
   /// 
+  /// Поведение зависит от статуса авторизации:
+  /// 1. Для неавторизованных: удаляет только из локального Hive
+  /// 2. Для авторизованных: удаляет из Hive и синхронизирует с сервером
+  ///
   /// Выполняет оптимистичное обновление локального хранилища,
-  /// затем отправляет DELETE запрос на сервер для удаления объявления из wishlist.
+  /// затем отправляет DELETE запрос на сервер (если авторизован).
   /// 
   /// 📤 Шаги:
   /// 1. Обновляет локальное хранилище (Hive) оптимистично
-  /// 2. Отправляет асинхронный DELETE запрос на сервер
+  /// 2. Отправляет асинхронный DELETE запрос на сервер (если авторизован)
   /// 3. При ошибке откатывает локальное изменение
   Future<void> _onRemoveFromWishlist(
     RemoveFromWishlistEvent event,
@@ -232,12 +281,6 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       // 🛡️ Получаем токен перед началом операции
       final token = _getToken();
       
-      if (token == null || token.isEmpty) {
-        // log.d('❌ WishlistBloc: Токен НЕ ПЕРЕДАН! Не могу отправить запрос на сервер');
-        _emitError(emit, Exception('Токен авторизации не найден. Требуется авторизация.'));
-        return;
-      }
-      
       // 1. Оптимистичное обновление локального хранилища
       final wasFavorite = FavoritesService.isFavorite(event.listingId.toString());
       if (wasFavorite) {
@@ -248,7 +291,20 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         // Уведомляем UI об успехе локального обновления
         emit(WishlistItemRemoved(listingId: event.listingId));
 
-        // 2. Отправляем на сервер в фоне (асинхронно)
+        // 2. Если авторизован - отправляем на сервер в фоне (асинхронно)
+        if (token == null || token.isEmpty) {
+          // 📱 Пользователь НЕ авторизован - просто удалили локально
+          // log.i('📱 WishlistBloc: Пользователь не авторизован, удалено из локального избранного');
+          
+          // Эмитим обновленное состояние
+          emit(WishlistLoaded(
+            wishlistIds: _cachedWishlistIds,
+            syncedAt: DateTime.now(),
+            isLocal: true,
+          ));
+          return;
+        }
+        
         try {
           // 🔗 Получаем ID wishlist entry из маппинга
           final wishlistEntryId = _wishlistIdMapping[event.listingId];
@@ -295,6 +351,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
           emit(WishlistLoaded(
             wishlistIds: _cachedWishlistIds,
             syncedAt: DateTime.now(),
+            isLocal: false,
           ));
         } catch (e) {
           // ⚠️ ВАЖНО: Если ошибка (любая), товар всё равно ОСТАЕТСЯ удаленным из Hive
@@ -316,6 +373,17 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         // Object не в избранном локально, но все равно пытаемся удалить с сервера
         // (может быть рассинхронизация между локальным и серверным состоянием)
         // log.d('⚠️ WishlistBloc: Объявление ${event.listingId} не в локальном избранном, пытаемся удалить с сервера...');
+        
+        if (token == null || token.isEmpty) {
+          // Не авторизован - ничего не делаем
+          // log.d('📱 WishlistBloc: Пользователь не авторизован, игнорируем');
+          emit(WishlistLoaded(
+            wishlistIds: _cachedWishlistIds,
+            syncedAt: DateTime.now(),
+            isLocal: true,
+          ));
+          return;
+        }
         
         try {
           // 🔗 Получаем ID wishlist entry из маппинга для fallback пути
@@ -349,6 +417,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
           emit(WishlistLoaded(
             wishlistIds: _cachedWishlistIds,
             syncedAt: DateTime.now(),
+            isLocal: false,
           ));
         } catch (e) {
           // log.d('⚠️ WishlistBloc: Ошибка при fallback delete: $e');
@@ -394,6 +463,64 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       }
     } on Exception catch (e) {
       _emitError(emit, e);
+    }
+  }
+
+  /// Обработчик события SyncLocalWishlistOnAuthEvent.
+  ///
+  /// Вызывается когда пользователь авторизуется.
+  /// Синхронизирует локальное избранное (из Hive) с серверным.
+  ///
+  /// Процесс:
+  /// 1. Загружает избранное с сервера
+  /// 2. Загружает локальное избранное из Hive
+  /// 3. Объединяет локальное с серверным (приоритет серверу)
+  /// 4. Обновляет состояние
+  Future<void> _onSyncLocalWishlistOnAuth(
+    SyncLocalWishlistOnAuthEvent event,
+    Emitter<WishlistState> emit,
+  ) async {
+    try {
+      final token = _getToken();
+      if (token == null) {
+        // Странная ситуация - AuthBloc сказал что авторизован, но токена нет
+        // log.w('⚠️ WishlistBloc: AuthBloc сказал что авторизован но токена нет');
+        return;
+      }
+
+      // log.i('🔄 WishlistBloc: Синхронизация локального избранного при авторизации');
+      
+      // Загружаем со сервера
+      final response = await WishlistService.getWishlist(token: token);
+      final serverIds = _parseWishlistIds(response);
+      
+      // log.d('🌐 WishlistBloc: Получено с сервера: $serverIds');
+      
+      // Получаем локальное избранное
+      final localFavorites = FavoritesService.getFavorites();
+      final localIds = localFavorites
+          .map((id) => int.tryParse(id))
+          .whereType<int>()
+          .toSet();
+      
+      // log.d('📱 WishlistBloc: Локальное избранное: $localIds');
+      
+      // Синхронизируем - это обновит Hive чтобы соответствовал серверу
+      await _syncLocalWishlist(serverIds);
+      
+      // Обновляем внутренний кеш
+      _cachedWishlistIds = serverIds;
+      
+      // log.i('✅ WishlistBloc: Синхронизация завершена. Итого: ${serverIds.length} товаров');
+      
+      emit(WishlistLoaded(
+        wishlistIds: serverIds,
+        syncedAt: DateTime.now(),
+        isLocal: false,
+      ));
+    } catch (e) {
+      // log.e('❌ WishlistBloc: Ошибка при синхронизации на авторизацию: $e');
+      _emitError(emit, e as Exception);
     }
   }
 

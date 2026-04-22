@@ -30,22 +30,28 @@ class WishlistLoading extends WishlistState {
 
 /// Состояние успешной загрузки или синхронизации избранного.
 ///
-/// [wishlistIds] - множество ID объявлений в избранном на сервере
+/// [wishlistIds] - множество ID объявлений в избранном
 /// [syncedAt] - время последней синхронизации
+/// [isLocal] - true если это локальное избранное (неавторизованный пользователь),
+///            false если это серверное избранное (авторизованный пользователь)
 class WishlistLoaded extends WishlistState {
-  /// IDs избранных объявлений с сервера
+  /// IDs избранных объявлений
   final Set<int> wishlistIds;
 
   /// Время последней синхронизации
   final DateTime syncedAt;
 
+  /// Флаг локального/серверного состояния
+  final bool isLocal;
+
   const WishlistLoaded({
     required this.wishlistIds,
     required this.syncedAt,
+    this.isLocal = false,
   });
 
   @override
-  List<Object?> get props => [wishlistIds, syncedAt];
+  List<Object?> get props => [wishlistIds, syncedAt, isLocal];
 }
 
 /// Состояние ошибки при работе с wishlist.

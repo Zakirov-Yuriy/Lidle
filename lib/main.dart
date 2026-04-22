@@ -254,8 +254,8 @@ class LidleApp extends StatelessWidget {
             // Пользователь авторизован — запускаем фоновое обновление токена
             TokenService().init(context);
 
-            // Загружаем wishlist (избранное) с сервера
-            context.read<WishlistBloc>().add(const LoadWishlistEvent());
+            // 🎏 Синхронизируем локальное избранное с серверным при авторизации
+            context.read<WishlistBloc>().add(const SyncLocalWishlistOnAuthEvent());
 
             // 🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
             MessagePollingService().startPolling(

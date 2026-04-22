@@ -13,6 +13,7 @@ import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/core/config/app_config.dart';
@@ -113,10 +114,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     });
 
     try {
+      // ✅ Неавторизованный пользователь может просмотреть объявления продавца
+      // Токен опциональный — API обработает запрос без авторизации
       final token = TokenService.currentToken;
-      if (token == null) {
-        throw Exception('Токен авторизации не найден');
-      }
 
       // API фиксирует per_page=30 и не принимает этот параметр в body.
       // Запрос принимает только: sort (Array) и page (Integer).
@@ -712,6 +712,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   void _navigateToScreen(int index) {
+    // Индексы 2, 3, 4, 5 требуют авторизацию
+    final authRequiredIndices = {2, 3, 4, 5};
+    
+    if (authRequiredIndices.contains(index)) {
+      final token = TokenService.currentToken;
+      if (token == null || token.isEmpty) {
+        // ❌ Неавторизованный пользователь не может перейти на эти экраны
+        SnackBarHelper.showWarning(context, 'Требуется авторизация');
+        return;
+      }
+    }
+
     final String routeName;
     switch (index) {
       case 0:

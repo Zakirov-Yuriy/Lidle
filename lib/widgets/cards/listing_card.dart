@@ -9,20 +9,15 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:lidle/blocs/auth/auth_state.dart';
-import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
-import 'package:lidle/core/logger.dart';
 
 class ListingCard extends StatefulWidget {
   final Listing listing;
-  final AuthState? authState;
   final VoidCallback? onBeforeNavigate;
 
   const ListingCard({
     super.key, 
     required this.listing, 
-    this.authState,
     this.onBeforeNavigate,
   });
 
@@ -87,17 +82,10 @@ class _ListingCardState extends State<ListingCard> {
 
         return GestureDetector(
           onTap: () {
-            // Проверка авторизации перед взаимодействием (если authState передан)
-            if (widget.authState != null &&
-                widget.authState is! AuthAuthenticated) {
-              Navigator.pushNamed(context, SignInScreen.routeName);
-              return;
-            }
-            
             // 💾 Вызываем callback для сохранения позиции скролла
             widget.onBeforeNavigate?.call();
             
-            // Переходим к деталям объявления
+            // 🔓 Переходим к деталям объявления (доступно для всех, включая неавторизованных)
             Navigator.push(
               context,
               MaterialPageRoute(

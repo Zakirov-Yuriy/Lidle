@@ -76,9 +76,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   // ============================================================
   void _resendCode() {
     if (_email.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Email не найден')));
+      SnackBarHelper.showWarning(context, 'Email не найден');
       return;
     }
 
@@ -115,16 +113,12 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   void _verify() {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Введите код')));
+      SnackBarHelper.showWarning(context, 'Введите код');
       return;
     }
 
     if (_email.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Email не найден')));
+      SnackBarHelper.showWarning(context, 'Email не найден');
       return;
     }
 
@@ -145,9 +139,7 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
       listener: (context, state) {
         if (state is AuthCodeSent) {
           _startResendTimer();
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Код отправлен')));
+          SnackBarHelper.showSuccess(context, 'Код отправлен');
         } else if (state is AuthAuthenticated) {
           // 🎉 Пользователь автоматически авторизован после верификации
           // Отправляем на главный экран (home page)

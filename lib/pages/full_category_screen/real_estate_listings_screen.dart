@@ -11,6 +11,7 @@ import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/pages/full_category_screen/intermediate_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen.dart';
 import 'package:lidle/pages/full_category_screen/real_estate_listings_filter_screen.dart';
@@ -1648,6 +1649,18 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
   }
 
   void _navigateToScreen(int index) {
+    // Индексы 2, 3, 4, 5 требуют авторизацию
+    final authRequiredIndices = {2, 3, 4, 5};
+    
+    if (authRequiredIndices.contains(index)) {
+      final token = TokenService.currentToken;
+      if (token == null || token.isEmpty) {
+        // ❌ Неавторизованный пользователь не может перейти на эти экраны
+        SnackBarHelper.showWarning(context, 'Требуется авторизация');
+        return;
+      }
+    }
+
     final String routeName;
     switch (index) {
       case 0:

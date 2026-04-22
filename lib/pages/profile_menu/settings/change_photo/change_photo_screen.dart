@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -335,13 +336,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
         if (token == null) {
           if (mounted) Navigator.pop(context); // Закрываем loading
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  '❌ Токен не найден. Пожалуйста, авторизуйтесь заново.',
-                ),
-              ),
-            );
+            SnackBarHelper.showError(context, 'Токен не найден. Пожалуйста, авторизуйтесь заново.');
           }
           return;
         }
@@ -364,12 +359,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
 
         // Показываем успешное сообщение
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ Аватарка успешно обновлена!'),
-              duration: Duration(seconds: 2),
-            ),
-          );
+          SnackBarHelper.showSuccess(context, 'Аватарка успешно обновлена!');
         }
       } catch (e) {
         if (mounted) Navigator.pop(context); // Закрываем loading
@@ -377,12 +367,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
         // log.d('❌ change_photo_screen: Ошибка при загрузке: $e');
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('❌ Ошибка: $e'),
-              duration: const Duration(seconds: 3),
-            ),
-          );
+          SnackBarHelper.showError(context, 'Ошибка: $e');
         }
       }
     }
@@ -469,13 +454,7 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                           if (token == null) {
                             Navigator.pop(dialogContext);
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    '❌ Токен не найден. Пожалуйста, авторизуйтесь заново.',
-                                  ),
-                                ),
-                              );
+                              SnackBarHelper.showError(context, 'Токен не найден. Пожалуйста, авторизуйтесь заново.');
                             }
                             return;
                           }
@@ -505,23 +484,13 @@ class _ChangePhotoScreenState extends State<ChangePhotoScreen> {
                           }
 
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Аватарка удалена!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
+                            SnackBarHelper.showSuccess(context, 'Аватарка удалена!');
                           }
                         } catch (e) {
                           if (mounted) Navigator.pop(context); // Закрываем loading
 
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('❌ Ошибка: $e'),
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
+                            SnackBarHelper.showError(context, 'Ошибка: $e');
                           }
                         }
                       },

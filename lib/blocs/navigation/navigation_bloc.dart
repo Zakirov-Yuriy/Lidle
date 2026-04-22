@@ -126,6 +126,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
 
   /// Обработчик события выбора элемента навигации.
   /// Проверяет авторизацию для защищенных разделов.
+  /// Избранное (индекс 1) доступно всем пользователям.
   Future<void> _onSelectNavigationIndex(
     SelectNavigationIndexEvent event,
     Emitter<NavigationState> emit,
@@ -135,46 +136,55 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     _currentNavigationIndex = event.index;
 
     // Индексы: 0 - Домой, 1 - Избранное, 2 - Добавить, 3 - Мои покупки, 4 - Сообщения, 5 - Профиль
-    if (event.index == 0) {
-      // Домой всегда доступен
-      emit(const NavigationToHome());
-      _navigateToHome();
-    } else {
-      // Для остальных разделов проверяем авторизацию
-      final token = TokenService.currentToken;
-      if (token != null && token.isNotEmpty) {
-        // Авторизован - выполняем соответствующую навигацию
-        switch (event.index) {
-          case 1:
-            emit(const NavigationToFavorites());
-            _navigateToFavorites();
-            break;
-          case 2:
-            emit(const NavigationToCategorySelection());
-            _navigateToCategorySelection();
-            break;
-          case 3: // Мои покупки
-            emit(const NavigationToMyPurchases());
-            _navigateToMyPurchases();
-            break;
-          case 4: // Сообщения
-            emit(const NavigationToMessages());
-            _navigateToMessages();
-            break;
-          case 5: // Профиль
-            emit(const NavigationToProfile());
-            _navigateToProfile();
-            break;
-          default:
-            // Для других - пока на home
-            emit(const NavigationToHome());
-            _navigateToHome();
+    // Проверяем авторизацию
+    final token = TokenService.currentToken;
+    final isAuthenticated = token != null && token.isNotEmpty;
+
+    switch (event.index) {
+      case 0:
+        // Домой всегда доступен
+        emit(const NavigationToHome());
+        _navigateToHome();
+        break;
+      case 1:
+        // 🎏 Избранное доступно ВСЕМ (авторизованным и неавторизованным)
+        emit(const NavigationToFavorites());
+        _navigateToFavorites();
+        break;
+      case 2:
+      case 3:
+      case 4:
+      case 5:
+        // Остальные разделы требуют авторизацию
+        if (isAuthenticated) {
+          switch (event.index) {
+            case 2:
+              emit(const NavigationToCategorySelection());
+              _navigateToCategorySelection();
+              break;
+            case 3: // Мои покупки
+              emit(const NavigationToMyPurchases());
+              _navigateToMyPurchases();
+              break;
+            case 4: // Сообщения
+              emit(const NavigationToMessages());
+              _navigateToMessages();
+              break;
+            case 5: // Профиль
+              emit(const NavigationToProfile());
+              _navigateToProfile();
+              break;
+          }
+        } else {
+          // Не авторизован - редирект на sign_in
+          emit(const NavigationToSignIn());
+          _navigateToSignIn();
         }
-      } else {
-        // Не авторизован - редирект на sign_in
-        emit(const NavigationToSignIn());
-        _navigateToSignIn();
-      }
+        break;
+      default:
+        // Для других - пока на home
+        emit(const NavigationToHome());
+        _navigateToHome();
     }
   }
 

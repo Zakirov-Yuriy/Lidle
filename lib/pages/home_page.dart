@@ -394,8 +394,14 @@ class _HomePageState extends State<HomePage>
                     ),
                     bottomNavigationBar: BottomNavigation(
                       onItemSelected: (index) {
-                        // Проверяем авторизацию перед навигацией (кроме главной)
-                        if (authState is! AuthAuthenticated && index != 0) {
+                        // Проверяем авторизацию перед навигацией
+                        // Разрешаем доступ к Избранному (index 1) для всех пользователей
+                        // Остальные вкладки требуют авторизацию
+                        final isUnauthenticatedUser = authState is! AuthAuthenticated;
+                        final isFavoritesTab = index == 1;
+                        final requiresAuth = isUnauthenticatedUser && index != 0 && !isFavoritesTab;
+                        
+                        if (requiresAuth) {
                           Navigator.pushNamed(context, SignInScreen.routeName);
                           return;
                         }
@@ -668,15 +674,7 @@ class _HomePageState extends State<HomePage>
                           child: CategoryCard(
                             category: category,
                             onTap: () {
-                              // Проверка авторизации перед взаимодействием
-                              if (authState is! AuthAuthenticated) {
-                                Navigator.pushNamed(
-                                  context,
-                                  SignInScreen.routeName,
-                                );
-                                return;
-                              }
-
+                              // ✅ Неавторизованный пользователь может просматривать категории
                               // Проверяем только на "Смотреть все"
                               final isViewAll =
                                   category.title.contains('Смотреть') ||
@@ -961,7 +959,6 @@ class _HomePageState extends State<HomePage>
                     itemBuilder: (context, index) {
                       return ListingCard(
                         listing: listings[index],
-                        authState: authState,
                         onBeforeNavigate: () {
                           // 💾 Сохраняем позицию скролла перед навигацией
                           if (_scrollController.hasClients) {
