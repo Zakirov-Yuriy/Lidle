@@ -1266,6 +1266,13 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
           const Spacer(),
           GestureDetector(
             onTap: () {
+              // Проверяем авторизацию перед открытием фильтров
+              final token = TokenService.currentToken;
+              if (token == null || token.isEmpty) {
+                SnackBarHelper.showWarning(context, 'Требуется авторизация');
+                return;
+              }
+              
               log.d('\n🟣 ════════════════════════════════════════');
               log.d('🟣 FILTERS BUTTON TAPPED on listings_screen');
               log.d('🟣 Opening IntermediateFiltersScreen');
