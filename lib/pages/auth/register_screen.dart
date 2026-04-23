@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
@@ -12,6 +13,61 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'register_verify_screen.dart';
 import 'package:lidle/core/logger.dart';
+
+// ============================================================
+// "Форматер для номера телефона +7 (925) 449 95 50"
+// ============================================================
+class PhoneNumberFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+
+    if (text.isEmpty) {
+      return newValue;
+    }
+
+    // Извлекаем только цифры
+    final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
+    
+    if (digits.isEmpty) {
+      return newValue.copyWith(
+        text: '+7',
+        selection: TextSelection.collapsed(offset: 2),
+      );
+    }
+
+    // Ограничиваем до 11 цифр (7 + 10 цифр номера)
+    final limitedDigits = digits.length > 11 ? digits.substring(0, 11) : digits;
+
+    // Форматируем: +7 (925) 449 95 50
+    String formatted;
+    if (limitedDigits.length == 1 && limitedDigits[0] == '7') {
+      formatted = '+7';
+    } else if (limitedDigits.length <= 4) {
+      final part = limitedDigits.startsWith('7') 
+          ? limitedDigits.substring(1) 
+          : limitedDigits;
+      formatted = '+7 ($part';
+    } else if (limitedDigits.length <= 7) {
+      final areaCode = limitedDigits.substring(1, 4);
+      final firstPart = limitedDigits.substring(4);
+      formatted = '+7 ($areaCode) $firstPart';
+    } else {
+      final areaCode = limitedDigits.substring(1, 4);
+      final firstPart = limitedDigits.substring(4, 7);
+      final secondPart = limitedDigits.substring(7);
+      formatted = '+7 ($areaCode) $firstPart $secondPart';
+    }
+
+    return newValue.copyWith(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 // ============================================================
 // "Экран регистрации пользователя"
@@ -39,6 +95,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   final _formKey = GlobalKey<FormBuilderState>();
 
+  late TextEditingController _phoneController;
+  late FocusNode _phoneFocusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController = TextEditingController();
+    _phoneFocusNode = FocusNode();
+    _phoneFocusNode.addListener(_onPhoneFocusChange);
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _phoneFocusNode.removeListener(_onPhoneFocusChange);
+    _phoneFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _onPhoneFocusChange() {
+    if (_phoneFocusNode.hasFocus && _phoneController.text.isEmpty) {
+      _phoneController.text = '+7';
+      _phoneController.selection = TextSelection.fromPosition(
+        TextPosition(offset: _phoneController.text.length),
+      );
+    }
+  }
+
+  /// Удаляет форматирование из номера телефона для отправки в API
+  String _removePhoneFormatting(String phone) {
+    return phone.replaceAll(RegExp(r'[^0-9+]'), '');
+  }
+
   // ============================================================
   // "Логика обработки отправки формы регистрации"
   // ============================================================
@@ -50,12 +139,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     formState?.save();
     final formData = formState?.value ?? {};
 
+    // Удаляем форматирование из номера телефона перед отправкой в API
+    final unformattedPhone = _removePhoneFormatting(
+      (formData['phone'] as String?)?.trim() ?? '',
+    );
+
     context.read<AuthBloc>().add(
       RegisterEvent(
         name: (formData['name'] as String?)?.trim() ?? '',
         lastName: (formData['lastName'] as String?)?.trim() ?? '',
         email: (formData['email'] as String?)?.trim() ?? '',
-        phone: (formData['phone'] as String?)?.trim() ?? '',
+        phone: unformattedPhone,
         password: (formData['password'] as String?)?.trim() ?? '',
         passwordConfirmation:
             (formData['passwordConfirmation'] as String?)?.trim() ?? '',
@@ -218,22 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                       subtitle: ' (скрыта от пользователей)',
                     ),
-                    _buildTextField(
-                      'phone',
-                      'Ваш номер телефона',
-                      'Введите',
-                      keyboard: TextInputType.phone,
-                      validators: [
-                        FormBuilderValidators.required(
-                          errorText: 'Пожалуйста, введите номер телефона',
-                        ),
-                        FormBuilderValidators.minLength(
-                          10,
-                          errorText:
-                              'Пожалуйста, введите корректный номер телефона',
-                        ),
-                      ],
-                    ),
+                    _buildPhoneField(),
                     _buildPasswordField('password', 'Пароль', 'Введите', true),
                     _buildPasswordField(
                       'passwordConfirmation',
@@ -428,6 +507,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
             validator: FormBuilderValidators.compose(validators ?? []),
             decoration: InputDecoration(
               hintText: hint,
+              hintStyle: const TextStyle(color: textMuted),
+              filled: true,
+              fillColor: secondaryBackground,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // "Виджет поля телефона с автоматическим префиксом +7 и форматированием"
+  // ============================================================
+  Widget _buildPhoneField() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ваш номер телефона',
+            style: TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          const SizedBox(height: 6),
+          FormBuilderTextField(
+            name: 'phone',
+            controller: _phoneController,
+            focusNode: _phoneFocusNode,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            inputFormatters: [
+              PhoneNumberFormatter(),
+            ],
+            validator: FormBuilderValidators.compose([
+              FormBuilderValidators.required(
+                errorText: 'Пожалуйста, введите номер телефона',
+              ),
+              FormBuilderValidators.minLength(
+                10,
+                errorText:
+                    'Пожалуйста, введите корректный номер телефона',
+              ),
+            ]),
+            decoration: InputDecoration(
+              hintText: 'Введите',
               hintStyle: const TextStyle(color: textMuted),
               filled: true,
               fillColor: secondaryBackground,
