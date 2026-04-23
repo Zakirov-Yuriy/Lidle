@@ -20,6 +20,36 @@ import 'package:lidle/core/config/app_config.dart';
 // "Полный экран деталей недвижимости для моих объявлений"
 // ============================================================
 
+/// Форматирует цену: "1000000,00" → "1 000 000 ₽"
+String formatPriceWithRuble(String price) {
+  // Удаляем символ рубля, если он уже есть
+  String cleanPrice = price.replaceAll('₽', '').trim();
+  
+  // Заменяем запятую на точку для парсинга
+  cleanPrice = cleanPrice.replaceAll(',', '.');
+  
+  // Парсим число
+  final number = double.tryParse(cleanPrice) ?? 0.0;
+  
+  // Форматируем с пробелами между разрядами
+  final formatter = number.toStringAsFixed(0);
+  final parts = formatter.split('');
+  final buffer = StringBuffer();
+  
+  int count = 0;
+  for (int i = parts.length - 1; i >= 0; i--) {
+    if (count > 0 && count % 3 == 0) {
+      buffer.write(' ');
+    }
+    buffer.write(parts[i]);
+    count++;
+  }
+  
+  // Переворачиваем строку обратно
+  final formatted = buffer.toString().split('').reversed.join('');
+  return '$formatted ₽';
+}
+
 class MyListingsPropertyDetailsScreen extends StatefulWidget {
   final Listing listing;
 
@@ -423,7 +453,7 @@ class _MyListingsPropertyDetailsScreenState
           ),
           const SizedBox(height: 8),
           Text(
-            _listing.price,
+            formatPriceWithRuble(_listing.price),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -1024,7 +1054,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.listing.price,
+                  formatPriceWithRuble(widget.listing.price),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
