@@ -1390,6 +1390,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           SnackBarHelper.showAuthRequired(
             context,
             'Чтобы пожаловаться на объявление, войдите в свой профиль или создайте новый',
+            avatarUrl: _listing.sellerAvatar, // 👤 Передаем аватар продавца
           );
           return;
         }
@@ -1474,6 +1475,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       SnackBarHelper.showAuthRequired(
         context,
         'Чтобы позвонить продавцу, войдите в свой профиль или создайте новый',
+        avatarUrl: _listing.sellerAvatar, // 👤 Передаем аватар продавца
       );
       return;
     }
@@ -1578,6 +1580,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       SnackBarHelper.showAuthRequired(
         context,
         'Чтобы связаться с этим продавцом, войдите в свой профиль или создайте новый',
+        avatarUrl: _listing.sellerAvatar, // 👤 Передаем аватар продавца
       );
       return;
     }

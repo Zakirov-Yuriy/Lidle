@@ -16,6 +16,7 @@ class CustomErrorSnackBar extends StatelessWidget {
   final SnackBarMessageType messageType;
   final String? actionButtonText;
   final VoidCallback? onActionPressed;
+  final String? avatarUrl; // 👤 URL аватара продавца (опционально)
 
   const CustomErrorSnackBar({
     super.key,
@@ -24,6 +25,7 @@ class CustomErrorSnackBar extends StatelessWidget {
     this.messageType = SnackBarMessageType.error,
     this.actionButtonText,
     this.onActionPressed,
+    this.avatarUrl,
   });
 
   /// Получить цвет иконки на основе типа сообщения
@@ -104,7 +106,7 @@ class CustomErrorSnackBar extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Container(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.symmetric(horizontal: 26.0, vertical: 16.0),
         decoration: BoxDecoration(
           color: const Color(0xFF374151), // Темный серо-коричневый фон
           borderRadius: BorderRadius.circular(12.0),
@@ -113,15 +115,19 @@ class CustomErrorSnackBar extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Заголовок с иконкой и текстом
+            // Заголовок с иконкой/аватаром и текстом
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(
-                  _icon,
-                  color: _iconColor,
-                  size: 28.0,
-                ),
+                // 👤 Показываем аватар продавца если он есть, иначе показываем иконку
+                if (avatarUrl != null && avatarUrl!.isNotEmpty)
+                  _buildAvatarWidget(avatarUrl!)
+                else
+                  Icon(
+                    _icon,
+                    color: _iconColor,
+                    size: 28.0,
+                  ),
                 const SizedBox(width: 12.0),
                 Expanded(
                   child: Text(
@@ -170,6 +176,58 @@ class CustomErrorSnackBar extends StatelessWidget {
       ),
     );
   }
+
+  /// Вспомогательный метод для отображения аватара
+  Widget _buildAvatarWidget(String avatarUrl) {
+    return ClipOval(
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: const Color(0xFF4A5C6A), // Placeholder фон
+          shape: BoxShape.circle,
+        ),
+        child: avatarUrl.startsWith('http')
+            ? Image.network(
+                avatarUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return const Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Colors.white70,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.person,
+                    color: Colors.white70,
+                    size: 24,
+                  );
+                },
+              )
+            : Image.asset(
+                avatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Icon(
+                    Icons.person,
+                    color: Colors.white70,
+                    size: 24,
+                  );
+                },
+              ),
+      ),
+    );
+  }
 }
 
 /// Вспомогательный класс для простого показа снэкбаров
@@ -200,6 +258,7 @@ class SnackBarHelper {
     String message, {
     String? actionButtonText,
     VoidCallback? onActionPressed,
+    String? avatarUrl, // 👤 Опциональный аватар продавца
   }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -208,6 +267,7 @@ class SnackBarHelper {
           messageType: SnackBarMessageType.authRequired,
           actionButtonText: actionButtonText ?? 'Войти или создать профиль',
           onActionPressed: onActionPressed ?? () => Navigator.of(context).pushNamed('/sign-in'),
+          avatarUrl: avatarUrl,
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
