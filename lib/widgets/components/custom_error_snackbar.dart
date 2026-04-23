@@ -181,8 +181,8 @@ class CustomErrorSnackBar extends StatelessWidget {
   Widget _buildAvatarWidget(String avatarUrl) {
     return ClipOval(
       child: Container(
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           color: const Color(0xFF4A5C6A), // Placeholder фон
           shape: BoxShape.circle,
@@ -195,8 +195,8 @@ class CustomErrorSnackBar extends StatelessWidget {
                   if (loadingProgress == null) return child;
                   return const Center(
                     child: SizedBox(
-                      width: 20,
-                      height: 20,
+                      width: 24,
+                      height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
@@ -210,7 +210,7 @@ class CustomErrorSnackBar extends StatelessWidget {
                   return Icon(
                     Icons.person,
                     color: Colors.white70,
-                    size: 24,
+                    size: 29,
                   );
                 },
               )
@@ -221,7 +221,7 @@ class CustomErrorSnackBar extends StatelessWidget {
                   return Icon(
                     Icons.person,
                     color: Colors.white70,
-                    size: 24,
+                    size: 29,
                   );
                 },
               ),
