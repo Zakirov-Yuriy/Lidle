@@ -25,6 +25,31 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
 
+// ============================================================
+// "Утилиты для форматирования"
+// ============================================================
+/// Форматирует цену: "1000000,00" → "1 000 000 ₽"
+String _formatPriceWithRuble(String price) {
+  if (price.isEmpty) return '₽';
+  
+  // Удаляем копейки (всё после запятой)
+  final integerPart = price.contains(',') 
+      ? price.split(',')[0] 
+      : price.split('.')[0];
+  
+  // Добавляем пробелы между разрядами
+  final parts = <String>[];
+  for (var i = integerPart.length; i > 0; i -= 3) {
+    final start = (i - 3) < 0 ? 0 : (i - 3);
+    parts.insert(0, integerPart.substring(start, i));
+  }
+  
+  final formatted = parts.join(' ');
+  return '$formatted ₽';
+}
+
+// ============================================================
+
 class MyListingsScreen extends StatefulWidget {
   static const routeName = '/my-listings';
 
@@ -1424,7 +1449,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${advert.price ?? "0"} ₽',
+                        _formatPriceWithRuble(advert.price ?? "0"),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,

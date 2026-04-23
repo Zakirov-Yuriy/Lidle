@@ -31,7 +31,28 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 
 // ============================================================
-// "Мини-экран деталей недвижимости"
+// "Утилиты для форматирования"
+// ============================================================
+/// Форматирует цену: "1000000,00" → "1 000 000 ₽"
+String _formatPriceWithRuble(String price) {
+  if (price.isEmpty) return '₽';
+  
+  // Удаляем копейки (всё после запятой)
+  final integerPart = price.contains(',') 
+      ? price.split(',')[0] 
+      : price.split('.')[0];
+  
+  // Добавляем пробелы между разрядами
+  final parts = <String>[];
+  for (var i = integerPart.length; i > 0; i -= 3) {
+    final start = (i - 3) < 0 ? 0 : (i - 3);
+    parts.insert(0, integerPart.substring(start, i));
+  }
+  
+  final formatted = parts.join(' ');
+  return '$formatted ₽';
+}
+
 // ============================================================
 
 class MiniPropertyDetailsScreen extends StatefulWidget {
@@ -499,7 +520,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           onPressed: () {
                             final textToShare =
                                 '${widget.listing.title}\n'
-                                'Цена: ${widget.listing.price}\n'
+                                'Цена: ${_formatPriceWithRuble(widget.listing.price)}\n'
                                 'Адрес: ${widget.listing.location}\n\n'
                                 'Присоединяйся к LIDLE!\n'
                                 '${AppConfig().websiteUrl}';
@@ -895,7 +916,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.listing.price,
+            _formatPriceWithRuble(widget.listing.price),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -2188,7 +2209,7 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  widget.listing.price,
+                  _formatPriceWithRuble(widget.listing.price),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,

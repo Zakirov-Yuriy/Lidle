@@ -74,6 +74,35 @@ import 'widgets/hidden_checkbox_field.dart';
 part 'state/address_api_mixin.dart';
 
 // ============================================================
+// "Утилиты для форматирования"
+// ============================================================
+/// Форматирует число в строку с пробелами как разделитель тысяч
+/// Примеры:
+///   - "10000" → "10 000"
+///   - "1234567" → "1 234 567"
+///   - "100" → "100"
+String _formatNumberWithSpaces(String value) {
+  // Удаляем все пробелы, чтобы получить чистое число
+  final cleanValue = value.replaceAll(' ', '');
+  
+  if (cleanValue.isEmpty) return '';
+  
+  // Разбиваем на группы по 3 цифры справа налево и вставляем пробелы
+  final parts = <String>[];
+  for (var i = cleanValue.length; i > 0; i -= 3) {
+    final start = (i - 3) < 0 ? 0 : (i - 3);
+    parts.insert(0, cleanValue.substring(start, i));
+  }
+  
+  return parts.join(' ');
+}
+
+/// Получает чистое число из отформатированной строки (удаляет пробелы)
+String _getCleanNumber(String formattedValue) {
+  return formattedValue.replaceAll(' ', '');
+}
+
+// ============================================================
 // "Виджет: Экран добавления аренды квартиры в недвижимость"
 // ============================================================
 class DynamicFilter extends StatefulWidget {
@@ -322,37 +351,19 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// Получить ID атрибута "Вам предложат цену" безопасно
   /// Гарантирует наличие ID, так как атрибут всегда добавляется в _loadAttributes()
   int? _getOfferPriceAttributeId() {
-    // Получаем через resolver (уже исправлено чтобы возвращать null для категорий без атрибута)
-    var id = _attributeResolver.getOfferPriceAttributeId();
-    if (id != null) {
-      return id;
-    }
-
-    // Fallback: ищем в _attributes по названию "Вам предложат цену"
-    // Это только для недвижимости когда метаданные загружены неполно
-    try {
-      final attr = _attributes.firstWhere(
-        (a) => a.title == 'Вам предложат цену',
-      );
-      return attr.id;
-    } catch (_) {
-      // Если не нашли по названию, значит этот атрибут не существует в этой категории
-      // ВАЖНО: НЕ ищем "любой булевый атрибут" - это вызовет ошибку "Attribute doesn't belong to category"
-      // При возврате null, код будет правильно пропускать добавление этого атрибута для Jobs и т.д.
-      return null;
-    }
+    // Просто делегируем resolver'у — он уже умеет искать
+    // по названию, частичному совпадению и другим критериям
+    return _attributeResolver.getOfferPriceAttributeId();
   }
 
   Future<void> _loadAttributes() async {
     try {
       // Определяем категорию: из редактирования, затем из параметра, затем по умолчанию 2
       final categoryId = _editAdvertCategoryId ?? widget.categoryId ?? 2;
-      // log.d('');
-      // log.d('🎯 _loadAttributes() called:');
-      // log.d('   - _editAdvertCategoryId: $_editAdvertCategoryId');
-      // log.d('   - widget.categoryId: ${widget.categoryId}');
-      // log.d('   - Using categoryId: $categoryId');
-      // log.d('   Loading attributes for category: $categoryId');
+      log.d('');
+      log.d('🎯 _loadAttributes() called:');
+      log.d('   - categoryId: $categoryId');
+      log.d('   Loading attributes for category: $categoryId');
       final token = TokenService.currentToken;
 
       // ИСПОЛЬЗУЕМ /adverts/create ВМЕСТО /meta/filters
@@ -366,20 +377,28 @@ class _DynamicFilterState extends State<DynamicFilter>
           categoryId: categoryId,
           token: token,
         );
-        // log.d();
+        log.d('✅ Loaded attributes via /adverts/create');
       } catch (e) {
-        // log.d();
+        log.d('⚠️ Fallback to /meta/filters');
         // Fallback на старый метод
         final response = await ApiService.getMetaFilters(
           categoryId: categoryId,
           token: token,
         );
         loadedAttributes = response.filters;
-        // log.d();
       }
 
-      // Логируем загруженные атрибуты
-      // (debug вывод отключён)
+      // 🔍 DEBUG: Логируем все атрибуты и ищем "Вам предложат цену"
+      log.d('');
+      log.d('📋 ALL ATTRIBUTES FOR CATEGORY $categoryId:');
+      for (final attr in loadedAttributes) {
+        if (attr.title.toLowerCase().contains('предложат') ||
+            attr.title.toLowerCase().contains('торг') ||
+            attr.id == 1048 || attr.id == 1050 || attr.id == 1051 || attr.id == 1052) {
+          log.d('   ⭐ ID: ${attr.id}, Title: "${attr.title}", isRequired: ${attr.isRequired}');
+        }
+      }
+      log.d('');
 
       // Convert to mutable list and apply Style → Style2 mapping for submission form
       var mutableFilters = List<Attribute>.from(loadedAttributes);
@@ -388,7 +407,6 @@ class _DynamicFilterState extends State<DynamicFilter>
       // Save both original style and transformed style
       mutableFilters = mutableFilters.map((attr) {
         final submissionStyle = _getSubmissionStyle(attr.style);
-        // log.d();
         // Create new attribute with both styles preserved
         return Attribute(
           id: attr.id,
@@ -415,53 +433,23 @@ class _DynamicFilterState extends State<DynamicFilter>
 
       // Инициализируем resolver для динамического поиска ID атрибутов
       _attributeResolver = AttributeResolver(mutableFilters);
-      // log.d('');
-      // log.d('📋 ═══════════════════════════════════════════════════════');
-      // log.d('📋 CATEGORY $categoryId - ATTRIBUTES LOADED');
-      // log.d('📋 ═══════════════════════════════════════════════════════');
+      log.d('');
+      log.d('📋 ═══════════════════════════════════════════════════════');
+      log.d('📋 CATEGORY $categoryId - ATTRIBUTES LOADED');
+      log.d('📋 ═══════════════════════════════════════════════════════');
       _attributeResolver.debugPrintAll(prefix: '   ');
       _attributeResolver.debugPrintCriticalAttributes(prefix: '   ');
-      // log.d('📋 ═══════════════════════════════════════════════════════');
-      // log.d('');
+      log.d('📋 ═══════════════════════════════════════════════════════');
+      log.d('');
 
       // Получаем ID критических атрибутов динамически
       var offerPriceAttrId = _attributeResolver.getOfferPriceAttributeId();
+      log.d('🔍 getOfferPriceAttributeId() returned: $offerPriceAttrId');
 
-      // Если не нашли по имени/типу, ищем по известным ID для недвижимости
-      // и используем первый найденный или создаём новый
+      // Если не нашли по имени, это может быть категория, которая не требует этого атрибута
+      // (например, Jobs и т.д.). В этом случае просто возвращаем null и не добавляем атрибут
       if (offerPriceAttrId == null) {
-        // log.d();
-        // log.d();
-
-        // Попробуем найти по известным ID (в случае если API поменял названия)
-        const knownOfferPriceIds = [1048, 1050, 1051, 1052, 1128, 1130];
-        for (final id in knownOfferPriceIds) {
-          if (mutableFilters.any((a) => a.id == id)) {
-            offerPriceAttrId = id;
-            // log.d('   ✅ Found by known ID: $id');
-            break;
-          }
-        }
-      }
-
-      // Если всё ещё не нашли, создаём новый с дефолтным ID для этой категории
-      if (offerPriceAttrId == null) {
-        // log.d();
-
-        // Используем ID в зависимости от категории (fallback)
-        if (categoryId == 2) {
-          offerPriceAttrId = 1048; // Продажа квартир
-        } else if (categoryId == 3) {
-          offerPriceAttrId = 1050; // Долгосрочная аренда квартир
-        } else if (categoryId == 5) {
-          offerPriceAttrId = 1051; // Продажа комнат
-        } else if (categoryId == 6) {
-          offerPriceAttrId = 1052; // Долгосрочная аренда комнат
-        } else {
-          // Для всех остальных категорий используем базовый ID
-          offerPriceAttrId = 2000 + categoryId;
-          // log.d();
-        }
+        log.d('⚠️ Offer Price Attribute not found in this category (normal for non-real estate)');
       }
 
       // Проверяем наличие обязательного атрибута "Вам предложат цену"
@@ -469,13 +457,16 @@ class _DynamicFilterState extends State<DynamicFilter>
         (a) => a.id == offerPriceAttrId,
       );
 
-      if (!hasOfferPriceAttr) {
-        // log.d();
-        // НЕ создаём искусственный атрибут - это вызовет ошибку валидации на API!
-        // Он будет пропущен при отправке, так как его нет в _attributes
-      } else {
-        // log.d('✅ Attribute $offerPriceAttrId already exists in filters');
+      log.d('');
+      log.d('🔷 FINAL OFFER PRICE ATTRIBUTE:');
+      log.d('   - ID: $offerPriceAttrId');
+      log.d('   - Exists in filters: $hasOfferPriceAttr');
+      if (hasOfferPriceAttr) {
+        final attr = mutableFilters.firstWhere((a) => a.id == offerPriceAttrId!);
+        log.d('   - Title: "${attr.title}"');
+        log.d('   - Is Required: ${attr.isRequired}');
       }
+      log.d('');
 
       if (mounted) {
         setState(() {
@@ -646,7 +637,8 @@ class _DynamicFilterState extends State<DynamicFilter>
       if (advertData.containsKey('price')) {
         final price = advertData['price'];
         if (price != null) {
-          _priceController.text = price.toString();
+          // Форматируем цену с пробелами для отображения
+          _priceController.text = _formatNumberWithSpaces(price.toString());
           // log.d('✅ Filled price: $price');
         }
       }
@@ -1684,8 +1676,12 @@ class _DynamicFilterState extends State<DynamicFilter>
         // Attribute 1048 (Вам предложат цену) is a boolean type with no values array
         // DO NOT add to value_selected - will be handled separately below
         // (value_selected should only contain VALUE IDs from options)
+        log.d('   📌 Boolean attribute ID=$key, value=true (type=${attr.title})');
         if (key != 1048 && attr.values.isNotEmpty) {
           attributes['value_selected'].add(attr.values.first.id);
+          log.d('      → Added to value_selected (has values array)');
+        } else {
+          log.d('      → Skipped (no values array, will be handled separately)');
         }
       }
     });
@@ -1721,20 +1717,30 @@ class _DynamicFilterState extends State<DynamicFilter>
     // ⚠️ КРИТИЧНО: Отправляем только если атрибут существует в этой категории!
     final offerPriceAttrId = _getOfferPriceAttributeId();
 
-    if (offerPriceAttrId != null &&
-        _attributes.any((a) => a.id == offerPriceAttrId)) {
-      // Атрибут существует в этой категории - добавляем в запрос
-      if (_selectedValues.containsKey(offerPriceAttrId) &&
-          _selectedValues[offerPriceAttrId] == true) {
-        attributes['values']['$offerPriceAttrId'] = {'value': 1};
-        // log.d();
+    log.d('');
+    log.d('🔍 [OFFER PRICE] Processing:');
+    log.d('   - Offer Price Attribute ID: $offerPriceAttrId');
+    
+    if (offerPriceAttrId != null) {
+      final existsInCategory = _attributes.any((a) => a.id == offerPriceAttrId);
+      log.d('   - Exists in category: $existsInCategory');
+      
+      if (existsInCategory) {
+        // Атрибут существует в этой категории - добавляем в запрос
+        if (_selectedValues.containsKey(offerPriceAttrId) &&
+            _selectedValues[offerPriceAttrId] == true) {
+          log.d('   ✅ Adding to values (selected=true)');
+          attributes['values']['$offerPriceAttrId'] = {'value': 1};
+        } else {
+          // If not explicitly selected, add by default (it's required)
+          log.d('   ✅ Adding to values (default for required attr)');
+          attributes['values']['$offerPriceAttrId'] = {'value': 1};
+        }
       } else {
-        // If not explicitly selected, add by default (it's required)
-        attributes['values']['$offerPriceAttrId'] = {'value': 1};
-        // log.d();
+        log.d('   ❌ Attribute does NOT exist in category (skipping)');
       }
     } else {
-      // log.d();
+      log.d('   ⚠️ Offer Price Attribute ID is null (not available for this category)');
     }
 
     // Handle required attribute "Общая площадь" (Total area) - ID varies by category
@@ -1844,7 +1850,7 @@ class _DynamicFilterState extends State<DynamicFilter>
     return CreateAdvertRequest(
       name: _titleController.text,
       description: _descriptionController.text,
-      price: _priceController.text,
+      price: _getCleanNumber(_priceController.text),
       categoryId: _editAdvertCategoryId ?? widget.categoryId ?? 2,
       regionId:
           mainRegionId ??
@@ -1891,7 +1897,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       _fieldErrors['description'] = 'Введите не менее 70 символов';
     }
 
-    if (_priceController.text.isEmpty) {
+    if (_getCleanNumber(_priceController.text).isEmpty) {
       _fieldErrors['price'] = 'Заполните цену';
     }
 
@@ -3562,7 +3568,20 @@ class _DynamicFilterState extends State<DynamicFilter>
                               : textPrimary,
                         ),
                         onChanged: (value) {
-                          // Очищаем ошибку при вводе цены.
+                          // Форматируем число с пробелами для отображения
+                          final formatted = _formatNumberWithSpaces(value);
+                          if (formatted != value) {
+                            // Обновляем текст в контроллере с форматированием
+                            final cursorPos = _priceController.selection.baseOffset;
+                            _priceController.value = TextEditingValue(
+                              text: formatted,
+                              selection: TextSelection.collapsed(
+                                offset: cursorPos + (formatted.length - value.length),
+                              ),
+                            );
+                          }
+                          
+                          // Очищаем ошибку при вводе цены
                           if (value.isNotEmpty) {
                             setState(() {
                               _fieldErrors.remove('price');

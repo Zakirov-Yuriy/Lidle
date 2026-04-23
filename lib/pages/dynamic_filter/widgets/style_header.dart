@@ -24,11 +24,23 @@ class StyleHeader extends StatelessWidget {
     // в режиме просмотра — style (обычно пустой от API).
     final displayStyle =
         isSubmissionMode ? (attribute.styleSingle ?? '') : attribute.style;
+    // final stylePrefix = isSubmissionMode ? 'Style2' : 'Style';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (displayStyle.isNotEmpty) const SizedBox(height: 4),
+        // Показывает стили над полями для отладки и валидации правильности отображения
+        // if (displayStyle.isNotEmpty)
+        //   Text(
+        //     '$stylePrefix: $displayStyle',
+        //     style: const TextStyle(
+        //       color: Color(0xFFFF1744), // Red color for debug visibility
+        //       fontSize: 12,
+        //       fontWeight: FontWeight.w600,
+        //       letterSpacing: 0.3,
+        //     ),
+        //   ),
+        // if (displayStyle.isNotEmpty) const SizedBox(height: 4),
       ],
     );
   }

@@ -52,24 +52,67 @@ class Advert {
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
-  /// Условие: is_bargain == true ИЛИ атрибут 1048 имеет value == 1
-  /// Атрибут 1048 = "Вам предложат цену"
+  /// Условие: is_bargain == true ИЛИ атрибут "Вам предложат цену" имеет value == 1
+  /// Атрибуты для разных категорий:
+  /// - 1048 = Продажа квартир
+  /// - 1050 = Долгосрочная аренда квартир
+  /// - 1051 = Продажа комнат
+  /// - 1052 = Долгосрочная аренда комнат
+  /// - 1128, 1130 = другие категории
+  /// 
+  /// Также работает для ЛЮБЫХ других категорий, если там есть атрибут с названием,
+  /// содержащим "предложат цену" или "можно торговать"
   bool canShowOfferButton() {
     // Проверяем флаг is_bargain
     if (isBargain) {
       return true;
     }
 
-    // Проверяем атрибут 1048 "Вам предложат цену"
-    if (characteristics != null && characteristics!.containsKey('1048')) {
-      final attr1048 = characteristics!['1048'];
-      if (attr1048 is Map<String, dynamic>) {
-        final value = attr1048['value'];
-        // value может быть int (1) или string ("1")
-        return value == 1 || value == '1';
+    if (characteristics == null) {
+      return false;
+    }
+
+    // Все известные ID атрибутов "Вам предложат цену" для разных категорий
+    const offerPriceAttrIds = [1048, 1050, 1051, 1052, 1128, 1130];
+    
+    // Метод 1: Проверяем по известным ID (для недвижимости)
+    for (final attrId in offerPriceAttrIds) {
+      final attrIdStr = attrId.toString();
+      if (characteristics!.containsKey(attrIdStr)) {
+        final attrData = characteristics![attrIdStr];
+        if (_isOfferPriceValue(attrData)) {
+          return true;
+        }
       }
     }
 
+    // Метод 2: Универсальный поиск - ищем по названию/title атрибута
+    // Работает для любых категорий (Транспорт, Работа, и т.д.)
+    for (final entry in characteristics!.entries) {
+      final attrData = entry.value;
+      if (attrData is Map<String, dynamic>) {
+        final title = attrData['title'] as String? ?? '';
+        // Ищем атрибут с названием, содержащим "предложат цену" или похожие варианты
+        if (title.toLowerCase().contains('предложат') || 
+            title.toLowerCase().contains('торг') ||
+            title.toLowerCase().contains('торговать')) {
+          if (_isOfferPriceValue(attrData)) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /// Вспомогательный метод: проверяет, что значение атрибута = 1 (истина)
+  bool _isOfferPriceValue(dynamic attrData) {
+    if (attrData is Map<String, dynamic>) {
+      final value = attrData['value'];
+      // value может быть int (1), string ("1"), boolean (true)
+      return value == 1 || value == '1' || value == true;
+    }
     return false;
   }
 

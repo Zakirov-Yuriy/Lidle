@@ -11,6 +11,31 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 
+// ============================================================
+// "Утилиты для форматирования"
+// ============================================================
+/// Форматирует цену: "1000000,00" → "1 000 000 ₽"
+String _formatPriceWithRuble(String price) {
+  if (price.isEmpty) return '₽';
+  
+  // Удаляем копейки (всё после запятой)
+  final integerPart = price.contains(',') 
+      ? price.split(',')[0] 
+      : price.split('.')[0];
+  
+  // Добавляем пробелы между разрядами
+  final parts = <String>[];
+  for (var i = integerPart.length; i > 0; i -= 3) {
+    final start = (i - 3) < 0 ? 0 : (i - 3);
+    parts.insert(0, integerPart.substring(start, i));
+  }
+  
+  final formatted = parts.join(' ');
+  return '$formatted ₽';
+}
+
+// ============================================================
+
 class ListingCard extends StatefulWidget {
   final Listing listing;
   final VoidCallback? onBeforeNavigate;
@@ -178,7 +203,7 @@ class _ListingCardState extends State<ListingCard> {
                     ),
 
                     Text(
-                      widget.listing.price,
+                      _formatPriceWithRuble(widget.listing.price),
                       style: TextStyle(
                         color: textPrimary,
                         fontSize: priceFontSize,

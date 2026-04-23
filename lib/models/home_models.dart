@@ -128,24 +128,85 @@ class Listing {
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"
-  /// Условие: is_bargain == true ИЛИ атрибут 1048 имеет value == 1
-  /// Атрибут 1048 = "Вам предложат цену"
+  /// Условие: is_bargain == true ИЛИ атрибут "Вам предложат цену" имеет value == 1
+  /// Атрибуты для разных категорий:
+  /// - 1048 = Продажа квартир
+  /// - 1050 = Долгосрочная аренда квартир
+  /// - 1051 = Продажа комнат
+  /// - 1052 = Долгосрочная аренда комнат
+  /// - 1128, 1130 = другие категории
+  /// 
+  /// Также работает для ЛЮБЫХ других категорий, если там есть атрибут с названием,
+  /// содержащим "предложат цену" или "можно торговать"
   bool canShowOfferButton() {
+    // 🔍 DEBUG: Логируем вызов метода
+    log.d('');
+    log.d('🔵 canShowOfferButton() called for listing ID: $id');
+    log.d('   - isBargain: $isBargain');
+    log.d('   - characteristics.length: ${characteristics.length}');
+    log.d('   - characteristics.keys: ${characteristics.keys.toList()}');
+
     // Проверяем флаг is_bargain
     if (isBargain) {
+      log.d('   ✅ RESULT: TRUE (isBargain flag is true)');
+      log.d('');
       return true;
     }
 
-    // Проверяем атрибут 1048 "Вам предложат цену"
-    if (characteristics.containsKey('1048')) {
-      final attr1048 = characteristics['1048'];
-      if (attr1048 is Map<String, dynamic>) {
-        final value = attr1048['value'];
-        // value может быть int (1) или string ("1")
-        return value == 1 || value == '1';
+    // Все известные ID атрибутов "Вам предложат цену" для разных категорий
+    const offerPriceAttrIds = [1048, 1050, 1051, 1052, 1128, 1130];
+    
+    // Метод 1: Проверяем по известным ID (для недвижимости)
+    log.d('   🔍 Метод 1: Проверка по известным ID...');
+    for (final attrId in offerPriceAttrIds) {
+      final attrIdStr = attrId.toString();
+      if (characteristics.containsKey(attrIdStr)) {
+        final attrData = characteristics[attrIdStr];
+        log.d('      Found attr $attrId: $attrData');
+        if (_isOfferPriceValue(attrData)) {
+          log.d('   ✅ RESULT: TRUE (found by known ID $attrId)');
+          log.d('');
+          return true;
+        }
       }
     }
 
+    // Метод 2: Универсальный поиск - ищем по названию/title атрибута
+    // Работает для любых категорий (Транспорт, Работа, и т.д.)
+    log.d('   🔍 Метод 2: Универсальный поиск по названию...');
+    for (final entry in characteristics.entries) {
+      final attrData = entry.value;
+      if (attrData is Map<String, dynamic>) {
+        final title = attrData['title'] as String? ?? '';
+        log.d('      Attr ${entry.key}: title="$title"');
+        // Ищем атрибут с названием, содержащим "предложат цену" или похожие варианты
+        if (title.toLowerCase().contains('предложат') || 
+            title.toLowerCase().contains('торг') ||
+            title.toLowerCase().contains('торговать')) {
+          log.d('         → Matched by name!');
+          if (_isOfferPriceValue(attrData)) {
+            log.d('   ✅ RESULT: TRUE (found by name)');
+            log.d('');
+            return true;
+          }
+        }
+      }
+    }
+
+    log.d('   ❌ RESULT: FALSE (no offer price attribute found)');
+    log.d('');
+    return false;
+  }
+
+  /// Вспомогательный метод: проверяет, что значение атрибута = 1 (истина)
+  bool _isOfferPriceValue(dynamic attrData) {
+    if (attrData is Map<String, dynamic>) {
+      final value = attrData['value'];
+      // value может быть int (1), string ("1"), boolean (true)
+      final result = value == 1 || value == '1' || value == true;
+      log.d('         value: $value (type: ${value.runtimeType}), isOffer: $result');
+      return result;
+    }
     return false;
   }
 
@@ -386,10 +447,14 @@ class Listing {
 
     // Если это Map - это может быть структура с 'value', 'min', 'max' и т.д.
     if (valueObj is Map) {
+      // ВАЖНО: Сохраняем весь объект атрибута, чтобы сохранить title для поиска
+      // Это нужно для проверки атрибутов в canShowOfferButton()
+      
       // Для value_selected атрибутов (ID < 1000)
       // Формат: {id: 18, title: "...", value: 154, max_value: null}
       if (valueObj.containsKey('value')) {
-        return valueObj['value'];
+        // Возвращаем весь Map, чтобы сохранить title и другую информацию
+        return Map<String, dynamic>.from(valueObj);
       }
       // Для values атрибутов (ID >= 1000) - диапазоны
       // Формат: {min: 500000, max: 1200000}
