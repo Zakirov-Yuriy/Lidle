@@ -10,6 +10,8 @@ import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/favorites_screen.dart';
 import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 
 class BottomNavigation extends StatelessWidget {
   final ValueChanged<int>? onItemSelected;
@@ -82,8 +84,11 @@ class BottomNavigation extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          _navigateToScreen(context, index);
-          onItemSelected?.call(index);
+          final wasNavigated = _navigateToScreen(context, index);
+          // Вызываем callback только если навигация была успешна
+          if (wasNavigated) {
+            onItemSelected?.call(index);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
@@ -106,8 +111,11 @@ class BottomNavigation extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          _navigateToScreen(context, index);
-          onItemSelected?.call(index);
+          final wasNavigated = _navigateToScreen(context, index);
+          // Вызываем callback только если навигация была успешна
+          if (wasNavigated) {
+            onItemSelected?.call(index);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
@@ -127,7 +135,25 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
-  void _navigateToScreen(BuildContext context, int index) {
+  /// Переходит на экран с индексом [index].
+  /// Возвращает [true] если навигация была успешна, [false] если авторизация отклонена.
+  bool _navigateToScreen(BuildContext context, int index) {
+    // Проверяем авторизацию для защищенных экранов
+    final token = TokenService.currentToken;
+    final isAuthorized = token != null && token.isNotEmpty;
+    
+    // Индексы защищенных экранов: 2 (категории), 3 (покупки), 4 (сообщения), 5 (профиль)
+    const protectedScreens = {2, 3, 4, 5};
+    
+    if (protectedScreens.contains(index) && !isAuthorized) {
+      // Показываем плашку авторизации
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в свой профиль или создайте новый, чтобы продолжить',
+      );
+      return false; // Навигация отклонена
+    }
+
     final String routeName;
     switch (index) {
       case 0:
@@ -149,7 +175,7 @@ class BottomNavigation extends StatelessWidget {
         routeName = ProfileDashboard.routeName;
         break;
       default:
-        return;
+        return false;
     }
 
     // Для CategorySelectionScreen (index 2) используем pushNamed вместо pushReplacementNamed,
@@ -159,5 +185,7 @@ class BottomNavigation extends StatelessWidget {
     } else {
       Navigator.of(context).pushReplacementNamed(routeName);
     }
+    
+    return true; // Навигация успешна
   }
 }

@@ -603,6 +603,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
           GestureDetector(
             onTap: () {
+              final token = TokenService.currentToken;
+              if (token == null || token.isEmpty) {
+                // ❌ Неавторизованный пользователь не может оставить жалобу
+                SnackBarHelper.showAuthRequired(
+                  context,
+                  'Войдите в свой профиль или создайте новый, чтобы продолжить',
+                );
+                return;
+              }
+              
+              // ✅ Авторизованный пользователь может оставить жалобу
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
@@ -639,8 +650,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          setState(() => _selectedIndex = index);
-          _navigateToScreen(index);
+          final wasNavigated = _navigateToScreen(index);
+          // Обновляем индекс только если навигация была успешна
+          if (wasNavigated) {
+            setState(() => _selectedIndex = index);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
@@ -663,8 +677,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          setState(() => _selectedIndex = index);
-          _navigateToScreen(index);
+          final wasNavigated = _navigateToScreen(index);
+          // Обновляем индекс только если навигация была успешна
+          if (wasNavigated) {
+            setState(() => _selectedIndex = index);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
@@ -711,7 +728,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  void _navigateToScreen(int index) {
+  /// Переходит на экран с индексом [index].
+  /// Возвращает [true] если навигация была успешна, [false] если авторизация отклонена.
+  bool _navigateToScreen(int index) {
     // Индексы 2, 3, 4, 5 требуют авторизацию
     final authRequiredIndices = {2, 3, 4, 5};
     
@@ -719,8 +738,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final token = TokenService.currentToken;
       if (token == null || token.isEmpty) {
         // ❌ Неавторизованный пользователь не может перейти на эти экраны
-        SnackBarHelper.showWarning(context, 'Требуется авторизация');
-        return;
+        SnackBarHelper.showAuthRequired(
+          context,
+          'Войдите в свой профиль или создайте новый, чтобы продолжить',
+        );
+        return false; // Навигация отклонена
       }
     }
 
@@ -751,7 +773,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       default:
-        return;
+        return false;
     }
+    
+    return true; // Навигация успешна
   }
 }

@@ -1366,7 +1366,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         // Проверяем авторизацию перед открытием диалога жалобы
         final token = TokenService.currentToken;
         if (token == null || token.isEmpty) {
-          SnackBarHelper.showWarning(context, 'Требуется авторизация');
+          SnackBarHelper.showAuthRequired(
+            context,
+            'Чтобы пожаловаться на объявление, войдите в свой профиль или создайте новый',
+          );
           return;
         }
         
@@ -1443,8 +1446,16 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
 
   /// 📞 Загрузить номера телефонов владельца объявления и показать диалог
   Future<void> _loadAndShowPhoneDialog() async {
-    // ✅ Неавторизованный пользователь может просмотреть номер
-    // (проверка авторизации будет в API при необходимости)
+    // Проверяем авторизацию перед загрузкой номеров
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Чтобы позвонить продавцу, войдите в свой профиль или создайте новый',
+      );
+      return;
+    }
     
     // Проверяем, есть ли userId (sellerId)
     final userId = _listing.userId;
@@ -1543,7 +1554,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     final token = TokenService.currentToken;
     if (token == null || token.isEmpty) {
       if (!mounted) return;
-      SnackBarHelper.showWarning(context, 'Требуется авторизация');
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Чтобы связаться с этим продавцом, войдите в свой профиль или создайте новый',
+      );
       return;
     }
     

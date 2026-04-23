@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 
 class SearchBarWidget extends StatefulWidget {
   const SearchBarWidget({
@@ -40,7 +42,20 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: widget.onMenuPressed,
+            onTap: () {
+              final token = TokenService.currentToken;
+              if (token == null || token.isEmpty) {
+                // ❌ Неавторизованный пользователь не может открыть меню
+                SnackBarHelper.showAuthRequired(
+                  context,
+                  'Войдите в свой профиль или создайте новый, чтобы продолжить',
+                );
+                return;
+              }
+              
+              // ✅ Авторизованный пользователь может открыть меню
+              widget.onMenuPressed?.call();
+            },
             child: const Icon(Icons.menu, color: textPrimary, size: 28),
           ),
           const SizedBox(width: 9),

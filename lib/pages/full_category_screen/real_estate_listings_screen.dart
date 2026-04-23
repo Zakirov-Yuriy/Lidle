@@ -1269,7 +1269,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
               // Проверяем авторизацию перед открытием фильтров
               final token = TokenService.currentToken;
               if (token == null || token.isEmpty) {
-                SnackBarHelper.showWarning(context, 'Требуется авторизация');
+                SnackBarHelper.showAuthRequired(
+                  context,
+                  'Войдите в свой профиль или создайте новый, чтобы продолжить',
+                );
                 return;
               }
               
@@ -1611,8 +1614,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          setState(() => _selectedIndex = index);
-          _navigateToScreen(index);
+          final wasNavigated = _navigateToScreen(index);
+          if (wasNavigated) {
+            setState(() => _selectedIndex = index);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
@@ -1634,8 +1639,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
-          setState(() => _selectedIndex = index);
-          _navigateToScreen(index);
+          final wasNavigated = _navigateToScreen(index);
+          if (wasNavigated) {
+            setState(() => _selectedIndex = index);
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(13.5),
@@ -1655,7 +1662,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     );
   }
 
-  void _navigateToScreen(int index) {
+  /// Переходит на экран с индексом [index].
+  /// Возвращает [true] если навигация была успешна, [false] если авторизация отклонена.
+  bool _navigateToScreen(int index) {
     // Индексы 2, 3, 4, 5 требуют авторизацию
     final authRequiredIndices = {2, 3, 4, 5};
     
@@ -1663,8 +1672,11 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       final token = TokenService.currentToken;
       if (token == null || token.isEmpty) {
         // ❌ Неавторизованный пользователь не может перейти на эти экраны
-        SnackBarHelper.showWarning(context, 'Требуется авторизация');
-        return;
+        SnackBarHelper.showAuthRequired(
+          context,
+          'Войдите в свой профиль или создайте новый, чтобы продолжить',
+        );
+        return false; // Навигация отклонена
       }
     }
 
@@ -1695,8 +1707,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       default:
-        return;
+        return false;
     }
+    
+    return true; // Навигация успешна
   }
 
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {

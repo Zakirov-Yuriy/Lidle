@@ -263,15 +263,8 @@ class _HomePageState extends State<HomePage>
                                       // Защита от двойного клика
                                       if (_isShareInProgress) return;
                                       
-                                      // Проверяем авторизацию перед поделиться
-                                      if (authState is! AuthAuthenticated) {
-                                        Navigator.pushNamed(
-                                          context,
-                                          SignInScreen.routeName,
-                                        );
-                                      } else {
-                                        _shareApp();
-                                      }
+                                      // Разрешаем делиться приложением всем пользователям
+                                      _shareApp();
                                     },
                                     child: SvgPicture.asset(
                                       'assets/home_page/share_outlined.svg',
@@ -394,18 +387,7 @@ class _HomePageState extends State<HomePage>
                     ),
                     bottomNavigationBar: BottomNavigation(
                       onItemSelected: (index) {
-                        // Проверяем авторизацию перед навигацией
-                        // Разрешаем доступ к Избранному (index 1) для всех пользователей
-                        // Остальные вкладки требуют авторизацию
-                        final isUnauthenticatedUser = authState is! AuthAuthenticated;
-                        final isFavoritesTab = index == 1;
-                        final requiresAuth = isUnauthenticatedUser && index != 0 && !isFavoritesTab;
-                        
-                        if (requiresAuth) {
-                          Navigator.pushNamed(context, SignInScreen.routeName);
-                          return;
-                        }
-
+                        // Авторизация проверяется внутри BottomNavigation
                         if (index == 3) {
                           context.read<NavigationBloc>().add(
                             NavigateToMyPurchasesEvent(),

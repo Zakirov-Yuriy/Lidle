@@ -176,9 +176,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
               break;
           }
         } else {
-          // Не авторизован - редирект на sign_in
-          emit(const NavigationToSignIn());
-          _navigateToSignIn();
+          // Не авторизован - навигация на sign_in убрана
+          // Снэкбар показывается в bottom_navigation.dart
         }
         break;
       default:
@@ -248,8 +247,7 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeMyPurchasesNavigation(context); // Handle MyPurchases navigation
     } else if (state is NavigationToMessages) {
       _executeMessagesNavigation(context);
-    } else if (state is NavigationToSignIn) {
-      _executeSignInNavigation(context);
+    // NavigationToSignIn удалён - переход на sign_in_screen убран
     }
   }
 
