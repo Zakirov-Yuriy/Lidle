@@ -123,10 +123,13 @@ class CustomErrorSnackBar extends StatelessWidget {
                 if (avatarUrl != null && avatarUrl!.isNotEmpty)
                   _buildAvatarWidget(avatarUrl!)
                 else
-                  Icon(
-                    _icon,
-                    color: _iconColor,
-                    size: 28.0,
+                  ClipOval(
+                    child: Image.asset(
+                      'assets/home_page/logo_new.png',
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 const SizedBox(width: 12.0),
                 Expanded(
