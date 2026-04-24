@@ -138,7 +138,16 @@ class WishlistService {
         final List<dynamic> items = response['data'] as List<dynamic>;
         return items
             .whereType<Map<String, dynamic>>()
-            .map((item) => (item['id'] as int?))
+            // ⚠️ item['id'] — это ID записи wishlist, нам нужен ID объявления
+            .map((item) {
+              final wishable = item['wishable'];
+              if (wishable is Map<String, dynamic>) {
+                final id = wishable['id'];
+                if (id is int) return id;
+                if (id is String) return int.tryParse(id);
+              }
+              return null;
+            })
             .whereType<int>()
             .toList();
       }

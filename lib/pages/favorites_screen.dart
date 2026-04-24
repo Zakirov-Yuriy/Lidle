@@ -294,72 +294,107 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               Expanded(
                 child: BlocBuilder<WishlistBloc, WishlistState>(
                   builder: (context, wishlistState) {
+
+                    // Показываем спиннер пока данные ещё не пришли
+                    if (wishlistState is WishlistInitial ||
+                        wishlistState is WishlistLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    // ── Авторизованный режим: данные с сервера ──────────────
+                    if (wishlistState is WishlistLoaded && !wishlistState.isLocal) {
+                      if (wishlistState.listings.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Center(
+                            child: Text(
+                              'Пока что здесь пусто',
+                              style: TextStyle(color: textMuted, fontSize: 16),
+                            ),
+                          ),
+                        );
+                      }
+
+                      List<Listing> favoritedListings = List.from(wishlistState.listings);
+                      if (_selectedSortOptions.isNotEmpty) {
+                        favoritedListings = _sortListingsFunc(_selectedSortOptions, favoritedListings);
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 9,
+                            mainAxisSpacing: 0,
+                            mainAxisExtent: 263,
+                          ),
+                          itemCount: favoritedListings.length,
+                          itemBuilder: (context, index) {
+                            return ListingCard(listing: favoritedListings[index]);
+                          },
+                        ),
+                      );
+                    }
+
+                    // ── Локальный режим (не авторизован) или ошибка ─────────
+                    // Фильтруем по wishlistIds из ListingsBloc.
                     return BlocBuilder<ListingsBloc, ListingsState>(
                       builder: (context, listingsState) {
-                        if (listingsState is ListingsLoaded) {
-                          // Получаем ID избранного из WishlistBloc если есть
-                          Set<int>? wishlistIds;
-                          if (wishlistState is WishlistLoaded) {
-                            wishlistIds = wishlistState.wishlistIds;
-                          }
-                          
-                          List<Listing> favoritedListings =
-                              _getFavoritedListings(listingsState.listings, wishlistIds: wishlistIds);
-
-                          // Применяем сортировку если выбрана
-                          if (_selectedSortOptions.isNotEmpty) {
-                            favoritedListings = _sortListingsFunc(
-                              _selectedSortOptions,
-                              List.from(favoritedListings), // Копируем список
-                            );
-                          }
-
-                          if (favoritedListings.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 12),
-                              child: Center(
-                                child: Text(
-                                  'Пока что здесь пусто',
-                                  style: TextStyle(
-                                    color: textMuted,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: GridView.builder(
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    crossAxisSpacing: 9,
-                                    mainAxisSpacing: 0,
-                                    mainAxisExtent: 263,
-                                  ),
-                              itemCount: favoritedListings.length,
-                              itemBuilder: (context, index) {
-                                return ListingCard(
-                                  listing: favoritedListings[index],
-                                );
-                              },
-                            ),
-                          );
-                        } else {
+                        if (listingsState is! ListingsLoaded) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 12),
                             child: Center(
                               child: Text(
                                 'Загрузка...',
-                                style: TextStyle(
-                                  color: textMuted,
-                                  fontSize: 16,
-                                ),
+                                style: TextStyle(color: textMuted, fontSize: 16),
                               ),
                             ),
                           );
                         }
+
+                        Set<int>? wishlistIds;
+                        if (wishlistState is WishlistLoaded) {
+                          wishlistIds = wishlistState.wishlistIds;
+                        }
+
+                        List<Listing> favoritedListings =
+                            _getFavoritedListings(listingsState.listings, wishlistIds: wishlistIds);
+
+                        if (_selectedSortOptions.isNotEmpty) {
+                          favoritedListings = _sortListingsFunc(
+                            _selectedSortOptions,
+                            List.from(favoritedListings),
+                          );
+                        }
+
+                        if (favoritedListings.isEmpty) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12),
+                            child: Center(
+                              child: Text(
+                                'Пока что здесь пусто',
+                                style: TextStyle(color: textMuted, fontSize: 16),
+                              ),
+                            ),
+                          );
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: GridView.builder(
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 9,
+                              mainAxisSpacing: 0,
+                              mainAxisExtent: 263,
+                            ),
+                            itemCount: favoritedListings.length,
+                            itemBuilder: (context, index) {
+                              return ListingCard(listing: favoritedListings[index]);
+                            },
+                          ),
+                        );
                       },
                     );
                   },

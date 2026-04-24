@@ -303,7 +303,7 @@ class ApiService {
     String? token,
   }) async {
     return _retryRequest(
-      () => _getWithQueryRequest(endpoint, queryParams, null),
+      () => _getWithQueryRequest(endpoint, queryParams, token),
       endpoint,
     );
   }

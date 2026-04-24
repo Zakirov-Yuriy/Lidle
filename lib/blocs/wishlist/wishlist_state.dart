@@ -4,7 +4,6 @@
 
 part of 'wishlist_bloc.dart';
 
-/// Базовый класс для всех состояний WishlistBloc.
 abstract class WishlistState extends Equatable {
   const WishlistState();
 
@@ -31,12 +30,17 @@ class WishlistLoading extends WishlistState {
 /// Состояние успешной загрузки или синхронизации избранного.
 ///
 /// [wishlistIds] - множество ID объявлений в избранном
-/// [syncedAt] - время последней синхронизации
-/// [isLocal] - true если это локальное избранное (неавторизованный пользователь),
-///            false если это серверное избранное (авторизованный пользователь)
+/// [listings]   - полные объекты объявлений (из wishable, только для авторизованных)
+/// [syncedAt]   - время последней синхронизации
+/// [isLocal]    - true если это локальное избранное (неавторизованный пользователь)
 class WishlistLoaded extends WishlistState {
   /// IDs избранных объявлений
   final Set<int> wishlistIds;
+
+  /// Полные объекты объявлений из API /me/wishlist (поле wishable).
+  /// Пустой список для неавторизованных пользователей — тогда
+  /// FavoritesScreen фильтрует по wishlistIds из ListingsBloc (старое поведение).
+  final List<Listing> listings;
 
   /// Время последней синхронизации
   final DateTime syncedAt;
@@ -46,12 +50,13 @@ class WishlistLoaded extends WishlistState {
 
   const WishlistLoaded({
     required this.wishlistIds,
+    this.listings = const [],
     required this.syncedAt,
     this.isLocal = false,
   });
 
   @override
-  List<Object?> get props => [wishlistIds, syncedAt, isLocal];
+  List<Object?> get props => [wishlistIds, listings, syncedAt, isLocal];
 }
 
 /// Состояние ошибки при работе с wishlist.
