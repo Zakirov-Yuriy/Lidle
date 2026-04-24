@@ -922,6 +922,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Метод для сортировки объявлений по датам.
   /// Объявления с датой 'Сегодня' помещаются в начало.
   /// Остальные объявления сортируются от новых к старым.
+  /// ВНУТРИ каждой даты объявления сортируются по ID в убывающем порядке (новые объявления с большим номером - первыми).
   List<home.Listing> _sortListingsByDate(List<home.Listing> listings) {
     // Функция для преобразования строки даты в объект DateTime для сравнения
     DateTime? parseDate(String dateStr) {
@@ -945,6 +946,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       return null;
     }
 
+    // Функция для извлечения числового ID из строки
+    int? parseIdAsInt(String idStr) {
+      try {
+        return int.parse(idStr);
+      } catch (e) {
+        return null;
+      }
+    }
+
     // Разделяем объявления на две группы: 'Сегодня' и остальные
     final todayListings = <home.Listing>[];
     final otherListings = <home.Listing>[];
@@ -957,7 +967,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       }
     }
 
-    // Сортируем остальные объявления от новых к старым
+    // 🔧 Сортируем объявления "Сегодня" по ID в убывающем порядке (новые первыми)
+    todayListings.sort((a, b) {
+      final idA = parseIdAsInt(a.id);
+      final idB = parseIdAsInt(b.id);
+
+      if (idA == null || idB == null) {
+        return 0; // Если не удалось распарсить ID, оставляем исходный порядок
+      }
+
+      // Сортируем в обратном порядке (больший ID сначала = более новые объявления)
+      return idB.compareTo(idA);
+    });
+
+    // Сортируем остальные объявления от новых к старым ПО ДАТАМ,
+    // а внутри каждой даты - по ID в убывающем порядке
     otherListings.sort((a, b) {
       final dateA = parseDate(a.date);
       final dateB = parseDate(b.date);
@@ -966,11 +990,25 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         return 0; // Если не удалось распарсить, оставляем исходный порядок
       }
 
-      // Сортируем в обратном порядке (новые сначала)
-      return dateB.compareTo(dateA);
+      // Сначала сравниваем по датам (новые сначала)
+      final dateComparison = dateB.compareTo(dateA);
+      if (dateComparison != 0) {
+        return dateComparison;
+      }
+
+      // 🔧 НОВОЕ: Если даты одинаковые, сортируем по ID в убывающем порядке (новые объявления первыми)
+      final idA = parseIdAsInt(a.id);
+      final idB = parseIdAsInt(b.id);
+
+      if (idA == null || idB == null) {
+        return 0; // Если не удалось распарсить ID, оставляем исходный порядок
+      }
+
+      // Больший ID сначала = более новые объявления
+      return idB.compareTo(idA);
     });
 
-    // Объединяем: сначала 'Сегодня', потом отсортированные по датам
+    // Объединяем: сначала 'Сегодня' (отсортированные по ID), потом отсортированные по датам (и внутри по ID)
     return [...todayListings, ...otherListings];
   }
 
