@@ -13,12 +13,16 @@ import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
+import 'package:lidle/blocs/listings/listings_bloc.dart';
+import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/cache/screen_cache_manager.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
@@ -478,7 +482,19 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
 
       // Перезагружаем профиль для обновления на других экранах
       if (mounted) {
+        // 🔄 ВАЖНО: Инвалидируем кеш объявлений перед загрузкой профиля
+        // Это гарантирует, что объявления будут перезагружены после изменения контактных данных
+        final cacheService = AppCacheService();
+        cacheService.invalidate(CacheKeys.listingsData);
+        log.d('✅ Кеш объявлений инвалидирован после сохранения контактных данных');
+
+        // ✅ Обновляем профиль
         context.read<ProfileBloc>().add(LoadProfileEvent());
+
+        // 🔄 КРИТИЧНО: Явно перезагружаем объявления с forceRefresh=true
+        // Это гарантирует что ListingsBloc не будет использовать старый кеш
+        context.read<ListingsBloc>().add(LoadListingsEvent(forceRefresh: true));
+        log.d('🔄 Явно запущена перезагрузка объявлений (LoadListingsEvent с forceRefresh=true)');
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Контактные данные сохранены')),

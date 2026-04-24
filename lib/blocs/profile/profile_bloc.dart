@@ -44,6 +44,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       if (event.forceRefresh) {
         // Инвалидируем L1-кеш профиля при принудительном обновлении
         AppCacheService().invalidate(CacheKeys.profileData);
+        // 🔄 ВАЖНО: Инвалидируем кеш объявлений при обновлении профиля
+        // Это предотвращает показ неправильных объявлений после изменения контактных данных
+        AppCacheService().invalidate(CacheKeys.listingsData);
         emit(const ProfileLoading());
       } else {
         // 📖 Сначала проверяем L1-кеш (быстрее, чем читать из Hive)
@@ -159,6 +162,13 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       // log.d('   - profile.name = "${profile.name}"');
       // log.d('   - profile.lastName = "${profile.lastName}"');
       // log.d('   - displayName (for UI) = "$displayName"');
+
+      // 🔄 ВАЖНО: Инвалидируем кеш объявлений после обновления профиля
+      // Это необходимо для корректного показа объявлений, если был изменен профиль
+      // (например, при изменении имени, фамилии или телефона)
+      AppCacheService().invalidate(CacheKeys.listingsData);
+      log.i('🗑️ Кеш объявлений инвалидирован в ProfileBloc._onLoadProfile() - объявления будут перезагружены');
+
 
       emit(
         ProfileLoaded(

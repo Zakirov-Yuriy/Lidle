@@ -132,18 +132,32 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     // 🔧 Дебоунс для pull-to-refresh: минимум 10 секунд между обновлениями
     // Это защищает от rate limiting (429) при быстрых обновлениях
+    // 🔴 ИСПРАВЛЕНИЕ: Не применяем debounce если кеш был инвалидирован (он пуст)
+    // Это необходимо чтобы после изменения профиля объявления перезагрузились
     if (event.forceRefresh && _lastRefreshTime != null) {
-      final timeSinceLastRefresh = DateTime.now().difference(_lastRefreshTime!);
-      if (timeSinceLastRefresh < _refreshDebounce) {
-      // log.d('⏱️ Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями ' +
-            //     '(прошло ${timeSinceLastRefresh.inSeconds}s)');
-        return;
+      // Проверяем: есть ли кеш? Если нет (был инвалидирован), не применяем debounce
+      final hasCache = AppCacheService().get<Map>(CacheKeys.listingsData) != null;
+      
+      if (hasCache) {
+        // Кеш есть - применяем debounce защиту
+        final timeSinceLastRefresh = DateTime.now().difference(_lastRefreshTime!);
+        if (timeSinceLastRefresh < _refreshDebounce) {
+          // log.d('⏱️ Refresh дебоунсен: требуется ${_refreshDebounce.inSeconds}s между обновлениями ' +
+              //     '(прошло ${timeSinceLastRefresh.inSeconds}s)');
+          return;
+        }
+      } else {
+        // log.d('🔄 Кеш инвалидирован - debounce НЕ применяется, загружаем свежие данные');
       }
     }
 
     _isLoadingListings = true;
     if (event.forceRefresh) {
       _lastRefreshTime = DateTime.now();
+      // 🔄 ВАЖНО: При forceRefresh сбрасываем флаг _isInitialLoadComplete чтобы гарантировать загрузку
+      // Это особенно важно когда кеш был инвалидирован после изменения профиля
+      _isInitialLoadComplete = false;
+      log.d('🔄 ForceRefresh запущен - флаг _isInitialLoadComplete сброшен для гарантированной загрузки');
     }
 
     const operationKey = 'listings_load';
