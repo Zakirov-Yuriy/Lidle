@@ -315,11 +315,27 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     return true;
   }
 
+  /// 🆕 Очистить поисковый запрос от пунктуации и спецсимволов.
+  /// Оставляем только буквы (любого алфавита), цифры, пробелы и дефис.
+  /// Нужно, чтобы "Мариуполь," / "Мариуполь." / "Мариуполь!" искались
+  /// так же, как "Мариуполь" — пользователь мог случайно поставить
+  /// знак препинания в конце, и поиск из-за этого ломался.
+  /// Дефис сохраняем, чтобы корректно работали "Ростов-на-Дону",
+  /// "Санкт-Петербург" и т.д.
+  String _cleanSearchQuery(String query) {
+    return query
+        .replaceAll(RegExp(r'[^\p{L}\p{N}\s\-]', unicode: true), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   /// Обработчик изменения текста поиска с debounce
   void _onSearchChanged() {
     _debounceTimer?.cancel();
 
-    final query = _searchController.text.trim();
+    // 🆕 Очищаем запрос от пунктуации, чтобы не ломать поиск,
+    // если пользователь случайно ввёл запятую/точку/др. в конце.
+    final query = _cleanSearchQuery(_searchController.text);
 
     if (query.isEmpty) {
       setState(() {
@@ -329,9 +345,14 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
       return;
     }
 
+    // 🆕 Сразу показываем локальные результаты для мгновенного отклика —
+    // даже если потом подгрузим больше через API, пользователь сразу видит,
+    // что есть в кеше (например, при вводе "Мариу" покажем Мариуполь, если он уже загружен)
+    _filterCitiesLocal(query);
+
+    // Если запрос < 3 символов — API не вызываем (требование сервера: q >= 3)
     if (query.length < 3) {
       log.d('🔍 Локальный поиск: "$query"');
-      _filterCitiesLocal(query);
       return;
     }
 
@@ -354,33 +375,38 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   Future<void> _searchCitiesViaCallback(String query) async {
     try {
       final searchResults = <String, int>{};
-      
+      final queryLower = query.toLowerCase();
+
       // Вызываем переданный callback для поиска
       final cityNames = await widget.onSearchQuery!(query);
-      
+
       log.d('🔍 Поиск API (via callback): "$query"');
       log.d('   ✅ Callback вернул ${cityNames.length} городов');
 
-      // Нужно получить ID для каждого города
-      // Если callback вернул имена городов, нам нужно их ID
-      // Мы можем использовать локальный кеш или другой механизм
-      
       final token = TokenService.currentToken;
-      
-      // Получаем полные данные городов через API
+
+      // Получаем полные данные городов через API.
+      // 🆕 Не используем types: ['city'] — так API находит города даже по части названия,
+      // возвращая результаты разных типов (улицы/здания/районы), у которых
+      // в поле city указан искомый город (например, улицы Мариуполя при вводе "Мариу").
       try {
         final response = await AddressService.searchAddresses(
           query: query,
           token: token,
-          types: ['city'],
         );
 
         for (final result in response.data) {
-          if (result.type == 'city' && result.city != null) {
+          if (result.city != null) {
             final cityName = result.city!.name;
             final cityId = result.city!.id;
-            
-            if (_isCityNameValid(cityName) && cityNames.contains(cityName)) {
+
+            final cleanCityName = _getCleanCityName(cityName).toLowerCase();
+            final fullCityNameLower = cityName.toLowerCase();
+
+            final matches = cleanCityName.contains(queryLower) ||
+                fullCityNameLower.contains(queryLower);
+
+            if (matches && _isCityNameValid(cityName)) {
               searchResults[cityName] = cityId;
               _citiesIdCache[cityName] = cityId;
             }
@@ -388,6 +414,23 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
         }
       } catch (e) {
         log.d('   ❌ Ошибка получения полных данных: $e');
+      }
+
+      // 🆕 Также добавляем города из callback, которые могли не прийти в общем поиске
+      for (final cityName in cityNames) {
+        if (searchResults.containsKey(cityName)) continue;
+        if (!_isCityNameValid(cityName)) continue;
+        searchResults[cityName] = _citiesIdCache[cityName] ?? 0;
+      }
+
+      // 🆕 И локальные совпадения из кеша _allCities
+      for (final city in _allCities) {
+        if (searchResults.containsKey(city)) continue;
+        final cleanCityName = _getCleanCityName(city).toLowerCase();
+        if (cleanCityName.contains(queryLower) ||
+            city.toLowerCase().contains(queryLower)) {
+          searchResults[city] = _citiesIdCache[city] ?? 0;
+        }
       }
 
       final citiesList = searchResults.keys.toList();
@@ -414,22 +457,38 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     try {
       final token = TokenService.currentToken;
       log.d('🔍 Поиск API: "$query"');
-      
+
       final searchResults = <String, int>{};
+      final queryLower = query.toLowerCase();
 
       try {
+        // 🆕 НЕ передаём types: ['city'] — это даёт более гибкий поиск.
+        // Раньше API при types=['city'] возвращал только точные совпадения по городу,
+        // и не находил, например, "Мариуполь" по запросу "Мариу".
+        // Теперь API возвращает результаты ВСЕХ типов (улицы, здания, районы),
+        // и из каждого мы извлекаем поле city — так мы находим город,
+        // даже если введена только часть его названия.
         final response = await AddressService.searchAddresses(
           query: query,
           token: token,
-          types: ['city'],
         );
 
         for (final result in response.data) {
-          if (result.type == 'city' && result.city != null) {
+          // Извлекаем город из любого типа результата (city/street/building/district)
+          if (result.city != null) {
             final cityName = result.city!.name;
             final cityId = result.city!.id;
-            
-            if (_isCityNameValid(cityName)) {
+
+            // Дополнительный фильтр: имя города должно содержать поисковый запрос.
+            // Это нужно, потому что API может вернуть, например, улицу "Мариупольская"
+            // в городе "Донецк" — нам такой город не подходит.
+            final cleanCityName = _getCleanCityName(cityName).toLowerCase();
+            final fullCityNameLower = cityName.toLowerCase();
+
+            final matches = cleanCityName.contains(queryLower) ||
+                fullCityNameLower.contains(queryLower);
+
+            if (matches && _isCityNameValid(cityName)) {
               searchResults[cityName] = cityId;
               _citiesIdCache[cityName] = cityId;
             }
@@ -437,6 +496,17 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
         }
       } catch (e) {
         log.d('   ❌ Ошибка: $e');
+      }
+
+      // 🆕 Объединяем результаты API с локальными совпадениями из _allCities.
+      // Если в кеше уже есть подходящий город — добавим его, если он ещё не попал в результат.
+      for (final city in _allCities) {
+        if (searchResults.containsKey(city)) continue;
+        final cleanCityName = _getCleanCityName(city).toLowerCase();
+        if (cleanCityName.contains(queryLower) ||
+            city.toLowerCase().contains(queryLower)) {
+          searchResults[city] = _citiesIdCache[city] ?? 0;
+        }
       }
 
       final citiesList = searchResults.keys.toList();
@@ -461,9 +531,13 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
   /// Локальный фильтр городов
   void _filterCitiesLocal(String query) {
     final queryLower = query.toLowerCase();
-    
+
     final filtered = _allCities.where((city) {
-      return city.toLowerCase().contains(queryLower);
+      // Ищем как по полному имени ("г. Мариуполь"), так и по очищенному ("мариуполь"),
+      // чтобы пользователь мог найти город просто введя "мариу" — без префикса "г."
+      final fullLower = city.toLowerCase();
+      final cleanLower = _getCleanCityName(city).toLowerCase();
+      return fullLower.contains(queryLower) || cleanLower.contains(queryLower);
     }).toList();
 
     _buildDisplayOptions(filtered, searchQuery: query);
