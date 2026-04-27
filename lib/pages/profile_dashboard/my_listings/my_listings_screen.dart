@@ -1519,17 +1519,17 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Просмотров: ${advert.viewsCount}',
+                          'Просмотров: ${advert.viewsCount == 0 ? "_" : advert.viewsCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Переходов: ${advert.clickCount}',
+                          'Переходов: ${advert.clickCount == 0 ? "_" : advert.clickCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Поделились: ${advert.shareCount}',
+                          'Поделились: ${advert.shareCount == 0 ? "_" : advert.shareCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                       ],
