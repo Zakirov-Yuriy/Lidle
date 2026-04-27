@@ -100,32 +100,30 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     try {
       // Получаем профиль из ProfileBloc (уже загружен)
       final profileState = context.read<ProfileBloc>().state;
-      final fullName = profileState is ProfileLoaded ? profileState.name : '';
+      
+      // ✅ ПРАВИЛЬНО: Используем отдельные поля name и lastName из ProfileLoaded
+      // API уже возвращает их отдельно, не нужно парсить
+      final firstName = profileState is ProfileLoaded ? profileState.name : '';
+      final lastName = profileState is ProfileLoaded ? profileState.lastName : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
-
-      // 📝 Парсим полное имя на имя и фамилию
-      // Формат API: "Имя Фамилия" или просто "Имя"
-      final nameParts = fullName.trim().split(RegExp(r'\s+'));
-      final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-      final lastName = nameParts.length > 1
-          ? nameParts.sublist(1).join(' ')
-          : (UserService.getLocal('lastName') as String? ?? '');
 
       // Загружаем сохраненные данные из Hive
       final region = UserService.getLocal('region') as String? ?? '';
       final city = UserService.getLocal('city') as String? ?? '';
       final telegram = UserService.getLocal('telegram') as String? ?? '';
       final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
+      final phone1Cache = UserService.getLocal('phone1') as String? ?? '';
+      final phone2Cache = UserService.getLocal('phone2') as String? ?? '';
 
       setState(() {
         _nameController.text = firstName;
         _lastNameController.text = lastName;
         _emailController.text = email;
         _phone1Controller.text = phone.isEmpty
-            ? ''
+            ? (phone1Cache.isEmpty ? '' : (phone1Cache.startsWith('+') ? phone1Cache : '+$phone1Cache'))
             : (phone.startsWith('+') ? phone : '+$phone');
-        _phone2Controller.text = '';
+        _phone2Controller.text = phone2Cache.isEmpty ? '' : (phone2Cache.startsWith('+') ? phone2Cache : '+$phone2Cache');
         _telegramController.text = telegram;
         _whatsappController.text = whatsapp;
         _regionController.text = region;
@@ -171,22 +169,13 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // ✅ Проверяем что widget еще mounted перед использованием Context
       if (!mounted) return;
 
-      // Получаем имя пользователя из ProfileBloc (из API)
+      // ✅ ПРАВИЛЬНО: Используем отдельные поля name и lastName из ProfileLoaded
+      // API уже возвращает их отдельно в UserProfile с помощью @JsonKey(name: 'last_name')
       final profileState = context.read<ProfileBloc>().state;
-      final fullName = profileState is ProfileLoaded ? profileState.name : '';
+      final firstName = profileState is ProfileLoaded ? profileState.name : '';
+      var lastName = profileState is ProfileLoaded ? profileState.lastName : '';
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
-
-      // 📝 Парсим полное имя на отдельные части
-      // Формат API: "Имя Фамилия" или просто "Имя"
-      final nameParts = fullName.trim().split(RegExp(r'\s+'));
-      final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-      var lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : '';
-
-      // Загружаем фамилию из локального хранилища (если она не была парсена из fullName)
-      if (lastName.isEmpty) {
-        lastName = UserService.getLocal('lastName') as String? ?? '';
-      }
 
       // Получаем область и город из локального хранилища
       var region = UserService.getLocal('region') as String? ?? '';
@@ -305,6 +294,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // 💾 Сохраняем данные в локальное хранилище для кеширования
       await UserService.saveLocal('name', firstName);
       await UserService.saveLocal('lastName', lastName);
+      await UserService.saveLocal('phone1', phone1);
+      await UserService.saveLocal('phone2', phone2);
       await UserService.saveLocal('region', region);
       await UserService.saveLocal('city', city);
       // ignore: avoid_print
@@ -383,6 +374,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // Сохраняем в локальное хранилище
       await UserService.saveLocal('name', _nameController.text);
       await UserService.saveLocal('lastName', _lastNameController.text);
+      await UserService.saveLocal('phone1', _phone1Controller.text);
+      await UserService.saveLocal('phone2', _phone2Controller.text);
       await UserService.saveLocal('telegram', _telegramController.text);
       await UserService.saveLocal('whatsapp', _whatsappController.text);
       await UserService.saveLocal('region', _regionController.text);

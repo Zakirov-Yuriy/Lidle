@@ -90,9 +90,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         if (cachedName.isNotEmpty && cachedName != 'Пользователь') {
           emit(
             ProfileLoaded(
-              name: cachedLastName.isNotEmpty
-                  ? '$cachedName $cachedLastName'
-                  : cachedName,
+              name: cachedName,
               lastName: cachedLastName,
               email: cachedEmail,
               userId: cachedUserId,
@@ -143,7 +141,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // 💾 Сохраняем свежие данные в L1-кеш профиля (TTL 5 мин)
       AppCacheService().set<Map<String, dynamic>>(CacheKeys.profileData, {
-        'name': '${profile.name} ${profile.lastName}',
+        'name': profile.name,
         'lastName': profile.lastName,
         'email': profile.email,
         'userId': 'ID: $userIdString',
@@ -156,7 +154,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       // Показываем свежие данные
       final userIdDisplay = 'ID: $userIdString';
-      final displayName = '${profile.name} ${profile.lastName}';
+      final displayName = profile.name;
 
       // log.d('🔍 DEBUG ProfileBloc._onLoadProfile():');
       // log.d('   - profile.name = "${profile.name}"');
@@ -202,7 +200,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       emit(
         ProfileLoaded(
-          name: lastName.isNotEmpty ? '$name $lastName' : name,
+          name: name,
           lastName: lastName,
           email: email,
           userId: userId,
@@ -244,7 +242,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
 
       emit(
         ProfileLoaded(
-          name: '${event.name} ${event.lastName}',
+          name: event.name,
           lastName: event.lastName,
           email: event.email,
           userId: (state as ProfileLoaded).userId,
