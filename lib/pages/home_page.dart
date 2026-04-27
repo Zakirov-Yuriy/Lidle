@@ -953,6 +953,51 @@ class _HomePageState extends State<HomePage>
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                   ),
+                  // 🔘 Показываем кнопку "Показать больше объявлений" если >= 24 объявлений
+                  if (listings.length >= 24)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 12,
+                        right: 12,
+                        top: 20,
+                        bottom: 0,
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            // 💾 Сохраняем позицию скролла перед навигацией
+                            if (_scrollController.hasClients) {
+                              _globalScrollPosition = _scrollController.position.pixels;
+                              log.d('💾 Сохранена позиция перед навигацией: $_globalScrollPosition');
+                            }
+                            // ➡️ Переходим на экран со всеми объявлениями
+                            Navigator.pushNamed(
+                              context,
+                              FullCategoryScreen.routeName,
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(
+                              color: accentColor,
+                              width: 1.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Показать больше объявлений',
+                            style: TextStyle(
+                              color: accentColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               );
             },
