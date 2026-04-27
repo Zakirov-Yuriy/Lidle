@@ -10,6 +10,7 @@ import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/services/address_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -207,8 +208,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             // Извлекаем адрес из объявления
             final advertAddress = firstAdvert.address ?? '';
 
-            // Парсим область и город из адреса (формат может быть "область, город, улица")
-            // Например: "Донецкая область, Мариуполь, ул. Артёма"
+            // Парсим адрес в формате: "г. Мариуполь, ул. Артёма, 96"
+            // или "г. Мариуполь, пр. Красный Азовец, 120"
             if (advertAddress.isNotEmpty) {
               final addressParts = advertAddress
                   .split(',')
@@ -217,11 +218,51 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
               // ignore: avoid_print
               // log.d('   Address parts: $addressParts');
 
-              if (addressParts.length >= 2) {
-                region = addressParts[0]; // Первая часть - область
-                city = addressParts[1]; // Вторая часть - город
-                // ignore: avoid_print
-                // log.d('   ✅ Extracted - region: "$region", city: "$city"');
+              if (addressParts.isNotEmpty) {
+                // Первая часть содержит префикс "г." (город) и название города
+                // Пример: "г. Мариуполь" → нужно извлечь "Мариуполь"
+                final firstPart = addressParts[0];
+                // Убираем префиксы типа "г. ", "р. ", "м. " и т.д.
+                final cityName = firstPart.replaceAll(RegExp(r'^[а-яё]\.\s+'), '');
+                city = cityName;
+                
+                // Для области, нужно использовать AddressService для поиска города
+                // чтобы получить main_region (область)
+                try {
+                  // Ищем город через AddressService для получения основного региона
+                  final addressResponse = await AddressService.searchAddresses(
+                    query: city,
+                    types: ['city'],
+                    token: token,
+                  );
+                  
+                  if (addressResponse.data.isNotEmpty) {
+                    // Находим точное совпадение по названию города
+                    final cityAddress = addressResponse.data.firstWhere(
+                      (addr) => addr.city?.name?.toLowerCase() == city.toLowerCase(),
+                      orElse: () => addressResponse.data.first,
+                    );
+                    
+                    // Берём основной регион (область)
+                    if (cityAddress.main_region != null) {
+                      region = cityAddress.main_region!.name;
+                      // ignore: avoid_print
+                      log.d('   ✅ Extracted - region: "$region" (main_region), city: "$city"');
+                    } else if (cityAddress.region != null) {
+                      // Если main_region не доступен, используем region
+                      region = cityAddress.region!.name;
+                      // ignore: avoid_print
+                      log.d('   ✅ Extracted - region: "$region" (region), city: "$city"');
+                    } else {
+                      // ignore: avoid_print
+                      log.d('   ⚠️ No region found for city: "$city"');
+                    }
+                  }
+                } catch (e) {
+                  // Если поиск через AddressService не удался, оставляем пустую область
+                  // ignore: avoid_print
+                  log.d('   ⚠️ Failed to search region for city "$city": $e');
+                }
               }
             } else {
               // ignore: avoid_print
