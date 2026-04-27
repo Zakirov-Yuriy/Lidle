@@ -5,6 +5,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/core/logger.dart';
 
 // ============================================================
@@ -228,10 +229,20 @@ class _RealEstateApartmentsScreenState
           title: Text(title, style: const TextStyle(color: Colors.white)),
           onTap: () {
             // Все категории недвижимости теперь используют динамический фильтр
+            // 🔧 Получаем сохраненные область, город и телефон для предзаполнения
+            final defaultRegion = UserService.getLocal('region') as String? ?? '';
+            final defaultCity = UserService.getLocal('city') as String? ?? '';
+            final defaultPhone2 = UserService.getLocal('phone2') as String? ?? '';
+            
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => DynamicFilter(categoryId: advertType.id),
+                builder: (context) => DynamicFilter(
+                  categoryId: advertType.id,
+                  defaultRegion: defaultRegion.isNotEmpty ? defaultRegion : null,
+                  defaultCity: defaultCity.isNotEmpty ? defaultCity : null,
+                  defaultPhone2: defaultPhone2.isNotEmpty ? defaultPhone2 : null,
+                ),
               ),
             );
           },

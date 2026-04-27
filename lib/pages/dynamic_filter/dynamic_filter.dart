@@ -111,8 +111,18 @@ class DynamicFilter extends StatefulWidget {
   final int? categoryId;
   final int?
   advertId; // ID объявления для редактирования (если null - создание нового)
+  final String? defaultRegion; // Область по умолчанию
+  final String? defaultCity; // Город по умолчанию
+  final String? defaultPhone2; // Второй телефон по умолчанию
 
-  const DynamicFilter({super.key, this.categoryId, this.advertId});
+  const DynamicFilter({
+    super.key,
+    this.categoryId,
+    this.advertId,
+    this.defaultRegion,
+    this.defaultCity,
+    this.defaultPhone2,
+  });
 
   @override
   State<DynamicFilter> createState() => _DynamicFilterState();
@@ -215,6 +225,11 @@ class _DynamicFilterState extends State<DynamicFilter>
     // ✅ Load attributes and support data concurrently
     await Future.wait([_loadAttributes(), _loadUserContacts(), _loadRegions()]);
 
+    // 🔧 Инициализируем значения по умолчанию (если они переданы)
+    if (widget.defaultRegion != null || widget.defaultCity != null) {
+      await _initializeDefaultAddressValues();
+    }
+
     // Автозаполнение для тестирования (after all data loaded)
     Future.delayed(const Duration(milliseconds: 500), () {
       _autoFillFormForTesting();
@@ -302,6 +317,67 @@ class _DynamicFilterState extends State<DynamicFilter>
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  /// 🔧 Инициализирует значения области, города и телефона по умолчанию
+  /// Вызывается при создании нового объявления если переданы widget.defaultRegion и/или widget.defaultCity
+  Future<void> _initializeDefaultAddressValues() async {
+    try {
+      // 1️⃣ Инициализируем регион по умолчанию
+      if (widget.defaultRegion != null && widget.defaultRegion!.isNotEmpty) {
+        final regionIndex = _regions.indexWhere(
+          (r) => r['name'] == widget.defaultRegion,
+        );
+        
+        if (regionIndex >= 0) {
+          final regionId = _regions[regionIndex]['id'] as int?;
+          
+          setState(() {
+            _selectedRegion = {widget.defaultRegion!};
+            _selectedRegionId = regionId;
+          });
+          
+          log.d('🎯 Default region set: "${widget.defaultRegion}" (ID: $regionId)');
+          
+          // 2️⃣ Загружаем города для выбранного региона
+          if (regionId != null) {
+            await _loadCitiesForSelectedRegion();
+            
+            // 3️⃣ Инициализируем город по умолчанию (если есть и города загружены)
+            if (widget.defaultCity != null && widget.defaultCity!.isNotEmpty) {
+              final cityIndex = _cities.indexWhere(
+                (c) => c['name'] == widget.defaultCity,
+              );
+              
+              if (cityIndex >= 0) {
+                final cityId = _cities[cityIndex]['id'] as int?;
+                
+                setState(() {
+                  _selectedCity = {widget.defaultCity!};
+                  _selectedCityId = cityId;
+                  // Получаем информацию о регионе города
+                  final cityInfo = _cities[cityIndex];
+                  _selectedCityRegionId = cityInfo['region_id'] as int?;
+                  _selectedCityMainRegionId = cityInfo['main_region_id'] as int?;
+                });
+                
+                log.d('🎯 Default city set: "${widget.defaultCity}" (ID: $cityId)');
+              }
+            }
+          }
+        }
+      }
+      
+      // 4️⃣ Инициализируем второй телефон по умолчанию
+      if (widget.defaultPhone2 != null && widget.defaultPhone2!.isNotEmpty) {
+        setState(() {
+          _phone2Controller.text = widget.defaultPhone2!;
+        });
+        log.d('🎯 Default phone2 set: "${widget.defaultPhone2}"');
+      }
+    } catch (e) {
+      log.d('❌ Error initializing default address values: $e');
     }
   }
 

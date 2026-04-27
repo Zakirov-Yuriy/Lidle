@@ -6,6 +6,7 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/models/catalog_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
@@ -285,8 +286,19 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>
-                                    DynamicFilter(categoryId: category.id),
+                                builder: (context) {
+                                  // 🔧 Получаем сохраненные область, город и телефон для предзаполнения
+                                  final defaultRegion = UserService.getLocal('region') as String? ?? '';
+                                  final defaultCity = UserService.getLocal('city') as String? ?? '';
+                                  final defaultPhone2 = UserService.getLocal('phone2') as String? ?? '';
+                                  
+                                  return DynamicFilter(
+                                    categoryId: category.id,
+                                    defaultRegion: defaultRegion.isNotEmpty ? defaultRegion : null,
+                                    defaultCity: defaultCity.isNotEmpty ? defaultCity : null,
+                                    defaultPhone2: defaultPhone2.isNotEmpty ? defaultPhone2 : null,
+                                  );
+                                },
                               ),
                             );
                           }

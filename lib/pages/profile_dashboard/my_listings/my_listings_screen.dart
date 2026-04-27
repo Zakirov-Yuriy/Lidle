@@ -20,6 +20,7 @@ import 'package:lidle/pages/profile_dashboard/my_listings/outdoor_advertising_sc
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_property_details_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/advert_qr_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/hive_service.dart';

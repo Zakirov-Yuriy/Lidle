@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/services/address_service.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/profile/profile_bloc.dart';
 import 'package:lidle/blocs/profile/profile_event.dart';
 import 'package:lidle/blocs/profile/profile_state.dart';
@@ -42,8 +44,6 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _phone2Controller;
   late TextEditingController _telegramController;
   late TextEditingController _whatsappController;
-  late TextEditingController _regionController;
-  late TextEditingController _cityController;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -51,6 +51,15 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   int? _phone1Id;
   int? _phone2Id;
   int? _emailId;
+
+  // Переменные для выбора области и города
+  Set<String> _selectedRegion = {};
+  Set<String> _selectedCity = {};
+  int? _selectedRegionId;
+  int? _selectedCityId;
+  List<Map<String, dynamic>> _regions = [];
+  List<Map<String, dynamic>> _cities = [];
+  Map<String, int> _lastCitiesSearchResults = {};
 
   static const Duration _contactDataCacheDuration = Duration(minutes: 10);
 
@@ -69,8 +78,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller = TextEditingController();
     _telegramController = TextEditingController();
     _whatsappController = TextEditingController();
-    _regionController = TextEditingController();
-    _cityController = TextEditingController();
+    // Загружаем регионы при инициализации
+    _loadRegions();
   }
 
   @override
@@ -127,8 +136,25 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _phone2Controller.text = phone2Cache.isEmpty ? '' : (phone2Cache.startsWith('+') ? phone2Cache : '+$phone2Cache');
         _telegramController.text = telegram;
         _whatsappController.text = whatsapp;
-        _regionController.text = region;
-        _cityController.text = city;
+        
+        // Восстанавливаем выбранные область и город
+        if (region.isNotEmpty) {
+          _selectedRegion = {region};
+          // Находим ID выбранного региона
+          final regionIndex = _regions.indexWhere((r) => r['name'] == region);
+          if (regionIndex >= 0) {
+            _selectedRegionId = _regions[regionIndex]['id'] as int?;
+          }
+        }
+        if (city.isNotEmpty) {
+          _selectedCity = {city};
+          // Находим ID выбранного города
+          final cityIndex = _lastCitiesSearchResults.keys.toList().indexOf(city);
+          if (cityIndex >= 0) {
+            _selectedCityId = _lastCitiesSearchResults[city];
+          }
+        }
+        
         _isLoading = false;
       });
     } catch (e) {
@@ -327,8 +353,25 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _phone2Controller.text = phone2;
         _telegramController.text = telegram;
         _whatsappController.text = whatsapp;
-        _regionController.text = region;
-        _cityController.text = city;
+        
+        // Восстанавливаем выбранные область и город
+        if (region.isNotEmpty) {
+          _selectedRegion = {region};
+          // Находим ID выбранного региона
+          final regionIndex = _regions.indexWhere((r) => r['name'] == region);
+          if (regionIndex >= 0) {
+            _selectedRegionId = _regions[regionIndex]['id'] as int?;
+          }
+        }
+        if (city.isNotEmpty) {
+          _selectedCity = {city};
+          // Находим ID выбранного города
+          final cityIndex = _lastCitiesSearchResults.keys.toList().indexOf(city);
+          if (cityIndex >= 0) {
+            _selectedCityId = _lastCitiesSearchResults[city];
+          }
+        }
+        
         _isLoading = false;
       });
 
@@ -419,8 +462,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       await UserService.saveLocal('phone2', _phone2Controller.text);
       await UserService.saveLocal('telegram', _telegramController.text);
       await UserService.saveLocal('whatsapp', _whatsappController.text);
-      await UserService.saveLocal('region', _regionController.text);
-      await UserService.saveLocal('city', _cityController.text);
+      // Сохраняем выбранные область и город (выбираем первые из Set)
+      await UserService.saveLocal('region', _selectedRegion.isEmpty ? '' : _selectedRegion.first);
+      await UserService.saveLocal('city', _selectedCity.isEmpty ? '' : _selectedCity.first);
 
       // Обновляем или добавляем email
       if (_emailController.text.isNotEmpty) {
@@ -542,6 +586,80 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     }
   }
 
+  /// Нагружаем области из API
+  Future<void> _loadRegions() async {
+    try {
+      final token = TokenService.currentToken;
+      final regions = await ApiService.getRegions(token: token);
+      
+      if (mounted) {
+        setState(() {
+          _regions = regions;
+        });
+      }
+      log.d('✅ Loaded ${regions.length} regions');
+    } catch (e) {
+      log.d('❌ Error loading regions: $e');
+      // Повторяем попытку через 3 секунды
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) _loadRegions();
+      });
+    }
+  }
+
+  /// Нагружаем города для выбранной области
+  Future<void> _loadCitiesForSelectedRegion() async {
+    if (_selectedRegionId == null) return;
+
+    try {
+      final token = TokenService.currentToken;
+      String searchQuery = 'по'; // Default search term
+
+      if (_selectedRegion.isNotEmpty) {
+        final regionName = _selectedRegion.first;
+        if (regionName.length >= 3) {
+          searchQuery = regionName.length > 50
+              ? regionName.substring(0, 50)
+              : regionName;
+        } else {
+          searchQuery = regionName + '   '; // Pad to at least 3
+        }
+      }
+
+      final response = await AddressService.searchAddresses(
+        query: searchQuery,
+        token: token,
+        types: ['city'],
+        filters: _selectedRegionId != null
+            ? {'main_region_id': _selectedRegionId}
+            : null,
+      );
+
+      final uniqueCities = <String, int>{};
+      for (final result in response.data) {
+        if (result.main_region?.id == _selectedRegionId &&
+            result.city != null) {
+          uniqueCities[result.city!.name] = result.city!.id;
+          _lastCitiesSearchResults[result.city!.name] = result.city!.id;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _cities = uniqueCities.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+          _cities.sort(
+            (a, b) => (a['name'] as String).compareTo(b['name'] as String),
+          );
+        });
+        log.d('✅ Auto-loaded ${_cities.length} cities');
+      }
+    } catch (e) {
+      log.d('❌ Error auto-loading cities: $e');
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -551,8 +669,6 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller.dispose();
     _telegramController.dispose();
     _whatsappController.dispose();
-    _regionController.dispose();
-    _cityController.dispose();
     super.dispose();
   }
 
@@ -691,10 +807,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _field(_lastNameController, 'Введите фамилию'),
 
                       _label('Ваша область'),
-                      _field(_regionController, 'Введите вашу область'),
+                      _buildRegionDropdown(),
 
                       _label('Ваш город'),
-                      _field(_cityController, 'Введите ваш город'),
+                      _buildCityDropdown(),
 
                       _label('Электронная почта'),
                       _field(_emailController, 'Введите вашу почту'),
@@ -888,6 +1004,181 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         decoration: BoxDecoration(
           color: const Color(0xFF2F4456),
           borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+    );
+  }
+
+  /// ───── Выпадающий список для выбора области ─────
+  Widget _buildRegionDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: GestureDetector(
+        onTap: () {
+          if (_regions.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Области загружаются...'),
+              ),
+            );
+            return;
+          }
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SelectionDialog(
+                title: 'Выберите область',
+                options: _regions
+                    .map((r) => r['name'] as String)
+                    .toList(),
+                selectedOptions: _selectedRegion,
+                allowMultipleSelection: false,
+                onSelectionChanged: (Set<String> selected) {
+                  if (selected.isNotEmpty) {
+                    final selectedRegionName = selected.first;
+                    final regionIndex = _regions.indexWhere(
+                      (r) => r['name'] == selectedRegionName,
+                    );
+                    int? regionId;
+                    if (regionIndex >= 0) {
+                      regionId = _regions[regionIndex]['id'] as int?;
+                    }
+                    setState(() {
+                      _selectedRegion = selected;
+                      _selectedRegionId = regionId;
+                      // Очищаем город при смене региона
+                      _selectedCity.clear();
+                      _selectedCityId = null;
+                      _cities.clear();
+                    });
+
+                    // Загружаем города для выбранного региона
+                    if (regionId != null) {
+                      _loadCitiesForSelectedRegion();
+                    }
+                  }
+                },
+              );
+            },
+          );
+        },
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: fieldColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _selectedRegion.isEmpty
+                      ? 'Выберите область'
+                      : _selectedRegion.first,
+                  style: TextStyle(
+                    color: _selectedRegion.isEmpty ? Colors.white54 : Colors.white,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Colors.white54,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ───── Выпадающий список для выбора города ─────
+  Widget _buildCityDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: GestureDetector(
+        onTap: _selectedRegionId == null
+            ? null
+            : () {
+                if (_cities.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Города не найдены'),
+                    ),
+                  );
+                  return;
+                }
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return SelectionDialog(
+                      title: 'Выберите город',
+                      options: _cities
+                          .map((c) => c['name'] as String)
+                          .toList(),
+                      selectedOptions: _selectedCity,
+                      allowMultipleSelection: false,
+                      onSelectionChanged: (Set<String> selected) {
+                        if (selected.isNotEmpty) {
+                          final selectedCityName = selected.first;
+                          final cityIndex = _cities.indexWhere(
+                            (c) => c['name'] == selectedCityName,
+                          );
+                          int? cityId;
+                          if (cityIndex >= 0) {
+                            cityId = _cities[cityIndex]['id'] as int?;
+                          }
+                          setState(() {
+                            _selectedCity = selected;
+                            _selectedCityId = cityId;
+                          });
+                        }
+                      },
+                    );
+                  },
+                );
+              },
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: _selectedRegionId == null
+                ? const Color(0xFF2F4456)
+                : fieldColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _selectedCity.isEmpty
+                      ? 'Выберите город'
+                      : _selectedCity.first,
+                  style: TextStyle(
+                    color: _selectedCity.isEmpty
+                        ? Colors.white54
+                        : (_selectedRegionId == null
+                            ? Colors.white38
+                            : Colors.white),
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: _selectedRegionId == null
+                    ? Colors.white24
+                    : Colors.white54,
+              ),
+            ],
+          ),
         ),
       ),
     );
