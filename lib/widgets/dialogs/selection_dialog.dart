@@ -11,6 +11,12 @@ import 'package:lidle/services/token_service.dart';
 import '../components/custom_checkbox.dart';
 import '../components/custom_radio_button.dart';
 
+// 🔤 Класс для обозначения заголовка буквы при группировании по алфавиту
+class _LetterHeader {
+  final String letter;
+  _LetterHeader(this.letter);
+}
+
 class SelectionDialog extends StatefulWidget {
   final String title;
   final List<String> options;
@@ -39,9 +45,13 @@ class _SelectionDialogState extends State<SelectionDialog> {
   late TextEditingController _searchController;
   late List<String> _filteredOptions;
   late List<String> _allOptions;
+  late List<dynamic> _displayOptionsWithLetters; // 🆕 Для режима городов (с буквами)
   
   Timer? _debounceTimer;
   bool _isSearching = false;
+
+  /// 🆕 Определить, это режим выбора города
+  bool get _isCityMode => widget.title.toLowerCase().contains('город');
 
   @override
   void initState() {
@@ -51,6 +61,11 @@ class _SelectionDialogState extends State<SelectionDialog> {
     _searchController.addListener(_onSearchChanged);
     _allOptions = List<String>.from(widget.options);
     _filteredOptions = List<String>.from(widget.options);
+    _displayOptionsWithLetters = []; // 🆕 Инициализируем для режима городов
+    
+    if (_isCityMode) {
+      _buildDisplayOptionsWithLetters(_filteredOptions);
+    }
   }
 
   @override
@@ -92,6 +107,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
         _isSearching = false;
         _filteredOptions = List<String>.from(_allOptions);
       });
+      if (_isCityMode) {
+        _buildDisplayOptionsWithLetters(_filteredOptions);
+      }
       return;
     }
 
@@ -101,6 +119,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
     // Если запрос < 3 символов — API не вызываем
     if (query.length < 3) {
       log.d('🔍 Локальный поиск: "$query"');
+      if (_isCityMode) {
+        _buildDisplayOptionsWithLetters(_filteredOptions);
+      }
       return;
     }
 
@@ -137,6 +158,10 @@ class _SelectionDialogState extends State<SelectionDialog> {
             return cleanName.contains(queryLower) || fullName.contains(queryLower);
           })
           .toList();
+      
+      if (_isCityMode) {
+        _buildDisplayOptionsWithLetters(_filteredOptions);
+      }
     });
   }
 
@@ -179,6 +204,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
           _isSearching = false;
           _filteredOptions = resultsList;
         });
+        if (_isCityMode) {
+          _buildDisplayOptionsWithLetters(_filteredOptions);
+        }
       }
     } catch (e) {
       log.d('   ❌ Ошибка поиска (callback): $e');
@@ -253,6 +281,9 @@ class _SelectionDialogState extends State<SelectionDialog> {
           _isSearching = false;
           _filteredOptions = resultsList;
         });
+        if (_isCityMode) {
+          _buildDisplayOptionsWithLetters(_filteredOptions);
+        }
       }
     } catch (e) {
       log.d('   ❌ Ошибка поиска: $e');
@@ -262,6 +293,34 @@ class _SelectionDialogState extends State<SelectionDialog> {
         });
       }
     }
+  }
+
+  /// 🆕 Построить список опций с буквами для режима городов
+  void _buildDisplayOptionsWithLetters(List<String> cities) {
+    List<dynamic> newDisplayOptions = [];
+    String? currentLetter;
+
+    final sortedCities = List<String>.from(cities);
+    sortedCities.sort((a, b) {
+      final cleanA = _getCleanOptionName(a).toLowerCase();
+      final cleanB = _getCleanOptionName(b).toLowerCase();
+      return cleanA.compareTo(cleanB);
+    });
+
+    for (var city in sortedCities) {
+      final cleanName = _getCleanOptionName(city);
+      final firstLetter = cleanName.isEmpty ? '?' : cleanName[0].toUpperCase();
+
+      if (firstLetter != currentLetter) {
+        newDisplayOptions.add(_LetterHeader(firstLetter));
+        currentLetter = firstLetter;
+      }
+      newDisplayOptions.add(city);
+    }
+
+    setState(() {
+      _displayOptionsWithLetters = newDisplayOptions;
+    });
   }
 
   @override
@@ -339,78 +398,156 @@ class _SelectionDialogState extends State<SelectionDialog> {
             const SizedBox(height: 15),
 
             // 📋 СПИСОК ОПЦИЙ
-            Flexible(
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: _filteredOptions.isEmpty
-                      ? [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            child: Text(
-                              _searchController.text.isEmpty
-                                  ? 'Нет опций'
-                                  : 'Не найдено',
-                              style: const TextStyle(
-                                color: textSecondary,
-                                fontSize: 14,
+            if (_isCityMode)
+              // 🆕 РЕЖИМ ГОРОДОВ: С БУКВАМИ И TAP-TO-SELECT
+              Flexible(
+                child: _displayOptionsWithLetters.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchController.text.isEmpty
+                              ? 'Нет городов'
+                              : 'Город не найден',
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      )
+                    : ScrollbarTheme(
+                        data: ScrollbarThemeData(
+                          thumbColor: WidgetStateProperty.all<Color?>(
+                            const Color(0xFF3C3C3C),
+                          ),
+                          trackColor: WidgetStateProperty.all<Color?>(
+                            const Color.fromARGB(255, 43, 23, 26),
+                          ),
+                        ),
+                        child: Scrollbar(
+                          child: ListView.builder(
+                            itemCount: _displayOptionsWithLetters.length,
+                            itemBuilder: (context, index) {
+                              final item = _displayOptionsWithLetters[index];
+                              
+                              if (item is _LetterHeader) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                  child: Text(
+                                    item.letter,
+                                    style: const TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                );
+                              } else {
+                                final option = item as String;
+                                final isSelected = _tempSelectedOptions.contains(option);
+                                
+                                return GestureDetector(
+                                  onTap: () {
+                                    _tempSelectedOptions.clear();
+                                    _tempSelectedOptions.add(option);
+                                    widget.onSelectionChanged(_tempSelectedOptions);
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                    child: Text(
+                                      option,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? activeIconColor
+                                            : textPrimary,
+                                        fontSize: 16,
+                                        fontWeight: isSelected
+                                            ? FontWeight.bold
+                                            : FontWeight.normal,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+              )
+            else
+              // РЕЖИМ ОБЛАСТИ: С ЧЕКБОКСАМИ И КНОПКАМИ (ОРИГИНАЛЬНЫЙ)
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: _filteredOptions.isEmpty
+                        ? [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              child: Text(
+                                _searchController.text.isEmpty
+                                    ? 'Нет опций'
+                                    : 'Не найдено',
+                                style: const TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
-                          )
-                        ]
-                      : _filteredOptions
-                          .map((option) => _buildCheckbox(option))
-                          .toList(),
+                            )
+                          ]
+                        : _filteredOptions
+                            .map((option) => _buildCheckbox(option))
+                            .toList(),
+                  ),
                 ),
               ),
-            ),
 
             const SizedBox(height: 20),
 
-            // 🔘 КНОПКИ
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  style: TextButton.styleFrom(
-                    minimumSize: const Size(127, 35),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+            // 🔘 КНОПКИ (ТОЛЬКО ДЛЯ РЕЖИМА ОБЛАСТЕЙ)
+            if (!_isCityMode)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(127, 35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text(
+                      'Отмена',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 16,
+                        decoration: TextDecoration.underline,
+                        decorationColor: textPrimary,
+                      ),
                     ),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Отмена',
-                    style: TextStyle(
-                      color: textPrimary,
-                      fontSize: 16,
-                      decoration: TextDecoration.underline,
-                      decorationColor: textPrimary,
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      side: const BorderSide(color: activeIconColor),
+                      minimumSize: const Size(127, 35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    onPressed: () {
+                      widget.onSelectionChanged(_tempSelectedOptions);
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text(
+                      'Готово',
+                      style: TextStyle(color: activeIconColor, fontSize: 16),
                     ),
                   ),
-                ),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    side: const BorderSide(color: activeIconColor),
-                    minimumSize: const Size(127, 35),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  onPressed: () {
-                    widget.onSelectionChanged(_tempSelectedOptions);
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Готово',
-                    style: TextStyle(color: activeIconColor, fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
           ],
         ),
       ),
