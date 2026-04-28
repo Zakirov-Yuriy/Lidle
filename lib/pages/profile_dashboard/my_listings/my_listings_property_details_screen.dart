@@ -50,6 +50,76 @@ String formatPriceWithRuble(String price) {
   return '$formatted ₽';
 }
 
+/// Парсит цену из строки: "1000000,00" → 1000000.0
+double _parsePriceString(String price) {
+  String cleanPrice = price.replaceAll('₽', '').trim();
+  cleanPrice = cleanPrice.replaceAll(',', '.');
+  return double.tryParse(cleanPrice) ?? 0.0;
+}
+
+/// Извлекает значение площади из характеристик
+/// Ищет ключи "площадь", "total_area", "area" и т.п.
+double _getAreaFromCharacteristics(Map<String, dynamic> characteristics) {
+  for (final entry in characteristics.entries) {
+    final charData = entry.value;
+    if (charData is Map<String, dynamic>) {
+      final title = (charData['title'] as String? ?? '').toLowerCase();
+      
+      // Ищем характеристику площади
+      if (title.contains('площадь') || title.contains('area')) {
+        final value = charData['value'];
+        
+        if (value is num) {
+          return value.toDouble();
+        } else if (value is String) {
+          // Парсим строку с числом (удаляем м², м и прочие единицы)
+          final numericString = value.replaceAll(RegExp(r'[^\d.,]'), '').trim();
+          final cleanedString = numericString.replaceAll(',', '.');
+          return double.tryParse(cleanedString) ?? 0.0;
+        } else if (value is Map && value.containsKey('value')) {
+          // Случай: {"value": ..., "max_value": ...}
+          final innerValue = value['value'];
+          if (innerValue is num) return innerValue.toDouble();
+          if (innerValue is String) {
+            final numericString = innerValue.replaceAll(RegExp(r'[^\d.,]'), '').trim();
+            final cleanedString = numericString.replaceAll(',', '.');
+            return double.tryParse(cleanedString) ?? 0.0;
+          }
+        }
+      }
+    }
+  }
+  return 0.0;
+}
+
+/// Вычисляет цену за квадратный метр
+/// Возвращает форматированную строку "X XXX ₽" или "-" если нет данных
+String _calculatePricePerSquareMeter(String price, double area) {
+  if (area <= 0) return '-';
+  
+  final totalPrice = _parsePriceString(price);
+  if (totalPrice <= 0) return '-';
+  
+  final pricePerM2 = totalPrice / area;
+  
+  // Форматируем без дробной части
+  final formatter = pricePerM2.toStringAsFixed(0);
+  final parts = formatter.split('');
+  final buffer = StringBuffer();
+  
+  int count = 0;
+  for (int i = parts.length - 1; i >= 0; i--) {
+    if (count > 0 && count % 3 == 0) {
+      buffer.write(' ');
+    }
+    buffer.write(parts[i]);
+    count++;
+  }
+  
+  final formatted = buffer.toString().split('').reversed.join('');
+  return '$formatted ₽';
+}
+
 class MyListingsPropertyDetailsScreen extends StatefulWidget {
   final Listing listing;
 
@@ -425,6 +495,9 @@ class _MyListingsPropertyDetailsScreenState
   }
 
   Widget _buildMainInfoCard() {
+    // Вычисляем площадь один раз для проверки
+    final area = _getAreaFromCharacteristics(_listing.characteristics);
+    
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,20 +533,23 @@ class _MyListingsPropertyDetailsScreenState
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 4),
-          const Text(
-            "354 582 ₽ за м²",
-            style: TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+          // Показываем цену за м² ТОЛЬКО если площадь найдена в характеристиках
+          if (area > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              "${_calculatePricePerSquareMeter(_listing.price, area)} за м²",
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            "Без скидки",
-            style: TextStyle(color: textMuted, fontSize: 12),
-          ),
+          ],
+          // const SizedBox(height: 4),
+          // const Text(
+          //   "Без скидки",
+          //   style: TextStyle(color: textMuted, fontSize: 12),
+          // ),
         ],
       ),
     );

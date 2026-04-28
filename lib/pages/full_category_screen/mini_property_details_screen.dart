@@ -53,6 +53,94 @@ String _formatPriceWithRuble(String price) {
   return '$formatted ₽';
 }
 
+/// Парсит цену из строки: "1000000,00" → 1000000.0
+double _parsePriceString(String price) {
+  String cleanPrice = price.replaceAll('₽', '').trim();
+  cleanPrice = cleanPrice.replaceAll(',', '.');
+  return double.tryParse(cleanPrice) ?? 0.0;
+}
+
+/// Извлекает значение площади из характеристик
+/// Ищет ключи "площадь", "total_area", "area" и т.п.
+double _getAreaFromCharacteristics(Map<String, dynamic>? characteristics) {
+  if (characteristics == null || characteristics.isEmpty) {
+    log.d('[📐 AREA] characteristics is null or empty, returning 0.0');
+    return 0.0;
+  }
+  
+  log.d('[📐 AREA] Searching in ${characteristics.length} characteristics...');
+  
+  for (final entry in characteristics.entries) {
+    final charData = entry.value;
+    if (charData is Map<String, dynamic>) {
+      final title = (charData['title'] as String? ?? '').toLowerCase();
+      
+      // Ищем характеристику площади
+      if (title.contains('площадь') || title.contains('area')) {
+        log.d('[📐 AREA] Found area characteristic: "$title"');
+        final value = charData['value'];
+        
+        if (value is num) {
+          log.d('[📐 AREA] Value is num: $value');
+          return value.toDouble();
+        } else if (value is String) {
+          // Парсим строку с числом (удаляем м², м и прочие единицы)
+          final numericString = value.replaceAll(RegExp(r'[^\d.,]'), '').trim();
+          final cleanedString = numericString.replaceAll(',', '.');
+          final parsed = double.tryParse(cleanedString) ?? 0.0;
+          log.d('[📐 AREA] Parsed from string "$value" → $parsed');
+          return parsed;
+        } else if (value is Map && value.containsKey('value')) {
+          // Случай: {"value": ..., "max_value": ...}
+          final innerValue = value['value'];
+          if (innerValue is num) {
+            log.d('[📐 AREA] Value from map is num: $innerValue');
+            return innerValue.toDouble();
+          }
+          if (innerValue is String) {
+            final numericString = innerValue.replaceAll(RegExp(r'[^\d.,]'), '').trim();
+            final cleanedString = numericString.replaceAll(',', '.');
+            final parsed = double.tryParse(cleanedString) ?? 0.0;
+            log.d('[📐 AREA] Parsed from map string "$innerValue" → $parsed');
+            return parsed;
+          }
+        }
+      }
+    }
+  }
+  
+  log.d('[📐 AREA] No area characteristic found, returning 0.0');
+  return 0.0;
+}
+
+/// Вычисляет цену за квадратный метр
+/// Возвращает форматированную строку "X XXX ₽" или "-" если нет данных
+String _calculatePricePerSquareMeter(String price, double area) {
+  if (area <= 0) return '-';
+  
+  final totalPrice = _parsePriceString(price);
+  if (totalPrice <= 0) return '-';
+  
+  final pricePerM2 = totalPrice / area;
+  
+  // Форматируем без дробной части
+  final formatter = pricePerM2.toStringAsFixed(0);
+  final parts = formatter.split('');
+  final buffer = StringBuffer();
+  
+  int count = 0;
+  for (int i = parts.length - 1; i >= 0; i--) {
+    if (count > 0 && count % 3 == 0) {
+      buffer.write(' ');
+    }
+    buffer.write(parts[i]);
+    count++;
+  }
+  
+  final formatted = buffer.toString().split('').reversed.join('');
+  return '$formatted ₽';
+}
+
 // ============================================================
 
 class MiniPropertyDetailsScreen extends StatefulWidget {
@@ -888,6 +976,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   Widget _buildMainInfoCard() {
+    // Вычисляем площадь один раз для проверки
+    final area = _getAreaFromCharacteristics(_listing.characteristics);
+    
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -896,18 +987,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                widget.listing.date,
+                _listing.date,
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
               Text(
-                '№ ${widget.listing.id}',
+                '№ ${_listing.id}',
                 style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            widget.listing.title,
+            _listing.title,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -916,27 +1007,30 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _formatPriceWithRuble(widget.listing.price),
+            _formatPriceWithRuble(_listing.price),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
+          // Показываем цену за м² ТОЛЬКО если площадь найдена в характеристиках
+          if (area > 0) ...[
+            const SizedBox(height: 4),
+            Text(
+              "${_calculatePricePerSquareMeter(_listing.price, area)} за м²",
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
           // const SizedBox(height: 4),
           // const Text(
-          //   "354 582 ₽ за м²",
-          //   style: TextStyle(
-          //     color: Colors.white70,
-          //     fontSize: 13,
-          //     fontWeight: FontWeight.w500,
-          //   ),
+          //   "Без скидки",
+          //   style: TextStyle(color: textMuted, fontSize: 12),
           // ),
-          const SizedBox(height: 4),
-          const Text(
-            "Без скидки",
-            style: TextStyle(color: textMuted, fontSize: 12),
-          ),
         ],
       ),
     );
@@ -960,7 +1054,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            widget.listing.location,
+            _listing.location,
             style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 3),
