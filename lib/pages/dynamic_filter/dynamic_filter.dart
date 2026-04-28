@@ -113,6 +113,8 @@ class DynamicFilter extends StatefulWidget {
   advertId; // ID объявления для редактирования (если null - создание нового)
   final String? defaultRegion; // Область по умолчанию
   final String? defaultCity; // Город по умолчанию
+  final int? defaultRegionId; // ID области по умолчанию (для быстрой инициализации)
+  final int? defaultCityId; // ID города по умолчанию (для быстрой инициализации)
   final String? defaultPhone2; // Второй телефон по умолчанию
 
   const DynamicFilter({
@@ -121,6 +123,8 @@ class DynamicFilter extends StatefulWidget {
     this.advertId,
     this.defaultRegion,
     this.defaultCity,
+    this.defaultRegionId,
+    this.defaultCityId,
     this.defaultPhone2,
   });
 
@@ -326,13 +330,20 @@ class _DynamicFilterState extends State<DynamicFilter>
     try {
       // 1️⃣ Инициализируем регион по умолчанию
       if (widget.defaultRegion != null && widget.defaultRegion!.isNotEmpty) {
-        final regionIndex = _regions.indexWhere(
-          (r) => r['name'] == widget.defaultRegion,
-        );
+        int? regionId = widget.defaultRegionId;
         
-        if (regionIndex >= 0) {
-          final regionId = _regions[regionIndex]['id'] as int?;
+        // Если ID не передан, ищем по имени
+        if (regionId == null) {
+          final regionIndex = _regions.indexWhere(
+            (r) => r['name'] == widget.defaultRegion,
+          );
           
+          if (regionIndex >= 0) {
+            regionId = _regions[regionIndex]['id'] as int?;
+          }
+        }
+        
+        if (regionId != null) {
           setState(() {
             _selectedRegion = {widget.defaultRegion!};
             _selectedRegionId = regionId;
@@ -341,29 +352,59 @@ class _DynamicFilterState extends State<DynamicFilter>
           log.d('🎯 Default region set: "${widget.defaultRegion}" (ID: $regionId)');
           
           // 2️⃣ Загружаем города для выбранного региона
-          if (regionId != null) {
-            await _loadCitiesForSelectedRegion();
+          await _loadCitiesForSelectedRegion();
+          
+          // 3️⃣ Инициализируем город по умолчанию (если есть и города загружены)
+          if (widget.defaultCity != null && widget.defaultCity!.isNotEmpty) {
+            int? cityId = widget.defaultCityId;
             
-            // 3️⃣ Инициализируем город по умолчанию (если есть и города загружены)
-            if (widget.defaultCity != null && widget.defaultCity!.isNotEmpty) {
+            // Если ID не передан, ищем по имени
+            if (cityId == null) {
               final cityIndex = _cities.indexWhere(
                 (c) => c['name'] == widget.defaultCity,
               );
               
               if (cityIndex >= 0) {
-                final cityId = _cities[cityIndex]['id'] as int?;
+                cityId = _cities[cityIndex]['id'] as int?;
+              }
+            }
+            
+            if (cityId != null) {
+              // 🆕 Если cityId передан, используем его, независимо от _cities
+              // Это может быть город найденный через API поиск, который еще не в _cities
+              final cityIndex = _cities.indexWhere(
+                (c) => c['id'] == cityId,
+              );
+              
+              if (cityIndex >= 0) {
+                // Город найден в _cities - используем его информацию
+                final cityInfo = _cities[cityIndex];
                 
                 setState(() {
                   _selectedCity = {widget.defaultCity!};
                   _selectedCityId = cityId;
                   // Получаем информацию о регионе города
-                  final cityInfo = _cities[cityIndex];
                   _selectedCityRegionId = cityInfo['region_id'] as int?;
                   _selectedCityMainRegionId = cityInfo['main_region_id'] as int?;
                 });
                 
-                log.d('🎯 Default city set: "${widget.defaultCity}" (ID: $cityId)');
+                log.d('🎯 Default city set: "${widget.defaultCity}" (ID: $cityId) - found in _cities');
+              } else {
+                // 🆕 Город НЕ найден в _cities, но у нас есть его ID и имя
+                // Это может быть результат API поиска из contact_data_screen
+                // Просто устанавливаем его с имеющейся информацией
+                setState(() {
+                  _selectedCity = {widget.defaultCity!};
+                  _selectedCityId = cityId;
+                  // Регион города вероятно совпадает с выбранным регионом
+                  _selectedCityMainRegionId = regionId;
+                });
+                
+                log.d('🎯 Default city set: "${widget.defaultCity}" (ID: $cityId) - NOT in _cities, but using provided ID');
+                log.d('   ℹ️ This city was likely selected via API search from contact_data_screen');
               }
+            } else {
+              log.d('⚠️ City ID is null for "${widget.defaultCity}"');
             }
           }
         }

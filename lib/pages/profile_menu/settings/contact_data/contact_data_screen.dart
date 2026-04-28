@@ -313,6 +313,12 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // Загружаем сохраненные данные из Hive
       final telegram = UserService.getLocal('telegram') as String? ?? '';
       final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
+      
+      // 🆕 Восстанавливаем ID региона и города из Hive
+      final savedRegionIdStr = UserService.getLocal('regionId') as String? ?? '';
+      final savedCityIdStr = UserService.getLocal('cityId') as String? ?? '';
+      final savedRegionId = savedRegionIdStr.isNotEmpty ? int.tryParse(savedRegionIdStr) : null;
+      final savedCityId = savedCityIdStr.isNotEmpty ? int.tryParse(savedCityIdStr) : null;
 
       // Извлекаем ID и значения контактов
       String emailValue = email;
@@ -357,23 +363,36 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         // Восстанавливаем выбранные область и город
         if (region.isNotEmpty) {
           _selectedRegion = {region};
-          // Находим ID выбранного региона
-          final regionIndex = _regions.indexWhere((r) => r['name'] == region);
-          if (regionIndex >= 0) {
-            _selectedRegionId = _regions[regionIndex]['id'] as int?;
+          // 🆕 Используем сохраненный ID если доступен, иначе ищем
+          if (savedRegionId != null) {
+            _selectedRegionId = savedRegionId;
+          } else {
+            final regionIndex = _regions.indexWhere((r) => r['name'] == region);
+            if (regionIndex >= 0) {
+              _selectedRegionId = _regions[regionIndex]['id'] as int?;
+            }
           }
         }
         if (city.isNotEmpty) {
           _selectedCity = {city};
-          // Находим ID выбранного города
-          final cityIndex = _lastCitiesSearchResults.keys.toList().indexOf(city);
-          if (cityIndex >= 0) {
-            _selectedCityId = _lastCitiesSearchResults[city];
+          // 🆕 Используем сохраненный ID если доступен, иначе ищем
+          if (savedCityId != null) {
+            _selectedCityId = savedCityId;
+          } else {
+            final cityIndex = _lastCitiesSearchResults.keys.toList().indexOf(city);
+            if (cityIndex >= 0) {
+              _selectedCityId = _lastCitiesSearchResults[city];
+            }
           }
         }
         
         _isLoading = false;
       });
+
+      // 🆕 Загружаем города для выбранного региона если регион выбран
+      if (_selectedRegionId != null && _cities.isEmpty) {
+        await _loadCitiesForSelectedRegion();
+      }
 
       // 💾 Сохраняем данные в локальное хранилище для кеширования
       await UserService.saveLocal('name', firstName);
@@ -382,6 +401,24 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       await UserService.saveLocal('phone2', phone2);
       await UserService.saveLocal('region', region);
       await UserService.saveLocal('city', city);
+      
+      // ✅ ВАЖНО: Сохраняем также ID региона и города для dynamic_filter
+      // Это нужно чтобы при создании объявления не было ошибки валидации
+      if (region.isNotEmpty) {
+        final regionIndex = _regions.indexWhere((r) => r['name'] == region);
+        if (regionIndex >= 0) {
+          final regionId = _regions[regionIndex]['id'] as int?;
+          await UserService.saveLocal('regionId', regionId?.toString() ?? '');
+        }
+      }
+      
+      if (city.isNotEmpty) {
+        final cityIndex = _lastCitiesSearchResults.keys.toList().indexOf(city);
+        if (cityIndex >= 0) {
+          final cityId = _lastCitiesSearchResults[city];
+          await UserService.saveLocal('cityId', cityId?.toString() ?? '');
+        }
+      }
       // ignore: avoid_print
       log.d(
         '✅ ContactDataScreen: данные сохранены в локальное хранилище для кеша',
@@ -429,153 +466,237 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         return;
       }
 
-      // log.d('💾 Saving contact data...');
-      // log.d('Token: ${token.substring(0, 20)}...');
-      // log.d();
+      // ✅ Сохраняем значения из контроллеров перед сохранением на сервер
+      final updatedName = _nameController.text;
+      final updatedLastName = _lastNameController.text;
+      final updatedEmail = _emailController.text;
+      final updatedPhone1 = _phone1Controller.text;
+      final updatedPhone2 = _phone2Controller.text;
 
       // Обновляем имя на API (если оно изменилось)
-      if (_nameController.text.isNotEmpty || _lastNameController.text.isNotEmpty) {
+      if (updatedName.isNotEmpty || updatedLastName.isNotEmpty) {
         try {
-          // log.d('👤 Updating user name: ${_nameController.text} ${_lastNameController.text}');
-          final firstName = _nameController.text;
-          final lastName = _lastNameController.text;
-
-          // log.d('🔍 DEBUG contact_data_screen._saveContactData():');
-          // log.d();
-          // log.d();
-
+          log.d('👤 Updating user name: "$updatedName" "$updatedLastName"');
           await UserService.updateName(
-            name: firstName,
-            lastName: lastName,
+            name: updatedName,
+            lastName: updatedLastName,
             token: token,
           );
-          // log.d('✅ User name updated successfully');
+          log.d('✅ Имя и фамилия обновлены на сервере');
         } catch (e) {
-          // log.d('❌ Name update error: $e');
+          log.d('❌ Ошибка обновления имени: $e');
         }
       }
 
       // Сохраняем в локальное хранилище
-      await UserService.saveLocal('name', _nameController.text);
-      await UserService.saveLocal('lastName', _lastNameController.text);
-      await UserService.saveLocal('phone1', _phone1Controller.text);
-      await UserService.saveLocal('phone2', _phone2Controller.text);
+      await UserService.saveLocal('name', updatedName);
+      await UserService.saveLocal('lastName', updatedLastName);
+      await UserService.saveLocal('phone1', updatedPhone1);
+      await UserService.saveLocal('phone2', updatedPhone2);
       await UserService.saveLocal('telegram', _telegramController.text);
       await UserService.saveLocal('whatsapp', _whatsappController.text);
-      // Сохраняем выбранные область и город (выбираем первые из Set)
       await UserService.saveLocal('region', _selectedRegion.isEmpty ? '' : _selectedRegion.first);
       await UserService.saveLocal('city', _selectedCity.isEmpty ? '' : _selectedCity.first);
+      
+      // ✅ ВАЖНО: Сохраняем также ID региона и города для dynamic_filter
+      if (_selectedRegionId != null) {
+        await UserService.saveLocal('regionId', _selectedRegionId.toString());
+      }
+      if (_selectedCityId != null) {
+        await UserService.saveLocal('cityId', _selectedCityId.toString());
+      }
+      
+      log.d('✅ Локальные данные сохранены в Hive');
 
       // Обновляем или добавляем email
-      if (_emailController.text.isNotEmpty) {
+      if (updatedEmail.isNotEmpty) {
         try {
           if (_emailId != null) {
-            // log.d('📧 Updating email (ID: $_emailId)');
-            // Обновляем существующий email
             await ContactService.updateEmail(
               id: _emailId!,
-              email: _emailController.text,
+              email: updatedEmail,
               token: token,
             );
-            // log.d('✅ Email updated successfully');
+            log.d('✅ Email обновлен');
           } else {
-            // log.d('📧 Adding new email');
-            // Добавляем новый email
             await ContactService.addEmail(
-              email: _emailController.text,
+              email: updatedEmail,
               token: token,
             );
-            // log.d('✅ Email added successfully');
+            log.d('✅ Email добавлен');
           }
         } catch (e) {
-          // log.d('❌ Email update error: $e');
+          log.d('❌ Ошибка обновления email: $e');
         }
       }
 
       // Обновляем или добавляем первый телефон
-      if (_phone1Controller.text.isNotEmpty) {
+      if (updatedPhone1.isNotEmpty) {
         try {
           if (_phone1Id != null) {
-            // log.d('☎️ Updating phone1 (ID: $_phone1Id)');
-            // Обновляем существующий телефон
             await ContactService.updatePhone(
               id: _phone1Id!,
-              phone: _phone1Controller.text,
+              phone: updatedPhone1,
               token: token,
             );
-            // log.d('✅ Phone1 updated successfully');
+            log.d('✅ Телефон 1 обновлен (список сохраненных)');
           } else {
-            // log.d('☎️ Adding new phone1');
-            // Добавляем новый телефон
             await ContactService.addPhone(
-              phone: _phone1Controller.text,
+              phone: updatedPhone1,
               token: token,
             );
-            // log.d('✅ Phone1 added successfully');
+            log.d('✅ Телефон 1 добавлен (список сохраненных)');
+          }
+          
+          // ✅ ВАЖНО: Обновляем основной номер телефона профиля
+          // Используем эндпоинт PUT /me/settings/phone (отдельно от списка телефонов)
+          try {
+            await ContactService.updateMainPhone(
+              phone: updatedPhone1,
+              token: token,
+            );
+            log.d('✅ Основной телефон профиля обновлен');
+          } catch (e) {
+            log.d('⚠️ Ошибка обновления основного телефона профиля: $e');
           }
         } catch (e) {
-          // log.d('❌ Phone 1 update error: $e');
+          log.d('❌ Ошибка обновления телефона 1: $e');
         }
       }
 
       // Обновляем или добавляем второй телефон
-      if (_phone2Controller.text.isNotEmpty) {
+      if (updatedPhone2.isNotEmpty) {
         try {
           if (_phone2Id != null) {
-            // log.d('☎️ Updating phone2 (ID: $_phone2Id)');
-            // Обновляем существующий телефон
             await ContactService.updatePhone(
               id: _phone2Id!,
-              phone: _phone2Controller.text,
+              phone: updatedPhone2,
               token: token,
             );
-            // log.d('✅ Phone2 updated successfully');
+            log.d('✅ Телефон 2 обновлен');
           } else {
-            // log.d('☎️ Adding new phone2');
-            // Добавляем новый телефон
             await ContactService.addPhone(
-              phone: _phone2Controller.text,
+              phone: updatedPhone2,
               token: token,
             );
-            // log.d('✅ Phone2 added successfully');
+            log.d('✅ Телефон 2 добавлен');
           }
         } catch (e) {
-          // log.d('Phone 2 update error: $e');
+          log.d('❌ Ошибка обновления телефона 2: $e');
         }
       }
 
-      // После успешных изменений — проверяем данные на сервере
-      // log.d('🔎 Verifying saved contact data by fetching from server...');
-      try {
-        await _loadContactData();
-        // log.d('✅ Verification GET complete');
-      } catch (e) {
-        // log.d('❗ Reload after save failed: $e');
+      // ✅ КРИТИЧНО: Сначала обновляем ProfileBloc с forceRefresh = true
+      // Это инвалидирует кеш и принудительно загружает свежие данные с сервера
+      log.d('🔄 Принудительно обновляем ProfileBloc с forceRefresh...');
+      if (mounted) {
+        context.read<ProfileBloc>().add(LoadProfileEvent(forceRefresh: true));
       }
 
-      setState(() {
-        _isLoading = false;
-        _errorMessage = null;
-      });
+      // ⏳ Даем время для обновления ProfileBloc
+      // forceRefresh требует больше времени (нужно загрузить с сервера)
+      await Future.delayed(const Duration(milliseconds: 1500));
 
-      // Перезагружаем профиль для обновления на других экранах
+      // 🔄 Инвалидируем кеш экрана контактных данных
+      ScreenCacheManager.contactDataLastLoadTime = null;
+      log.d('🔄 Инвалидирован кеш contactDataLastLoadTime');
+
+      // ✅ ВАЖНО: Явно получаем СВЕЖИЙ профиль с сервера напрямую (без ProfileBloc кеша)
+      // Это гарантирует что получим самые актуальные имя/фамилию
+      log.d('🔎 Загружаем актуальные данные профиля с сервера...');
+      try {
+        if (!mounted) return;
+
+        final token = TokenService.currentToken;
+        if (token != null) {
+          // 📲 Получаем СВЕЖИЙ профиль напрямую с сервера (UserService не использует кеш)
+          final freshProfile = await UserService.getProfile(token: token);
+          final phonesResponse = await ContactService.getPhones(token: token);
+          final emailsResponse = await ContactService.getEmails(token: token);
+
+          // Сохраняем свежий профиль в локальное хранилище для синхронизации
+          await UserService.saveLocal('name', freshProfile.name);
+          await UserService.saveLocal('lastName', freshProfile.lastName);
+          await UserService.saveLocal('email', freshProfile.email);
+          await UserService.saveLocal('phone', freshProfile.phone);
+
+          // Обновляем текстовые поля с САМЫМИ СВЕЖИМИ данными
+          setState(() {
+            _nameController.text = freshProfile.name;
+            _lastNameController.text = freshProfile.lastName;
+            
+            // Обновляем остальные поля
+            String emailValue = freshProfile.email;
+            if (emailsResponse.data.isNotEmpty) {
+              _emailId = emailsResponse.data.first.id;
+              if (emailsResponse.data.first.email.isNotEmpty) {
+                emailValue = emailsResponse.data.first.email;
+              }
+            }
+            _emailController.text = emailValue;
+
+            String phone1 = freshProfile.phone ?? '';
+            if (phonesResponse.data.isNotEmpty) {
+              _phone1Id = phonesResponse.data.first.id;
+              if (phonesResponse.data.first.phone.isNotEmpty) {
+                phone1 = phonesResponse.data.first.phone;
+              }
+              if (!phone1.startsWith('+')) {
+                phone1 = '+$phone1';
+              }
+            }
+            _phone1Controller.text = phone1;
+
+            String phone2 = '';
+            if (phonesResponse.data.length > 1) {
+              _phone2Id = phonesResponse.data[1].id;
+              phone2 = phonesResponse.data[1].phone;
+              if (!phone2.startsWith('+')) {
+                phone2 = '+$phone2';
+              }
+            }
+            _phone2Controller.text = phone2;
+
+            // Обновляем локальные данные из Hive
+            final telegram = UserService.getLocal('telegram') as String? ?? '';
+            final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
+            _telegramController.text = telegram;
+            _whatsappController.text = whatsapp;
+          });
+
+          log.d('✅ Имя: "${freshProfile.name}", Фамилия: "${freshProfile.lastName}" - загружены с сервера');
+          log.d('✅ Контактные данные обновлены в UI реал-тайм');
+        }
+      } catch (e) {
+        log.d('❗ Ошибка при загрузке свежих данных: $e');
+      }
+
+      // ✅ Убеждаемся что UI обновлен
       if (mounted) {
-        // 🔄 ВАЖНО: Инвалидируем кеш объявлений перед загрузкой профиля
-        // Это гарантирует, что объявления будут перезагружены после изменения контактных данных
+        setState(() {
+          _isLoading = false;
+          _errorMessage = null;
+        });
+        log.d('✅ UI полностью обновлен');
+
+        // 🔄 Инвалидируем кеш объявлений
         final cacheService = AppCacheService();
         cacheService.invalidate(CacheKeys.listingsData);
-        log.d('✅ Кеш объявлений инвалидирован после сохранения контактных данных');
+        log.d('✅ Кеш объявлений инвалидирован');
 
-        // ✅ Обновляем профиль
-        context.read<ProfileBloc>().add(LoadProfileEvent());
-
-        // 🔄 КРИТИЧНО: Явно перезагружаем объявления с forceRefresh=true
-        // Это гарантирует что ListingsBloc не будет использовать старый кеш
-        context.read<ListingsBloc>().add(LoadListingsEvent(forceRefresh: true));
-        log.d('🔄 Явно запущена перезагрузка объявлений (LoadListingsEvent с forceRefresh=true)');
+        // 📲 С задержкой обновляем ListingsBloc
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) {
+            context.read<ListingsBloc>().add(LoadListingsEvent(forceRefresh: true));
+            log.d('🔄 ListingsBloc перезагружен');
+          }
+        });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Контактные данные сохранены')),
+          const SnackBar(
+            content: Text('✅ Контактные данные сохранены и обновлены'),
+            duration: Duration(seconds: 2),
+          ),
         );
       }
     } catch (e) {
@@ -583,6 +704,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _errorMessage = 'Ошибка сохранения: ${e.toString()}';
         _isLoading = false;
       });
+      log.d('❌ Ошибка в _saveContactData: $e');
     }
   }
 
@@ -711,9 +833,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             // Показываем обычный контент
             return SafeArea(
               child: SingleChildScrollView(
+                physics: const ScrollPhysics(),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     // ───── Header ─────
                     Padding(
                       padding: const EdgeInsets.only(bottom: 20, right: 23),
@@ -854,15 +977,15 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                         ),
                       ),
                     ],
-
                     const SizedBox(height: 32),
                   ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
-      ),
+      
     );
   }
 
@@ -1050,6 +1173,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _selectedCity.clear();
                       _selectedCityId = null;
                       _cities.clear();
+                      // 🆕 Сохраняем регион и его ID в локальное хранилище сразу при выборе
+                      UserService.saveLocal('region', selectedRegionName);
+                      if (regionId != null) {
+                        UserService.saveLocal('regionId', regionId.toString());
+                      }
+                      // Очищаем сохраненные город/cityId при смене региона
+                      UserService.saveLocal('city', '');
+                      UserService.saveLocal('cityId', '');
                     });
 
                     // Загружаем города для выбранного региона
@@ -1122,19 +1253,68 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                           .toList(),
                       selectedOptions: _selectedCity,
                       allowMultipleSelection: false,
+                      // 🆕 Callback для поиска городов через API
+                      onSearchQuery: (query) async {
+                        try {
+                          final token = TokenService.currentToken;
+                          if (token == null) return [];
+
+                          final response = await AddressService.searchAddresses(
+                            query: query,
+                            token: token,
+                            types: ['city'],
+                            filters: _selectedRegionId != null
+                                ? {'main_region_id': _selectedRegionId}
+                                : null,
+                          );
+
+                          final cities = <String>{};
+                          for (final result in response.data) {
+                            if (result.city != null) {
+                              cities.add(result.city!.name);
+                              // 🆕 Кешируем ID города для быстрого доступа
+                              _lastCitiesSearchResults[result.city!.name] = result.city!.id;
+                            }
+                          }
+                          return cities.toList();
+                        } catch (e) {
+                          log.d('❌ Error searching cities: $e');
+                          return [];
+                        }
+                      },
                       onSelectionChanged: (Set<String> selected) {
                         if (selected.isNotEmpty) {
                           final selectedCityName = selected.first;
-                          final cityIndex = _cities.indexWhere(
-                            (c) => c['name'] == selectedCityName,
-                          );
                           int? cityId;
-                          if (cityIndex >= 0) {
-                            cityId = _cities[cityIndex]['id'] as int?;
+                          
+                          // 🆕 Сначала проверяем кеш результатов поиска (для результатов API поиска)
+                          if (_lastCitiesSearchResults.containsKey(selectedCityName)) {
+                            cityId = _lastCitiesSearchResults[selectedCityName];
+                            log.d('✅ City "$selectedCityName" found in search cache with ID: $cityId');
+                          } else {
+                            // Fallback: ищем в массиве _cities
+                            final cityIndex = _cities.indexWhere(
+                              (c) => c['name'] == selectedCityName,
+                            );
+                            if (cityIndex >= 0) {
+                              cityId = _cities[cityIndex]['id'] as int?;
+                              log.d('✅ City "$selectedCityName" found in _cities with ID: $cityId');
+                            } else {
+                              log.d('⚠️ City "$selectedCityName" NOT found - ID will be null!');
+                            }
                           }
+                          
                           setState(() {
                             _selectedCity = selected;
                             _selectedCityId = cityId;
+                            // 🆕 Сохраняем город и его ID в локальное хранилище сразу при выборе
+                            UserService.saveLocal('city', selectedCityName);
+                            if (cityId != null) {
+                              UserService.saveLocal('cityId', cityId.toString());
+                              log.d('💾 Saved to Hive - city: "$selectedCityName", cityId: $cityId');
+                            } else {
+                              log.d('⚠️ NOT saving cityId to Hive - it is null!');
+                            }
                           });
                         }
                       },

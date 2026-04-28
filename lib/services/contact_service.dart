@@ -178,6 +178,36 @@ class ContactService {
     return await ApiService.delete('/me/settings/phones/$id', token: token);
   }
 
+  /// Обновить основной номер телефона профиля.
+  /// Используется эндпоинт: PUT /me/settings/phone
+  /// [phone] - новый основной номер телефона (например, "+380958489566")
+  static Future<ContactResponse> updateMainPhone({
+    required String phone,
+    String? token,
+  }) async {
+    try {
+      log.d(
+        '📱 ContactService.updateMainPhone - Phone: $phone, Token: ${token != null ? 'YES' : 'NO'}',
+      );
+      final body = {'phone': phone};
+
+      final response = await ApiService.put(
+        '/me/settings/phone',
+        body,
+        token: token,
+      );
+      return ContactResponse.fromJson(response);
+    } catch (e) {
+      if (e.toString().contains('Token expired') && token != null) {
+        final newToken = await ApiService.refreshToken(token);
+        if (newToken != null) {
+          return updateMainPhone(phone: phone, token: newToken);
+        }
+      }
+      rethrow;
+    }
+  }
+
   /// Удалить email.
   /// [id] - ID email для удаления
   static Future<Map<String, dynamic>> deleteEmail({

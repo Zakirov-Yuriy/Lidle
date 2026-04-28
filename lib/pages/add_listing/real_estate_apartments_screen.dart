@@ -234,6 +234,12 @@ class _RealEstateApartmentsScreenState
             final defaultCity = UserService.getLocal('city') as String? ?? '';
             final defaultPhone2 = UserService.getLocal('phone2') as String? ?? '';
             
+            // ✅ Получаем также ID региона и города для быстрой инициализации
+            final regionIdStr = UserService.getLocal('regionId') as String? ?? '';
+            final cityIdStr = UserService.getLocal('cityId') as String? ?? '';
+            final defaultRegionId = regionIdStr.isNotEmpty ? int.tryParse(regionIdStr) : null;
+            final defaultCityId = cityIdStr.isNotEmpty ? int.tryParse(cityIdStr) : null;
+            
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -241,6 +247,8 @@ class _RealEstateApartmentsScreenState
                   categoryId: advertType.id,
                   defaultRegion: defaultRegion.isNotEmpty ? defaultRegion : null,
                   defaultCity: defaultCity.isNotEmpty ? defaultCity : null,
+                  defaultRegionId: defaultRegionId,
+                  defaultCityId: defaultCityId,
                   defaultPhone2: defaultPhone2.isNotEmpty ? defaultPhone2 : null,
                 ),
               ),
