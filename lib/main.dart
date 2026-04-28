@@ -179,7 +179,10 @@ class _AppWrapperState extends State<AppWrapper> {
         NewListingNotifier.instance.onNewListing.listen((advert) {
       navigatorKey.currentState?.push(
         MaterialPageRoute(builder: (_) => PublishedScreen(advert: advert)),
-      );
+      ).then((_) {
+        // Очищаем последнее уведомление после того как PublishedScreen закрывается
+        NewListingNotifier.instance.clearLastNotification();
+      });
     });
   }
 

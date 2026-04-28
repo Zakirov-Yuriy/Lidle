@@ -27,12 +27,14 @@ import '../../../services/user_service.dart';
 import '../../../services/attribute_resolver.dart';
 import '../../../models/filter_models.dart';
 import '../../../models/create_advert_model.dart';
+import '../../../models/main_content_model.dart';
 import '../../../services/token_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/pages/add_listing/real_estate_subcategories_screen.dart';
 import 'package:lidle/pages/add_listing/publication_tariff_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/new_listing_notifier.dart';
 import 'package:lidle/core/logger.dart';
 
 // Выделенные чистые виджеты (шаг 2 рефакторинга).
@@ -2554,6 +2556,13 @@ class _DynamicFilterState extends State<DynamicFilter>
       AppCacheService().invalidate(CacheKeys.profileListingsCounts);
       await AppCacheService().invalidateByPrefix(CacheKeys.advertsPrefix);
       // log.d('🗑️ Кеш профиля инвалидирован - счетчики обновятся при возврате');
+
+      // 📢 Сохраняем ID недавно созданного объявления
+      // На my_listings_screen проверим - стало ли это объявление активным (прошло модерацию)
+      // Если да - покажем PublishedScreen один раз
+      if (!_isEditMode && advertId != null) {
+        NewListingNotifier.instance.setLastCreatedAdvertId(advertId);
+      }
 
       // Show moderation dialog
       _showModerationDialog();

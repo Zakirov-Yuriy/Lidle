@@ -289,9 +289,16 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _listingsLoading = false;
         });
 
-        // ── Уведомить если появились новые активные объявления ──
-        if (_activeListings.length > previousActiveCount && _activeListings.isNotEmpty) {
-          NewListingNotifier.instance.notify(_activeListings.first);
+        // 📢 Проверяем - может это только что созданное объявление, которое теперь активно?
+        // (т.е. прошло модерацию и стало видно в списке активных)
+        if (_activeListings.isNotEmpty) {
+          for (final advert in _activeListings) {
+            if (NewListingNotifier.instance.isLastCreatedAdvert(advert.id)) {
+              // Это наше недавно созданное объявление! Показываем PublishedScreen один раз
+              NewListingNotifier.instance.notify(advert);
+              break;
+            }
+          }
         }
       }
     } catch (e) {
@@ -401,9 +408,16 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _listingsLoading = false;
         });
 
-        // ── Уведомить если появились новые активные объявления ──
-        if (_activeListings.length > previousActiveCount && _activeListings.isNotEmpty) {
-          NewListingNotifier.instance.notify(_activeListings.first);
+        // 📢 Проверяем - может это только что созданное объявление, которое теперь активно?
+        // (т.е. прошло модерацию и стало видно в списке активных)
+        if (_activeListings.isNotEmpty) {
+          for (final advert in _activeListings) {
+            if (NewListingNotifier.instance.isLastCreatedAdvert(advert.id)) {
+              // Это наше недавно созданное объявление! Показываем PublishedScreen один раз
+              NewListingNotifier.instance.notify(advert);
+              break;
+            }
+          }
         }
       }
     } catch (e) {
