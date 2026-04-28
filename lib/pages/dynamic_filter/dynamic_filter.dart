@@ -4322,6 +4322,12 @@ class _DynamicFilterState extends State<DynamicFilter>
                                     _buildings[buildingIndex]['id']
                                         as int?;
                               }
+                              // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+                              // Это предотвращает автоматический скролл к сфокусированному TextField
+                              Future.microtask(() {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                _priceFocusNode.unfocus();
+                              });
                               setState(() {
                                 _selectedBuilding = selected;
                                 _selectedBuildingId = buildingId;
