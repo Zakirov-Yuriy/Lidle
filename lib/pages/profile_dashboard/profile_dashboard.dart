@@ -324,107 +324,107 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                     // log.d('✅ ProfileLoaded: ${profileState.name}');
                   }
                   return Scaffold(
-                    extendBody: true,
-                    backgroundColor: primaryBackground,
-                    body: SafeArea(
-                      bottom: false,
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 21,
-                                vertical: 15,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // // ЛОГО
-                                  // Padding(
-                                  //   padding: const EdgeInsets.only(
-                                  //     left: 41.0,
-                                  //     top: 44.0,
-                                  //     bottom: 35.0,
-                                  //   ),
-                                  //   child: Row(
-                                  //     children: [
-                                  //       SvgPicture.asset(logoAsset, height: logoHeight),
-                                  //       const Spacer(),
-                                  //     ],
-                                  //   ),
-                                  // ),
+                      extendBody: true,
+                      backgroundColor: primaryBackground,
+                      body: SafeArea(
+                        bottom: false,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 21,
+                                  vertical: 15,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // // ЛОГО
+                                    // Padding(
+                                    //   padding: const EdgeInsets.only(
+                                    //     left: 41.0,
+                                    //     top: 44.0,
+                                    //     bottom: 35.0,
+                                    //   ),
+                                    //   child: Row(
+                                    //     children: [
+                                    //       SvgPicture.asset(logoAsset, height: logoHeight),
+                                    //       const Spacer(),
+                                    //     ],
+                                    //   ),
+                                    // ),
 
-                                  // Хедер профиля (аватар + имя + ID)
-                                  _ProfileHeader(
-                                    name: profileState is ProfileLoaded
-                                        ? profileState.name
-                                        : 'Загрузка...',
-                                    userId: profileState is ProfileLoaded
-                                        ? profileState.userId
-                                        : '...',
-                                    profileImage: profileState is ProfileLoaded
-                                        ? profileState.profileImage
-                                        : null,
-                                    username: profileState is ProfileLoaded
-                                        ? profileState.username
-                                        : 'Name',
-                                  ),
-                                  const SizedBox(height: 10),
+                                    // Хедер профиля (аватар + имя + ID)
+                                    _ProfileHeader(
+                                      name: profileState is ProfileLoaded
+                                          ? profileState.name
+                                          : 'Загрузка...',
+                                      userId: profileState is ProfileLoaded
+                                          ? profileState.userId
+                                          : '...',
+                                      profileImage: profileState is ProfileLoaded
+                                          ? profileState.profileImage
+                                          : null,
+                                      username: profileState is ProfileLoaded
+                                          ? profileState.username
+                                          : 'Name',
+                                    ),
+                                    const SizedBox(height: 10),
 
-                                  // 3 быстрых карточки
-                                  Row(
-                                    children: [
-                                      ValueListenableBuilder(
-                                        valueListenable: HiveService.settingsBox
-                                            .listenable(keys: ['favorites']),
-                                        builder: (context, box, child) {
-                                          final favorites =
-                                              HiveService.getFavorites();
+                                    // 3 быстрых карточки
+                                    Row(
+                                      children: [
+                                        ValueListenableBuilder(
+                                          valueListenable: HiveService.settingsBox
+                                              .listenable(keys: ['favorites']),
+                                          builder: (context, box, child) {
+                                            final favorites =
+                                                HiveService.getFavorites();
 
-                                          // ✅ Отладка: логируем количество избранных
-                                          // log.d();
-                                          // log.d('   Favorites IDs: $favorites');
+                                            // ✅ Отладка: логируем количество избранных
+                                            // log.d();
+                                            // log.d('   Favorites IDs: $favorites');
 
-                                          // Используем длину списка избранного напрямую
-                                          // (это более надёжно чем подсчёт через ListingsBloc.staticListings)
-                                          final favoritedCount =
-                                              favorites.length;
+                                            // Используем длину списка избранного напрямую
+                                            // (это более надёжно чем подсчёт через ListingsBloc.staticListings)
+                                            final favoritedCount =
+                                                favorites.length;
 
-                                          return _QuickCard(
-                                            iconPath:
-                                                'assets/profile_dashboard/heart-rounded.svg',
-                                            title: 'Избранное',
-                                            subtitle:
-                                                '$favoritedCount ${_getPluralForm(favoritedCount)}',
-                                            onTap: () => Navigator.of(
-                                              context,
-                                            ).pushNamed('/favorites'),
-                                          );
-                                        },
-                                      ),
-                                      SizedBox(width: 10),
-                                      _QuickCard(
-                                        iconPath:
-                                            'assets/profile_dashboard/shopping-cart-01.svg',
-                                        title: 'Покупки',
-                                        subtitle: '0 товаров',
-                                        onTap: () =>
-                                            Navigator.of(context).pushNamed(
-                                              MyPurchasesScreen.routeName,
-                                            ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      _QuickCard(
-                                        iconPath:
-                                            'assets/profile_dashboard/eva_star-fill.svg',
-                                        title: 'Отзывы',
-                                        subtitle: '0 отзовов',
-                                        onTap: () => Navigator.of(
-                                          context,
-                                        ).pushNamed(ReviewsEmptyPage.routeName),
-                                      ),
-                                    ],
-                                  ),
+                                            return _QuickCard(
+                                              iconPath:
+                                                  'assets/profile_dashboard/heart-rounded.svg',
+                                              title: 'Избранное',
+                                              subtitle:
+                                                  '$favoritedCount ${_getPluralForm(favoritedCount)}',
+                                              onTap: () => Navigator.of(
+                                                context,
+                                              ).pushNamed('/favorites'),
+                                            );
+                                          },
+                                        ),
+                                        SizedBox(width: 10),
+                                        _QuickCard(
+                                          iconPath:
+                                              'assets/profile_dashboard/shopping-cart-01.svg',
+                                          title: 'Покупки',
+                                          subtitle: '0 товаров',
+                                          onTap: () =>
+                                              Navigator.of(context).pushNamed(
+                                                MyPurchasesScreen.routeName,
+                                              ),
+                                        ),
+                                        SizedBox(width: 10),
+                                        _QuickCard(
+                                          iconPath:
+                                              'assets/profile_dashboard/eva_star-fill.svg',
+                                          title: 'Отзывы',
+                                          subtitle: '0 отзовов',
+                                          onTap: () => Navigator.of(
+                                            context,
+                                          ).pushNamed(ReviewsEmptyPage.routeName),
+                                        ),
+                                      ],
+                                    ),
                                   const SizedBox(height: 10),
 
                                   /*

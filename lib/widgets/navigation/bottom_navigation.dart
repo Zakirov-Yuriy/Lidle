@@ -178,13 +178,9 @@ class BottomNavigation extends StatelessWidget {
         return false;
     }
 
-    // Для CategorySelectionScreen (index 2) используем pushNamed вместо pushReplacementNamed,
-    // чтобы можно было вернуться назад на предыдущий экран по кнопке "крестик"
-    if (index == 2) {
-      Navigator.of(context).pushNamed(routeName);
-    } else {
-      Navigator.of(context).pushReplacementNamed(routeName);
-    }
+    // Используем pushNamed для всех экранов, чтобы сохранить стек навигации
+    // Это позволяет пользователю вернуться на предыдущий экран по кнопке back
+    Navigator.of(context).pushNamed(routeName);
     
     return true; // Навигация успешна
   }
