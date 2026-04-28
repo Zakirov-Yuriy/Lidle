@@ -367,6 +367,11 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       }
 
       if (mounted) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы гарантировать что фокус будет убран
+        // ПОСЛЕ того как UI перестроится
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+        });
         setState(() {
           _cities = uniqueCities.entries
               .map((e) => {'name': e.key, 'id': e.value})
@@ -422,6 +427,11 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       }
 
       if (mounted) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы гарантировать что фокус будет убран
+        // ПОСЛЕ того как UI перестроится
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+        });
         setState(() {
           _streets = uniqueStreets.entries
               .map((e) => {'name': e.key, 'id': e.value})
@@ -475,6 +485,11 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       }
 
       if (mounted) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы гарантировать что фокус будет убран
+        // ПОСЛЕ того как UI перестроится
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+        });
         setState(() {
           _buildings = uniqueBuildings.entries
               .map((e) => {'name': e.key, 'id': e.value})

@@ -183,6 +183,9 @@ class _DynamicFilterState extends State<DynamicFilter>
   // _buildingController живут в `_AddressApiMixin` (методы миксина
   // пишут в них напрямую). Доступны здесь через `with _AddressApiMixin`.
 
+  // 🔧 BUGFIX: FocusNode для управления фокусом цены и предотвращения автоскролла
+  final FocusNode _priceFocusNode = FocusNode();
+
   // Scroll controller for error handling
   final ScrollController _scrollController = ScrollController();
 
@@ -424,6 +427,9 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   @override
   void dispose() {
+    // 🔧 BUGFIX: Очищаем FocusNode для цены
+    _priceFocusNode.dispose();
+    
     _scrollController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
@@ -2892,6 +2898,11 @@ class _DynamicFilterState extends State<DynamicFilter>
       isSubmissionMode: _isSubmissionMode,
       value: selected,
       onChanged: (v) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+          _priceFocusNode.unfocus();
+        });
         setState(() {
           _selectedValues[attr.id] = v;
         });
@@ -3201,6 +3212,12 @@ class _DynamicFilterState extends State<DynamicFilter>
       selectedValue: selected,
       hasError: hasError,
       onChanged: (newValue) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+        // Это предотвращает автоматический скролл к сфокусированному TextField
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+          _priceFocusNode.unfocus();
+        });
         setState(() {
           _selectedValues[attr.id] = newValue;
           _fieldErrors.remove(fieldKey);
@@ -3247,6 +3264,12 @@ class _DynamicFilterState extends State<DynamicFilter>
       hasError: hasError,
       errorMessage: hasError ? _fieldErrors[fieldKey] : null,
       onChanged: (newValue) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+        // Это предотвращает автоматический скролл к сфокусированному TextField
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+          _priceFocusNode.unfocus();
+        });
         setState(() {
           _selectedValues[attr.id] = newValue;
           _fieldErrors.remove(fieldKey);
@@ -3273,6 +3296,12 @@ class _DynamicFilterState extends State<DynamicFilter>
       hasError: hasError,
       errorMessage: hasError ? _fieldErrors[fieldKey] : null,
       onChanged: (newSelected) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+        // Это предотвращает автоматический скролл к сфокусированному TextField
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+          _priceFocusNode.unfocus();
+        });
         setState(() {
           _selectedValues[attr.id] = newSelected;
           _fieldErrors.remove(fieldKey);
@@ -3362,6 +3391,11 @@ class _DynamicFilterState extends State<DynamicFilter>
       hasError: hasError,
       errorMessage: hasError ? _fieldErrors[fieldKey] : null,
       onChanged: (newSelected) {
+        // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+        Future.microtask(() {
+          FocusManager.instance.primaryFocus?.unfocus();
+          _priceFocusNode.unfocus();
+        });
         setState(() {
           _selectedValues[attr.id] = newSelected;
           _fieldErrors.remove(fieldKey);
@@ -3678,6 +3712,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                     Expanded(
                       child: TextField(
                         controller: _priceController,
+                        focusNode: _priceFocusNode,
                         keyboardType: TextInputType.number,
                         style: TextStyle(
                           color: _fieldErrors.containsKey('price')
@@ -3861,6 +3896,12 @@ class _DynamicFilterState extends State<DynamicFilter>
                         regionId =
                             _regions[regionIndex]['id'] as int?;
                       }
+                      // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+                      // и перестройки UI. Это гарантирует что автоскролл не произойдет
+                      Future.microtask(() {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        _priceFocusNode.unfocus();
+                      });
                       setState(() {
                         _selectedRegion = selected;
                         _selectedRegionId = regionId;
@@ -3967,6 +4008,12 @@ class _DynamicFilterState extends State<DynamicFilter>
                               );
                             }
 
+                            // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+                            // и перестройки UI. Это гарантирует что автоскролл не произойдет
+                            Future.microtask(() {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              _priceFocusNode.unfocus();
+                            });
                             setState(() {
                               _selectedCity = selected;
                               _selectedCityId = cityId;
@@ -4098,6 +4145,12 @@ class _DynamicFilterState extends State<DynamicFilter>
 
                       log.d('');
 
+                      // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+                      // и перестройки UI. Это гарантирует что автоскролл не произойдет
+                      Future.microtask(() {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        _priceFocusNode.unfocus();
+                      });
                       setState(() {
                         _streets = uniqueStreets.values.toList();
                       });
@@ -4191,6 +4244,12 @@ class _DynamicFilterState extends State<DynamicFilter>
                                 log.d('   ✅ Found in cache');
                               }
 
+                              // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
+                              // и перестройки UI. Это гарантирует что автоскролл не произойдет
+                              Future.microtask(() {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                _priceFocusNode.unfocus();
+                              });
                               setState(() {
                                 _selectedStreet = selected;
                                 _selectedStreetId = streetId;
