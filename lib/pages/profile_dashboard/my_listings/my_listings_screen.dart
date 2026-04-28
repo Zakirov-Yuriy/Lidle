@@ -734,7 +734,19 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       child: Row(
                         children: [
                           GestureDetector(
-                            onTap: () => Navigator.pop(context),
+                            onTap: () {
+                              if (_isSelectionMode) {
+                                // Если режим выбора активен - отменяем выбор
+                                setState(() {
+                                  _isSelectionMode = false;
+                                  _selectedListingIds.clear();
+                                  _selectAllChecked = false;
+                                });
+                              } else {
+                                // Иначе возвращаемся на предыдущий экран
+                                Navigator.pop(context);
+                              }
+                            },
                             child: const Icon(
                               Icons.arrow_back_ios,
                               color: Color.fromARGB(255, 255, 255, 255),
