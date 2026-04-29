@@ -669,35 +669,200 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
     }
   }
 
-  /// 📅 Парсит дату формата "25.02.2026" в DateTime
-  DateTime _parseDate(String dateString) {
-    try {
-      final parts = dateString.split('.');
-      if (parts.length == 3) {
-        final day = int.parse(parts[0]);
-        final month = int.parse(parts[1]);
-        final year = int.parse(parts[2]);
-        return DateTime(year, month, day);
-      }
-    } catch (e) {
-      log.d('⚠️ Error parsing date "$dateString": $e');
+  ///  Сортирует объявления по выбранным критериям (локально)
+  /// Поддерживает множественные критерии сортировки одновременно
+  /// (например, "Сначала новые" И "Сначала дорогие")
+  void _sortListings(Set<String> selectedOptions) {
+    if (selectedOptions.isEmpty) {
+      log.d('📊 NO SORT SELECTED - showing original order');
+      return;
     }
-    // Возвращаем сегодняшнюю дату если парсинг не удался
-    return DateTime.now();
+
+    log.d('\n📊 ═══════════════════════════════════════════════════════════');
+    log.d('📊 _sortListings() CALLED');
+    log.d('📊 Selected options: ${selectedOptions.join(", ")}');
+    log.d('📊 Total listings before sort: ${_listings.length}');
+    
+    // 🔍 DEBUG: Логируем первые несколько дат
+    if (_listings.isNotEmpty) {
+      log.d('📊 Sample dates from listings:');
+      for (int i = 0; i < (_listings.length > 3 ? 3 : _listings.length); i++) {
+        log.d('   [${i}] date="${_listings[i].date}" title="${_listings[i].title}"');
+      }
+    }
+
+    // Создаём копию списка для сортировки
+    List<Listing> sortedListings = List<Listing>.from(_listings);
+
+    // Применяем сортировку по выбранным критериям
+    sortedListings.sort((a, b) {
+      // Приоритет 1: По дате (если выбрано "Сначала новые" или "Сначала старые")
+      if (selectedOptions.contains('Сначала новые') || 
+          selectedOptions.contains('Сначала старые')) {
+        try {
+          // 🔍 Используем продвинутый парсер для поддержки разных форматов дат
+          final dateA = _parseDate(a.date);
+          final dateB = _parseDate(b.date);
+          
+          int dateComparison;
+          if (selectedOptions.contains('Сначала новые')) {
+            // Новые первыми (большая дата первой)
+            dateComparison = dateB.compareTo(dateA);
+          } else {
+            // Старые первыми (меньшая дата первой)
+            dateComparison = dateA.compareTo(dateB);
+          }
+          
+          // Если даты не равны - возвращаем результат сравнения
+          if (dateComparison != 0) {
+            log.d('   📅 Date sort: "${a.title}" (${a.date}) vs "${b.title}" (${b.date}) = $dateComparison');
+            return dateComparison;
+          }
+        } catch (e) {
+          log.d('❌ Error parsing dates: $e');
+        }
+      }
+
+      // Приоритет 2: По цене (если выбрано "Сначала дорогие" или "Сначала дешевые")
+      if (selectedOptions.contains('Сначала дорогие') || 
+          selectedOptions.contains('Сначала дешевые')) {
+        try {
+          // Извлекаем числовую часть из строки цены
+          // Пример: "1500" или "1500 ₽" или "1,500 тг"
+          final priceA = _parsePriceToNumber(a.price);
+          final priceB = _parsePriceToNumber(b.price);
+          
+          if (selectedOptions.contains('Сначала дорогие')) {
+            // Дорогие первыми (большая цена первой)
+            return priceB.compareTo(priceA);
+          } else {
+            // Дешевые первыми (меньшая цена первой)
+            return priceA.compareTo(priceB);
+          }
+        } catch (e) {
+          log.d('⚠️  Error parsing prices: $e');
+        }
+      }
+
+      return 0; // Если критерии не применены или равны
+    });
+
+    log.d('📊 Sort applied successfully');
+    
+    // 🔍 DEBUG: Показываем первые 5 элементов после сортировки
+    if (sortedListings.isNotEmpty) {
+      log.d('📊 After sort (first 5 items):');
+      for (int i = 0; i < (sortedListings.length > 5 ? 5 : sortedListings.length); i++) {
+        log.d('   [${i+1}] "${sortedListings[i].title}" - date="${sortedListings[i].date}", price="${sortedListings[i].price}"');
+      }
+    }
+    log.d('📊 ═══════════════════════════════════════════════════════════\n');
+
+    // Обновляем список и перерисовываем UI
+    setState(() {
+      _listings = sortedListings;
+    });
   }
 
-  void _sortListings(Set<String> selectedOptions) {
-    String? sort;
-    if (selectedOptions.contains('Сначала новые')) sort = 'new';
-    if (selectedOptions.contains('Сначала старые')) sort = 'old';
-    if (selectedOptions.contains('Сначала дорогие')) sort = 'expensive';
-    if (selectedOptions.contains('Сначала дешевые')) sort = 'cheap';
-
-    if (sort != null) {
-      log.d('📊 SORT SELECTED: $sort (${selectedOptions.join(", ")})');
-      _currentSort = sort; // 💾 Сохраняем текущий тип сортировки
-      _loadAdverts(sort: sort);
+  /// 🔢 Парсит строку цены и возвращает число для сравнения
+  /// Примеры: "1500" → 1500, "1,500 ₽" → 1500, "1 500" → 1500
+  double _parsePriceToNumber(String priceStr) {
+    try {
+      // Удаляем все нечисловые символы кроме точки (для decimal)
+      String cleanPrice = priceStr
+          .replaceAll(RegExp(r'[^0-9.]'), '') // Оставляем только цифры и точку
+          .replaceAll(RegExp(r'^\.+'), ''); // Удаляем точки в начале
+      
+      if (cleanPrice.isEmpty) return 0.0;
+      
+      return double.parse(cleanPrice);
+    } catch (e) {
+      log.d('❌ Failed to parse price "$priceStr": $e');
+      return 0.0;
     }
+  }
+
+  /// 📅 Парсит дату из разных форматов в DateTime
+  /// Поддерживаемые форматы:
+  /// - "2024-12-31" (ISO Date)
+  /// - "2024-12-31T10:30:00" (ISO DateTime)
+  /// - "31.12.2024" (DD.MM.YYYY) ✅ ОСНОВНОЙ ФОРМАТ
+  /// - "31/12/2024" (DD/MM/YYYY)
+  /// - "2024-12-31 10:30:00" (MySQL DateTime)
+  /// - Timestamp (Unix seconds или milliseconds)
+  DateTime _parseDate(String dateStr) {
+    if (dateStr.isEmpty) return DateTime(1900);
+    
+    dateStr = dateStr.trim();
+    
+    // Попытка 1: DD.MM.YYYY или DD/MM/YYYY формат (самый частый в нашем API)
+    try {
+      // Проверяем если это DD.MM.YYYY
+      if (dateStr.contains('.')) {
+        final parts = dateStr.split('.');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      }
+      // Проверяем если это DD/MM/YYYY
+      if (dateStr.contains('/')) {
+        final parts = dateStr.split('/');
+        if (parts.length == 3) {
+          final day = int.parse(parts[0]);
+          final month = int.parse(parts[1]);
+          final year = int.parse(parts[2]);
+          return DateTime(year, month, day);
+        }
+      }
+    } catch (e) {
+      log.d('   ℹ️  DD.MM.YYYY parse failed for "$dateStr": $e');
+    }
+    
+    // Попытка 2: Стандартный ISO формат DateTime.parse()
+    try {
+      return DateTime.parse(dateStr);
+    } catch (e) {
+      log.d('   ℹ️  ISO parse failed for "$dateStr"');
+    }
+    
+    // Попытка 3: Unix timestamp (секунды или миллисекунды)
+    try {
+      final timestamp = int.parse(dateStr);
+      if (timestamp > 100000000 && timestamp < 9999999999) {
+        // Скорее всего milliseconds
+        return DateTime.fromMillisecondsSinceEpoch(timestamp);
+      } else if (timestamp > 1000000 && timestamp < 99999999) {
+        // Скорее всего seconds
+        return DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
+      }
+    } catch (e) {
+      log.d('   ℹ️  Timestamp parse failed for "$dateStr"');
+    }
+    
+    // Попытка 4: Кастомные форматы через нормализацию
+    try {
+      // Заменяем разделители на стандартные
+      String normalized = dateStr
+          .replaceAll('.', '-')
+          .replaceAll('/', '-')
+          .trim();
+      
+      // Если нет времени, добавляем его
+      if (!normalized.contains('T') && !normalized.contains(' ')) {
+        normalized += 'T00:00:00';
+      }
+      
+      return DateTime.parse(normalized);
+    } catch (e) {
+      log.d('   ℹ️  Normalized parse failed for "$dateStr"');
+    }
+    
+    // Если ничего не сработало - возвращаем дефолт
+    log.d('❌ Failed to parse date "$dateStr" - using fallback DateTime(1900)');
+    return DateTime(1900);
   }
 
   /// 🔍 Выполняет поиск по объявлениям
@@ -1576,6 +1741,7 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                     });
                   },
                   allowMultipleSelection: true,
+                  showSearchField: false,
                 ),
               );
             },

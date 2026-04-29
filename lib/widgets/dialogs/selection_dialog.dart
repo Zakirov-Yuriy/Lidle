@@ -25,6 +25,8 @@ class SelectionDialog extends StatefulWidget {
   final bool allowMultipleSelection;
   // 🆕 Callback функция для поиска через API (опционально)
   final Future<List<String>> Function(String query)? onSearchQuery;
+  // 🆕 Показывать ли поле поиска (по умолчанию да)
+  final bool showSearchField;
 
   const SelectionDialog({
     super.key,
@@ -34,6 +36,7 @@ class SelectionDialog extends StatefulWidget {
     required this.onSelectionChanged,
     this.allowMultipleSelection = true,
     this.onSearchQuery,
+    this.showSearchField = true,
   });
 
   @override
@@ -365,37 +368,42 @@ class _SelectionDialogState extends State<SelectionDialog> {
             ),
             const SizedBox(height: 23),
 
-            // 🔍 ПОЛЕ ПОИСКА
-            TextField(
-              controller: _searchController,
-              style: const TextStyle(color: textPrimary),
-              decoration: InputDecoration(
-                hintText: 'Поиск',
-                hintStyle: const TextStyle(color: textSecondary),
-                filled: true,
-                fillColor: formBackground,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  borderSide: BorderSide.none,
+            // 🔍 ПОЛЕ ПОИСКА (скрывается, если showSearchField = false)
+            if (widget.showSearchField) ...
+              [
+                TextField(
+                  controller: _searchController,
+                  style: const TextStyle(color: textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Поиск',
+                    hintStyle: const TextStyle(color: textSecondary),
+                    filled: true,
+                    fillColor: formBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                    suffixIcon: _isSearching
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(activeIconColor),
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-                suffixIcon: _isSearching
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(activeIconColor),
-                          ),
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-            const SizedBox(height: 15),
+                const SizedBox(height: 15),
+              ]
+            else
+              const SizedBox(height: 0),
 
             // 📋 СПИСОК ОПЦИЙ
             if (_isCityMode)
