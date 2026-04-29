@@ -1121,7 +1121,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           const Padding(
             padding: EdgeInsets.only(top: 6.0),
             child: Text(
-              "О квартире",
+              "Об объявлении",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
