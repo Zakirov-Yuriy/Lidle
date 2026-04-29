@@ -195,7 +195,7 @@ class _UniversalBrowseCategoryScreenState
       log.d('📍 _navigateToListings() - Opening RealEstateListingsScreen');
       log.d('   categoryId: ${category.id}');
       log.d('   categoryName: ${category.name}');
-      log.d('   catalogId: ${widget.catalogId}'); // 🎯 Логируем какой catalogId передаём
+      log.d('   ⚠️  NOT passing catalogId to force category-specific filtering');
       
       Navigator.push(
         context,
@@ -203,10 +203,11 @@ class _UniversalBrowseCategoryScreenState
           builder: (context) => RealEstateListingsScreen(
             categoryId: category.id,
             categoryName: category.name,
-            catalogId: widget.catalogId, // 🎯 КРИТИЧЕСКИ ВАЖНО: передаём catalogId!
+            // ❌ НЕ передаём catalogId! Это важно для фильтрации только по конкретной категории
+            // Если передать оба параметра, API использует только catalogId и загружает ВСЕ объявления из каталога
             isFromFullCategory: true,
             preSelectedCity: widget.preSelectedCity,
-            catalogName: widget.catalogName, // 🎯 Передаём название каталога
+            catalogName: widget.catalogName, // 🎯 Передаём название каталога для заголовка
           ),
         ),
       );

@@ -422,11 +422,16 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       // 🔍 Показываем какой параметр используется
       if (widget.catalogId != null && widget.categoryId == null) {
         log.d('✅ Using CATALOG MODE (catalogId=${widget.catalogId})');
+        log.d('   ℹ️  All adverts from catalog will be displayed');
       } else if (widget.categoryId != null && widget.catalogId == null) {
         log.d('✅ Using CATEGORY MODE (categoryId=${widget.categoryId})');
+        log.d('   ℹ️  Only adverts from this specific category will be displayed (CORRECT!)');
       } else if (widget.catalogId != null && widget.categoryId != null) {
         log.d('⚠️  CONFLICT: Both catalogId and categoryId are set!');
         log.d('   API will only use catalogId (categoryId will be ignored)');
+        log.d('   This should not happen - please check _navigateToListings() in UniversalBrowseCategoryScreen');
+      } else {
+        log.w('⚠️  WARNING: Neither catalogId nor categoryId is set!');
       }
       
       log.d('   sort: $sort');
