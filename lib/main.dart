@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:lidle/app/di/injection_container.dart';
 import 'package:lidle/pages/add_listing/published_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/new_listing_notifier.dart';
 import 'package:workmanager/workmanager.dart';
@@ -126,6 +127,11 @@ void main() async {
     // 🔒 SECURITY МИГРАЦИЯ: Переносим старые токены из Hive в secure storage
     // Это критическая операция - должна выполниться ДО первого использования токенов
     await HiveService.migrateTokensToSecureStorage();
+
+    // 🔧 DEPENDENCY INJECTION: Инициализируем Service Locator
+    // Регистрируем все BLoCs, Services и Utilities
+    // Это должно быть ПОСЛЕ Hive и ДО первого использования сервисов
+    await setupServiceLocator();
   } catch (e) {
     // Продолжаем работу даже если Hive не инициализирован
     log.w('⚠️ Hive инициализация ошибка: $e');
@@ -235,37 +241,67 @@ class LidleApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        // 🔐 Auth BLoC - с инициализацией проверки статуса
         BlocProvider<AuthBloc>(
-          create: (context) => AuthBloc()..add(const CheckAuthStatusEvent()),
+          create: (_) => sl<AuthBloc>()..add(const CheckAuthStatusEvent()),
         ),
-        BlocProvider<ListingsBloc>(create: (context) => ListingsBloc()),
-        BlocProvider<NavigationBloc>(create: (context) => NavigationBloc()),
-        BlocProvider<ProfileBloc>(create: (context) => ProfileBloc()),
+        // 🏠 Navigation BLoC
+        BlocProvider<NavigationBloc>(
+          create: (_) => sl<NavigationBloc>(),
+        ),
+        // 📋 Listings BLoC
+        BlocProvider<ListingsBloc>(
+          create: (_) => sl<ListingsBloc>(),
+        ),
+        // 👤 Profile BLoC
+        BlocProvider<ProfileBloc>(
+          create: (_) => sl<ProfileBloc>(),
+        ),
+        // 🔐 Password Recovery BLoC
         BlocProvider<PasswordRecoveryBloc>(
-          create: (context) => PasswordRecoveryBloc(),
+          create: (_) => sl<PasswordRecoveryBloc>(),
         ),
-        BlocProvider<MessagesBloc>(create: (context) => MessagesBloc()),
+        // 💬 Messages BLoC
+        BlocProvider<MessagesBloc>(
+          create: (_) => sl<MessagesBloc>(),
+        ),
+        // 🏢 Company Messages BLoC
         BlocProvider<CompanyMessagesBloc>(
-          create: (context) => CompanyMessagesBloc(),
+          create: (_) => sl<CompanyMessagesBloc>(),
         ),
-        BlocProvider<CartBloc>(create: (context) => CartBloc()),
-        BlocProvider<CatalogBloc>(create: (context) => CatalogBloc()),
-        BlocProvider<DevicesBloc>(create: (context) => DevicesBloc()),
-        BlocProvider<WishlistBloc>(create: (context) => WishlistBloc()),
-        BlocProvider<ConnectivityBloc>(create: (context) => ConnectivityBloc()),
+        // 🛒 Cart BLoC
+        BlocProvider<CartBloc>(
+          create: (_) => sl<CartBloc>(),
+        ),
+        // 🏢 Catalog BLoC
+        BlocProvider<CatalogBloc>(
+          create: (_) => sl<CatalogBloc>(),
+        ),
+        // 📱 Devices BLoC
+        BlocProvider<DevicesBloc>(
+          create: (_) => sl<DevicesBloc>(),
+        ),
+        // ❤️ Wishlist BLoC
+        BlocProvider<WishlistBloc>(
+          create: (_) => sl<WishlistBloc>(),
+        ),
+        // 📡 Connectivity BLoC
+        BlocProvider<ConnectivityBloc>(
+          create: (_) => sl<ConnectivityBloc>(),
+        ),
       ],
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           // Управляем TokenService в зависимости от состояния авторизации
           if (state is AuthAuthenticated) {
             // Пользователь авторизован — запускаем фоновое обновление токена
-            TokenService().init(context);
+            sl<TokenService>().init(context);
 
             // 🎏 Синхронизируем локальное избранное с серверным при авторизации
             context.read<WishlistBloc>().add(const SyncLocalWishlistOnAuthEvent());
 
             // 🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
-            MessagePollingService().startPolling(
+            sl<MessagePollingService>().startPolling(
               interval: const Duration(seconds: 15),
             );
 
@@ -281,10 +317,10 @@ class LidleApp extends StatelessWidget {
             log.d('🌙 Запущена фоновая задача проверки сообщений');
           } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
             // Пользователь вышел или токен истёк — останавливаем таймер
-            TokenService().dispose();
+            sl<TokenService>().dispose();
 
             // 🔔 Останавливаем мониторинг новых сообщений (FOREGROUND)
-            MessagePollingService().stopPolling();
+            sl<MessagePollingService>().stopPolling();
 
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');
