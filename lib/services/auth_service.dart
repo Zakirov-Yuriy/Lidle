@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'api_service.dart';
 import '../hive_service.dart';
+import 'user_service.dart';
 import 'package:lidle/core/logger.dart';
 
 class AuthService {
@@ -130,7 +131,7 @@ class AuthService {
 
   /// Выход из системы.
   /// Отправляет запрос на сервер для инвалидации токена,
-  /// затем очищает оба токена из локального хранилища.
+  /// затем очищает оба токена из локального хранилища (Hive + secure storage).
   static Future<void> logout() async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -143,9 +144,8 @@ class AuthService {
       // Игнорируем ошибки сервера — токены всё равно удалим локально
       // log.d('⚠️ AuthService: ошибка logout на сервере (игнорируем): $e');
     } finally {
-      // Всегда удаляем оба токена локально
-      await HiveService.deleteUserData('token');
-      await HiveService.deleteUserData('refresh_token');
+      // Всегда удаляем оба токена локально (из Hive И из secure storage)
+      await UserService.deleteAllTokens();
     }
   }
 

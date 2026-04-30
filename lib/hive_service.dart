@@ -3,6 +3,7 @@
 /// для пользовательских настроек и других данных приложения.
 import 'package:hive/hive.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/services/token_secure_storage.dart';
 
 /// `HiveService` - это статический класс, который управляет взаимодействием с Hive.
 /// Он предоставляет удобный интерфейс для работы с двумя основными "боксами" (хранилищами):
@@ -357,6 +358,91 @@ class HiveService {
     final key = 'category_filters_$categoryId';
     await settingsBox.delete(key);
     // log.i('🗑️  Фильтры удалены для категории $categoryId');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // МИГРАЦИЯ ТОКЕНОВ В SECURE STORAGE
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Мигрирует токены из Hive в flutter_secure_storage
+  ///
+  /// Этот метод вызывается при первом запуске приложения (после обновления с старой версии).
+  /// Он переносит access_token и refresh_token из обычного Hive хранилища
+  /// в защищённое хранилище (Keychain на iOS, EncryptedSharedPreferences на Android).
+  ///
+  /// ВАЖНО: Старые токены УДАЛЯЮТСЯ из Hive после миграции для безопасности.
+  /// 
+  /// Возвращает true если миграция была успешной или уже завершена ранее.
+  static Future<bool> migrateTokensToSecureStorage() async {
+    try {
+      final tokenSecureStorage = TokenSecureStorage();
+
+      // Проверяем была ли миграция уже выполнена
+      final isMigrationDone =
+          await tokenSecureStorage.isMigrationComplete();
+      if (isMigrationDone) {
+        log.d(
+          '✅ HiveService: Миграция токенов уже выполнена ранее, пропускаем',
+        );
+        return true;
+      }
+
+      log.d('🔄 HiveService: Начинаем миграцию токенов из Hive в secure storage');
+
+      // Читаем старые токены из Hive
+      final accessToken = userBox.get('token') as String?;
+      final refreshToken = userBox.get('refresh_token') as String?;
+      final tokenExpiresAt = userBox.get('token_expires_at') as String?;
+      final refreshTokenExpiresAt =
+          userBox.get('refresh_token_expires_at') as String?;
+
+      // Если токены не найдены — миграция не требуется
+      if (accessToken == null && refreshToken == null) {
+        log.d('ℹ️ HiveService: Токены в Hive не найдены, миграция не требуется');
+        await tokenSecureStorage.markMigrationComplete();
+        return true;
+      }
+
+      // Мигрируем access_token
+      if (accessToken != null) {
+        await tokenSecureStorage.saveAccessToken(accessToken);
+        log.d('✅ HiveService: access_token мигрирован в secure storage');
+      }
+
+      // Мигрируем refresh_token
+      if (refreshToken != null) {
+        await tokenSecureStorage.saveRefreshToken(refreshToken);
+        log.d('✅ HiveService: refresh_token мигрирован в secure storage');
+      }
+
+      // Мигрируем timestamps
+      if (tokenExpiresAt != null) {
+        await tokenSecureStorage.saveTokenExpiresAt(tokenExpiresAt);
+      }
+      if (refreshTokenExpiresAt != null) {
+        await tokenSecureStorage.saveRefreshTokenExpiresAt(refreshTokenExpiresAt);
+      }
+
+      // ВАЖНО: Удаляем старые токены из Hive для безопасности
+      await Future.wait([
+        deleteUserData('token'),
+        deleteUserData('refresh_token'),
+        deleteUserData('token_expires_at'),
+        deleteUserData('refresh_token_expires_at'),
+      ]);
+      log.d(
+        '🗑️ HiveService: Старые токены удалены из Hive (они теперь в secure storage)',
+      );
+
+      // Отмечаем миграцию как завершённую
+      await tokenSecureStorage.markMigrationComplete();
+      log.d('✅ HiveService: Миграция токенов завершена успешно');
+
+      return true;
+    } catch (e) {
+      log.e('❌ HiveService: Ошибка при миграции токенов: $e');
+      return false;
+    }
   }
 }
 

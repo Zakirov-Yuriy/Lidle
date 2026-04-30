@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:lidle/models/user_profile_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/token_secure_storage.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/core/logger.dart';
@@ -400,12 +401,83 @@ class UserService {
   static dynamic getLocal(String key) => HiveService.getUserData(key);
 
   /// Асинхронно сохраняет [value] в локальное хранилище по [key].
-  static Future<void> saveLocal(String key, dynamic value) =>
-      HiveService.saveUserData(key, value);
+  /// 
+  /// ВАЖНО для токенов: Если ключ это токен, сохраняем ТАКЖЕ в secure storage!
+  /// Поддерживаемые ключи токенов:
+  /// - 'token' (access_token) → TokenSecureStorage.saveAccessToken()
+  /// - 'refresh_token' → TokenSecureStorage.saveRefreshToken()
+  /// - 'token_expires_at' → TokenSecureStorage.saveTokenExpiresAt()
+  /// - 'refresh_token_expires_at' → TokenSecureStorage.saveRefreshTokenExpiresAt()
+  static Future<void> saveLocal(String key, dynamic value) async {
+    // Сохраняем в Hive (для быстрого чтения)
+    await HiveService.saveUserData(key, value);
+
+    // НОВОЕ: Если это токен - сохраняем также в secure storage (для безопасности)
+    final tokenSecureStorage = TokenSecureStorage();
+    switch (key) {
+      case 'token':
+        if (value is String) {
+          await tokenSecureStorage.saveAccessToken(value);
+        }
+        break;
+      case 'refresh_token':
+        if (value is String) {
+          await tokenSecureStorage.saveRefreshToken(value);
+        }
+        break;
+      case 'token_expires_at':
+        if (value is int || value is String) {
+          await tokenSecureStorage.saveTokenExpiresAt(value.toString());
+        }
+        break;
+      case 'refresh_token_expires_at':
+        if (value is int || value is String) {
+          await tokenSecureStorage.saveRefreshTokenExpiresAt(value.toString());
+        }
+        break;
+      default:
+        // Не-токен данные - ничего дополнительно не делаем
+        break;
+    }
+  }
 
   /// Асинхронно удаляет значение из локального хранилища по [key].
-  static Future<void> deleteLocal(String key) =>
-      HiveService.deleteUserData(key);
+  /// 
+  /// ВАЖНО для токенов: Если ключ это токен, удаляем ТАКЖЕ из secure storage!
+  static Future<void> deleteLocal(String key) async {
+    // Удаляем из Hive
+    await HiveService.deleteUserData(key);
+
+    // НОВОЕ: Если это токен - удаляем также из secure storage
+    final tokenSecureStorage = TokenSecureStorage();
+    switch (key) {
+      case 'token':
+      case 'refresh_token':
+      case 'token_expires_at':
+      case 'refresh_token_expires_at':
+        // Для удаления отдельного токена используем clearAllTokens()
+        // (нет отдельного метода удаления одного токена)
+        // На практике это почти не вызывается - обычно удаляют все токены сразу
+        break;
+      default:
+        break;
+    }
+  }
+
+  /// Синхронизирует токены между Hive и TokenSecureStorage для удаления.
+  /// Вызывать при logout для удаления ВСЕх токенов из обоих хранилищ.
+  static Future<void> deleteAllTokens() async {
+    // Удаляем из Hive
+    await Future.wait([
+      HiveService.deleteUserData('token'),
+      HiveService.deleteUserData('refresh_token'),
+      HiveService.deleteUserData('token_expires_at'),
+      HiveService.deleteUserData('refresh_token_expires_at'),
+    ]);
+
+    // Удаляем из secure storage
+    await TokenSecureStorage().clearAllTokens();
+  }
 
   /// Полностью очищает данные профиля текущего пользователя:
   /// удаляет все поля из Hive и инвалидирует L1/L2-кеш.

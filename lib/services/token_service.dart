@@ -14,6 +14,7 @@ import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 import '../hive_service.dart';
+import 'token_secure_storage.dart';
 import '../blocs/auth/auth_bloc.dart';
 import '../blocs/auth/auth_event.dart';
 import 'api_service.dart';
@@ -99,9 +100,21 @@ class TokenService with WidgetsBindingObserver {
     }
   }
 
-  /// Синхронно возвращает текущий токен из локального хранилища.
+  /// Асинхронно возвращает текущий токен из secure storage.
   ///
+  /// ВАЖНО: Это асинхронный метод (требует await) потому что secure storage
+  /// требует обращения к шифрованному хранилищу ОС.
   /// Используйте в UI-слое когда нет доступа к [AuthBloc].
+  ///
+  /// МИГРАЦИЯ: Старое свойство `TokenService.currentToken` больше не используется.
+  /// Используйте `TokenService.getCurrentToken()` вместо этого.
+  static Future<String?> getCurrentToken() async {
+    return await TokenSecureStorage().getAccessToken();
+  }
+
+  /// (Legacy) Оставлено для backward compatibility, но DEPRECATED.
+  /// Используйте getCurrentToken() вместо этого.
+  @Deprecated('Use TokenService.getCurrentToken() instead')
   static String? get currentToken =>
       HiveService.getUserData('token') as String?;
 

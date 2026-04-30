@@ -122,6 +122,10 @@ void main() async {
       await Hive.initFlutter(appDocumentDir.path);
     }
     await HiveService.init();
+
+    // 🔒 SECURITY МИГРАЦИЯ: Переносим старые токены из Hive в secure storage
+    // Это критическая операция - должна выполниться ДО первого использования токенов
+    await HiveService.migrateTokensToSecureStorage();
   } catch (e) {
     // Продолжаем работу даже если Hive не инициализирован
     log.w('⚠️ Hive инициализация ошибка: $e');
