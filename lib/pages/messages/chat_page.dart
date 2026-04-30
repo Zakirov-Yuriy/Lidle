@@ -5,6 +5,8 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
+import 'package:lidle/blocs/messages/messages_bloc.dart';
+import 'package:lidle/blocs/messages/messages_event.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/models/chat_message_model.dart';
 import 'package:lidle/models/home_models.dart';
@@ -114,10 +116,55 @@ class _ChatPageState extends State<ChatPage> {
     }
 
     await _saveChat();
+    
+    // 📦 ШАГ 1: Загружаем данные объявления ПЕРЕД загрузкой сообщений (если есть ID)
+    await _preloadAdvertData();
+    
     await _loadMessages();
-    // Убедимся, что если чат связан с объявлением, то превью объявления показано
-    // 🔄 Запускаем таймер для автоматического обновления сообщений (каждые 2 сек)
+    // 🔄 Запускаем таймер для автоматического обновления сообщений
     _startAutoUpdate();
+  }
+
+  /// 📦 Предварительная загрузка данных объявления (перед загрузкой сообщений)
+  Future<void> _preloadAdvertData() async {
+    try {
+      // 🔍 Проверяем есть ли ID объявления в widget.message
+      final advertId = widget.message.advertisementId;
+      
+      if (advertId == null || advertId.isEmpty) {
+        log.d('⚠️ _preloadAdvertData: widget.message.advertisementId пусто');
+        return;
+      }
+
+      final adId = int.tryParse(advertId);
+      if (adId == null) {
+        log.d('⚠️ _preloadAdvertData: Не удалось распарсить ID: $advertId');
+        return;
+      }
+
+      log.d('📦 _preloadAdvertData: Загружаем объявление #$adId...');
+      final advert = await ApiService.getAdvert(adId);
+
+      if (advert != null && mounted) {
+        log.d('✅ _preloadAdvertData: Объявление #$adId загружено: ${advert.name}');
+        
+        final image = advert.images.isNotEmpty
+            ? advert.images.first
+            : advert.thumbnail;
+
+        setState(() {
+          _topAdvertTitle = advert.name;
+          _topAdvertPrice = advert.price;
+          _topAdvertImage = image;
+          _topAdvertId = advert.id.toString();
+        });
+        log.d('✅ _preloadAdvertData: Данные объявления обновлены в UI');
+      } else {
+        log.d('⚠️ _preloadAdvertData: Объявление #$adId вернуло null');
+      }
+    } catch (e) {
+      log.d('⚠️ _preloadAdvertData: Ошибка: $e');
+    }
   }
 
   /// Если чат связан с объявлением, но в списке сообщений нет данных об объявлении,
@@ -238,81 +285,72 @@ class _ChatPageState extends State<ChatPage> {
           _isLoading = false;
         });
 
-        // После загрузки сообщений — попробуем найти связанное объявление в сообщениях
-        // и подгрузить его превью (чтобы получатель тоже видел, с какого объявления пришло сообщение)
+        // После загрузки сообщений — попробуем найти связанное объявление
+        // (только если данные еще не загружены)
         try {
-          String? foundAdId;
-          for (final m in messages) {
-            if (m == null) continue;
-            // Проверяем несколько возможных ключей
-            if (m.containsKey('advertisementId') &&
-                m['advertisementId'] != null) {
-              foundAdId = m['advertisementId'].toString();
-              break;
-            }
-            if (m.containsKey('advertisement_id') &&
-                m['advertisement_id'] != null) {
-              foundAdId = m['advertisement_id'].toString();
-              break;
-            }
-            if (m.containsKey('advert_id') && m['advert_id'] != null) {
-              foundAdId = m['advert_id'].toString();
-              break;
-            }
-          }
-
-          // Если нашли id объявления — подгрузим данные объявления
-          if (foundAdId != null && foundAdId.isNotEmpty) {
-            final adId = int.tryParse(foundAdId);
-            if (adId != null) {
-              final advert = await ApiService.getAdvert(adId);
-              if (advert != null) {
-                final image = advert.images.isNotEmpty
-                    ? advert.images.first
-                    : advert.thumbnail;
-                if (mounted) {
-                  setState(() {
-                    _topAdvertTitle = advert.name;
-                    _topAdvertPrice = advert.price;
-                    _topAdvertImage = image;
-                    _topAdvertId = advert.id.toString();
-                  });
+          // 🔍 Если данные уже загружены в _preloadAdvertData, пропускаем
+          if (_topAdvertId != null) {
+            log.d('✅ Данные объявления уже загружены, пропускаем перезагрузку');
+          } else {
+            log.d('🔍 Данные объявления не загружены, пытаемся загрузить из сообщений...');
+            
+            String? foundAdId;
+            
+            // 🔍 Ищем ID объявления в сообщениях API
+            for (final m in messages) {
+              if (m == null) continue;
+              
+              // Проверяем различные возможные ключи в порядке приоритета
+              final possibleKeys = [
+                'advertisement_id',
+                'advertisementId',
+                'advert_id',
+                'advertId',
+                'ad_id',
+                'listing_id'
+              ];
+              
+              for (final key in possibleKeys) {
+                if (m.containsKey(key) && m[key] != null) {
+                  foundAdId = m[key].toString();
+                  log.d('✅ Найден ID объявления в сообщениях API: $foundAdId (ключ: $key)');
+                  break;
                 }
+              }
+              
+              if (foundAdId != null) break;
+            }
 
-                // Обновим локальный список чатов чтобы превью появилось в списке сообщений
-                final current = MessagesLocalService.getCurrentMessages();
-                final existingIndex = current.indexWhere(
-                  (m) =>
-                      m['userId'] == widget.message.userId &&
-                      m['senderName'] == widget.message.senderName,
-                );
-                final messageMap = {
-                  'senderName': widget.message.senderName,
-                  'senderAvatar': widget.message.senderAvatar,
-                  'lastMessageTime': 'сейчас',
-                  'unreadCount': 0,
-                  'isInternal': widget.message.isInternal,
-                  'isCompany': widget.message.isCompany,
-                  'userId': widget.message.userId,
-                  'chatId': _chatId,
-                  'lastMessage': widget.message.lastMessage,
-                  'advertTitle': advert.name,
-                  'advertImage': image,
-                  'advertPrice': advert.price,
-                  'advertisementId': advert.id.toString(),
-                };
-                if (existingIndex >= 0) {
-                  current[existingIndex] = messageMap;
-                } else {
-                  current.insert(0, messageMap);
+            // Если нашли id объявления — подгрузим данные объявления
+            if (foundAdId != null && foundAdId.isNotEmpty) {
+              final adId = int.tryParse(foundAdId);
+              if (adId != null) {
+                log.d('📥 Загружаем данные объявления #$adId...');
+                final advert = await ApiService.getAdvert(adId);
+                
+                if (advert != null) {
+                  log.d('✅ Объявление #$adId загружено: ${advert.name}');
+                  
+                  final image = advert.images.isNotEmpty
+                      ? advert.images.first
+                      : advert.thumbnail;
+                      
+                  if (mounted) {
+                    setState(() {
+                      _topAdvertTitle = advert.name;
+                      _topAdvertPrice = advert.price;
+                      _topAdvertImage = image;
+                      _topAdvertId = advert.id.toString();
+                    });
+                    log.d('✅ Данные объявления обновлены в UI');
+                  }
                 }
-                await MessagesLocalService.saveCurrentMessages(current);
               }
             }
           }
         } catch (e) {
           log.d(
-            '⚠️ Ошибка при подгрузке превью объявления после загрузки сообщений: $e',
+            '⚠️ Ошибка при подгрузке превью объявления: $e',
           );
         }
 
@@ -365,6 +403,17 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       log.d('✅ Все входящие сообщения отмечены как прочитанные');
+      
+      // 🔴 Обновляем unreadCount в MessagesBloc чтобы бейдж исчез
+      if (mounted && context.mounted) {
+        context.read<MessagesBloc>().add(
+          UpdateMessageUnreadCount(
+            senderName: widget.message.senderName,
+            unreadCount: 0,
+          ),
+        );
+        log.d('🔴 Отправлено событие UpdateMessageUnreadCount в MessagesBloc');
+      }
     } catch (e) {
       log.d('⚠️ Ошибка при отметке сообщений как прочитанных: $e');
       // Не критично если это не сработает
@@ -737,7 +786,12 @@ class _ChatPageState extends State<ChatPage> {
 
             // Если чат открыт с экрана объявления, не показываем отдельную карточку сверху —
             // превью объявления будет показано как первое сообщение в ленте
-            if (!widget.openedFromAdvertScreen)
+            if (!widget.openedFromAdvertScreen && 
+                (_topAdvertImage != null || 
+                 widget.message.advertImage != null || 
+                 _topAdvertTitle != null || 
+                 widget.message.advertTitle != null ||
+                 widget.message.advertisementId != null)) // Добавляем условие - если есть ID, показываем плашку
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 child: ClipRRect(
@@ -820,7 +874,7 @@ class _ChatPageState extends State<ChatPage> {
                                     : (widget.message.advertTitle?.isNotEmpty ==
                                               true
                                           ? widget.message.advertTitle!
-                                          : '3-к. квартира, 125.5 м², 5/17 эт.'),
+                                          : 'Объявление'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 15,
@@ -843,10 +897,10 @@ class _ChatPageState extends State<ChatPage> {
                               GestureDetector(
                                 onTap: () {
                                   // 🔗 Переход на объявление по ID с защитой от множественных тапов
-                                  if (_isNavigatingToProperty ||
-                                      (_topAdvertId == null &&
-                                          widget.message.advertisementId ==
-                                              null)) {
+                                  final adId = _topAdvertId ?? widget.message.advertisementId;
+                                  
+                                  if (_isNavigatingToProperty || adId == null) {
+                                    log.d('⚠️ Невозможно перейти: _isNavigatingToProperty=$_isNavigatingToProperty, adId=$adId');
                                     return;
                                   }
 
@@ -859,7 +913,7 @@ class _ChatPageState extends State<ChatPage> {
 
                                   _isNavigatingToProperty = true;
                                   log.d(
-                                    '🔗 Переходим на объявление #${_topAdvertId ?? widget.message.advertisementId}',
+                                    '🔗 Переходим на объявление #$adId',
                                   );
 
                                   Navigator.push(
@@ -867,9 +921,7 @@ class _ChatPageState extends State<ChatPage> {
                                     MaterialPageRoute(
                                       builder: (context) =>
                                           PropertyDetailsScreen(
-                                            advertisementId:
-                                                _topAdvertId ??
-                                                widget.message.advertisementId,
+                                            advertisementId: adId,
                                           ),
                                     ),
                                   ).then((_) {

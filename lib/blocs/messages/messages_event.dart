@@ -27,3 +27,22 @@ class UnarchiveMessages extends MessagesEvent {
 class RefreshMessages extends MessagesEvent {
   const RefreshMessages();
 }
+
+/// 🔴 Event для обновления количества непрочитанных сообщений в чате
+class UpdateMessageUnreadCount extends MessagesEvent {
+  final String senderName; // Имя отправителя для поиска в mainMessages
+  final int unreadCount; // Новое количество непрочитанных (обычно 0)
+
+  const UpdateMessageUnreadCount({
+    required this.senderName,
+    required this.unreadCount,
+  });
+}
+
+/// 🔵 Event для синхронизации реальных Message данных в mainMessages
+/// Вызывается после загрузки сообщений в messages_page.dart
+class SyncMainMessages extends MessagesEvent {
+  final List<Map<String, dynamic>> realMessages; // Реальные данные с API
+
+  const SyncMainMessages({required this.realMessages});
+}

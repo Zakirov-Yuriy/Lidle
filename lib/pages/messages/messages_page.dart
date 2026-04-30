@@ -19,6 +19,8 @@ import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/services/messages_local_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/dialogs/delete_chat_dialog.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 import 'dart:async';
 import 'package:lidle/core/logger.dart';
 
@@ -62,8 +64,11 @@ class _MessagesPageState extends State<MessagesPage>
     //  Загружаем сообщения только при первом открытии экрана
     if (!_isInitialized) {
       _isInitialized = true;
-      // 🔄 Ленивая загрузка сообщений при переходе на страницу
-      context.read<MessagesBloc>().add(LoadMessages());
+      
+      // 🔴 НЕ очищаем кеш - нужны данные что загрузились при старте приложения!
+      // AppCacheService().invalidate(CacheKeys.messagesData);
+      
+      // 🔄 Загружаем реальные данные с API
       _loadMessages();
       // 🔄 Запускаем таймер для автоматического обновления счетчика сообщений
       _startAutoUpdate();
@@ -169,6 +174,24 @@ class _MessagesPageState extends State<MessagesPage>
             messages = loadedMessages;
           });
         }
+        
+        // 🔵 ВСЕГДА синхронизируем реальные данные в MessagesBloc для bottom_navigation
+        // чтобы бейдж показывал правильное количество даже если unreadCount не изменился
+        final realMessagesMap = loadedMessages
+            .map((msg) => {
+                  'name': msg.senderName,
+                  'subtitle': msg.lastMessageTime,
+                  'unreadCount': msg.unreadCount,
+                  'lastMessage': msg.lastMessage,
+                  'senderAvatar': msg.senderAvatar,
+                })
+            .toList();
+        
+        if (mounted && context.mounted) {
+          context.read<MessagesBloc>().add(
+            SyncMainMessages(realMessages: realMessagesMap),
+          );
+        }
       }
       
       // 🛡️ Сброс счетчика попыток при успехе
@@ -202,6 +225,12 @@ class _MessagesPageState extends State<MessagesPage>
 
   Future<void> _loadMessages() async {
     try {
+      log.d('📨 _loadMessages: Начало загрузки реальных данных с API через BLoC');
+      
+      // 🟢 Запускаем загрузку реальных данных в MessagesBloc (для бейджа в bottom_navigation)
+      // Это гарантирует что бейдж покажет правильное количество непрочитанных сообщений
+      context.read<MessagesBloc>().loadMessagesFromAPI();
+      
       // 📥 Загружаем чаты с API
       final apiChats = await ApiService.getChats();
       
@@ -289,6 +318,28 @@ class _MessagesPageState extends State<MessagesPage>
     }
     if (mounted) {
       setState(() {});
+    }
+    
+    // 🔵 Синхронизируем реальные данные в MessagesBloc для bottom_navigation
+    if (mounted && context.mounted && messages.isNotEmpty) {
+      log.d('📨 _loadMessages: Отправляем SyncMainMessages с ${messages.length} сообщениями');
+      final realMessagesMap = messages
+          .map((msg) => {
+                'name': msg.senderName,
+                'subtitle': msg.lastMessageTime,
+                'unreadCount': msg.unreadCount,
+                'lastMessage': msg.lastMessage,
+                'senderAvatar': msg.senderAvatar,
+              })
+          .toList();
+      
+      for (int i = 0; i < realMessagesMap.length; i++) {
+        log.d('  [$i] ${realMessagesMap[i]['name']} - unreadCount: ${realMessagesMap[i]['unreadCount']}');
+      }
+      
+      context.read<MessagesBloc>().add(
+        SyncMainMessages(realMessages: realMessagesMap),
+      );
     }
   }
 

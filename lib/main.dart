@@ -300,7 +300,11 @@ class LidleApp extends StatelessWidget {
             // 🎏 Синхронизируем локальное избранное с серверным при авторизации
             context.read<WishlistBloc>().add(const SyncLocalWishlistOnAuthEvent());
 
-            // 🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
+            // � Загружаем сообщения для бейджа в bottom_navigation (на ЛЮБОМ экране)
+            // Это обеспечивает показ бейджа сразу после авторизации без открытия messages_page
+            context.read<MessagesBloc>().loadMessagesFromAPI();
+
+            // �🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
             sl<MessagePollingService>().startPolling(
               interval: const Duration(seconds: 15),
             );
