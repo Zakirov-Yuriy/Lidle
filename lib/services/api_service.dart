@@ -750,10 +750,10 @@ class ApiService {
       // Если передан только categoryId - используем его
       if (catalogId != null) {
         queryParams['catalog_id'] = catalogId;
-        log.d('📦 API getAdverts - Using CATALOG_ID mode (catalogId=$catalogId)');
+        // log.d('📦 API getAdverts - Using CATALOG_ID mode (catalogId=$catalogId)');
       } else if (categoryId != null) {
         queryParams['category_id'] = categoryId;
-        log.d('📦 API getAdverts - Using CATEGORY_ID mode (categoryId=$categoryId)');
+        // log.d('📦 API getAdverts - Using CATEGORY_ID mode (categoryId=$categoryId)');
       } else {
         log.w('⚠️  API getAdverts: Neither catalogId nor categoryId provided!');
       }
@@ -764,7 +764,7 @@ class ApiService {
 
       // Добавляем фильтры
       if (filters != null && filters.isNotEmpty) {
-        log.d('📦 API getAdverts - Processing filters:');
+        // log.d('📦 API getAdverts - Processing filters:');
         filters.forEach((key, value) {
           // 🟢 СПЕЦИАЛЬНАЯ ОБРАБОТКА для filters[value_selected] (для атрибутов выбранных значений, ID < 1000)
           if (key == 'value_selected' && value is Map<String, dynamic>) {
@@ -905,11 +905,11 @@ class ApiService {
       }
 
       // 🔍 DEBUG: Логируем ответ для диагностики
-      log.i('📋 API getAdverts() response keys: ${response.keys.toList()}');
+      // log.i('📋 API getAdverts() response keys: ${response.keys.toList()}');
       if (response.containsKey('data')) {
-        log.i('   - data type: ${response['data'].runtimeType}');
+        // log.i('   - data type: ${response['data'].runtimeType}');
         if (response['data'] is List) {
-          log.i('   - data length: ${(response['data'] as List).length}');
+          // log.i('   - data length: ${(response['data'] as List).length}');
         }
       } else {
         log.w('⚠️  ВНИМАНИЕ: API response для adverts НЕ содержит поле "data"!');
