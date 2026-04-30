@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
@@ -496,13 +497,31 @@ class _OfferCardState extends State<_OfferCard> {
               },
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundImage:
-                        offerItem.avatar.startsWith('http://') ||
-                            offerItem.avatar.startsWith('https://')
-                        ? NetworkImage(offerItem.avatar) as ImageProvider
-                        : AssetImage(offerItem.avatar) as ImageProvider,
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black26,
+                    ),
+                    child: ClipOval(
+                      child: offerItem.avatar.startsWith('http://') ||
+                              offerItem.avatar.startsWith('https://')
+                          ? Image.network(
+                              offerItem.avatar,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return SvgPicture.asset(
+                                  'assets/profile_dashboard/default-photo.svg',
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          : SvgPicture.asset(
+                              'assets/profile_dashboard/default-photo.svg',
+                              fit: BoxFit.cover,
+                            ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

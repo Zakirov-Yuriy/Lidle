@@ -208,7 +208,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     }
   }
 
-  /// Загрузить количество предложений цен.
+  /// Загрузить количество предложений цен (Предложения мне).
   /// [useCache] = true: сначала показать из кэша (если свежий), потом обновить в фоне
   /// [useCache] = false: всегда загружать со свежими указанными данными
   Future<void> _loadPriceOffersCount({bool useCache = false}) async {
@@ -237,20 +237,27 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       if (mounted) setState(() => _isLoadingPriceOffers = true);
 
-      // Загружаем список предложений цен (мои предложения)
-      final offersData = await ApiService.getMyOffers(token: token);
-      final count = offersData.length;
+      // Загружаем список объявлений с полученными предложениями цен ("Предложения мне")
+      final listingsWithOffers = await ApiService.getOffersReceivedList(token: token);
+      
+      // Подсчитываем общее количество предложений:
+      // Для каждого объявления берём new_offers_count
+      var totalOffersCount = 0;
+      for (final listing in listingsWithOffers) {
+        final newOffersCount = listing['new_offers_count'] as int? ?? 0;
+        totalOffersCount += newOffersCount;
+      }
 
       // 💾 Сохраняем в AppCacheService (TTL 60с)
       AppCacheService().set<int>(
         CacheKeys.profilePriceOffersCount,
-        count,
+        totalOffersCount,
         ttl: _cacheTtl,
       );
 
       if (mounted) {
         setState(() {
-          _priceOffersCount = count;
+          _priceOffersCount = totalOffersCount;
           _isLoadingPriceOffers = false;
         });
       }

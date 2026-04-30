@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
@@ -752,14 +753,31 @@ class _OfferItem extends StatelessWidget {
                   if (isSelectionMode) const SizedBox(width: 12),
 
                   // avatar
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.black26,
-                    backgroundImage:
-                        offerItem.avatar.startsWith('http://') ||
-                            offerItem.avatar.startsWith('https://')
-                        ? NetworkImage(offerItem.avatar) as ImageProvider
-                        : AssetImage(offerItem.avatar),
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black26,
+                    ),
+                    child: ClipOval(
+                      child: offerItem.avatar.startsWith('http://') ||
+                              offerItem.avatar.startsWith('https://')
+                          ? Image.network(
+                              offerItem.avatar,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return SvgPicture.asset(
+                                  'assets/profile_dashboard/default-photo.svg',
+                                  fit: BoxFit.cover,
+                                );
+                              },
+                            )
+                          : SvgPicture.asset(
+                              'assets/profile_dashboard/default-photo.svg',
+                              fit: BoxFit.cover,
+                            ),
+                    ),
                   ),
 
                   const SizedBox(width: 12),
