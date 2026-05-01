@@ -10,7 +10,6 @@ import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/message_model.dart';
-import 'package:lidle/models/chat_message_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
@@ -22,7 +21,7 @@ import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
-import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/widgets/dialogs/report_advert_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/full_category_screen/property_gallery_screen.dart';
@@ -648,10 +647,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               const SizedBox(height: 10),
                               _buildDescriptionCard(),
                               const SizedBox(height: 24),
-                              if (_priceOffers.isNotEmpty) ...[
-                                _buildPriceOffersCard(),
-                                const SizedBox(height: 24),
-                              ],
+                              // if (_priceOffers.isNotEmpty) ...[
+                              //   _buildPriceOffersCard(),
+                              //   const SizedBox(height: 24),
+                              // ],
                               _buildSellerCard(),
                               const SizedBox(height: 19),
                               _buildComplaintButton(),
@@ -1492,7 +1491,10 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         showDialog(
           context: context,
           builder: (BuildContext context) {
-            return const ComplaintDialog();
+            return ReportAdvertDialog(
+              advertId: int.parse(_listing.id),
+              advertTitle: _listing.title,
+            );
           },
         );
       },

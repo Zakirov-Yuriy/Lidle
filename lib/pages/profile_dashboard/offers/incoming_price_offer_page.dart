@@ -12,6 +12,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/dialogs/reject_offer_dialog.dart';
+import 'package:lidle/widgets/dialogs/report_user_dialog.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:lidle/models/home_models.dart';
@@ -177,7 +178,29 @@ class IncomingPriceOfferPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          // Извлекаем данные offerItem
+                          final offerCard = context
+                              .findAncestorWidgetOfExactType<IncomingPriceOfferPage>()!;
+                          final offerItem = offerCard.offerItem;
+
+                          if (offerItem.userId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('ID пользователя не доступен'),
+                              ),
+                            );
+                            return;
+                          }
+
+                          showDialog(
+                            context: context,
+                            builder: (_) => ReportUserDialog(
+                              userId: int.parse(offerItem.userId!),
+                              userName: offerItem.name,
+                            ),
+                          );
+                        },
                         child: const Text(
                           'Пожаловаться',
                           style: TextStyle(

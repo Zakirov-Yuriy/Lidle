@@ -37,7 +37,7 @@ class BottomNavigation extends StatelessWidget {
             // 📊 Подсчитываем непрочитанные сообщения только если авторизованы
             int unreadCount = 0;
             if (isAuthenticated && messagesState is MessagesLoaded) {
-              log.d('🟦 BottomNav: ⏰ ${DateTime.now().millisecondsSinceEpoch % 100000} Пользователь авторизован. MessagesLoaded с ${messagesState.mainMessages.length} сообщениями');
+              // log.d('🟦 BottomNav: ⏰ ${DateTime.now().millisecondsSinceEpoch % 100000} Пользователь авторизован. MessagesLoaded с ${messagesState.mainMessages.length} сообщениями');
               for (int i = 0; i < messagesState.mainMessages.length; i++) {
                 final msg = messagesState.mainMessages[i];
                 final count = msg['unreadCount'];
@@ -52,7 +52,7 @@ class BottomNavigation extends StatelessWidget {
                 log.d('  [$i] ${msg['name']} - unreadCount=$count (type: ${count.runtimeType}) → $msgUnread');
                 unreadCount += msgUnread;
               }
-              log.d('🟦 BottomNav: ⏰ ${DateTime.now().millisecondsSinceEpoch % 100000} Total unreadCount = $unreadCount');
+              // log.d('🟦 BottomNav: ⏰ ${DateTime.now().millisecondsSinceEpoch % 100000} Total unreadCount = $unreadCount');
             } else if (!isAuthenticated) {
               log.d('🟦 BottomNav: Пользователь НЕ авторизован, бейдж не показывается');
             } else {

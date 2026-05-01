@@ -49,7 +49,7 @@ class _ComplaintDialogState extends State<ComplaintDialog> {
               children: [
                 Expanded(
                   child: Text(
-                    "Оставить жалобу\nна продавца",
+                    "Оставить жалобу",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,

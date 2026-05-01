@@ -1954,4 +1954,113 @@ class ApiService {
       rethrow;
     }
   }
+
+  /// 📋 Получить список доступных типов жалоб
+  /// GET /content/reports?type=users
+  static Future<List<Map<String, dynamic>>> getReportTypes({
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      log.d('📋 Получаем типы жалоб для users...');
+
+      final response = await getWithBody(
+        '/content/reports',
+        {'type': 'users'},
+        token: effectiveToken,
+      );
+
+      log.d('✅ Получены типы жалоб: $response');
+
+      // Обработка ответа - проверяем различные форматы
+      if (response is List) {
+        // API вернул список напрямую
+        return List<Map<String, dynamic>>.from(response as List);
+      } else if (response is Map<String, dynamic>) {
+        // API вернул Map - ищем данные в стандартных ключах
+        final data = response['data'] ?? 
+                     response['items'] ?? 
+                     response['reports'];
+        
+        if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      
+      return [];
+    } catch (e) {
+      log.d('❌ Ошибка получения типов жалоб: $e');
+      rethrow;
+    }
+  }
+
+  /// 🚨 Отправить жалобу на пользователя
+  /// POST /users/{id}/report
+  /// report_id должен быть получен из getReportTypes()
+  static Future<Map<String, dynamic>> reportUser({
+    required int userId,
+    required int reportId,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'report_id': reportId};
+
+      log.d('🚨 Отправляем жалобу на пользователя #$userId (reportId: $reportId)');
+
+      final response = await post(
+        '/users/$userId/report',
+        body,
+        token: effectiveToken,
+      );
+
+      log.d('✅ Жалоба успешно отправлена: $response');
+      return response;
+    } catch (e) {
+      log.d('❌ Ошибка отправки жалобы: $e');
+      rethrow;
+    }
+  }
+
+  /// 📢 Отправляет жалобу на объявление
+  /// Эндпоинт: POST /adverts/{id}/report
+  static Future<Map<String, dynamic>> reportAdvert({
+    required int advertId,
+    required int reportId,
+    String? token,
+  }) async {
+    try {
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+      if (effectiveToken == null) {
+        throw Exception('Требуется авторизация');
+      }
+
+      final body = {'report_id': reportId};
+
+      log.d('📢 Отправляем жалобу на объявление #$advertId (reportId: $reportId)');
+
+      final response = await post(
+        '/adverts/$advertId/report',
+        body,
+        token: effectiveToken,
+      );
+
+      log.d('✅ Жалоба на объявление успешно отправлена: $response');
+      return response;
+    } catch (e) {
+      log.d('❌ Ошибка отправки жалобы на объявление: $e');
+      rethrow;
+    }
+  }
 }

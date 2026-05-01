@@ -6,7 +6,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
-import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/widgets/dialogs/report_user_dialog.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
@@ -613,11 +613,23 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 return;
               }
               
-              // ✅ Авторизованный пользователь может оставить жалобу
+              // ✅ Авторизованный пользователь может оставить жалобу на продавца
+              final userId = widget.userId != null ? int.tryParse(widget.userId!) : null;
+              if (userId == null) {
+                SnackBarHelper.showError(
+                  context,
+                  'Ошибка: ID продавца не найден',
+                );
+                return;
+              }
+              
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
-                  return const ComplaintDialog();
+                  return ReportUserDialog(
+                    userId: userId,
+                    userName: widget.sellerName,
+                  );
                 },
               );
             },

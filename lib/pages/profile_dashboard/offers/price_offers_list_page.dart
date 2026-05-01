@@ -293,6 +293,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
           avatar: _getAvatarUrl(userAvatar),
           phone: userPhone,
           nickname: userNickname,
+          userId: userId?.toString(),
           offerId: offer['id']?.toString(),
           listingId: model['id']?.toString(),
           listingTitle: model['name'] as String?,
