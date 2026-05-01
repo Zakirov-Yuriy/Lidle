@@ -353,9 +353,9 @@ class _ObjectCard extends StatelessWidget {
         result = '${intPrice[i]}$result';
         count++;
       }
-      return '$result₽';
+      return '$result ₽';
     } catch (_) {
-      return '$priceStr₽';
+      return '$priceStr ₽';
     }
   }
 }

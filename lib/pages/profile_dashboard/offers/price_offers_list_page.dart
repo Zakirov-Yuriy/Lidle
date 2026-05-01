@@ -360,9 +360,9 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
     try {
       final price = double.parse(priceStr);
       final formatter = _formatNumberWithSpaces(price.toInt().toString());
-      return '$formatter₽';
+      return '$formatter ₽';
     } catch (e) {
-      return '$priceStr₽';
+      return '$priceStr ₽';
     }
   }
 

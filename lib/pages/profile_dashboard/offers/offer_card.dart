@@ -35,6 +35,20 @@ class OfferCard extends StatefulWidget {
 class _OfferCardState extends State<OfferCard> {
   bool _isTitleExpanded = false;
 
+  /// Форматирует цену с пробелами в качестве разделителя тысяч
+  String _formatPrice(dynamic price) {
+    if (price == null) return '';
+    final priceStr = price.toString().split(',')[0].split('.')[0]; // только целая часть
+    final buffer = StringBuffer();
+    for (int i = 0; i < priceStr.length; i++) {
+      if (i > 0 && (priceStr.length - i) % 3 == 0) {
+        buffer.write(' ');
+      }
+      buffer.write(priceStr[i]);
+    }
+    return buffer.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isOfferToMe = widget.offer.offeredPricesCount != null;
@@ -169,7 +183,7 @@ class _OfferCardState extends State<OfferCard> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${widget.offer.originalPrice} ₽',
+                        '${_formatPrice(widget.offer.originalPrice)} ₽',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -212,7 +226,7 @@ class _OfferCardState extends State<OfferCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Ваша цена: ${widget.offer.yourPrice}',
+                    'Ваша цена: ${_formatPrice(widget.offer.yourPrice)}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
