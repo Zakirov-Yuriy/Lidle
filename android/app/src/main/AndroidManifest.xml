@@ -24,6 +24,19 @@
     <!-- Разрешение для доступа к контактам -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
 
+    <!-- Разрешения для бейджей приложения (требуется для Nova, Apex, Samsung) -->
+    <uses-permission android:name="android.permission.INSTALL_SHORTCUT" />
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+    <uses-permission android:name="com.android.launcher.permission.UNINSTALL_SHORTCUT" />
+    <uses-permission android:name="com.android.launcher.permission.READ_SETTINGS" />
+    <uses-permission android:name="com.android.launcher.permission.WRITE_SETTINGS" />
+    
+    <!-- Разрешения для специфичных лаунчеров -->
+    <uses-permission android:name="com.teslacoilsw.notifier.permission.SEND_NOTIFICATION" /> <!-- Nova Launcher -->
+    <uses-permission android:name="com.sec.android.provider.badge.permission.READ" /> <!-- Samsung -->
+    <uses-permission android:name="com.sec.android.provider.badge.permission.WRITE" /> <!-- Samsung -->
+    <uses-permission android:name="com.sonyericsson.home.permission.BROADCAST_BADGE" /> <!-- Apex Launcher -->
+
     <application
         android:label="LIDLE"
         android:name="${applicationName}"

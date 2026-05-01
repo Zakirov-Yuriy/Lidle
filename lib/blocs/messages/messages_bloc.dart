@@ -6,6 +6,7 @@ import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/badge_service.dart';
 
 class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
   /// TTL для сообщений — только L1 (RAM), 1 минута.
@@ -105,6 +106,9 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
         }
         log.d('🔴 Сумма unreadCount из кеша: $cachedSum');
         
+        // 🔔 Обновляем бейдж из кешированных данных
+        BadgeService().updateBadgeCount(cachedSum);
+        
         emit(
           MessagesLoaded(
             mainMessages: List.from(cachedMain),
@@ -123,6 +127,9 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       testSum += count is int ? count : int.tryParse(count.toString()) ?? 0;
     }
     log.d('🔴 Сумма unreadCount тестовых данных: $testSum');
+    
+    // 🔔 Обновляем бейдж из тестовых данных
+    BadgeService().updateBadgeCount(testSum);
 
     // 💾 Сохраняем в L1 (RAM) с TTL 1 мин
     AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
@@ -240,6 +247,14 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
         'archived': List.from(archivedMessages),
       }, ttl: _cacheTTL);
 
+      // 🔔 Пересчитываем общее количество непрочитанных и обновляем бейдж
+      int totalUnread = 0;
+      for (final msg in mainMessages) {
+        final count = msg['unreadCount'];
+        totalUnread += count is int ? count : int.tryParse(count.toString()) ?? 0;
+      }
+      BadgeService().updateBadgeCount(totalUnread);
+
       emit(
         MessagesLoaded(
           mainMessages: List.from(mainMessages),
@@ -274,6 +289,9 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     }
     log.d('   Сумма unreadCount = $totalUnread');
     
+    // 🔔 Обновляем бейдж на иконке приложения с количеством всех непрочитанных сообщений
+    BadgeService().updateBadgeCount(totalUnread);
+
     // Обновляем кеш L1
     AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
       'main': List.from(mainMessages),

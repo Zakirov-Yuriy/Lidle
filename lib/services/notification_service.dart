@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'badge_service.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -71,6 +72,9 @@ class NotificationService {
 
     // Запрашиваем разрешение POST_NOTIFICATIONS на Android 13+ (API 33+)
     await Permission.notification.request();
+
+    // 🔔 Инициализируем BadgeService для работы с бейджами на иконке приложения
+    await BadgeService().initialize();
 
     _isInitialized = true;
     _logger.i('✅ NotificationService инициализирован');
@@ -180,6 +184,9 @@ class NotificationService {
         platformDetails,
         payload: 'chat_$chatId',
       );
+
+      // 🔔 Обновляем бейдж на иконке приложения с количеством новых сообщений
+      await BadgeService().incrementBadge();
 
       _logger.i(
         '📬 Отправлено красивое уведомление от $senderName (чат #$chatId)',
