@@ -1494,9 +1494,25 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                       ),
                     ),
                     SizedBox(height: 4),
-                    Text(
-                      "На LIDLE с $sellerRegDate",
-                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'На LIDLE ',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                          TextSpan(
+                            text: 'LIDLE',
+                            style: const TextStyle(color: activeIconColor, fontSize: 10),
+                          ),
+                          TextSpan(
+                            text: ' с $sellerRegDate',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     Row(
                       children: [
@@ -1521,6 +1537,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             sellerName: sellerName,
             sellerAvatar: sellerAvatar,
             userId: _listing.userId,
+            sellerRegistrationDate: sellerRegDate,
           ),
           const SizedBox(height: 18),
         ],
@@ -2194,12 +2211,14 @@ class _AllListingsButton extends StatelessWidget {
   final String sellerName;
   final String sellerAvatar;
   final String? userId;
+  final String? sellerRegistrationDate;
 
   const _AllListingsButton({
     required this.similarListings,
     required this.sellerName,
     required this.sellerAvatar,
     this.userId,
+    this.sellerRegistrationDate,
   });
 
   @override
@@ -2228,6 +2247,7 @@ class _AllListingsButton extends StatelessWidget {
               // Передаём оригинальный строковый URL аватарки
               sellerAvatarUrl: sellerAvatar,
               userId: userId,
+              sellerRegistrationDate: sellerRegistrationDate,
             ),
           ),
         );

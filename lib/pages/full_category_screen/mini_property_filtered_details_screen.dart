@@ -507,6 +507,8 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             similarListings: _similarListings,
             sellerName: sellerName,
             sellerAvatar: sellerAvatar,
+            userId: widget.listing.userId,
+            sellerRegistrationDate: sellerRegDate,
           ),
           const SizedBox(height: 18),
         ],
@@ -808,11 +810,15 @@ class _AllListingsButton extends StatelessWidget {
   final List<Listing> similarListings;
   final String sellerName;
   final String sellerAvatar;
+  final String? userId;
+  final String? sellerRegistrationDate;
 
   const _AllListingsButton({
     required this.similarListings,
     required this.sellerName,
     required this.sellerAvatar,
+    this.userId,
+    this.sellerRegistrationDate,
   });
 
   @override
@@ -820,9 +826,9 @@ class _AllListingsButton extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         // Получаем userId из первого объявления продавца
-        final String? sellerUserId = similarListings.isNotEmpty
+        final String? sellerUserId = userId ?? (similarListings.isNotEmpty
             ? similarListings.first.userId
-            : null;
+            : null);
 
         // Создаем ImageProvider в зависимости от типа URL
         ImageProvider avatarProvider;
@@ -841,6 +847,7 @@ class _AllListingsButton extends StatelessWidget {
               // Передаём оригинальный строковый URL аватарки
               sellerAvatarUrl: sellerAvatar,
               userId: sellerUserId,
+              sellerRegistrationDate: sellerRegistrationDate,
             ),
           ),
         );

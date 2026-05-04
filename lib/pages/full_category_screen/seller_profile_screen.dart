@@ -43,6 +43,7 @@ class SellerProfileScreen extends StatefulWidget {
   /// Может быть http-ссылкой или путём к ассету.
   final String? sellerAvatarUrl;
   final String? userId;
+  final String? sellerRegistrationDate;
 
   const SellerProfileScreen({
     super.key,
@@ -50,6 +51,7 @@ class SellerProfileScreen extends StatefulWidget {
     required this.sellerAvatar,
     this.sellerAvatarUrl,
     this.userId,
+    this.sellerRegistrationDate,
   });
 
   @override
@@ -395,10 +397,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Row(
-                  children: const [
-                    Text(
-                      "На ЛИДЛ с 2024 г.",
-                      style: TextStyle(color: textSecondary, fontSize: 13),
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'На ЛИДЛ ',
+                            style: const TextStyle(color: textSecondary, fontSize: 13),
+                          ),
+                          TextSpan(
+                            text: 'LIDLE',
+                            style: const TextStyle(color: activeIconColor, fontSize: 10),
+                          ),
+                          TextSpan(
+                            text: ' с ${widget.sellerRegistrationDate ?? '2024 г.'}',
+                            style: const TextStyle(color: textSecondary, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                     SizedBox(width: 10),
                     Text(

@@ -906,6 +906,7 @@ class _MyListingsPropertyDetailsScreenState
             sellerName: sellerName,
             sellerAvatar: sellerAvatar,
             userId: _listing.userId,
+            sellerRegistrationDate: sellerRegDate,
           ),
           const SizedBox(height: 18),
         ],
@@ -984,11 +985,13 @@ class _AllListingsButton extends StatelessWidget {
   final String sellerName;
   final String sellerAvatar;
   final String? userId;
+  final String? sellerRegistrationDate;
 
   const _AllListingsButton({
     required this.sellerName,
     required this.sellerAvatar,
     this.userId,
+    this.sellerRegistrationDate,
   });
 
   @override
@@ -1012,6 +1015,7 @@ class _AllListingsButton extends StatelessWidget {
               // Передаём оригинальный строковый URL аватарки
               sellerAvatarUrl: sellerAvatar,
               userId: userId,
+              sellerRegistrationDate: sellerRegistrationDate,
             ),
           ),
         );
