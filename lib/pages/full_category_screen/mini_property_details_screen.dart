@@ -1451,7 +1451,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                           style: TextStyle(color: Colors.white70, fontSize: 13),
                         ),
                         Text(
-                          "4",
+                          "5",
                           style: TextStyle(color: Colors.white, fontSize: 13),
                         ),
                       ],

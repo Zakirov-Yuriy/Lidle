@@ -57,7 +57,7 @@ class SellerProfileScreen extends StatefulWidget {
 }
 
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
-  int selectedStars = 1;
+  int selectedStars = 5;
   int _selectedIndex = 0;
   List<Map<String, dynamic>> _sellerListings = [];
   bool _isLoading = false;
@@ -394,7 +394,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       style: TextStyle(color: textSecondary, fontSize: 13),
                     ),
                     Icon(Icons.star, color: Colors.amber, size: 16),
-                    Text(" 4", style: TextStyle(color: textPrimary)),
+                    Text(" 5", style: TextStyle(color: textPrimary)),
                   ],
                 ),
                 const SizedBox(height: 6),
