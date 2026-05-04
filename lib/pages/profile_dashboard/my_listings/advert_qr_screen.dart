@@ -45,9 +45,49 @@ class _AdvertQrScreenState extends State<AdvertQrScreen> {
     qrKey = GlobalKey();
   }
 
+  /// Генерирует slug из названия объявления
+  /// Пример: "Продаётся дом в Приморском районе" → "prodaetsya-dom-v-primorskom-rayone"
+  String _generateSlugFromTitle(String title) {
+    // Карта для транслитерации кириллицы
+    const translitMap = {
+      'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+      'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+      'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+      'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+      'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    };
+    
+    // Переводим в нижний регистр
+    String slug = title.toLowerCase();
+    
+    // Транслитерируем кириллицу
+    slug = slug.replaceAllMapped(RegExp('[а-яё]'), (match) {
+      return translitMap[match.group(0)] ?? '';
+    });
+    
+    // Удаляем все спецсимволы кроме букв, цифр и дефиса
+    slug = slug.replaceAll(RegExp(r'[^a-z0-9\s-]'), '');
+    
+    // Заменяем пробелы и множественные дефисы на один дефис
+    slug = slug.replaceAll(RegExp(r'\s+'), '-');
+    slug = slug.replaceAll(RegExp(r'-+'), '-');
+    
+    // Удаляем дефис в начале и конце
+    slug = slug.replaceAll(RegExp(r'^-+|-+$'), '');
+    
+    // Ограничиваем длину до 80 символов
+    if (slug.length > 80) {
+      slug = slug.substring(0, 80).replaceAll(RegExp(r'-+$'), '');
+    }
+    
+    return slug;
+  }
+
   /// Получить URL объявления
+  /// Формат: https://lidle.io/ru/advertisements/{id}-{slug}
   String _getAdvertUrl() {
-    return '${AppConfig().websiteUrl}/adverts/${widget.advertId}';
+    final slug = _generateSlugFromTitle(widget.advertTitle);
+    return 'https://lidle.io/ru/advertisements/${widget.advertId}-$slug';
   }
 
   /// Функция для поделиться ссылкой на объявление

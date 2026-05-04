@@ -70,6 +70,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   static void invalidateCache(String userId) =>
       AppCacheService().invalidate(CacheKeys.sellerProfileKey(userId));
 
+  /// Генерирует URL профиля продавца для шарингаnull
+  /// Пример: https://lidle.io/ru/users/29/advertisements
+  String _generateSellerProfileUrl() {
+    final userId = widget.userId;
+    if (userId == null || userId.isEmpty) {
+      // Если нет userId, возвращаем URL главной страницы
+      return 'https://lidle.io/ru';
+    }
+    return 'https://lidle.io/ru/users/$userId/advertisements';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -351,11 +362,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
           ),
           onPressed: () {
+            final profileUrl = _generateSellerProfileUrl();
             Share.share(
               'Профиль продавца: ${widget.sellerName}\n\n'
               'Присоединяйся к LIDLE! 🚀\n\n'
               'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
-              '${AppConfig().websiteUrl}',
+              '$profileUrl',
             );
           },
         ),
