@@ -21,6 +21,7 @@ import 'package:lidle/core/config/app_config.dart';
 // Navigation targets used by bottom navigation
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/add_listing/add_listing_screen.dart';
+import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
@@ -405,10 +406,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                             text: 'На ЛИДЛ ',
                             style: const TextStyle(color: textSecondary, fontSize: 13),
                           ),
-                          TextSpan(
-                            text: 'LIDLE',
-                            style: const TextStyle(color: activeIconColor, fontSize: 10),
-                          ),
+                          // TextSpan(
+                          //   text: 'LIDLE',
+                          //   style: const TextStyle(color: activeIconColor, fontSize: 10),
+                          // ),
                           TextSpan(
                             text: ' с ${RegExp(r'\d{4}').firstMatch(widget.sellerRegistrationDate ?? '')?.group(0) ?? '2024'} г.',
                             style: const TextStyle(color: textSecondary, fontSize: 13),
@@ -799,7 +800,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 2:
-        routeName = AddListingScreen.routeName;
+        routeName = CategorySelectionScreen.routeName;
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 3:

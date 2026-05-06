@@ -99,6 +99,16 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
     return mainName.isNotEmpty ? mainName : fullStreetName;
   }
 
+  /// Очищает поисковый запрос от пунктуации, чтобы не ломать поиск,
+  /// если пользователь случайно ввёл запятую/точку/др. в конце или в середине.
+  /// Дефис сохраняем, чтобы корректно работали улицы с дефисами.
+  String _cleanSearchQuery(String query) {
+    return query
+        .replaceAll(RegExp(r'[^\p{L}\p{N}\s\-]', unicode: true), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
   // Для списка улиц (новый формат)
   void _buildDisplayOptionsFromList(List<String> streets, {bool addSections = true}) {
     List<dynamic> newDisplayOptions = [];
@@ -149,7 +159,9 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
   }
 
   void _filterOptions() async {
-    final query = _searchController.text.toLowerCase();
+    // Очищаем запрос от пунктуации, чтобы не ломать поиск,
+    // если пользователь случайно ввёл запятую/точку/др. в конце или в середине.
+    final query = _cleanSearchQuery(_searchController.text).toLowerCase();
     
     // 🔍 Логирование поиска улиц
     if (query.isNotEmpty) {
