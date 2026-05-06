@@ -6,6 +6,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/core/network/http_client.dart';
+import 'package:lidle/services/device_info_service.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -166,9 +167,12 @@ class AuthRemote {
   /// Получает название устройства для отправки на сервер
   static Future<String> _getDeviceName() async {
     try {
-      return 'Lidle Mobile App';
+      // 🔄 ОБНОВЛЕНО: Получаем реальное имя устройства из DeviceInfoService
+      // вместо жесткого значения "Lidle Mobile App".
+      // Это обеспечивает уникальную идентификацию каждого физического устройства на сервере.
+      return DeviceInfoService.getDeviceNameForApi();
     } catch (_) {
-      return 'Unknown Device';
+      return DeviceInfoService.getPlatformName();
     }
   }
 

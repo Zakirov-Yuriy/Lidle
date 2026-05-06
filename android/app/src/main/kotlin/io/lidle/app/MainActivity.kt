@@ -115,13 +115,14 @@ class MainActivity : FlutterActivity() {
 
                 // Создаём уведомление только для бейджа (не показывается пользователю)
                 val notification = NotificationCompat.Builder(this, BADGE_CHANNEL_ID)
-                    .setContentTitle("Messages")
+                    .setContentTitle("New messages")
                     .setContentText("You have $count new messages")
-                    .setSmallIcon(android.R.drawable.ic_dialog_info) // Используем стандартный icon
-                    .setNumber(count) // Это устанавливает бейдж
-                    .setAutoCancel(true)
+                    .setSmallIcon(android.R.drawable.ic_notification_overlay) // ⭐ Встроенная иконка Android
+                    .setAutoCancel(false) // ⭐ НЕ закрывать уведомление, иначе исчезнет бейдж!
                     .setPriority(NotificationCompat.PRIORITY_LOW)
-                    .setVisibility(NotificationCompat.VISIBILITY_SECRET) // Скрытое уведомление
+                    .setVisibility(NotificationCompat.VISIBILITY_PUBLIC) // ⭐ ПУБЛИЧНЫЙ для видимости бейджа
+                    .setSilent(true) // Не издаём звук при обновлении бейджа
+                    .setNumber(count) // Это устанавливает бейдж (работает в Android 7.1+)
                     .build()
 
                 // Отправляем уведомление с ID 999 (для бейджа)

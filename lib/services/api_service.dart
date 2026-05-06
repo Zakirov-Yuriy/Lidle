@@ -19,6 +19,7 @@ import 'package:lidle/services/api/geography_api.dart';
 import 'package:lidle/services/api/offers_api.dart';
 import 'package:lidle/services/api/user_api.dart';
 import 'package:lidle/services/api/wishlist_api.dart';
+import 'package:lidle/services/device_info_service.dart';
 
 // Re-export exceptions for backward compatibility
 export 'package:lidle/core/network/exceptions.dart';
@@ -1329,11 +1330,13 @@ class ApiService {
   /// При необходимости можно использовать device_info_plus для получения реального имени
   static Future<String> _getDeviceName() async {
     try {
-      // Можно расширить с использованием device_info_plus если нужно реальное имя устройства
-      // Для теперь используем фиксированное значение
-      return 'Lidle Mobile App';
+      // 🔄 ОБНОВЛЕНО: Получаем реальное имя устройства из DeviceInfoService
+      // вместо жесткого значения "Lidle Mobile App".
+      // Это обеспечивает уникальную идентификацию каждого физического устройства на сервере.
+      // Например: "iPhone 16 Pro", "Samsung Galaxy S24", "Android Device" и т.д.
+      return DeviceInfoService.getDeviceNameForApi();
     } catch (_) {
-      return 'Unknown Device';
+      return DeviceInfoService.getPlatformName();
     }
   }
 

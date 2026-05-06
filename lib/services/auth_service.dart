@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'api_service.dart';
 import '../hive_service.dart';
 import 'user_service.dart';
+import 'device_info_service.dart';
 import 'package:lidle/core/logger.dart';
 
 class AuthService {
@@ -75,6 +76,9 @@ class AuthService {
   /// 401 = неверные учётные данные
   /// 422 = ошибка валидации (не заполненообязательное поле)
   /// 423 = email не подтверждён (email_not_verified) или аккаунт заблокирован (account_locked)
+  ///
+  /// ОБНОВЛЕНО: device_name теперь получается динамически из DeviceInfoService
+  /// вместо жесткого значения, чтобы каждое устройство было уникально идентифицировано.
   static Future<Map<String, dynamic>> login({
     required String email,
     required String password,
@@ -82,7 +86,7 @@ class AuthService {
     final body = {
       'email': email,
       'password': password,
-      'device_name': 'Lidle Mobile App', // обязательное поле (API v1.4+)
+      'device_name': DeviceInfoService.getDeviceNameForApi(), // 🔄 ОБНОВЛЕНО: получаем реальное имя устройства
       'app_version': '1.4.1',
     };
 

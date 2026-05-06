@@ -39,6 +39,9 @@ import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/services/device_info_service.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/message_polling_service.dart';
+import 'package:lidle/services/badge_service.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
@@ -148,6 +151,12 @@ void main() async {
   // Инициализируется без await, работает в фоне
   NotificationService().initialize().catchError((e) {
     log.w('⚠️ NotificationService инициализация ошибка: $e');
+  });
+
+  // 🔔 ИНИЦИАЛИЗАЦИЯ: Восстанавливаем бейдж на иконке приложения из кеша
+  // Если были непрочитанные сообщения до перезагрузки, они будут показаны на иконке
+  _restoreBadgeOnStartup().catchError((e) {
+    log.w('⚠️ Восстановление бейджа ошибка: $e');
   });
 
   // 📩 ИНИЦИАЛИЗАЦИЯ: Загружаем сохранённые ID сообщений из хранилища
@@ -369,5 +378,52 @@ class LidleApp extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ============================================================
+//  Вспомогательная функция: Восстановить бейдж при запуске
+// ============================================================
+/// Восстанавливает количество непрочитанных сообщений на иконке приложения
+/// при запуске из кешированных данных.
+/// 
+/// Это гарантирует, что если пользователь закрыл приложение с 5 непрочитанными
+/// сообщениями, при следующем запуске ба увидит бейдж "5" на иконке приложения,
+/// пока сообщения не будут загружены с сервера.
+Future<void> _restoreBadgeOnStartup() async {
+  try {
+    log.d('🔔 Восстановление бейджа при запуске приложения...');
+    
+    // Получаем кешированные сообщения
+    final cached = AppCacheService().get<Map<String, dynamic>>(CacheKeys.messagesData);
+    
+    if (cached == null) {
+      log.d('ℹ️ Кеш сообщений пуст, бейдж не требуется на этом этапе');
+      return;
+    }
+    
+    final mainMessages = cached['main'] as List? ?? [];
+    
+    if (mainMessages.isEmpty) {
+      log.d('ℹ️ Нет кешированных сообщений');
+      return;
+    }
+    
+    // Рассчитываем общее количество непрочитанных
+    int totalUnread = 0;
+    for (final msg in mainMessages) {
+      final count = (msg as Map)['unreadCount'];
+      final unreadInt = count is int ? count : int.tryParse(count.toString()) ?? 0;
+      totalUnread += unreadInt;
+    }
+    
+    if (totalUnread > 0) {
+      log.i('🔔 Восстановлено $totalUnread непрочитанных сообщений на иконке приложения');
+      await BadgeService().updateBadgeCount(totalUnread);
+    } else {
+      log.d('ℹ️ Нет непрочитанных сообщений в кеше');
+    }
+  } catch (e, st) {
+    log.w('⚠️ Ошибка восстановления бейджа: $e\n$st');
   }
 }

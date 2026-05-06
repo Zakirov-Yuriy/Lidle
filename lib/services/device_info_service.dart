@@ -200,6 +200,22 @@ class DeviceInfoService {
   static DeviceInfo? getCachedDeviceInfo() {
     return _cachedDeviceInfo;
   }
+
+  /// Получить device_name для API (рекомендуется использовать кешированную версию).
+  /// Возвращает user-friendly название устройства вроде "iPhone 16 Pro" или "Samsung Galaxy S24".
+  /// 
+  /// ПРИМЕЧАНИЕ: Используется при логине и обновлении токена для идентификации устройства.
+  /// Каждое физическое устройство должно иметь уникальное имя на сервере.
+  static String getDeviceNameForApi() {
+    // Сначала пытаемся использовать кешированную информацию (быстро)
+    if (_cachedDeviceInfo != null) {
+      return _cachedDeviceInfo!.getFullName();
+    }
+    
+    // Fallback: возвращаем название платформы
+    // Это произойдет если DeviceInfoService еще не инициализирован
+    return getPlatformName();
+  }
 }
 
 
