@@ -410,7 +410,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                             style: const TextStyle(color: activeIconColor, fontSize: 10),
                           ),
                           TextSpan(
-                            text: ' с ${widget.sellerRegistrationDate ?? '2024 г.'}',
+                            text: ' с ${RegExp(r'\d{4}').firstMatch(widget.sellerRegistrationDate ?? '')?.group(0) ?? '2024'} г.',
                             style: const TextStyle(color: textSecondary, fontSize: 13),
                           ),
                         ],
