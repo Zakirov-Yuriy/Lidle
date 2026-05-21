@@ -25,7 +25,10 @@ class SelectionDialog extends StatefulWidget {
   final bool allowMultipleSelection;
   // 🆕 Callback функция для поиска через API (опционально)
   final Future<List<String>> Function(String query)? onSearchQuery;
-  // 🆕 Показывать ли поле поиска (по умолчанию да)
+  // Показывать ли поле поиска. По умолчанию false: поиск нужен только в
+  // адресных полях (город и улица идут через свои отдельные диалоги, остаётся
+  // номер дома). Для остальных списков с короткими названиями (область,
+  // количество комнат, тип строения и т.п.) поиск избыточен и только засоряет UI.
   final bool showSearchField;
 
   const SelectionDialog({
@@ -36,7 +39,7 @@ class SelectionDialog extends StatefulWidget {
     required this.onSelectionChanged,
     this.allowMultipleSelection = true,
     this.onSearchQuery,
-    this.showSearchField = true,
+    this.showSearchField = false,
   });
 
   @override

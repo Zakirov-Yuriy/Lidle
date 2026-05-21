@@ -372,7 +372,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
             Padding(
               padding: EdgeInsets.only(left: 30.0),
               child: Text(
-                'Владислав',
+                'Название вашей компании',
                 style: TextStyle(color: Colors.white, fontSize: 14),
               ),
             ),

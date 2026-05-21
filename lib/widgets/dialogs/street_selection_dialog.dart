@@ -77,26 +77,30 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
     super.dispose();
   }
 
-  /// Извлекает основное название улицы, удаляя префиксы (ул., пр., пер. и т.д.)
+  /// Извлекает основное название улицы, удаляя префиксы типа ул., пр-кт, пер. и т.д.
+  /// Одна регулярка, нечувствительная к регистру, покрывает варианты из БД,
+  /// включая "пр-кт" (через дефис), которое раньше ломало поиск проспектов.
   String _getStreetMainName(String fullStreetName) {
-    String mainName = fullStreetName
-        .replaceAll(RegExp(r'^ул\.\s+'), '')
-        .replaceAll(RegExp(r'^улица\s+'), '')
-        .replaceAll(RegExp(r'^пр\.\s+'), '')
-        .replaceAll(RegExp(r'^проспект\s+'), '')
-        .replaceAll(RegExp(r'^пер\.\s+'), '')
-        .replaceAll(RegExp(r'^переулок\s+'), '')
-        .replaceAll(RegExp(r'^бульвар\s+'), '')
-        .replaceAll(RegExp(r'^б-р\s+'), '')
-        .replaceAll(RegExp(r'^площадь\s+'), '')
-        .replaceAll(RegExp(r'^пл\.\s+'), '')
-        .replaceAll(RegExp(r'^шоссе\s+'), '')
-        .replaceAll(RegExp(r'^дорога\s+'), '')
-        .replaceAll(RegExp(r'^тракт\s+'), '')
-        .replaceAll(RegExp(r'^набережная\s+'), '')
-        .replaceAll(RegExp(r'^набер\.\s+'), '')
-        .trim();
+    final prefixRegex = RegExp(
+      r'^(ул\.|улица|пр-кт|пр-т|пр\.|проспект|пер\.|переулок|б-р|бульвар|пл\.|площадь|ш\.|шос\.|шоссе|дорога|тракт|наб\.|набер\.|набережная|мкр\.|м-н|микрорайон|кв-л|квартал|туп\.|тупик|проезд|аллея|спуск|въезд|съезд)\s+',
+      caseSensitive: false,
+    );
+    final mainName = fullStreetName.replaceFirst(prefixRegex, '').trim();
     return mainName.isNotEmpty ? mainName : fullStreetName;
+  }
+
+  /// Проверяет, совпадает ли улица с поисковым запросом.
+  /// Совпадение либо по началу "очищенного" названия (без префикса),
+  /// либо по началу любого слова в полном названии. Это страхует от случая,
+  /// когда префикс не описан в _getStreetMainName (например, новый "ш-се"),
+  /// и пользователь всё равно найдёт улицу по любому из её слов.
+  bool _streetMatchesQuery(String street, String query) {
+    final q = query.toLowerCase().trim();
+    if (q.isEmpty) return true;
+    final mainName = _getStreetMainName(street).toLowerCase();
+    if (mainName.startsWith(q)) return true;
+    final words = street.toLowerCase().split(RegExp(r'[\s\-\.,]+'));
+    return words.any((w) => w.isNotEmpty && w.startsWith(q));
   }
 
   /// Очищает поисковый запрос от пунктуации, чтобы не ломать поиск,
@@ -175,12 +179,12 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
         final apiResults = await widget.onSearchQuery!(query);
         log.d('   ✅ API results: ${apiResults.length} улиц');
         
-        // 🎯 Фильтруем API результаты - ТОЛЬКО точные совпадения по началу названия
+        // Фильтр: query совпадает с началом ОСНОВНОГО названия ИЛИ
+        // с началом любого слова в полном названии. Так "Строит" найдёт
+        // и "ул. Строителей", и "пр-кт Строителей", даже если префикс
+        // не описан в _getStreetMainName.
         List<String> filteredApiResults = apiResults
-            .where((street) {
-              final mainName = _getStreetMainName(street).toLowerCase();
-              return mainName.startsWith(query);
-            })
+            .where((street) => _streetMatchesQuery(street, query))
             .toList();
         
         log.d('   ✅ Отфильтровано: ${filteredApiResults.length} улиц (было ${apiResults.length})');
@@ -207,11 +211,10 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
       Map<String, List<String>> filteredGroupedStreets = {};
 
       widget.groupedOptions!.forEach((sectionKey, streets) {
-        // 🎯 ТОЛЬКО точные совпадения по началу основного названия
-        final filteredStreets = streets.where((street) {
-          final mainName = _getStreetMainName(street).toLowerCase();
-          return mainName.startsWith(query);
-        }).toList();
+        // Совпадение по началу очищенного названия ИЛИ по началу любого слова.
+        final filteredStreets = streets
+            .where((street) => _streetMatchesQuery(street, query))
+            .toList();
         
         if (filteredStreets.isNotEmpty) {
           filteredGroupedStreets[sectionKey] = filteredStreets;
@@ -224,12 +227,9 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
 
       _buildDisplayOptions(filteredGroupedStreets);
     } else if (widget.options != null) {
-      // Фильтр для списка улиц - 🎯 ТОЛЬКО точные совпадения по началу
+      // Совпадение по началу очищенного названия ИЛИ по началу любого слова.
       List<String> exactMatches = widget.options!
-          .where((option) {
-            final mainName = _getStreetMainName(option).toLowerCase();
-            return mainName.startsWith(query);
-          })
+          .where((option) => _streetMatchesQuery(option, query))
           .toList();
       
       if (query.isNotEmpty) {

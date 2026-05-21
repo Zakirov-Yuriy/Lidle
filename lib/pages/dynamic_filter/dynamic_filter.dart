@@ -4076,121 +4076,17 @@ class _DynamicFilterState extends State<DynamicFilter>
                   log.d('   - _selectedCityId: $_selectedCityId');
                   log.d('   - _streets.length: ${_streets.length}');
 
-                  // Load streets for selected city
-                  if (_streets.isEmpty && _selectedCityId != null) {
-                    log.d('   → Загружаем улицы с API...');
-                    try {
-                      final token = TokenService.currentToken;
-
-                      // 🔧 ИСПРАВКА: Используем "ул" вместо названия города
-                      // Это позволяет API вернуть ВСЕ улицы города (до 20)
-                      // вместо фильтрации по названию города
-                      const String searchQuery = 'ул';
-
-                      log.d(
-                        '   - Поисковый запрос БЕЗ обработки: "$searchQuery"',
-                      );
-                      log.d(
-                        '   - Длина строки: ${searchQuery.length} символов',
-                      );
-
-                      final response =
-                          await AddressService.searchAddresses(
-                            query: searchQuery,
-                            token: token,
-                            types: ['street'],
-                            filters: _selectedCityId != null
-                                ? {'city_id': _selectedCityId}
-                                : null,
-                          );
-
-                      log.d(
-                        '🔍 Поиск улиц для города ID: $_selectedCityId',
-                      );
-                      log.d(
-                        '📋 API вернул ${response.data.length} результатов',
-                      );
-
-                      final uniqueStreets =
-                          <String, Map<String, dynamic>>{};
-                      int filteredStreets = 0;
-                      for (final result in response.data) {
-                        // Filter by city on client side
-                        if (result.city?.id == _selectedCityId &&
-                            result.street != null) {
-                          // IMPORTANT: Store both main_region and region IDs from API response
-                          uniqueStreets[result.street!.name] = {
-                            'name': result.street!.name,
-                            'id': result.street!.id,
-                            'city_id': result.city!.id,
-                            'main_region_id':
-                                result.main_region?.id,
-                            'region_id': result.region?.id,
-                          };
-                          log.d(
-                            '   ✅ ${result.street!.name} [id=${result.street!.id}]',
-                          );
-                        } else if (result.street != null) {
-                          filteredStreets++;
-                          log.d(
-                            '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
-                          );
-                        }
-                      }
-
-                      log.d(
-                        '   ✅ Прошло фильтр: ${uniqueStreets.length}',
-                      );
-                      log.d('   ❌ Отфильтровано: $filteredStreets');
-
-                      if (uniqueStreets.isEmpty) {
-                        log.w(
-                          '   ⚠️ WARNING: Не найдено ни одной улицы!',
-                        );
-                        log.w(
-                          '   На сумму ${response.data.length} результатов от API',
-                        );
-                      }
-
-                      log.d('');
-
-                      // 🔧 BUGFIX: Используем Future.microtask() чтобы убрать фокус ПОСЛЕ закрытия диалога
-                      // и перестройки UI. Это гарантирует что автоскролл не произойдет
-                      Future.microtask(() {
-                        FocusManager.instance.primaryFocus?.unfocus();
-                        _priceFocusNode.unfocus();
-                      });
-                      setState(() {
-                        _streets = uniqueStreets.values.toList();
-                      });
-                    } catch (e) {
-                      log.d('❌ Error loading streets: $e');
-                      log.d('');
-                    }
-                  } else if (_streets.isEmpty) {
-                    log.d('   ❌ Не могу загрузить улицы:');
-                    log.d(
-                      '       - _selectedCityId: $_selectedCityId',
-                    );
-                    log.d(
-                      '       - _streets.isEmpty: ${_streets.isEmpty}',
-                    );
-                    log.d('');
-                  } else {
-                    log.d(
-                      '   → Улицы уже в кеше, показываем диалог',
-                    );
-                    log.d('');
+                  // Не загружаем улицы заранее: API ограничивает выдачу ~20 элементами,
+                  // в крупном городе (Мариуполь, Донецк и др.) проспект может не попасть
+                  // в первые 20. Диалог открывается с пустым списком, API дёргается
+                  // только при вводе в строку поиска через _searchStreetsAPI.
+                  if (_selectedCityId == null) {
+                    log.d('   ❌ Не могу открыть диалог улиц: _selectedCityId == null');
+                    return;
                   }
 
-                  if (_streets.isNotEmpty) {
-                    log.d(
-                      '🔓 Открываем диалог улиц (${_streets.length} улиц)',
-                    );
-                    log.d(
-                      '   Улицы: ${_streets.map((s) => s['name']).toList()}',
-                    );
-                    showDialog(
+                  log.d('🔓 Открываем диалог улиц (поиск через API при вводе)');
+                  showDialog(
                       context: context,
                       builder: (BuildContext context) {
                         return StreetSelectionDialog(
@@ -4281,7 +4177,6 @@ class _DynamicFilterState extends State<DynamicFilter>
                         );
                       },
                     );
-                  }
                 },
         ),
         const SizedBox(height: 9),
@@ -4311,6 +4206,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                       builder: (BuildContext context) {
                         return SelectionDialog(
                           title: 'Выберите номер дома',
+                          showSearchField: true,
                           options: _buildings
                               .map((b) => b['name'] as String)
                               .toList(),

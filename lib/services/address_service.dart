@@ -29,14 +29,14 @@ class AddressService {
     String? token,
   }) async {
     try {
-      // API requires minimum 3 characters in 'q' parameter
-      // 🔧 ИСПРАВКА: Используем "ули" (3 символа) вместо пробелов
-      // Это позволяет получить всех адресов с "ули" в составе
-      final searchQuery = query.isEmpty || query.length < 3 ? 'ули' : query;
-      
-      // 🔍 Логирование трансформации query если произошла
-      if (query != searchQuery) {
-        log.d('   ⚠️ Query трансформирована: "$query" → "$searchQuery"');
+      // API требует минимум 3 символа в 'q'.
+      // Если запрос короче, возвращаем пустой результат вместо подмены на "ули",
+      // которая раньше отсекала все улицы без подстроки "ули" в названии
+      // (проспекты, переулки, бульвары и т.п.).
+      final searchQuery = query.trim();
+      if (searchQuery.length < 3) {
+        log.d('   ⚠️ Query слишком короткий: "$query" (нужно 3+), возвращаем пустой список');
+        return AddressesResponse(success: true, data: []);
       }
 
       final headers = <String, String>{
@@ -100,5 +100,3 @@ class AddressService {
     }
   }
 }
-
-

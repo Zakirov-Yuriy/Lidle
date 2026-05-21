@@ -98,6 +98,29 @@ mixin _AddressApiMixin on State<DynamicFilter> {
 
   // ===== Методы =====
 
+  /// Очищает строку адреса от префиксов типа "г.", "ул.", "пр-кт", "м.о." и т.д.
+  /// Используется при выборе адреса по имени (при редактировании объявления),
+  /// чтобы передать в API чистое название без префикса.
+  ///
+  /// Примеры:
+  ///   "г. Донецк" → "Донецк"
+  ///   "ул. Бутовская" → "Бутовская"
+  ///   "пр-кт Строителей" → "Строителей"
+  ///   "Донецкая Народная респ." → "Донецкая Народная"
+  static String _cleanAddressPart(String input) {
+    final prefixRegex = RegExp(
+      r'^(г\.|город|с\.|село|пгт\.|пгт|пос\.|посёлок|поселок|д\.|деревня|ст\.|станица|ул\.|улица|пр-кт|пр-т|пр\.|проспект|пер\.|переулок|б-р|бульвар|пл\.|площадь|ш\.|шос\.|шоссе|дорога|тракт|наб\.|набер\.|набережная|мкр\.|м-н|микрорайон|кв-л|квартал|туп\.|тупик|проезд|аллея|спуск|въезд|съезд|м\.о\.)\s+',
+      caseSensitive: false,
+    );
+    final suffixRegex = RegExp(
+      r'\s+(респ\.|область|обл\.|край|АО|округ)$',
+      caseSensitive: false,
+    );
+    var cleaned = input.trim().replaceFirst(prefixRegex, '');
+    cleaned = cleaned.replaceFirst(suffixRegex, '');
+    return cleaned.trim();
+  }
+
   /// Загружает список регионов с API при инициализации формы.
   /// При ошибке повторяет попытку через 3 секунды.
   Future<void> _loadRegions() async {
@@ -317,20 +340,25 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   Future<void> _loadCitiesForSelectedRegion() async {
     if (_selectedRegionId == null) return;
 
+    // Используем очищенное имя региона как поисковый запрос.
+    // Если оно слишком короткое, не делаем запрос вообще: пользователь
+    // получит пустой список в диалоге и сам введёт нужный город,
+    // а API сработает через _searchCitiesAPI при вводе.
+    String? searchQuery;
+    if (_selectedRegion.isNotEmpty) {
+      final cleaned = _cleanAddressPart(_selectedRegion.first);
+      if (cleaned.length >= 3) {
+        searchQuery = cleaned.length > 50 ? cleaned.substring(0, 50) : cleaned;
+      }
+    }
+
+    if (searchQuery == null) {
+      log.d('ℹ️ _loadCitiesForSelectedRegion: имя региона короткое, пропускаем предзагрузку');
+      return;
+    }
+
     try {
       final token = TokenService.currentToken;
-      String searchQuery = 'по'; // Default search term
-
-      if (_selectedRegion.isNotEmpty) {
-        final regionName = _selectedRegion.first;
-        if (regionName.length >= 3) {
-          searchQuery = regionName.length > 50
-              ? regionName.substring(0, 50)
-              : regionName;
-        } else {
-          searchQuery = regionName + '   '; // Pad to at least 3
-        }
-      }
 
       final response = await AddressService.searchAddresses(
         query: searchQuery,
@@ -392,20 +420,23 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   Future<void> _loadStreetsForSelectedCity() async {
     if (_selectedCityId == null) return;
 
+    // Используем очищенное имя города как поисковый запрос.
+    // Если оно короче 3 символов, ничего не делаем (диалог сам подгрузит через API).
+    String? searchQuery;
+    if (_selectedCity.isNotEmpty) {
+      final cleaned = _cleanAddressPart(_selectedCity.first);
+      if (cleaned.length >= 3) {
+        searchQuery = cleaned.length > 50 ? cleaned.substring(0, 50) : cleaned;
+      }
+    }
+
+    if (searchQuery == null) {
+      log.d('ℹ️ _loadStreetsForSelectedCity: имя города короткое, пропускаем предзагрузку');
+      return;
+    }
+
     try {
       final token = TokenService.currentToken;
-      String searchQuery = 'у';
-
-      if (_selectedCity.isNotEmpty) {
-        final cityName = _selectedCity.first;
-        if (cityName.length >= 3) {
-          searchQuery = cityName.length > 50
-              ? cityName.substring(0, 50)
-              : cityName;
-        } else {
-          searchQuery = cityName + '   ';
-        }
-      }
 
       final response = await AddressService.searchAddresses(
         query: searchQuery,
@@ -448,20 +479,23 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   Future<void> _loadBuildingsForSelectedStreet() async {
     if (_selectedStreetId == null) return;
 
+    // Используем очищенное имя улицы как поисковый запрос.
+    // Если короче 3 символов, не делаем запрос.
+    String? searchQuery;
+    if (_selectedStreet.isNotEmpty) {
+      final cleaned = _cleanAddressPart(_selectedStreet.first);
+      if (cleaned.length >= 3) {
+        searchQuery = cleaned.length > 50 ? cleaned.substring(0, 50) : cleaned;
+      }
+    }
+
+    if (searchQuery == null) {
+      log.d('ℹ️ _loadBuildingsForSelectedStreet: имя улицы короткое, пропускаем');
+      return;
+    }
+
     try {
       final token = TokenService.currentToken;
-      String searchQuery = '1'; // Default search term
-
-      if (_selectedStreet.isNotEmpty) {
-        final streetName = _selectedStreet.first;
-        if (streetName.length >= 3) {
-          searchQuery = streetName.length > 50
-              ? streetName.substring(0, 50)
-              : streetName;
-        } else {
-          searchQuery = streetName + '   ';
-        }
-      }
 
       final response = await AddressService.searchAddresses(
         query: searchQuery,
@@ -619,32 +653,20 @@ mixin _AddressApiMixin on State<DynamicFilter> {
     }
   }
 
-  /// 🔍 找ет и выбирает регион по названию
+  /// 🔍 Ищет и выбирает регион по названию
   Future<void> _selectRegionByName(String regionName) async {
     try {
       final token = TokenService.currentToken;
 
-      // Загружаем все регионы если их нет
+      // Загружаем все регионы если их нет. Используем эндпоинт /addresses/regions
+      // (тот же, что и при инициализации формы) вместо поиска по букве "р" через
+      // searchAddresses, который теперь не работает с короткими запросами.
       if (_regions.isEmpty) {
-        final response = await AddressService.searchAddresses(
-          query: 'р',
-          token: token,
-          types: ['region'],
-        );
-
-        final uniqueRegions = <String, int>{};
-        for (final result in response.data) {
-          if (result.main_region != null) {
-            uniqueRegions[result.main_region!.name] = result.main_region!.id;
-          }
-        }
-
+        final regionsResponse = await ApiService.getRegions(token: token);
         setState(() {
-          _regions = uniqueRegions.entries
-              .map((e) => {'name': e.key, 'id': e.value})
-              .toList();
+          _regions = regionsResponse;
         });
-        log.d('   📦 Loaded ${_regions.length} regions from API');
+        log.d('   📦 Loaded ${_regions.length} regions from /addresses/regions');
       }
 
       // Ищем регион по названию (точное совпадение или частичное)
@@ -686,10 +708,18 @@ mixin _AddressApiMixin on State<DynamicFilter> {
 
       final token = TokenService.currentToken;
 
-      // Загружаем города для выбранного региона
-      // Получить ВСЕ города для выбранного региона
+      // Используем очищенное имя города как query (без префикса "г." и т.п.).
+      // Если очищенное имя короче 3 символов, берём оригинал, а если и он короче 3,
+      // не делаем запрос вообще.
+      final cleaned = _cleanAddressPart(cityName);
+      final queryStr = cleaned.length >= 3 ? cleaned : cityName.trim();
+      if (queryStr.length < 3) {
+        log.d('   ⚠️ Имя города слишком короткое для API: "$cityName"');
+        return;
+      }
+
       final response = await AddressService.searchAddresses(
-        query: '   ', // Минимум 3 символа для API (пустой поиск)
+        query: queryStr,
         token: token,
         types: ['city'],
         filters: {
@@ -701,6 +731,13 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       for (final result in response.data) {
         if (result.city != null) {
           uniqueCities[result.city!.name] = result.city!.id;
+          // Сохраняем в кеш с информацией о регионе, чтобы потом улицы
+          // искались с корректным region_id/main_region_id.
+          _lastCitiesSearchResults[result.city!.name] = result.city!.id;
+          _lastCitiesRegionResults[result.city!.name] = {
+            'region_id': result.region?.id ?? 0,
+            'main_region_id': result.main_region?.id ?? 0,
+          };
         }
       }
 
@@ -710,7 +747,7 @@ mixin _AddressApiMixin on State<DynamicFilter> {
             .toList();
 
         log.d(
-          '✅ Loaded ${_cities.length} cities for region ID $_selectedRegionId',
+          '✅ Loaded ${_cities.length} cities for region ID $_selectedRegionId (query: "$queryStr")',
         );
       });
 
@@ -718,10 +755,10 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       final city = _cities.firstWhere(
         (c) => (c['name'] as String).toLowerCase() == cityName.toLowerCase(),
         orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
+          // Если точного совпадения нет, ищем по подстроке
           return _cities.firstWhere(
             (c) => (c['name'] as String).toLowerCase().contains(
-              cityName.toLowerCase(),
+              cleaned.toLowerCase(),
             ),
             orElse: () => {},
           );
@@ -729,20 +766,20 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       );
 
       if (city.isNotEmpty) {
-        final cityName = city['name'] as String;
+        final foundCityName = city['name'] as String;
         setState(() {
           _selectedCityId = city['id'] as int;
           _selectedCity.clear();
-          _selectedCity.add(cityName);
+          _selectedCity.add(foundCityName);
           // 🆕 Сохраняем информацию о регионе города из кеша
-          if (_lastCitiesRegionResults.containsKey(cityName)) {
-            final regionInfo = _lastCitiesRegionResults[cityName];
+          if (_lastCitiesRegionResults.containsKey(foundCityName)) {
+            final regionInfo = _lastCitiesRegionResults[foundCityName];
             _selectedCityRegionId = regionInfo?['region_id'];
             _selectedCityMainRegionId = regionInfo?['main_region_id'];
             log.d('   ℹ️ Loaded region info: region_id=$_selectedCityRegionId, main_region_id=$_selectedCityMainRegionId');
           }
         });
-        log.d('   ✅ Selected city: $cityName (ID: ${city['id']})');
+        log.d('   ✅ Selected city: $foundCityName (ID: ${city['id']})');
       } else {
         log.d('   ⚠️ City "$cityName" not found in list');
       }
@@ -770,9 +807,18 @@ mixin _AddressApiMixin on State<DynamicFilter> {
         filters['main_region_id'] = _selectedCityMainRegionId;
       }
 
+      // Используем очищенное имя улицы как query (без префикса "ул.", "пр-кт" и т.д.).
+      // Если очищенное имя короче 3 символов, пробуем оригинал.
+      final cleaned = _cleanAddressPart(streetName);
+      final queryStr = cleaned.length >= 3 ? cleaned : streetName.trim();
+      if (queryStr.length < 3) {
+        log.d('   ⚠️ Имя улицы слишком короткое для API: "$streetName"');
+        return;
+      }
+
       // Загружаем улицы для выбранного города с информацией о регионе
       final response = await AddressService.searchAddresses(
-        query: 'у',
+        query: queryStr,
         token: token,
         types: ['street'],
         filters: filters,
@@ -782,6 +828,9 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       for (final result in response.data) {
         if (result.city?.id == _selectedCityId && result.street != null) {
           uniqueStreets[result.street!.name] = result.street!.id;
+          // Сохраняем в кеш subregion для последующего использования при публикации
+          _lastStreetsSearchResults[result.street!.name] = result.street!.id;
+          _lastStreetsSubregionResults[result.street!.name] = result.region?.id;
         }
       }
 
@@ -790,16 +839,16 @@ mixin _AddressApiMixin on State<DynamicFilter> {
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
       });
-      log.d('   📦 Loaded ${_streets.length} streets for city');
+      log.d('   📦 Loaded ${_streets.length} streets for city (query: "$queryStr")');
 
       // Ищем улицу по названию
       final street = _streets.firstWhere(
         (s) => (s['name'] as String).toLowerCase() == streetName.toLowerCase(),
         orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
+          // Если точного совпадения нет, ищем по подстроке (очищенного имени)
           return _streets.firstWhere(
             (s) => (s['name'] as String).toLowerCase().contains(
-              streetName.toLowerCase(),
+              cleaned.toLowerCase(),
             ),
             orElse: () => {},
           );
@@ -831,9 +880,26 @@ mixin _AddressApiMixin on State<DynamicFilter> {
 
       final token = TokenService.currentToken;
 
+      // Для домов q обычно короткий ("1А", "5"), не пройдёт по 3 символам.
+      // Используем имя улицы как query (плюс фильтр street_id), а локально
+      // ищем нужный дом по имени.
+      String? queryStr;
+      if (_selectedStreet.isNotEmpty) {
+        final cleaned = _cleanAddressPart(_selectedStreet.first);
+        if (cleaned.length >= 3) queryStr = cleaned;
+      }
+      // Fallback: само имя дома, если оно достаточно длинное
+      if (queryStr == null && buildingName.trim().length >= 3) {
+        queryStr = buildingName.trim();
+      }
+      if (queryStr == null) {
+        log.d('   ⚠️ Не могу подобрать query для поиска домов (улица и имя короткие)');
+        return;
+      }
+
       // Загружаем номера домов для выбранной улицы
       final response = await AddressService.searchAddresses(
-        query: '1',
+        query: queryStr,
         token: token,
         types: ['building'],
         filters: _selectedStreetId != null
@@ -853,14 +919,14 @@ mixin _AddressApiMixin on State<DynamicFilter> {
             .map((e) => {'name': e.key, 'id': e.value})
             .toList();
       });
-      log.d('   📦 Loaded ${_buildings.length} buildings for street');
+      log.d('   📦 Loaded ${_buildings.length} buildings for street (query: "$queryStr")');
 
       // Ищем номер дома по названию
       final building = _buildings.firstWhere(
         (b) =>
             (b['name'] as String).toLowerCase() == buildingName.toLowerCase(),
         orElse: () {
-          // Если точного совпадения нет, ищем по началу строки
+          // Если точного совпадения нет, ищем по подстроке
           return _buildings.firstWhere(
             (b) => (b['name'] as String).toLowerCase().contains(
               buildingName.toLowerCase(),

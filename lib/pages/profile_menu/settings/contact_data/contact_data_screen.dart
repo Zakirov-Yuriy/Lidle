@@ -733,20 +733,27 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   Future<void> _loadCitiesForSelectedRegion() async {
     if (_selectedRegionId == null) return;
 
+    // Используем имя региона как поисковый запрос (если есть и оно >= 3 символов).
+    // Если короче, не делаем запрос: пользователь увидит пустой список в диалоге
+    // и сам введёт нужный город. Это лучше чем падать на старое 'по' (которое
+    // теперь блокируется минимальной длиной q=3 на стороне AddressService).
+    String? searchQuery;
+    if (_selectedRegion.isNotEmpty) {
+      final regionName = _selectedRegion.first.trim();
+      if (regionName.length >= 3) {
+        searchQuery = regionName.length > 50
+            ? regionName.substring(0, 50)
+            : regionName;
+      }
+    }
+
+    if (searchQuery == null) {
+      log.d('ℹ️ contact_data: имя региона короткое, пропускаем предзагрузку городов');
+      return;
+    }
+
     try {
       final token = TokenService.currentToken;
-      String searchQuery = 'по'; // Default search term
-
-      if (_selectedRegion.isNotEmpty) {
-        final regionName = _selectedRegion.first;
-        if (regionName.length >= 3) {
-          searchQuery = regionName.length > 50
-              ? regionName.substring(0, 50)
-              : regionName;
-        } else {
-          searchQuery = regionName + '   '; // Pad to at least 3
-        }
-      }
 
       final response = await AddressService.searchAddresses(
         query: searchQuery,

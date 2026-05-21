@@ -67,13 +67,21 @@ class GeographyApi {
     Map<String, dynamic>? filters,
   }) async {
     try {
+      // API требует минимум 3 символа в 'q'. Если запрос короче,
+      // возвращаем пустой список, чтобы не получать рандомные результаты.
+      final cleanQuery = query.trim();
+      if (cleanQuery.length < 3) {
+        log.d('⚠️ GeographyApi.searchAddresses: query слишком короткий ("$query"), возвращаем []');
+        return [];
+      }
+
       final headers = {...ApiService.defaultHeaders};
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
 
       // Build request body for GET request (API требует JSON body, не query params)
-      final bodyMap = <String, dynamic>{'q': query};
+      final bodyMap = <String, dynamic>{'q': cleanQuery};
       if (types != null && types.isNotEmpty) {
         bodyMap['types'] = types;
       }
