@@ -13,6 +13,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../hive_service.dart';
 import 'token_secure_storage.dart';
 import '../blocs/auth/auth_bloc.dart';
@@ -127,6 +128,34 @@ class TokenService with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
   }
 
+  /// Проверяет доступность сетевого подключения.
+  /// Возвращает true если сеть готова, false если нет.
+  /// 
+  /// 🎯 Используется для решения VPN-проблемы: когда приложение запускается
+  /// с включённым VPN, сеть может быть недоступна. Эта проверка позволяет
+  /// избежать timeout'а и вместо этого отложить refresh до готовности сети.
+  Future<bool> _isNetworkReady() async {
+    try {
+      final connectivity = Connectivity();
+      final result = await connectivity.checkConnectivity();
+      
+      // Проверяем что есть хотя бы одно активное соединение
+      final isConnected = result.isNotEmpty && 
+          (result.contains(ConnectivityResult.mobile) ||
+          result.contains(ConnectivityResult.wifi) ||
+          result.contains(ConnectivityResult.ethernet));
+      
+      if (!isConnected) {
+        log.d('🌐 TokenService._isNetworkReady: false (types: $result)');
+      }
+      return isConnected;
+    } catch (e) {
+      // На ошибку считаем что сеть не готова
+      log.w('⚠️ TokenService._isNetworkReady: ошибка проверки: $e');
+      return false;
+    }
+  }
+
   /// Планирует следующее обновление токена на основе [token_expires_at] и [refresh_token_expires_at] из Hive
   /// с учетом профилактического обновления каждый час.
   /// 
@@ -215,16 +244,28 @@ class TokenService with WidgetsBindingObserver {
     _refreshTimer = Timer(delay, _doRefresh);
   }
 
-  /// Выполняет запрос на обновление токена с retry логикой при сетевых ошибках.
+  /// Выполняет запрос на обновление токена с retry логикой при сетевых ошибках
+  /// и проверкой сетевого подключения.
   ///
   /// Содержит защиту от:
   /// 1. Параллельных вызовов внутри TokenService ([_isRefreshing])
   /// 2. Слишком частых попыток (debounce [_minRefreshIntervalSeconds])
   /// 3. Race condition с ApiService._retryRequest() — ожидает уже активный refresh
   /// 4. Сетевых ошибок — retry с экспоненциальной задержкой перед тем как отправить на авторизацию
+  /// 5. VPN и медленных сетей — проверяет подключение перед попыткой refresh
   Future<void> _doRefresh() async {
     // Защита #1: предотвращаем параллельный refresh внутри TokenService
     if (_isRefreshing) return;
+
+    // 🆕 ИСПРАВЛЕНИЕ #2: Проверяем сетевое подключение перед refresh
+    // Это решает проблему с VPN: если сеть не готова при старте приложения,
+    // вместо 30-секундного timeout'а мы просто отложим refresh.
+    final isNetworkReady = await _isNetworkReady();
+    if (!isNetworkReady) {
+      log.d('⚠️ TokenService: сеть не готова, откладываем refresh на 3с');
+      _startTimer(const Duration(seconds: 3));
+      return;
+    }
 
     // Защита #2: debounce — не запускаем refresh чаще чем раз в N секунд
     final now = DateTime.now();

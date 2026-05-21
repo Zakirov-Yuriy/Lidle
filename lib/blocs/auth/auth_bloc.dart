@@ -2,7 +2,10 @@
 // "Bloc: Управление состоянием аутентификации"
 // ============================================================
 
+import 'dart:async';
+import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 import '../../services/auth_service.dart';
@@ -13,6 +16,12 @@ import '../../core/cache/screen_cache_manager.dart';
 import 'package:lidle/core/logger.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
+  /// Максимальное количество попыток retry при сетевых ошибках на старте приложения
+  static const int _maxRetries = 3;
+  
+  /// Стартовая задержка между retry попытками (экспоненциальный backoff)
+  static const Duration _retryInitialDelay = Duration(milliseconds: 1500);
+  
   /// Конструктор AuthBloc.
   /// Инициализирует Bloc с начальным состоянием AuthInitial.
   AuthBloc() : super(AuthInitial()) {
@@ -25,6 +34,114 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
     on<TokenExpiredEvent>(_onTokenExpired);
     on<TokenRefreshedEvent>(_onTokenRefreshed);
+  }
+  
+  /// Проверяет готовность сетевого подключения.
+  /// Возвращает true если есть интернет, false если нет.
+  Future<bool> _isNetworkReady() async {
+    try {
+      final connectivity = Connectivity();
+      final result = await connectivity.checkConnectivity();
+      
+      // Проверяем что есть хотя бы одно активное соединение
+      final isConnected = result.isNotEmpty && 
+          result.contains(ConnectivityResult.mobile) ||
+          result.contains(ConnectivityResult.wifi) ||
+          result.contains(ConnectivityResult.ethernet);
+      
+      log.d('🌐 AuthBloc._isNetworkReady: $isConnected (types: $result)');
+      return isConnected;
+    } catch (e) {
+      log.w('⚠️ AuthBloc._isNetworkReady: Ошибка проверки сети: $e');
+      // На ошибку считаем что сеть не готова
+      return false;
+    }
+  }
+  
+  /// Пытается обновить токен с retry логикой при сетевых ошибках.
+  /// 
+  /// Параметры:
+  /// - [token] текущий access_token
+  /// - [maxAttempts] максимальное количество попыток (по умолчанию 3)
+  /// - [initialDelay] стартовая задержка перед первым retry (экспоненциальный backoff)
+  /// 
+  /// Возвращает новый токен если успешно, null если все попытки исчерпаны.
+  Future<String?> _refreshTokenWithRetry(
+    String token, {
+    int maxAttempts = _maxRetries,
+    Duration initialDelay = _retryInitialDelay,
+  }) async {
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        log.d('🔄 AuthBloc._refreshTokenWithRetry: Попытка $attempt/$maxAttempts');
+        
+        // Проверяем сетевое подключение перед каждой попыткой
+        final isNetworkReady = await _isNetworkReady();
+        if (!isNetworkReady) {
+          log.w('⚠️ AuthBloc: Сеть не готова на попытке $attempt');
+          
+          // Если это не последняя попытка - ждем перед следующей попыткой
+          if (attempt < maxAttempts) {
+            final delayMs = (initialDelay.inMilliseconds * 
+                pow(2, attempt - 1).toInt()).toInt(); // Экспоненциальный backoff: 1.5s, 3s, 6s
+            log.d('⏳ AuthBloc: Ожидание ${delayMs}ms перед следующей попыткой...');
+            await Future.delayed(Duration(milliseconds: delayMs));
+            continue; // Пробуем снова
+          } else {
+            // Последняя попытка провалилась из-за сети
+            log.e('❌ AuthBloc: Сеть не готова после всех попыток');
+            return null;
+          }
+        }
+        
+        // Сеть готова - пытаемся обновить токен
+        final newToken = await ApiService.refreshToken(token);
+        if (newToken != null && newToken.isNotEmpty) {
+          log.d('✅ AuthBloc._refreshTokenWithRetry: Успешно на попытке $attempt');
+          return newToken;
+        }
+        
+        log.w('⚠️ AuthBloc: refresh_token вернул null на попытке $attempt (возможно истёк)');
+        // Если refresh вернул null - это означает что refresh_token истёк
+        // или сервер отклонил запрос. Retry не поможет.
+        return null;
+        
+      } on TimeoutException catch (e) {
+        log.w('⏱️ AuthBloc._refreshTokenWithRetry: Timeout на попытке $attempt');
+        
+        if (attempt < maxAttempts) {
+          // Timeout может быть временной проблемой - retry
+          final delayMs = (initialDelay.inMilliseconds * 
+              pow(2, attempt - 1).toInt()).toInt();
+          log.d('⏳ AuthBloc: Ожидание ${delayMs}ms перед повтором после timeout...');
+          await Future.delayed(Duration(milliseconds: delayMs));
+        } else {
+          log.e('❌ AuthBloc: Timeout после всех попыток');
+          return null;
+        }
+      } catch (e) {
+        log.e('❌ AuthBloc._refreshTokenWithRetry: Ошибка на попытке $attempt: $e');
+        
+        // Если это явная auth ошибка (401/403) - retry не поможет
+        if (e.toString().contains('401') || e.toString().contains('403')) {
+          log.e('🔐 AuthBloc: Auth ошибка (401/403) - refresh_token невалиден');
+          return null;
+        }
+        
+        // Для других ошибок можно попробовать еще раз
+        if (attempt < maxAttempts) {
+          final delayMs = (initialDelay.inMilliseconds * 
+              pow(2, attempt - 1).toInt()).toInt();
+          log.d('⏳ AuthBloc: Ожидание ${delayMs}ms перед повтором...');
+          await Future.delayed(Duration(milliseconds: delayMs));
+        } else {
+          return null;
+        }
+      }
+    }
+    
+    log.e('❌ AuthBloc._refreshTokenWithRetry: Все попытки исчерпаны');
+    return null;
   }
 
   /// Обработчик события входа в систему.
@@ -346,8 +463,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             return;
           }
 
-          final newToken = await ApiService.refreshToken(token);
-          log.d('📥 AuthBloc: Результат refresh: newToken=${newToken != null ? '***' : 'null'}');
+          // 🆕 ИСПРАВЛЕНИЕ #1: Используем retry механизм с экспоненциальным backoff
+          // Это решает проблему VPN: когда сеть не готова при старте приложения,
+          // вместо сразу отправки на логин пробуем несколько раз
+          log.d('🔄 AuthBloc: Запускаем refresh с retry механизмом...');
+          final newToken = await _refreshTokenWithRetry(token);
+          log.d('📥 AuthBloc: Результат refresh с retry: newToken=${newToken != null ? '***' : 'null'}');
           
           if (newToken != null && newToken.isNotEmpty) {
             // Успешно обновили токен — эмитируем AuthAuthenticated
@@ -358,9 +479,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           } else {
             // Refresh не сработал (401/403 на сервере) — refresh_token истёк
             // или невалиден. Отправляем пользователя на авторизацию.
-            log.e('❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию');
-            //   '❌ AuthBloc: refresh токена не сработал, отправляем на авторизацию',
-            // );
+            log.e('❌ AuthBloc: refresh токена не сработал после retry, отправляем на авторизацию');
             await AuthService.logout();
             await UserService.deleteLocal('token');
             await UserService.deleteLocal('refresh_token');
@@ -380,15 +499,38 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       log.e('❌ AuthBloc._onCheckAuthStatus: Ошибка: $e');
       
-      // Сетевая ошибка при попытке refresh — это может быть временная проблема
-      // или пользователь без интернета. В этом случае эмитируем AuthAuthenticated
-      // чтобы приложение попыталось продолжить работу с наличным токеном.
-      // TokenService.init() будет пытаться обновить токен при возвращении в foreground.
+      // 🆕 ИСПРАВЛЕНИЕ #3: Улучшенная обработка ошибок при старте приложения
+      // Отличаем сетевые ошибки от auth ошибок
+      
+      final isNetworkError = e.toString().contains('SocketException') ||
+          e.toString().contains('TimeoutException') ||
+          e.toString().contains('ClientException') ||
+          e.toString().contains('Ошибка сети');
+      
+      final isAuthError = e.toString().contains('401') ||
+          e.toString().contains('403') ||
+          e.toString().contains('TokenExpiredException');
+      
       final token = TokenService.currentToken;
-      if (token != null && token.isNotEmpty) {
-        log.w('⚠️ AuthBloc: Сетевая ошибка, продолжаем работу с существующим токеном...');
+      
+      if (isAuthError && (token == null || token.isEmpty)) {
+        // Auth ошибка и нет токена - отправляем на логин
+        log.e('🔐 AuthBloc: Auth ошибка, отправляем на авторизацию');
+        await UserService.deleteLocal('token');
+        await UserService.deleteLocal('refresh_token');
+        emit(AuthTokenExpired());
+      } else if (isNetworkError && token != null && token.isNotEmpty) {
+        // Сетевая ошибка при наличии токена - продолжаем работу
+        // TokenService.init() будет пытаться обновить токен при возвращении в foreground
+        log.w('⚠️ AuthBloc: Сетевая ошибка при старте, продолжаем работу с существующим токеном');
+        log.d('💡 AuthBloc: TokenService обновит токен при возвращении в foreground');
+        emit(AuthAuthenticated(token: token));
+      } else if (token != null && token.isNotEmpty) {
+        // Неизвестная ошибка но есть токен - оптимистично продолжаем
+        log.w('⚠️ AuthBloc: Неизвестная ошибка при refresh, продолжаем работу с токеном');
         emit(AuthAuthenticated(token: token));
       } else {
+        // Нет токена и есть ошибка - отправляем на логин
         log.e('❌ AuthBloc: Ошибка и токена нет, отправляем на авторизацию');
         emit(AuthError(message: e.toString()));
       }
