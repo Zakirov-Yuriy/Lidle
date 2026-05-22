@@ -1255,6 +1255,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                   builder: (BuildContext context) {
                     return SelectionDialog(
                       title: 'Выберите город',
+                      showSearchField: true,
                       options: _cities
                           .map((c) => c['name'] as String)
                           .toList(),
