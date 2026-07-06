@@ -737,6 +737,7 @@ class ApiService {
     int? categoryId,
     int? catalogId,
     String? sort,
+    String? search,
     Map<String, dynamic>? filters,
     int? page,
     int? limit,
@@ -755,8 +756,13 @@ class ApiService {
       } else if (categoryId != null) {
         queryParams['category_id'] = categoryId;
         // log.d('📦 API getAdverts - Using CATEGORY_ID mode (categoryId=$categoryId)');
-      } else {
+      } else if (search == null || search.trim().isEmpty) {
         log.w('⚠️  API getAdverts: Neither catalogId nor categoryId provided!');
+      }
+
+      // Глобальный поиск по заголовкам (работает без категории).
+      if (search != null && search.trim().isNotEmpty) {
+        queryParams['search'] = search.trim();
       }
       
       if (sort != null) queryParams['sort'] = sort;

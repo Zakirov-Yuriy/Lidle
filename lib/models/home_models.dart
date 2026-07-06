@@ -289,7 +289,7 @@ class Listing {
           'assets/home_page/image.png', // Default image if not provided
       images: List<String>.from(json['images'] ?? []),
       title: json['title'] ?? 'No Title',
-      price: json['price'] ?? '0',
+      price: json['price']?.toString() ?? '0',
       location: _convertAddressToString(json['address']) ??
           json['full_address'] ??
           'Unknown Location', // Assuming 'address' corresponds to 'location'

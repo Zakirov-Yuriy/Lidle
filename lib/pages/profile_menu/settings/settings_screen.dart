@@ -327,6 +327,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Navigator.pushNamed(context, '/privacy_settings'),
                 ),
                 _settingsItem(
+                  Image.asset(
+                    'assets/profile_menu/settings/crm-icon.png',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Автовыгрузка через CRM систему',
+                  onTap: () => Navigator.pushNamed(context, '/crm_feed'),
+                ),
+                _settingsItem(
                   SvgPicture.asset(
                     'assets/profile_menu/settings/image-user.svg',
                     color: Colors.white,

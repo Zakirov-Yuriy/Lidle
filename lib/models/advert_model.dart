@@ -221,7 +221,7 @@ class Advert {
       slug: json['slug'],
       date: json['date'] ?? '',
       name: json['name'] ?? '',
-      price: json['price'] ?? '',
+      price: json['price']?.toString() ?? '',
       thumbnail: json['thumbnail'],
       images: imagess,
       status: json['status'] != null

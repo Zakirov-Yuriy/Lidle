@@ -117,251 +117,314 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         builder: (context, connectivityState) {
           // Hvis brukeren er offline, vis no internet skjermen
           if (connectivityState is DisconnectedState) {
-            return NoInternetScreen(onRetry: () {
-              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
-            });
+            return NoInternetScreen(
+              onRetry: () {
+                context.read<ConnectivityBloc>().add(
+                  const CheckConnectivityEvent(),
+                );
+              },
+            );
           }
           // Ellers vis normal Scaffold
           return Scaffold(
             backgroundColor: const Color(0xFF1D2835),
             body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10, right: 23, top: 20),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [const Header()],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 25),
-            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    bottom: 10,
+                    right: 23,
+                    top: 20,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [const Header()],
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
                   child: Row(
                     children: [
-                      const Icon(
-                        Icons.arrow_back_ios,
-                        color: activeIconColor,
-                        size: 16,
-                      ),
-                      const SizedBox(
-                        width: 0,
-                      ), // Небольшой отступ между иконкой и текстом
-                      const Text(
-                        'Назад',
-                        style: TextStyle(
-                          color: activeIconColor,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.arrow_back_ios,
+                              color: activeIconColor,
+                              size: 16,
+                            ),
+                            const SizedBox(
+                              width: 0,
+                            ), // Небольшой отступ между иконкой и текстом
+                            const Text(
+                              'Назад',
+                              style: TextStyle(
+                                color: activeIconColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(left: 25, right: 25, top: 7),
-            child: Text(
-              'Выберите категорию, чтобы создать объявление',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(color: activeIconColor),
-                  )
-                : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 48,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Ошибка загрузки: $_error',
-                          style: const TextStyle(color: Colors.white),
-                          textAlign: TextAlign.center,
-                        ),
-                        // const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: _loadCatalogs,
-                          child: const Text('Повторить'),
-                        ),
-                      ],
+                const Padding(
+                  padding: EdgeInsets.only(left: 25, right: 25, top: 7),
+                  child: Text(
+                    'Выберите категорию, чтобы создать объявление',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.only(
-                      left: 25,
-                      right: 25,
-                      bottom: 0,
-                      top: 12,
-                    ),
-                    child: GridView.builder(
-                      padding: EdgeInsets.zero,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 8,
-                            crossAxisSpacing: 8,
-                            childAspectRatio: 120 / 83,
-                          ),
-                      itemCount: _catalogs.length,
-                      itemBuilder: (context, index) {
-                        final catalog = _catalogs[index];
-                        // log.d();
+                  ),
+                ),
 
-                        return GestureDetector(
-                          onTap: () {
-                            // log.d('👆 Tapped on catalog: ${catalog.name}');
-                            if (catalog.name == 'Недвижимость') {
-                              // Специализированный экран для Недвижимости
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const RealEstateSubcategoriesScreen(),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: activeIconColor,
+                          ),
+                        )
+                      : _error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Ошибка загрузки: $_error',
+                                style: const TextStyle(color: Colors.white),
+                                textAlign: TextAlign.center,
+                              ),
+                              // const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _loadCatalogs,
+                                child: const Text('Повторить'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.only(
+                            left: 25,
+                            right: 25,
+                            bottom: 0,
+                            top: 0,
+                          ),
+                          child: GridView.builder(
+                            padding: const EdgeInsets.only(bottom: 30),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  mainAxisSpacing: 8,
+                                  crossAxisSpacing: 8,
+                                  childAspectRatio: 120 / 83,
                                 ),
-                              );
-                            } else {
-                              // Универсальный экран для всех остальных каталогов
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => UniversalCategoryScreen(
-                                    catalogId: catalog.id,
-                                    catalogName: catalog.name,
+                            itemCount: _catalogs.length + 1,
+                            itemBuilder: (context, index) {
+                        // Последний элемент сетки — блок автовыгрузки через CRM.
+                        if (index == _catalogs.length) {
+                          return GestureDetector(
+                            onTap: () =>
+                                Navigator.pushNamed(context, '/crm_feed'),
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: activeIconColor,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                'Автовыгрузка через CRM систему',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: activeIconColor,
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+
+                        final catalog = _catalogs[index];
+                              // log.d();
+
+                              return GestureDetector(
+                                onTap: () {
+                                  // log.d('👆 Tapped on catalog: ${catalog.name}');
+                                  if (catalog.name == 'Недвижимость') {
+                                    // Специализированный экран для Недвижимости
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const RealEstateSubcategoriesScreen(),
+                                      ),
+                                    );
+                                  } else {
+                                    // Универсальный экран для всех остальных каталогов
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            UniversalCategoryScreen(
+                                              catalogId: catalog.id,
+                                              catalogName: catalog.name,
+                                            ),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(5),
+                                  child: Stack(
+                                    children: [
+                                      catalog.thumbnail != null &&
+                                              catalog.thumbnail!.isNotEmpty &&
+                                              catalog.thumbnail!.startsWith(
+                                                'http',
+                                              )
+                                          ? Image.network(
+                                              catalog.thumbnail!,
+                                              height: 83,
+                                              width: 120,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder:
+                                                  (
+                                                    context,
+                                                    child,
+                                                    loadingProgress,
+                                                  ) {
+                                                    if (loadingProgress ==
+                                                        null) {
+                                                      return child;
+                                                    }
+                                                    return Container(
+                                                      height: 83,
+                                                      width: 120,
+                                                      color: Colors.grey[700],
+                                                      child: const Center(
+                                                        child: SizedBox(
+                                                          width: 24,
+                                                          height: 24,
+                                                          child: CircularProgressIndicator(
+                                                            valueColor:
+                                                                AlwaysStoppedAnimation(
+                                                                  Colors.white,
+                                                                ),
+                                                            strokeWidth: 2,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                    // log.d();
+                                                    return Container(
+                                                      height: 83,
+                                                      width: 120,
+                                                      color: const Color(
+                                                        0xFF2A3A4F,
+                                                      ),
+                                                      child: Center(
+                                                        child: Column(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            const Icon(
+                                                              Icons
+                                                                  .image_not_supported,
+                                                              color: Colors
+                                                                  .white70,
+                                                              size: 24,
+                                                            ),
+                                                            const SizedBox(
+                                                              height: 4,
+                                                            ),
+                                                            Text(
+                                                              catalog.name,
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              style:
+                                                                  const TextStyle(
+                                                                    color: Colors
+                                                                        .white70,
+                                                                    fontSize:
+                                                                        10,
+                                                                  ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                            )
+                                          : Container(
+                                              height: 83,
+                                              width: 120,
+                                              color: const Color(0xFF2A3A4F),
+                                              child: Center(
+                                                child: Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.category,
+                                                      color: Colors.white70,
+                                                      size: 24,
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      catalog.name,
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: Colors.white70,
+                                                        fontSize: 10,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                    ],
                                   ),
                                 ),
                               );
-                            }
-                          },
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(5),
-                            child: Stack(
-                              children: [
-                                catalog.thumbnail != null &&
-                                        catalog.thumbnail!.isNotEmpty &&
-                                        catalog.thumbnail!.startsWith('http')
-                                    ? Image.network(
-                                        catalog.thumbnail!,
-                                        height: 83,
-                                        width: 120,
-                                        fit: BoxFit.cover,
-                                        loadingBuilder:
-                                            (context, child, loadingProgress) {
-                                              if (loadingProgress == null) {
-                                                return child;
-                                              }
-                                              return Container(
-                                                height: 83,
-                                                width: 120,
-                                                color: Colors.grey[700],
-                                                child: const Center(
-                                                  child: SizedBox(
-                                                    width: 24,
-                                                    height: 24,
-                                                    child: CircularProgressIndicator(
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation(
-                                                            Colors.white,
-                                                          ),
-                                                      strokeWidth: 2,
-                                                    ),
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                        errorBuilder: (context, error, stackTrace) {
-                                          // log.d();
-                                          return Container(
-                                            height: 83,
-                                            width: 120,
-                                            color: const Color(0xFF2A3A4F),
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.image_not_supported,
-                                                    color: Colors.white70,
-                                                    size: 24,
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    catalog.name,
-                                                    textAlign: TextAlign.center,
-                                                    style: const TextStyle(
-                                                      color: Colors.white70,
-                                                      fontSize: 10,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : Container(
-                                        height: 83,
-                                        width: 120,
-                                        color: const Color(0xFF2A3A4F),
-                                        child: Center(
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              const Icon(
-                                                Icons.category,
-                                                color: Colors.white70,
-                                                size: 24,
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                catalog.name,
-                                                textAlign: TextAlign.center,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  color: Colors.white70,
-                                                  fontSize: 10,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                              ],
-                            ),
+                            },
                           ),
-                        );
-                      },
-                    ),
-                  ),
-          ),
-        ],
-          ),
+                        ),
+                ),
+              ],
+            ),
           );
         },
       ),
     );
   }
 }
-
-

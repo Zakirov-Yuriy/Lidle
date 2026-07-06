@@ -376,96 +376,55 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     SearchListingsEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    // 🔍 Используем кеш полного списка, независимо от текущего состояния
-    // Это позволяет правильно фильтровать при удалении текста из поиска
-    if (_cachedAllListings.isEmpty) {
-      log.w('⚠️ Кеш объявлений пуст, поиск невозможен');
+    final query = event.query.trim();
+
+    // Пустой запрос — возвращаемся к обычному списку из кеша.
+    if (query.isEmpty) {
+      if (_cachedAllListings.isNotEmpty) {
+        emit(ListingsLoaded(
+          listings: _cachedAllListings,
+          categories: _cachedCategories,
+        ));
+      }
       return;
     }
 
     emit(ListingsLoading());
 
     try {
-      // Имитация задержки поиска
+      // Небольшая задержка (debounce) — не дёргать бэкенд на каждый символ.
       await Future.delayed(const Duration(milliseconds: _searchDelayMs));
 
-      final query = event.query.toLowerCase();
-      
-      // 📋 ЛОГИРОВАНИЕ: Показываем структуру первого объявления и ищем нужное
-      if (_cachedAllListings.isNotEmpty) {
-        // Показываем первое объявление
-        final firstListing = _cachedAllListings.first;
-        log.i('');
-        log.i('═' * 80);
-        log.i('📊 ПЕРВОЕ ОБЪЯВЛЕНИЕ (ID: ${firstListing.id}):');
-        log.i('  Title: ${firstListing.title}');
-        log.i('  Характеристик: ${firstListing.characteristics.length}');
-        firstListing.characteristics.forEach((k, v) {
-          log.i('    [$k] = $v (тип: ${v.runtimeType})');
-          if (v is Map) {
-            (v as Map).forEach((mk, mv) => log.i('      - $mk: $mv'));
-          }
-          if (v is List) {
-            (v as List).asMap().forEach((idx, item) => 
-              log.i('      [$idx] $item${item is Map ? ' ${(item as Map).toString()}' : ''}'));
-          }
-        });
-        
-        // Ищем объявление с ID 159
-        try {
-          final listing159 = _cachedAllListings.firstWhere((l) => l.id == '159');
-          log.i('');
-          log.i('═' * 80);
-          log.i('🎯 ОБЪЯВЛЕНИЕ 159:');
-          log.i('  ID: ${listing159.id}');
-          log.i('  Title: ${listing159.title}');
-          log.i('  Location: ${listing159.location}');
-          log.i('  Description: ${listing159.description ?? "N/A"}');
-          log.i('  Price: ${listing159.price}');
-          log.i('  Характеристик: ${listing159.characteristics.length}');
-          if (listing159.characteristics.isNotEmpty) {
-            listing159.characteristics.forEach((k, v) {
-              log.i('    [$k] = $v (тип: ${v.runtimeType})');
-              if (v is Map) {
-                (v as Map).forEach((mk, mv) => log.i('      - $mk: $mv'));
-              }
-              if (v is List) {
-                for (int i = 0; i < (v as List).length; i++) {
-                  final item = (v as List)[i];
-                  log.i('      [$i] $item');
-                  if (item is Map) {
-                    (item as Map).forEach((ik, iv) => log.i('        - $ik: $iv'));
-                  }
-                }
-              }
-            });
-          }
-          log.i('═' * 80);
-          log.i('');
-        } catch (e) {
-          log.w('⚠️ Объявление 159 не найдено');
-        }
-      }
-      
-      final searchResults = _cachedAllListings.where((listing) {
-        return _matchesSearchQuery(listing, query);
-      }).toList();
+      final token = await TokenService.getCurrentToken();
 
-      // 📊 Логирование результатов поиска
-      log.i('🔍 Поиск: "$query" | Найдено: ${searchResults.length} из ${_cachedAllListings.length} объявлений');
-      if (searchResults.isEmpty && _cachedAllListings.length > 0) {
-        log.w('⚠️ Результатов не найдено. Проверьте логи выше для структуры данных.');
-      }
+      // 🔍 Глобальный поиск по заголовкам через бэкенд (по всем объявлениям).
+      final response = await ApiService.getAdverts(
+        search: query,
+        token: token,
+        page: 1,
+        limit: 50,
+      );
+
+      // Парсим ответ в модели Listing тем же способом, что при загрузке.
+      final List<home.Listing> searchResults =
+          response.data.isNotEmpty
+              ? await compute<List<Advert>, List<home.Listing>>(
+                  (adverts) => _parseAdvertsOnBackgroundThread(adverts),
+                  response.data,
+                )
+              : <home.Listing>[];
+
+      log.i('🔍 Поиск на бэкенде: "$query" | Найдено: ${searchResults.length}');
 
       emit(
         ListingsSearchResults(
           searchResults: searchResults,
           query: event.query,
-          categories: _cachedCategories, // 🔥 Передаем кешированные категории
+          categories: _cachedCategories,
         ),
       );
     } catch (e) {
-      log.e('❌ Ошибка при поиске: $e');
+      log.e('❌ Ошибка при поиске на бэкенде: $e');
       emit(ListingsError(message: e.toString()));
     }
   }

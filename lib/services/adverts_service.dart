@@ -15,13 +15,15 @@ class AdvertsService {
     int? categoryId,
     int? catalogId,
     String? sort,
+    String? search,
     Map<String, dynamic>? filters,
     int? page,
     required String token,
   }) async {
     try {
-      // Валидация параметров
-      if (categoryId == null && catalogId == null) {
+      // Валидация параметров: категория обязательна, КРОМЕ глобального поиска.
+      if (categoryId == null && catalogId == null &&
+          (search == null || search.trim().isEmpty)) {
         throw Exception('Необходимо указать categoryId или catalogId');
       }
 
@@ -33,6 +35,9 @@ class AdvertsService {
       }
       if (catalogId != null) {
         params['catalog_id'] = catalogId;
+      }
+      if (search != null && search.trim().isNotEmpty) {
+        params['search'] = search.trim();
       }
       if (sort != null) {
         params['sort'] = sort;
@@ -165,6 +170,7 @@ class AdvertsService {
     int? priceMin,
     int? priceMax,
     String? sort,
+    String? search,
     int? page,
     required String token,
   }) async {
@@ -180,6 +186,7 @@ class AdvertsService {
     return listAdverts(
       categoryId: categoryId,
       catalogId: catalogId,
+      search: search,
       sort: sort ?? 'newest',
       filters: filters.isNotEmpty ? filters : null,
       page: page,

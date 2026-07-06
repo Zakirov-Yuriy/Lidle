@@ -66,7 +66,7 @@ import 'package:lidle/pages/profile_menu/user_qr/user_qr_screen.dart';
 import 'package:lidle/pages/profile_menu/user_qr/qr_print_templates_screen.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/pages/filters_screen.dart';
-
+import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_screen.dart';
 /// ============================================================
 /// Централизованное определение маршрутов приложения
 /// 
@@ -88,6 +88,7 @@ class AppRoutes {
     ConnectContactsScreen.routeName: (context) =>
         const ConnectContactsScreen(),
     SettingsScreen.routeName: (context) => const SettingsScreen(),
+    '/crm_feed': (context) => const CrmFeedScreen(),
     '/contact_data': (context) => ContactDataScreen(),
     '/privacy_settings': (context) => const PrivacySettingsScreen(),
     '/chat_settings': (context) => const ChatSettingsScreen(),
