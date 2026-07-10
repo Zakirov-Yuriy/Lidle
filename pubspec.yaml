@@ -24,7 +24,7 @@ dependencies:
   get_it: ^7.6.0 # Для dependency injection (Service Locator)
   flutter_form_builder: ^10.2.0 # Добавлен для расширенной валидации форм
   form_builder_validators: ^11.0.0 # Добавлен для помощников валидации форм
-  
+  auto_size_text: ^3.0.0
  
   url_launcher: ^6.3.0 # Добавлен для совершения телефонных звонков
   share_plus: ^10.0.2 # Добавлен для шаринга

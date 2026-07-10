@@ -223,9 +223,13 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                             bottom: 0,
                             top: 0,
                           ),
-                          child: GridView.builder(
-                            padding: const EdgeInsets.only(bottom: 30),
-                            physics: const AlwaysScrollableScrollPhysics(),
+                          child: SingleChildScrollView(
+                            child: Column(
+                            children: [
+                                GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            padding: EdgeInsets.zero,
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 3,
@@ -233,36 +237,15 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                   crossAxisSpacing: 8,
                                   childAspectRatio: 120 / 83,
                                 ),
-                            itemCount: _catalogs.length + 1,
+                            itemCount: _catalogs.length % 3 == 0
+                                ? _catalogs.length
+                                : _catalogs.length + 1,
                             itemBuilder: (context, index) {
-                        // Последний элемент сетки — блок автовыгрузки через CRM.
+                        // Последний элемент сетки — блок автовыгрузки через CRM
+                        // (только когда категорий НЕ кратно 3; иначе кнопка
+                        // рисуется отдельно на всю ширину под сеткой).
                         if (index == _catalogs.length) {
-                          return GestureDetector(
-                            onTap: () =>
-                                Navigator.pushNamed(context, '/crm_feed'),
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: activeIconColor,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Text(
-                                'Автовыгрузка через CRM систему',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: activeIconColor,
-                                ),
-                              ),
-                            ),
-                          );
+                          return _buildCrmButton();
                         }
 
                         final catalog = _catalogs[index];
@@ -418,12 +401,56 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                               );
                             },
                           ),
+                              // Если число категорий кратно 3, кнопка CRM
+                              // выносится из сетки и занимает всю ширину.
+                              if (_catalogs.length % 3 == 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8, bottom: 45),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    height: 50,
+                                    child: _buildCrmButton(fontSize: 15),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          ),
                         ),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// Кнопка "Автовыгрузка через CRM систему".
+  /// Внешний вид одинаковый; ширину задаёт родитель
+  /// (в сетке — как ячейка, вне сетки — на всю ширину).
+  Widget _buildCrmButton({double fontSize = 12}) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/crm_feed'),
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: activeIconColor,
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          'Автовыгрузка через CRM систему',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w500,
+            color: activeIconColor,
+          ),
+        ),
       ),
     );
   }

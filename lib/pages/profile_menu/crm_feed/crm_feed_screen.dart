@@ -11,8 +11,13 @@
 // - POST   /me/crm-feeds        — подключить фид (feed_url)
 // - DELETE /me/crm-feeds/{id}   — удалить фид
 
+import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -39,16 +44,72 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
   bool _isSubmitting = false;
   String? _error;
 
+  /// Если включено — ИИ изменит заголовок и описание импортируемых объявлений.
+  /// По умолчанию включено.
+  bool _aiRewrite = true;
+
   @override
   void initState() {
     super.initState();
     _loadFeeds();
+    _checkPendingModeration();
   }
 
   @override
   void dispose() {
     _urlController.dispose();
     super.dispose();
+  }
+
+  /// Проверка: если у пользователя есть неопубликованные объявления из фида
+  /// (на модерации), не даём подключать новый фид — сначала нужно разобрать
+  /// текущие. Показываем сообщение и уводим на экран предпросмотра.
+  Future<void> _checkPendingModeration() async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) return;
+
+      final count = await MyAdvertsService.getModerationCount(token: token);
+
+      if (count > 0 && mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: cardColor,
+            title: const Text(
+              'Есть незавершённые объявления',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Text(
+              'У вас есть объявления из фида на модерации ($count). '
+              'Сначала опубликуйте или разберите их, '
+              'прежде чем подключать новый фид.',
+              style: const TextStyle(color: Colors.white70),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text(
+                  'Перейти к объявлениям',
+                  style: TextStyle(color: Color(0xFF00B7FF)),
+                ),
+              ),
+            ],
+          ),
+        );
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const CrmFeedPreviewScreen(),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // При ошибке проверки не блокируем (не мешаем работе).
+    }
   }
 
   /// Загрузить список подключённых фидов.
@@ -76,6 +137,44 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     }
   }
 
+  /// Показать сообщение о загрузке и перейти на экран предпросмотра
+  /// объявлений из фида.
+  Future<void> _showLoadingDialogAndGoToPreview() async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text(
+          'Фид подключён',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Загрузка и обработка объявлений из фида займёт '
+          'некоторое время. Объявления будут появляться '
+          'на экране по мере готовности.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(
+              'Перейти к объявлениям',
+              style: TextStyle(color: Color(0xFF00B7FF)),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CrmFeedPreviewScreen(),
+        ),
+      );
+    }
+  }
+
   /// Подключить фид по ссылке.
   Future<void> _connectFeed() async {
     final url = _urlController.text.trim();
@@ -98,12 +197,15 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
           'feed_url': url,
           'is_active': true,
           'archive_missing': true,
+          'ai_rewrite': _aiRewrite,
         },
       );
 
       _urlController.clear();
-      _showSnack('Фид подключён. Объявления загрузятся автоматически.');
       await _loadFeeds();
+      if (mounted) {
+        await _showLoadingDialogAndGoToPreview();
+      }
     } catch (e) {
       log.d('Ошибка подключения фида: $e');
       _showSnack('Не удалось подключить фид');
@@ -379,6 +481,31 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               else
                 ..._feeds.map((feed) => _feedCard(feed)).toList(),
 
+              // ───── Переключатель: ИИ меняет заголовок и описание ─────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(25, 20, 25, 0),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'ИИ изменит заголовок и описание вашего объявления',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white70,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _AiRewriteSwitch(
+                      value: _aiRewrite,
+                      activeIconColor: activeIconColor,
+                      onChanged: (v) => setState(() => _aiRewrite = v),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 30),
             ],
           ),
@@ -473,6 +600,56 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                 style: TextStyle(color: Colors.redAccent)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Кастомный переключатель (тумблер) в стиле проекта.
+///
+/// Дизайн полностью повторяет чекбокс из общих компонентов:
+/// капсула 37×20 с цветом 0xFF17212B и «пустой» круглой ручкой,
+/// обводка которой окрашивается в [activeIconColor], когда включено.
+class _AiRewriteSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Color activeIconColor;
+
+  const _AiRewriteSwitch({
+    required this.value,
+    required this.onChanged,
+    required this.activeIconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 37,
+        height: 20,
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: const Color(0xFF17212B),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: value ? activeIconColor : Colors.white,
+                width: 2,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

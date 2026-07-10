@@ -89,6 +89,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   List<UserAdvert> _inactiveListings = [];
   List<UserAdvert> _archiveListings = [];
   List<UserAdvert> _moderationListings = [];
+  List<UserAdvert> _crmListings = []; // Объявления с фида на модерации (вкладка CRM)
+  bool _crmLoading = false;
   // Пагинация для каждого статуса
   int _activeListingsPage = 1;
   int _inactiveListingsPage = 1;
@@ -114,6 +116,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCrmListings();
     if (!_metadataLoaded) {
       _isLoadingMetadata = true;
       _loadAdvertMetadata().then((_) {
@@ -162,6 +165,60 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       }
     } catch (e) {
       // log.d('Error setting initial category and tab: $e');
+    }
+  }
+
+  /// Опубликовать объявление из вкладки CRM (кнопка "Опубликовать").
+  Future<void> _publishFromCrm(UserAdvert advert) async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) return;
+
+      await MyAdvertsService.publishAdvert(
+        advertId: advert.id,
+        token: token,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Объявление опубликовано'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _loadCrmListings();
+        // _loadListings();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ошибка публикации: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Загрузить объявления с фида на модерации (вкладка CRM).
+  Future<void> _loadCrmListings() async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) return;
+
+      if (mounted) setState(() => _crmLoading = true);
+
+      final response = await MyAdvertsService.getModerationList(token: token);
+
+      if (mounted) {
+        setState(() {
+          _crmListings = response.data;
+          _crmLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _crmLoading = false);
     }
   }
 
@@ -935,88 +992,114 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         children: [
                           SingleChildScrollView(
                             scrollDirection: Axis.horizontal,
-                            child: Row(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                GestureDetector(
-                                  onTap: () => setState(() => _currentTab = 0),
-                                  child: Text(
-                                    _activeListings.isEmpty
-                                        ? 'Активные'
-                                        : 'Активные ${_activeListings.length}',
-                                    style: TextStyle(
-                                      color: _currentTab == 0
-                                          ? accentColor
-                                          : Colors.white,
-                                      fontSize: 14,
+                                Row(
+                                  children: [
+                                    GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _currentTab = 4),
+                                      child: Text(
+                                        _crmListings.isEmpty
+                                            ? 'CRM'
+                                            : 'CRM ${_crmListings.length}',
+                                        style: TextStyle(
+                                          color: _currentTab == 4
+                                              ? accentColor
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _currentTab = 0),
+                                      child: Text(
+                                        _activeListings.isEmpty
+                                            ? 'Активные'
+                                            : 'Активные ${_activeListings.length}',
+                                        style: TextStyle(
+                                          color: _currentTab == 0
+                                              ? accentColor
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _currentTab = 1),
+                                      child: Text(
+                                        _inactiveListings.isEmpty
+                                            ? 'Неактивные'
+                                            : 'Неактивные ${_inactiveListings.length}',
+                                        style: TextStyle(
+                                          color: _currentTab == 1
+                                              ? accentColor
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _currentTab = 2),
+                                      child: Text(
+                                        _archiveListings.isEmpty
+                                            ? 'Архив'
+                                            : 'Архив ${_archiveListings.length}',
+                                        style: TextStyle(
+                                          color: _currentTab == 2
+                                              ? accentColor
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _currentTab = 3),
+                                      child: Text(
+                                        _moderationListings.isEmpty
+                                            ? 'На модерации'
+                                            : 'На модерации ${_moderationListings.length}',
+                                        style: TextStyle(
+                                          color: _currentTab == 3
+                                              ? accentColor
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 16),
-                                GestureDetector(
-                                  onTap: () => setState(() => _currentTab = 1),
-                                  child: Text(
-                                    _inactiveListings.isEmpty
-                                        ? 'Неактивные'
-                                        : 'Неактивные ${_inactiveListings.length}',
-                                    style: TextStyle(
-                                      color: _currentTab == 1
-                                          ? accentColor
-                                          : Colors.white,
-                                      fontSize: 14,
+                                const SizedBox(height: 9),
+                                Stack(
+                                  children: [
+                                    Container(
+                                      height: 1,
+                                      width: _getTabsTotalWidth(),
+                                      color: Colors.white24,
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                GestureDetector(
-                                  onTap: () => setState(() => _currentTab = 2),
-                                  child: Text(
-                                    _archiveListings.isEmpty
-                                        ? 'Архив'
-                                        : 'Архив ${_archiveListings.length}',
-                                    style: TextStyle(
-                                      color: _currentTab == 2
-                                          ? accentColor
-                                          : Colors.white,
-                                      fontSize: 14,
+                                    AnimatedPositioned(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      left: _getTabPosition(_currentTab),
+                                      child: Container(
+                                        height: 2,
+                                        width: _getTabWidth(_currentTab),
+                                        color: accentColor,
+                                      ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                GestureDetector(
-                                  onTap: () => setState(() => _currentTab = 3),
-                                  child: Text(
-                                    _moderationListings.isEmpty
-                                        ? 'На модерации'
-                                        : 'На модерации ${_moderationListings.length}',
-                                    style: TextStyle(
-                                      color: _currentTab == 3
-                                          ? accentColor
-                                          : Colors.white,
-                                      fontSize: 14,
-                                    ),
-                                  ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 9),
-                          Stack(
-                            children: [
-                              Container(
-                                height: 1,
-                                width: double.infinity,
-                                color: Colors.white24,
-                              ),
-                              AnimatedPositioned(
-                                duration: const Duration(milliseconds: 200),
-                                left: _getTabPosition(_currentTab),
-                                child: Container(
-                                  height: 2,
-                                  width: _getTabWidth(_currentTab),
-                                  color: accentColor,
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
@@ -1299,6 +1382,39 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // MODERATION TAB
   // ─────────────────────────────────────────────
 
+
+  // ─────────────────────────────────────────────
+  // CRM TAB (объявления с фида на модерации)
+  // ─────────────────────────────────────────────
+
+  Widget _crmTab() {
+    if (_crmLoading) {
+      return _buildTabContentSkeleton();
+    }
+
+    final filteredListings = _crmListings;
+
+    if (filteredListings.isEmpty) {
+      return _emptyTab(
+        'assets/messages/non.png',
+        'CRM пусто',
+        'Здесь появятся объявления,\nзагруженные с фида,\nкоторые ждут публикации',
+      );
+    }
+
+    return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      children: [
+        for (int i = 0; i < filteredListings.length; i++) ...[
+          _listingCard(filteredListings[i], 4),
+          if (i < filteredListings.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+
   Widget _moderationTab() {
     final filteredListings = _moderationListings;
 
@@ -1501,6 +1617,75 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
             const Divider(color: Colors.white24, height: 24),
 
+            if (tabIndex == 4) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _publishFromCrm(advert),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(
+                            color: const Color(0xFF00D084),
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Опубликовать',
+                          style: TextStyle(
+                            color: Color(0xFF00D084),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DynamicFilter(
+                              categoryId: _selectedCategoryId ?? 2,
+                              advertId: advert.id,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          border: Border.all(
+                            color: const Color(0xFF00B7FF),
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Редактировать',
+                          style: TextStyle(
+                            color: Color(0xFF00B7FF),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+            ],
+
             if (tabIndex == 3) ...[
               const Center(
                 child: Text(
@@ -1536,7 +1721,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-            ] else ...[
+            ] else if (tabIndex != 4) ...[
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1829,6 +2014,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         return _archiveTab();
       case 3:
         return _moderationTab();
+      case 4:
+        return _crmTab();
       default:
         return _activeTab();
     }
@@ -1850,24 +2037,59 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     return textPainter.width;
   }
 
+/// Суммарная ширина всех вкладок с отступами — для линии-фона под ними.
+  double _getTabsTotalWidth() {
+    double total = 0;
+    for (final idx in _tabVisualOrder) {
+      total += _getTabWidth(idx) + 16;
+    }
+    return total;
+  }
+
+  
+  // Визуальный порядок вкладок слева направо (по индексам):
+  // CRM(4), Активные(0), Неактивные(1), Архив(2), На модерации(3)
+  static const List<int> _tabVisualOrder = [4, 0, 1, 2, 3];
+
   double _getTabPosition(int tabIndex) {
     double position = 0;
-    for (int i = 0; i < tabIndex; i++) {
-      position += _getTabWidth(i) + 16; // 16 - это SizedBox между вкладками
+    for (final idx in _tabVisualOrder) {
+      if (idx == tabIndex) break;
+      position += _getTabWidth(idx) + 16;
     }
-    // Корректировка для каждой вкладки отдельно
-    if (tabIndex == 1) {
-      position += 4; // Неактивные
-    } else if (tabIndex == 2) {
-      position += 4; // Архив
-    } else if (tabIndex == 5) {
-      position += 8; // На модерации
+
+    // Индивидуальная подстройка каждой вкладки.
+    // Отрицательное значение двигает подчёркивание ЛЕВЕЕ,
+    // положительное — ПРАВЕЕ. Подбери числа под свой экран.
+    switch (tabIndex) {
+      case 4: // CRM
+        position += 0;
+        break;
+      case 0: // Активные
+        position -= 0;
+        break;
+      case 1: // Неактивные
+        position -= -5;
+        break;
+      case 2: // Архив
+        position -= -8;
+        break;
+      case 3: // На модерации
+        position -= -8;
+        break;
     }
+
     return position;
   }
 
   double _getTabWidth(int tabIndex) {
     switch (tabIndex) {
+      case 4:
+        return _getTextWidth(
+          _crmListings.isEmpty
+              ? 'CRM'
+              : 'CRM ${_crmListings.length}',
+        );
       case 0:
         return _getTextWidth(
           _activeListings.isEmpty

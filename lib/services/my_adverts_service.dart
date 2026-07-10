@@ -153,13 +153,6 @@ class MyAdvertsService {
         token: token,
       );
 
-      // ignore: avoid_print
-      // log.d('📢 MyAdvertsService.getMyAdverts() response:');
-      // ignore: avoid_print
-      // log.d('   Response keys: ${response.keys.toList()}');
-      // ignore: avoid_print
-      // log.d('   Full response: $response');
-
       return MyAdvertsResponse.fromJson(response);
     } catch (e) {
       throw Exception('Ошибка при загрузке объявлений: $e');
@@ -294,6 +287,83 @@ class MyAdvertsService {
       await updateAdvertStatus(advertId: advertId, statusId: 2, token: token);
     } catch (e) {
       throw Exception('Ошибка при деактивации объявления: $e');
+    }
+  }
+
+  // ============================================================
+  // МОДЕРАЦИЯ ФИДОВЫХ ОБЪЯВЛЕНИЙ (вкладка CRM)
+  // ============================================================
+
+  /// Получить список объявлений НА МОДЕРАЦИИ (для вкладки CRM).
+  /// Отдаёт объявления со сгенерированным ИИ текстом
+  /// (name/description = черновик, который применится при публикации).
+  static Future<MyAdvertsResponse> getModerationList({
+    int? page,
+    required String token,
+  }) async {
+    try {
+      final params = <String, dynamic>{};
+      if (page != null) {
+        params['page'] = page;
+      }
+
+      final response = await ApiService.getWithQuery(
+        '/me/adverts/moderation',
+        params,
+        token: token,
+      );
+
+      return MyAdvertsResponse.fromJson(response);
+    } catch (e) {
+      throw Exception('Ошибка при загрузке объявлений на модерации: $e');
+    }
+  }
+
+  /// Опубликовать объявление с модерации.
+  /// Применяет сгенерированный черновик и делает объявление активным.
+  static Future<void> publishAdvert({
+    required int advertId,
+    required String token,
+  }) async {
+    try {
+      await ApiService.put(
+        '/me/adverts/$advertId/publish',
+        {},
+        token: token,
+      );
+    } catch (e) {
+      throw Exception('Ошибка при публикации объявления: $e');
+    }
+  }
+
+  /// Обновить черновик объявления на модерации (редактирование текста).
+  static Future<void> updateModerationDraft({
+    required int advertId,
+    required String name,
+    required String description,
+    required String token,
+  }) async {
+    try {
+      await ApiService.put(
+        '/me/adverts/$advertId/moderation',
+        {'name': name, 'description': description},
+        token: token,
+      );
+    } catch (e) {
+      throw Exception('Ошибка при обновлении черновика: $e');
+    }
+  }
+
+  /// Количество объявлений на модерации (для блокировки добавления фида).
+  static Future<int> getModerationCount({required String token}) async {
+    try {
+      final response = await ApiService.get(
+        '/me/adverts/moderation-count',
+        token: token,
+      );
+      return (response['count'] as int?) ?? 0;
+    } catch (e) {
+      throw Exception('Ошибка при получении счётчика модерации: $e');
     }
   }
 }
