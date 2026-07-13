@@ -112,6 +112,7 @@ UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
   type: json['type'] == null
       ? null
       : ContentType.fromJson(json['type'] as Map<String, dynamic>),
+  aiProcessed: json['ai_processed'] as bool?,
 );
 
 Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
@@ -127,6 +128,7 @@ Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
       'share_count': instance.shareCount,
       'created_at': instance.createdAt,
       'type': instance.type,
+      'ai_processed': instance.aiProcessed,
     };
 
 AdvertMetaResponse _$AdvertMetaResponseFromJson(Map<String, dynamic> json) =>

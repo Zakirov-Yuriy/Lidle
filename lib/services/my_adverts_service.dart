@@ -159,6 +159,34 @@ class MyAdvertsService {
     }
   }
 
+  /// Получить ОПУБЛИКОВАННЫЕ объявления, пришедшие из фида CRM (вкладка CRM).
+  /// Это активные объявления пользователя, у которых есть связь с фидом.
+  static Future<MyAdvertsResponse> getCrmPublishedList({
+    int? page,
+    int? limit,
+    required String token,
+  }) async {
+    try {
+      final params = <String, dynamic>{};
+      if (page != null) {
+        params['page'] = page;
+      }
+      if (limit != null) {
+        params['per_page'] = limit;
+      }
+
+      final response = await ApiService.getWithQuery(
+        '/me/adverts/crm',
+        params,
+        token: token,
+      );
+
+      return MyAdvertsResponse.fromJson(response);
+    } catch (e) {
+      throw Exception('Ошибка при загрузке CRM-объявлений: $e');
+    }
+  }
+
   /// Создать новое объявление
   static Future<MainAdvert> createAdvert({
     required int categoryId,
@@ -299,12 +327,16 @@ class MyAdvertsService {
   /// (name/description = черновик, который применится при публикации).
   static Future<MyAdvertsResponse> getModerationList({
     int? page,
+    int? perPage,
     required String token,
   }) async {
     try {
       final params = <String, dynamic>{};
       if (page != null) {
         params['page'] = page;
+      }
+      if (perPage != null) {
+        params['per_page'] = perPage;
       }
 
       final response = await ApiService.getWithQuery(

@@ -405,7 +405,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                               // выносится из сетки и занимает всю ширину.
                               if (_catalogs.length % 3 == 0)
                                 Padding(
-                                  padding: const EdgeInsets.only(top: 8, bottom: 45),
+                                  padding: const EdgeInsets.only(top: 8, bottom: 55),
                                   child: SizedBox(
                                     width: double.infinity,
                                     height: 50,

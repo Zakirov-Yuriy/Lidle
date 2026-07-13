@@ -201,7 +201,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загрузить объявления с фида на модерации (вкладка CRM).
+  /// Загрузить ОПУБЛИКОВАННЫЕ объявления из фида (вкладка CRM).
+  /// Это активные объявления пользователя, пришедшие из CRM-фида —
+  /// сюда они попадают после нажатия «Опубликовать» на экране предпросмотра.
   Future<void> _loadCrmListings() async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -209,7 +211,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (mounted) setState(() => _crmLoading = true);
 
-      final response = await MyAdvertsService.getModerationList(token: token);
+      final response = await MyAdvertsService.getCrmPublishedList(
+        token: token,
+        limit: 100,
+      );
 
       if (mounted) {
         setState(() {
@@ -1398,17 +1403,18 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       return _emptyTab(
         'assets/messages/non.png',
         'CRM пусто',
-        'Здесь появятся объявления,\nзагруженные с фида,\nкоторые ждут публикации',
+        'Здесь появятся опубликованные\nобъявления из фида.\nОпубликуйте их на экране предпросмотра',
       );
     }
 
+    // Карточки рендерим со стилем «Активные» (tabIndex 0) — те же кнопки и логика.
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
       children: [
         for (int i = 0; i < filteredListings.length; i++) ...[
-          _listingCard(filteredListings[i], 4),
+          _listingCard(filteredListings[i], 0),
           if (i < filteredListings.length - 1) const SizedBox(height: 10),
         ],
       ],

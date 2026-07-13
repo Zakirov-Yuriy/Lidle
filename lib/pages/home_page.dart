@@ -988,7 +988,7 @@ class _HomePageState extends State<HomePage>
                             ),
                           ),
                           child: const Text(
-                            'Показать больше объявлений',
+                            'Показать больше 100 тыс. объявлений',
                             style: TextStyle(
                               color: accentColor,
                               fontSize: 16,

@@ -11,8 +11,11 @@
 // Данные берём через тот же эндпоинт, что и вкладка CRM:
 //   GET /me/adverts/moderation
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/constants.dart';
@@ -43,32 +46,187 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   bool _selectAllChecked = false;
   bool _processing = false;
 
+  // Авто-обновление списка, пока идёт фоновый импорт фида.
+  Timer? _pollTimer;
+  bool _isFetching = false;
+
+  /// Как часто тихо перепрашивать список.
+  static const Duration _pollInterval = Duration(seconds: 5);
+
+  // Индикатор прогресса загрузки из фида.
+  int? _feedTotal; // всего офферов в фиде (M), приходит с сервера
+  int _prevCount = 0; // сколько было в прошлый опрос — для детекта роста
+  int _stableTicks = 0; // сколько опросов подряд число не растёт
+  bool _importing = true; // идёт ли ещё загрузка (число растёт)
+
   @override
   void initState() {
     super.initState();
     _loadListings();
+    _loadFeedTotal();
+    _startPolling();
   }
 
-  Future<void> _loadListings() async {
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Запустить периодический тихий опрос списка модерации.
+  /// Новые объявления из фида появляются на экране сами, без действий юзера.
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
+      if (!mounted) return;
+      // Во время массовой операции не мешаем — обновимся после неё.
+      if (_processing) return;
+      _fetchAll(silent: true);
+      // Пока не узнали общее число офферов — дозапрашиваем (сервер проставляет
+      // total_offers в начале импорта, так что появится быстро).
+      if (_feedTotal == null) _loadFeedTotal();
+    });
+  }
+
+  /// Узнать общее число объявлений в фиде (M) для индикатора «N из M».
+  /// Суммируем total_offers активных фидов пользователя.
+  Future<void> _loadFeedTotal() async {
+    try {
+      final resp = await ApiService.get('/me/crm-feeds');
+      final feeds = (resp['data'] as List?) ?? [];
+      int sum = 0;
+      bool any = false;
+      for (final f in feeds) {
+        final bool active = f['is_active'] == true;
+        final total = f['total_offers'];
+        if (active && total != null) {
+          sum += (total as num).toInt();
+          any = true;
+        }
+      }
+      if (mounted && any) setState(() => _feedTotal = sum);
+    } catch (_) {
+      // Молча: индикатор просто покажет «N объявлений» без «из M».
+    }
+  }
+
+  /// Текст индикатора под заголовком.
+  String get _progressText {
+    final n = _listings.length;
+    final m = _feedTotal;
+    if (_importing) {
+      return m != null
+          ? 'Загрузка объявлений из фида… $n из $m'
+          : 'Загрузка объявлений из фида… $n';
+    }
+    return m != null ? '$n из $m объявлений' : _pluralAdverts(n);
+  }
+
+  /// Сколько загруженных объявлений уже обработал ИИ (флаг ai_processed).
+  int get _aiProcessedCount =>
+      _listings.where((a) => a.aiProcessed == true).length;
+
+  /// Текст индикатора обработки ИИ.
+  String get _aiProgressText {
+    final n = _aiProcessedCount;
+    final m = _feedTotal;
+    return m != null ? 'Обработано ИИ: $n из $m' : 'Обработано ИИ: $n';
+  }
+
+  /// Русское склонение «объявление/объявления/объявлений».
+  String _pluralAdverts(int n) {
+    final mod100 = n % 100;
+    final mod10 = n % 10;
+    String word;
+    if (mod100 >= 11 && mod100 <= 14) {
+      word = 'объявлений';
+    } else if (mod10 == 1) {
+      word = 'объявление';
+    } else if (mod10 >= 2 && mod10 <= 4) {
+      word = 'объявления';
+    } else {
+      word = 'объявлений';
+    }
+    return '$n $word';
+  }
+
+  /// Обычная загрузка со спиннером (первый вход, pull-to-refresh, после операций).
+  Future<void> _loadListings() => _fetchAll(silent: false);
+
+  /// Загрузить ВСЕ объявления, обходя пагинацию бэкенда постранично.
+  /// [silent] = true — без спиннера и без сброса состояния (для авто-опроса).
+  Future<void> _fetchAll({bool silent = false}) async {
+    // Не запускаем параллельные запросы (опрос мог совпасть с ручным refresh).
+    if (_isFetching) return;
+    _isFetching = true;
+
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) {
-        if (mounted) setState(() => _loading = false);
+        if (!silent && mounted) setState(() => _loading = false);
         return;
       }
 
-      if (mounted) setState(() => _loading = true);
+      if (!silent && mounted) setState(() => _loading = true);
 
-      final response = await MyAdvertsService.getModerationList(token: token);
+      // per_page ставим большим, чтобы уменьшить число запросов; если сервер
+      // ограничивает размер страницы — цикл по meta.last_page догрузит остальное.
+      const int pageSize = 100;
+      final List<UserAdvert> all = [];
+      int page = 1;
+
+      while (true) {
+        final response = await MyAdvertsService.getModerationList(
+          token: token,
+          page: page,
+          perPage: pageSize,
+        );
+
+        all.addAll(response.data);
+
+        final lastPage = response.lastPage;
+        final bool reachedEnd = lastPage != null
+            ? page >= lastPage
+            : response.data.length < pageSize;
+
+        // Останавливаемся на последней странице, при пустом ответе
+        // или по предохранителю (защита от бесконечного цикла).
+        if (reachedEnd || response.data.isEmpty || page >= 1000) break;
+        page++;
+      }
+
+      // Обработанные ИИ поднимаем наверх, чтобы пользователь сразу видел
+      // готовые к публикации. Порядок внутри групп сохраняем.
+      final processed = all.where((a) => a.aiProcessed == true).toList();
+      final rest = all.where((a) => a.aiProcessed != true).toList();
+      final ordered = [...processed, ...rest];
 
       if (mounted) {
         setState(() {
-          _listings = response.data;
+          _listings = ordered;
           _loading = false;
+
+          // Прогресс импорта: пока число растёт — «идёт загрузка».
+          // Если два опроса подряд без прироста — считаем, что загрузка завершена.
+          if (all.length > _prevCount) {
+            _stableTicks = 0;
+            _importing = true;
+          } else {
+            _stableTicks++;
+            if (_stableTicks >= 2) _importing = false;
+          }
+          _prevCount = all.length;
+
+          // Убираем из выбора те, что уже исчезли (опубликованы/удалены).
+          final ids = all.map((e) => e.id).toSet();
+          _selectedIds.retainWhere(ids.contains);
+          if (_selectedIds.isEmpty) _selectAllChecked = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (!silent && mounted) setState(() => _loading = false);
+    } finally {
+      _isFetching = false;
     }
   }
 
@@ -80,7 +238,93 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
     });
   }
 
+  /// Кнопка-«обводка» для диалогов: без фона, цветной бордер и текст.
+  Widget _outlinedDialogButton({
+    required String text,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          border: Border.all(color: color),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(color: color, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  /// Диалог-подтверждение перед публикацией. Возвращает true, если согласен.
+  /// Текст меняется для одного объявления / нескольких.
+  Future<bool> _confirmPublish(int count) async {
+    final bool many = count > 1;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2732),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                many ? 'Публикация объявлений' : 'Публикация объявления',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                many
+                    ? 'Эти объявления будут опубликованы в публичном доступе.'
+                    : 'Это объявление будет опубликовано в публичном доступе.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: _outlinedDialogButton(
+                      text: 'Отмена',
+                      color: Colors.white54,
+                      onTap: () => Navigator.pop(ctx, false),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _outlinedDialogButton(
+                      text: 'Согласен',
+                      color: greenColor,
+                      onTap: () => Navigator.pop(ctx, true),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return result == true;
+  }
+
   Future<void> _publish(UserAdvert advert) async {
+    if (!await _confirmPublish(1)) return;
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) return;
@@ -110,6 +354,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
 
   Future<void> _publishSelected() async {
     if (_selectedIds.isEmpty) return;
+    if (!await _confirmPublish(_selectedIds.length)) return;
     final token = HiveService.getUserData('token') as String?;
     if (token == null) return;
 
@@ -192,9 +437,11 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'Удалить объявления',
-                style: TextStyle(
+              Text(
+                _selectedIds.length > 1
+                    ? 'Удалить объявления'
+                    : 'Удалить объявление',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -202,9 +449,12 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Вы уверены, что хотите удалить '
-                'выбранные объявления (${_selectedIds.length})? '
-                'Это действие необратимо.',
+                _selectedIds.length > 1
+                    ? 'Вы уверены, что хотите удалить '
+                        'выбранные объявления (${_selectedIds.length})? '
+                        'Это действие необратимо.'
+                    : 'Вы уверены, что хотите удалить это объявление? '
+                        'Это действие необратимо.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
@@ -212,45 +462,21 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: GestureDetector(
+                    child: _outlinedDialogButton(
+                      text: 'Отмена',
+                      color: Colors.white54,
                       onTap: () => Navigator.pop(ctx),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          border: Border.all(color: Colors.white54),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Отмена',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: GestureDetector(
+                    child: _outlinedDialogButton(
+                      text: 'Удалить',
+                      color: redColor,
                       onTap: () {
                         Navigator.pop(ctx);
                         _deleteSelected();
                       },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: redColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Удалить',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
                     ),
                   ),
                 ],
@@ -289,6 +515,60 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Индикатор прогресса загрузки из фида («Загрузка… N из M»).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Row(
+                children: [
+                  if (_importing) ...[
+                    const SizedBox(
+                      width: 13,
+                      height: 13,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: accentColor,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Text(
+                      _progressText,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Индикатор обработки ИИ («Обработано ИИ: N из M»).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Row(
+                children: [
+                  const Text(
+                    'ИИ',
+                    style: TextStyle(
+                      color: accentColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _aiProgressText,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 13,
                       ),
                     ),
                   ),
@@ -501,13 +781,42 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
-                      _formatPrice(advert.price),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            _formatPrice(advert.price),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        // Пометка «ИИ» для обработанных объявлений.
+                        if (advert.aiProcessed == true) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: accentColor),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'ИИ',
+                              style: TextStyle(
+                                color: accentColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(

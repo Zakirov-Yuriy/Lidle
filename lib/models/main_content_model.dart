@@ -126,6 +126,10 @@ class UserAdvert {
   final String? createdAt;
   final ContentType? type;
 
+  /// Обработано ли объявление ИИ (приходит с сервера как ai_processed).
+  @JsonKey(name: 'ai_processed')
+  final bool? aiProcessed;
+
   UserAdvert({
     required this.id,
     this.name,
@@ -138,6 +142,7 @@ class UserAdvert {
     this.shareCount,
     this.createdAt,
     this.type,
+    this.aiProcessed,
   });
 
   factory UserAdvert.fromJson(Map<String, dynamic> json) =>
