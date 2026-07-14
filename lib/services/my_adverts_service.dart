@@ -127,6 +127,7 @@ class MyAdvertsService {
     int? catalogId,
     int? categoryId,
     int? limit,
+    bool manualOnly = false,
     required String token,
   }) async {
     try {
@@ -145,6 +146,10 @@ class MyAdvertsService {
       }
       if (limit != null) {
         params['per_page'] = limit;
+      }
+      // Вкладка «Все»: только созданные вручную (фидовые исключаются на бэке).
+      if (manualOnly) {
+        params['manual_only'] = 1;
       }
 
       final response = await ApiService.getWithQuery(

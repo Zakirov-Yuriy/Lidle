@@ -91,6 +91,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   List<UserAdvert> _moderationListings = [];
   List<UserAdvert> _crmListings = []; // Объявления с фида на модерации (вкладка CRM)
   bool _crmLoading = false;
+  List<UserAdvert> _manualListings = []; // Активные объявления, созданные вручную (вкладка «Все»)
+  bool _manualLoading = false;
   // Пагинация для каждого статуса
   int _activeListingsPage = 1;
   int _inactiveListingsPage = 1;
@@ -117,6 +119,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   void initState() {
     super.initState();
     _loadCrmListings();
+    _loadManualListings();
     if (!_metadataLoaded) {
       _isLoadingMetadata = true;
       _loadAdvertMetadata().then((_) {
@@ -224,6 +227,33 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       }
     } catch (e) {
       if (mounted) setState(() => _crmLoading = false);
+    }
+  }
+
+  /// Загрузить активные объявления, созданные ВРУЧНУЮ (вкладка «Все»).
+  /// Фидовые объявления сюда не попадают — их бэк исключает по manual_only=1.
+  Future<void> _loadManualListings() async {
+    try {
+      final token = HiveService.getUserData('token') as String?;
+      if (token == null) return;
+
+      if (mounted) setState(() => _manualLoading = true);
+
+      final response = await MyAdvertsService.getMyAdverts(
+        token: token,
+        statusId: 1, // active
+        manualOnly: true,
+        limit: 100,
+      );
+
+      if (mounted) {
+        setState(() {
+          _manualListings = response.data;
+          _manualLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _manualLoading = false);
     }
   }
 
@@ -1020,11 +1050,27 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                     const SizedBox(width: 16),
                                     GestureDetector(
                                       onTap: () =>
+                                          setState(() => _currentTab = 5),
+                                      child: Text(
+                                        _manualListings.isEmpty
+                                            ? 'Все'
+                                            : 'Все ${_manualListings.length}',
+                                        style: TextStyle(
+                                          color: _currentTab == 5
+                                              ? accentColor
+                                              : Colors.white,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    GestureDetector(
+                                      onTap: () =>
                                           setState(() => _currentTab = 0),
                                       child: Text(
-                                        _activeListings.isEmpty
+                                        _allActiveListings.isEmpty
                                             ? 'Активные'
-                                            : 'Активные ${_activeListings.length}',
+                                            : 'Активные ${_allActiveListings.length}',
                                         style: TextStyle(
                                           color: _currentTab == 0
                                               ? accentColor
@@ -1222,8 +1268,21 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // ACTIVE TAB
   // ─────────────────────────────────────────────
 
+  /// Список для вкладки «Активные»: ВСЕ активные объявления — и созданные
+  /// вручную (_activeListings), и опубликованные из CRM-фида (_crmListings).
+  /// Подмешиваем CRM и убираем дубли по id, чтобы вкладка была корректной
+  /// независимо от того, отфильтровал ли бэк фидовые из общего списка.
+  List<UserAdvert> get _allActiveListings {
+    final seen = <int>{};
+    final merged = <UserAdvert>[];
+    for (final a in [..._activeListings, ..._crmListings]) {
+      if (seen.add(a.id)) merged.add(a);
+    }
+    return merged;
+  }
+
   Widget _activeTab() {
-    final filteredListings = _activeListings;
+    final filteredListings = _allActiveListings;
 
     if (filteredListings.isEmpty) {
       return _emptyTab(
@@ -1421,6 +1480,36 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     );
   }
 
+  /// Вкладка «Все» — активные объявления, созданные ВРУЧНУЮ (без фидовых).
+  Widget _allTab() {
+    if (_manualLoading) {
+      return _buildTabContentSkeleton();
+    }
+
+    final filteredListings = _manualListings;
+
+    if (filteredListings.isEmpty) {
+      return _emptyTab(
+        'assets/messages/non.png',
+        'Пусто',
+        'Здесь появятся активные объявления,\nсозданные вручную.',
+      );
+    }
+
+    // Карточки рендерим со стилем «Активные» (tabIndex 0).
+    return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      children: [
+        for (int i = 0; i < filteredListings.length; i++) ...[
+          _listingCard(filteredListings[i], 0),
+          if (i < filteredListings.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+
   Widget _moderationTab() {
     final filteredListings = _moderationListings;
 
@@ -1597,13 +1686,44 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      Text(
-                        _formatPriceWithRuble(advert.price ?? "0"),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _formatPriceWithRuble(advert.price ?? "0"),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          // Пометка «ИИ» для объявлений, уже обработанных ИИ.
+                          if (advert.aiProcessed == true) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: accentColor),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'ИИ',
+                                style: TextStyle(
+                                  color: accentColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -2022,6 +2142,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         return _moderationTab();
       case 4:
         return _crmTab();
+      case 5:
+        return _allTab();
       default:
         return _activeTab();
     }
@@ -2054,8 +2176,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   
   // Визуальный порядок вкладок слева направо (по индексам):
-  // CRM(4), Активные(0), Неактивные(1), Архив(2), На модерации(3)
-  static const List<int> _tabVisualOrder = [4, 0, 1, 2, 3];
+  // CRM(4), Все(5), Активные(0), Неактивные(1), Архив(2), На модерации(3)
+  static const List<int> _tabVisualOrder = [4, 5, 0, 1, 2, 3];
 
   double _getTabPosition(int tabIndex) {
     double position = 0;
@@ -2070,6 +2192,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     switch (tabIndex) {
       case 4: // CRM
         position += 0;
+        break;
+      case 5: // Все
+        position -= 0;
         break;
       case 0: // Активные
         position -= 0;
@@ -2096,11 +2221,17 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               ? 'CRM'
               : 'CRM ${_crmListings.length}',
         );
+      case 5:
+        return _getTextWidth(
+          _manualListings.isEmpty
+              ? 'Все'
+              : 'Все ${_manualListings.length}',
+        );
       case 0:
         return _getTextWidth(
-          _activeListings.isEmpty
+          _allActiveListings.isEmpty
               ? 'Активные'
-              : 'Активные ${_activeListings.length}',
+              : 'Активные ${_allActiveListings.length}',
         );
       case 1:
         return _getTextWidth(
@@ -2135,6 +2266,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         return _archiveListings;
       case 3:
         return _moderationListings;
+      case 5:
+        return _manualListings;
       default:
         return _activeListings;
     }

@@ -267,9 +267,11 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   }
 
   /// Предупреждение: среди выбранных есть объявления, которые ИИ ещё не
-  /// обработал. Публиковать их нельзя, пока генерация не завершилась.
-  Future<void> _showAiProcessingWarning(bool many) async {
-    await showDialog<void>(
+  /// обработал. Пользователь может либо отменить, либо всё равно
+  /// опубликовать их как есть (с текстом, как загрузилось из фида).
+  /// Возвращает true, если пользователь выбрал «Опубликовать».
+  Future<bool> _showAiProcessingWarning(bool many) async {
+    final result = await showDialog<bool>(
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: Colors.transparent,
@@ -304,15 +306,15 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
                     child: _outlinedDialogButton(
                       text: 'Отмена',
                       color: Colors.white54,
-                      onTap: () => Navigator.pop(ctx),
+                      onTap: () => Navigator.pop(ctx, false),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _outlinedDialogButton(
-                      text: 'Понятно',
-                      color: accentColor,
-                      onTap: () => Navigator.pop(ctx),
+                      text: 'Опубликовать',
+                      color: greenColor,
+                      onTap: () => Navigator.pop(ctx, true),
                     ),
                   ),
                 ],
@@ -322,6 +324,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
         ),
       ),
     );
+    return result == true;
   }
 
   /// Диалог-подтверждение перед публикацией. Возвращает true, если согласен.
@@ -386,12 +389,13 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   }
 
   Future<void> _publish(UserAdvert advert) async {
-    // Публиковать можно только объявление, которое уже обработал ИИ.
     if (advert.aiProcessed != true) {
-      await _showAiProcessingWarning(false);
+      // ИИ ещё не обработал: предупреждаем, но даём опубликовать как есть
+      // (с текстом, как загрузилось из фида). Кнопка «Опубликовать» -> true.
+      if (!await _showAiProcessingWarning(false)) return;
+    } else if (!await _confirmPublish(1)) {
       return;
     }
-    if (!await _confirmPublish(1)) return;
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) return;
@@ -422,17 +426,16 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   Future<void> _publishSelected() async {
     if (_selectedIds.isEmpty) return;
 
-    // Если среди выбранных есть хоть одно НЕобработанное ИИ объявление —
-    // предупреждаем и не публикуем, пока ИИ не закончит.
+    // Если среди выбранных есть необработанные ИИ — предупреждаем, но даём
+    // опубликовать как есть (с текстом из фида). Иначе — обычное подтверждение.
     final selected =
         _listings.where((a) => _selectedIds.contains(a.id)).toList();
     final bool hasUnprocessed = selected.any((a) => a.aiProcessed != true);
     if (hasUnprocessed) {
-      await _showAiProcessingWarning(_selectedIds.length > 1);
+      if (!await _showAiProcessingWarning(_selectedIds.length > 1)) return;
+    } else if (!await _confirmPublish(_selectedIds.length)) {
       return;
     }
-
-    if (!await _confirmPublish(_selectedIds.length)) return;
     final token = HiveService.getUserData('token') as String?;
     if (token == null) return;
 
