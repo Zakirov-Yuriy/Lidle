@@ -8,6 +8,10 @@
 // При этом на каждой карточке остаются и индивидуальные кнопки
 // «Опубликовать» / «Редактировать».
 //
+// Публиковать можно только объявления, которые уже обработал ИИ
+// (ai_processed == true). Если среди выбранных есть необработанные —
+// показываем предупреждение и просим дождаться завершения ИИ.
+//
 // Данные берём через тот же эндпоинт, что и вкладка CRM:
 //   GET /me/adverts/moderation
 
@@ -262,6 +266,64 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
     );
   }
 
+  /// Предупреждение: среди выбранных есть объявления, которые ИИ ещё не
+  /// обработал. Публиковать их нельзя, пока генерация не завершилась.
+  Future<void> _showAiProcessingWarning(bool many) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2732),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                many ? 'Публикация объявлений' : 'Публикация объявления',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Процесс обработки объявления ещё продолжается. '
+                'Дождитесь завершение ИИ работы.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 22),
+              Row(
+                children: [
+                  Expanded(
+                    child: _outlinedDialogButton(
+                      text: 'Отмена',
+                      color: Colors.white54,
+                      onTap: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _outlinedDialogButton(
+                      text: 'Понятно',
+                      color: accentColor,
+                      onTap: () => Navigator.pop(ctx),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Диалог-подтверждение перед публикацией. Возвращает true, если согласен.
   /// Текст меняется для одного объявления / нескольких.
   Future<bool> _confirmPublish(int count) async {
@@ -324,6 +386,11 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   }
 
   Future<void> _publish(UserAdvert advert) async {
+    // Публиковать можно только объявление, которое уже обработал ИИ.
+    if (advert.aiProcessed != true) {
+      await _showAiProcessingWarning(false);
+      return;
+    }
     if (!await _confirmPublish(1)) return;
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -354,6 +421,17 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
 
   Future<void> _publishSelected() async {
     if (_selectedIds.isEmpty) return;
+
+    // Если среди выбранных есть хоть одно НЕобработанное ИИ объявление —
+    // предупреждаем и не публикуем, пока ИИ не закончит.
+    final selected =
+        _listings.where((a) => _selectedIds.contains(a.id)).toList();
+    final bool hasUnprocessed = selected.any((a) => a.aiProcessed != true);
+    if (hasUnprocessed) {
+      await _showAiProcessingWarning(_selectedIds.length > 1);
+      return;
+    }
+
     if (!await _confirmPublish(_selectedIds.length)) return;
     final token = HiveService.getUserData('token') as String?;
     if (token == null) return;
