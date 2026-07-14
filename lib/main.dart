@@ -39,6 +39,7 @@ import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/services/device_info_service.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/message_polling_service.dart';
+import 'package:lidle/services/ai_completion_service.dart';
 import 'package:lidle/services/badge_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
@@ -318,6 +319,11 @@ class LidleApp extends StatelessWidget {
               interval: const Duration(seconds: 15),
             );
 
+            // 🤖 Наблюдатель за завершением ИИ-обработки объявлений из фида:
+            // когда ИИ обработал все объявления, покажет оповещение на любом
+            // экране с переходом на предпросмотр для публикации.
+            AiCompletionService.instance.start();
+
             // 🌙 Запускаем BACKGROUND задачу для проверки сообщений
             // Эта задача запускается периодически даже когда приложение свернуто
             Workmanager().registerPeriodicTask(
@@ -334,6 +340,9 @@ class LidleApp extends StatelessWidget {
 
             // 🔔 Останавливаем мониторинг новых сообщений (FOREGROUND)
             sl<MessagePollingService>().stopPolling();
+
+            // 🤖 Останавливаем наблюдатель за ИИ-обработкой.
+            AiCompletionService.instance.stop();
 
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');
