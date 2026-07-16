@@ -657,17 +657,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               BlendMode.srcIn,
                             ),
                           ),
-                          onPressed: () {
-                            final advertisementUrl = _generateAdvertisementUrl(widget.listing);
-                            final textToShare =
-                                '${widget.listing.title}\n'
-                                'Цена: ${_formatPriceWithRuble(widget.listing.price)}\n'
-                                'Адрес: ${widget.listing.location}\n\n'
-                                'Присоединяйся к LIDLE!\n'
-                                '$advertisementUrl';
-
-                            Share.share(textToShare);
-                          },
+                          onPressed: _shareAdvert,
                         ),
                       ],
                     ),
@@ -706,6 +696,9 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               //   const SizedBox(height: 24),
                               // ],
                               _buildSellerCard(),
+                              const SizedBox(height: 19),
+                              // 🔗 Блок ссылок для шаринга объявления
+                              _buildShareCard(),
                               const SizedBox(height: 19),
                               _buildComplaintButton(),
                               const SizedBox(height: 85),
@@ -1540,6 +1533,76 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             sellerRegistrationDate: sellerRegDate,
           ),
           const SizedBox(height: 18),
+        ],
+      ),
+    );
+  }
+
+  /// 🔗 Поделиться объявлением (та же логика, что у иконки шаринга сверху).
+  void _shareAdvert() {
+    final advertisementUrl = _generateAdvertisementUrl(widget.listing);
+    final textToShare =
+        '${widget.listing.title}\n'
+        'Цена: ${_formatPriceWithRuble(widget.listing.price)}\n'
+        'Адрес: ${widget.listing.location}\n\n'
+        'Присоединяйся к LIDLE!\n'
+        '$advertisementUrl';
+
+    Share.share(textToShare);
+  }
+
+  /// 🔗 Блок «Поделиться объявлением» (нативный шэринг = список ссылок/соцсетей).
+  Widget _buildShareCard() {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 6),
+          const Text(
+            "Поделиться объявлением",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "Отправьте ссылку друзьям или в соцсети удобным для вас способом",
+            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 47,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: activeIconColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: _shareAdvert,
+              icon: SvgPicture.asset(
+                'assets/home_page/share_outlined.svg',
+                width: 20,
+                height: 20,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
+              ),
+              label: const Text(
+                "Поделиться ссылкой",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
         ],
       ),
     );
