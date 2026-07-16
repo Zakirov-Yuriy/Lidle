@@ -1577,11 +1577,10 @@ class ApiService {
     return jsonDecode(jsonString) as Map<String, dynamic>;
   }
 
-  /// Поиск адресов по запросу
-  /// Возвращает список результатов поиска с ID region, city, street, building
-  /// Note: API expects GET request with JSON body (unusual but required)
-  /// Поиск адресов по запросу
-  /// Возвращает список результатов поиска с ID region, city, street, building
+  /// Поиск адресов по запросу.
+  /// Возвращает список результатов поиска с ID region, city, street, building.
+  /// Запрос идёт обычным GET с query-параметрами (q, types[], filters[]),
+  /// как это делает веб-сайт. Пустые/null фильтры не отправляются.
   static Future<List<Map<String, dynamic>>> searchAddresses(
     String query, {
     String? token,

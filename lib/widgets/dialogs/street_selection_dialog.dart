@@ -295,6 +295,20 @@ class _StreetSelectionDialogState extends State<StreetSelectionDialog> {
               ),
             ),
             const SizedBox(height: 15),
+            // Подсказка вместо пустоты, когда список улиц пуст: либо ещё не
+            // введён запрос, либо по запросу ничего не нашлось. Раньше при
+            // пустом списке диалог выглядел «сломанным».
+            if (_displayOptions.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24.0),
+                child: Text(
+                  _searchController.text.trim().isEmpty
+                      ? 'Начните вводить название улицы для поиска'
+                      : 'Улицы не найдены. Проверьте название или попробуйте другой запрос.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                ),
+              ),
             Flexible(
               child: ScrollbarTheme(
                 data: ScrollbarThemeData(

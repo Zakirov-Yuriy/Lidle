@@ -338,7 +338,36 @@ class Listing {
 
   /// Helper метод для парсинга значений атрибутов
   /// Обрабатывает разные форматы: Map, простые значения, List
-  /// Парсит строку адреса на компоненты (город, улица, номер дома)
+  // Типы населённых пунктов и улиц из справочника ФИАС (адресный микросервис).
+  // Сервер отдаёт адрес строкой "город, улица, номер дома" (метод formatAddress),
+  // где город и улица идут со своим типом-префиксом, а номер дома — голой цифрой.
+  static const List<String> _cityTypePrefixes = [
+    'г.', 'г ', 'город', 'г.п.', 'пгт.', 'пгт ', 'с.', 'с ', 'п.', 'п ',
+    'с-к', 'нп.', 'с.п.', 'дп.', 'рп.', 'кп.',
+  ];
+  static const List<String> _streetTypePrefixes = [
+    'ул.', 'ул ', 'улица', 'пер.', 'переулок', 'б-р', 'бульвар', 'пр-д',
+    'проезд', 'пр-кт', 'пр.', 'проспект', 'туп.', 'тупик', 'наб.',
+    'набережная', 'ал.', 'аллея', 'проул.', 'ш.', 'шоссе', 'тракт',
+    'линия', 'лн.', 'км', 'пл.', 'площадь', 'кв-л', 'квартал', 'мкр.',
+    'мкр', 'микрорайон', 'рзд.', 'парк', 'сквер',
+  ];
+  static const List<String> _buildingPrefixes = [
+    'д.', 'д ', 'дом', '№', 'корп', 'к.', 'стр', 'влд', 'зд.',
+  ];
+
+  static bool _startsWithAny(String value, List<String> prefixes) {
+    final lower = value.toLowerCase();
+    for (final p in prefixes) {
+      if (lower.startsWith(p)) return true;
+    }
+    return false;
+  }
+
+  /// Парсит строку адреса на компоненты (город, улица, номер дома).
+  /// Соответствует формату сервера "город, улица, номер дома"; распознаёт все
+  /// типы улиц (ул., пер., б-р, наб., пр-кт и т.д.) и номер дома как без
+  /// префикса (голая цифра), так и с префиксом (д., №).
   static Map<String, String?> _parseAddressString(String? addressStr) {
     if (addressStr == null || addressStr.isEmpty) {
       return {'city': null, 'street': null, 'buildingNumber': null};
@@ -346,22 +375,27 @@ class Listing {
 
     // Разбиваем на части по запятой
     final parts = addressStr.split(',').map((p) => p.trim()).toList();
-    
+
     String? city, street, buildingNumber;
-    
+
     for (var part in parts) {
       if (part.isEmpty) continue;
-      
-      // Определяем по префиксу
-      if (part.startsWith('г.') || part.startsWith('город')) {
-        city = part;
-      } else if (part.startsWith('ул.') || part.startsWith('улица') || part.startsWith('пр.') || part.startsWith('проспект')) {
-        street = part;
-      } else if (part.startsWith('д.') || part.startsWith('дом') || part.startsWith('№')) {
-        buildingNumber = part;
+
+      if (_startsWithAny(part, _cityTypePrefixes)) {
+        // берём первый распознанный город
+        city ??= part;
+      } else if (_startsWithAny(part, _streetTypePrefixes)) {
+        street ??= part;
+      } else if (_startsWithAny(part, _buildingPrefixes)) {
+        buildingNumber ??= part;
+      } else if (RegExp(r'\d').hasMatch(part) &&
+          !RegExp(r'[А-Яа-яA-Za-z]{4,}').hasMatch(part)) {
+        // Голый номер дома без префикса: "5", "225", "12А", "1/2 к3".
+        // Условие защищает от словесных частей, содержащих цифры.
+        buildingNumber ??= part;
       }
     }
-    
+
     return {'city': city, 'street': street, 'buildingNumber': buildingNumber};
   }
 
@@ -370,20 +404,37 @@ class Listing {
   static String? _convertAddressToString(dynamic address) {
     if (address == null) return null;
     
-    // Если это уже строка - возвращаем как есть
+    // Если это уже строка — возвращаем как есть.
+    // Пустую/пробельную строку считаем отсутствием адреса и возвращаем null,
+    // чтобы сработал fallback на full_address (иначе на карточке пусто).
     if (address is String) {
-      return address;
+      final trimmed = address.trim();
+      return trimmed.isEmpty ? null : trimmed;
     }
-    
-    // Если это Map - пытаемся собрать строку из компонентов
+
+    // Если это Map - пытаемся собрать строку из компонентов.
+    // Значение компонента может быть как строкой, так и объектом {id, name}.
     if (address is Map) {
+      String? partOf(dynamic v) {
+        if (v == null) return null;
+        if (v is Map) return v['name']?.toString() ?? v['number']?.toString();
+        final s = v.toString().trim();
+        return s.isEmpty ? null : s;
+      }
+
       final parts = <String>[];
-      if (address['main_region'] != null) parts.add(address['main_region'].toString());
-      if (address['region'] != null) parts.add(address['region'].toString());
-      if (address['city'] != null) parts.add(address['city'].toString());
-      if (address['street'] != null) parts.add(address['street'].toString());
-      if (address['building_number'] != null) parts.add(address['building_number'].toString());
-      
+      for (final key in const [
+        'main_region', 'region', 'city', 'district', 'street', 'building',
+      ]) {
+        final value = partOf(address[key]);
+        if (value != null) parts.add(value);
+      }
+      // Номер дома отдельным полем — только если не пришёл внутри building.
+      if (address['building'] == null) {
+        final buildingNumber = partOf(address['building_number']);
+        if (buildingNumber != null) parts.add(buildingNumber);
+      }
+
       if (parts.isNotEmpty) {
         return parts.join(', ');
       }

@@ -415,8 +415,9 @@ mixin _AddressApiMixin on State<DynamicFilter> {
     }
   }
 
-  /// Загружает улицы для выбранного города при автозаполнении.
-  // ignore: unused_element
+  /// Загружает улицы для выбранного города (предзагрузка списка для диалога,
+  /// по аналогии с [_loadCitiesForSelectedRegion]). Раньше метод не вызывался
+  /// (был помечен unused_element), из-за чего диалог улиц открывался пустым.
   Future<void> _loadStreetsForSelectedCity() async {
     if (_selectedCityId == null) return;
 
@@ -445,11 +446,27 @@ mixin _AddressApiMixin on State<DynamicFilter> {
         filters: _selectedCityId != null ? {'city_id': _selectedCityId} : null,
       );
 
-      final uniqueStreets = <String, int>{};
+      // ВАЖНО: сохраняем не только id улицы, но и её подрегион (region.id) и
+      // главный регион (main_region.id). Подрегион нужен на публикации как
+      // address.region_id (бэкенд требует parent = выбранный регион). Раньше
+      // предзагрузка клала только {name, id}, поэтому при выборе улицы из
+      // предзагруженного списка подрегион терялся и на публикацию уходил
+      // главный регион — валидация address.region_id/address.city_id падала.
+      final Map<String, Map<String, dynamic>> uniqueStreets = {};
       for (final result in response.data) {
         if (result.city?.id == _selectedCityId && result.street != null) {
-          uniqueStreets[result.street!.name] = result.street!.id;
-          log.d('   + ${result.street!.name}');
+          final name = result.street!.name;
+          uniqueStreets[name] = {
+            'name': name,
+            'id': result.street!.id,
+            'region_id': result.region?.id,
+            'main_region_id': result.main_region?.id,
+          };
+          // Кеши, из которых берутся street_id и подрегион при выборе улицы
+          // (те же, что заполняет _searchStreetsAPI при ручном поиске).
+          _lastStreetsSearchResults[name] = result.street!.id;
+          _lastStreetsSubregionResults[name] = result.region?.id;
+          log.d('   + $name (region.id=${result.region?.id})');
         } else if (result.street != null) {
           log.d(
             '   ❌ ${result.street!.name} - city.id=${result.city?.id}, ожидаем $_selectedCityId',
@@ -464,9 +481,7 @@ mixin _AddressApiMixin on State<DynamicFilter> {
           FocusManager.instance.primaryFocus?.unfocus();
         });
         setState(() {
-          _streets = uniqueStreets.entries
-              .map((e) => {'name': e.key, 'id': e.value})
-              .toList();
+          _streets = uniqueStreets.values.toList();
         });
         log.d('✅ Auto-loaded ${_streets.length} streets');
       }

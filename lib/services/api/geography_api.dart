@@ -59,7 +59,7 @@ class GeographyApi {
 
   /// Поиск адресов по запросу.
   /// Возвращает список результатов поиска с ID region, city, street, building.
-  /// API требует GET с JSON body (нестандарт, но так работает).
+  /// Передаём q/types/filters как query-параметры (как это делает веб-сайт).
   static Future<List<Map<String, dynamic>>> searchAddresses(
     String query, {
     String? token,
@@ -75,30 +75,45 @@ class GeographyApi {
         return [];
       }
 
-      final headers = {...ApiService.defaultHeaders};
+      // Заголовки без Content-Type: application/json — запрос идёт с query-
+      // параметрами, тела нет. Раньше отправлялся GET с JSON-телом, но тело GET
+      // отбрасывается частью прокси/серверов, из-за чего поиск работал «не всегда».
+      final headers = <String, String>{
+        'Accept': 'application/json',
+        'X-App-Client': 'mobile',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+      };
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      // Build request body for GET request (API требует JSON body, не query params)
-      final bodyMap = <String, dynamic>{'q': cleanQuery};
+      // Query-параметры: q, types[i], filters[key]. Пустые/null-фильтры
+      // пропускаем, иначе сервер вернёт 422 (см. address_service.dart).
+      final queryParams = <String, dynamic>{'q': cleanQuery};
       if (types != null && types.isNotEmpty) {
-        bodyMap['types'] = types;
+        for (int i = 0; i < types.length; i++) {
+          queryParams['types[$i]'] = types[i];
+        }
       }
       if (filters != null && filters.isNotEmpty) {
-        bodyMap['filters'] = filters;
+        filters.forEach((key, value) {
+          if (value == null) return;
+          final stringValue = value.toString();
+          if (stringValue.isEmpty ||
+              stringValue == 'null' ||
+              stringValue == '0') {
+            return;
+          }
+          queryParams['filters[$key]'] = stringValue;
+        });
       }
 
-      final uri = Uri.parse('${ApiService.baseUrl}/addresses/search');
+      final uri = Uri.parse('${ApiService.baseUrl}/addresses/search')
+          .replace(queryParameters: queryParams);
 
-      // http.Request используется чтобы отправить GET с body
-      final request = http.Request('GET', uri);
-      request.headers.addAll(headers);
-      request.body = jsonEncode(bodyMap);
-
-      final streamResponse =
-          await request.send().timeout(const Duration(seconds: 10));
-      final response = await http.Response.fromStream(streamResponse);
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> jsonResponse = json.decode(response.body);

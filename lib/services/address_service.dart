@@ -60,8 +60,18 @@ class AddressService {
       
       if (filters != null && filters.isNotEmpty) {
         // Add filters as nested parameters: filters[main_region_id]=1
+        // ВАЖНО: пропускаем null и «пустые» значения. Иначе в запрос уходит
+        // filters[main_region_id]=null (строка "null") или =0, сервер валидирует
+        // это как integer и возвращает 422 — из-за чего поиск «ничего не находит».
         filters.forEach((key, value) {
-          queryParams['filters[$key]'] = value.toString();
+          if (value == null) return;
+          final stringValue = value.toString();
+          if (stringValue.isEmpty ||
+              stringValue == 'null' ||
+              stringValue == '0') {
+            return;
+          }
+          queryParams['filters[$key]'] = stringValue;
         });
       }
 

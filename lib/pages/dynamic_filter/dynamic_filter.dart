@@ -2181,7 +2181,21 @@ class _DynamicFilterState extends State<DynamicFilter>
               }
             }
 
-            // 3. Финальный fallback — выбранный пользователем регион
+            // 3. Подрегион выбранного города — это и есть корректный
+            //    address.region_id (город принадлежит подрегиону, parent =
+            //    выбранный регион). Надёжный источник, если у улицы его нет.
+            //    Явно исключаем 0 (город без подрегиона), чтобы не отправить
+            //    невалидный region_id.
+            if (addressRegionId == null &&
+                _selectedCityRegionId != null &&
+                _selectedCityRegionId != 0) {
+              addressRegionId = _selectedCityRegionId;
+            }
+
+            // 4. Финальный fallback — выбранный пользователем регион (главный).
+            //    ВНИМАНИЕ: это главный регион (parent_id = null), бэкенд ждёт в
+            //    address.region_id подрегион; используется лишь как крайний
+            //    случай, чтобы поле не ушло пустым.
             addressRegionId ??= _selectedRegionId;
 
             if (addressRegionId != null) {
@@ -4040,6 +4054,10 @@ class _DynamicFilterState extends State<DynamicFilter>
                               // 🆕 Очищаем кеш результатов поиска улиц при смене города
                               _lastStreetsSearchResults.clear();
                             });
+                            // 🆕 Предзагружаем улицы выбранного города, чтобы
+                            // диалог "Улица" открывался со списком (как города
+                            // после выбора региона), а не пустым.
+                            _loadStreetsForSelectedCity();
                             log.d('');
                           }
                         },
@@ -4076,16 +4094,23 @@ class _DynamicFilterState extends State<DynamicFilter>
                   log.d('   - _selectedCityId: $_selectedCityId');
                   log.d('   - _streets.length: ${_streets.length}');
 
-                  // Не загружаем улицы заранее: API ограничивает выдачу ~20 элементами,
-                  // в крупном городе (Мариуполь, Донецк и др.) проспект может не попасть
-                  // в первые 20. Диалог открывается с пустым списком, API дёргается
-                  // только при вводе в строку поиска через _searchStreetsAPI.
                   if (_selectedCityId == null) {
                     log.d('   ❌ Не могу открыть диалог улиц: _selectedCityId == null');
                     return;
                   }
 
-                  log.d('🔓 Открываем диалог улиц (поиск через API при вводе)');
+                  // Если список улиц ещё не загружен (город выбран, но
+                  // предзагрузка при выборе города не успела/не сработала) —
+                  // подгружаем первую партию, чтобы диалог не открывался пустым.
+                  // Остальные улицы (сверх лимита API ~20) находятся по вводу
+                  // в строку поиска через _searchStreetsAPI.
+                  if (_streets.isEmpty) {
+                    log.d('   ⏳ Улицы не загружены — подгружаем перед открытием диалога');
+                    await _loadStreetsForSelectedCity();
+                  }
+
+                  log.d('🔓 Открываем диалог улиц (список + поиск через API при вводе)');
+                  if (!mounted) return;
                   showDialog(
                       context: context,
                       builder: (BuildContext context) {

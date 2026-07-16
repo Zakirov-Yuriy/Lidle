@@ -596,8 +596,18 @@ class _MyListingsPropertyDetailsScreenState
     
     log.d('[✅ ASSEMBLED ADDRESS]: $fullAddress');
 
-    // Если нет отдельных компонентов, используем location как fallback
-    final displayAddress = fullAddress.isNotEmpty ? fullAddress : _listing.location;
+    // Приоритет — готовой строке адреса от сервера (location = поле address
+    // из API, "город, улица, дом"). Именно её показывает веб-сайт, поэтому она
+    // всегда корректна. Пересобранный из распарсенных кусков fullAddress
+    // используем только как запасной вариант, если сервер адрес не прислал:
+    // раньше здесь наоборот предпочитался fullAddress, из-за чего терялся номер
+    // дома и улицы с «нестандартным» типом (пер., б-р, наб. и т.п.).
+    final serverAddress = _listing.location.trim();
+    final hasServerAddress =
+        serverAddress.isNotEmpty && serverAddress != 'Unknown Location';
+    final displayAddress = hasServerAddress
+        ? serverAddress
+        : (fullAddress.isNotEmpty ? fullAddress : serverAddress);
 
     return _card(
       child: Column(
