@@ -105,6 +105,26 @@ class DeviceInfoService {
   static String _shortDeviceId(String id) =>
       id.length >= 12 ? id.substring(0, 12) : id;
 
+  /// Собирает device_name под требования бэкенда: только символы
+  /// [a-zA-Z0-9-_. ] и максимум 50 знаков (regex в LoginRequest/
+  /// RefreshTokenRequest). Скобки/юникод недопустимы. Уникальный id ставим в
+  /// конце через пробел и резервируем под него место, чтобы он не обрезался.
+  static String _composeDeviceName(String base, String id) {
+    final shortId = _shortDeviceId(id);
+    // Оставляем только разрешённые символы, лишние пробелы схлопываем.
+    var safeBase = base
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\-_. ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    // Резервируем место под " " + id (итог не длиннее 50).
+    final maxBase = 50 - shortId.length - 1;
+    if (maxBase > 0 && safeBase.length > maxBase) {
+      safeBase = safeBase.substring(0, maxBase).trim();
+    }
+    if (safeBase.isEmpty) safeBase = 'Device';
+    return '$safeBase $shortId'.trim();
+  }
+
   /// Получить версию приложения
   static String getAppVersion() {
     return _cachedAppVersion ?? 'v1.0.0';
@@ -263,20 +283,22 @@ class DeviceInfoService {
     final base = _cachedDeviceInfo?.getFullName() ?? getPlatformName();
     // Добавляем уникальный id установки, чтобы имя было уникальным на сервере.
     if (_cachedDeviceId != null && _cachedDeviceId!.isNotEmpty) {
-      return '$base (${_shortDeviceId(_cachedDeviceId!)})';
+      return _composeDeviceName(base, _cachedDeviceId!);
     }
     // id ещё не готов (сервис не инициализирован) — лучше использовать
     // getDeviceNameForApiAsync(), который гарантированно добавит id.
-    return base;
+    // На всякий случай тоже прогоняем через санитайзер (без id).
+    return _composeDeviceName(base, '');
   }
 
   /// Async-версия: гарантирует, что уникальный id установки загружен/создан,
-  /// и возвращает `device_name` вида "Apple iPhone (a1b2c3d4e5f6)".
+  /// и возвращает `device_name` вида "Apple iPhone a1b2c3d4e5f6"
+  /// (только разрешённые символы, ≤50 знаков).
   /// Использовать при логине/refresh — там имя должно быть уникальным.
   static Future<String> getDeviceNameForApiAsync() async {
     final id = await _loadOrCreateDeviceId();
     final base = _cachedDeviceInfo?.getFullName() ?? getPlatformName();
-    return '$base (${_shortDeviceId(id)})';
+    return _composeDeviceName(base, id);
   }
 }
 
