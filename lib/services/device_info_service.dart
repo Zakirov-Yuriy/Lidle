@@ -3,7 +3,9 @@
 // ============================================================
 
 import 'dart:io';
+import 'dart:math';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:lidle/core/logger.dart';
 
 /// Модель информации об устройстве
@@ -41,16 +43,67 @@ class DeviceInfoService {
   static String? _cachedAppVersion;
   static DeviceInfo? _cachedDeviceInfo;
 
+  /// Хранилище стабильного уникального идентификатора установки.
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(
+      keyCipherAlgorithm:
+          KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+      storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
+    ),
+  );
+  static const String _deviceIdKey = 'device_unique_id';
+  static String? _cachedDeviceId;
+
   /// Инициализировать сервис (вызвать один раз при запуске приложения)
   static Future<void> initialize() async {
     try {
       _cachedAppVersion = 'v1.4.1'; // Это будет переопределено в runtime
       // Получаем информацию об устройстве во время инициализации
       _cachedDeviceInfo = await getDeviceInfo();
+      // Заранее готовим уникальный id установки, чтобы синхронный
+      // getDeviceNameForApi() мог сразу отдать уникальное имя.
+      await _loadOrCreateDeviceId();
     } catch (e) {
       // log.d('⚠️ Error initializing DeviceInfoService: $e');
     }
   }
+
+  /// Стабильный уникальный идентификатор установки приложения.
+  ///
+  /// Генерируется один раз и хранится в secure storage. Нужен, чтобы
+  /// `device_name` был уникален на сервере: без него два телефона одной модели
+  /// (а на iOS — вообще все айфоны, т.к. `model` часто = "iPhone") шлют
+  /// одинаковый `device_name`, и вход на одном устройстве удаляет токены
+  /// другого — пользователя «выкидывает» с других устройств.
+  static Future<String> _loadOrCreateDeviceId() async {
+    if (_cachedDeviceId != null && _cachedDeviceId!.isNotEmpty) {
+      return _cachedDeviceId!;
+    }
+    try {
+      var id = await _secureStorage.read(key: _deviceIdKey);
+      if (id == null || id.isEmpty) {
+        id = _generateDeviceId();
+        await _secureStorage.write(key: _deviceIdKey, value: id);
+      }
+      _cachedDeviceId = id;
+      return id;
+    } catch (e) {
+      // Если хранилище недоступно — разовый id всё равно лучше, чем коллизия.
+      _cachedDeviceId ??= _generateDeviceId();
+      return _cachedDeviceId!;
+    }
+  }
+
+  /// Генерирует случайный 128-битный идентификатор (32 hex-символа).
+  static String _generateDeviceId() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
+  /// Короткий читаемый суффикс id для отображения в имени устройства.
+  static String _shortDeviceId(String id) =>
+      id.length >= 12 ? id.substring(0, 12) : id;
 
   /// Получить версию приложения
   static String getAppVersion() {
@@ -207,14 +260,23 @@ class DeviceInfoService {
   /// ПРИМЕЧАНИЕ: Используется при логине и обновлении токена для идентификации устройства.
   /// Каждое физическое устройство должно иметь уникальное имя на сервере.
   static String getDeviceNameForApi() {
-    // Сначала пытаемся использовать кешированную информацию (быстро)
-    if (_cachedDeviceInfo != null) {
-      return _cachedDeviceInfo!.getFullName();
+    final base = _cachedDeviceInfo?.getFullName() ?? getPlatformName();
+    // Добавляем уникальный id установки, чтобы имя было уникальным на сервере.
+    if (_cachedDeviceId != null && _cachedDeviceId!.isNotEmpty) {
+      return '$base (${_shortDeviceId(_cachedDeviceId!)})';
     }
-    
-    // Fallback: возвращаем название платформы
-    // Это произойдет если DeviceInfoService еще не инициализирован
-    return getPlatformName();
+    // id ещё не готов (сервис не инициализирован) — лучше использовать
+    // getDeviceNameForApiAsync(), который гарантированно добавит id.
+    return base;
+  }
+
+  /// Async-версия: гарантирует, что уникальный id установки загружен/создан,
+  /// и возвращает `device_name` вида "Apple iPhone (a1b2c3d4e5f6)".
+  /// Использовать при логине/refresh — там имя должно быть уникальным.
+  static Future<String> getDeviceNameForApiAsync() async {
+    final id = await _loadOrCreateDeviceId();
+    final base = _cachedDeviceInfo?.getFullName() ?? getPlatformName();
+    return '$base (${_shortDeviceId(id)})';
   }
 }
 

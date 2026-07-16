@@ -167,10 +167,9 @@ class AuthRemote {
   /// Получает название устройства для отправки на сервер
   static Future<String> _getDeviceName() async {
     try {
-      // 🔄 ОБНОВЛЕНО: Получаем реальное имя устройства из DeviceInfoService
-      // вместо жесткого значения "Lidle Mobile App".
-      // Это обеспечивает уникальную идентификацию каждого физического устройства на сервере.
-      return DeviceInfoService.getDeviceNameForApi();
+      // Уникальное имя устройства: модель + стабильный id установки, чтобы
+      // устройства одной модели не вытесняли токены друг друга при логине.
+      return await DeviceInfoService.getDeviceNameForApiAsync();
     } catch (_) {
       return DeviceInfoService.getPlatformName();
     }

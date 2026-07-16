@@ -86,7 +86,9 @@ class AuthService {
     final body = {
       'email': email,
       'password': password,
-      'device_name': DeviceInfoService.getDeviceNameForApi(), // 🔄 ОБНОВЛЕНО: получаем реальное имя устройства
+      // Уникальное имя устройства (модель + стабильный id установки), чтобы вход
+      // на одном устройстве не вытеснял токены других устройств пользователя.
+      'device_name': await DeviceInfoService.getDeviceNameForApiAsync(),
       'app_version': '1.4.1',
     };
 

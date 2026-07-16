@@ -1336,11 +1336,10 @@ class ApiService {
   /// При необходимости можно использовать device_info_plus для получения реального имени
   static Future<String> _getDeviceName() async {
     try {
-      // 🔄 ОБНОВЛЕНО: Получаем реальное имя устройства из DeviceInfoService
-      // вместо жесткого значения "Lidle Mobile App".
-      // Это обеспечивает уникальную идентификацию каждого физического устройства на сервере.
-      // Например: "iPhone 16 Pro", "Samsung Galaxy S24", "Android Device" и т.д.
-      return DeviceInfoService.getDeviceNameForApi();
+      // Уникальное имя устройства: модель + стабильный id установки.
+      // Гарантирует уникальную идентификацию каждого физического устройства на
+      // сервере, иначе устройства одной модели вытесняют друг друга при логине.
+      return await DeviceInfoService.getDeviceNameForApiAsync();
     } catch (_) {
       return DeviceInfoService.getPlatformName();
     }
