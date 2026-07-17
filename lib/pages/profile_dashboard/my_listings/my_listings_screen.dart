@@ -189,8 +189,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        _loadCrmListings();
-        // _loadListings();
+        // Обновляем ВСЕ списки и счётчики: объявление уходит из CRM в
+        // активные/«Все», поэтому одного _loadCrmListings недостаточно.
+        await _refreshAfterMutation();
       }
     } catch (e) {
       if (mounted) {
@@ -1196,9 +1197,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               if (_currentTab != 3) ...[
                                 GestureDetector(
                                   onTap: () {
-                                    setState(() {
-                                      _moveToArchive();
-                                    });
+                                    _moveToArchive();
                                   },
                                   child: Text(
                                     _currentTab == 2 ? 'Из архива' : 'В архив',
@@ -2266,6 +2265,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         return _archiveListings;
       case 3:
         return _moderationListings;
+      case 4:
+        return _crmListings;
       case 5:
         return _manualListings;
       default:
@@ -2273,44 +2274,76 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  void _moveToArchive() {
+  /// Перенести выбранные объявления в архив (или вернуть из архива в активные).
+  ///
+  /// Раньше метод только переставлял объявления между локальными списками и
+  /// НЕ обращался к серверу, поэтому смена статуса не сохранялась: после любой
+  /// перезагрузки списка объявления возвращались обратно, а счётчики не сходились.
+  /// Теперь для каждого выбранного объявления вызываем updateAdvertStatus
+  /// (статус 8 — архив; из вкладки «Архив» возвращаем в активные, статус 1),
+  /// а затем перечитываем все списки с сервера через _refreshAfterMutation().
+  ///
+  /// ВАЖНО про id статусов (см. документацию API):
+  /// 1 = active, 2 = inactive, 3 = pending_moderation, 8 = archived.
+  /// Архив это 8, а НЕ 3. Отправка 3 переводила бы объявление на модерацию,
+  /// такой переход бэк отклоняет (422), а клиент 422 глотает молча — из-за
+  /// этого кнопка «В архив» раньше не давала видимого эффекта.
+  Future<void> _moveToArchive() async {
     if (_selectedListingIds.isEmpty) return;
 
-    setState(() {
-      if (_currentTab == 0) {
-        final toArchive = _activeListings
-            .where((l) => _selectedListingIds.contains(l.id))
-            .toList();
-        _activeListings.removeWhere((l) => _selectedListingIds.contains(l.id));
-        _archiveListings.addAll(toArchive);
-      } else if (_currentTab == 1) {
-        final toArchive = _inactiveListings
-            .where((l) => _selectedListingIds.contains(l.id))
-            .toList();
-        _inactiveListings.removeWhere(
-          (l) => _selectedListingIds.contains(l.id),
-        );
-        _archiveListings.addAll(toArchive);
-      } else if (_currentTab == 2) {
-        // Из архива в активные
-        final toActive = _archiveListings
-            .where((l) => _selectedListingIds.contains(l.id))
-            .toList();
-        _archiveListings.removeWhere((l) => _selectedListingIds.contains(l.id));
-        _activeListings.addAll(toActive);
-      } else if (_currentTab == 3) {
-        final toArchive = _moderationListings
-            .where((l) => _selectedListingIds.contains(l.id))
-            .toList();
-        _moderationListings.removeWhere(
-          (l) => _selectedListingIds.contains(l.id),
-        );
-        _archiveListings.addAll(toArchive);
+    final token = HiveService.getUserData('token') as String?;
+    if (token == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Токен не найден')));
       }
+      return;
+    }
+
+    // Из вкладки «Архив» (2) возвращаем в активные (статус 1),
+    // из остальных вкладок отправляем в архив (статус 8).
+    final int targetStatusId = _currentTab == 2 ? 1 : 8;
+    final ids = _selectedListingIds.toList();
+
+    // Сразу выходим из режима выбора, чтобы UI не завис в выделении.
+    setState(() {
       _selectedListingIds.clear();
       _selectAllChecked = false;
       _isSelectionMode = false;
     });
+
+    try {
+      // Меняем статус на сервере для каждого выбранного объявления.
+      for (final id in ids) {
+        await MyAdvertsService.updateAdvertStatus(
+          advertId: id,
+          statusId: targetStatusId,
+          token: token,
+        );
+      }
+
+      // Перечитываем ВСЕ списки и счётчики с сервера.
+      await _refreshAfterMutation();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              targetStatusId == 1
+                  ? 'Возвращено из архива'
+                  : 'Перенесено в архив',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      }
+    }
   }
 
   void _deleteSelected() async {
@@ -2332,10 +2365,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         await MyAdvertsService.deleteAdvert(advertId: advertId, token: token);
       }
 
-      // После успешного удаления на сервере - перезагружаем список
-      if (_selectedCategoryId != null) {
-        await _loadListingsByCategory(_selectedCategoryId!);
-      }
+      // После успешного удаления на сервере - обновляем ВСЕ списки и счётчики.
+      await _refreshAfterMutation();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2351,6 +2382,27 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
+  /// Полностью обновить ВСЕ списки и счётчики после смены статуса объявления
+  /// (актив/деактив/архив/удаление/публикация из CRM).
+  ///
+  /// Раньше после активации/деактивации перезагружались только вкладки по
+  /// каталогу (актив/неактив/архив/модерация) через _loadListingsByCategory.
+  /// А вкладки «Все» (_manualListings) и «CRM» (_crmListings) грузились только
+  /// один раз в initState, поэтому их содержимое и счётчики оставались старыми
+  /// до полного перезахода в аккаунт. Из-за этого объявление после включения
+  /// «висело» в Активных, но не появлялось в «Все», а счётчики не сходились.
+  /// Теперь обновляем всё разом.
+  Future<void> _refreshAfterMutation() async {
+    final futures = <Future<void>>[
+      _loadManualListings(),
+      _loadCrmListings(),
+    ];
+    if (_selectedCategoryId != null) {
+      futures.add(_loadListingsByCategory(_selectedCategoryId!));
+    }
+    await Future.wait(futures);
+  }
+
   /// Активировать объявление
   void _activateAdvert(int advertId) async {
     try {
@@ -2359,10 +2411,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       await MyAdvertsService.activateAdvert(advertId: advertId, token: token);
 
-      // Перезагружаем объявления текущей категории для синхронизации с сервером
-      if (_selectedCategoryId != null) {
-        await _loadListingsByCategory(_selectedCategoryId!);
-      }
+      // Обновляем ВСЕ списки и счётчики (включая «Все» и «CRM»).
+      await _refreshAfterMutation();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2387,10 +2437,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       await MyAdvertsService.deactivateAdvert(advertId: advertId, token: token);
 
-      // Перезагружаем объявления текущей категории для синхронизации с сервером
-      if (_selectedCategoryId != null) {
-        await _loadListingsByCategory(_selectedCategoryId!);
-      }
+      // Обновляем ВСЕ списки и счётчики (включая «Все» и «CRM»).
+      await _refreshAfterMutation();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
