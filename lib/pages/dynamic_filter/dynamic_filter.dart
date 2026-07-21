@@ -119,6 +119,12 @@ class DynamicFilter extends StatefulWidget {
   final int? defaultCityId; // ID города по умолчанию (для быстрой инициализации)
   final String? defaultPhone2; // Второй телефон по умолчанию
 
+  /// Открыт с экрана модерации фидовых объявлений. В этом режиме кнопка
+  /// «Обновить» просто сохраняет правки и возвращает на экран модерации
+  /// (объявление помечается отредактированным), а не ведёт на экран тарифа/
+  /// публикации.
+  final bool fromModeration;
+
   const DynamicFilter({
     super.key,
     this.categoryId,
@@ -128,6 +134,7 @@ class DynamicFilter extends StatefulWidget {
     this.defaultRegionId,
     this.defaultCityId,
     this.defaultPhone2,
+    this.fromModeration = false,
   });
 
   @override
@@ -2675,6 +2682,17 @@ class _DynamicFilterState extends State<DynamicFilter>
       // Если да - покажем PublishedScreen один раз
       if (!_isEditMode && advertId != null) {
         NewListingNotifier.instance.setLastCreatedAdvertId(advertId);
+      }
+
+      // Редактирование с экрана модерации фидов: правки сохранены, бэк отметил
+      // объявление отредактированным. Возвращаемся на экран модерации (там
+      // появится зелёная галочка), без экрана тарифа и без публикации —
+      // публикует менеджер отдельной кнопкой «Опубликовать».
+      if (widget.fromModeration) {
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
+        return;
       }
 
       // Show moderation dialog

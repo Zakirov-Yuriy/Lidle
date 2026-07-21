@@ -388,7 +388,81 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
     return result == true;
   }
 
+  /// Открыть объявление на редактирование (как кнопка «Редактировать»),
+  /// в режиме модерации. После «Обновить» на форме мы вернёмся сюда и
+  /// обновим список, чтобы подтянулась зелёная галочка «отредактировано».
+  Future<void> _openEditForReview(UserAdvert advert) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DynamicFilter(
+          categoryId: 2,
+          advertId: advert.id,
+          fromModeration: true,
+        ),
+      ),
+    );
+    if (mounted) _loadListings();
+  }
+
+  /// Предупреждение: в выборе есть объявления, которые ещё не отредактированы.
+  /// Публиковать их пачкой нельзя, сначала нужно отредактировать каждое.
+  Future<void> _showNeedEditWarning(int count) async {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2732),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Сначала отредактируйте',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                count > 1
+                    ? 'Среди выбранных есть объявления ($count), которые вы ещё '
+                        'не отредактировали. Откройте каждое, отредактируйте и '
+                        'сохраните, затем публикуйте.'
+                    : 'Это объявление нужно сначала отредактировать: откройте '
+                        'его, отредактируйте и сохраните, затем публикуйте.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 22),
+              _outlinedDialogButton(
+                text: 'Понятно',
+                color: accentColor,
+                onTap: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _publish(UserAdvert advert) async {
+    // Пока менеджер не отредактировал объявление — «Опубликовать» ведёт на
+    // редактирование (и до обработки ИИ, и после). После сохранения правок
+    // вернёмся сюда, объявление отметится галочкой, и повторное
+    // «Опубликовать» уже публикует по обычной процедуре.
+    if (advert.isReviewed != true) {
+      await _openEditForReview(advert);
+      return;
+    }
+
     if (advert.aiProcessed != true) {
       // ИИ ещё не обработал: предупреждаем, но даём опубликовать как есть
       // (с текстом, как загрузилось из фида). Кнопка «Опубликовать» -> true.
@@ -426,10 +500,20 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
   Future<void> _publishSelected() async {
     if (_selectedIds.isEmpty) return;
 
-    // Если среди выбранных есть необработанные ИИ — предупреждаем, но даём
-    // опубликовать как есть (с текстом из фида). Иначе — обычное подтверждение.
     final selected =
         _listings.where((a) => _selectedIds.contains(a.id)).toList();
+
+    // Пачкой публикуем только отредактированные. Если среди выбранных есть
+    // неотредактированные (например, после «Выбрать все») — просим сначала
+    // отредактировать их и не публикуем.
+    final notReviewed = selected.where((a) => a.isReviewed != true).toList();
+    if (notReviewed.isNotEmpty) {
+      await _showNeedEditWarning(notReviewed.length);
+      return;
+    }
+
+    // Если среди выбранных есть необработанные ИИ — предупреждаем, но даём
+    // опубликовать как есть (с текстом из фида). Иначе — обычное подтверждение.
     final bool hasUnprocessed = selected.any((a) => a.aiProcessed != true);
     if (hasUnprocessed) {
       if (!await _showAiProcessingWarning(_selectedIds.length > 1)) return;
@@ -897,6 +981,16 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
                             ),
                           ),
                         ],
+                        // Зелёная галочка: объявление отредактировано менеджером
+                        // и готово к публикации. Показываем справа от «ИИ».
+                        if (advert.isReviewed == true) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.check_circle,
+                            color: greenColor,
+                            size: 18,
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -943,17 +1037,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DynamicFilter(
-                          categoryId: 2,
-                          advertId: advert.id,
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _openEditForReview(advert),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     alignment: Alignment.center,

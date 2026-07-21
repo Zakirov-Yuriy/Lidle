@@ -113,6 +113,7 @@ UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
       ? null
       : ContentType.fromJson(json['type'] as Map<String, dynamic>),
   aiProcessed: json['ai_processed'] as bool?,
+  isReviewed: json['is_reviewed'] as bool?,
 );
 
 Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
@@ -129,6 +130,7 @@ Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
       'created_at': instance.createdAt,
       'type': instance.type,
       'ai_processed': instance.aiProcessed,
+      'is_reviewed': instance.isReviewed,
     };
 
 AdvertMetaResponse _$AdvertMetaResponseFromJson(Map<String, dynamic> json) =>

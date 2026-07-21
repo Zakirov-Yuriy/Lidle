@@ -130,6 +130,12 @@ class UserAdvert {
   @JsonKey(name: 'ai_processed')
   final bool? aiProcessed;
 
+  /// Отредактировал ли менеджер объявление перед публикацией
+  /// (приходит с сервера как is_reviewed). Пока false — кнопка
+  /// «Опубликовать» на экране модерации ведёт на редактирование.
+  @JsonKey(name: 'is_reviewed')
+  final bool? isReviewed;
+
   UserAdvert({
     required this.id,
     this.name,
@@ -143,6 +149,7 @@ class UserAdvert {
     this.createdAt,
     this.type,
     this.aiProcessed,
+    this.isReviewed,
   });
 
   factory UserAdvert.fromJson(Map<String, dynamic> json) =>
