@@ -1700,8 +1700,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               ),
                             ),
                           ),
-                          // Пометка «ИИ» для объявлений, уже обработанных ИИ.
-                          if (advert.aiProcessed == true) ...[
+                          // Пометка «ИИ» только для объявлений из фида.
+                          // Объявления, созданные вручную, не помечаем, даже
+                          // если ИИ сгенерировал для них SEO.
+                          if (advert.isFeed == true) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(

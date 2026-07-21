@@ -18,6 +18,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/models/main_content_model.dart';
@@ -985,10 +986,10 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
                         // и готово к публикации. Показываем справа от «ИИ».
                         if (advert.isReviewed == true) ...[
                           const SizedBox(width: 6),
-                          const Icon(
-                            Icons.check_circle,
-                            color: greenColor,
-                            size: 18,
+                          SvgPicture.asset(
+                            'assets/publication_tariff/check.svg',
+                            width: 18,
+                            height: 18,
                           ),
                         ],
                       ],

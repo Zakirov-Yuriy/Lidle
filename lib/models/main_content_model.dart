@@ -136,6 +136,11 @@ class UserAdvert {
   @JsonKey(name: 'is_reviewed')
   final bool? isReviewed;
 
+  /// Пришло ли объявление из фида (приходит с сервера как is_feed).
+  /// По нему рисуем пометку «ИИ» на карточке — только для фидовых.
+  @JsonKey(name: 'is_feed')
+  final bool? isFeed;
+
   UserAdvert({
     required this.id,
     this.name,
@@ -150,6 +155,7 @@ class UserAdvert {
     this.type,
     this.aiProcessed,
     this.isReviewed,
+    this.isFeed,
   });
 
   factory UserAdvert.fromJson(Map<String, dynamic> json) =>
