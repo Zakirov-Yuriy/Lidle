@@ -93,17 +93,41 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   bool _crmLoading = false;
   List<UserAdvert> _manualListings = []; // Активные объявления, созданные вручную (вкладка «Все»)
   bool _manualLoading = false;
+  // Размер страницы для ленивой подгрузки (infinite scroll).
+  // Грузим по чуть-чуть и докидываем при прокрутке вниз, чтобы экран не висел
+  // на аккаунтах с сотнями объявлений.
+  static const int _pageSize = 20;
+
+  // Контроллер внешнего скролла экрана: весь экран — это один ListView,
+  // а вкладки внутри него нескроллируемые (shrinkWrap + NeverScrollable).
+  // Поэтому «доскроллил до низа» ловим здесь, а не во вложенных списках.
+  final ScrollController _outerScrollController = ScrollController();
+
   // Пагинация для каждого статуса
   int _activeListingsPage = 1;
   int _inactiveListingsPage = 1;
   int _archiveListingsPage = 1;
   int _moderationListingsPage = 1;
+  int _manualListingsPage = 1;
+  int _crmListingsPage = 1;
 
   // Является ли страница последней для каждого статуса
   bool _activeIsLastPage = false;
   bool _inactiveIsLastPage = false;
   bool _archiveIsLastPage = false;
   bool _moderationIsLastPage = false;
+  bool _manualIsLastPage = false;
+  bool _crmIsLastPage = false;
+
+  // Полное количество объявлений в каждой вкладке (meta.total с сервера).
+  // Нужно для подписей вкладок: показываем реальный тотал, а не сколько
+  // уже подгрузилось на экран.
+  int _activeTotal = 0;
+  int _inactiveTotal = 0;
+  int _archiveTotal = 0;
+  int _moderationTotal = 0;
+  int _manualTotal = 0;
+  int _crmTotal = 0;
 
   bool _isLoadingMore = false;
 
@@ -118,6 +142,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   @override
   void initState() {
     super.initState();
+    // Ленивая подгрузка: как только внешний скролл почти у дна — тянем
+    // следующую страницу текущей вкладки.
+    _outerScrollController.addListener(_onOuterScroll);
     _loadCrmListings();
     _loadManualListings();
     if (!_metadataLoaded) {
@@ -128,6 +155,52 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _setInitialCategoryAndTab();
         }
       });
+    }
+  }
+
+  @override
+  void dispose() {
+    _outerScrollController.removeListener(_onOuterScroll);
+    _outerScrollController.dispose();
+    super.dispose();
+  }
+
+  /// Обработчик внешнего скролла: у дна экрана подгружаем следующую страницу
+  /// текущей вкладки (за 300px до конца, чтобы подгрузка была плавной).
+  void _onOuterScroll() {
+    if (!_outerScrollController.hasClients) return;
+    // Не докидываем страницы, пока идёт полная (пере)загрузка списков или
+    // предыдущая подгрузка, либо если уже дошли до конца текущей вкладки.
+    if (_isLoadingMore ||
+        _listingsLoading ||
+        _manualLoading ||
+        _crmLoading ||
+        _currentTabIsLastPage()) {
+      return;
+    }
+    final position = _outerScrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 300) {
+      _loadMoreListings();
+    }
+  }
+
+  /// Достигнут ли конец списка для текущей вкладки.
+  bool _currentTabIsLastPage() {
+    switch (_currentTab) {
+      case 0:
+        return _activeIsLastPage;
+      case 1:
+        return _inactiveIsLastPage;
+      case 2:
+        return _archiveIsLastPage;
+      case 3:
+        return _moderationIsLastPage;
+      case 4:
+        return _crmIsLastPage;
+      case 5:
+        return _manualIsLastPage;
+      default:
+        return true;
     }
   }
 
@@ -217,12 +290,16 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       final response = await MyAdvertsService.getCrmPublishedList(
         token: token,
-        limit: 100,
+        page: 1,
+        limit: _pageSize,
       );
 
       if (mounted) {
         setState(() {
           _crmListings = response.data;
+          _crmListingsPage = 1;
+          _crmTotal = response.meta?.total ?? response.data.length;
+          _crmIsLastPage = 1 >= (response.lastPage ?? 1);
           _crmLoading = false;
         });
       }
@@ -244,12 +321,16 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         token: token,
         statusId: 1, // active
         manualOnly: true,
-        limit: 100,
+        page: 1,
+        limit: _pageSize,
       );
 
       if (mounted) {
         setState(() {
           _manualListings = response.data;
+          _manualListingsPage = 1;
+          _manualTotal = response.meta?.total ?? response.data.length;
+          _manualIsLastPage = 1 >= (response.lastPage ?? 1);
           _manualLoading = false;
         });
       }
@@ -308,12 +389,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             _metadataLoaded = true;
           });
 
-          // Загрузить объявления по всему каталогу, без фильтра по категориям
-          final catalogId = _advertMetaCatalogs.isNotEmpty
-              ? _advertMetaCatalogs[_selectedCatalogIndex].catalogId
-              : null;
-          if (catalogId != null) {
-            await _loadListingsByCatalog(catalogId);
+          // Грузим по ВЫБРАННОЙ категории (в UI подсвечена первая категория,
+          // _selectedCategoryIndex = 0). Раньше тут грузилось по всему каталогу
+          // (все категории), из-за чего счётчики «Активные»/«На модерации» были
+          // завышены и «исправлялись» только после повторного выбора той же
+          // категории. Теперь начальная загрузка сразу совпадает с фильтром.
+          if (_selectedCategoryId != null) {
+            await _loadListingsByCategory(_selectedCategoryId!);
+          } else {
+            final catalogId = _advertMetaCatalogs.isNotEmpty
+                ? _advertMetaCatalogs[_selectedCatalogIndex].catalogId
+                : null;
+            if (catalogId != null) {
+              await _loadListingsByCatalog(catalogId);
+            }
           }
         }
       }
@@ -346,37 +435,40 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         setState(() => _listingsLoading = true);
       }
 
-      // Сбросить пагинацию
-      _activeListingsPage = 1;
-      _inactiveListingsPage = 1;
-      _archiveListingsPage = 1;
-      _moderationListingsPage = 1;
-
-      // Загружаем объявления всех статусов по каталогу параллельно
-      // БЕЗ фильтра по категориям - все объявления из каталога
-      // Подгружаем ВСЕ объявления по всем страницам
+      // Запасной путь (когда категория не определилась). Тоже грузим только
+      // первую страницу по каждому статусу.
       final results = await Future.wait([
-        _loadAllAdvertsByStatusAndCatalog(1, catalogId, token),
-        _loadAllAdvertsByStatusAndCatalog(2, catalogId, token),
-        _loadAllAdvertsByStatusAndCatalog(3, catalogId, token),
-        _loadAllAdvertsByStatusAndCatalog(8, catalogId, token),
+        MyAdvertsService.getMyAdverts(
+            statusId: 1, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 2, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 3, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 8, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
       ]);
-
-      // ── Запомнить старое количество перед обновлением ──
-      final previousActiveCount = _activeListings.length;
 
       if (mounted) {
         setState(() {
-          _activeListings = results[0];
-          _inactiveListings = results[1];
-          _moderationListings = results[2];
-          _archiveListings = results[3];
+          _activeListings = results[0].data;
+          _inactiveListings = results[1].data;
+          _moderationListings = results[2].data;
+          _archiveListings = results[3].data;
 
-          // Все объявления за один раз - они уже на последней странице
-          _activeIsLastPage = true;
-          _inactiveIsLastPage = true;
-          _moderationIsLastPage = true;
-          _archiveIsLastPage = true;
+          _activeListingsPage = 1;
+          _inactiveListingsPage = 1;
+          _moderationListingsPage = 1;
+          _archiveListingsPage = 1;
+
+          _activeTotal = results[0].meta?.total ?? results[0].data.length;
+          _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
+          _moderationTotal = results[2].meta?.total ?? results[2].data.length;
+          _archiveTotal = results[3].meta?.total ?? results[3].data.length;
+
+          _activeIsLastPage = 1 >= (results[0].lastPage ?? 1);
+          _inactiveIsLastPage = 1 >= (results[1].lastPage ?? 1);
+          _moderationIsLastPage = 1 >= (results[2].lastPage ?? 1);
+          _archiveIsLastPage = 1 >= (results[3].lastPage ?? 1);
 
           _isLoadingMore = false;
           _listingsLoading = false;
@@ -410,45 +502,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загрузить ВСЕ объявления для одного статуса по каталогу (все страницы)
-
-  /// Загрузить ВСЕ объявления для одного статуса по каталогу (все страницы)
-  /// БЕЗ фильтра по категориям - все объявления из каталога
-  Future<List<UserAdvert>> _loadAllAdvertsByStatusAndCatalog(
-    int statusId,
-    int catalogId,
-    String token,
-  ) async {
-    final allAdverts = <UserAdvert>[];
-    int currentPage = 1;
-    int lastPage = 1;
-
-    while (currentPage <= lastPage) {
-      try {
-        final response = await MyAdvertsService.getMyAdverts(
-          statusId: statusId,
-          catalogId: catalogId,
-          // Не указываем categoryId - загружаем все объявления из каталога
-          token: token,
-          page: currentPage,
-          limit: 100, // Стандартный лимит API
-        );
-
-        allAdverts.addAll(response.data);
-
-        // Обновить информацию о количестве страниц
-        lastPage = response.lastPage ?? 1;
-        currentPage++;
-      } catch (e) {
-        // log.d();
-        break;
-      }
-    }
-
-    return allAdverts;
-  }
-
-  /// Загрузить объявления по выбранной категории (все страницы) - для фильтрации
+  /// Загрузить объявления по выбранной категории (первая страница) - для фильтрации
   Future<void> _loadListingsByCategory(int categoryId) async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -466,36 +520,42 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         setState(() => _listingsLoading = true);
       }
 
-      // Сбросить пагинацию
-      _activeListingsPage = 1;
-      _inactiveListingsPage = 1;
-      _archiveListingsPage = 1;
-      _moderationListingsPage = 1;
-
-      // Загружаем объявления всех статусов по категории параллельно
-      // Подгружаем ВСЕ объявления по всем страницам
+      // Грузим ТОЛЬКО первую страницу каждого статуса (по _pageSize штук).
+      // Остальное подтянется лениво при прокрутке вниз (_loadMoreListings).
       final results = await Future.wait([
-        _loadAllAdvertsByStatus(1, categoryId, token),
-        _loadAllAdvertsByStatus(2, categoryId, token),
-        _loadAllAdvertsByStatus(3, categoryId, token),
-        _loadAllAdvertsByStatus(8, categoryId, token),
+        MyAdvertsService.getMyAdverts(
+            statusId: 1, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 2, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 3, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 8, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
       ]);
-
-      // ── Запомнить старое количество перед обновлением ──
-      final previousActiveCount = _activeListings.length;
 
       if (mounted) {
         setState(() {
-          _activeListings = results[0];
-          _inactiveListings = results[1];
-          _moderationListings = results[2];
-          _archiveListings = results[3];
+          // Порядок статусов: [0]=1 активные, [1]=2 неактивные,
+          // [2]=3 модерация, [3]=8 архив.
+          _activeListings = results[0].data;
+          _inactiveListings = results[1].data;
+          _moderationListings = results[2].data;
+          _archiveListings = results[3].data;
 
-          // Все объявления за один раз - они уже на последней странице
-          _activeIsLastPage = true;
-          _inactiveIsLastPage = true;
-          _moderationIsLastPage = true;
-          _archiveIsLastPage = true;
+          _activeListingsPage = 1;
+          _inactiveListingsPage = 1;
+          _moderationListingsPage = 1;
+          _archiveListingsPage = 1;
+
+          _activeTotal = results[0].meta?.total ?? results[0].data.length;
+          _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
+          _moderationTotal = results[2].meta?.total ?? results[2].data.length;
+          _archiveTotal = results[3].meta?.total ?? results[3].data.length;
+
+          _activeIsLastPage = 1 >= (results[0].lastPage ?? 1);
+          _inactiveIsLastPage = 1 >= (results[1].lastPage ?? 1);
+          _moderationIsLastPage = 1 >= (results[2].lastPage ?? 1);
+          _archiveIsLastPage = 1 >= (results[3].lastPage ?? 1);
 
           _isLoadingMore = false;
           _listingsLoading = false;
@@ -530,43 +590,85 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загрузить ВСЕ объявления для одного статуса по категории (все страницы)
-  Future<List<UserAdvert>> _loadAllAdvertsByStatus(
-    int statusId,
-    int categoryId,
-    String token,
-  ) async {
-    final allAdverts = <UserAdvert>[];
-    int currentPage = 1;
-    int lastPage = 1;
-
-    while (currentPage <= lastPage) {
-      try {
-        final response = await MyAdvertsService.getMyAdverts(
-          statusId: statusId,
-          categoryId: categoryId,
-          token: token,
-          page: currentPage,
-          limit: 100, // Стандартный лимит API
-        );
-
-        allAdverts.addAll(response.data);
-
-        // Обновить информацию о количестве страниц
-        lastPage = response.lastPage ?? 1;
-        currentPage++;
-      } catch (e) {
-        // log.d();
-        break;
-      }
+  /// id статуса объявлений для вкладок, которые фильтруются по категории.
+  /// ВАЖНО: архив это 8, модерация это 3 (раньше тут было перепутано).
+  int _statusIdForTab(int tab) {
+    switch (tab) {
+      case 0:
+        return 1; // активные
+      case 1:
+        return 2; // неактивные
+      case 2:
+        return 8; // архив
+      case 3:
+        return 3; // модерация (бэк отдаёт статусы 3 и 4)
+      default:
+        return 1;
     }
-
-    return allAdverts;
   }
 
-  /// Загрузить больше объявлений для текущей вкладки (пагинация)
+  /// Текущая загруженная страница вкладки.
+  int _pageForTab(int tab) {
+    switch (tab) {
+      case 0:
+        return _activeListingsPage;
+      case 1:
+        return _inactiveListingsPage;
+      case 2:
+        return _archiveListingsPage;
+      case 3:
+        return _moderationListingsPage;
+      case 4:
+        return _crmListingsPage;
+      case 5:
+        return _manualListingsPage;
+      default:
+        return 1;
+    }
+  }
+
+  /// Полное количество объявлений во вкладке (meta.total с сервера).
+  int _tabTotal(int tab) {
+    switch (tab) {
+      case 4:
+        return _crmTotal;
+      case 5:
+        return _manualTotal;
+      case 0:
+        return _activeTotal;
+      case 1:
+        return _inactiveTotal;
+      case 2:
+        return _archiveTotal;
+      case 3:
+        return _moderationTotal;
+      default:
+        return 0;
+    }
+  }
+
+  /// Подпись вкладки с числом (или без числа, если пусто).
+  /// Число берём из meta.total, чтобы показывать реальный тотал, а не
+  /// сколько строк уже подгрузилось на экран при ленивой прокрутке.
+  String _tabLabel(int tab) {
+    const names = {
+      4: 'CRM',
+      5: 'Все',
+      0: 'Активные',
+      1: 'Неактивные',
+      2: 'Архив',
+      3: 'На модерации',
+    };
+    final name = names[tab] ?? '';
+    final total = _tabTotal(tab);
+    return total > 0 ? '$name $total' : name;
+  }
+
+  /// Загрузить следующую страницу текущей вкладки (ленивая подгрузка).
   Future<void> _loadMoreListings() async {
-    if (_isLoadingMore) return;
+    if (_isLoadingMore || _currentTabIsLastPage()) return;
+
+    final int tab = _currentTab;
 
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -576,69 +678,83 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         setState(() => _isLoadingMore = true);
       }
 
-      int nextPage = 1;
-      int statusId = 1;
+      final int nextPage = _pageForTab(tab) + 1;
+      final MyAdvertsResponse response;
 
-      // Определить статус и следующую страницу в зависимости от текущей вкладки
-      switch (_currentTab) {
-        case 0:
-          if (_activeIsLastPage) return;
-          nextPage = _activeListingsPage + 1;
-          statusId = 1;
-          break;
-        case 1:
-          if (_inactiveIsLastPage) return;
-          nextPage = _inactiveListingsPage + 1;
-          statusId = 2;
-          break;
-        case 2:
-          if (_archiveIsLastPage) return;
-          nextPage = _archiveListingsPage + 1;
-          statusId = 3;
-          break;
-        case 3:
-          if (_moderationIsLastPage) return;
-          nextPage = _moderationListingsPage + 1;
-          statusId = 8;
-          break;
+      if (tab == 4) {
+        // CRM — отдельный эндпоинт, без фильтра по категории.
+        response = await MyAdvertsService.getCrmPublishedList(
+          token: token,
+          page: nextPage,
+          limit: _pageSize,
+        );
+      } else if (tab == 5) {
+        // «Все» — только ручные активные, без фильтра по категории.
+        response = await MyAdvertsService.getMyAdverts(
+          token: token,
+          statusId: 1,
+          manualOnly: true,
+          page: nextPage,
+          limit: _pageSize,
+        );
+      } else {
+        // Активные/неактивные/архив/модерация — по выбранной категории.
+        response = await MyAdvertsService.getMyAdverts(
+          statusId: _statusIdForTab(tab),
+          categoryId: _selectedCategoryId,
+          token: token,
+          page: nextPage,
+          limit: _pageSize,
+        );
       }
 
-      final response = await MyAdvertsService.getMyAdverts(
-        statusId: statusId,
-        categoryId: _selectedCategoryId,
-        token: token,
-        page: nextPage,
-        limit: 10000,
-      );
+      if (!mounted) return;
 
-      if (mounted) {
-        setState(() {
-          // Добавить новые объявления к существующим
-          switch (_currentTab) {
-            case 0:
-              _activeListings.addAll(response.data);
-              _activeListingsPage = nextPage;
-              _activeIsLastPage = nextPage >= (response.lastPage ?? 1);
-              break;
-            case 1:
-              _inactiveListings.addAll(response.data);
-              _inactiveListingsPage = nextPage;
-              _inactiveIsLastPage = nextPage >= (response.lastPage ?? 1);
-              break;
-            case 2:
-              _archiveListings.addAll(response.data);
-              _archiveListingsPage = nextPage;
-              _archiveIsLastPage = nextPage >= (response.lastPage ?? 1);
-              break;
-            case 3:
-              _moderationListings.addAll(response.data);
-              _moderationListingsPage = nextPage;
-              _moderationIsLastPage = nextPage >= (response.lastPage ?? 1);
-              break;
-          }
-          _isLoadingMore = false;
-        });
-      }
+      final int loadedPage = response.page ?? nextPage;
+      final bool isLast = loadedPage >= (response.lastPage ?? 1);
+      final int total = response.meta?.total ?? 0;
+
+      setState(() {
+        switch (tab) {
+          case 0:
+            _activeListings.addAll(response.data);
+            _activeListingsPage = loadedPage;
+            _activeIsLastPage = isLast;
+            if (total > 0) _activeTotal = total;
+            break;
+          case 1:
+            _inactiveListings.addAll(response.data);
+            _inactiveListingsPage = loadedPage;
+            _inactiveIsLastPage = isLast;
+            if (total > 0) _inactiveTotal = total;
+            break;
+          case 2:
+            _archiveListings.addAll(response.data);
+            _archiveListingsPage = loadedPage;
+            _archiveIsLastPage = isLast;
+            if (total > 0) _archiveTotal = total;
+            break;
+          case 3:
+            _moderationListings.addAll(response.data);
+            _moderationListingsPage = loadedPage;
+            _moderationIsLastPage = isLast;
+            if (total > 0) _moderationTotal = total;
+            break;
+          case 4:
+            _crmListings.addAll(response.data);
+            _crmListingsPage = loadedPage;
+            _crmIsLastPage = isLast;
+            if (total > 0) _crmTotal = total;
+            break;
+          case 5:
+            _manualListings.addAll(response.data);
+            _manualListingsPage = loadedPage;
+            _manualIsLastPage = isLast;
+            if (total > 0) _manualTotal = total;
+            break;
+        }
+        _isLoadingMore = false;
+      });
     } catch (e) {
       // log.d('=== Ошибка загрузки дополнительных объявлений: $e');
       if (mounted) {
@@ -819,6 +935,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
               body: SafeArea(
                 bottom: false,
                 child: ListView(
+                  controller: _outerScrollController,
                   children: [
                     // ───── Header ─────
                     Padding(
@@ -1037,9 +1154,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                       onTap: () =>
                                           setState(() => _currentTab = 4),
                                       child: Text(
-                                        _crmListings.isEmpty
-                                            ? 'CRM'
-                                            : 'CRM ${_crmListings.length}',
+                                        _tabLabel(4),
                                         style: TextStyle(
                                           color: _currentTab == 4
                                               ? accentColor
@@ -1053,9 +1168,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                       onTap: () =>
                                           setState(() => _currentTab = 5),
                                       child: Text(
-                                        _manualListings.isEmpty
-                                            ? 'Все'
-                                            : 'Все ${_manualListings.length}',
+                                        _tabLabel(5),
                                         style: TextStyle(
                                           color: _currentTab == 5
                                               ? accentColor
@@ -1069,9 +1182,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                       onTap: () =>
                                           setState(() => _currentTab = 0),
                                       child: Text(
-                                        _allActiveListings.isEmpty
-                                            ? 'Активные'
-                                            : 'Активные ${_allActiveListings.length}',
+                                        _tabLabel(0),
                                         style: TextStyle(
                                           color: _currentTab == 0
                                               ? accentColor
@@ -1085,9 +1196,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                       onTap: () =>
                                           setState(() => _currentTab = 1),
                                       child: Text(
-                                        _inactiveListings.isEmpty
-                                            ? 'Неактивные'
-                                            : 'Неактивные ${_inactiveListings.length}',
+                                        _tabLabel(1),
                                         style: TextStyle(
                                           color: _currentTab == 1
                                               ? accentColor
@@ -1101,9 +1210,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                       onTap: () =>
                                           setState(() => _currentTab = 2),
                                       child: Text(
-                                        _archiveListings.isEmpty
-                                            ? 'Архив'
-                                            : 'Архив ${_archiveListings.length}',
+                                        _tabLabel(2),
                                         style: TextStyle(
                                           color: _currentTab == 2
                                               ? accentColor
@@ -1117,9 +1224,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                       onTap: () =>
                                           setState(() => _currentTab = 3),
                                       child: Text(
-                                        _moderationListings.isEmpty
-                                            ? 'На модерации'
-                                            : 'На модерации ${_moderationListings.length}',
+                                        _tabLabel(3),
                                         style: TextStyle(
                                           color: _currentTab == 3
                                               ? accentColor
@@ -1267,21 +1372,13 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   // ACTIVE TAB
   // ─────────────────────────────────────────────
 
-  /// Список для вкладки «Активные»: ВСЕ активные объявления — и созданные
-  /// вручную (_activeListings), и опубликованные из CRM-фида (_crmListings).
-  /// Подмешиваем CRM и убираем дубли по id, чтобы вкладка была корректной
-  /// независимо от того, отфильтровал ли бэк фидовые из общего списка.
-  List<UserAdvert> get _allActiveListings {
-    final seen = <int>{};
-    final merged = <UserAdvert>[];
-    for (final a in [..._activeListings, ..._crmListings]) {
-      if (seen.add(a.id)) merged.add(a);
-    }
-    return merged;
-  }
-
   Widget _activeTab() {
-    final filteredListings = _allActiveListings;
+    // Вкладка «Активные» = активные объявления выбранной категории (статус 1).
+    // Бэк в этом списке уже отдаёт и ручные, и фидовые активные, поэтому
+    // отдельно подмешивать CRM не нужно (иначе счётчик задваивался и не
+    // совпадал с сайтом, плюс ломалась ленивая подгрузка). Опубликованные
+    // из фида отдельно доступны на вкладке «CRM».
+    final filteredListings = _activeListings;
 
     if (filteredListings.isEmpty) {
       return _emptyTab(
@@ -1466,6 +1563,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
 
     // Карточки рендерим со стилем «Активные» (tabIndex 0) — те же кнопки и логика.
+    // Подгрузка следующих страниц идёт через внешний скролл (_onOuterScroll).
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1475,6 +1573,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _listingCard(filteredListings[i], 0),
           if (i < filteredListings.length - 1) const SizedBox(height: 10),
         ],
+        if (_isLoadingMore) ..._loadingMoreIndicator(),
       ],
     );
   }
@@ -1496,6 +1595,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
 
     // Карточки рендерим со стилем «Активные» (tabIndex 0).
+    // Подгрузка следующих страниц идёт через внешний скролл (_onOuterScroll).
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1505,8 +1605,26 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _listingCard(filteredListings[i], 0),
           if (i < filteredListings.length - 1) const SizedBox(height: 10),
         ],
+        if (_isLoadingMore) ..._loadingMoreIndicator(),
       ],
     );
+  }
+
+  /// Индикатор подгрузки следующей страницы (крутилка внизу списка).
+  List<Widget> _loadingMoreIndicator() {
+    return const [
+      SizedBox(height: 16),
+      Center(
+        child: SizedBox(
+          height: 20,
+          width: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00B7FF)),
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _moderationTab() {
@@ -2215,46 +2333,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   }
 
   double _getTabWidth(int tabIndex) {
-    switch (tabIndex) {
-      case 4:
-        return _getTextWidth(
-          _crmListings.isEmpty
-              ? 'CRM'
-              : 'CRM ${_crmListings.length}',
-        );
-      case 5:
-        return _getTextWidth(
-          _manualListings.isEmpty
-              ? 'Все'
-              : 'Все ${_manualListings.length}',
-        );
-      case 0:
-        return _getTextWidth(
-          _allActiveListings.isEmpty
-              ? 'Активные'
-              : 'Активные ${_allActiveListings.length}',
-        );
-      case 1:
-        return _getTextWidth(
-          _inactiveListings.isEmpty
-              ? 'Неактивные'
-              : 'Неактивные ${_inactiveListings.length}',
-        );
-      case 2:
-        return _getTextWidth(
-          _archiveListings.isEmpty
-              ? 'Архив'
-              : 'Архив ${_archiveListings.length}',
-        );
-      case 3:
-        return _getTextWidth(
-          _moderationListings.isEmpty
-              ? 'На модерации'
-              : 'На модерации ${_moderationListings.length}',
-        );
-      default:
-        return 0;
-    }
+    if (tabIndex < 0 || tabIndex > 5) return 0;
+    return _getTextWidth(_tabLabel(tabIndex));
   }
 
   List<UserAdvert> _getCurrentTabListings() {
