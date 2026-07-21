@@ -2734,6 +2734,11 @@ class _DynamicFilterState extends State<DynamicFilter>
             arguments: {
               'isEditMode': isEditMode,
               'categoryId': categoryId,
+              // Для редактируемого фидового объявления реально публикуем его
+              // (с модерации в активные) на экране тарифа. Для новых объявлений
+              // остаётся прежнее поведение — уходит на модерацию.
+              'advertId': widget.advertId,
+              'shouldPublish': isEditMode && _isFeedAdvert,
             },
           );
           log.d('✅ Навигация выполнена успешно');

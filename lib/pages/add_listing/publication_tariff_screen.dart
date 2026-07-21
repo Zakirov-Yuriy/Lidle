@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/widgets/dialogs/moderation_dialog.dart';
+import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/services/token_service.dart';
 import '../../constants.dart';
 import '../../widgets/components/header.dart';
 import '../profile_dashboard/my_listings/my_listings_screen.dart';
@@ -15,10 +17,19 @@ class PublicationTariffScreen extends StatefulWidget {
   final bool isEditMode;
   final int? categoryId;
 
+  /// ID редактируемого объявления (для фидовых объявлений при публикации).
+  final int? advertId;
+
+  /// true — реально опубликовать объявление с модерации (редактирование
+  /// фидового объявления). false — прежнее поведение (на модерацию).
+  final bool shouldPublish;
+
   const PublicationTariffScreen({
     super.key,
     this.isEditMode = false,
     this.categoryId,
+    this.advertId,
+    this.shouldPublish = false,
   });
 
   @override
@@ -250,6 +261,37 @@ class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
               onPressed: () async {
                 if (isPrimary) {
                   final categoryId = widget.categoryId;
+
+                  // Редактирование фидового объявления: реально публикуем его
+                  // (с модерации в активные), а не отправляем на модерацию.
+                  if (widget.shouldPublish && widget.advertId != null) {
+                    try {
+                      await MyAdvertsService.publishAdvert(
+                        advertId: widget.advertId!,
+                        token: TokenService.currentToken ?? '',
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Ошибка публикации: $e')),
+                        );
+                      }
+                      return;
+                    }
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Объявление опубликовано')),
+                    );
+                    if (categoryId != null) {
+                      Navigator.of(context).pushReplacementNamed(
+                        MyListingsScreen.routeName,
+                        arguments: {'categoryId': categoryId, 'tabIndex': 3},
+                      );
+                    } else {
+                      Navigator.of(context).pop();
+                    }
+                    return;
+                  }
 
                   // Показываем диалог модерации
                   await showDialog(

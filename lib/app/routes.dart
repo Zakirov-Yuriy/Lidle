@@ -210,6 +210,8 @@ class AppRoutes {
       return PublicationTariffScreen(
         isEditMode: args?['isEditMode'] as bool? ?? false,
         categoryId: args?['categoryId'] as int?,
+        advertId: args?['advertId'] as int?,
+        shouldPublish: args?['shouldPublish'] as bool? ?? false,
       );
     },
   };
