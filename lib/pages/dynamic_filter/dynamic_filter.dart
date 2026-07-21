@@ -768,10 +768,17 @@ class _DynamicFilterState extends State<DynamicFilter>
         }
       }
 
-      if (advertData.containsKey('address')) {
+      // Адрес. Предпочитаем структурный блок advert_address (id + name по
+      // уровням) — он заполняет выпадашки надёжно, включая область. Если бэк
+      // его не прислал (старый формат ответа), откатываемся на разбор строки.
+      final structuredAddress = advertData['advert_address'];
+      if (structuredAddress is Map<String, dynamic>) {
+        await _populateAddressFromStructured(structuredAddress);
+        // log.d('✅ Filled address from structured block');
+      } else if (advertData.containsKey('address')) {
         final fullAddress = advertData['address'] as String? ?? '';
 
-        // 🔧 Парсим адрес при редактировании
+        // 🔧 Парсим адрес при редактировании (запасной путь для старого API)
         // API возвращает адрес как строка: "г. Донецк, ул. Бутовская" или "Область, г. Донецк, ул. Бутовская, д. 70"
         await _populateAddressFieldsFromEdit(fullAddress);
         // log.d('✅ Filled address: $fullAddress');

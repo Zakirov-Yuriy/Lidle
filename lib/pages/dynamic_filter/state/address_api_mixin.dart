@@ -612,6 +612,128 @@ mixin _AddressApiMixin on State<DynamicFilter> {
     }
   }
 
+  /// 🔧 Заполняет поля адреса при редактировании из СТРУКТУРНОГО ответа бэка.
+  ///
+  /// Бэк отдаёт в /adverts/{id} блок advert_address с id + name по уровням:
+  ///   {
+  ///     "main_region": {"id": .., "name": ..}, // область (верхняя выпадашка)
+  ///     "region":      {"id": .., "name": ..}, // подрегион (address.region_id)
+  ///     "city":        {"id": .., "name": ..},
+  ///     "district":    {"id": .., "name": ..},
+  ///     "street":      {"id": .., "name": ..},
+  ///     "building":    {"id": .., "name": ..}
+  ///   }
+  ///
+  /// В отличие от разбора строки, тут сразу известны id, поэтому выпадашки
+  /// заполняются надёжно (в т.ч. область) и корректно уходят при сохранении.
+  Future<void> _populateAddressFromStructured(
+    Map<String, dynamic> address,
+  ) async {
+    try {
+      Map<String, dynamic>? part(String key) {
+        final v = address[key];
+        return v is Map<String, dynamic> ? v : null;
+      }
+
+      final mainRegion = part('main_region') ?? part('region');
+      final subRegion = part('region');
+      final city = part('city');
+      final street = part('street');
+      final building = part('building');
+
+      if (mainRegion == null && city == null && street == null) {
+        log.d('ℹ️ Структурный адрес пуст, нечего заполнять');
+        return;
+      }
+
+      setState(() {
+        // Область. Верхняя выпадашка тянет главные регионы (parent_id = null),
+        // поэтому кладём именно главный регион.
+        if (mainRegion != null) {
+          final name = mainRegion['name'] as String? ?? '';
+          _selectedRegion
+            ..clear()
+            ..add(name);
+          _selectedRegionId = mainRegion['id'] as int?;
+          _selectedCityMainRegionId = mainRegion['id'] as int?;
+          _regionController.text = name;
+        }
+
+        // Подрегион города — бэку он нужен при сохранении как address.region_id.
+        if (subRegion != null) {
+          _selectedCityRegionId = subRegion['id'] as int?;
+        }
+
+        // Город.
+        if (city != null) {
+          final name = city['name'] as String? ?? '';
+          final id = city['id'] as int?;
+          _selectedCity
+            ..clear()
+            ..add(name);
+          _selectedCityId = id;
+          _cityController.text = name;
+          if (id != null) {
+            _cities = <Map<String, dynamic>>[
+              {'name': name, 'id': id},
+            ];
+            _lastCitiesSearchResults[name] = id;
+            _lastCitiesRegionResults[name] = {
+              'region_id': _selectedCityRegionId ?? 0,
+              'main_region_id': _selectedCityMainRegionId ?? 0,
+            };
+          }
+        }
+
+        // Улица.
+        if (street != null) {
+          final name = street['name'] as String? ?? '';
+          final id = street['id'] as int?;
+          _selectedStreet
+            ..clear()
+            ..add(name);
+          _selectedStreetId = id;
+          _streetController.text = name;
+          if (id != null) {
+            _streets = <Map<String, dynamic>>[
+              {'name': name, 'id': id},
+            ];
+            _lastStreetsSearchResults[name] = id;
+            _lastStreetsSubregionResults[name] = _selectedCityRegionId;
+          }
+        }
+
+        // Номер дома (необязательный).
+        if (building != null) {
+          final name = building['name']?.toString() ?? '';
+          final id = building['id'] as int?;
+          if (name.isNotEmpty) {
+            _selectedBuilding
+              ..clear()
+              ..add(name);
+            _buildingController.text = name;
+            _selectedBuildingId = id;
+            if (id != null) {
+              _buildings = <Map<String, dynamic>>[
+                {'name': name, 'id': id},
+              ];
+            }
+          }
+        }
+      });
+
+      log.d(
+        '✅ Структурный адрес заполнен: '
+        'region=$_selectedRegion($_selectedRegionId), '
+        'city=$_selectedCity($_selectedCityId), '
+        'street=$_selectedStreet($_selectedStreetId), '
+        'building=$_selectedBuilding($_selectedBuildingId)',
+      );
+    } catch (e) {
+      log.d('❌ Ошибка заполнения структурного адреса: $e');
+    }
+  }
+
   /// 🔧 Выбирает адрес из составляющих частей
   /// Заполняет контроллеры и _selected* переменные
   Future<void> _selectAddressFromParts({
