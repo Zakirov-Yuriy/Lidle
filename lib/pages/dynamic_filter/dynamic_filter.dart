@@ -1247,6 +1247,8 @@ class _DynamicFilterState extends State<DynamicFilter>
 
       final tempDir = await getTemporaryDirectory();
       final List<File> downloadedImages = [];
+      // Имена файлов на сервере, синхронно с downloadedImages.
+      final List<String> downloadedNames = [];
 
       for (int i = 0; i < imageUrls.length; i++) {
         try {
@@ -1297,6 +1299,13 @@ class _DynamicFilterState extends State<DynamicFilter>
             await file.writeAsBytes(response.bodyBytes);
 
             downloadedImages.add(file);
+            // Имя файла на сервере = последний сегмент URL (совпадает с тем,
+            // что хранится в advert->images). Нужно, чтобы при сохранении
+            // вернуть картинку строкой, а не перезаливать файлом.
+            final segments = Uri.parse(imageUrl).pathSegments;
+            downloadedNames.add(
+              segments.isNotEmpty ? segments.last : imageUrl,
+            );
             log.d('  ✅ Saved image $i: $fileName');
           } else {
             log.d('  ❌ Failed to download image $i: ${response.statusCode}');
@@ -1311,6 +1320,8 @@ class _DynamicFilterState extends State<DynamicFilter>
       if (downloadedImages.isNotEmpty && mounted) {
         setState(() {
           _images.addAll(downloadedImages);
+          _imageServerNames.addAll(downloadedNames);
+          _originalServerImages.addAll(downloadedNames);
         });
         log.d(
           '✅ Images loaded successfully: ${downloadedImages.length}/${imageUrls.length}',
@@ -1561,6 +1572,13 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   int? mainRegionId = 1; // Track main_region.id for top-level region_id
   List<File> _images = [];
+  // Для каждого элемента _images: имя файла на сервере (если это уже
+  // загруженная картинка объявления) или null (если это только что выбранное
+  // локальное фото). Индексы синхронизированы с _images.
+  final List<String?> _imageServerNames = [];
+  // Имена всех картинок, пришедших с сервера при открытии на редактирование.
+  // Нужны, чтобы понять, какие из них пользователь удалил.
+  final List<String> _originalServerImages = [];
   final ImagePicker _picker = ImagePicker();
 
   /// Снимает одну фотографию с камеры
@@ -1569,6 +1587,7 @@ class _DynamicFilterState extends State<DynamicFilter>
     if (pickedFile != null) {
       setState(() {
         _images.add(File(pickedFile.path));
+        _imageServerNames.add(null); // новое локальное фото
         _fieldErrors.remove('images');
       });
     }
@@ -1582,6 +1601,7 @@ class _DynamicFilterState extends State<DynamicFilter>
         // Добавляем выбранные фотографии в список
         for (final pickedFile in pickedFiles) {
           _images.add(File(pickedFile.path));
+          _imageServerNames.add(null); // новое локальное фото
         }
         _fieldErrors.remove('images');
       });
@@ -1658,6 +1678,9 @@ class _DynamicFilterState extends State<DynamicFilter>
   void _removeImage(int index) {
     setState(() {
       _images.removeAt(index);
+      if (index < _imageServerNames.length) {
+        _imageServerNames.removeAt(index);
+      }
     });
   }
 
@@ -2573,20 +2596,51 @@ class _DynamicFilterState extends State<DynamicFilter>
       //     ? '✅ Advert updated with ID: $advertId'
       //     : '✅ Advert created with ID: $advertId');
 
-      // Step 2: Upload images if any
-      if (_images.isNotEmpty) {
+      // Step 2: Sync images.
+      // Уже загруженные картинки объявления отправляем строками-именами
+      // (сервер требует передать все текущие, чтобы сохранить порядок),
+      // а только что выбранные — файлами. Так при редактировании фидового
+      // объявления мы не перезаливаем существующие фото заново.
+      final existingNames = <String>[];
+      final newPaths = <String>[];
+      for (int i = 0; i < _images.length; i++) {
+        final serverName =
+            i < _imageServerNames.length ? _imageServerNames[i] : null;
+        if (serverName != null) {
+          existingNames.add(serverName);
+        } else {
+          newPaths.add(_images[i].path);
+        }
+      }
+      // Картинки, которые пользователь убрал из ранее загруженных.
+      final removedNames = _originalServerImages
+          .where((name) => !existingNames.contains(name))
+          .toList();
+
+      if (_images.isNotEmpty || removedNames.isNotEmpty) {
         try {
           setState(() {
-            _publishingProgress =
-                'Загрузка изображений (0/${_images.length})...';
+            _publishingProgress = 'Загрузка изображений...';
           });
 
-          final imagePaths = _images.map((file) => file.path).toList();
-          await ApiService.uploadAdvertImages(
-            advertId,
-            imagePaths,
-            token: token,
-          );
+          // Удаление и загрузку сервер не принимает в одном запросе, поэтому
+          // сначала удаляем убранные, затем отправляем актуальный набор.
+          if (removedNames.isNotEmpty) {
+            await ApiService.uploadAdvertImages(
+              advertId,
+              const [],
+              deleteImages: removedNames,
+              token: token,
+            );
+          }
+          if (newPaths.isNotEmpty || existingNames.isNotEmpty) {
+            await ApiService.uploadAdvertImages(
+              advertId,
+              newPaths,
+              existingImages: existingNames,
+              token: token,
+            );
+          }
         } catch (e) {
           // log.d('⚠️ Warning: Error uploading images: $e');
           // Don't fail the entire operation if images fail - advert is already created
@@ -2786,29 +2840,20 @@ class _DynamicFilterState extends State<DynamicFilter>
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    const accent = Color(0xFF00B7FF);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
           'ИИ',
           style: TextStyle(
-            color: accent,
+            color: activeIconColor,
             fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(width: 4),
-        Transform.scale(
-          scale: 0.8,
-          child: Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: Colors.white,
-            activeTrackColor: accent,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
+        const SizedBox(width: 6),
+        // Тот же стиль свича, что и в остальном приложении (CustomSwitch).
+        CustomSwitch(value: value, onChanged: onChanged),
       ],
     );
   }
