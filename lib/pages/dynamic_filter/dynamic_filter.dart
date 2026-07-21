@@ -185,6 +185,20 @@ class _DynamicFilterState extends State<DynamicFilter>
   // _buildingController живут в `_AddressApiMixin` (методы миксина
   // пишут в них напрямую). Доступны здесь через `with _AddressApiMixin`.
 
+  // ===== Свич "ИИ" для заголовка/описания (только фидовые объявления) =====
+  //
+  // У объявлений из фида бэк отдаёт и оригинальный текст (name/description),
+  // и переписанный ИИ (name_draft/description_draft). Свич справа от метки
+  // поля выбирает, что показать: включён — текст ИИ (по умолчанию),
+  // выключен — оригинал из фида.
+  bool _isFeedAdvert = false;
+  String _feedOriginalName = '';
+  String _feedOriginalDescription = '';
+  String? _feedAiName; // null, если ИИ ещё не переписал заголовок
+  String? _feedAiDescription; // null, если ИИ ещё не переписал описание
+  bool _titleAiEnabled = true; // по умолчанию показываем ИИ-текст
+  bool _descriptionAiEnabled = true;
+
   // 🔧 BUGFIX: FocusNode для управления фокусом цены и предотвращения автоскролла
   final FocusNode _priceFocusNode = FocusNode();
 
@@ -748,15 +762,39 @@ class _DynamicFilterState extends State<DynamicFilter>
       // Заполняем основные поля формы
       await Future.delayed(const Duration(milliseconds: 100));
 
-      if (advertData.containsKey('name')) {
-        _titleController.text = advertData['name'] as String? ?? '';
-        // log.d('✅ Filled title: ${advertData['name']}');
-      }
+      // Заголовок и описание. Для фидовых объявлений бэк отдаёт и оригинал
+      // (name/description), и переписанный ИИ (name_draft/description_draft).
+      // Показываем ИИ-текст по умолчанию, а свич "ИИ" у поля даёт вернуть
+      // оригинал из фида. Для обычных объявлений свича нет, ведём себя как
+      // раньше — просто заполняем name/description.
+      final originalName = advertData['name'] as String? ?? '';
+      final originalDescription = advertData['description'] as String? ?? '';
+      final aiNameRaw = advertData['name_draft'] as String?;
+      final aiDescriptionRaw = advertData['description_draft'] as String?;
 
-      if (advertData.containsKey('description')) {
-        _descriptionController.text =
-            advertData['description'] as String? ?? '';
-        // log.d('✅ Filled description');
+      final aiName =
+          (aiNameRaw != null && aiNameRaw.isNotEmpty) ? aiNameRaw : null;
+      final aiDescription =
+          (aiDescriptionRaw != null && aiDescriptionRaw.isNotEmpty)
+              ? aiDescriptionRaw
+              : null;
+
+      if (mounted) {
+        setState(() {
+          _isFeedAdvert = advertData['is_feed'] == true;
+          _feedOriginalName = originalName;
+          _feedOriginalDescription = originalDescription;
+          _feedAiName = aiName;
+          _feedAiDescription = aiDescription;
+
+          // Свич включён по умолчанию (показываем ИИ), но только если ИИ-текст есть.
+          _titleAiEnabled = aiName != null;
+          _descriptionAiEnabled = aiDescription != null;
+
+          _titleController.text = _titleAiEnabled ? aiName! : originalName;
+          _descriptionController.text =
+              _descriptionAiEnabled ? aiDescription! : originalDescription;
+        });
       }
 
       if (advertData.containsKey('price')) {
@@ -2742,6 +2780,61 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// чтобы не править все места вызова. Логика очистки ошибки из
   /// `_fieldErrors` при вводе оставлена здесь — сам виджет про
   /// глобальную мапу ошибок не знает.
+  /// Свич "ИИ" справа от метки поля (заголовок/описание фидового объявления).
+  /// Включён — показываем текст ИИ, выключен — оригинал из фида.
+  Widget _aiTextSwitch({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    const accent = Color(0xFF00B7FF);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'ИИ',
+          style: TextStyle(
+            color: accent,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Transform.scale(
+          scale: 0.8,
+          child: Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: Colors.white,
+            activeTrackColor: accent,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Переключение свича "ИИ" у заголовка: подставляем текст ИИ или оригинал.
+  void _onTitleAiToggled(bool enabled) {
+    setState(() {
+      _titleAiEnabled = enabled;
+      _titleController.text = (enabled && _feedAiName != null)
+          ? _feedAiName!
+          : _feedOriginalName;
+      _fieldErrors.remove('title');
+    });
+  }
+
+  /// Переключение свича "ИИ" у описания: подставляем текст ИИ или оригинал.
+  void _onDescriptionAiToggled(bool enabled) {
+    setState(() {
+      _descriptionAiEnabled = enabled;
+      _descriptionController.text = (enabled && _feedAiDescription != null)
+          ? _feedAiDescription!
+          : _feedOriginalDescription;
+      _fieldErrors.remove('description');
+    });
+  }
+
   Widget _buildTextField({
     required String label,
     required String hint,
@@ -2752,12 +2845,14 @@ class _DynamicFilterState extends State<DynamicFilter>
     TextInputType keyboardType = TextInputType.text,
     TextEditingController? controller,
     ValueChanged<String>? onChanged,
+    Widget? trailing,
   }) {
     final hasError = fieldKey != null && _fieldErrors.containsKey(fieldKey);
     return LabeledTextField(
       label: label,
       hint: hint,
       controller: controller,
+      trailing: trailing,
       errorMessage: hasError ? _fieldErrors[fieldKey] : null,
       hasError: hasError,
       maxLines: maxLines,
@@ -3671,6 +3766,13 @@ class _DynamicFilterState extends State<DynamicFilter>
           hint: 'Например, уютная 2-комнатная квартира',
           fieldKey: 'title',
           controller: _titleController,
+          // Свич "ИИ" только для фидовых объявлений, у которых ИИ переписал текст.
+          trailing: (_isFeedAdvert && _feedAiName != null)
+              ? _aiTextSwitch(
+                  value: _titleAiEnabled,
+                  onChanged: _onTitleAiToggled,
+                )
+              : null,
         ),
         if (!_fieldErrors.containsKey('title'))
           Padding(
@@ -3708,6 +3810,13 @@ class _DynamicFilterState extends State<DynamicFilter>
           maxLength: 1000,
           maxLines: 4,
           controller: _descriptionController,
+          // Свич "ИИ" только для фидовых объявлений, у которых ИИ переписал текст.
+          trailing: (_isFeedAdvert && _feedAiDescription != null)
+              ? _aiTextSwitch(
+                  value: _descriptionAiEnabled,
+                  onChanged: _onDescriptionAiToggled,
+                )
+              : null,
         ),
 
         const SizedBox(height: 24),

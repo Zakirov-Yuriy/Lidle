@@ -28,6 +28,7 @@ class LabeledTextField extends StatelessWidget {
     this.minLength = 0,
     this.maxLength,
     this.keyboardType = TextInputType.text,
+    this.trailing,
   });
 
   /// Текст метки над полем. Если заканчивается на `*`, звёздочка будет
@@ -59,6 +60,10 @@ class LabeledTextField extends StatelessWidget {
   /// в TextField — это будет отдельная задача, а не рефакторинг.
   final TextInputType keyboardType;
 
+  /// Необязательный виджет справа от метки (например, свич "ИИ").
+  /// Прижимается к правому краю строки метки.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
     final hasRedAsterisk = label.endsWith('*');
@@ -84,6 +89,10 @@ class LabeledTextField extends StatelessWidget {
                 ' *',
                 style: TextStyle(color: Color(0xFFFF1744), fontSize: 16),
               ),
+            if (trailing != null) ...[
+              const Spacer(),
+              trailing!,
+            ],
           ],
         ),
         const SizedBox(height: 9),
