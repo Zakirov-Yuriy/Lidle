@@ -3924,7 +3924,7 @@ class _DynamicFilterState extends State<DynamicFilter>
               'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
           fieldKey: 'description',
           minLength: 70,
-          maxLength: 1000,
+          maxLength: 1200,
           maxLines: 4,
           controller: _descriptionController,
           // Свич "ИИ" только для фидовых объявлений, у которых ИИ переписал текст.
