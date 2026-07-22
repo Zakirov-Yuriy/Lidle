@@ -973,7 +973,7 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
-                              'ИИ',
+                              'Ai',
                               style: TextStyle(
                                 color: accentColor,
                                 fontSize: 11,

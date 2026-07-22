@@ -2867,7 +2867,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       mainAxisSize: MainAxisSize.min,
       children: [
         const Text(
-          'ИИ',
+          'Ai',
           style: TextStyle(
             color: activeIconColor,
             fontSize: 14,

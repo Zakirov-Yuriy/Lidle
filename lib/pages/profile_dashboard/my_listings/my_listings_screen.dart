@@ -1833,7 +1833,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'ИИ',
+                                'Ai',
                                 style: TextStyle(
                                   color: accentColor,
                                   fontSize: 11,
