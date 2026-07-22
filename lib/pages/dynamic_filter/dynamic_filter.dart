@@ -502,6 +502,45 @@ class _DynamicFilterState extends State<DynamicFilter>
     return _attributeResolver.getOfferPriceAttributeId();
   }
 
+  /// Человекочитаемое имя поля для ошибок валидации с бэка.
+  /// Сырые ключи (`attributes.values.1234`, `address.city_id`, `region_id`)
+  /// превращаем в понятные названия («Этаж», «Город», «Область» и т.п.),
+  /// чтобы менеджеру было ясно, какое поле некорректно.
+  String _humanFieldLabel(String field) {
+    const staticLabels = {
+      'name': 'Заголовок',
+      'description': 'Описание',
+      'price': 'Цена',
+      'is_auto_renew': 'Автопродление',
+      'region_id': 'Область',
+      'address': 'Адрес',
+      'address.region_id': 'Регион',
+      'address.city_id': 'Город',
+      'address.district_id': 'Район',
+      'address.street_id': 'Улица',
+      'address.building_id': 'Дом',
+      'contacts': 'Контакты',
+      'attributes': 'Характеристики',
+      'attributes.value_selected': 'Характеристики',
+      'attributes.values': 'Характеристики',
+    };
+    if (staticLabels.containsKey(field)) return staticLabels[field]!;
+
+    // Пытаемся вытащить id атрибута из ключа и подставить его название.
+    final idMatch = RegExp(r'(\d+)').firstMatch(field);
+    if (idMatch != null) {
+      final attrId = int.tryParse(idMatch.group(1)!);
+      if (attrId != null) {
+        final attr = _attributes.firstWhere(
+          (a) => a.id == attrId,
+          orElse: () => Attribute(id: 0, title: '', order: 0, values: []),
+        );
+        if (attr.id != 0 && attr.title.isNotEmpty) return attr.title;
+      }
+    }
+    return field;
+  }
+
   Future<void> _loadAttributes() async {
     try {
       // Определяем категорию: из редактирования, затем из параметра, затем по умолчанию 2
@@ -1206,12 +1245,26 @@ class _DynamicFilterState extends State<DynamicFilter>
         }
       }
 
-      // При редактировании НЕ навязываем "Возможен торг" (атрибут 1048):
-      // чекбокс должен отражать реальное значение объявления. Раньше здесь
-      // стояло _selectedValues[1048] = true, из-за чего у фидовых (и любых)
-      // объявлений чекбокс всегда был включён. Теперь берётся то значение,
-      // что пришло с объявления (для фидовых торг по умолчанию выключен,
-      // менеджер при желании включает вручную).
+      // При редактировании оба чекбокса торга по умолчанию ВКЛЮЧЕНЫ и уходят
+      // на бек: "Вам предложат цену" (скрытый обязательный атрибут 1048) и
+      // видимый чекбокс "Возможен торг". offer-price и так всегда отправляется
+      // как value:1 (см. сборку payload), поэтому включаем галочки, чтобы UI
+      // совпадал с тем, что реально уходит на сервер.
+      if (_isEditMode) {
+        // Id атрибутов торга РАЗНЫЕ по категориям, поэтому берём их через
+        // resolver, а не хардкодом (иначе, например, в коммерции «Вам предложат
+        // цену» оставался выключенным). offer-price и так всегда уходит на бек
+        // как value:1, здесь просто синхронизируем галочку с реальной отправкой.
+        final offerPriceId = _getOfferPriceAttributeId();
+        if (offerPriceId != null) {
+          _selectedValues[offerPriceId] = true; // "Вам предложат цену"
+        }
+        final bargainId = _attributeResolver.getBargainAttributeId();
+        if (bargainId != null) {
+          _selectedValues[bargainId] = true; // "Возможен торг"
+        }
+        log.d('   ✅ Торг включён по умолчанию (offer-price + bargain, по resolver)');
+      }
 
       // �🔔 ВАЖНО: Вызываем setState() чтобы UI пересчитался
       if (mounted) {
@@ -1388,33 +1441,30 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   Future<void> _loadCategoryInfo() async {
     try {
-      if (widget.categoryId == null) {
-        // log.d('⚠️ Category ID is null, using default name');
+      // В режиме редактирования показываем РЕАЛЬНУЮ категорию объявления
+      // (_editAdvertCategoryId), а не параметр навигации widget.categoryId.
+      // Иначе у фидовых объявлений в блоке «Категория» всегда висела дефолтная
+      // «Продажа квартир», хотя объявление, например, коммерческое.
+      final catId = _editAdvertCategoryId ?? widget.categoryId;
+      if (catId == null) {
         if (mounted) {
           setState(() {
-            _categoryName = 'Долгосрочная аренда комнат';
+            _categoryName = 'Категория';
           });
         }
         return;
       }
 
       final token = TokenService.currentToken;
-      // log.d('📦 Loading category info for ID: ${widget.categoryId}');
-
       // Get category info by ID
-      final category = await ApiService.getCategory(
-        widget.categoryId!,
-        token: token,
-      );
+      final category = await ApiService.getCategory(catId, token: token);
 
       if (mounted) {
         setState(() {
           _categoryName = category.name;
         });
       }
-      // log.d('✅ Category name loaded: $_categoryName');
     } catch (e) {
-      // log.d('❌ Error loading category info: $e');
       if (mounted) {
         setState(() {
           _categoryName = 'Категория';
@@ -2541,15 +2591,16 @@ class _DynamicFilterState extends State<DynamicFilter>
           final errorLines = <String>[];
 
           errors.forEach((field, messages) {
+            final label = _humanFieldLabel(field.toString());
             if (messages is List && messages.isNotEmpty) {
-              errorLines.add('• $field: ${messages.first}');
+              errorLines.add('• $label: ${messages.first}');
             } else if (messages is String) {
-              errorLines.add('• $field: $messages');
+              errorLines.add('• $label: $messages');
             }
           });
 
           if (errorLines.isNotEmpty) {
-            errorMessage = 'Ошибки валидации:\n${errorLines.join('\n')}';
+            errorMessage = 'Проверьте поля:\n${errorLines.join('\n')}';
           }
         }
 
