@@ -1818,10 +1818,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               ),
                             ),
                           ),
-                          // Пометка «ИИ» только для объявлений из фида.
-                          // Объявления, созданные вручную, не помечаем, даже
-                          // если ИИ сгенерировал для них SEO.
-                          if (advert.isFeed == true) ...[
+                          // Значок «Ai» только там, где ИИ РЕАЛЬНО переписал
+                          // заголовок/описание (ai_rewritten). Если у объявления
+                          // сгенерировано лишь SEO (а текст оригинальный из фида
+                          // или ручной), значок не показываем.
+                          if (advert.aiRewritten == true) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(

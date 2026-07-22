@@ -115,6 +115,7 @@ UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
   aiProcessed: json['ai_processed'] as bool?,
   isReviewed: json['is_reviewed'] as bool?,
   isFeed: json['is_feed'] as bool?,
+  aiRewritten: json['ai_rewritten'] as bool?,
 );
 
 Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
@@ -133,6 +134,7 @@ Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
       'ai_processed': instance.aiProcessed,
       'is_reviewed': instance.isReviewed,
       'is_feed': instance.isFeed,
+      'ai_rewritten': instance.aiRewritten,
     };
 
 AdvertMetaResponse _$AdvertMetaResponseFromJson(Map<String, dynamic> json) =>

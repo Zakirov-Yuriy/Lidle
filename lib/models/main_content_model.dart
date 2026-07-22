@@ -137,9 +137,14 @@ class UserAdvert {
   final bool? isReviewed;
 
   /// Пришло ли объявление из фида (приходит с сервера как is_feed).
-  /// По нему рисуем пометку «ИИ» на карточке — только для фидовых.
   @JsonKey(name: 'is_feed')
   final bool? isFeed;
+
+  /// ИИ реально переписал видимый заголовок/описание (приходит как
+  /// ai_rewritten). Значок «Ai» на карточке рисуем ТОЛЬКО по нему: если у
+  /// объявления сгенерировано лишь SEO (а текст оригинальный), значка нет.
+  @JsonKey(name: 'ai_rewritten')
+  final bool? aiRewritten;
 
   UserAdvert({
     required this.id,
@@ -156,6 +161,7 @@ class UserAdvert {
     this.aiProcessed,
     this.isReviewed,
     this.isFeed,
+    this.aiRewritten,
   });
 
   factory UserAdvert.fromJson(Map<String, dynamic> json) =>
