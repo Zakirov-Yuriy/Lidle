@@ -217,7 +217,32 @@ class AdvertMetaCategory {
   final int categoryId;
   final String name;
 
-  AdvertMetaCategory({required this.categoryId, required this.name});
+  /// Флаги «в каких вкладках реально есть эта категория» (приходят с бэка).
+  /// По ним на экране «Мои объявления» показываем в чипсах только те
+  /// каталоги/категории, что есть в выбранной вкладке.
+  @JsonKey(name: 'has_active')
+  final bool? hasActive; // «Активные» (статус 1)
+  @JsonKey(name: 'has_inactive')
+  final bool? hasInactive; // «Неактивные» (статус 2)
+  @JsonKey(name: 'has_archive')
+  final bool? hasArchive; // «Архив» (статус 8)
+  @JsonKey(name: 'has_moderation')
+  final bool? hasModeration; // «На модерации» (статус 3/4)
+  @JsonKey(name: 'has_crm')
+  final bool? hasCrm; // «CRM» (статус 1 + фид)
+  @JsonKey(name: 'has_manual')
+  final bool? hasManual; // «Все» (статус 1 без фида)
+
+  AdvertMetaCategory({
+    required this.categoryId,
+    required this.name,
+    this.hasActive,
+    this.hasInactive,
+    this.hasArchive,
+    this.hasModeration,
+    this.hasCrm,
+    this.hasManual,
+  });
 
   factory AdvertMetaCategory.fromJson(Map<String, dynamic> json) =>
       _$AdvertMetaCategoryFromJson(json);

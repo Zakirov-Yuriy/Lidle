@@ -180,12 +180,24 @@ AdvertMetaCategory _$AdvertMetaCategoryFromJson(Map<String, dynamic> json) =>
     AdvertMetaCategory(
       categoryId: (json['category_id'] as num).toInt(),
       name: json['name'] as String,
+      hasActive: json['has_active'] as bool?,
+      hasInactive: json['has_inactive'] as bool?,
+      hasArchive: json['has_archive'] as bool?,
+      hasModeration: json['has_moderation'] as bool?,
+      hasCrm: json['has_crm'] as bool?,
+      hasManual: json['has_manual'] as bool?,
     );
 
 Map<String, dynamic> _$AdvertMetaCategoryToJson(AdvertMetaCategory instance) =>
     <String, dynamic>{
       'category_id': instance.categoryId,
       'name': instance.name,
+      'has_active': instance.hasActive,
+      'has_inactive': instance.hasInactive,
+      'has_archive': instance.hasArchive,
+      'has_moderation': instance.hasModeration,
+      'has_crm': instance.hasCrm,
+      'has_manual': instance.hasManual,
     };
 
 AdvertMetaTab _$AdvertMetaTabFromJson(Map<String, dynamic> json) =>

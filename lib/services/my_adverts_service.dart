@@ -169,6 +169,8 @@ class MyAdvertsService {
   static Future<MyAdvertsResponse> getCrmPublishedList({
     int? page,
     int? limit,
+    int? catalogId,
+    int? categoryId,
     required String token,
   }) async {
     try {
@@ -178,6 +180,14 @@ class MyAdvertsService {
       }
       if (limit != null) {
         params['per_page'] = limit;
+      }
+      // Фильтр по каталогу/категории, чтобы вкладка «CRM» тоже сужалась
+      // по выбранному чипсу.
+      if (catalogId != null) {
+        params['catalog_id'] = catalogId;
+      }
+      if (categoryId != null) {
+        params['category_id'] = categoryId;
       }
 
       final response = await ApiService.getWithQuery(

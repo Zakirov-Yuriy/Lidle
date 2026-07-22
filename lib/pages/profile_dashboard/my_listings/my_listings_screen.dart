@@ -65,8 +65,9 @@ class MyListingsScreen extends StatefulWidget {
 
 class _MyListingsScreenState extends State<MyListingsScreen> {
   int _currentTab = 0;
-  int _selectedCatalogIndex = 0; // Индекс выбранного каталога
-  int _selectedCategoryIndex = 0; // Индекс выбранной категории
+  int _selectedCatalogIndex = 0; // Индекс выбранного каталога (в _visibleCatalogs)
+  int _selectedCategoryIndex = 0; // Индекс выбранной категории (в _advertMetaCategories)
+  int? _selectedCatalogId; // ID выбранного каталога для сохранения выбора между вкладками
   int? _selectedCategoryId; // ID выбранной категории для фильтрации
   bool _selectAllChecked = false;
   bool _isSelectionMode = false; // Режим выбора
@@ -80,6 +81,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
   // Мета-данные объявлений (только каталоги и категории с объявлениями)
   List<AdvertMetaCatalog> _advertMetaCatalogs = [];
+  // Каталоги, отфильтрованные под текущую вкладку: показываем только те,
+  // где есть хотя бы одна категория с объявлениями в этой вкладке.
+  List<AdvertMetaCatalog> _visibleCatalogs = [];
+  // Категории выбранного каталога, отфильтрованные под текущую вкладку.
   List<AdvertMetaCategory> _advertMetaCategories = [];
   bool _isLoadingMetadata = false;
   String? _errorMessage;
@@ -223,18 +228,20 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         for (int catIdx = 0; catIdx < catalog.categories.length; catIdx++) {
           final category = catalog.categories[catIdx];
           if (category.categoryId == categoryId) {
-            // Нашли нужную категорию
+            // Нашли нужную категорию. Фиксируем выбор и пересчитываем видимые
+            // чипсы под нужную вкладку (чтобы каталог/категория совпали с ней).
             if (mounted) {
               setState(() {
-                _selectedCatalogIndex = catalogIdx;
-                _advertMetaCategories = catalog.categories;
-                _selectedCategoryIndex = catIdx;
-                _selectedCategoryId = categoryId;
                 _currentTab = tabIndex;
+                _selectedCatalogId = catalog.catalogId;
+                _selectedCategoryId = categoryId;
+                _recomputeVisibleForTab(tabIndex);
               });
             }
             // Загрузить объявления для этой категории
-            _loadListingsByCategory(categoryId);
+            if (_selectedCategoryId != null) {
+              _loadListingsByCategory(_selectedCategoryId!);
+            }
             return;
           }
         }
@@ -281,6 +288,98 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   /// Загрузить ОПУБЛИКОВАННЫЕ объявления из фида (вкладка CRM).
   /// Это активные объявления пользователя, пришедшие из CRM-фида —
   /// сюда они попадают после нажатия «Опубликовать» на экране предпросмотра.
+  /// Есть ли объявления этой категории в указанной вкладке (по флагам с бэка).
+  /// Если флаг не пришёл (старый бэк) — считаем, что есть (показываем как раньше).
+  bool _categoryInTab(AdvertMetaCategory c, int tab) {
+    switch (tab) {
+      case 0: // Активные
+        return c.hasActive ?? true;
+      case 1: // Неактивные
+        return c.hasInactive ?? true;
+      case 2: // Архив
+        return c.hasArchive ?? true;
+      case 3: // На модерации
+        return c.hasModeration ?? true;
+      case 4: // CRM
+        return c.hasCrm ?? true;
+      case 5: // Все
+        return c.hasManual ?? true;
+      default:
+        return true;
+    }
+  }
+
+  /// Категории каталога, доступные в текущей вкладке.
+  List<AdvertMetaCategory> _categoriesInCatalogForTab(
+    AdvertMetaCatalog catalog,
+    int tab,
+  ) => catalog.categories.where((c) => _categoryInTab(c, tab)).toList();
+
+  /// Каталоги, у которых есть хотя бы одна категория в текущей вкладке.
+  List<AdvertMetaCatalog> _catalogsForTab(int tab) => _advertMetaCatalogs
+      .where((cat) => _categoriesInCatalogForTab(cat, tab).isNotEmpty)
+      .toList();
+
+  /// Пересчитать видимые каталоги/категории под вкладку [tab]. Сохраняет
+  /// текущий выбор каталога/категории, если он остаётся доступным, иначе берёт
+  /// первый. Меняет ТОЛЬКО поля состояния — вызывать внутри setState, без
+  /// сетевых загрузок.
+  void _recomputeVisibleForTab(int tab) {
+    final catalogs = _catalogsForTab(tab);
+    _visibleCatalogs = catalogs;
+
+    if (catalogs.isEmpty) {
+      _advertMetaCategories = const [];
+      _selectedCatalogIndex = 0;
+      _selectedCategoryIndex = 0;
+      _selectedCatalogId = null;
+      _selectedCategoryId = null;
+      return;
+    }
+
+    // Сохранить выбранный каталог, если он есть в этой вкладке, иначе первый.
+    int catalogIdx = 0;
+    if (_selectedCatalogId != null) {
+      final idx = catalogs.indexWhere((c) => c.catalogId == _selectedCatalogId);
+      if (idx >= 0) catalogIdx = idx;
+    }
+    _selectedCatalogIndex = catalogIdx;
+    _selectedCatalogId = catalogs[catalogIdx].catalogId;
+
+    final categories = _categoriesInCatalogForTab(catalogs[catalogIdx], tab);
+    _advertMetaCategories = categories;
+
+    if (categories.isEmpty) {
+      _selectedCategoryIndex = 0;
+      _selectedCategoryId = null;
+      return;
+    }
+
+    // Сохранить выбранную категорию, если она есть в этой вкладке, иначе первую.
+    int catIdx = 0;
+    if (_selectedCategoryId != null) {
+      final idx = categories.indexWhere(
+        (c) => c.categoryId == _selectedCategoryId,
+      );
+      if (idx >= 0) catIdx = idx;
+    }
+    _selectedCategoryIndex = catIdx;
+    _selectedCategoryId = categories[catIdx].categoryId;
+  }
+
+  /// Переключение вкладки: пересчитываем чипсы под вкладку и, если выбранная
+  /// категория сменилась (в новой вкладке прежней нет), перезагружаем списки.
+  void _onTabChanged(int tab) {
+    final int? prevCategoryId = _selectedCategoryId;
+    setState(() {
+      _currentTab = tab;
+      _recomputeVisibleForTab(tab);
+    });
+    if (_selectedCategoryId != null && _selectedCategoryId != prevCategoryId) {
+      _loadListingsByCategory(_selectedCategoryId!);
+    }
+  }
+
   Future<void> _loadCrmListings() async {
     try {
       final token = HiveService.getUserData('token') as String?;
@@ -292,6 +391,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         token: token,
         page: 1,
         limit: _pageSize,
+        categoryId: _selectedCategoryId,
       );
 
       if (mounted) {
@@ -323,6 +423,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
         manualOnly: true,
         page: 1,
         limit: _pageSize,
+        categoryId: _selectedCategoryId,
       );
 
       if (mounted) {
@@ -365,29 +466,31 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           setState(() {
             _advertMetaCatalogs = metaData.catalogs;
 
-            // 🔧 Найти первый каталог с категориями и объявлениями
-            int catalogIndexWithListings = 0;
-            for (int i = 0; i < _advertMetaCatalogs.length; i++) {
-              if (_advertMetaCatalogs[i].categories.isNotEmpty) {
-                catalogIndexWithListings = i;
-                break;
-              }
-            }
+            // Подбираем видимые каталоги/категории под текущую вкладку и
+            // выбираем первую доступную категорию для фильтра. Каталоги и
+            // категории показываем только те, что реально есть в этой вкладке.
+            _recomputeVisibleForTab(_currentTab);
 
-            // Установить выбранный каталог и его категории
-            _selectedCatalogIndex = catalogIndexWithListings;
-            if (_advertMetaCatalogs.isNotEmpty) {
-              _advertMetaCategories =
-                  _advertMetaCatalogs[catalogIndexWithListings].categories;
-
-              // Установить первую категорию как выбранную для фильтрации
-              if (_advertMetaCategories.isNotEmpty) {
-                _selectedCategoryId = _advertMetaCategories[0].categoryId;
-              }
-            }
             _isLoadingMetadata = false;
             _metadataLoaded = true;
           });
+
+          // Если на текущей вкладке объявлений нет, переключаемся на первую
+          // непустую вкладку (в порядке отображения: CRM, Все, Активные,
+          // Неактивные, Архив, На модерации), чтобы пользователь сразу видел
+          // контент, а не пустой экран.
+          if (_selectedCategoryId == null) {
+            const tabOrder = [4, 5, 0, 1, 2, 3];
+            for (final t in tabOrder) {
+              if (_catalogsForTab(t).isNotEmpty) {
+                setState(() {
+                  _currentTab = t;
+                  _recomputeVisibleForTab(t);
+                });
+                break;
+              }
+            }
+          }
 
           // Грузим по ВЫБРАННОЙ категории (в UI подсвечена первая категория,
           // _selectedCategoryIndex = 0). Раньше тут грузилось по всему каталогу
@@ -396,13 +499,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           // категории. Теперь начальная загрузка сразу совпадает с фильтром.
           if (_selectedCategoryId != null) {
             await _loadListingsByCategory(_selectedCategoryId!);
-          } else {
-            final catalogId = _advertMetaCatalogs.isNotEmpty
-                ? _advertMetaCatalogs[_selectedCatalogIndex].catalogId
-                : null;
-            if (catalogId != null) {
-              await _loadListingsByCatalog(catalogId);
-            }
+          } else if (_selectedCatalogId != null) {
+            await _loadListingsByCatalog(_selectedCatalogId!);
           }
         }
       }
@@ -446,6 +544,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getCrmPublishedList(
+            catalogId: catalogId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 1, manualOnly: true, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
       ]);
 
       if (mounted) {
@@ -454,21 +556,29 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _inactiveListings = results[1].data;
           _moderationListings = results[2].data;
           _archiveListings = results[3].data;
+          _crmListings = results[4].data;
+          _manualListings = results[5].data;
 
           _activeListingsPage = 1;
           _inactiveListingsPage = 1;
           _moderationListingsPage = 1;
           _archiveListingsPage = 1;
+          _crmListingsPage = 1;
+          _manualListingsPage = 1;
 
           _activeTotal = results[0].meta?.total ?? results[0].data.length;
           _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
           _archiveTotal = results[3].meta?.total ?? results[3].data.length;
+          _crmTotal = results[4].meta?.total ?? results[4].data.length;
+          _manualTotal = results[5].meta?.total ?? results[5].data.length;
 
           _activeIsLastPage = 1 >= (results[0].lastPage ?? 1);
           _inactiveIsLastPage = 1 >= (results[1].lastPage ?? 1);
           _moderationIsLastPage = 1 >= (results[2].lastPage ?? 1);
           _archiveIsLastPage = 1 >= (results[3].lastPage ?? 1);
+          _crmIsLastPage = 1 >= (results[4].lastPage ?? 1);
+          _manualIsLastPage = 1 >= (results[5].lastPage ?? 1);
 
           _isLoadingMore = false;
           _listingsLoading = false;
@@ -522,6 +632,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       // Грузим ТОЛЬКО первую страницу каждого статуса (по _pageSize штук).
       // Остальное подтянется лениво при прокрутке вниз (_loadMoreListings).
+      // Вкладки «CRM» (results[4]) и «Все» (results[5]) тоже фильтруем по
+      // выбранной категории, чтобы список сужался на всех вкладках.
       final results = await Future.wait([
         MyAdvertsService.getMyAdverts(
             statusId: 1, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
@@ -531,31 +643,43 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             statusId: 3, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 8, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getCrmPublishedList(
+            categoryId: categoryId, token: token, page: 1, limit: _pageSize),
+        MyAdvertsService.getMyAdverts(
+            statusId: 1, manualOnly: true, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
       ]);
 
       if (mounted) {
         setState(() {
-          // Порядок статусов: [0]=1 активные, [1]=2 неактивные,
-          // [2]=3 модерация, [3]=8 архив.
+          // Порядок: [0]=1 активные, [1]=2 неактивные, [2]=3 модерация,
+          // [3]=8 архив, [4]=CRM, [5]=Все (ручные активные).
           _activeListings = results[0].data;
           _inactiveListings = results[1].data;
           _moderationListings = results[2].data;
           _archiveListings = results[3].data;
+          _crmListings = results[4].data;
+          _manualListings = results[5].data;
 
           _activeListingsPage = 1;
           _inactiveListingsPage = 1;
           _moderationListingsPage = 1;
           _archiveListingsPage = 1;
+          _crmListingsPage = 1;
+          _manualListingsPage = 1;
 
           _activeTotal = results[0].meta?.total ?? results[0].data.length;
           _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
           _archiveTotal = results[3].meta?.total ?? results[3].data.length;
+          _crmTotal = results[4].meta?.total ?? results[4].data.length;
+          _manualTotal = results[5].meta?.total ?? results[5].data.length;
 
           _activeIsLastPage = 1 >= (results[0].lastPage ?? 1);
           _inactiveIsLastPage = 1 >= (results[1].lastPage ?? 1);
           _moderationIsLastPage = 1 >= (results[2].lastPage ?? 1);
           _archiveIsLastPage = 1 >= (results[3].lastPage ?? 1);
+          _crmIsLastPage = 1 >= (results[4].lastPage ?? 1);
+          _manualIsLastPage = 1 >= (results[5].lastPage ?? 1);
 
           _isLoadingMore = false;
           _listingsLoading = false;
@@ -682,20 +806,22 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       final MyAdvertsResponse response;
 
       if (tab == 4) {
-        // CRM — отдельный эндпоинт, без фильтра по категории.
+        // CRM — отдельный эндпоинт, с фильтром по выбранной категории.
         response = await MyAdvertsService.getCrmPublishedList(
           token: token,
           page: nextPage,
           limit: _pageSize,
+          categoryId: _selectedCategoryId,
         );
       } else if (tab == 5) {
-        // «Все» — только ручные активные, без фильтра по категории.
+        // «Все» — только ручные активные, с фильтром по выбранной категории.
         response = await MyAdvertsService.getMyAdverts(
           token: token,
           statusId: 1,
           manualOnly: true,
           page: nextPage,
           limit: _pageSize,
+          categoryId: _selectedCategoryId,
         );
       } else {
         // Активные/неактивные/архив/модерация — по выбранной категории.
@@ -1016,7 +1142,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           const SizedBox(height: 12),
                           if (_isLoadingMetadata)
                             _buildCatalogSkeleton()
-                          else if (_advertMetaCatalogs.isEmpty)
+                          else if (_visibleCatalogs.isEmpty)
                             const Center(
                               child: Text(
                                 'Каталоги не найдены',
@@ -1031,32 +1157,40 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               scrollDirection: Axis.horizontal,
                               child: Row(
                                 children: List.generate(
-                                  _advertMetaCatalogs.length,
+                                  _visibleCatalogs.length,
                                   (index) => Padding(
                                     padding: EdgeInsets.only(
                                       right:
-                                          index < _advertMetaCatalogs.length - 1
+                                          index < _visibleCatalogs.length - 1
                                           ? 8
                                           : 0,
                                     ),
                                     child: _catalogButton(
-                                      _advertMetaCatalogs[index].name,
+                                      _visibleCatalogs[index].name,
                                       _selectedCatalogIndex == index,
                                       onPressed: () {
+                                        // Категории выбранного каталога под
+                                        // текущую вкладку.
+                                        final categories =
+                                            _categoriesInCatalogForTab(
+                                              _visibleCatalogs[index],
+                                              _currentTab,
+                                            );
                                         setState(() {
                                           _selectedCatalogIndex = index;
-                                          _advertMetaCategories =
-                                              _advertMetaCatalogs[index]
-                                                  .categories;
+                                          _selectedCatalogId =
+                                              _visibleCatalogs[index].catalogId;
+                                          _advertMetaCategories = categories;
                                           _selectedCategoryIndex = 0;
+                                          _selectedCategoryId = categories.isEmpty
+                                              ? null
+                                              : categories[0].categoryId;
                                         });
                                         // Загрузить объявления первой категории нового каталога
-                                        if (_advertMetaCategories.isNotEmpty) {
-                                          final categoryId =
-                                              _advertMetaCategories[0]
-                                                  .categoryId;
-                                          _selectedCategoryId = categoryId;
-                                          _loadListingsByCategory(categoryId);
+                                        if (_selectedCategoryId != null) {
+                                          _loadListingsByCategory(
+                                            _selectedCategoryId!,
+                                          );
                                         }
                                       },
                                     ),
@@ -1152,7 +1286,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                   children: [
                                     GestureDetector(
                                       onTap: () =>
-                                          setState(() => _currentTab = 4),
+                                          _onTabChanged(4),
                                       child: Text(
                                         _tabLabel(4),
                                         style: TextStyle(
@@ -1166,7 +1300,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                     const SizedBox(width: 16),
                                     GestureDetector(
                                       onTap: () =>
-                                          setState(() => _currentTab = 5),
+                                          _onTabChanged(5),
                                       child: Text(
                                         _tabLabel(5),
                                         style: TextStyle(
@@ -1180,7 +1314,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                     const SizedBox(width: 16),
                                     GestureDetector(
                                       onTap: () =>
-                                          setState(() => _currentTab = 0),
+                                          _onTabChanged(0),
                                       child: Text(
                                         _tabLabel(0),
                                         style: TextStyle(
@@ -1194,7 +1328,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                     const SizedBox(width: 16),
                                     GestureDetector(
                                       onTap: () =>
-                                          setState(() => _currentTab = 1),
+                                          _onTabChanged(1),
                                       child: Text(
                                         _tabLabel(1),
                                         style: TextStyle(
@@ -1208,7 +1342,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                     const SizedBox(width: 16),
                                     GestureDetector(
                                       onTap: () =>
-                                          setState(() => _currentTab = 2),
+                                          _onTabChanged(2),
                                       child: Text(
                                         _tabLabel(2),
                                         style: TextStyle(
@@ -1222,7 +1356,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                     const SizedBox(width: 16),
                                     GestureDetector(
                                       onTap: () =>
-                                          setState(() => _currentTab = 3),
+                                          _onTabChanged(3),
                                       child: Text(
                                         _tabLabel(3),
                                         style: TextStyle(
@@ -2476,14 +2610,15 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   /// «висело» в Активных, но не появлялось в «Все», а счётчики не сходились.
   /// Теперь обновляем всё разом.
   Future<void> _refreshAfterMutation() async {
-    final futures = <Future<void>>[
-      _loadManualListings(),
-      _loadCrmListings(),
-    ];
+    // _loadListingsByCategory/_loadListingsByCatalog обновляют сразу все шесть
+    // списков (включая «CRM» и «Все») с текущим фильтром по категории.
     if (_selectedCategoryId != null) {
-      futures.add(_loadListingsByCategory(_selectedCategoryId!));
+      await _loadListingsByCategory(_selectedCategoryId!);
+    } else if (_selectedCatalogId != null) {
+      await _loadListingsByCatalog(_selectedCatalogId!);
+    } else {
+      await Future.wait([_loadManualListings(), _loadCrmListings()]);
     }
-    await Future.wait(futures);
   }
 
   /// Активировать объявление
