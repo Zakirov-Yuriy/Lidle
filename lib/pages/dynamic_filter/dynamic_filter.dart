@@ -2866,6 +2866,9 @@ class _DynamicFilterState extends State<DynamicFilter>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Тот же стиль свича, что и в остальном приложении (CustomSwitch).
+        CustomSwitch(value: value, onChanged: onChanged),
+        const SizedBox(width: 6),
         const Text(
           'Ai',
           style: TextStyle(
@@ -2874,9 +2877,6 @@ class _DynamicFilterState extends State<DynamicFilter>
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(width: 6),
-        // Тот же стиль свича, что и в остальном приложении (CustomSwitch).
-        CustomSwitch(value: value, onChanged: onChanged),
       ],
     );
   }
