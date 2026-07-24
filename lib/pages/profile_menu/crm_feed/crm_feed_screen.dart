@@ -17,6 +17,7 @@ import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/pages/profile_menu/crm_feed/crm_feed_preview_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/api_service.dart';
@@ -81,11 +82,39 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               'Есть незавершённые объявления',
               style: TextStyle(color: Colors.white),
             ),
-            content: Text(
-              'У вас есть объявления из фида на модерации ($count). '
-              'Сначала опубликуйте или разберите их, '
-              'прежде чем подключать новый фид.',
-              style: const TextStyle(color: Colors.white70),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'У вас есть объявления из фида на модерации ($count). '
+                  'Сначала опубликуйте или разберите их, '
+                  'прежде чем подключать новый фид.',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Видеообзор: работы, подключение фидов.\n'
+                  'Логика обработки информации.\n'
+                  'Публикация в открытый доступе объявления.\n'
+                  'Автоподгрузка новых объявлений.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: _openVideoReview,
+                  child: Text(
+                    '[Смотреть видеообзор]',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: activeIconColor,
+                    ),
+                  ),
+                ),
+              ],
             ),
             actions: [
               TextButton(
@@ -267,6 +296,22 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text)),
     );
+  }
+
+  /// Открыть видеообзор работы сервиса во внешнем приложении/браузере.
+  Future<void> _openVideoReview() async {
+    const url =
+        'https://rutube.ru/video/private/6a98c7638b42fe9160f9fa29316957da/?p=Ajr9MeVNUKatNQ09qZjo8A&r=a';
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        log.w('Не удалось открыть ссылку на видеообзор: $url');
+      }
+    } catch (e) {
+      log.e('Ошибка открытия видеообзора: $e');
+    }
   }
 
   @override
@@ -496,13 +541,54 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _AiRewriteSwitch(
                       value: _aiRewrite,
                       activeIconColor: activeIconColor,
                       onChanged: (v) => setState(() => _aiRewrite = v),
                     ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ai',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: activeIconColor,
+                      ),
+                    ),
                   ],
+                ),
+              ),
+
+              // ───── Описание видеообзора ─────
+              const Padding(
+                padding: EdgeInsets.fromLTRB(25, 24, 25, 0),
+                child: Text(
+                  'Видеообзор: работы, подключение фидов.\n'
+                  'Логика обработки информации.\n'
+                  'Публикация в открытый доступе объявления.\n'
+                  'Автоподгрузка новых объявлений.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.white70,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+
+              // ───── Кликабельная ссылка на видеообзор ─────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(25, 6, 25, 0),
+                child: GestureDetector(
+                  onTap: _openVideoReview,
+                  child: Text(
+                    '[Смотреть видеообзор]',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: activeIconColor,
+                    ),
+                  ),
                 ),
               ),
 
