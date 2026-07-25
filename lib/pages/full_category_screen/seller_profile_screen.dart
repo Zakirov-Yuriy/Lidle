@@ -227,45 +227,51 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       return;
     }
 
-    setState(() => _subscribing = true);
+    // Оптимистично переключаем состояние сразу (как на главном экране) —
+    // без лоадера. При ошибке откатываем.
+    final wasWishlisted = _isWishlisted;
+    final prevWishlistId = _wishlistId;
+    setState(() {
+      _isWishlisted = !wasWishlisted;
+      _subscribing = true;
+    });
+
     try {
-      if (!_isWishlisted) {
+      if (!wasWishlisted) {
         await ApiService.post('/me/wishlist/add', {'user_id': id}, token: token);
         // Ответ добавления не содержит id записи — перечитываем профиль.
         final data = await ApiService.getUserProfile(userId: id, token: token);
         final wid = _asInt(data['wishlist_id']);
         if (!mounted) return;
         setState(() {
-          _isWishlisted = true;
           _wishlistId = wid;
           _subscribing = false;
         });
-        SnackBarHelper.showSuccess(context, 'Вы подписались на продавца');
       } else {
         // Нужен id записи избранного; если его нет — перечитываем профиль.
-        int? wid = _wishlistId;
+        int? wid = prevWishlistId;
         if (wid == null) {
           final data = await ApiService.getUserProfile(userId: id, token: token);
           wid = _asInt(data['wishlist_id']);
         }
-        if (wid == null) {
-          if (!mounted) return;
-          setState(() => _subscribing = false);
-          return;
+        if (wid != null) {
+          await ApiService.delete('/me/wishlist/destroy/$wid', token: token);
         }
-        await ApiService.delete('/me/wishlist/destroy/$wid', token: token);
         if (!mounted) return;
         setState(() {
-          _isWishlisted = false;
           _wishlistId = null;
           _subscribing = false;
         });
-        SnackBarHelper.showSuccess(context, 'Вы отписались от продавца');
       }
     } catch (e) {
       log.w('❌ SellerProfileScreen: ошибка подписки: $e');
       if (!mounted) return;
-      setState(() => _subscribing = false);
+      // Откат оптимистичного переключения.
+      setState(() {
+        _isWishlisted = wasWishlisted;
+        _wishlistId = prevWishlistId;
+        _subscribing = false;
+      });
       SnackBarHelper.showError(context, 'Не удалось изменить подписку');
     }
   }
@@ -966,46 +972,37 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
               const SizedBox(width: 12),
               // Сердечко = добавить/убрать продавца из избранного.
-              // Синхронизировано с кнопкой «Подписаться на продавца»
-              // (единый механизм избранного на бэке).
-              _subscribing
-                  ? const SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Padding(
-                        padding: EdgeInsets.all(4),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.redAccent),
-                        ),
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: _toggleSubscription,
-                      behavior: HitTestBehavior.opaque,
-                      child: Icon(
-                        _isWishlisted
-                            ? Icons.favorite
-                            : Icons.favorite_border,
-                        color: _isWishlisted ? Colors.redAccent : textSecondary,
-                        size: 28,
-                      ),
-                    ),
+              // Мгновенное переключение без лоадера (как на главном экране);
+              // сам запрос идёт в фоне, при ошибке состояние откатывается.
+              GestureDetector(
+                onTap: _toggleSubscription,
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  transitionBuilder: (child, anim) =>
+                      ScaleTransition(scale: anim, child: child),
+                  child: Icon(
+                    _isWishlisted ? Icons.favorite : Icons.favorite_border,
+                    key: ValueKey<bool>(_isWishlisted),
+                    color: _isWishlisted ? Colors.redAccent : textSecondary,
+                    size: 28,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 7),
-          const Text(
-            "Вы можете оставить оценку продавцу это поднимет его рейтинг.",
-            style: TextStyle(color: textSecondary, fontSize: 16),
-          ),
-          const SizedBox(height: 11),
+          // const SizedBox(height: 7),
+          // const Text(
+          //   "Вы можете оставить оценку продавцу это поднимет его рейтинг.",
+          //   style: TextStyle(color: textSecondary, fontSize: 16),
+          // ),
+          // const SizedBox(height: 11),
 
-          const Text(
-            "Оценка:",
-            style: TextStyle(color: textPrimary, fontSize: 16),
-          ),
-          const SizedBox(height: 6),
+          // const Text(
+          //   "Оценка:",
+          //   style: TextStyle(color: textPrimary, fontSize: 16),
+          // ),
+          // const SizedBox(height: 6),
 
           Row(
             children: List.generate(

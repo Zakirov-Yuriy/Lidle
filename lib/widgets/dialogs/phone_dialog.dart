@@ -144,6 +144,11 @@ class PhoneDialog extends StatelessWidget {
     // Ограничиваем высоту диалога, чтобы при большом числе номеров он не
     // выходил за экран; список номеров делаем прокручиваемым.
     final maxHeight = MediaQuery.of(context).size.height * 0.7;
+
+    // Показываем только два последних номера.
+    final visibleNumbers = phoneNumbers.length > 2
+        ? phoneNumbers.sublist(phoneNumbers.length - 2)
+        : phoneNumbers;
     return Dialog(
       backgroundColor: primaryBackground,
       insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
@@ -185,8 +190,8 @@ class PhoneDialog extends StatelessWidget {
             
             const SizedBox(height: 20),
 
-            // Список номеров телефонов
-            if (phoneNumbers.isEmpty)
+            // Список номеров телефонов (только два последних)
+            if (visibleNumbers.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Text(
@@ -204,7 +209,7 @@ class PhoneDialog extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: phoneNumbers.map((number) {
+                    children: visibleNumbers.map((number) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 15.0),
                         child: Column(
