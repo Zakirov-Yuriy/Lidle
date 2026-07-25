@@ -306,6 +306,25 @@ class UserService {
   }
 
   /// Обновить информацию "О себе"
+  /// Сохранить адрес профиля по городу.
+  /// Бэк сам выводит подрегион и область из city_id
+  /// (PUT /me/settings/address { city_id }).
+  static Future<Map<String, dynamic>> updateAddress({
+    required int cityId,
+    required String token,
+  }) async {
+    try {
+      final response = await ApiService.put(
+        '/me/settings/address',
+        {'city_id': cityId},
+        token: token,
+      );
+      return response;
+    } catch (e) {
+      throw Exception('Ошибка при обновлении адреса: $e');
+    }
+  }
+
   static Future<Map<String, dynamic>> updateAbout({
     required String about,
     required String token,

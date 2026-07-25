@@ -216,4 +216,71 @@ class ContactService {
   }) async {
     return await ApiService.delete('/me/settings/emails/$id', token: token);
   }
+
+  // ── Telegram ─────────────────────────────────────────────────────────
+  // apiResource /me/settings/telegrams (index/store/update/destroy).
+  // Возвращаем сырой Map, id парсим на месте (data[0].id).
+
+  /// Список телеграм-контактов пользователя (GET /me/settings/telegrams).
+  static Future<Map<String, dynamic>> getTelegrams({String? token}) async {
+    return await ApiService.get('/me/settings/telegrams', token: token);
+  }
+
+  /// Добавить телеграм (POST /me/settings/telegrams).
+  static Future<Map<String, dynamic>> addTelegram({
+    required String username,
+    String? token,
+  }) async {
+    return await ApiService.post(
+      '/me/settings/telegrams',
+      {'username': username},
+      token: token,
+    );
+  }
+
+  /// Обновить телеграм (PUT /me/settings/telegrams/{id}).
+  static Future<Map<String, dynamic>> updateTelegram({
+    required int id,
+    required String username,
+    String? token,
+  }) async {
+    return await ApiService.put(
+      '/me/settings/telegrams/$id',
+      {'username': username},
+      token: token,
+    );
+  }
+
+  // ── MAX ──────────────────────────────────────────────────────────────
+  // apiResource /me/settings/maxes (index/store/update/destroy).
+
+  /// Список MAX-контактов пользователя (GET /me/settings/maxes).
+  static Future<Map<String, dynamic>> getMaxes({String? token}) async {
+    return await ApiService.get('/me/settings/maxes', token: token);
+  }
+
+  /// Добавить MAX (POST /me/settings/maxes).
+  static Future<Map<String, dynamic>> addMax({
+    required String username,
+    String? token,
+  }) async {
+    return await ApiService.post(
+      '/me/settings/maxes',
+      {'username': username},
+      token: token,
+    );
+  }
+
+  /// Обновить MAX (PUT /me/settings/maxes/{id}).
+  static Future<Map<String, dynamic>> updateMax({
+    required int id,
+    required String username,
+    String? token,
+  }) async {
+    return await ApiService.put(
+      '/me/settings/maxes/$id',
+      {'username': username},
+      token: token,
+    );
+  }
 }

@@ -1869,6 +1869,9 @@ class ApiService {
     }
   }
 
+  static Future<int> getUnreadTotal({String? token}) =>
+      ChatApi.getUnreadTotal(token: token);
+
   static Future<List<Map<String, dynamic>>> getChats({
     int page = 1,
     String? token,

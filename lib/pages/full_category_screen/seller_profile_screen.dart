@@ -28,6 +28,11 @@ import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/core/logger.dart';
 
+// Профиль продавца: контакты (звонок), чат, избранное.
+import 'package:lidle/widgets/dialogs/phone_dialog.dart';
+import 'package:lidle/pages/messages/chat_page.dart';
+import 'package:lidle/models/message_model.dart';
+
 // ============================================================
 // "Экран профиля продавца"
 // ============================================================
@@ -66,6 +71,22 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = false;
   String? _error;
 
+  // ── Данные профиля продавца (GET /v1/users/{id}) ──────────────────────
+  bool _profileLoading = false;
+  String? _description; // поле description (профильное about)
+  String? _addressText; // собранная строка регион/город
+  bool _isWishlisted = false; // подписан ли текущий пользователь
+  int? _wishlistId; // id записи избранного (для отписки)
+  bool _subscribing = false; // идёт запрос подписки/отписки
+  List<String> _phones = [];
+  List<String> _telegrams = [];
+  List<String> _maxes = [];
+
+  // Состояния «свёрнуто/развёрнуто» для секций.
+  bool _descExpanded = true;
+  bool _locExpanded = true;
+  bool _contactsExpanded = true;
+
   /// TTL кеша объявлений продавца — 5 минут.
   static const _cacheTtl = Duration(minutes: 5);
 
@@ -88,6 +109,217 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   void initState() {
     super.initState();
     _loadSellerListings();
+    _loadSellerProfile();
+  }
+
+  /// Безопасное приведение к int (для wishlist_id, приходящего как num).
+  int? _asInt(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
+
+  /// Загружает профиль продавца (GET /v1/users/{id}): описание, адрес,
+  /// признак избранного (is_wishlisted / wishlist_id) и контакты.
+  Future<void> _loadSellerProfile() async {
+    final id = int.tryParse(widget.userId ?? '');
+    if (id == null) return;
+
+    setState(() => _profileLoading = true);
+    try {
+      final token = TokenService.currentToken;
+      // Возвращает уже data[0] (см. UserApi.getUserProfile), либо {} при ошибке.
+      final data = await ApiService.getUserProfile(userId: id, token: token);
+
+      if (data.isEmpty) {
+        if (mounted) setState(() => _profileLoading = false);
+        return;
+      }
+
+      // Описание.
+      final descRaw = data['description'];
+      final desc = (descRaw is String && descRaw.trim().isNotEmpty)
+          ? descRaw.trim()
+          : null;
+
+      // Адрес: собираем строку из main_region / region / city (без дублей и null).
+      final parts = <String>[];
+      final address = data['address'];
+      if (address is Map) {
+        for (final key in ['main_region', 'region', 'city']) {
+          final node = address[key];
+          if (node is Map && node['name'] != null) {
+            final name = node['name'].toString().trim();
+            if (name.isNotEmpty && !parts.contains(name)) parts.add(name);
+          }
+        }
+      }
+      final addr = parts.isNotEmpty ? parts.join(', ') : null;
+
+      // Избранное.
+      final isWishlisted = data['is_wishlisted'] == true;
+      final wishlistId = _asInt(data['wishlist_id']);
+
+      // Контакты.
+      final phones = <String>[];
+      final telegrams = <String>[];
+      final maxes = <String>[];
+      final contacts = data['contacts'];
+      if (contacts is Map) {
+        for (final p in (contacts['phones'] as List? ?? const [])) {
+          final v = (p is Map) ? p['phone'] : p;
+          if (v != null && v.toString().trim().isNotEmpty) {
+            phones.add(v.toString().trim());
+          }
+        }
+        for (final t in (contacts['telegrams'] as List? ?? const [])) {
+          final v = (t is Map) ? t['username'] : t;
+          if (v != null && v.toString().trim().isNotEmpty) {
+            telegrams.add(v.toString().trim());
+          }
+        }
+        for (final m in (contacts['maxes'] as List? ?? const [])) {
+          final v = (m is Map) ? m['username'] : m;
+          if (v != null && v.toString().trim().isNotEmpty) {
+            maxes.add(v.toString().trim());
+          }
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _description = desc;
+        _addressText = addr;
+        _isWishlisted = isWishlisted;
+        _wishlistId = wishlistId;
+        _phones = phones;
+        _telegrams = telegrams;
+        _maxes = maxes;
+        _profileLoading = false;
+      });
+    } catch (e) {
+      log.w('❌ SellerProfileScreen: ошибка загрузки профиля: $e');
+      if (mounted) setState(() => _profileLoading = false);
+    }
+  }
+
+  /// Подписаться / отписаться от продавца (избранное компаний).
+  /// POST /me/wishlist/add {user_id} — добавить; после добавления перечитываем
+  /// профиль, чтобы получить wishlist_id для последующей отписки.
+  /// DELETE /me/wishlist/destroy/{wishlist_id} — удалить.
+  Future<void> _toggleSubscription() async {
+    if (_subscribing) return;
+
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в профиль, чтобы подписаться на продавца',
+        avatarUrl: widget.sellerAvatarUrl,
+      );
+      return;
+    }
+
+    final id = int.tryParse(widget.userId ?? '');
+    if (id == null) {
+      SnackBarHelper.showError(context, 'Ошибка: ID продавца не найден');
+      return;
+    }
+
+    setState(() => _subscribing = true);
+    try {
+      if (!_isWishlisted) {
+        await ApiService.post('/me/wishlist/add', {'user_id': id}, token: token);
+        // Ответ добавления не содержит id записи — перечитываем профиль.
+        final data = await ApiService.getUserProfile(userId: id, token: token);
+        final wid = _asInt(data['wishlist_id']);
+        if (!mounted) return;
+        setState(() {
+          _isWishlisted = true;
+          _wishlistId = wid;
+          _subscribing = false;
+        });
+        SnackBarHelper.showSuccess(context, 'Вы подписались на продавца');
+      } else {
+        // Нужен id записи избранного; если его нет — перечитываем профиль.
+        int? wid = _wishlistId;
+        if (wid == null) {
+          final data = await ApiService.getUserProfile(userId: id, token: token);
+          wid = _asInt(data['wishlist_id']);
+        }
+        if (wid == null) {
+          if (!mounted) return;
+          setState(() => _subscribing = false);
+          return;
+        }
+        await ApiService.delete('/me/wishlist/destroy/$wid', token: token);
+        if (!mounted) return;
+        setState(() {
+          _isWishlisted = false;
+          _wishlistId = null;
+          _subscribing = false;
+        });
+        SnackBarHelper.showSuccess(context, 'Вы отписались от продавца');
+      }
+    } catch (e) {
+      log.w('❌ SellerProfileScreen: ошибка подписки: $e');
+      if (!mounted) return;
+      setState(() => _subscribing = false);
+      SnackBarHelper.showError(context, 'Не удалось изменить подписку');
+    }
+  }
+
+  /// «Позвонить» — показывает диалог с телефонами продавца.
+  void _callSeller() {
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в профиль, чтобы позвонить продавцу',
+        avatarUrl: widget.sellerAvatarUrl,
+      );
+      return;
+    }
+    if (_phones.isEmpty) {
+      SnackBarHelper.showWarning(context, 'У продавца не указан номер телефона');
+      return;
+    }
+    showDialog(
+      context: context,
+      builder: (_) => PhoneDialog(phoneNumbers: _phones),
+    );
+  }
+
+  /// «Написать» — открывает чат с продавцом (без привязки к объявлению).
+  void _writeSeller() {
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в профиль, чтобы написать продавцу',
+        avatarUrl: widget.sellerAvatarUrl,
+      );
+      return;
+    }
+    final userId = widget.userId;
+    if (userId == null || userId.isEmpty) {
+      SnackBarHelper.showWarning(context, 'Информация о продавце недоступна');
+      return;
+    }
+    final message = Message(
+      senderName: widget.sellerName,
+      senderAvatar: widget.sellerAvatarUrl,
+      lastMessageTime: 'сейчас',
+      unreadCount: 0,
+      isInternal: true,
+      isCompany: false,
+      userId: userId,
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => ChatPage(message: message)),
+    );
   }
 
   /// Загружает объявления продавца из API по userId.
@@ -250,6 +482,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             if (mounted && widget.userId != null) {
               _SellerProfileScreenState.invalidateCache(widget.userId!);
               _loadSellerListings(forceRefresh: true);
+              _loadSellerProfile();
             }
           });
         }
@@ -280,7 +513,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             if (widget.userId != null) {
               _SellerProfileScreenState.invalidateCache(widget.userId!);
             }
-            await _loadSellerListings(forceRefresh: true);
+            await Future.wait([
+              _loadSellerListings(forceRefresh: true),
+              _loadSellerProfile(),
+            ]);
           },
           child: SingleChildScrollView(
             // AlwaysScrollable нужен, чтобы RefreshIndicator работал
@@ -302,8 +538,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       const SizedBox(height: 31),
                       _buildSellerInfo(),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 20),
+                      _buildDescriptionSection(),
+                      _buildLocationSection(),
+                      _buildContactsSection(),
+
+                      const SizedBox(height: 6),
                       _buildRateSeller(),
+
+                      const SizedBox(height: 16),
+                      _buildCallWriteButtons(),
 
                       const SizedBox(height: 25),
                       Row(children: [_buildListingsTitle()]),
@@ -444,16 +688,251 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           width: double.infinity,
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.lightBlue),
+              side: BorderSide(
+                color: _isWishlisted ? textSecondary : Colors.lightBlue,
+              ),
+              backgroundColor:
+                  _isWishlisted ? Colors.lightBlue.withValues(alpha: 0.12) : null,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            onPressed: () {},
+            onPressed: _subscribing ? null : _toggleSubscription,
+            child: _subscribing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.lightBlue),
+                    ),
+                  )
+                : Text(
+                    _isWishlisted
+                        ? "Вы подписаны"
+                        : "Подписаться на продавца",
+                    style: TextStyle(
+                      color: _isWishlisted ? textPrimary : Colors.lightBlue,
+                      fontSize: 15,
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Универсальная сворачиваемая секция (Описание/Расположение/Контакты).
+  Widget _buildCollapsibleSection({
+    required String title,
+    required bool expanded,
+    required VoidCallback onToggle,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              child: Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (expanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: SizedBox(width: double.infinity, child: child),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDescriptionSection() {
+    return _buildCollapsibleSection(
+      title: 'Описание',
+      expanded: _descExpanded,
+      onToggle: () => setState(() => _descExpanded = !_descExpanded),
+      child: Text(
+        _profileLoading && _description == null
+            ? 'Загрузка...'
+            : (_description ?? 'Описание отсутствует'),
+        style: const TextStyle(color: textSecondary, fontSize: 15, height: 1.4),
+      ),
+    );
+  }
+
+  Widget _buildLocationSection() {
+    return _buildCollapsibleSection(
+      title: 'Расположение',
+      expanded: _locExpanded,
+      onToggle: () => setState(() => _locExpanded = !_locExpanded),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.location_on_outlined, color: textSecondary, size: 18),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              _profileLoading && _addressText == null
+                  ? 'Загрузка...'
+                  : (_addressText ?? 'Не указано'),
+              style: const TextStyle(color: textPrimary, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactsSection() {
+    final hasAny =
+        _phones.isNotEmpty || _telegrams.isNotEmpty || _maxes.isNotEmpty;
+
+    // Показываем только два последних номера.
+    final visiblePhones =
+        _phones.length > 2 ? _phones.sublist(_phones.length - 2) : _phones;
+
+    Widget contactLabel(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Text(
+            text,
+            style: const TextStyle(color: textSecondary, fontSize: 13),
+          ),
+        );
+
+    Widget contactValue(String text, {bool link = false}) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: link ? activeIconColor : textPrimary,
+              fontSize: 15,
+            ),
+          ),
+        );
+
+    // Колонка мессенджера (Телеграм / MAX): метка + значения.
+    Widget messengerColumn(String label, List<String> values) => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            contactLabel(label),
+            for (final v in values) contactValue(v, link: true),
+          ],
+        );
+
+    final children = <Widget>[];
+    if (visiblePhones.isNotEmpty) {
+      children.add(contactLabel('Номер'));
+      for (final p in visiblePhones) {
+        children.add(contactValue(p));
+      }
+    }
+    // Телеграм и MAX — в две колонки рядом (как на макете).
+    if (_telegrams.isNotEmpty || _maxes.isNotEmpty) {
+      children.add(const SizedBox(height: 6));
+      children.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _telegrams.isNotEmpty
+                  ? messengerColumn('Телеграм', _telegrams)
+                  : const SizedBox.shrink(),
+            ),
+            Expanded(
+              child: _maxes.isNotEmpty
+                  ? messengerColumn('MAX', _maxes)
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildCollapsibleSection(
+      title: 'Контакты',
+      expanded: _contactsExpanded,
+      onToggle: () => setState(() => _contactsExpanded = !_contactsExpanded),
+      child: hasAny
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            )
+          : Text(
+              _profileLoading ? 'Загрузка...' : 'Контакты не указаны',
+              style: const TextStyle(color: textSecondary, fontSize: 15),
+            ),
+    );
+  }
+
+  /// Кнопки «Позвонить» (зелёная) и «Написать» (синяя).
+  Widget _buildCallWriteButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4CAF50),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: _callSeller,
             child: const Text(
-              "Подписаться на продавца",
-              style: TextStyle(color: Colors.lightBlue, fontSize: 15),
+              'Позвонить',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: activeIconColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: _writeSeller,
+            child: const Text(
+              'Написать',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
           ),
         ),
@@ -472,13 +951,48 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Оставить оценку продавцу",
-            style: TextStyle(
-              color: textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: Text(
+                  "Оставить оценку продавцу",
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Сердечко = добавить/убрать продавца из избранного.
+              // Синхронизировано с кнопкой «Подписаться на продавца»
+              // (единый механизм избранного на бэке).
+              _subscribing
+                  ? const SizedBox(
+                      width: 28,
+                      height: 28,
+                      child: Padding(
+                        padding: EdgeInsets.all(4),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.redAccent),
+                        ),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: _toggleSubscription,
+                      behavior: HitTestBehavior.opaque,
+                      child: Icon(
+                        _isWishlisted
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: _isWishlisted ? Colors.redAccent : textSecondary,
+                        size: 28,
+                      ),
+                    ),
+            ],
           ),
           const SizedBox(height: 7),
           const Text(

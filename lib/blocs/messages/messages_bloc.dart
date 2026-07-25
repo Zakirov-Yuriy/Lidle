@@ -19,11 +19,11 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     on<RefreshMessages>(_onRefreshMessages);
     on<UpdateMessageUnreadCount>(_onUpdateMessageUnreadCount); // 🔴 Новое событие
     on<SyncMainMessages>(_onSyncMainMessages); // 🔵 Синхронизация реальных данных
-    
+
     // 🟢 Начальная загрузка (пустой список)
     add(const LoadMessages());
   }
-  
+
   /// 🟢 Загруузить реальные сообщения с API
   /// Вызывается из messages_page.dart когда пользователь открывает страницу сообщений
   Future<void> loadMessagesFromAPI() async {
@@ -34,33 +34,33 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
         log.d('🟢 MessagesBloc.loadMessagesFromAPI: Пользователь не авторизован');
         return;
       }
-      
+
       log.d('🟢 MessagesBloc.loadMessagesFromAPI: Начинаем загрузку реальных данных с API');
-      
+
       // Загружаем чаты с API
       final apiChats = await ApiService.getChats();
       log.d('🟢 MessagesBloc.loadMessagesFromAPI: API вернул ${apiChats.length} чатов');
-      
+
       if (apiChats.isEmpty) {
         log.d('⚠️ MessagesBloc: Пустой список чатов из API');
         return;
       }
-      
+
       final realMessagesMap = <Map<String, dynamic>>[];
       for (int idx = 0; idx < apiChats.length; idx++) {
         final chat = apiChats[idx];
-        
+
         final userData = chat['user'] as Map<String, dynamic>?;
         if (userData == null) {
           log.d('  [API $idx] ⚠️ user данные отсутствуют!');
           continue;
         }
-        
+
         final name = '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'.trim();
         final unreadCount = chat['unread_count'] as int? ?? 0;
-        
+
         log.d('  [API $idx] $name → unreadCount: $unreadCount');
-        
+
         realMessagesMap.add({
           'name': name,
           'subtitle': 'сейчас',
@@ -69,11 +69,21 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
           'senderAvatar': userData['avatar'],
         });
       }
-      
+
       log.d('🟢 MessagesBloc: Обработано ${realMessagesMap.length} реальных сообщений');
       int totalUnread = realMessagesMap.fold<int>(0, (sum, msg) => sum + (msg['unreadCount'] as int? ?? 0));
-      log.d('   Сумма unreadCount: $totalUnread');
-      
+      log.d('   Сумма unreadCount (по первой странице): $totalUnread');
+
+      // 🔢 Авторитетная сумма непрочитанных по ВСЕМ чатам одним запросом
+      // GET /v1/chats/unread-count — не зависит от пагинации.
+      try {
+        apiUnreadTotal = await ApiService.getUnreadTotal();
+        BadgeService().updateBadgeCount(apiUnreadTotal);
+        log.d('🔢 apiUnreadTotal с бэка: $apiUnreadTotal');
+      } catch (e) {
+        log.d('⚠️ Не удалось получить unread-count с бэка: $e');
+      }
+
       // Отправляем SyncMainMessages чтобы обновить mainMessages реальными данными
       log.d('🟢 MessagesBloc: Отправляем SyncMainMessages...');
       add(SyncMainMessages(realMessages: realMessagesMap));
@@ -88,9 +98,13 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
 
   List<Map<String, dynamic>> archivedMessages = [];
 
+  /// 🔢 Авторитетная сумма непрочитанных по всем чатам (GET /v1/chats/unread-count).
+  /// 0 = ещё не загружено; тогда используем локальную сумму как запасной вариант.
+  int apiUnreadTotal = 0;
+
   void _onLoadMessages(LoadMessages event, Emitter<MessagesState> emit) {
     log.d('🔴 _onLoadMessages: Начало загрузки (forceRefresh: ${event.forceRefresh})');
-    
+
     // 📖 Проверяем кеш если это не принудительное обновление
     if (!event.forceRefresh) {
       final cached = AppCacheService().get<Map<String, dynamic>>(
@@ -105,14 +119,17 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
           cachedSum += count is int ? count : int.tryParse(count.toString()) ?? 0;
         }
         log.d('🔴 Сумма unreadCount из кеша: $cachedSum');
-        
+
+        final effectiveTotal = apiUnreadTotal > 0 ? apiUnreadTotal : cachedSum;
+
         // 🔔 Обновляем бейдж из кешированных данных
-        BadgeService().updateBadgeCount(cachedSum);
-        
+        BadgeService().updateBadgeCount(effectiveTotal);
+
         emit(
           MessagesLoaded(
             mainMessages: List.from(cachedMain),
             archivedMessages: List.from(cached['archived'] ?? []),
+            totalUnread: effectiveTotal,
           ),
         );
         return;
@@ -127,9 +144,11 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       testSum += count is int ? count : int.tryParse(count.toString()) ?? 0;
     }
     log.d('🔴 Сумма unreadCount тестовых данных: $testSum');
-    
+
+    final effectiveTotal = apiUnreadTotal > 0 ? apiUnreadTotal : testSum;
+
     // 🔔 Обновляем бейдж из тестовых данных
-    BadgeService().updateBadgeCount(testSum);
+    BadgeService().updateBadgeCount(effectiveTotal);
 
     // 💾 Сохраняем в L1 (RAM) с TTL 1 мин
     AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
@@ -141,6 +160,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       MessagesLoaded(
         mainMessages: List.from(mainMessages),
         archivedMessages: List.from(archivedMessages),
+        totalUnread: effectiveTotal,
       ),
     );
   }
@@ -171,6 +191,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       MessagesLoaded(
         mainMessages: List.from(mainMessages),
         archivedMessages: List.from(archivedMessages),
+        totalUnread: apiUnreadTotal,
       ),
     );
   }
@@ -204,6 +225,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       MessagesLoaded(
         mainMessages: List.from(mainMessages),
         archivedMessages: List.from(archivedMessages),
+        totalUnread: apiUnreadTotal,
       ),
     );
   }
@@ -225,6 +247,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       MessagesLoaded(
         mainMessages: List.from(mainMessages),
         archivedMessages: List.from(archivedMessages),
+        totalUnread: apiUnreadTotal,
       ),
     );
   }
@@ -253,12 +276,15 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
         final count = msg['unreadCount'];
         totalUnread += count is int ? count : int.tryParse(count.toString()) ?? 0;
       }
-      BadgeService().updateBadgeCount(totalUnread);
+
+      final effectiveTotal = apiUnreadTotal > 0 ? apiUnreadTotal : totalUnread;
+      BadgeService().updateBadgeCount(effectiveTotal);
 
       emit(
         MessagesLoaded(
           mainMessages: List.from(mainMessages),
           archivedMessages: List.from(archivedMessages),
+          totalUnread: effectiveTotal,
         ),
       );
     }
@@ -273,13 +299,13 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
     log.d('🔵 _onSyncMainMessages: Начало синхронизации');
     log.d('   До: mainMessages.length = ${mainMessages.length}, сумма unreadCount = ${mainMessages.fold<int>(0, (sum, msg) => sum + (msg['unreadCount'] is int ? msg['unreadCount'] as int : int.tryParse(msg['unreadCount'].toString()) ?? 0))}');
     log.d('   Получено event.realMessages.length = ${event.realMessages.length}');
-    
+
     // Заменяем mainMessages на реальные данные
     mainMessages = event.realMessages;
-    
+
     log.d('🔵 После синхронизации:');
     log.d('   mainMessages.length = ${mainMessages.length}');
-    
+
     int totalUnread = 0;
     for (int i = 0; i < mainMessages.length; i++) {
       final count = mainMessages[i]['unreadCount'];
@@ -287,10 +313,11 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       totalUnread += unreadInt;
       log.d('   [$i] ${mainMessages[i]['name']} → unreadCount: $count (type: ${count.runtimeType})');
     }
-    log.d('   Сумма unreadCount = $totalUnread');
-    
-    // 🔔 Обновляем бейдж на иконке приложения с количеством всех непрочитанных сообщений
-    BadgeService().updateBadgeCount(totalUnread);
+    log.d('   Сумма unreadCount (по первой странице) = $totalUnread');
+
+    // 🔔 Бейдж: берём авторитетное число с бэка, при отсутствии — локальную сумму
+    final effectiveTotal = apiUnreadTotal > 0 ? apiUnreadTotal : totalUnread;
+    BadgeService().updateBadgeCount(effectiveTotal);
 
     // Обновляем кеш L1
     AppCacheService().set<Map<String, dynamic>>(CacheKeys.messagesData, {
@@ -298,11 +325,12 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
       'archived': List.from(archivedMessages),
     }, ttl: _cacheTTL);
 
-    log.d('🔵 Эмитируем MessagesLoaded с ${mainMessages.length} сообщениями');
+    log.d('🔵 Эмитируем MessagesLoaded с ${mainMessages.length} сообщениями, totalUnread=$effectiveTotal');
     emit(
       MessagesLoaded(
         mainMessages: List.from(mainMessages),
         archivedMessages: List.from(archivedMessages),
+        totalUnread: effectiveTotal,
       ),
     );
   }

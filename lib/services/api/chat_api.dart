@@ -27,11 +27,9 @@ class ChatApi {
     try {
       final effectiveToken = ApiBase.requireToken(token);
 
-      final response = await ApiService.getWithQuery(
-        '/chats',
-        {'page': page.toString()},
-        token: effectiveToken,
-      );
+      final response = await ApiService.getWithQuery('/chats', {
+        'page': page.toString(),
+      }, token: effectiveToken);
 
       if (response['data'] != null && response['data'] is List) {
         final chats = List<Map<String, dynamic>>.from(response['data'] as List);
@@ -61,8 +59,9 @@ class ChatApi {
       );
 
       if (response['data'] != null && response['data'] is List) {
-        final messages =
-            List<Map<String, dynamic>>.from(response['data'] as List);
+        final messages = List<Map<String, dynamic>>.from(
+          response['data'] as List,
+        );
         return messages;
       }
 
@@ -88,11 +87,9 @@ class ChatApi {
 
       log.d('📤 Отправляем сообщение в чат #$chatId...');
 
-      final response = await ApiService.post(
-        '/chats/$chatId/messages',
-        {'message': messageText},
-        token: effectiveToken,
-      );
+      final response = await ApiService.post('/chats/$chatId/messages', {
+        'message': messageText,
+      }, token: effectiveToken);
 
       log.d('✅ Сообщение отправлено: $response');
       return response;
@@ -118,14 +115,10 @@ class ChatApi {
 
       log.d('💬 Начинаем чат с пользователем #$userId...');
 
-      final response = await ApiService.post(
-        '/chats/start',
-        {
-          'user_id': userId,
-          'message': messageText,
-        },
-        token: effectiveToken,
-      );
+      final response = await ApiService.post('/chats/start', {
+        'user_id': userId,
+        'message': messageText,
+      }, token: effectiveToken);
 
       log.d('✅ Чат создан: $response');
 
@@ -144,10 +137,7 @@ class ChatApi {
 
   /// 🗑️ Удалить чат
   /// DELETE /v1/chats/{chatId}
-  static Future<bool> deleteChat(
-    int chatId, {
-    String? token,
-  }) async {
+  static Future<bool> deleteChat(int chatId, {String? token}) async {
     try {
       final effectiveToken = ApiBase.requireToken(token);
 
@@ -164,6 +154,23 @@ class ChatApi {
       log.d('❌ Ошибка удаления чата: $e');
       rethrow;
     }
+  }
+
+  /// 💬 Общее число непрочитанных по всем чатам
+  /// GET /v1/chats/unread-count
+  static Future<int> getUnreadTotal({String? token}) async {
+    final effectiveToken = ApiBase.requireToken(token);
+    final response = await ApiService.getWithQuery(
+      '/chats/unread-count',
+      {},
+      token: effectiveToken,
+    );
+    final data = response['data'];
+    if (data is Map && data['unread_total'] != null) {
+      final v = data['unread_total'];
+      return v is int ? v : int.tryParse(v.toString()) ?? 0;
+    }
+    return 0;
   }
 
   /// ✅ Отметить сообщение как прочитанное

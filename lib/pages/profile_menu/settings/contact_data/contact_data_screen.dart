@@ -44,6 +44,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _phone2Controller;
   late TextEditingController _telegramController;
   late TextEditingController _whatsappController;
+  late TextEditingController _maxController;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -51,6 +52,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   int? _phone1Id;
   int? _phone2Id;
   int? _emailId;
+  int? _telegramId; // id записи телеграма (для update)
+  int? _maxId; // id записи MAX (для update)
 
   // Переменные для выбора области и города
   Set<String> _selectedRegion = {};
@@ -78,6 +81,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller = TextEditingController();
     _telegramController = TextEditingController();
     _whatsappController = TextEditingController();
+    _maxController = TextEditingController();
     // Загружаем регионы при инициализации
     _loadRegions();
   }
@@ -101,6 +105,84 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // ignore: avoid_print
       log.d('✅ ContactDataScreen: Кеш актуален, восстанавливаем данные');
       _restoreDataFromCache();
+    }
+
+    // Телеграм и MAX всегда подтягиваем с бэка (они не в общем профиле, а в
+    // /me/settings/telegrams и /me/settings/maxes). Backend-значения главнее.
+    _loadMessengers();
+  }
+
+  /// Загружает телеграм и MAX с бэка, заполняет поля и id (для update).
+  Future<void> _loadMessengers() async {
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) return;
+    try {
+      final tg = await ContactService.getTelegrams(token: token);
+      final tgData = tg['data'];
+      String tgValue = '';
+      int? tgId;
+      if (tgData is List && tgData.isNotEmpty && tgData.first is Map) {
+        final m = tgData.first as Map;
+        tgId = _msgId(m['id']);
+        tgValue = (m['username'] ?? '').toString();
+      }
+
+      final mx = await ContactService.getMaxes(token: token);
+      final mxData = mx['data'];
+      String mxValue = '';
+      int? mxId;
+      if (mxData is List && mxData.isNotEmpty && mxData.first is Map) {
+        final m = mxData.first as Map;
+        mxId = _msgId(m['id']);
+        mxValue = (m['username'] ?? '').toString();
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _telegramId = tgId;
+        _telegramController.text = tgValue;
+        _maxId = mxId;
+        _maxController.text = mxValue;
+      });
+    } catch (e) {
+      log.d('❌ Ошибка загрузки мессенджеров: $e');
+    }
+  }
+
+  int? _msgId(dynamic v) =>
+      v is int ? v : (v is num ? v.toInt() : int.tryParse('$v'));
+
+  /// Создать или обновить мессенджер (телеграм/MAX). Возвращает текст ошибки
+  /// (или null при успехе). Если id неизвестен — уточняет через список.
+  Future<String?> _saveMessenger({
+    required String value,
+    required int? existingId,
+    required Future<Map<String, dynamic>> Function() fetchList,
+    required Future<Map<String, dynamic>> Function(String) create,
+    required Future<Map<String, dynamic>> Function(int, String) update,
+    required String label,
+  }) async {
+    final v = value.trim();
+    if (v.isEmpty) return null;
+    try {
+      int? id = existingId;
+      if (id == null) {
+        final list = await fetchList();
+        final data = list['data'];
+        if (data is List && data.isNotEmpty && data.first is Map) {
+          id = _msgId((data.first as Map)['id']);
+        }
+      }
+      final resp = id != null ? await update(id, v) : await create(v);
+      // 422 возвращается телом без исключения — проверяем success.
+      if (resp['success'] == false) {
+        return resp['message']?.toString() ?? '$label: ошибка сохранения';
+      }
+      log.d('✅ $label сохранён на сервере');
+      return null;
+    } catch (e) {
+      log.d('❌ Ошибка сохранения $label: $e');
+      return '$label: не удалось сохранить';
     }
   }
 
@@ -134,7 +216,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             ? (phone1Cache.isEmpty ? '' : (phone1Cache.startsWith('+') ? phone1Cache : '+$phone1Cache'))
             : (phone.startsWith('+') ? phone : '+$phone');
         _phone2Controller.text = phone2Cache.isEmpty ? '' : (phone2Cache.startsWith('+') ? phone2Cache : '+$phone2Cache');
-        _telegramController.text = telegram;
+        // Телеграм/MAX грузятся с бэка в _loadMessengers() — не из Hive.
+        // ignore: unnecessary_statements
+        telegram;
         _whatsappController.text = whatsapp;
         
         // Восстанавливаем выбранные область и город
@@ -357,7 +441,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _emailController.text = emailValue;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
-        _telegramController.text = telegram;
+        // Телеграм/MAX грузятся с бэка в _loadMessengers() — не из Hive.
+        // ignore: unnecessary_statements
+        telegram;
         _whatsappController.text = whatsapp;
         
         // Восстанавливаем выбранные область и город
@@ -586,6 +672,47 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         }
       }
 
+      // Адрес: шлём выбранный город, бэк выведет подрегион и область.
+      if (_selectedCityId != null) {
+        try {
+          final resp = await UserService.updateAddress(
+            cityId: _selectedCityId!,
+            token: token,
+          );
+          if (resp['success'] == false) {
+            log.d('⚠️ Адрес не сохранён: ${resp['message']}');
+          } else {
+            log.d('✅ Адрес сохранён (city_id=$_selectedCityId)');
+          }
+        } catch (e) {
+          log.d('❌ Ошибка сохранения адреса: $e');
+        }
+      }
+
+      // Мессенджеры: Телеграм и MAX (create/update на бэке).
+      final messengerErrors = <String>[];
+      final tgError = await _saveMessenger(
+        value: _telegramController.text,
+        existingId: _telegramId,
+        fetchList: () => ContactService.getTelegrams(token: token),
+        create: (v) => ContactService.addTelegram(username: v, token: token),
+        update: (id, v) =>
+            ContactService.updateTelegram(id: id, username: v, token: token),
+        label: 'Telegram',
+      );
+      if (tgError != null) messengerErrors.add(tgError);
+
+      final maxError = await _saveMessenger(
+        value: _maxController.text,
+        existingId: _maxId,
+        fetchList: () => ContactService.getMaxes(token: token),
+        create: (v) => ContactService.addMax(username: v, token: token),
+        update: (id, v) =>
+            ContactService.updateMax(id: id, username: v, token: token),
+        label: 'MAX',
+      );
+      if (maxError != null) messengerErrors.add(maxError);
+
       // ✅ КРИТИЧНО: Сначала обновляем ProfileBloc с forceRefresh = true
       // Это инвалидирует кеш и принудительно загружает свежие данные с сервера
       log.d('🔄 Принудительно обновляем ProfileBloc с forceRefresh...');
@@ -660,7 +787,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             // Обновляем локальные данные из Hive
             final telegram = UserService.getLocal('telegram') as String? ?? '';
             final whatsapp = UserService.getLocal('whatsapp') as String? ?? '';
-            _telegramController.text = telegram;
+            // Телеграм/MAX грузятся с бэка в _loadMessengers() — не из Hive.
+        // ignore: unnecessary_statements
+        telegram;
             _whatsappController.text = whatsapp;
           });
 
@@ -692,12 +821,28 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           }
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Контактные данные сохранены и обновлены'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        // Обновляем id телеграма/MAX (после create id меняется).
+        _loadMessengers();
+
+        if (messengerErrors.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Контактные данные сохранены и обновлены'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          // Часть данных сохранена, но мессенджеры не прошли валидацию.
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Сохранено, но: ${messengerErrors.join('; ')}',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() {
@@ -798,6 +943,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _phone2Controller.dispose();
     _telegramController.dispose();
     _whatsappController.dispose();
+    _maxController.dispose();
     super.dispose();
   }
 
@@ -951,8 +1097,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _label('Номер телефона 2'),
                       _field(_phone2Controller, 'Введите'),
 
+                      _label('Ссылка на ваш чат в Telegram'),
+                      _field(_telegramController, '@username или t.me/username'),
+
                       _label('Ссылка на ваш чат в Max'),
-                      _field(_telegramController, 'Введите ссылку на чат'),
+                      _field(_maxController, '@username или max.ru/username'),
 
                       // _label('Ссылка на ваш whatsapp'),
                       // _field(_whatsappController, ''),

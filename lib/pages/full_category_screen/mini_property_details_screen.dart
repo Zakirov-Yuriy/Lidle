@@ -2288,17 +2288,18 @@ class _AllListingsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Проверяем что sellerAvatar не пусто
-        if (sellerAvatar.isEmpty) {
-          return;
-        }
-        
-        // Создаем ImageProvider в зависимости от типа URL
+        // Пустой URL аватарки больше НЕ блокирует переход на страницу
+        // продавца. Раньше здесь стоял ранний `return`, из-за чего продавцов
+        // без аватарки нельзя было открыть («не могу зайти на продавца»).
+        // Экран продавца сам показывает заглушку, если аватарки нет.
         ImageProvider avatarProvider;
         if (sellerAvatar.startsWith('http')) {
           avatarProvider = NetworkImage(sellerAvatar);
-        } else {
+        } else if (sellerAvatar.isNotEmpty) {
           avatarProvider = AssetImage(sellerAvatar);
+        } else {
+          avatarProvider =
+              const AssetImage('assets/profile_dashboard/default-photo.svg');
         }
 
         Navigator.push(

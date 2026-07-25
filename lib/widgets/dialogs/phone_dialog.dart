@@ -141,15 +141,19 @@ class PhoneDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Ограничиваем высоту диалога, чтобы при большом числе номеров он не
+    // выходил за экран; список номеров делаем прокручиваемым.
+    final maxHeight = MediaQuery.of(context).size.height * 0.7;
     return Dialog(
       backgroundColor: primaryBackground,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 40, vertical: 40),
       child: Container(
         decoration: BoxDecoration(
           color: primaryBackground,
           borderRadius: BorderRadius.circular(5),
         ),
-        padding: const EdgeInsets.only(left: 25.0, right: 25.0, bottom: 43.0, top: 10.0),
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        padding: const EdgeInsets.only(left: 25.0, right: 25.0, bottom: 20.0, top: 10.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -194,72 +198,77 @@ class PhoneDialog extends StatelessWidget {
                 ),
               )
             else
-              ...phoneNumbers.asMap().entries.map((entry) {
-                final index = entry.key;
-                final number = entry.value;
-                
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 15.0),
+              // Прокручиваемый список — при большом числе номеров не
+              // переполняет диалог, а скроллится внутри ограниченной высоты.
+              Flexible(
+                child: SingleChildScrollView(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Номер телефона
-                      Text(
-                        number,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      
-                      const SizedBox(height: 10),
-                      
-                      // Кнопка звонка
-                      GestureDetector(
-                        onTap: () => _makePhoneCall(number, context),
-                        child: Container(
-                          height: 43,
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            border: Border.all(
-                              color: const Color(0xFF19D849),
-                              width: 2,
+                    mainAxisSize: MainAxisSize.min,
+                    children: phoneNumbers.map((number) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 15.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Номер телефона
+                            Text(
+                              number,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Center(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.phone,
-                                  color: Color(0xFF19D849),
-                                  size: 18,
+
+                            const SizedBox(height: 10),
+
+                            // Кнопка звонка
+                            GestureDetector(
+                              onTap: () => _makePhoneCall(number, context),
+                              child: Container(
+                                height: 43,
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  border: Border.all(
+                                    color: const Color(0xFF19D849),
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Позвонить",
-                                  style: TextStyle(
-                                    color: Color(0xFF19D849),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
+                                child: const Center(
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.phone,
+                                        color: Color(0xFF19D849),
+                                        size: 18,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Позвонить",
+                                        style: TextStyle(
+                                          color: Color(0xFF19D849),
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
-                );
-              }).toList(),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 }
-
