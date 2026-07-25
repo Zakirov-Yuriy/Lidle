@@ -13,6 +13,31 @@ class PhoneDialog extends StatelessWidget {
 
   const PhoneDialog({super.key, required this.phoneNumbers});
 
+  /// 🎨 Красиво форматирует номер для показа: «+7 949 456-78-90».
+  /// Только для отображения — на звонок не влияет (там номер чистится до цифр).
+  /// Если формат не распознан, возвращает исходную строку как есть.
+  String _formatPhone(String raw) {
+    var digits = raw.replaceAll(RegExp(r'\D'), '');
+
+    // Приводим к 11 цифрам с кодом страны 7.
+    if (digits.length == 11 && digits.startsWith('8')) {
+      digits = '7${digits.substring(1)}';
+    } else if (digits.length == 10) {
+      digits = '7$digits';
+    }
+
+    if (digits.length == 11 && digits.startsWith('7')) {
+      final code = digits.substring(1, 4); // 949
+      final a = digits.substring(4, 7); // 456
+      final b = digits.substring(7, 9); // 78
+      final c = digits.substring(9, 11); // 90
+      return '+7 $code $a-$b-$c';
+    }
+
+    // Неизвестный формат — не трогаем.
+    return raw;
+  }
+
   /// 📞 Инициирует звонок на номер телефона
   /// Удаляет все нецифровые символы перед вызовом
   /// Использует url_launcher для открытия диалера телефона
@@ -21,7 +46,7 @@ class PhoneDialog extends StatelessWidget {
     try {
       // Очищаем номер от всех символов кроме цифр и +
       final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
-      
+
       // log.d('📋 Attempting to call: $cleanedNumber (original: $phoneNumber)');
 
       // Создаём tel: URI
@@ -172,7 +197,7 @@ class PhoneDialog extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             // Заголовок
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -187,7 +212,7 @@ class PhoneDialog extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 20),
 
             // Список номеров телефонов (только два последних)
@@ -215,9 +240,9 @@ class PhoneDialog extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Номер телефона
+                            // Номер телефона (красиво отформатирован).
                             Text(
-                              number,
+                              _formatPhone(number),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,

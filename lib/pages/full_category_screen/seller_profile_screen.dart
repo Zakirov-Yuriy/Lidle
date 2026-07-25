@@ -120,6 +120,21 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     return null;
   }
 
+  /// Маскирует номер телефона для показа в профиле: оставляет только код
+  /// страны и код оператора (например «+7 949»), остальное скрывает
+  /// звёздочками — «+7 949 ***-**-**». Реальный номер пользователь получает
+  /// по кнопке «Позвонить».
+  String _maskPhone(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    // Отбрасываем код страны (7/8), если номер полной длины.
+    final rest = (digits.startsWith('7') || digits.startsWith('8')) &&
+            digits.length > 10
+        ? digits.substring(1)
+        : digits;
+    final code = rest.length >= 3 ? rest.substring(0, 3) : '';
+    return code.isNotEmpty ? '+7 $code ***-**-**' : '+7 ***-**-**';
+  }
+
   /// Загружает профиль продавца (GET /v1/users/{id}): описание, адрес,
   /// признак избранного (is_wishlisted / wishlist_id) и контакты.
   Future<void> _loadSellerProfile() async {
@@ -688,42 +703,51 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ],
         ),
 
-        const SizedBox(height: 15),
-
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: _isWishlisted ? textSecondary : Colors.lightBlue,
-              ),
-              backgroundColor:
-                  _isWishlisted ? Colors.lightBlue.withValues(alpha: 0.12) : null,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            onPressed: _subscribing ? null : _toggleSubscription,
-            child: _subscribing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.lightBlue),
+        // Кнопка "Подписаться на продавца" временно СКРЫТА: пользуемся
+        // иконкой избранного (сердечко в блоке оценки продавца).
+        // Чтобы вернуть кнопку — поменяй visible: false на visible: true.
+        Visibility(
+          visible: false,
+          child: Column(
+            children: [
+              const SizedBox(height: 15),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: _isWishlisted ? textSecondary : Colors.lightBlue,
                     ),
-                  )
-                : Text(
-                    _isWishlisted
-                        ? "Вы подписаны"
-                        : "Подписаться на продавца",
-                    style: TextStyle(
-                      color: _isWishlisted ? textPrimary : Colors.lightBlue,
-                      fontSize: 15,
+                    backgroundColor:
+                        _isWishlisted ? Colors.lightBlue.withValues(alpha: 0.12) : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
+                  onPressed: _subscribing ? null : _toggleSubscription,
+                  child: _subscribing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.lightBlue),
+                          ),
+                        )
+                      : Text(
+                          _isWishlisted
+                              ? "Вы подписаны"
+                              : "Подписаться на продавца",
+                          style: TextStyle(
+                            color: _isWishlisted ? textPrimary : Colors.lightBlue,
+                            fontSize: 15,
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -736,6 +760,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     required bool expanded,
     required VoidCallback onToggle,
     required Widget child,
+    IconData? leadingIcon,
   }) {
     return Container(
       width: double.infinity,
@@ -754,6 +779,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
               child: Row(
                 children: [
+                  // Необязательная иконка слева от заголовка секции.
+                  if (leadingIcon != null) ...[
+                    Icon(leadingIcon, color: textSecondary, size: 18),
+                    const SizedBox(width: 8),
+                  ],
                   Text(
                     title,
                     style: const TextStyle(
@@ -800,22 +830,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Widget _buildLocationSection() {
     return _buildCollapsibleSection(
       title: 'Расположение',
+      // Иконка теперь слева от заголовка «Расположение».
+      leadingIcon: Icons.location_on_outlined,
       expanded: _locExpanded,
       onToggle: () => setState(() => _locExpanded = !_locExpanded),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.location_on_outlined, color: textSecondary, size: 18),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _profileLoading && _addressText == null
-                  ? 'Загрузка...'
-                  : (_addressText ?? 'Не указано'),
-              style: const TextStyle(color: textPrimary, fontSize: 15),
-            ),
-          ),
-        ],
+      child: Text(
+        _profileLoading && _addressText == null
+            ? 'Загрузка...'
+            : (_addressText ?? 'Не указано'),
+        style: const TextStyle(color: textPrimary, fontSize: 15),
       ),
     );
   }
@@ -860,7 +883,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     if (visiblePhones.isNotEmpty) {
       children.add(contactLabel('Номер'));
       for (final p in visiblePhones) {
-        children.add(contactValue(p));
+        // Показываем номер замаскированным (+7 949 ***-**-**).
+        // Реальный номер доступен по кнопке «Позвонить».
+        children.add(contactValue(_maskPhone(p)));
       }
     }
     // Телеграм и MAX — в две колонки рядом (как на макете).
@@ -1154,7 +1179,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 );
                 return;
               }
-              
+
               // ✅ Авторизованный пользователь может оставить жалобу на продавца
               final userId = widget.userId != null ? int.tryParse(widget.userId!) : null;
               if (userId == null) {
@@ -1164,7 +1189,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 );
                 return;
               }
-              
+
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
@@ -1287,7 +1312,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _navigateToScreen(int index) {
     // Индексы 2, 3, 4, 5 требуют авторизацию
     final authRequiredIndices = {2, 3, 4, 5};
-    
+
     if (authRequiredIndices.contains(index)) {
       final token = TokenService.currentToken;
       if (token == null || token.isEmpty) {
@@ -1329,7 +1354,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       default:
         return false;
     }
-    
+
     return true; // Навигация успешна
   }
 
@@ -1338,12 +1363,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// При ошибке загрузки сетевого изображения показывает дефолтную SVG аватарку
   Widget _buildSellerAvatar(String? avatarUrl) {
     final defaultAvatar = 'assets/profile_dashboard/default-photo.svg';
-    
+
     // Если нет аватарки или URL пуст - показываем дефолтную SVG
     if (avatarUrl == null || avatarUrl.isEmpty) {
       return _buildDefaultAvatarContainer();
     }
-    
+
     // Для SVG файлов используем SvgPicture
     if (avatarUrl.endsWith('.svg')) {
       return Container(
@@ -1364,7 +1389,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         ),
       );
     }
-    
+
     // Для сетевых изображений с fallback на дефолтную аватарку
     if (avatarUrl.startsWith('http')) {
       return ClipOval(
@@ -1396,7 +1421,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         ),
       );
     }
-    
+
     // Для локальных растровых изображений (PNG, JPG)
     return ClipOval(
       child: SizedBox(
