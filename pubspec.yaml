@@ -65,6 +65,7 @@ flutter:
   assets:
     - .env
     - assets/
+    - assets/socials/
     - assets/home_page/logo2.svg
     - assets/home_page/settings.svg
     - assets/BottomNavigation/

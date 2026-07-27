@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/home_models.dart';
@@ -88,6 +89,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _descExpanded = false;
   bool _locExpanded = false;
   bool _contactsExpanded = false;
+  // Блок «Поделиться компанией» по умолчанию свёрнут (как остальные секции).
+  bool _shareExpanded = false;
 
   /// TTL кеша объявлений продавца — 5 минут.
   static const _cacheTtl = Duration(minutes: 5);
@@ -566,7 +569,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                     children: [
                       _buildHeader(),
 
-                      const SizedBox(height: 31),
+                      const SizedBox(height: 0),
                       _buildSellerInfo(),
 
                       const SizedBox(height: 20),
@@ -574,8 +577,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       _buildLocationSection(),
                       _buildContactsSection(),
 
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 0),
                       _buildRateSeller(),
+
+                      const SizedBox(height: 12),
+                      _buildShareCompanySection(),
 
                       const SizedBox(height: 16),
                       _buildCallWriteButtons(),
@@ -1050,7 +1056,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Widget _buildRateSeller() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(25),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(5),
@@ -1121,6 +1127,168 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         ],
       ),
     );
+  }
+
+  /// Блок «Поделиться компанией» (как на макете): заголовок, подпись и ряд
+  /// иконок для шаринга ссылки на профиль продавца.
+  Widget _buildShareCompanySection() {
+    return _buildCollapsibleSection(
+      title: 'Поделиться компанией',
+      expanded: _shareExpanded,
+      onToggle: () => setState(() => _shareExpanded = !_shareExpanded),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Отправьте ссылку друзьям или в соцсети удобным для вас способом',
+            style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 8,
+            runSpacing: 12,
+            children: [
+              // Порядок плиток — как на макете: ВК, Яндекс, ОК, почта, Telegram, MAX.
+              // Все иконки — белые глифы на прозрачном фоне (assets/socials/*.png).
+              _shareTile(
+                label: 'ВКонтакте',
+                onTap: () => _shareVia('vk'),
+                child: Image.asset(
+                  'assets/socials/vk.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              _shareTile(
+                label: 'Яндекс',
+                onTap: () => _shareVia('yandex'),
+                child: Image.asset(
+                  'assets/socials/yandex.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              _shareTile(
+                label: 'Одноклассники',
+                onTap: () => _shareVia('ok'),
+                child: Image.asset(
+                  'assets/socials/ok.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              _shareTile(
+                label: 'Электронная почта',
+                onTap: () => _shareVia('email'),
+                child: Image.asset(
+                  'assets/socials/email.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              _shareTile(
+                label: 'Telegram',
+                onTap: () => _shareVia('telegram'),
+                child: Image.asset(
+                  'assets/socials/telegram.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+              _shareTile(
+                label: 'MAX',
+                onTap: () => _shareVia('max'),
+                child: Image.asset(
+                  'assets/socials/max.png',
+                  width: 24,
+                  height: 24,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Квадратная кнопка-иконка для ряда шаринга.
+  Widget _shareTile({
+    required Widget child,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            // Плитка темнее панели секции — как на макете.
+            color: const Color(0xFF17212B),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          alignment: Alignment.center,
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  /// Открывает нужный способ шаринга ссылки на профиль продавца.
+  /// Для соцсетей используется web/deep-link через url_launcher; при неудаче
+  /// (нет приложения/браузера) — системный лист шаринга (share_plus).
+  Future<void> _shareVia(String kind) async {
+    final url = _generateSellerProfileUrl();
+    final text = 'Профиль продавца ${widget.sellerName} на LIDLE';
+    final encUrl = Uri.encodeComponent(url);
+    final encText = Uri.encodeComponent(text);
+    final encAll = Uri.encodeComponent('$text\n$url');
+
+    String? link;
+    switch (kind) {
+      case 'vk':
+        link = 'https://vk.com/share.php?url=$encUrl&title=$encText';
+        break;
+      case 'ok':
+        link = 'https://connect.ok.ru/offer?url=$encUrl&title=$encText';
+        break;
+      case 'telegram':
+        link = 'https://t.me/share/url?url=$encUrl&text=$encText';
+        break;
+      case 'whatsapp':
+        link = 'https://wa.me/?text=$encAll';
+        break;
+      case 'email':
+        link = 'mailto:?subject=$encText&body=$encAll';
+        break;
+      case 'yandex':
+        // У Яндекса нет универсального web-share intent — открываем системный
+        // лист шаринга (можно выбрать Яндекс.Мессенджер/почту, если стоит).
+        await Share.share('$text\n\n$url');
+        return;
+      case 'max':
+        // MAX (мессенджер) не имеет публичного share-URL — системный лист.
+        await Share.share('$text\n\n$url');
+        return;
+      case 'more':
+      default:
+        await Share.share('$text\n\n$url');
+        return;
+    }
+
+    try {
+      final launched =
+          await launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await Share.share('$text\n\n$url');
+      }
+    } catch (_) {
+      await Share.share('$text\n\n$url');
+    }
   }
 
   Widget _buildListingsTitle() {

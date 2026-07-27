@@ -365,9 +365,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                           children: [
                             Expanded(
                               child: SingleChildScrollView(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 21,
-                                  vertical: 15,
+                                // Контент уходит под плавающее нижнее меню
+                                // (extendBody: true). Нижний отступ = высота меню
+                                // + системный inset + 10px, чтобы при полной
+                                // прокрутке последний блок («Ваш магазин»)
+                                // останавливался ровно в 10px над меню и не
+                                // перекрывался им.
+                                padding: EdgeInsets.only(
+                                  left: 21,
+                                  right: 21,
+                                  top: 15,
+                                  bottom: bottomNavHeight +
+                                      MediaQuery.of(context).padding.bottom +
+                                      10,
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +687,6 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                               ),
                             ),
                           ),
-                          const SizedBox(height: 129),
                         ],
                       ),
                     ),
