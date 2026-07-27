@@ -172,35 +172,38 @@ class WishlistService {
   }) async {
     final stores = <Map<String, dynamic>>[];
     var page = 1;
-    var lastPage = 1;
+    const maxPages = 50; // защита от бесконечного цикла
+    const perPage = 10; // соответствует $perPage на бэке
 
-    do {
+    while (page <= maxPages) {
       final response = await ApiService.get(
         '/me/wishlist/companies?page=$page',
         token: token,
       );
 
       final data = response['data'];
-      if (data is List) {
-        for (final item in data) {
-          if (item is! Map) continue;
-          final wishable = item['wishable'];
-          if (wishable is! Map) continue;
-          stores.add({
-            'wishlistId': item['id'],
-            'id': wishable['id'],
-            'name': (wishable['name'] ?? '').toString(),
-            'avatar': wishable['avatar']?.toString(),
-            'created_at': wishable['created_at']?.toString(),
-            'address': wishable['address'],
-          });
-        }
+      // Не опираемся на meta (её формат может отличаться) — идём по страницам,
+      // пока в data есть элементы.
+      if (data is! List || data.isEmpty) break;
+
+      for (final item in data) {
+        if (item is! Map) continue;
+        final wishable = item['wishable'];
+        if (wishable is! Map) continue;
+        stores.add({
+          'wishlistId': item['id'],
+          'id': wishable['id'],
+          'name': (wishable['name'] ?? '').toString(),
+          'avatar': wishable['avatar']?.toString(),
+          'created_at': wishable['created_at']?.toString(),
+          'address': wishable['address'],
+        });
       }
 
-      final meta = response['meta'];
-      lastPage = (meta is Map ? (meta['last_page'] as num?)?.toInt() : null) ?? 1;
+      // Последняя страница — если пришло меньше, чем размер страницы.
+      if (data.length < perPage) break;
       page++;
-    } while (page <= lastPage);
+    }
 
     return stores;
   }
