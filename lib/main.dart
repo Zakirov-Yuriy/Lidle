@@ -11,6 +11,7 @@ import 'package:lidle/pages/add_listing/published_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/new_listing_notifier.dart';
 import 'package:workmanager/workmanager.dart';
 import 'package:lidle/services/background_message_service.dart';
+import 'package:lidle/services/background_ai_status_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -66,7 +67,12 @@ void callbackDispatcher() {
     try {
       if (task == 'backgroundMessageCheck') {
         // Вызываем функцию проверки сообщений для фонового контекста
-        return await backgroundMessageCheck();
+        final messagesOk = await backgroundMessageCheck();
+        // 🤖 В том же цикле проверяем статус ИИ-обработки объявлений и, если
+        // ИИ только что завершил обработку (all_done), показываем локальное
+        // уведомление — оно приходит даже когда приложение закрыто.
+        await backgroundAiStatusCheck();
+        return messagesOk;
       }
       return false;
     } catch (e, st) {
