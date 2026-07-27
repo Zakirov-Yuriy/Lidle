@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/pages/profile_menu/profile_menu_screen.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
@@ -117,6 +121,28 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Показывает диалоговое окно финансовой поддержки
   void _showFinancialSupportDialog() {
     FinancialSupportDialog.show(context);
+  }
+
+  /// Формирует ссылку на магазин (публичный профиль/витрину продавца).
+  /// Prod: https://lidle.io/ru/users/{userId}
+  /// Dev:  https://dev.lidle.io/ru/users/{userId}
+  String _buildStoreUrl(String userId) {
+    final cleanUserId = userId.replaceFirst('ID: ', '').trim();
+    return '${AppConfig().websiteUrl}/users/$cleanUserId';
+  }
+
+  /// 🔗 Поделиться магазином — та же логика, что у иконки шаринга на других
+  /// экранах (например, _shareAdvert в mini_property_details_screen.dart):
+  /// прямой вызов нативного меню Share.share, которое само показывает список
+  /// приложений/соцсетей. Делимся именно текущим экраном — магазином.
+  void _shareStore(String storeName, String storeUrl) {
+    final title = storeName.trim().isEmpty ? 'мой магазин' : '«$storeName»';
+    final textToShare =
+        'Загляните в $title на LIDLE! 🛍\n\n'
+        'Присоединяйся к LIDLE!\n'
+        '$storeUrl';
+
+    Share.share(textToShare);
   }
 
   /// Загрузить количество объявлений.
@@ -572,6 +598,81 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                       onTap: _showFinancialSupportDialog,
                                     ),
                                   ),
+
+                                  const SizedBox(height: 12),
+
+                                  // Карточка «Ваш магазин» с кнопкой «Поделиться»
+                                  Builder(
+                                    builder: (context) {
+                                      final storeName =
+                                          profileState is ProfileLoaded
+                                              ? profileState.name
+                                              : '';
+                                      final rawNick =
+                                          (profileState is ProfileLoaded
+                                                  ? profileState.username
+                                                  : '')
+                                              .trim();
+                                      // Убираем ведущий символ «@» — нужно только имя аккаунта
+                                      final nick = rawNick.startsWith('@')
+                                          ? rawNick.substring(1).trim()
+                                          : rawNick;
+                                      // Если ник пустой — используем имя аккаунта
+                                      final displayName = nick.isNotEmpty
+                                          ? nick
+                                          : storeName.trim();
+                                      final userId =
+                                          profileState is ProfileLoaded
+                                              ? profileState.userId
+                                              : '';
+                                      final storeUrl = _buildStoreUrl(userId);
+                                      final profileImg =
+                                          profileState is ProfileLoaded
+                                              ? profileState.profileImage
+                                              : null;
+                                      // SellerProfileScreen ждёт числовой id (int.tryParse)
+                                      final cleanUserId = userId
+                                          .replaceFirst('ID: ', '')
+                                          .trim();
+                                      return SizedBox(
+                                        width: double.infinity,
+                                        child: _StoreShareCard(
+                                          storeName: storeName,
+                                          ownerNick: displayName,
+                                          profileImage: profileImg,
+                                          // Тап по иконке → системное «Поделиться»
+                                          onShare: () => _shareStore(
+                                            displayName,
+                                            storeUrl,
+                                          ),
+                                          // Тап по карточке → магазин продавца
+                                          onOpenStore: () {
+                                            final ImageProvider avatarProvider =
+                                                (profileImg != null &&
+                                                        profileImg.isNotEmpty)
+                                                    ? NetworkImage(profileImg)
+                                                    : const AssetImage(
+                                                        'assets/profile_dashboard/default-photo.svg',
+                                                      );
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    SellerProfileScreen(
+                                                  sellerName:
+                                                      displayName.isNotEmpty
+                                                          ? displayName
+                                                          : storeName,
+                                                  sellerAvatar: avatarProvider,
+                                                  sellerAvatarUrl: profileImg,
+                                                  userId: cleanUserId,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      );
+                                    },
+                                  ),
                                 ],
                               ),
                             ),
@@ -619,6 +720,7 @@ class _ProfileHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Аватар с синей окантовкой
         Container(
@@ -646,32 +748,42 @@ class _ProfileHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$username',
-              style: const TextStyle(
-                color: Colors.blue,
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
+              const SizedBox(height: 4),
+              Text(
+                '$username',
+                style: const TextStyle(
+                  color: Colors.blue,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              '$userId',
-              style: const TextStyle(color: textSecondary, fontSize: 12),
-            ),
-          ],
+              const SizedBox(height: 5),
+              Text(
+                '$userId',
+                style: const TextStyle(color: textSecondary, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+        // Бургер-меню → переход на экран меню профиля
+        IconButton(
+          onPressed: () =>
+              Navigator.of(context).pushNamed(ProfileMenuScreen.routeName),
+          icon: const Icon(Icons.menu, color: Colors.white, size: 30),
+          tooltip: 'Меню',
+          splashRadius: 24,
         ),
       ],
     );
@@ -964,6 +1076,129 @@ class _FinancialSupportCard extends StatelessWidget {
     );
 
     return onTap != null ? GestureDetector(onTap: onTap, child: card) : card;
+  }
+}
+
+/// Карточка «Ваш магазин» с кнопкой «Поделиться».
+/// По нажатию на иконку (или на всю карточку) открывается меню
+/// с разными способами поделиться ссылкой на магазин.
+class _StoreShareCard extends StatelessWidget {
+  final String storeName;
+  final String ownerNick;
+  final String? profileImage;
+  final VoidCallback onShare;
+  final VoidCallback onOpenStore;
+
+  const _StoreShareCard({
+    required this.storeName,
+    required this.onShare,
+    required this.onOpenStore,
+    this.ownerNick = '',
+    this.profileImage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // После «Ваш магазин» выводим ник владельца магазина.
+    final title = ownerNick.trim().isEmpty
+        ? 'Ваш магазин'
+        : 'Ваш магазин $ownerNick';
+
+    return GestureDetector(
+      // Тап по всей карточке → переход в магазин продавца
+      onTap: onOpenStore,
+      child: Container(
+        decoration: BoxDecoration(
+          color: primaryBackground,
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: const Color(0xFF474747)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            // Кнопка «Поделиться» центрируется по вертикали относительно
+            // всего блока (аватар + заголовок + подпись)
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Левый блок: строка (аватар + заголовок) и подпись под ней
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Первая строка: иконка/аватар + заголовок «Ваш магазин ...»
+                    Row(
+                      children: [
+                        ClipOval(
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: profileImage != null
+                                ? buildProfileImage(
+                                    profileImage,
+                                    width: 32,
+                                    height: 32,
+                                    fit: BoxFit.cover,
+                                  )
+                                : SvgPicture.asset(
+                                    'assets/profile_dashboard/default-photo.svg',
+                                    width: 32,
+                                    height: 32,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    // Подпись — под строкой с иконкой и заголовком
+                    const Text(
+                      'Делитесь вашей ссылкой в своих соц сетях и с покупателями',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Кнопка «Поделиться» — по центру по вертикали
+              IconButton(
+                onPressed: onShare,
+                tooltip: 'Поделиться',
+                splashRadius: 22,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: SvgPicture.asset(
+                  'assets/home_page/share_outlined.svg',
+                  width: 22,
+                  height: 22,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

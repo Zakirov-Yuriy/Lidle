@@ -75,6 +75,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _profileLoading = false;
   String? _description; // поле description (профильное about)
   String? _addressText; // собранная строка регион/город
+  String? _registrationDate; // дата регистрации (created_at, формат дд.мм.гггг)
   bool _isWishlisted = false; // подписан ли текущий пользователь
   int? _wishlistId; // id записи избранного (для отписки)
   bool _subscribing = false; // идёт запрос подписки/отписки
@@ -83,9 +84,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   List<String> _maxes = [];
 
   // Состояния «свёрнуто/развёрнуто» для секций.
-  bool _descExpanded = true;
-  bool _locExpanded = true;
-  bool _contactsExpanded = true;
+  // По умолчанию все секции ЗАКРЫТЫ.
+  bool _descExpanded = false;
+  bool _locExpanded = false;
+  bool _contactsExpanded = false;
 
   /// TTL кеша объявлений продавца — 5 минут.
   static const _cacheTtl = Duration(minutes: 5);
@@ -172,6 +174,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       }
       final addr = parts.isNotEmpty ? parts.join(', ') : null;
 
+      // Дата регистрации продавца (created_at приходит как "дд.мм.гггг").
+      final createdRaw = data['created_at'];
+      final registrationDate =
+          (createdRaw is String && createdRaw.trim().isNotEmpty)
+              ? createdRaw.trim()
+              : null;
+
       // Избранное.
       final isWishlisted = data['is_wishlisted'] == true;
       final wishlistId = _asInt(data['wishlist_id']);
@@ -206,6 +215,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       setState(() {
         _description = desc;
         _addressText = addr;
+        _registrationDate = registrationDate;
         _isWishlisted = isWishlisted;
         _wishlistId = wishlistId;
         _phones = phones;
@@ -643,6 +653,96 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
+  /// Измеряет ширину набора текстовых спанов в одну строку (для адаптива).
+  double _measureSpanWidth(List<InlineSpan> spans) {
+    final tp = TextPainter(
+      text: TextSpan(children: spans),
+      maxLines: 1,
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return tp.width;
+  }
+
+  /// Строка «На ЛИДЛ LIDLE c ДАТА · Оценка: ⭐ 5».
+  /// Адаптив: если не помещается по ширине — «LIDLE» уменьшается с 10 до 7,
+  /// а если и тогда не влезает — «LIDLE» скрывается совсем.
+  Widget _buildRegistrationRow() {
+    const double fs = 13; // размер остального текста
+    final date = _registrationDate ?? widget.sellerRegistrationDate ?? '';
+
+    // Фиксированный «хвост»: «Оценка: ⭐ 5» + отступ.
+    const ratingText = 'Оценка: ';
+    const ratingValue = ' 5';
+    const double starSize = 16;
+    const double gap = 10;
+
+    // Спаны даты без «LIDLE».
+    const prefixSpan = TextSpan(
+      text: 'На ЛИДЛ ',
+      style: TextStyle(color: textSecondary, fontSize: fs),
+    );
+    final dateSpan = TextSpan(
+      text: ' c $date',
+      style: const TextStyle(color: textSecondary, fontSize: fs),
+    );
+    TextSpan lidleSpan(double size) => TextSpan(
+          text: 'LIDLE',
+          style: TextStyle(color: activeIconColor, fontSize: size),
+        );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Доступная ширина = вся ширина строки минус фиксированный «хвост».
+        final tailWidth = _measureSpanWidth(const [
+              TextSpan(
+                text: ratingText,
+                style: TextStyle(color: textSecondary, fontSize: fs),
+              ),
+              TextSpan(
+                text: ratingValue,
+                style: TextStyle(color: textPrimary, fontSize: fs),
+              ),
+            ]) +
+            starSize +
+            gap +
+            2; // небольшой запас
+        final available = constraints.maxWidth - tailWidth;
+
+        // Подбираем размер «LIDLE»: 10 → 9 → 8 → 7, иначе скрываем.
+        List<InlineSpan> chosen = [prefixSpan, dateSpan];
+        for (final size in [10.0, 9.0, 8.0, 7.0]) {
+          final candidate = <InlineSpan>[prefixSpan, lidleSpan(size), dateSpan];
+          if (_measureSpanWidth(candidate) <= available) {
+            chosen = candidate;
+            break;
+          }
+        }
+
+        return Row(
+          children: [
+            Flexible(
+              child: Text.rich(
+                TextSpan(children: chosen),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            const SizedBox(width: gap),
+            const Text(
+              ratingText,
+              style: TextStyle(color: textSecondary, fontSize: fs),
+            ),
+            const Icon(Icons.star, color: Colors.amber, size: starSize),
+            const Text(
+              ratingValue,
+              style: TextStyle(color: textPrimary, fontSize: fs),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildSellerInfo() {
     return Column(
       children: [
@@ -650,55 +750,31 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           children: [
             _buildSellerAvatar(widget.sellerAvatarUrl),
             const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.sellerName,
-                  style: const TextStyle(
-                    color: textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
+            // Expanded — чтобы блок имени/даты был ограничен по ширине
+            // и корректно работал адаптив (иначе строка уходит за экран).
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.sellerName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'На ЛИДЛ ',
-                            style: const TextStyle(color: textSecondary, fontSize: 13),
-                          ),
-                          // TextSpan(
-                          //   text: 'LIDLE',
-                          //   style: const TextStyle(color: activeIconColor, fontSize: 10),
-                          // ),
-                          TextSpan(
-                            text: ' с ${RegExp(r'\d{4}').firstMatch(widget.sellerRegistrationDate ?? '')?.group(0) ?? '2024'} г.',
-                            style: const TextStyle(color: textSecondary, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      "Оценка: ",
-                      style: TextStyle(color: textSecondary, fontSize: 13),
-                    ),
-                    Icon(Icons.star, color: Colors.amber, size: 16),
-                    Text(" 5", style: TextStyle(color: textPrimary)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  "Проверенный продавец",
-                  style: TextStyle(color: Colors.greenAccent, fontSize: 14),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  _buildRegistrationRow(),
+                  const SizedBox(height: 6),
+                  const Text(
+                    "Проверенный продавец",
+                    style: TextStyle(color: Colors.greenAccent, fontSize: 14),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

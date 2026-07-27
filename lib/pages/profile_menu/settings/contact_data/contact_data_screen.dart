@@ -48,6 +48,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  // Однократно запрашиваем профиль с бэка при входе на экран
+  bool _profileRequested = false;
 
   int? _phone1Id;
   int? _phone2Id;
@@ -91,6 +93,13 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     super.didChangeDependencies();
     // ignore: avoid_print
     // log.d('🔵 ContactDataScreen: didChangeDependencies() called');
+
+    // 📲 Один раз запрашиваем профиль с бэка (GET /me), чтобы имя и фамилия
+    // гарантированно пришли и заполнили поля через BlocListener ниже.
+    if (!_profileRequested) {
+      _profileRequested = true;
+      context.read<ProfileBloc>().add(LoadProfileEvent());
+    }
 
     // 💾 КЕШИРОВАНИЕ: Проверяем нужно ли обновлять данные
     if (_shouldRefreshContactData()) {
@@ -193,10 +202,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // Получаем профиль из ProfileBloc (уже загружен)
       final profileState = context.read<ProfileBloc>().state;
       
-      // ✅ ПРАВИЛЬНО: Используем отдельные поля name и lastName из ProfileLoaded
-      // API уже возвращает их отдельно, не нужно парсить
-      final firstName = profileState is ProfileLoaded ? profileState.name : '';
-      final lastName = profileState is ProfileLoaded ? profileState.lastName : '';
+      // ✅ name → «Контактное лицо», lastName → «Фамилия».
+      // Приоритет: ProfileBloc (данные с бэка /me) → сохранённые в Hive значения.
+      final firstName = profileState is ProfileLoaded
+          ? profileState.name
+          : (UserService.getLocal('name') as String? ?? '');
+      final lastName = profileState is ProfileLoaded
+          ? profileState.lastName
+          : (UserService.getLocal('lastName') as String? ?? '');
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
 
@@ -280,13 +293,36 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // ✅ Проверяем что widget еще mounted перед использованием Context
       if (!mounted) return;
 
-      // ✅ ПРАВИЛЬНО: Используем отдельные поля name и lastName из ProfileLoaded
-      // API уже возвращает их отдельно в UserProfile с помощью @JsonKey(name: 'last_name')
-      final profileState = context.read<ProfileBloc>().state;
-      final firstName = profileState is ProfileLoaded ? profileState.name : '';
-      var lastName = profileState is ProfileLoaded ? profileState.lastName : '';
-      final email = profileState is ProfileLoaded ? profileState.email : '';
-      final phone = profileState is ProfileLoaded ? profileState.phone : '';
+      // ✅ Берём имя и фамилию НАПРЯМУЮ С БЭКА (GET /me → MeResource).
+      // Бэкенд хранит их отдельными полями (RegisterController: name / last_name),
+      // а UserProfile маппит их как name (@JsonKey 'name') и lastName (@JsonKey 'last_name'):
+      //   profile.name     → поле «Контактное лицо» (имя при регистрации)
+      //   profile.lastName → поле «Фамилия»        (фамилия при регистрации)
+      // Так значения не зависят от того, загружен ли ProfileBloc.
+      String firstName = '';
+      var lastName = '';
+      String email = '';
+      String phone = '';
+      try {
+        final profile = await UserService.getProfile(token: token);
+        firstName = profile.name;
+        lastName = profile.lastName;
+        email = profile.email;
+        phone = profile.phone ?? '';
+      } catch (e) {
+        // Фолбэк: если /me недоступен — берём из ProfileBloc, затем из Hive.
+        log.d('⚠️ Не удалось получить профиль с бэка, берём из кеша: $e');
+        if (!mounted) return;
+        final profileState = context.read<ProfileBloc>().state;
+        firstName = profileState is ProfileLoaded
+            ? profileState.name
+            : (UserService.getLocal('name') as String? ?? '');
+        lastName = profileState is ProfileLoaded
+            ? profileState.lastName
+            : (UserService.getLocal('lastName') as String? ?? '');
+        email = profileState is ProfileLoaded ? profileState.email : '';
+        phone = profileState is ProfileLoaded ? profileState.phone : '';
+      }
 
       // Получаем область и город из локального хранилища
       var region = UserService.getLocal('region') as String? ?? '';
@@ -951,7 +987,24 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: bgColor,
-      body: BlocListener<ConnectivityBloc, ConnectivityState>(
+      body: BlocListener<ProfileBloc, ProfileState>(
+        // 👤 Как только профиль загружен с бэка (/me) — заполняем поля.
+        //   name     → «Контактное лицо»
+        //   lastName → «Фамилия»
+        // Заполняем только пустые поля, чтобы не затирать правки пользователя.
+        listener: (context, profileState) {
+          if (profileState is ProfileLoaded) {
+            if (_nameController.text.trim().isEmpty &&
+                profileState.name.trim().isNotEmpty) {
+              _nameController.text = profileState.name;
+            }
+            if (_lastNameController.text.trim().isEmpty &&
+                profileState.lastName.trim().isNotEmpty) {
+              _lastNameController.text = profileState.lastName;
+            }
+          }
+        },
+        child: BlocListener<ConnectivityBloc, ConnectivityState>(
         listener: (context, connectivityState) {
           // Когда интернет восстановлен - перезагружаем контактные данные
           if (connectivityState is ConnectedState) {
@@ -1141,7 +1194,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             },
           ),
         ),
-      
+      ),
     );
   }
 
