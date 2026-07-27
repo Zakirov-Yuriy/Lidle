@@ -20,6 +20,9 @@ import '../widgets/cards/listing_card.dart';
 import '../hive_service.dart';
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/services/wishlist_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
   static const routeName = '/favorites';
@@ -34,11 +37,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   Set<String> _selectedSortOptions = {}; // New state for selected sort options
   bool _wishlistLoadedOnce = false; // Флаг для предотвращения множественной загрузки
 
+  // ── Избранные магазины (продавцы) ──────────────────────────────────────
+  List<Map<String, dynamic>> _favoriteStores = [];
+  bool _storesLoading = false;
+
   @override
   void initState() {
     super.initState();
     _selectedSortOptions.add('Сначала новые'); // Default sort option
-    
+
     // 📱 Загружаем wishlist при открытии экрана (только один раз)
     if (!_wishlistLoadedOnce) {
       _wishlistLoadedOnce = true; // Устанавливаем флаг ДО async операции
@@ -48,6 +55,32 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
           // log.d('🔄 FavoritesScreen.initState: Загружаем wishlist');
         }
       });
+    }
+
+    // 🏬 Загружаем избранные магазины с сервера.
+    _loadFavoriteStores();
+  }
+
+  /// Загружает избранные магазины (продавцов) с бэка.
+  /// Только для авторизованного пользователя — иначе список пуст.
+  Future<void> _loadFavoriteStores() async {
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      if (mounted) setState(() => _favoriteStores = []);
+      return;
+    }
+    if (mounted) setState(() => _storesLoading = true);
+    try {
+      final stores = await WishlistService.getFavoriteCompanies(token: token);
+      if (mounted) {
+        setState(() {
+          _favoriteStores = stores;
+          _storesLoading = false;
+        });
+      }
+    } catch (e) {
+      log.d('❌ FavoritesScreen: ошибка загрузки избранных магазинов: $e');
+      if (mounted) setState(() => _storesLoading = false);
     }
   }
 
@@ -291,6 +324,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                 ),
               ),
               const SizedBox(height: 10),
+              // 🏬 Секция избранных магазинов (показывается, если они есть).
+              _buildFavoriteStoresSection(),
               Expanded(
                 child: BlocBuilder<WishlistBloc, WishlistState>(
                   builder: (context, wishlistState) {
@@ -416,6 +451,143 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     ),
   );
 }
+
+  /// Секция «Избранные магазины» — горизонтальный список карточек продавцов.
+  /// Скрыта, когда магазинов нет.
+  Widget _buildFavoriteStoresSection() {
+    if (_favoriteStores.isEmpty) {
+      // Пока грузим первый раз — можно показать тонкий индикатор, но чтобы не
+      // прыгал layout, просто ничего не показываем (список объявлений ниже).
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Text(
+            'Избранные магазины',
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 108,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: _favoriteStores.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) => _buildStoreCard(_favoriteStores[index]),
+          ),
+        ),
+        const SizedBox(height: 14),
+      ],
+    );
+  }
+
+  /// Карточка одного избранного магазина. Тап → экран продавца.
+  Widget _buildStoreCard(Map<String, dynamic> store) {
+    final name = (store['name'] ?? '').toString();
+    final avatarUrl = store['avatar']?.toString();
+    // Город из address.city.name (если есть).
+    String? city;
+    final address = store['address'];
+    if (address is Map) {
+      final cityNode = address['city'];
+      if (cityNode is Map && cityNode['name'] != null) {
+        city = cityNode['name'].toString();
+      }
+    }
+
+    final hasAvatar = avatarUrl != null &&
+        avatarUrl.isNotEmpty &&
+        avatarUrl.startsWith('http');
+
+    return GestureDetector(
+      onTap: () => _openStore(store),
+      child: SizedBox(
+        width: 92,
+        child: Column(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: formBackground,
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: hasAvatar
+                  ? Image.network(
+                      avatarUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _storePlaceholder(),
+                    )
+                  : _storePlaceholder(),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              name.isEmpty ? 'Магазин' : name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: textPrimary, fontSize: 12),
+            ),
+            if (city != null)
+              Text(
+                city,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: textSecondary, fontSize: 10),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _storePlaceholder() {
+    return SvgPicture.asset(
+      'assets/profile_dashboard/default-photo.svg',
+      fit: BoxFit.cover,
+    );
+  }
+
+  /// Открывает экран продавца (магазина).
+  void _openStore(Map<String, dynamic> store) {
+    final userId = store['id']?.toString() ?? '';
+    final name = (store['name'] ?? '').toString();
+    final avatarUrl = store['avatar']?.toString();
+    final createdAt = store['created_at']?.toString();
+
+    final ImageProvider avatarProvider =
+        (avatarUrl != null && avatarUrl.isNotEmpty && avatarUrl.startsWith('http'))
+            ? NetworkImage(avatarUrl)
+            : const AssetImage('assets/profile_dashboard/default-photo.svg');
+
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (_) => SellerProfileScreen(
+              sellerName: name,
+              sellerAvatar: avatarProvider,
+              sellerAvatarUrl: avatarUrl,
+              userId: userId,
+              sellerRegistrationDate: createdAt,
+            ),
+          ),
+        )
+        .then((_) {
+          // Вернулись с экрана продавца — обновляем список (могли отписаться).
+          _loadFavoriteStores();
+        });
+  }
 
   // Helper widget for building dropdowns, similar to real_estate_listings_screen.dart
   Widget _buildFilterDropdown({required String label, VoidCallback? onTap}) {

@@ -157,4 +157,51 @@ class WishlistService {
       throw Exception('Ошибка при загрузке ID избранного: $e');
     }
   }
+
+  /// Загрузить список избранных магазинов (продавцов) с сервера.
+  ///
+  /// GET /v1/me/wishlist/companies?page=N
+  /// Магазины хранятся в том же wishlist (wishable_type = User), но основной
+  /// список (getWishlist) их не отдаёт — для них отдельный эндпоинт.
+  ///
+  /// Возвращает список магазинов, где у каждого есть:
+  ///   'wishlistId' — id записи избранного (для удаления),
+  ///   'id', 'name', 'avatar', 'created_at', 'address'.
+  static Future<List<Map<String, dynamic>>> getFavoriteCompanies({
+    required String token,
+  }) async {
+    final stores = <Map<String, dynamic>>[];
+    var page = 1;
+    var lastPage = 1;
+
+    do {
+      final response = await ApiService.get(
+        '/me/wishlist/companies?page=$page',
+        token: token,
+      );
+
+      final data = response['data'];
+      if (data is List) {
+        for (final item in data) {
+          if (item is! Map) continue;
+          final wishable = item['wishable'];
+          if (wishable is! Map) continue;
+          stores.add({
+            'wishlistId': item['id'],
+            'id': wishable['id'],
+            'name': (wishable['name'] ?? '').toString(),
+            'avatar': wishable['avatar']?.toString(),
+            'created_at': wishable['created_at']?.toString(),
+            'address': wishable['address'],
+          });
+        }
+      }
+
+      final meta = response['meta'];
+      lastPage = (meta is Map ? (meta['last_page'] as num?)?.toInt() : null) ?? 1;
+      page++;
+    } while (page <= lastPage);
+
+    return stores;
+  }
 }
