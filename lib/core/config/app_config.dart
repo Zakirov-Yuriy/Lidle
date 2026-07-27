@@ -35,6 +35,13 @@ class AppConfig {
   late String _imageBaseUrl;
   late String _documentDomain;
 
+  // ── Reverb (WebSocket, протокол Pusher) ──────────────────────────────
+  late String _reverbKey; // публичный REVERB_APP_KEY
+  late String _reverbHost; // домен WS (nginx проксирует /app/ на Reverb)
+  late int _reverbPort; // 443
+  late bool _reverbTls; // true (wss)
+  late String _broadcastAuthUrl; // авторизация приватных каналов (Bearer Sanctum)
+
   factory AppConfig() {
     return _instance;
   }
@@ -68,11 +75,23 @@ class AppConfig {
       _wsUrl = 'wss://dev-api.lidle.io/ws';
       _imageBaseUrl = 'https://dev-img.lidle.io';
       _documentDomain = 'https://dev.lidle.io';
+      // Reverb dev (значения из .env dev-сервера; путь наружу — /app/).
+      _reverbKey = 'm0ufb6oybyx6usr93zq3';
+      _reverbHost = 'dev-api.lidle.io';
+      _reverbPort = 443;
+      _reverbTls = true;
+      _broadcastAuthUrl = 'https://dev-api.lidle.io/v1/broadcasting/auth';
     } else {
       _apiBaseUrl = 'https://api.lidle.io/v1';
       _wsUrl = 'wss://api.lidle.io/ws';
       _imageBaseUrl = 'https://img.lidle.io';
       _documentDomain = 'https://lidle.io';
+      // Reverb prod: TODO — подставить REVERB_APP_KEY с прод-сервера (10.10.10.20).
+      _reverbKey = 'PROD_REVERB_APP_KEY';
+      _reverbHost = 'api.lidle.io';
+      _reverbPort = 443;
+      _reverbTls = true;
+      _broadcastAuthUrl = 'https://api.lidle.io/v1/broadcasting/auth';
     }
   }
 
@@ -86,6 +105,13 @@ class AppConfig {
   /// Base URL для WebSocket подключения
   /// Пример: wss://api.lidle.io/ws
   String get wsUrl => _instance._wsUrl;
+
+  /// Параметры Reverb (WebSocket, протокол Pusher).
+  String get reverbKey => _instance._reverbKey;
+  String get reverbHost => _instance._reverbHost;
+  int get reverbPort => _instance._reverbPort;
+  bool get reverbTls => _instance._reverbTls;
+  String get broadcastAuthUrl => _instance._broadcastAuthUrl;
   
   /// Base URL для изображений на CDN
   /// Пример: https://img.lidle.io

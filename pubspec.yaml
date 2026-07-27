@@ -45,7 +45,9 @@ dependencies:
   logger: ^2.7.0
   flutter_local_notifications: ^17.2.0 # Для локальных пуш-уведомлений
   permission_handler: ^11.4.0 # Для запроса разрешений (Android 13+ для уведомлений)
+  web_socket_channel: ^3.0.3 # WebSocket-клиент для Reverb (протокол Pusher, вручную)
   workmanager: ^0.9.0
+  flutter_foreground_task: ^8.0.0 # Этап 3: удержание WebSocket (Reverb) при полностью закрытом приложении (Android FGS)
   connectivity_plus: ^6.0.0 # Для мониторинга подключения к интернету
   app_links: ^3.5.0 # Для обработки deep links flutter
   flutter_contacts: ^1.1.9 # Для работы с контактами телефона

@@ -12,6 +12,9 @@ import 'package:lidle/pages/profile_dashboard/my_listings/new_listing_notifier.d
 import 'package:workmanager/workmanager.dart';
 import 'package:lidle/services/background_message_service.dart';
 import 'package:lidle/services/background_ai_status_service.dart';
+import 'package:lidle/services/websocket_service.dart';
+import 'package:lidle/services/ws_foreground_service.dart';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -330,6 +333,16 @@ class LidleApp extends StatelessWidget {
             // экране с переходом на предпросмотр для публикации.
             AiCompletionService.instance.start();
 
+            // 🔌 Подключаемся к Reverb (WebSocket) и слушаем канал пользователя:
+            // сервер мгновенно пришлёт событие о завершении ИИ-обработки.
+            // Android — через foreground-сервис (держит связь и при закрытом
+            // приложении, этап 3); остальные платформы — main-изолят.
+            if (!kIsWeb && Platform.isAndroid) {
+              WsForegroundService.start();
+            } else {
+              WebSocketService().start();
+            }
+
             // 🌙 Запускаем BACKGROUND задачу для проверки сообщений
             // Эта задача запускается периодически даже когда приложение свернуто
             Workmanager().registerPeriodicTask(
@@ -349,6 +362,13 @@ class LidleApp extends StatelessWidget {
 
             // 🤖 Останавливаем наблюдатель за ИИ-обработкой.
             AiCompletionService.instance.stop();
+
+            // 🔌 Отключаем WebSocket.
+            if (!kIsWeb && Platform.isAndroid) {
+              WsForegroundService.stop();
+            } else {
+              WebSocketService().stop();
+            }
 
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');

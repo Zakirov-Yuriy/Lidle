@@ -1,36 +1,27 @@
 // ============================================================
-// "WebSocket сервис (Reverb) для мгновенных уведомлений"
+// "WebSocket сервис (Reverb) — main-изолят / fallback"
 // ============================================================
 //
-// Подключается к Laravel Reverb напрямую по протоколу Pusher (через
-// web_socket_channel — без внешнего Pusher-SDK, чтобы не зависеть от его
-// версий). Слушает приватный канал `private-user.{id}` и на событие
-// `moderation.ai.done` показывает локальное уведомление — мгновенно, пока
-// приложение подключено (открыто или свёрнуто, но процесс жив).
+// Держит подключение к Reverb, пока приложение открыто или свёрнуто, но процесс
+// жив (main-изолят). Вся протокольная логика вынесена в ReverbConnection
+// (reverb_connection.dart) — этот класс лишь связывает её с сервисами
+// приложения (токен, userId через /me, показ уведомления).
 //
-// Протокол Pusher (кратко):
-//  1. Подключаемся к wss://<host>/app/<key>?protocol=7...
-//  2. Сервер шлёт pusher:connection_established с socket_id.
-//  3. Для приватного канала берём подпись на /v1/broadcasting/auth
-//     (Bearer-токен) и шлём pusher:subscribe { channel, auth }.
-//  4. Ловим события; на pusher:ping отвечаем pusher:pong.
+// На Android для доставки при ПОЛНОСТЬЮ закрытом приложении используется
+// WsForegroundService (этап 3, отдельный изолят). Этот сервис остаётся как
+// путь для iOS и как fallback.
 //
 // Запуск: WebSocketService().start();  Стоп: WebSocketService().stop();
-//
-// Для доставки при полностью закрытом приложении соединение нужно удерживать
-// foreground-сервисом — отдельный слой (этап 3).
 
 import 'dart:async';
-import 'dart:convert';
 
-import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/notification_service.dart';
+import 'package:lidle/services/reverb_connection.dart';
 
 final _logger = Logger();
 
@@ -40,216 +31,70 @@ class WebSocketService {
   WebSocketService._internal();
 
   static const int _aiNotificationId = 90031;
-  static const String _aiEventName = 'moderation.ai.done';
-  // Reverb закрывает «тихое» соединение (activity_timeout ~120с). Шлём ping
-  // раньше — каждые ~25с, чтобы держать канал живым.
-  static const Duration _heartbeatInterval = Duration(seconds: 25);
 
-  WebSocketChannel? _channel;
-  StreamSubscription? _sub;
+  // DEBUG: показать одно тестовое уведомление сразу после успешной подписки,
+  // чтобы проверить, что слой уведомлений вообще работает (без broadcast).
+  // Перед релизом поставить false.
+  static const bool _debugSelfTest = true;
+  bool _selfTested = false;
+
+  ReverbConnection? _conn;
   bool _started = false;
-  bool _stopping = false;
   int? _userId;
-  String? _channelName;
-  Timer? _reconnectTimer;
-  Timer? _heartbeatTimer;
 
   /// Запустить: определить userId и подключиться.
   Future<void> start() async {
     if (_started) return;
     _started = true;
-    _stopping = false;
-    await _connect();
-  }
 
-  /// Остановить (логаут).
-  Future<void> stop() async {
-    _stopping = true;
-    _started = false;
-    _reconnectTimer?.cancel();
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-    await _sub?.cancel();
-    _sub = null;
-    await _channel?.sink.close();
-    _channel = null;
-    _channelName = null;
-  }
-
-  Future<void> _connect() async {
     final token = TokenService.currentToken;
     if (token == null || token.isEmpty) {
       _started = false;
       return;
     }
 
-    // Чистим прошлое соединение, чтобы не плодить «висящие» каналы/подписки.
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-    await _sub?.cancel();
-    _sub = null;
-    await _channel?.sink.close();
-    _channel = null;
-
-    try {
-      _userId ??= await _resolveUserId(token);
-      if (_userId == null) {
-        _logger.w('WebSocketService: не удалось определить userId');
-        _scheduleReconnect();
-        return;
-      }
-      _channelName = 'private-user.$_userId';
-
-      final cfg = AppConfig();
-      final scheme = cfg.reverbTls ? 'wss' : 'ws';
-      // nginx проксирует /app/ на Reverb; порт 443 (по умолчанию для wss).
-      final url =
-          '$scheme://${cfg.reverbHost}/app/${cfg.reverbKey}?protocol=7&client=flutter&version=1.0';
-
-      _channel = WebSocketChannel.connect(Uri.parse(url));
-      _sub = _channel!.stream.listen(
-        _onMessage,
-        onError: (e) {
-          _logger.w('WS error: $e');
-          _scheduleReconnect();
-        },
-        onDone: () {
-          _logger.i('WS закрыт (${_channel?.closeCode})');
-          _scheduleReconnect();
-        },
-        cancelOnError: true,
-      );
-      _logger.i('🔌 WS: подключение к $scheme://${cfg.reverbHost}/app/***');
-    } catch (e) {
-      _logger.w('WebSocketService._connect ошибка: $e');
-      _scheduleReconnect();
+    _userId ??= await _resolveUserId(token);
+    if (_userId == null) {
+      _logger.w('WebSocketService: не удалось определить userId');
+      _started = false;
+      return;
     }
+
+    final cfg = AppConfig();
+    _conn = ReverbConnection(
+      host: cfg.reverbHost,
+      appKey: cfg.reverbKey,
+      tls: cfg.reverbTls,
+      authUrl: cfg.broadcastAuthUrl,
+      userId: _userId!,
+      tokenProvider: () async => TokenService.currentToken,
+      onAiEvent: _showAi,
+      onSubscribed: () {
+        if (_debugSelfTest && !_selfTested) {
+          _selfTested = true;
+          _showAi('Тест WebSocket',
+              'Соединение установлено — уведомления работают ✅');
+        }
+      },
+      log: (m) => _logger.i(m),
+    );
+    await _conn!.start();
   }
 
-  void _scheduleReconnect() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
-    if (_stopping || !_started) return;
-    _reconnectTimer?.cancel();
-    _reconnectTimer = Timer(const Duration(seconds: 10), () {
-      if (_started && !_stopping) _connect();
-    });
+  /// Остановить (логаут).
+  Future<void> stop() async {
+    _started = false;
+    await _conn?.stop();
+    _conn = null;
   }
 
-  /// Периодический ping, чтобы Reverb не закрывал «тихое» соединение (1006).
-  void _startHeartbeat() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
-      _send({'event': 'pusher:ping', 'data': {}});
-    });
-  }
-
-  Future<void> _onMessage(dynamic raw) async {
-    try {
-      final msg = jsonDecode(raw as String);
-      if (msg is! Map) return;
-      final event = msg['event']?.toString();
-
-      switch (event) {
-        case 'pusher:connection_established':
-          _startHeartbeat();
-          final data = _decodeData(msg['data']);
-          final socketId = data?['socket_id']?.toString();
-          if (socketId != null && _channelName != null) {
-            await _subscribePrivate(socketId, _channelName!);
-          }
-          break;
-
-        case 'pusher:ping':
-          _send({'event': 'pusher:pong', 'data': {}});
-          break;
-
-        case 'pusher:pong':
-          // сервер жив — ничего не делаем
-          break;
-
-        case 'pusher_internal:subscription_succeeded':
-          _logger.i('✅ WS: подписка на $_channelName');
-          break;
-
-        case _aiEventName:
-          _handleAiEvent(_decodeData(msg['data']));
-          break;
-
-        default:
-          // прочие события игнорируем
-          break;
-      }
-    } catch (e) {
-      _logger.w('WS: ошибка разбора сообщения: $e');
-    }
-  }
-
-  /// Авторизует приватный канал и отправляет pusher:subscribe.
-  Future<void> _subscribePrivate(String socketId, String channelName) async {
-    try {
-      final token = TokenService.currentToken ?? '';
-      final resp = await http.post(
-        Uri.parse(AppConfig().broadcastAuthUrl),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Accept': 'application/json',
-        },
-        body: {'socket_id': socketId, 'channel_name': channelName},
-      );
-
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        _logger.w('WS auth не удалась: ${resp.statusCode} ${resp.body}');
-        return;
-      }
-      final authData = jsonDecode(resp.body);
-      final auth = (authData is Map) ? authData['auth']?.toString() : null;
-      if (auth == null) {
-        _logger.w('WS auth: нет поля auth в ответе');
-        return;
-      }
-
-      _send({
-        'event': 'pusher:subscribe',
-        'data': {'channel': channelName, 'auth': auth},
-      });
-    } catch (e) {
-      _logger.w('WS _subscribePrivate ошибка: $e');
-    }
-  }
-
-  void _handleAiEvent(Map<String, dynamic>? data) {
-    final title = data?['title']?.toString() ?? 'ИИ завершил обработку';
-    final body = data?['body']?.toString() ??
-        'Все объявления из фида обработаны. Зайдите и опубликуйте их.';
+  void _showAi(String title, String body) {
     NotificationService().showNotification(
       id: _aiNotificationId,
       title: title,
       body: body,
       payload: 'ai_moderation_done',
     );
-    _logger.i('📬 WS: уведомление о завершении ИИ показано');
-  }
-
-  /// data в протоколе Pusher приходит строкой с JSON — декодируем в Map.
-  Map<String, dynamic>? _decodeData(dynamic data) {
-    try {
-      if (data is String && data.isNotEmpty) {
-        final d = jsonDecode(data);
-        if (d is Map<String, dynamic>) return d;
-      } else if (data is Map<String, dynamic>) {
-        return data;
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  void _send(Map<String, dynamic> message) {
-    try {
-      _channel?.sink.add(jsonEncode(message));
-    } catch (e) {
-      _logger.w('WS send ошибка: $e');
-    }
   }
 
   Future<int?> _resolveUserId(String token) async {

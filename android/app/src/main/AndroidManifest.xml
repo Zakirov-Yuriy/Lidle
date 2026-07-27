@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Интернет обязателен -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -20,6 +21,11 @@
     
     <!-- Позволяет приложению предотвращать переход устройства в спящий режим -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!-- Этап 3: foreground-сервис для удержания WebSocket при закрытом приложении -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
 
     <!-- Разрешение для доступа к контактам -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
@@ -76,6 +82,17 @@
             android:name="be.tramckrijte.workmanager.BackgroundWorker"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
+
+        <!-- Этап 3: сервис flutter_foreground_task.
+             foregroundServiceType=dataSync обязателен для Android 14+.
+             Имя класса сервиса зависит от версии пакета — при ошибке
+             манифест-мёрджа сверить с README установленной версии
+             flutter_foreground_task. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false"
+            tools:replace="android:foregroundServiceType" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
