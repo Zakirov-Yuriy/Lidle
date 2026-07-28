@@ -164,7 +164,7 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
               wishlistIds: Set.from(_cachedWishlistIds),
               listings:    List.from(_cachedListings),
               syncedAt:    DateTime.now(),
-              isLocal:     false,
+              isLocal:     _cachedListings.isEmpty,
             ));
             return;
           }
@@ -178,7 +178,10 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
           wishlistIds: Set.from(_cachedWishlistIds),
           listings:    List.from(_cachedListings),
           syncedAt:    DateTime.now(),
-          isLocal:     false,
+          // См. комментарий в _onRemoveFromWishlist: режим по факту наличия
+          // серверных листингов, иначе экран «Избранное» уходит в пустую
+          // серверную ветку.
+          isLocal:     _cachedListings.isEmpty,
         ));
       } catch (serverError) {
         // POST упал — откатываем Hive и кеш ID
@@ -256,7 +259,11 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         wishlistIds: Set.from(_cachedWishlistIds),
         listings:    List.from(_cachedListings),
         syncedAt:    DateTime.now(),
-        isLocal:     false,
+        // Режим по факту: если серверных листингов нет (вишлист грузился в
+        // локальном режиме — напр. /me/wishlist упал), остаёмся в локальной
+        // ветке, иначе экран уйдёт в серверную ветку с пустым списком и
+        // «Избранное» покажет пусто (пропадут все карточки).
+        isLocal:     _cachedListings.isEmpty,
       ));
     } catch (e) {
       _emitError(emit, e is Exception ? e : Exception(e.toString()));

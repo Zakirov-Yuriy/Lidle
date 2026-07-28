@@ -337,7 +337,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                     }
 
                     // ── Авторизованный режим: данные с сервера ──────────────
-                    if (wishlistState is WishlistLoaded && !wishlistState.isLocal) {
+                    // Серверную ветку показываем ТОЛЬКО если реально есть
+                    // серверные листинги. Если список пуст (напр. /me/wishlist
+                    // отдал мало данных или упал), проваливаемся в локальную
+                    // ветку ниже — она отфильтрует ленту по wishlistIds и
+                    // покажет оставшиеся избранные, а не «пусто».
+                    if (wishlistState is WishlistLoaded &&
+                        !wishlistState.isLocal &&
+                        wishlistState.listings.isNotEmpty) {
                       if (wishlistState.listings.isEmpty) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 12),
@@ -366,7 +373,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           ),
                           itemCount: favoritedListings.length,
                           itemBuilder: (context, index) {
-                            return ListingCard(listing: favoritedListings[index]);
+                            return ListingCard(
+                              key: ValueKey(favoritedListings[index].id),
+                              listing: favoritedListings[index],
+                            );
                           },
                         ),
                       );
@@ -426,7 +436,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             ),
                             itemCount: favoritedListings.length,
                             itemBuilder: (context, index) {
-                              return ListingCard(listing: favoritedListings[index]);
+                              return ListingCard(
+                              key: ValueKey(favoritedListings[index].id),
+                              listing: favoritedListings[index],
+                            );
                             },
                           ),
                         );
