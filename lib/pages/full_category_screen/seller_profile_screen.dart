@@ -14,6 +14,7 @@ import 'package:lidle/blocs/connectivity/connectivity_event.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
@@ -123,6 +124,28 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     if (v is num) return v.toInt();
     if (v is String) return int.tryParse(v);
     return null;
+  }
+
+  /// true — если открыт СОБСТВЕННЫЙ профиль текущего пользователя.
+  /// Только в этом случае показываем подсказку «Заполните поля» и ведём
+  /// на экран редактирования контактных данных (чужие профили не трогаем).
+  bool get _isOwnProfile {
+    final me = UserService.getLocal('userId')?.toString().trim();
+    final viewing = widget.userId?.trim();
+    return me != null &&
+        me.isNotEmpty &&
+        viewing != null &&
+        viewing.isNotEmpty &&
+        me == viewing;
+  }
+
+  /// Открывает экран «Контактные данные» для заполнения профиля.
+  /// После возврата перечитывает профиль, чтобы подсказка исчезла, если
+  /// пользователь заполнил поля.
+  void _openContactDataEditor() {
+    Navigator.of(context).pushNamed('/contact_data').then((_) {
+      if (mounted) _loadSellerProfile();
+    });
   }
 
   /// Маскирует номер телефона для показа в профиле: оставляет только код
@@ -843,6 +866,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     required VoidCallback onToggle,
     required Widget child,
     IconData? leadingIcon,
+    // Если true — секция не заполнена: рядом с заголовком показываем красную
+    // подсказку «Заполните поля», а тап по секции ведёт на [onFillTap]
+    // (экран редактирования), а не раскрывает/сворачивает секцию.
+    bool showFillHint = false,
+    VoidCallback? onFillTap,
   }) {
     return Container(
       width: double.infinity,
@@ -855,7 +883,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            onTap: onToggle,
+            // Пока поле не заполнено — тап ведёт на заполнение данных.
+            onTap: showFillHint ? onFillTap : onToggle,
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
@@ -874,7 +903,29 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const Spacer(),
+                  // Красная подсказка о незаполненном поле. Если текст не
+                  // помещается по ширине — FittedBox пропорционально уменьшает
+                  // его, чтобы он влез в одну строку.
+                  if (showFillHint) ...[
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Заполните поля',
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else
+                    const Spacer(),
+                  // Иконка секции — как в исходном виде (обычный шеврон).
                   Icon(
                     expanded
                         ? Icons.keyboard_arrow_up
@@ -885,7 +936,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
             ),
           ),
-          if (expanded)
+          // Раскрытие доступно только для заполненных секций.
+          if (expanded && !showFillHint)
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
               child: SizedBox(width: double.infinity, child: child),
@@ -896,10 +948,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildDescriptionSection() {
+    final isEmpty = (_description ?? '').trim().isEmpty;
+    final showHint = _isOwnProfile && !_profileLoading && isEmpty;
     return _buildCollapsibleSection(
       title: 'Описание',
       expanded: _descExpanded,
       onToggle: () => setState(() => _descExpanded = !_descExpanded),
+      showFillHint: showHint,
+      onFillTap: _openContactDataEditor,
       child: Text(
         _profileLoading && _description == null
             ? 'Загрузка...'
@@ -910,12 +966,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildLocationSection() {
+    final isEmpty = (_addressText ?? '').trim().isEmpty;
+    final showHint = _isOwnProfile && !_profileLoading && isEmpty;
     return _buildCollapsibleSection(
       title: 'Расположение',
       // Иконка теперь слева от заголовка «Расположение».
       leadingIcon: Icons.location_on_outlined,
       expanded: _locExpanded,
       onToggle: () => setState(() => _locExpanded = !_locExpanded),
+      showFillHint: showHint,
+      onFillTap: _openContactDataEditor,
       child: Text(
         _profileLoading && _addressText == null
             ? 'Загрузка...'
@@ -992,10 +1052,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       );
     }
 
+    final showHint = _isOwnProfile && !_profileLoading && !hasAny;
     return _buildCollapsibleSection(
       title: 'Контакты',
       expanded: _contactsExpanded,
       onToggle: () => setState(() => _contactsExpanded = !_contactsExpanded),
+      showFillHint: showHint,
+      onFillTap: _openContactDataEditor,
       child: hasAny
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1144,68 +1207,42 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 8,
-            runSpacing: 12,
-            children: [
+          // Ряд иконок шаринга: всегда в одну строку. Размер плитки считаем
+          // из доступной ширины, чтобы иконки динамически уменьшались и все
+          // помещались (иначе последняя, MAX, переносилась на новую строку).
+          LayoutBuilder(
+            builder: (context, constraints) {
               // Порядок плиток — как на макете: ВК, Яндекс, ОК, почта, Telegram, MAX.
-              // Все иконки — белые глифы на прозрачном фоне (assets/socials/*.png).
-              _shareTile(
-                label: 'ВКонтакте',
-                onTap: () => _shareVia('vk'),
-                child: Image.asset(
-                  'assets/socials/vk.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              _shareTile(
-                label: 'Яндекс',
-                onTap: () => _shareVia('yandex'),
-                child: Image.asset(
-                  'assets/socials/yandex.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              _shareTile(
-                label: 'Одноклассники',
-                onTap: () => _shareVia('ok'),
-                child: Image.asset(
-                  'assets/socials/ok.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              _shareTile(
-                label: 'Электронная почта',
-                onTap: () => _shareVia('email'),
-                child: Image.asset(
-                  'assets/socials/email.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              _shareTile(
-                label: 'Telegram',
-                onTap: () => _shareVia('telegram'),
-                child: Image.asset(
-                  'assets/socials/telegram.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-              _shareTile(
-                label: 'MAX',
-                onTap: () => _shareVia('max'),
-                child: Image.asset(
-                  'assets/socials/max.png',
-                  width: 24,
-                  height: 24,
-                ),
-              ),
-            ],
+              const socials = [
+                ('ВКонтакте', 'assets/socials/vk.png', 'vk'),
+                ('Яндекс', 'assets/socials/yandex.png', 'yandex'),
+                ('Одноклассники', 'assets/socials/ok.png', 'ok'),
+                ('Электронная почта', 'assets/socials/email.png', 'email'),
+                ('Telegram', 'assets/socials/telegram.png', 'telegram'),
+                ('MAX', 'assets/socials/max.png', 'max'),
+              ];
+              final count = socials.length;
+              const spacing = 8.0; // зазор между плитками
+              const maxTile = 46.0; // как на макете; на широком экране не больше
+              // Ширина плитки под доступное место (с учётом зазоров).
+              // Не превышаем maxTile; на узком экране плитки уменьшаются и
+              // никогда не переполняют строку (сумма всегда <= доступной ширины).
+              final raw =
+                  (constraints.maxWidth - spacing * (count - 1)) / count;
+              final tile = raw > maxTile ? maxTile : raw;
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (final s in socials)
+                    _shareTile(
+                      label: s.$1,
+                      asset: s.$2,
+                      onTap: () => _shareVia(s.$3),
+                      size: tile,
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1213,26 +1250,30 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   /// Квадратная кнопка-иконка для ряда шаринга.
+  /// [size] — сторона плитки (считается динамически под ширину экрана),
+  /// иконка внутри масштабируется пропорционально (24/46 от плитки).
   Widget _shareTile({
-    required Widget child,
+    required String asset,
     required String label,
     required VoidCallback onTap,
+    double size = 46,
   }) {
+    final iconSize = size * (24 / 46); // сохраняем пропорцию макета
     return Tooltip(
       message: label,
       child: GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          width: 46,
-          height: 46,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             // Плитка темнее панели секции — как на макете.
             color: const Color(0xFF17212B),
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
-          child: child,
+          child: Image.asset(asset, width: iconSize, height: iconSize),
         ),
       ),
     );
