@@ -32,8 +32,17 @@ final _logger = Logger();
 /// фоновой задачи (изолят каждый раз новый, память не сохраняется).
 const String _kAiAllDoneKey = 'ai_all_done_last_bg';
 
+/// Ключ в Hive для запоминания прошлого числа объявлений на модерации между
+/// запусками фоновой задачи — для уведомления о НОВЫХ объявлениях из фида
+/// (пункты №3/№4), которое приходит даже без ИИ и при закрытом приложении.
+const String _kModerationTotalKey = 'moderation_total_last_bg';
+
 /// Стабильный id уведомления (чтобы не плодить дубликаты).
 const int _kAiDoneNotificationId = 90011;
+
+/// Стабильный id уведомления о новых объявлениях из фида (отдельный от
+/// «ИИ завершил», чтобы одно не затирало другое).
+const int _kFeedNewNotificationId = 90012;
 
 /// Одноразовая фоновая проверка статуса ИИ-обработки.
 /// Возвращает true при успешном выполнении (для workmanager).
@@ -65,6 +74,30 @@ Future<bool> backgroundAiStatusCheck() async {
 
     final dynamic prev = HiveService.getUserData(_kAiAllDoneKey);
     final bool wasAllDone = prev is bool ? prev : true;
+
+    // --- Пункты №3/№4: новые объявления на модерации (рост total) ---
+    // Независимо от ИИ: если число объявлений на модерации выросло с прошлой
+    // проверки — значит импорт фида (первичный или очередная партия из CRM)
+    // добавил новые. Зовём пользователя зайти проверить и опубликовать.
+    // Работает и когда ИИ выключен/не сработал.
+    final dynamic prevTotalRaw = HiveService.getUserData(_kModerationTotalKey);
+    final int? prevTotal = prevTotalRaw is int
+        ? prevTotalRaw
+        : (prevTotalRaw is num ? prevTotalRaw.toInt() : null);
+    // На первом запуске (prevTotal == null) молча запоминаем базовый уровень,
+    // чтобы не тревожить об уже накопленном бэклоге.
+    if (prevTotal != null && total > prevTotal) {
+      await NotificationService().showNotification(
+        id: _kFeedNewNotificationId,
+        title: 'Объявления из фида готовы',
+        body: 'Появились новые объявления из фида. '
+            'Зайдите, проверьте и опубликуйте их.',
+        payload: 'feed_import_done',
+      );
+      _logger.i('📥 [BG] Уведомление о новых объявлениях фида '
+          '(было $prevTotal, стало $total)');
+    }
+    await HiveService.saveUserData(_kModerationTotalKey, total);
 
     // Нет объявлений на модерации — публиковать нечего. Держим флаг true,
     // чтобы при появлении новой партии и её завершении уведомление сработало.

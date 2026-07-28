@@ -47,6 +47,7 @@ const String _kTls = 'ws_tls';
 const String _kAuthUrl = 'ws_auth_url';
 
 const int _aiNotificationId = 90031;
+const int _feedNotificationId = 90032;
 const int _serviceId = 90030;
 
 /// Точка входа изолята foreground-сервиса. ДОЛЖНА быть top-level и помечена
@@ -87,6 +88,7 @@ class WsTaskHandler extends TaskHandler {
       tokenProvider: () async =>
           FlutterForegroundTask.getData<String>(key: _kToken),
       onAiEvent: _showAi,
+      onFeedEvent: _showFeed,
       log: (m) {
         if (kDebugMode) debugPrint('[WS-FG] $m');
       },
@@ -134,6 +136,27 @@ class WsTaskHandler extends TaskHandler {
       body,
       details,
       payload: 'ai_moderation_done',
+    );
+  }
+
+  // Уведомление о завершении импорта фида (пункты №3/№4). Отдельный id, чтобы
+  // не затирать уведомление о завершении ИИ.
+  Future<void> _showFeed(String title, String body) async {
+    final fln = _fln;
+    if (fln == null) return;
+    const android = AndroidNotificationDetails(
+      'general_channel',
+      'General Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: android);
+    await fln.show(
+      _feedNotificationId,
+      title,
+      body,
+      details,
+      payload: 'feed_import_done',
     );
   }
 }

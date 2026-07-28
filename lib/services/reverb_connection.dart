@@ -39,6 +39,7 @@ class ReverbConnection {
     required this.userId,
     required this.tokenProvider,
     required this.onAiEvent,
+    this.onFeedEvent,
     this.onSubscribed,
     this.log,
   });
@@ -62,8 +63,14 @@ class ReverbConnection {
   /// чтобы при реконнекте использовать свежий токен).
   final Future<String?> Function() tokenProvider;
 
-  /// Показать уведомление о завершении ИИ-обработки.
+  /// Показать уведомление о завершении ИИ-обработки (событие moderation.ai.done).
   final ReverbAiEventCallback onAiEvent;
+
+  /// Показать уведомление о завершении импорта фида (событие feed.import.done).
+  /// Необязательный: если не передан — используется onAiEvent (тот же показ
+  /// локального уведомления). Пункты №3/№4: «фид загружен / новые объявления
+  /// из CRM — зайдите, проверьте, опубликуйте».
+  final ReverbAiEventCallback? onFeedEvent;
 
   /// Вызывается один раз при успешной подписке на канал (для self-test и т.п.).
   final void Function()? onSubscribed;
@@ -75,6 +82,7 @@ class ReverbConnection {
   // раньше — каждые ~25с, чтобы держать канал живым.
   static const Duration _heartbeatInterval = Duration(seconds: 25);
   static const String _aiEventName = 'moderation.ai.done';
+  static const String _feedEventName = 'feed.import.done';
 
   WebSocketChannel? _channel;
   StreamSubscription? _sub;
@@ -209,6 +217,16 @@ class ReverbConnection {
               'Все объявления из фида обработаны. Зайдите и опубликуйте их.';
           onAiEvent(title, body);
           log?.call('📬 WS: уведомление о завершении ИИ показано');
+          break;
+
+        case _feedEventName:
+          final data = _decodeData(msg['data']);
+          final title =
+              data?['title']?.toString() ?? 'Объявления из фида готовы';
+          final body = data?['body']?.toString() ??
+              'Фид загружен. Зайдите, проверьте и опубликуйте объявления.';
+          (onFeedEvent ?? onAiEvent)(title, body);
+          log?.call('📬 WS: уведомление о завершении импорта фида показано');
           break;
 
         default:

@@ -31,6 +31,7 @@ class WebSocketService {
   WebSocketService._internal();
 
   static const int _aiNotificationId = 90031;
+  static const int _feedNotificationId = 90032;
 
   // DEBUG: показать одно тестовое уведомление сразу после успешной подписки,
   // чтобы проверить, что слой уведомлений вообще работает (без broadcast).
@@ -69,6 +70,7 @@ class WebSocketService {
       userId: _userId!,
       tokenProvider: () async => TokenService.currentToken,
       onAiEvent: _showAi,
+      onFeedEvent: _showFeed,
       onSubscribed: () {
         if (_debugSelfTest && !_selfTested) {
           _selfTested = true;
@@ -94,6 +96,17 @@ class WebSocketService {
       title: title,
       body: body,
       payload: 'ai_moderation_done',
+    );
+  }
+
+  // Уведомление о завершении импорта фида (пункты №3/№4). Отдельный id, чтобы
+  // не затирать уведомление о завершении ИИ.
+  void _showFeed(String title, String body) {
+    NotificationService().showNotification(
+      id: _feedNotificationId,
+      title: title,
+      body: body,
+      payload: 'feed_import_done',
     );
   }
 
