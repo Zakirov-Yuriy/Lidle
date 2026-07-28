@@ -95,6 +95,10 @@ class Listing {
   /// Флаг, указывающий, добавлено ли объявление в избранное.
   final bool isFavorited;
 
+  /// id записи избранного (wishlist_id) для снятия лайка без перебора вишлиста
+  /// (DELETE /v1/me/wishlist/destroy/{wishlistId}). null, если не в избранном.
+  final int? wishlistId;
+
   /// Возможен торг (показывать кнопку "Предложить свою цену" или нет)
   final bool isBargain;
 
@@ -110,6 +114,7 @@ class Listing {
     required this.location,
     required this.date,
     this.isFavorited = false,
+    this.wishlistId,
     this.isBargain = false,
     this.sellerName,
     this.userId,
@@ -311,7 +316,12 @@ class Listing {
                 json['district']?.toString() ??
                 json['district_name']?.toString(),
       date: json['date'] ?? 'Unknown Date',
-      isFavorited: json['isFavorited'] ?? false,
+      isFavorited: json['isFavorited'] ?? json['is_wishlisted'] ?? false,
+      // id записи избранного из ответа бэка (wishlist_id) — для снятия лайка
+      // без перебора вишлиста. null, если объявление не в избранном / гость.
+      wishlistId: json['wishlist_id'] is int
+          ? json['wishlist_id'] as int
+          : int.tryParse('${json['wishlist_id'] ?? ''}'),
       isBargain: json['is_bargain'] ?? false,
       // API detail endpoint returns seller info under 'user' key,
       // while some responses may use 'seller' key.

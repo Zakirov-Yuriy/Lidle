@@ -56,7 +56,10 @@ class _ProductCardState extends State<ProductCard> {
           // Удаляем из wishlist на сервере
           // log.i('💔 ProductCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
           context.read<WishlistBloc>().add(
-            RemoveFromWishlistEvent(listingId: advertId),
+            RemoveFromWishlistEvent(
+              listingId: advertId,
+              wishlistId: widget.listing.wishlistId,
+            ),
           );
         }
       }

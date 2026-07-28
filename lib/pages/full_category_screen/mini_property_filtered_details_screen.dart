@@ -906,7 +906,10 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
         );
       } else {
         context.read<WishlistBloc>().add(
-          RemoveFromWishlistEvent(listingId: listingId),
+          RemoveFromWishlistEvent(
+            listingId: listingId,
+            wishlistId: widget.listing.wishlistId,
+          ),
         );
       }
     }

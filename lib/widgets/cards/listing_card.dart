@@ -83,7 +83,10 @@ class _ListingCardState extends State<ListingCard> {
         // Удаляем из wishlist на сервере
         // log.i('💔 ListingCard: Отправляем RemoveFromWishlistEvent для advert_id=$advertId');
         context.read<WishlistBloc>().add(
-          RemoveFromWishlistEvent(listingId: advertId),
+          RemoveFromWishlistEvent(
+            listingId: advertId,
+            wishlistId: widget.listing.wishlistId,
+          ),
         );
       }
     }

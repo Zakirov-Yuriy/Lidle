@@ -42,13 +42,18 @@ class AddToWishlistEvent extends WishlistEvent {
 /// Инициирует запрос к API для удаления из wishlist.
 /// Локальное хранилище уже обновлено (оптимистичное обновление).
 class RemoveFromWishlistEvent extends WishlistEvent {
-  /// ID объявления в wishlist для удаления
+  /// ID объявления, у которого снимаем лайк
   final int listingId;
 
-  const RemoveFromWishlistEvent({required this.listingId});
+  /// id записи избранного (wishlist_id), если он известен из объявления.
+  /// Позволяет снять лайк без перебора вишлиста. Если null — WishlistBloc
+  /// берёт id из внутренней карты (заполняется при загрузке вишлиста).
+  final int? wishlistId;
+
+  const RemoveFromWishlistEvent({required this.listingId, this.wishlistId});
 
   @override
-  List<Object?> get props => [listingId];
+  List<Object?> get props => [listingId, wishlistId];
 }
 
 /// Событие для синхронизации избранного с сервером.

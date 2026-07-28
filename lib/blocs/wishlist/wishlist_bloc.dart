@@ -223,9 +223,17 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
         return;
       }
 
-      // 2. DELETE на сервер
-      final wishlistEntryId = _wishlistIdMapping[event.listingId];
-      final deleteId        = wishlistEntryId ?? event.listingId;
+      // 2. DELETE на сервер.
+      // Приоритет id записи избранного (wishlist_id):
+      //   1) из события (пришёл прямо в объявлении как wishlist_id),
+      //   2) из внутренней карты (после загрузки вишлиста),
+      //   3) фолбэк на id объявления (крайний случай).
+      if (event.wishlistId != null) {
+        _wishlistIdMapping[event.listingId] = event.wishlistId!;
+      }
+      final wishlistEntryId =
+          event.wishlistId ?? _wishlistIdMapping[event.listingId];
+      final deleteId = wishlistEntryId ?? event.listingId;
 
       try {
         final response = await WishlistService.removeFromWishlist(

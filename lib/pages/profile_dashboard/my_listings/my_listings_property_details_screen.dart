@@ -1086,7 +1086,10 @@ class _SimilarOfferCardState extends State<_SimilarOfferCard> {
       } else {
         log.d('💔 _SimilarOfferCard: Отправляем RemoveFromWishlistEvent для advert_id=$listingId');
         context.read<WishlistBloc>().add(
-          RemoveFromWishlistEvent(listingId: listingId),
+          RemoveFromWishlistEvent(
+            listingId: listingId,
+            wishlistId: widget.listing.wishlistId,
+          ),
         );
       }
     }
