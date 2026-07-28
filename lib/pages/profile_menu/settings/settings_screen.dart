@@ -3,6 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'dart:convert';
@@ -22,6 +23,28 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/cache/screen_cache_manager.dart';
+
+/// Регулярка для обнаружения ссылок (http/https/ftp, www., t.me/, домены с
+/// популярными TLD). Используется для запрета ссылок в поле «О себе».
+final RegExp _linkRegExp = RegExp(
+  r'(https?:\/\/|ftp:\/\/|www\.|t\.me\/|[a-zA-Zа-яА-Я0-9\-]+\.(ru|рф|com|net|org|io|me|info|biz|ua|su|co|app|site|online|shop|store|link|xyz|top|club|dev|tech))',
+  caseSensitive: false,
+);
+
+/// true, если в тексте есть ссылка.
+bool _hasLink(String text) => _linkRegExp.hasMatch(text);
+
+/// Форматтер, запрещающий ввод/вставку ссылок в поле ввода (в реальном времени).
+class _NoLinksInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Если новое значение содержит ссылку — откатываем к предыдущему.
+    return _hasLink(newValue.text) ? oldValue : newValue;
+  }
+}
 
 class SettingsScreen extends StatefulWidget {
   static const routeName = '/settings';
@@ -1194,6 +1217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: TextField(
                         controller: aboutController,
+                        inputFormatters: [_NoLinksInputFormatter()],
                         maxLines: 4,
                         maxLength: 250,
                         style: const TextStyle(color: Colors.white),
@@ -1265,6 +1289,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text('Максимум 250 символов'),
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  if (_hasLink(aboutController.text)) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'В поле «О себе» нельзя добавлять ссылки',
+                                        ),
+                                        backgroundColor: Colors.red,
                                       ),
                                     );
                                     return;

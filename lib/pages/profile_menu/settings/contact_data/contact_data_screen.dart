@@ -3,6 +3,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/widgets/components/header.dart';
@@ -27,6 +28,28 @@ import 'package:lidle/core/cache/screen_cache_manager.dart';
 import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 
+/// Регулярка для обнаружения ссылок (http/https/ftp, www., t.me/, домены с
+/// популярными TLD). Используется для запрета ссылок в поле «Описание компании».
+final RegExp _linkRegExp = RegExp(
+  r'(https?:\/\/|ftp:\/\/|www\.|t\.me\/|[a-zA-Zа-яА-Я0-9\-]+\.(ru|рф|com|net|org|io|me|info|biz|ua|su|co|app|site|online|shop|store|link|xyz|top|club|dev|tech))',
+  caseSensitive: false,
+);
+
+/// true, если в тексте есть ссылка.
+bool _hasLink(String text) => _linkRegExp.hasMatch(text);
+
+/// Форматтер, запрещающий ввод/вставку ссылок в поле ввода (в реальном времени).
+class _NoLinksInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Если новое значение содержит ссылку — откатываем к предыдущему.
+    return _hasLink(newValue.text) ? oldValue : newValue;
+  }
+}
+
 class ContactDataScreen extends StatefulWidget {
   static const routeName = '/contact_data';
 
@@ -45,6 +68,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   late TextEditingController _telegramController;
   late TextEditingController _whatsappController;
   late TextEditingController _maxController;
+  late TextEditingController _aboutController;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -84,6 +108,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _telegramController = TextEditingController();
     _whatsappController = TextEditingController();
     _maxController = TextEditingController();
+    _aboutController = TextEditingController();
     // Загружаем регионы при инициализации
     _loadRegions();
   }
@@ -212,6 +237,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           : (UserService.getLocal('lastName') as String? ?? '');
       final email = profileState is ProfileLoaded ? profileState.email : '';
       final phone = profileState is ProfileLoaded ? profileState.phone : '';
+      final about = profileState is ProfileLoaded
+          ? (profileState.about ?? '')
+          : (UserService.getLocal('about') as String? ?? '');
 
       // Загружаем сохраненные данные из Hive
       final region = UserService.getLocal('region') as String? ?? '';
@@ -225,6 +253,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _nameController.text = firstName;
         _lastNameController.text = lastName;
         _emailController.text = email;
+        _aboutController.text = about;
         _phone1Controller.text = phone.isEmpty
             ? (phone1Cache.isEmpty ? '' : (phone1Cache.startsWith('+') ? phone1Cache : '+$phone1Cache'))
             : (phone.startsWith('+') ? phone : '+$phone');
@@ -303,12 +332,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       var lastName = '';
       String email = '';
       String phone = '';
+      String about = '';
       try {
         final profile = await UserService.getProfile(token: token);
         firstName = profile.name;
         lastName = profile.lastName;
         email = profile.email;
         phone = profile.phone ?? '';
+        about = profile.about ?? '';
       } catch (e) {
         // Фолбэк: если /me недоступен — берём из ProfileBloc, затем из Hive.
         log.d('⚠️ Не удалось получить профиль с бэка, берём из кеша: $e');
@@ -322,6 +353,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             : (UserService.getLocal('lastName') as String? ?? '');
         email = profileState is ProfileLoaded ? profileState.email : '';
         phone = profileState is ProfileLoaded ? profileState.phone : '';
+        about = profileState is ProfileLoaded
+            ? (profileState.about ?? '')
+            : (UserService.getLocal('about') as String? ?? '');
       }
 
       // Получаем область и город из локального хранилища
@@ -475,6 +509,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         _nameController.text = firstName;
         _lastNameController.text = lastName;
         _emailController.text = emailValue;
+        _aboutController.text = about;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
         // Телеграм/MAX грузятся с бэка в _loadMessengers() — не из Hive.
@@ -519,6 +554,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       // 💾 Сохраняем данные в локальное хранилище для кеширования
       await UserService.saveLocal('name', firstName);
       await UserService.saveLocal('lastName', lastName);
+      await UserService.saveLocal('about', about);
       await UserService.saveLocal('phone1', phone1);
       await UserService.saveLocal('phone2', phone2);
       await UserService.saveLocal('region', region);
@@ -573,6 +609,18 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   }
 
   Future<void> _saveContactData() async {
+    // 🚫 Запрет ссылок в поле «Описание компании» (в т.ч. если ссылка пришла
+    // из старых данных: форматтер не ловит программную подстановку текста).
+    if (_hasLink(_aboutController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('В поле «Описание компании» нельзя добавлять ссылки'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -594,6 +642,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final updatedEmail = _emailController.text;
       final updatedPhone1 = _phone1Controller.text;
       final updatedPhone2 = _phone2Controller.text;
+      final updatedAbout = _aboutController.text;
 
       // Обновляем имя на API (если оно изменилось)
       if (updatedName.isNotEmpty || updatedLastName.isNotEmpty) {
@@ -610,9 +659,20 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         }
       }
 
+      // Обновляем «О себе» на API (сохраняется той же кнопкой «Сохранить»)
+      if (updatedAbout.isNotEmpty) {
+        try {
+          await UserService.updateAbout(about: updatedAbout, token: token);
+          log.d('✅ «О себе» обновлено на сервере');
+        } catch (e) {
+          log.d('❌ Ошибка обновления «О себе»: $e');
+        }
+      }
+
       // Сохраняем в локальное хранилище
       await UserService.saveLocal('name', updatedName);
       await UserService.saveLocal('lastName', updatedLastName);
+      await UserService.saveLocal('about', updatedAbout);
       await UserService.saveLocal('phone1', updatedPhone1);
       await UserService.saveLocal('phone2', updatedPhone2);
       await UserService.saveLocal('telegram', _telegramController.text);
@@ -780,6 +840,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           // Сохраняем свежий профиль в локальное хранилище для синхронизации
           await UserService.saveLocal('name', freshProfile.name);
           await UserService.saveLocal('lastName', freshProfile.lastName);
+          await UserService.saveLocal('about', freshProfile.about ?? '');
           await UserService.saveLocal('email', freshProfile.email);
           await UserService.saveLocal('phone', freshProfile.phone);
 
@@ -787,7 +848,8 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
           setState(() {
             _nameController.text = freshProfile.name;
             _lastNameController.text = freshProfile.lastName;
-            
+            _aboutController.text = freshProfile.about ?? '';
+
             // Обновляем остальные поля
             String emailValue = freshProfile.email;
             if (emailsResponse.data.isNotEmpty) {
@@ -980,6 +1042,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _telegramController.dispose();
     _whatsappController.dispose();
     _maxController.dispose();
+    _aboutController.dispose();
     super.dispose();
   }
 
@@ -1001,6 +1064,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             if (_lastNameController.text.trim().isEmpty &&
                 profileState.lastName.trim().isNotEmpty) {
               _lastNameController.text = profileState.lastName;
+            }
+            if (_aboutController.text.trim().isEmpty &&
+                (profileState.about ?? '').trim().isNotEmpty) {
+              _aboutController.text = profileState.about!;
             }
           }
         },
@@ -1129,8 +1196,17 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _buildSkeletonFields()
                     else ...[
                       // ───── Fields ─────
-                      _label('Контактное лицо'),
-                      _field(_nameController, 'Введите имя контактного лица'),
+
+                      // ───── Описание компании (как поле «Название компании») ─────
+                      _label('Описание компании'),
+                      _field(
+                        _aboutController,
+                        'Опишите вашу компанию',
+                        inputFormatters: [_NoLinksInputFormatter()],
+                      ),
+
+                      _label('Название компании'),
+                      _field(_nameController, 'Введите название компании'),
 
                       _label('Фамилия'),
                       _field(_lastNameController, 'Введите фамилию'),
@@ -1216,7 +1292,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     );
   }
 
-  Widget _field(TextEditingController controller, String hint) {
+  Widget _field(
+    TextEditingController controller,
+    String hint, {
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: Container(
@@ -1229,6 +1309,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: TextField(
           controller: controller,
+          inputFormatters: inputFormatters,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           decoration: InputDecoration(
             border: InputBorder.none,
@@ -1250,7 +1331,12 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Контактное лицо
+            // Описание компании
+            _skeletonLabel(),
+            _skeletonField(),
+            const SizedBox(height: 8),
+
+            // Название компании
             _skeletonLabel(),
             _skeletonField(),
             const SizedBox(height: 8),
