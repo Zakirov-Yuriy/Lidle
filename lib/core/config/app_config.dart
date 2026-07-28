@@ -86,8 +86,8 @@ class AppConfig {
       _wsUrl = 'wss://api.lidle.io/ws';
       _imageBaseUrl = 'https://img.lidle.io';
       _documentDomain = 'https://lidle.io';
-      // Reverb prod: TODO — подставить REVERB_APP_KEY с прод-сервера (10.10.10.20).
-      _reverbKey = 'PROD_REVERB_APP_KEY';
+      // Reverb prod: REVERB_APP_KEY с прод-сервера (10.10.10.20).
+      _reverbKey = 'f58e60af3c7f0cd783162dd1bfe35a67';
       _reverbHost = 'api.lidle.io';
       _reverbPort = 443;
       _reverbTls = true;
