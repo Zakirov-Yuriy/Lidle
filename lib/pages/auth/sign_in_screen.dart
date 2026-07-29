@@ -223,6 +223,16 @@ class _SignInScreenState extends State<SignInScreen> {
                                       ),
                               ),
                             ),
+
+                            // ============================================================
+                            // "Быстрый вход через соцсети (VK ID: ВК, ОК, Mail.ru, QR)"
+                            // Google — иконка-заглушка: по закону РФ регистрация
+                            // через иностранные сервисы запрещена → показываем
+                            // уведомление (как на Авито), сам вход не выполняем.
+                            // ============================================================
+                            const SizedBox(height: 24),
+                            _buildSocialLogin(),
+                            const SizedBox(height: 8),
                           ],
                         ),
                       ),
@@ -243,6 +253,148 @@ class _SignInScreenState extends State<SignInScreen> {
 
   void _onSignUp() {
     Navigator.of(context).pushNamed(RegisterScreen.routeName);
+  }
+
+  // ============================================================
+  // "Блок быстрого входа через соцсети"
+  // Разделитель «Или продолжить через» + ряд круглых кнопок.
+  // Порядок как на макете/Авито: ВК, ОК, Mail.ru, QR, Google.
+  // ============================================================
+  Widget _buildSocialLogin() {
+    return Column(
+      children: [
+        // Разделитель с подписью по центру.
+        Row(
+          children: const [
+            Expanded(child: Divider(color: textMuted, thickness: 0.5)),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Text(
+                'Или продолжить через',
+                style: TextStyle(color: textMuted, fontSize: 14),
+              ),
+            ),
+            Expanded(child: Divider(color: textMuted, thickness: 0.5)),
+          ],
+        ),
+        const SizedBox(height: 18),
+        // Ряд иконок. ВК/ОК/Mail/QR ведут в VK ID (пока заглушка-хук),
+        // Google — уведомление о запрете иностранных сервисов.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _socialCircle(
+              tooltip: 'ВКонтакте',
+              onTap: () => _onVkIdLogin('vk'),
+              child: Image.asset('assets/socials/vk.png', width: 26, height: 26),
+            ),
+            _socialCircle(
+              tooltip: 'Одноклассники',
+              onTap: () => _onVkIdLogin('ok'),
+              child: Image.asset('assets/socials/ok.png', width: 26, height: 26),
+            ),
+            _socialCircle(
+              tooltip: 'Mail.ru',
+              onTap: () => _onVkIdLogin('mail_ru'),
+              child:
+                  Image.asset('assets/socials/email.png', width: 26, height: 26),
+            ),
+            _socialCircle(
+              tooltip: 'QR-код',
+              onTap: () => _onVkIdLogin('qr'),
+              child: const Icon(Icons.qr_code_2, color: textPrimary, size: 28),
+            ),
+            // Google — временная иконка (красная «G»), пока нет ассета.
+            _socialCircle(
+              tooltip: 'Google',
+              onTap: _onGoogleBlocked,
+              child: const Text(
+                'G',
+                style: TextStyle(
+                  color: Color(0xFFEA4335), // фирменный красный Google
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Круглая кнопка-иконка соцсети (единый стиль для всего ряда).
+  Widget _socialCircle({
+    required Widget child,
+    required VoidCallback onTap,
+    String? tooltip,
+  }) {
+    final button = GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: const BoxDecoration(
+          color: secondaryBackground,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+    return tooltip == null ? button : Tooltip(message: tooltip, child: button);
+  }
+
+  /// Хук быстрого входа через VK ID (ВК / ОК / Mail.ru / QR).
+  /// ЭТАП 2: сюда подключается реальный VK ID флоу, когда придёт код от
+  /// Александра. Ожидаемая логика:
+  ///   провайдер → виджет VK ID → получаем code + device_id →
+  ///   POST /v1/auth/vkid → AuthBloc.add(VkIdLoginEvent(...)) →
+  ///   AuthAuthenticated → переход на ProfileDashboard (как обычный вход).
+  /// Пока рабочего кода/бэка нет — показываем уведомление.
+  void _onVkIdLogin(String provider) {
+    SnackBarHelper.showWarning(
+      context,
+      'Быстрый вход через соцсети скоро будет доступен',
+    );
+  }
+
+  /// Google: по закону РФ вход/регистрация через иностранные сервисы
+  /// запрещены. Как на Авито — показываем уведомление, вход не выполняем.
+  void _onGoogleBlocked() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Text(
+          'Войти через Google в России не получится',
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: const Text(
+          'По закону на LIDLE нельзя входить и регистрироваться с помощью '
+          'иностранных сервисов. Используйте другой способ или восстановите '
+          'доступ по телефону.',
+          style: TextStyle(color: textMuted, fontSize: 15, height: 1.35),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text(
+              'Понятно',
+              style: TextStyle(color: activeIconColor, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ============================================================
