@@ -710,8 +710,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       text: 'На ЛИДЛ ',
       style: TextStyle(color: textSecondary, fontSize: fs),
     );
-    final dateSpan = TextSpan(
+    // Полная дата («дд.мм.гггг») и компактная — только год («гггг»).
+    // На узких экранах, где полная дата не помещается и обрезается
+    // многоточием, показываем просто год: «c 2026».
+    final year = date.contains('.') ? date.split('.').last : date;
+    final dateSpanFull = TextSpan(
       text: ' c $date',
+      style: const TextStyle(color: textSecondary, fontSize: fs),
+    );
+    final dateSpanYear = TextSpan(
+      text: ' c $year',
       style: const TextStyle(color: textSecondary, fontSize: fs),
     );
     TextSpan lidleSpan(double size) => TextSpan(
@@ -737,10 +745,22 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             2; // небольшой запас
         final available = constraints.maxWidth - tailWidth;
 
-        // Подбираем размер «LIDLE»: 10 → 9 → 8 → 7, иначе скрываем.
-        List<InlineSpan> chosen = [prefixSpan, dateSpan];
-        for (final size in [10.0, 9.0, 8.0, 7.0]) {
-          final candidate = <InlineSpan>[prefixSpan, lidleSpan(size), dateSpan];
+        // Приоритет (от самого полного к компактному):
+        //  1) полная дата + «LIDLE» (размер 10→7),
+        //  2) полная дата без «LIDLE»,
+        //  3) год + «LIDLE» (размер 10→7),
+        //  4) год без «LIDLE» (крайний случай очень узкого экрана).
+        // Берём первый вариант, который помещается по ширине.
+        final candidates = <List<InlineSpan>>[
+          for (final size in [10.0, 9.0, 8.0, 7.0])
+            [prefixSpan, lidleSpan(size), dateSpanFull],
+          [prefixSpan, dateSpanFull],
+          for (final size in [10.0, 9.0, 8.0, 7.0])
+            [prefixSpan, lidleSpan(size), dateSpanYear],
+          [prefixSpan, dateSpanYear],
+        ];
+        List<InlineSpan> chosen = [prefixSpan, dateSpanYear];
+        for (final candidate in candidates) {
           if (_measureSpanWidth(candidate) <= available) {
             chosen = candidate;
             break;
@@ -1195,57 +1215,102 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// Блок «Поделиться компанией» (как на макете): заголовок, подпись и ряд
   /// иконок для шаринга ссылки на профиль продавца.
   Widget _buildShareCompanySection() {
-    return _buildCollapsibleSection(
-      title: 'Поделиться компанией',
-      expanded: _shareExpanded,
-      onToggle: () => setState(() => _shareExpanded = !_shareExpanded),
+    // В свёрнутом виде показываем сразу ряд иконок (чтобы поделиться можно было
+    // без раскрытия). По тапу на шеврон блок раскрывается и ПОД иконками
+    // появляется текст-подсказка. Иконки видны всегда.
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Отправьте ссылку друзьям или в соцсети удобным для вас способом',
-            style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
-          ),
-          const SizedBox(height: 16),
-          // Ряд иконок шаринга: всегда в одну строку. Размер плитки считаем
-          // из доступной ширины, чтобы иконки динамически уменьшались и все
-          // помещались (иначе последняя, MAX, переносилась на новую строку).
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // Порядок плиток — как на макете: ВК, Яндекс, ОК, почта, Telegram, MAX.
-              const socials = [
-                ('ВКонтакте', 'assets/socials/vk.png', 'vk'),
-                ('Яндекс', 'assets/socials/yandex.png', 'yandex'),
-                ('Одноклассники', 'assets/socials/ok.png', 'ok'),
-                ('Электронная почта', 'assets/socials/email.png', 'email'),
-                ('Telegram', 'assets/socials/telegram.png', 'telegram'),
-                ('MAX', 'assets/socials/max.png', 'max'),
-              ];
-              final count = socials.length;
-              const spacing = 8.0; // зазор между плитками
-              const maxTile = 46.0; // как на макете; на широком экране не больше
-              // Ширина плитки под доступное место (с учётом зазоров).
-              // Не превышаем maxTile; на узком экране плитки уменьшаются и
-              // никогда не переполняют строку (сумма всегда <= доступной ширины).
-              final raw =
-                  (constraints.maxWidth - spacing * (count - 1)) / count;
-              final tile = raw > maxTile ? maxTile : raw;
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Заголовок + шеврон (раскрывает/сворачивает текст-подсказку).
+          InkWell(
+            onTap: () => setState(() => _shareExpanded = !_shareExpanded),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              child: Row(
                 children: [
-                  for (final s in socials)
-                    _shareTile(
-                      label: s.$1,
-                      asset: s.$2,
-                      onTap: () => _shareVia(s.$3),
-                      size: tile,
+                  const Text(
+                    'Поделиться компанией',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _shareExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: textSecondary,
+                  ),
                 ],
-              );
-            },
+              ),
+            ),
           ),
+          // Иконки шаринга — видны всегда (и свёрнуто, и раскрыто).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            child: _buildShareIconsRow(),
+          ),
+          // Текст-подсказка — только когда блок раскрыт, под иконками.
+          if (_shareExpanded)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: Text(
+                'Отправьте ссылку друзьям или в соцсети удобным для вас способом',
+                style:
+                    TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  /// Ряд иконок шаринга: всегда в одну строку. Размер плитки считаем из
+  /// доступной ширины, чтобы иконки динамически уменьшались и все помещались
+  /// (иначе последняя, MAX, переносилась на новую строку).
+  Widget _buildShareIconsRow() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Порядок плиток — как на макете: ВК, Яндекс, ОК, почта, Telegram, MAX.
+        const socials = [
+          ('ВКонтакте', 'assets/socials/vk.png', 'vk'),
+          ('Яндекс', 'assets/socials/yandex.png', 'yandex'),
+          ('Одноклассники', 'assets/socials/ok.png', 'ok'),
+          ('Электронная почта', 'assets/socials/email.png', 'email'),
+          ('Telegram', 'assets/socials/telegram.png', 'telegram'),
+          ('MAX', 'assets/socials/max.png', 'max'),
+        ];
+        final count = socials.length;
+        const spacing = 8.0; // зазор между плитками
+        const maxTile = 46.0; // как на макете; на широком экране не больше
+        // Ширина плитки под доступное место (с учётом зазоров).
+        // Не превышаем maxTile; на узком экране плитки уменьшаются и
+        // никогда не переполняют строку (сумма всегда <= доступной ширины).
+        final raw = (constraints.maxWidth - spacing * (count - 1)) / count;
+        final tile = raw > maxTile ? maxTile : raw;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            for (final s in socials)
+              _shareTile(
+                label: s.$1,
+                asset: s.$2,
+                onTap: () => _shareVia(s.$3),
+                size: tile,
+              ),
+          ],
+        );
+      },
     );
   }
 
