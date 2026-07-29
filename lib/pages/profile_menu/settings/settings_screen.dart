@@ -1274,16 +1274,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onPressed: isLoading
                               ? null
                               : () async {
-                                  if (aboutController.text.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Введите информацию о себе',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
+                                  // Пустое значение разрешено: так пользователь
+                                  // может очистить «О себе» (бэкенд принимает
+                                  // пустую строку/NULL и сохраняет как пусто).
 
                                   if (aboutController.text.length > 250) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1332,9 +1325,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                       );
                                       Navigator.pop(context);
-                                      // Перезагружаем профиль
+                                      // Перезагружаем профиль с сервера (не из
+                                      // кеша), чтобы изменение «О себе» сразу
+                                      // отобразилось на экране: удалили — текст
+                                      // пропадает, добавили — появляется.
                                       context.read<ProfileBloc>().add(
-                                        LoadProfileEvent(),
+                                        LoadProfileEvent(forceRefresh: true),
                                       );
                                     }
                                   } catch (e) {
