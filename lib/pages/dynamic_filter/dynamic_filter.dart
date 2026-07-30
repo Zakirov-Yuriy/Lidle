@@ -1627,6 +1627,9 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   int? mainRegionId = 1; // Track main_region.id for top-level region_id
   List<File> _images = [];
+  // Индекс главной фотографии в _images. Главная показывается первой в
+  // объявлении (сервер хранит её как images[0]). По умолчанию — первая.
+  int _mainImageIndex = 0;
   // Для каждого элемента _images: имя файла на сервере (если это уже
   // загруженная картинка объявления) или null (если это только что выбранное
   // локальное фото). Индексы синхронизированы с _images.
@@ -1736,7 +1739,33 @@ class _DynamicFilterState extends State<DynamicFilter>
       if (index < _imageServerNames.length) {
         _imageServerNames.removeAt(index);
       }
+      // Поддерживаем корректный индекс главной фотографии.
+      if (_images.isEmpty) {
+        _mainImageIndex = 0;
+      } else if (index == _mainImageIndex) {
+        // Удалили главную — главной становится первая.
+        _mainImageIndex = 0;
+      } else if (index < _mainImageIndex) {
+        _mainImageIndex -= 1;
+      }
     });
+  }
+
+  /// Пометить фотографию как главную (показывается первой в объявлении).
+  void _setMainImage(int index) {
+    if (index < 0 || index >= _images.length) return;
+    if (index == _mainImageIndex) return; // уже главная — ничего не делаем
+    setState(() {
+      _mainImageIndex = index;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Эта фотография теперь главная — она будет показываться первой в объявлении',
+        ),
+        duration: Duration(seconds: 3),
+      ),
+    );
   }
 
   bool? isIndividualSelected =
@@ -2658,20 +2687,41 @@ class _DynamicFilterState extends State<DynamicFilter>
       // а только что выбранные — файлами. Так при редактировании фидового
       // объявления мы не перезаливаем существующие фото заново.
       final existingNames = <String>[];
-      final newPaths = <String>[];
       for (int i = 0; i < _images.length; i++) {
         final serverName =
             i < _imageServerNames.length ? _imageServerNames[i] : null;
         if (serverName != null) {
           existingNames.add(serverName);
-        } else {
-          newPaths.add(_images[i].path);
         }
       }
       // Картинки, которые пользователь убрал из ранее загруженных.
       final removedNames = _originalServerImages
           .where((name) => !existingNames.contains(name))
           .toList();
+
+      // Порядок отправки: главная фотография идёт первой (сервер хранит её как
+      // images[0]), остальные — в текущем порядке. Новые файлы и существующие
+      // имена идут вперемешку по их реальной позиции.
+      final orderedImages = <Map<String, dynamic>>[];
+      if (_images.isNotEmpty) {
+        final mainIndex =
+            (_mainImageIndex >= 0 && _mainImageIndex < _images.length)
+                ? _mainImageIndex
+                : 0;
+        final order = <int>[mainIndex];
+        for (int i = 0; i < _images.length; i++) {
+          if (i != mainIndex) order.add(i);
+        }
+        for (final i in order) {
+          final serverName =
+              i < _imageServerNames.length ? _imageServerNames[i] : null;
+          if (serverName != null) {
+            orderedImages.add({'name': serverName});
+          } else {
+            orderedImages.add({'path': _images[i].path});
+          }
+        }
+      }
 
       if (_images.isNotEmpty || removedNames.isNotEmpty) {
         try {
@@ -2680,7 +2730,8 @@ class _DynamicFilterState extends State<DynamicFilter>
           });
 
           // Удаление и загрузку сервер не принимает в одном запросе, поэтому
-          // сначала удаляем убранные, затем отправляем актуальный набор.
+          // сначала удаляем убранные, затем отправляем актуальный набор в
+          // нужном порядке (главная — первой).
           if (removedNames.isNotEmpty) {
             await ApiService.uploadAdvertImages(
               advertId,
@@ -2689,11 +2740,11 @@ class _DynamicFilterState extends State<DynamicFilter>
               token: token,
             );
           }
-          if (newPaths.isNotEmpty || existingNames.isNotEmpty) {
+          if (orderedImages.isNotEmpty) {
             await ApiService.uploadAdvertImages(
               advertId,
-              newPaths,
-              existingImages: existingNames,
+              const [],
+              orderedImages: orderedImages,
               token: token,
             );
           }
@@ -3843,6 +3894,44 @@ class _DynamicFilterState extends State<DynamicFilter>
                                 ),
                               ),
                             ),
+                            // Чекбокс «сделать главной» — слева сверху, чтобы не
+                            // мешать крестику удаления справа.
+                            Positioned(
+                              top: 7,
+                              left: 7,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.35),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: CustomCheckbox(
+                                  value: index == _mainImageIndex,
+                                  onChanged: (_) => _setMainImage(index),
+                                ),
+                              ),
+                            ),
+                            // Плашка на выбранной главной фотографии.
+                            if (index == _mainImageIndex)
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 3),
+                                  color: const Color(0xFF0EA5E9),
+                                  child: const Text(
+                                    'Главная',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       );

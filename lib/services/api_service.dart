@@ -1443,12 +1443,19 @@ class ApiService {
     required String token,
     List<String>? existingImages,
     List<String>? deleteImages,
+    // Упорядоченный список изображений (главная — первой). Каждый элемент —
+    // либо {'path': '<локальный путь>'} для нового файла, либо
+    // {'name': '<имя на сервере>'} для уже загруженного. Когда задан, порядок
+    // отправки images[N] строго соответствует этому списку (сервер хранит
+    // images[0] как главную и сохраняет порядок массива).
+    List<Map<String, dynamic>>? orderedImages,
     Function(int uploaded, int total)? onProgress,
   }) async {
     try {
       // Валидация: должен быть хотя бы один параметр
-      final hasImagesToUpload =
-          imagePaths.isNotEmpty || (existingImages?.isNotEmpty ?? false);
+      final hasImagesToUpload = imagePaths.isNotEmpty ||
+          (existingImages?.isNotEmpty ?? false) ||
+          (orderedImages?.isNotEmpty ?? false);
       final hasImagesToDelete = deleteImages?.isNotEmpty ?? false;
 
       if (!hasImagesToUpload && !hasImagesToDelete) {
@@ -1476,28 +1483,47 @@ class ApiService {
         ...defaultHeaders,
       });
 
-      // Добавить новые загруженные файлы
-      int imageIndex = 0;
-      for (final filePath in imagePaths) {
-        // log.d('📎 Adding image $imageIndex: $filePath');
-        final file = File(filePath);
-
-        if (await file.exists()) {
-          request.files.add(
-            await http.MultipartFile.fromPath('images[$imageIndex]', filePath),
-          );
-          imageIndex++;
-        } else {
-          // log.d('⚠️ File not found: $filePath');
+      if (orderedImages != null && orderedImages.isNotEmpty) {
+        // Отправляем строго в заданном порядке: главная фотография первой,
+        // новые файлы и существующие имена вперемешку по их позиции.
+        int imageIndex = 0;
+        for (final item in orderedImages) {
+          final path = item['path'] as String?;
+          final name = item['name'] as String?;
+          if (path != null) {
+            final file = File(path);
+            if (await file.exists()) {
+              request.files.add(
+                await http.MultipartFile.fromPath('images[$imageIndex]', path),
+              );
+              imageIndex++;
+            }
+          } else if (name != null && name.isNotEmpty) {
+            request.fields['images[$imageIndex]'] = name;
+            imageIndex++;
+          }
         }
-      }
+      } else {
+        // Обратная совместимость: сначала новые файлы, затем существующие имена.
+        int imageIndex = 0;
+        for (final filePath in imagePaths) {
+          final file = File(filePath);
 
-      // Добавить существующие изображения (для сохранения текущих и/или изменения порядка)
-      if (existingImages != null && existingImages.isNotEmpty) {
-        for (int i = 0; i < existingImages.length; i++) {
-          final existingFileName = existingImages[i];
-          request.fields['images[${imageIndex + i}]'] = existingFileName;
-          // log.d('📸 Preserving existing image: $existingFileName');
+          if (await file.exists()) {
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'images[$imageIndex]',
+                filePath,
+              ),
+            );
+            imageIndex++;
+          }
+        }
+
+        if (existingImages != null && existingImages.isNotEmpty) {
+          for (int i = 0; i < existingImages.length; i++) {
+            request.fields['images[${imageIndex + i}]'] = existingImages[i];
+          }
         }
       }
 
@@ -1543,6 +1569,7 @@ class ApiService {
             token: newToken,
             existingImages: existingImages,
             deleteImages: deleteImages,
+            orderedImages: orderedImages,
             onProgress: onProgress,
           );
         }
