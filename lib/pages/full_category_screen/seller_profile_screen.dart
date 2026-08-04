@@ -28,6 +28,7 @@ import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
+import 'package:lidle/pages/full_category_screen/seller_qr_screen.dart';
 import 'package:lidle/core/logger.dart';
 
 // Профиль продавца: контакты (звонок), чат, избранное.
@@ -186,16 +187,25 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ? descRaw.trim()
           : null;
 
-      // Адрес: собираем строку из main_region / region / city (без дублей и null).
+      // Адрес: собираем строку из main_region / region / city / street /
+      // building (без дублей и null). Улица и дом — необязательный точный
+      // адрес, приходят как объекты { id, name } (id/name = null, если не
+      // указаны). Дом добавляем без проверки на дубли, чтобы номер вроде "1"
+      // не отсекался при совпадении с названием выше.
       final parts = <String>[];
       final address = data['address'];
       if (address is Map) {
-        for (final key in ['main_region', 'region', 'city']) {
+        for (final key in ['main_region', 'region', 'city', 'street']) {
           final node = address[key];
           if (node is Map && node['name'] != null) {
             final name = node['name'].toString().trim();
             if (name.isNotEmpty && !parts.contains(name)) parts.add(name);
           }
+        }
+        final building = address['building'];
+        if (building is Map && building['name'] != null) {
+          final name = building['name'].toString().trim();
+          if (name.isNotEmpty) parts.add(name);
         }
       }
       final addr = parts.isNotEmpty ? parts.join(', ') : null;
@@ -1259,6 +1269,51 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
             child: _buildShareIconsRow(),
+          ),
+          // Кнопка «Поделиться» — открывает экран с QR и информацией о
+          // продавце (аналог экрана QR объявления).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 47,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: activeIconColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SellerQrScreen(
+                        sellerName: widget.sellerName,
+                        sellerUrl: _generateSellerProfileUrl(),
+                      ),
+                    ),
+                  );
+                },
+                icon: SvgPicture.asset(
+                  'assets/home_page/share_outlined.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                label: const Text(
+                  'Поделиться',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
           ),
           // Текст-подсказка — только когда блок раскрыт, под иконками.
           if (_shareExpanded)

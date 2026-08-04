@@ -90,6 +90,16 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   List<Map<String, dynamic>> _cities = [];
   Map<String, int> _lastCitiesSearchResults = {};
 
+  // Переменные для выбора улицы и дома (точный адрес, необязательный).
+  // Улица зависит от выбранного города, дом — от выбранной улицы.
+  Set<String> _selectedStreet = {};
+  Set<String> _selectedBuilding = {};
+  int? _selectedStreetId;
+  int? _selectedBuildingId;
+  List<Map<String, dynamic>> _streets = [];
+  List<Map<String, dynamic>> _buildings = [];
+  Map<String, int> _lastStreetsSearchResults = {};
+
   static const Duration _contactDataCacheDuration = Duration(minutes: 10);
 
   static const bgColor = Color(0xFF243241);
@@ -474,6 +484,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final savedRegionId = savedRegionIdStr.isNotEmpty ? int.tryParse(savedRegionIdStr) : null;
       final savedCityId = savedCityIdStr.isNotEmpty ? int.tryParse(savedCityIdStr) : null;
 
+      // Точный адрес (улица/дом) — восстанавливаем из локального хранилища.
+      final savedStreet = UserService.getLocal('street') as String? ?? '';
+      final savedStreetIdStr = UserService.getLocal('streetId') as String? ?? '';
+      final savedStreetId = savedStreetIdStr.isNotEmpty ? int.tryParse(savedStreetIdStr) : null;
+      final savedBuilding = UserService.getLocal('building') as String? ?? '';
+      final savedBuildingIdStr = UserService.getLocal('buildingId') as String? ?? '';
+      final savedBuildingId = savedBuildingIdStr.isNotEmpty ? int.tryParse(savedBuildingIdStr) : null;
+
       // Извлекаем ID и значения контактов
       String emailValue = email;
       if (emailsResponse.data.isNotEmpty) {
@@ -542,7 +560,26 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             }
           }
         }
-        
+
+        // Восстанавливаем улицу и дом (необязательный точный адрес). Кладём
+        // выбранное значение и по одной записи в списки, чтобы поле показывало
+        // сохранённый выбор без повторной загрузки.
+        if (savedStreet.isNotEmpty && savedStreetId != null) {
+          _selectedStreet = {savedStreet};
+          _selectedStreetId = savedStreetId;
+          _streets = [
+            {'name': savedStreet, 'id': savedStreetId},
+          ];
+          _lastStreetsSearchResults[savedStreet] = savedStreetId;
+          if (savedBuilding.isNotEmpty && savedBuildingId != null) {
+            _selectedBuilding = {savedBuilding};
+            _selectedBuildingId = savedBuildingId;
+            _buildings = [
+              {'name': savedBuilding, 'id': savedBuildingId},
+            ];
+          }
+        }
+
         _isLoading = false;
       });
 
@@ -770,16 +807,22 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       }
 
       // Адрес: шлём выбранный город, бэк выведет подрегион и область.
+      // Улицу и дом (необязательные) передаём, только если они выбраны.
       if (_selectedCityId != null) {
         try {
           final resp = await UserService.updateAddress(
             cityId: _selectedCityId!,
+            streetId: _selectedStreetId,
+            buildingId: _selectedBuildingId,
             token: token,
           );
           if (resp['success'] == false) {
             log.d('⚠️ Адрес не сохранён: ${resp['message']}');
           } else {
-            log.d('✅ Адрес сохранён (city_id=$_selectedCityId)');
+            log.d(
+              '✅ Адрес сохранён (city_id=$_selectedCityId, '
+              'street_id=$_selectedStreetId, building_id=$_selectedBuildingId)',
+            );
           }
         } catch (e) {
           log.d('❌ Ошибка сохранения адреса: $e');
@@ -1218,6 +1261,12 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _label('Ваш город'),
                       _buildCityDropdown(),
 
+                      _label('Улица'),
+                      _buildStreetDropdown(),
+
+                      _label('Номер дома'),
+                      _buildBuildingDropdown(),
+
                       _label('Электронная почта'),
                       _field(_emailController, 'Введите вашу почту'),
 
@@ -1469,6 +1518,17 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _selectedCity.clear();
                       _selectedCityId = null;
                       _cities.clear();
+                      // Точный адрес привязан к городу — сбрасываем улицу и дом.
+                      _selectedStreet.clear();
+                      _selectedStreetId = null;
+                      _streets.clear();
+                      _selectedBuilding.clear();
+                      _selectedBuildingId = null;
+                      _buildings.clear();
+                      UserService.saveLocal('street', '');
+                      UserService.saveLocal('streetId', '');
+                      UserService.saveLocal('building', '');
+                      UserService.saveLocal('buildingId', '');
                       // 🆕 Сохраняем регион и его ID в локальное хранилище сразу при выборе
                       UserService.saveLocal('region', selectedRegionName);
                       if (regionId != null) {
@@ -1604,6 +1664,18 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                           setState(() {
                             _selectedCity = selected;
                             _selectedCityId = cityId;
+                            // Смена города сбрасывает улицу и дом (они привязаны
+                            // к городу/улице).
+                            _selectedStreet.clear();
+                            _selectedStreetId = null;
+                            _streets.clear();
+                            _selectedBuilding.clear();
+                            _selectedBuildingId = null;
+                            _buildings.clear();
+                            UserService.saveLocal('street', '');
+                            UserService.saveLocal('streetId', '');
+                            UserService.saveLocal('building', '');
+                            UserService.saveLocal('buildingId', '');
                             // 🆕 Сохраняем город и его ID в локальное хранилище сразу при выборе
                             UserService.saveLocal('city', selectedCityName);
                             if (cityId != null) {
@@ -1613,6 +1685,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                               log.d('⚠️ NOT saving cityId to Hive - it is null!');
                             }
                           });
+                          // Предзагружаем улицы выбранного города, чтобы диалог
+                          // "Улица" открывался со списком, а не пустым.
+                          if (cityId != null) {
+                            _loadStreetsForSelectedCity();
+                          }
                         }
                       },
                     );
@@ -1659,5 +1736,325 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         ),
       ),
     );
+  }
+
+  /// ───── Выпадающий список для выбора улицы ─────
+  /// Доступен только когда выбран город. Улицы ищутся по городу
+  /// (types=['street'], filters[city_id]).
+  Widget _buildStreetDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: GestureDetector(
+        onTap: _selectedCityId == null
+            ? null
+            : () async {
+                // Если улицы ещё не подгружены — тянем первую партию, чтобы
+                // диалог не открывался пустым.
+                if (_streets.isEmpty) {
+                  await _loadStreetsForSelectedCity();
+                }
+                if (!mounted) return;
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return SelectionDialog(
+                      title: 'Выберите улицу',
+                      showSearchField: true,
+                      options: _streets
+                          .map((s) => s['name'] as String)
+                          .toList(),
+                      selectedOptions: _selectedStreet,
+                      allowMultipleSelection: false,
+                      onSearchQuery: _searchStreetsAPI,
+                      onSelectionChanged: (Set<String> selected) {
+                        if (selected.isNotEmpty) {
+                          final selectedStreetName = selected.first;
+                          int? streetId =
+                              _lastStreetsSearchResults[selectedStreetName];
+                          if (streetId == null) {
+                            final idx = _streets.indexWhere(
+                              (s) => s['name'] == selectedStreetName,
+                            );
+                            if (idx >= 0) {
+                              streetId = _streets[idx]['id'] as int?;
+                            }
+                          }
+                          setState(() {
+                            _selectedStreet = selected;
+                            _selectedStreetId = streetId;
+                            // Смена улицы сбрасывает дом.
+                            _selectedBuilding.clear();
+                            _selectedBuildingId = null;
+                            _buildings.clear();
+                            UserService.saveLocal('street', selectedStreetName);
+                            if (streetId != null) {
+                              UserService.saveLocal(
+                                'streetId',
+                                streetId.toString(),
+                              );
+                            }
+                            UserService.saveLocal('building', '');
+                            UserService.saveLocal('buildingId', '');
+                          });
+                          // Предзагружаем дома выбранной улицы.
+                          if (streetId != null) {
+                            _loadBuildingsForSelectedStreet();
+                          }
+                        }
+                      },
+                    );
+                  },
+                );
+              },
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: _selectedCityId == null
+                ? const Color(0xFF2F4456)
+                : fieldColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _selectedStreet.isEmpty
+                      ? 'Выберите улицу'
+                      : _selectedStreet.first,
+                  style: TextStyle(
+                    color: _selectedStreet.isEmpty
+                        ? Colors.white54
+                        : (_selectedCityId == null
+                            ? Colors.white38
+                            : Colors.white),
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: _selectedCityId == null
+                    ? Colors.white24
+                    : Colors.white54,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// ───── Выпадающий список для выбора номера дома ─────
+  /// Доступен только когда выбрана улица. Дома ищутся по улице
+  /// (types=['building'], filters[street_id]).
+  Widget _buildBuildingDropdown() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: GestureDetector(
+        onTap: _selectedStreetId == null
+            ? null
+            : () async {
+                if (_buildings.isEmpty) {
+                  await _loadBuildingsForSelectedStreet();
+                }
+                if (!mounted) return;
+                if (_buildings.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Дома по этой улице не найдены'),
+                    ),
+                  );
+                  return;
+                }
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return SelectionDialog(
+                      title: 'Выберите номер дома',
+                      showSearchField: true,
+                      options: _buildings
+                          .map((b) => b['name'] as String)
+                          .toList(),
+                      selectedOptions: _selectedBuilding,
+                      allowMultipleSelection: false,
+                      onSelectionChanged: (Set<String> selected) {
+                        if (selected.isNotEmpty) {
+                          final selectedBuildingName = selected.first;
+                          final idx = _buildings.indexWhere(
+                            (b) => b['name'] == selectedBuildingName,
+                          );
+                          int? buildingId;
+                          if (idx >= 0) {
+                            buildingId = _buildings[idx]['id'] as int?;
+                          }
+                          setState(() {
+                            _selectedBuilding = selected;
+                            _selectedBuildingId = buildingId;
+                            UserService.saveLocal(
+                              'building',
+                              selectedBuildingName,
+                            );
+                            if (buildingId != null) {
+                              UserService.saveLocal(
+                                'buildingId',
+                                buildingId.toString(),
+                              );
+                            }
+                          });
+                        }
+                      },
+                    );
+                  },
+                );
+              },
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: _selectedStreetId == null
+                ? const Color(0xFF2F4456)
+                : fieldColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _selectedBuilding.isEmpty
+                      ? 'Выберите номер дома'
+                      : _selectedBuilding.first,
+                  style: TextStyle(
+                    color: _selectedBuilding.isEmpty
+                        ? Colors.white54
+                        : (_selectedStreetId == null
+                            ? Colors.white38
+                            : Colors.white),
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: _selectedStreetId == null
+                    ? Colors.white24
+                    : Colors.white54,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Поиск улиц через API по вводу пользователя (для диалога выбора улицы).
+  /// Требует выбранного города и запрос от 3 символов (ограничение API).
+  Future<List<String>> _searchStreetsAPI(String query) async {
+    if (_selectedCityId == null) return [];
+    if (query.trim().length < 3) return [];
+    try {
+      final token = TokenService.currentToken;
+      final response = await AddressService.searchAddresses(
+        query: query.trim(),
+        token: token,
+        types: ['street'],
+        filters: {'city_id': _selectedCityId},
+      );
+      final streets = <String>[];
+      for (final result in response.data) {
+        if (result.city?.id == _selectedCityId && result.street != null) {
+          streets.add(result.street!.name);
+          _lastStreetsSearchResults[result.street!.name] = result.street!.id;
+        }
+      }
+      return streets;
+    } catch (e) {
+      log.d('❌ Error searching streets: $e');
+      return [];
+    }
+  }
+
+  /// Предзагрузка списка улиц выбранного города (чтобы диалог не был пустым).
+  Future<void> _loadStreetsForSelectedCity() async {
+    if (_selectedCityId == null) return;
+    // Как поисковый запрос берём имя города (>=3 символов).
+    String? searchQuery;
+    if (_selectedCity.isNotEmpty) {
+      final cleaned = _selectedCity.first.trim();
+      if (cleaned.length >= 3) {
+        searchQuery = cleaned.length > 50 ? cleaned.substring(0, 50) : cleaned;
+      }
+    }
+    if (searchQuery == null) return;
+    try {
+      final token = TokenService.currentToken;
+      final response = await AddressService.searchAddresses(
+        query: searchQuery,
+        token: token,
+        types: ['street'],
+        filters: {'city_id': _selectedCityId},
+      );
+      final uniqueStreets = <String, int>{};
+      for (final result in response.data) {
+        if (result.city?.id == _selectedCityId && result.street != null) {
+          uniqueStreets[result.street!.name] = result.street!.id;
+          _lastStreetsSearchResults[result.street!.name] = result.street!.id;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _streets = uniqueStreets.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+        });
+      }
+    } catch (e) {
+      log.d('❌ Error loading streets: $e');
+    }
+  }
+
+  /// Предзагрузка списка домов выбранной улицы.
+  Future<void> _loadBuildingsForSelectedStreet() async {
+    if (_selectedStreetId == null) return;
+    // Номера домов короткие, поэтому как q берём имя улицы (>=3 символов),
+    // фильтруя по street_id.
+    String? searchQuery;
+    if (_selectedStreet.isNotEmpty) {
+      final cleaned = _selectedStreet.first.trim();
+      if (cleaned.length >= 3) {
+        searchQuery = cleaned.length > 50 ? cleaned.substring(0, 50) : cleaned;
+      }
+    }
+    if (searchQuery == null) return;
+    try {
+      final token = TokenService.currentToken;
+      final response = await AddressService.searchAddresses(
+        query: searchQuery,
+        token: token,
+        types: ['building'],
+        filters: {'street_id': _selectedStreetId},
+      );
+      final uniqueBuildings = <String, int>{};
+      for (final result in response.data) {
+        if (result.street?.id == _selectedStreetId && result.building != null) {
+          uniqueBuildings[result.building!.name] = result.building!.id;
+        }
+      }
+      if (mounted) {
+        setState(() {
+          _buildings = uniqueBuildings.entries
+              .map((e) => {'name': e.key, 'id': e.value})
+              .toList();
+        });
+      }
+    } catch (e) {
+      log.d('❌ Error loading buildings: $e');
+    }
   }
 }

@@ -310,14 +310,28 @@ class UserService {
   /// Сохранить адрес профиля по городу.
   /// Бэк сам выводит подрегион и область из city_id
   /// (PUT /me/settings/address { city_id }).
+  ///
+  /// [streetId] и [buildingId] — необязательный точный адрес (улица и дом).
+  /// Передаём их в запрос только если они выбраны (не null): бэк принимает
+  /// эти поля опционально, а отсутствие ключа не затирает уже сохранённое.
   static Future<Map<String, dynamic>> updateAddress({
     required int cityId,
+    int? streetId,
+    int? buildingId,
     required String token,
   }) async {
     try {
+      final body = <String, dynamic>{'city_id': cityId};
+      if (streetId != null) {
+        body['street_id'] = streetId;
+      }
+      if (buildingId != null) {
+        body['building_id'] = buildingId;
+      }
+
       final response = await ApiService.put(
         '/me/settings/address',
-        {'city_id': cityId},
+        body,
         token: token,
       );
       return response;

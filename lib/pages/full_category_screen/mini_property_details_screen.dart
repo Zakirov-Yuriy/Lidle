@@ -25,6 +25,7 @@ import 'package:lidle/widgets/dialogs/report_advert_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/full_category_screen/property_gallery_screen.dart';
+import 'package:lidle/pages/profile_dashboard/my_listings/advert_qr_screen.dart';
 import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
@@ -1447,10 +1448,11 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   }
 
   Widget _buildSellerCard() {
-    // 📝 Парсим полное имя продавца - берем только первое слово (имя)
-    final fullSellerName = _listing.sellerName ?? "Имя не указано";
-    final nameParts = fullSellerName.trim().split(RegExp(r'\s+'));
-    final sellerName = nameParts.isNotEmpty ? nameParts.first : fullSellerName;
+    // Показываем ПОЛНОЕ имя продавца целиком (для компаний это «ООО Авангард»,
+    // а не только первое слово). Раньше бралось только первое слово, из-за чего
+    // название компании обрезалось.
+    final rawSellerName = _listing.sellerName?.trim() ?? '';
+    final sellerName = rawSellerName.isNotEmpty ? rawSellerName : "Имя не указано";
     
     final sellerAvatar =
         _listing.sellerAvatar ?? "assets/property_details_screen/Andrey.png";
@@ -1582,7 +1584,22 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: _shareAdvert,
+              // Открываем экран QR-кода объявления (как в «Мои объявления»),
+              // передаём id/название/цену текущего объявления.
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdvertQrScreen(
+                      advertId: int.tryParse(_listing.id) ?? 0,
+                      advertTitle: _listing.title.isNotEmpty
+                          ? _listing.title
+                          : 'Объявление',
+                      advertPrice: _listing.price,
+                    ),
+                  ),
+                );
+              },
               icon: SvgPicture.asset(
                 'assets/home_page/share_outlined.svg',
                 width: 20,
