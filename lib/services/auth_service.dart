@@ -97,6 +97,28 @@ class AuthService {
     return await ApiService.post('/auth/login', body, skipTokenRefresh: true);
   }
 
+  /// Быстрый вход/регистрация через соцсеть (VK, Одноклассники).
+  /// Отправляет authorization code от провайдера на бэк; бэк меняет код на
+  /// данные пользователя и отдаёт те же токены, что обычный логин, плюс is_new.
+  /// Ответ: { access_token, refresh_token, token_type, expires_in, is_new }
+  static Future<Map<String, dynamic>> socialLogin({
+    required String provider,
+    required String code,
+    String? redirectUri,
+  }) async {
+    final body = <String, dynamic>{
+      'provider': provider,
+      'code': code,
+      // То же уникальное имя устройства, что и при обычном логине.
+      'device_name': await DeviceInfoService.getDeviceNameForApiAsync(),
+      'app_version': '1.4.1',
+    };
+    if (redirectUri != null && redirectUri.isNotEmpty) {
+      body['redirect_uri'] = redirectUri;
+    }
+    return await ApiService.post('/auth/social', body, skipTokenRefresh: true);
+  }
+
   /// Забыли пароль.
   /// Отправляет запрос на сброс пароля по email.
   static Future<Map<String, dynamic>> forgotPassword({

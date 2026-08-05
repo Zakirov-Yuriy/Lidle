@@ -26,6 +26,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// Инициализирует Bloc с начальным состоянием AuthInitial.
   AuthBloc() : super(AuthInitial()) {
     on<LoginEvent>(_onLogin);
+    on<SocialLoginEvent>(_onSocialLogin);
     on<RegisterEvent>(_onRegister);
     on<VerifyEmailEvent>(_onVerifyEmail);
     on<SendCodeEvent>(_onSendCode);
@@ -146,6 +147,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   /// Обработчик события входа в систему.
   /// Выполняет аутентификацию пользователя и сохраняет токен.
+  /// Соцвход: обмениваем code через бэк, сохраняем токены как при обычном
+  /// логине и эмитим AuthAuthenticated (навигация срабатывает сама).
+  Future<void> _onSocialLogin(SocialLoginEvent event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final response = await AuthService.socialLogin(
+        provider: event.provider,
+        code: event.code,
+        redirectUri: event.redirectUri,
+      );
+
+      final token = await _saveAuthResponse(response);
+      if (token != null) {
+        emit(AuthAuthenticated(token: token));
+      } else {
+        final serverMessage =
+            response['message'] as String? ?? 'Не удалось войти через соцсеть';
+        emit(AuthError(message: serverMessage));
+      }
+    } catch (e) {
+      String errorMessage = 'Ошибка входа через соцсеть';
+      if (e is Exception) {
+        final s = e.toString();
+        if (s.contains('Exception: ')) {
+          errorMessage = s.replaceAll('Exception: ', '');
+        }
+      }
+      emit(AuthError(message: errorMessage));
+    }
+  }
+
   Future<void> _onLogin(LoginEvent event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {

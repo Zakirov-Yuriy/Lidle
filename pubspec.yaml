@@ -28,6 +28,7 @@ dependencies:
   auto_size_text: ^3.0.0
  
   url_launcher: ^6.3.0 # Добавлен для совершения телефонных звонков
+  webview_flutter: ^4.7.0 # WebView для авторизации через соцсети (VK/ОК)
   share_plus: ^10.0.2 # Добавлен для шаринга
   freezed_annotation: ^2.4.1 # Added
   json_annotation: ^4.9.0 # Added

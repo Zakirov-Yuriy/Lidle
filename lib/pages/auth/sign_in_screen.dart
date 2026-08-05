@@ -8,9 +8,11 @@ import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/core/config/social_auth_config.dart';
 import 'account_recovery.dart';
 import 'register_screen.dart';
 import 'register_verify_screen.dart';
+import 'social_login_webview.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 
 // ============================================================
@@ -352,11 +354,44 @@ class _SignInScreenState extends State<SignInScreen> {
   ///   провайдер → виджет VK ID → получаем code + device_id →
   ///   POST /v1/auth/vkid → AuthBloc.add(VkIdLoginEvent(...)) →
   ///   AuthAuthenticated → переход на ProfileDashboard (как обычный вход).
-  /// Пока рабочего кода/бэка нет — показываем уведомление.
-  void _onVkIdLogin(String provider) {
-    SnackBarHelper.showWarning(
-      context,
-      'Быстрый вход через соцсети скоро будет доступен',
+  /// Соцвход. Реализованы ВК и ОК: открываем WebView авторизации провайдера,
+  /// получаем authorization code и отдаём его в AuthBloc (SocialLoginEvent).
+  /// Бэк меняет код на токены и возвращает наши токены — навигация после
+  /// AuthAuthenticated срабатывает автоматически (как обычный логин).
+  /// Mail.ru и QR пока показывают уведомление.
+  Future<void> _onVkIdLogin(String provider) async {
+    if (provider != 'vk' && provider != 'ok') {
+      SnackBarHelper.showWarning(
+        context,
+        'Этот способ входа скоро будет доступен',
+      );
+      return;
+    }
+
+    // Не настроен App ID (см. SocialAuthConfig) — вход ещё не готов.
+    if (!SocialAuthConfig.isConfigured(provider)) {
+      SnackBarHelper.showWarning(
+        context,
+        'Вход через соцсеть ещё настраивается',
+      );
+      return;
+    }
+
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => SocialLoginWebView(provider: provider),
+      ),
+    );
+
+    if (code == null || code.isEmpty) return;
+    if (!mounted) return;
+
+    context.read<AuthBloc>().add(
+      SocialLoginEvent(
+        provider: provider,
+        code: code,
+        redirectUri: SocialAuthConfig.redirectUri,
+      ),
     );
   }
 

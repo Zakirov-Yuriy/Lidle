@@ -19,6 +19,20 @@ class LoginEvent extends AuthEvent {
   });
 }
 
+/// Событие входа/регистрации через соцсеть (VK, Одноклассники).
+/// Содержит provider и authorization code, полученный от провайдера.
+class SocialLoginEvent extends AuthEvent {
+  final String provider; // 'vk' | 'ok'
+  final String code;
+  final String? redirectUri;
+
+  SocialLoginEvent({
+    required this.provider,
+    required this.code,
+    this.redirectUri,
+  });
+}
+
 /// Событие регистрации нового пользователя.
 /// Содержит все необходимые данные для создания аккаунта.
 class RegisterEvent extends AuthEvent {

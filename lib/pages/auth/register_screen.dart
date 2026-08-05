@@ -12,6 +12,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'register_verify_screen.dart';
+import 'widgets/social_auth_block.dart';
 import 'package:lidle/core/logger.dart';
 
 // ============================================================
@@ -456,6 +457,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 ),
                               ),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Быстрая регистрация через соцсети (тот же блок, что на
+                    // экране входа; на бэке find-or-create).
+                    const SocialAuthBlock(
+                      label: 'Или зарегистрируйтесь через',
                     ),
                     const SizedBox(height: 40),
                   ],
