@@ -7,8 +7,8 @@
 /// App ID берётся в кабинете приложения VK / Одноклассников (у Александра),
 /// redirect — один из зарегистрированных доменов Лидле.
 class SocialAuthConfig {
-  // TODO: подставить числовой App ID из кабинета ВКонтакте.
-  static const String vkAppId = '';
+  // App ID приложения ВКонтакте (прислал Александр 05.08).
+  static const String vkAppId = '54685113';
 
   // TODO: подставить числовой App ID из кабинета Одноклассников.
   static const String okAppId = '';
