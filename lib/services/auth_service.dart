@@ -104,6 +104,8 @@ class AuthService {
   static Future<Map<String, dynamic>> socialLogin({
     required String provider,
     required String code,
+    String? codeVerifier,
+    String? deviceId,
     String? redirectUri,
   }) async {
     final body = <String, dynamic>{
@@ -113,6 +115,13 @@ class AuthService {
       'device_name': await DeviceInfoService.getDeviceNameForApiAsync(),
       'app_version': '1.4.1',
     };
+    // PKCE и device_id для VK ID.
+    if (codeVerifier != null && codeVerifier.isNotEmpty) {
+      body['code_verifier'] = codeVerifier;
+    }
+    if (deviceId != null && deviceId.isNotEmpty) {
+      body['device_id'] = deviceId;
+    }
     if (redirectUri != null && redirectUri.isNotEmpty) {
       body['redirect_uri'] = redirectUri;
     }

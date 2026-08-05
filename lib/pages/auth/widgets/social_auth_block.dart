@@ -117,7 +117,8 @@ class _SocialAuthBlockState extends State<SocialAuthBlock> {
   /// После AuthAuthenticated навигация срабатывает на том экране, где висит
   /// BlocConsumer (вход/регистрация). Mail.ru и QR пока в разработке.
   Future<void> _onSocialLogin(String provider) async {
-    if (provider != 'vk' && provider != 'ok') {
+    // ВК / ОК / Mail идут в единый VK ID (виджет «3 в 1»). QR пока отдельно.
+    if (provider != 'vk' && provider != 'ok' && provider != 'mail_ru') {
       SnackBarHelper.showWarning(
         context,
         'Этот способ входа скоро будет доступен',
@@ -125,7 +126,7 @@ class _SocialAuthBlockState extends State<SocialAuthBlock> {
       return;
     }
 
-    if (!SocialAuthConfig.isConfigured(provider)) {
+    if (!SocialAuthConfig.isConfigured) {
       SnackBarHelper.showWarning(
         context,
         'Вход через соцсеть ещё настраивается',
@@ -133,19 +134,21 @@ class _SocialAuthBlockState extends State<SocialAuthBlock> {
       return;
     }
 
-    final code = await Navigator.of(context).push<String>(
+    final result = await Navigator.of(context).push<SocialAuthResult>(
       MaterialPageRoute(
         builder: (_) => SocialLoginWebView(provider: provider),
       ),
     );
 
-    if (code == null || code.isEmpty) return;
+    if (result == null) return;
     if (!mounted) return;
 
     context.read<AuthBloc>().add(
       SocialLoginEvent(
         provider: provider,
-        code: code,
+        code: result.code,
+        codeVerifier: result.codeVerifier,
+        deviceId: result.deviceId,
         redirectUri: SocialAuthConfig.redirectUri,
       ),
     );

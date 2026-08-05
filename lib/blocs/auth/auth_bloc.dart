@@ -155,6 +155,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final response = await AuthService.socialLogin(
         provider: event.provider,
         code: event.code,
+        codeVerifier: event.codeVerifier,
+        deviceId: event.deviceId,
         redirectUri: event.redirectUri,
       );
 

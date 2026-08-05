@@ -1,53 +1,34 @@
-/// Конфиг соцвхода на стороне приложения.
+/// Конфиг соцвхода (VK ID) на стороне приложения.
 ///
-/// Здесь только ПУБЛИЧНЫЕ данные (App ID и redirect) — это НЕ секреты.
-/// Секретные ключи (client secret, service key) хранятся только на бэке;
-/// обмен authorization code на токены делает сервер (POST /v1/auth/social).
-///
-/// App ID берётся в кабинете приложения VK / Одноклассников (у Александра),
-/// redirect — один из зарегистрированных доменов Лидле.
+/// Здесь только ПУБЛИЧНЫЕ данные (App ID и redirect). Секретов нет: обмен кода
+/// на токены делает бэк (POST /v1/auth/social). Вход единый VK ID: одно
+/// приложение закрывает ВК, ОК и Mail (виджет «3 в 1»), поэтому App ID один.
 class SocialAuthConfig {
-  // App ID приложения ВКонтакте (прислал Александр 05.08).
+  /// App ID приложения VK ID (прислал Александр 05.08).
   static const String vkAppId = '54685113';
 
-  // TODO: подставить числовой App ID из кабинета Одноклассников.
-  static const String okAppId = '';
-
-  /// Redirect, зарегистрированный в настройках приложений VK/ОК.
-  /// Должен совпадать на стороне провайдера и в запросе к нашему бэку.
+  /// Redirect, зарегистрированный в кабинете VK ID (доверенные redirect).
+  /// Должен совпадать в запросе авторизации и при обмене кода на бэке.
   static const String redirectUri = 'https://lidle.ru';
 
-  /// Настроен ли провайдер (задан ли App ID).
-  static bool isConfigured(String provider) {
-    switch (provider) {
-      case 'vk':
-        return vkAppId.isNotEmpty;
-      case 'ok':
-        return okAppId.isNotEmpty;
-      default:
-        return false;
-    }
-  }
+  /// Настроен ли вход (задан ли App ID).
+  static bool get isConfigured => vkAppId.isNotEmpty;
 
-  /// URL страницы авторизации провайдера (открывается в WebView).
-  static String? authorizeUrl(String provider) {
+  /// URL авторизации VK ID (OAuth 2.1 + PKCE). Внутри пользователь выбирает
+  /// ВК / ОК / Mail. `codeChallenge` = base64url(sha256(code_verifier)),
+  /// `state` для защиты от подмены.
+  static String authorizeUrl({
+    required String codeChallenge,
+    required String state,
+  }) {
     final redirect = Uri.encodeComponent(redirectUri);
-    switch (provider) {
-      case 'vk':
-        return 'https://oauth.vk.com/authorize'
-            '?client_id=$vkAppId'
-            '&redirect_uri=$redirect'
-            '&response_type=code'
-            '&scope=email'
-            '&v=5.199';
-      case 'ok':
-        return 'https://connect.ok.ru/oauth/authorize'
-            '?client_id=$okAppId'
-            '&scope=GET_EMAIL;VALUABLE_ACCESS'
-            '&response_type=code'
-            '&redirect_uri=$redirect';
-      default:
-        return null;
-    }
+    return 'https://id.vk.ru/authorize'
+        '?response_type=code'
+        '&client_id=$vkAppId'
+        '&code_challenge=$codeChallenge'
+        '&code_challenge_method=S256'
+        '&redirect_uri=$redirect'
+        '&state=$state'
+        '&scope=email';
   }
 }
