@@ -5,7 +5,7 @@ import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/core/config/social_auth_config.dart';
-import 'package:lidle/pages/auth/social_login_webview.dart';
+import 'package:lidle/pages/auth/vkid_auth_service.dart';
 
 /// Общий блок быстрого входа/регистрации через соцсети.
 ///
@@ -134,11 +134,9 @@ class _SocialAuthBlockState extends State<SocialAuthBlock> {
       return;
     }
 
-    final result = await Navigator.of(context).push<SocialAuthResult>(
-      MaterialPageRoute(
-        builder: (_) => SocialLoginWebView(provider: provider),
-      ),
-    );
+    // Нативный VK ID SDK (one tap / app-to-app). SDK возвращает authorization
+    // code + device_id + redirect_uri; обмен на токены делает бэк по PKCE.
+    final result = await VkIdAuthService.authorize(provider);
 
     if (result == null) return;
     if (!mounted) return;
@@ -149,7 +147,9 @@ class _SocialAuthBlockState extends State<SocialAuthBlock> {
         code: result.code,
         codeVerifier: result.codeVerifier,
         deviceId: result.deviceId,
-        redirectUri: SocialAuthConfig.redirectUri,
+        // ВАЖНО: redirect от SDK (vk<appid>://...), НЕ https://lidle.ru.
+        // Бэк должен обменять код именно с этим redirect_uri.
+        redirectUri: result.redirectUri,
       ),
     );
   }

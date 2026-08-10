@@ -113,5 +113,19 @@
 # Keep BLoC
 -keep class lib.blocs.** { *; }
 
+# VK ID SDK (com.vk.id) - нативный вход через VK ID
+-keep class com.vk.id.** { *; }
+-keep class com.vk.dto.common.id.** { *; }
+-keep class com.vk.vkid.** { *; }
+-dontwarn com.vk.id.**
+-dontwarn com.vk.vkid.**
+
+# VK ID SDK тянет телеметрию Одноклассников (ru.ok.tracer). Часть классов
+# опциональна и отсутствует в сборке, R8 без этого падает на minifyRelease.
+-dontwarn ru.ok.tracer.**
+-keep class ru.ok.tracer.** { *; }
+-keep class ru.ok.** { *; }
+-dontwarn ru.ok.**
+
 # Verbose output
 -verbose

@@ -14,6 +14,9 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        // Репозитории VK ID SDK (для плагина vkid.manifest.placeholders)
+        maven { url = uri("https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/") }
+        maven { url = uri("https://artifactory-external.vkpartner.ru/artifactory/maven/") }
     }
 }
 

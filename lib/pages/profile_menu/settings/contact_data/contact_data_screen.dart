@@ -1252,7 +1252,7 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _label('Название компании'),
                       _field(_nameController, 'Введите название компании'),
 
-                      _label('Фамилия'),
+                      _label('Фамилия', note: '(Скрыта от пользователей)'),
                       _field(_lastNameController, 'Введите фамилию'),
 
                       _label('Ваша область'),
@@ -1261,13 +1261,13 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _label('Ваш город'),
                       _buildCityDropdown(),
 
-                      _label('Улица'),
+                      _label('Улица', note: '(Виден в вашем магазине)'),
                       _buildStreetDropdown(),
 
-                      _label('Номер дома'),
+                      _label('Номер дома', note: '(Ваш физический адрес компании)'),
                       _buildBuildingDropdown(),
 
-                      _label('Электронная почта'),
+                      _label('Электронная почта', note: '(Скрыта от пользователей)'),
                       _field(_emailController, 'Введите вашу почту'),
 
                       _label('Номер телефона 1'),
@@ -1328,15 +1328,29 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   // HELPERS
   // ─────────────────────────────────────────────
 
-  Widget _label(String text) {
+  Widget _label(String text, {String? note}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(25, 14, 25, 6),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
+      child: Text.rich(
+        TextSpan(
+          text: text,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+          ),
+          children: note == null
+              ? null
+              : [
+                  TextSpan(
+                    text: '  $note',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
         ),
       ),
     );

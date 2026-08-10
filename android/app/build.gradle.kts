@@ -4,6 +4,9 @@ import java.util.*
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    // Плагин VK ID SDK: добавляет в манифест meta-data (VKIDClientID/Secret) и
+    // intent-filter возврата (схема vk<clientId>), которые SDK читает при init.
+    id("vkid.manifest.placeholders")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }

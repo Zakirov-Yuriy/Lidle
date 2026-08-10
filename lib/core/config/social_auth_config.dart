@@ -4,8 +4,12 @@
 /// на токены делает бэк (POST /v1/auth/social). Вход единый VK ID: одно
 /// приложение закрывает ВК, ОК и Mail (виджет «3 в 1»), поэтому App ID один.
 class SocialAuthConfig {
-  /// App ID приложения VK ID (прислал Александр 05.08).
-  static const String vkAppId = '54685113';
+  /// App ID мобильного приложения VK ID (создал Александр, ID 54714701).
+  /// В нём заведены нативные Android-платформы (io.lidle.app + io.lidle.app.debug
+  /// с отпечатками) и iOS bundle id. Прежнее приложение 54694804 удалено, сайт
+  /// остаётся на 54685113. При нативном SDK этот App ID также задаётся в
+  /// android/local.properties (VKIDClientID) и определяет схему возврата vk54714701.
+  static const String vkAppId = '54714701';
 
   /// Redirect, зарегистрированный в кабинете VK ID (доверенные redirect).
   /// Должен совпадать в запросе авторизации и при обмене кода на бэке.

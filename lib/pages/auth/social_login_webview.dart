@@ -26,6 +26,13 @@ class SocialAuthResult {
 /// id.vk.ru/authorize (виджет «3 в 1»: ВК/ОК/Mail), ловит редирект на
 /// redirect_uri?code=...&device_id=...&state=... и возвращает SocialAuthResult
 /// через Navigator.pop. Сам код на токены НЕ меняет — это делает бэк.
+///
+/// Редирект ловим сразу на трёх хуках (onNavigationRequest, onPageStarted,
+/// onUrlChange), потому что webview_flutter не всегда вызывает
+/// onNavigationRequest на финальном 302-редиректе VK ID — без этого страница
+/// lidle.ru успевает загрузиться и вход в приложении не завершается.
+/// Параметры достаём и из query (?code=...), и из фрагмента (#code=...),
+/// т.к. VK ID в части флоу возвращает их во фрагменте.
 class SocialLoginWebView extends StatefulWidget {
   /// Провайдер-метка (vk/ok/mail_ru). Флоу единый VK ID, метка идёт на бэк
   /// только для информации.
@@ -58,28 +65,49 @@ class _SocialLoginWebViewState extends State<SocialLoginWebView> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
+          // Основной перехват: до загрузки страницы.
           onNavigationRequest: (request) {
-            final result = _tryExtract(request.url);
-            if (result != null && !_handled) {
-              _handled = true;
-              Navigator.of(context).pop(result);
+            if (_handleIfRedirect(request.url)) {
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
+          },
+          // Подстраховка №1: страница начала грузиться (напр. финальный 302,
+          // который onNavigationRequest пропустил). Успеваем забрать code и
+          // закрыть WebView до фактической отрисовки сайта.
+          onPageStarted: (url) => _handleIfRedirect(url),
+          // Подстраховка №2: любое изменение URL (JS-редиректы и т.п.).
+          onUrlChange: (change) {
+            final u = change.url;
+            if (u != null) _handleIfRedirect(u);
           },
         ),
       )
       ..loadRequest(Uri.parse(url));
   }
 
-  /// Достаёт code + device_id из redirect_uri?code=...&device_id=...&state=...
+  /// Если url — это наш redirect с валидным результатом, забираем его и
+  /// закрываем экран. Возвращает true, если редирект обработан.
+  bool _handleIfRedirect(String url) {
+    if (_handled) return false;
+    final result = _tryExtract(url);
+    if (result == null) return false;
+    _handled = true;
+    if (mounted) {
+      Navigator.of(context).pop(result);
+    }
+    return true;
+  }
+
+  /// Достаёт code + device_id из redirect_uri (query ИЛИ фрагмент).
   /// Проверяет state (защита от подмены).
   SocialAuthResult? _tryExtract(String url) {
     if (!url.startsWith(SocialAuthConfig.redirectUri)) return null;
-    final uri = Uri.parse(url);
-    final code = uri.queryParameters['code'];
-    final deviceId = uri.queryParameters['device_id'];
-    final returnedState = uri.queryParameters['state'];
+    final params = _paramsFrom(url);
+
+    final code = params['code'];
+    final deviceId = params['device_id'];
+    final returnedState = params['state'];
 
     if (code == null || code.isEmpty) return null;
     if (deviceId == null || deviceId.isEmpty) return null;
@@ -90,6 +118,27 @@ class _SocialLoginWebViewState extends State<SocialLoginWebView> {
       deviceId: deviceId,
       codeVerifier: _codeVerifier,
     );
+  }
+
+  /// Собирает параметры из query и из фрагмента (VK ID может вернуть их в
+  /// любом из двух мест). Query имеет приоритет.
+  Map<String, String> _paramsFrom(String url) {
+    final uri = Uri.parse(url);
+    final result = <String, String>{};
+
+    // Фрагмент вида "#code=...&device_id=..." (или "#/?code=...").
+    final frag = uri.fragment;
+    if (frag.isNotEmpty) {
+      final qIndex = frag.indexOf('?');
+      final fragQuery = qIndex >= 0 ? frag.substring(qIndex + 1) : frag;
+      if (fragQuery.contains('=')) {
+        result.addAll(Uri.splitQueryString(fragQuery));
+      }
+    }
+
+    // Query имеет приоритет над фрагментом.
+    result.addAll(uri.queryParameters);
+    return result;
   }
 
   static const String _chars =
