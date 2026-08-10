@@ -11,6 +11,8 @@ import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/favorites_screen.dart';
 import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/blocs/messages/messages_bloc.dart';
@@ -179,13 +181,7 @@ class BottomNavigation extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
-        onTap: () {
-          final wasNavigated = _navigateToScreen(context, index);
-          // Вызываем callback только если навигация была успешна
-          if (wasNavigated) {
-            onItemSelected?.call(index);
-          }
-        },
+        onTap: () => _handleAddTap(context, index),
         child: Padding(
           padding: const EdgeInsets.all(13.5),
           child: Container(
@@ -202,6 +198,56 @@ class BottomNavigation extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// Нажатие на «плюс» (создание объявления).
+  ///
+  /// Сначала спрашиваем у бэка, заполнены ли обязательные контактные данные
+  /// (GET /me/adverts/can-create). Если нет — вместо выбора категории ведём
+  /// пользователя на экран контактных данных и подсказываем, какие поля надо
+  /// заполнить. Если да — обычный переход к созданию объявления.
+  Future<void> _handleAddTap(BuildContext context, int index) async {
+    // Проверка авторизации (как для остальных защищённых экранов).
+    final token = TokenService.currentToken;
+    final isAuthorized = token != null && token.isNotEmpty;
+    if (!isAuthorized) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в свой профиль или создайте новый, чтобы продолжить',
+      );
+      return;
+    }
+
+    bool canCreate = true;
+    List<dynamic> missing = const [];
+    try {
+      final resp = await ApiService.get('/me/adverts/can-create', token: token);
+      canCreate = resp['can_create'] == true;
+      missing = (resp['missing'] as List?) ?? const [];
+    } catch (_) {
+      // Если проверка не удалась (нет сети и т.п.) — не блокируем: пусть
+      // работает как раньше, финальную защиту даёт бэк при публикации (422).
+      canCreate = true;
+    }
+
+    if (!context.mounted) return;
+
+    if (!canCreate) {
+      final labels = missing
+          .map((m) => (m is Map ? m['label'] : null))
+          .whereType<String>()
+          .toList();
+      final msg = labels.isEmpty
+          ? 'Заполните контактные данные, чтобы публиковать объявления'
+          : 'Заполните обязательные поля: ${labels.join(', ')}';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      Navigator.of(context).pushNamed(ContactDataScreen.routeName);
+      return;
+    }
+
+    // Всё заполнено — обычный переход к выбору категории / созданию объявления.
+    Navigator.of(context).pushNamed(CategorySelectionScreen.routeName);
+    onItemSelected?.call(index);
   }
 
   /// Переходит на экран с индексом [index].
