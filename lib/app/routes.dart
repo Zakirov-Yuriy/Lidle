@@ -9,6 +9,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/company_contact_data_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/privacy_settings/privacy_settings_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/chat_settings/chat_settings_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/username/username_screen.dart';
@@ -90,6 +91,7 @@ class AppRoutes {
     SettingsScreen.routeName: (context) => const SettingsScreen(),
     '/crm_feed': (context) => const CrmFeedScreen(),
     '/contact_data': (context) => ContactDataScreen(),
+    '/company_contact_data': (context) => const CompanyContactDataScreen(),
     '/privacy_settings': (context) => const PrivacySettingsScreen(),
     '/chat_settings': (context) => const ChatSettingsScreen(),
     '/username': (context) => const UsernameScreen(),

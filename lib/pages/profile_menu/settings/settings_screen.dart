@@ -366,8 +366,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     width: 21,
                     height: 21,
                   ),
-                  'Контактные данные',
+                  'Контактные данные пользователя',
                   onTap: () => Navigator.pushNamed(context, '/contact_data'),
+                ),
+                _settingsItem(
+                  SvgPicture.asset(
+                    'assets/profile_menu/settings/image-user.svg',
+                    color: Colors.white,
+                    width: 21,
+                    height: 21,
+                  ),
+                  'Контактные данные компании',
+                  onTap: () =>
+                      Navigator.pushNamed(context, '/company_contact_data'),
                 ),
                 _settingsItem(
                   SvgPicture.asset(

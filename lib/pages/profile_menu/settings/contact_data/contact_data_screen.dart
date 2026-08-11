@@ -1174,15 +1174,24 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            'Контактные данные',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w500,
+                          // Адаптивный заголовок: занимает всё доступное место,
+                          // если текст помещается — размер 18, если нет —
+                          // FittedBox(scaleDown) автоматически уменьшает.
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: const Text(
+                                'Контактные данные пользователя',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           TextButton(
                             onPressed: () => Navigator.pop(context),
                             child: const Text(
