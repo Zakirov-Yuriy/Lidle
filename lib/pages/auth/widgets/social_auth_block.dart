@@ -138,7 +138,20 @@ class _SocialAuthBlockState extends State<SocialAuthBlock> {
     // code + device_id + redirect_uri; обмен на токены делает бэк по PKCE.
     final result = await VkIdAuthService.authorize(provider);
 
-    if (result == null) return;
+    if (result == null) {
+      // Вход не удался. Отмену пользователем не показываем как ошибку, а на
+      // реальную ошибку SDK выводим короткое уведомление (без тихого возврата).
+      final err = VkIdAuthService.lastError ?? '';
+      final cancelled =
+          err.contains('AuthCancelledError') || err.contains('отмена');
+      if (mounted && !cancelled) {
+        SnackBarHelper.showWarning(
+          context,
+          'Не удалось войти через VK. Попробуйте ещё раз.',
+        );
+      }
+      return;
+    }
     if (!mounted) return;
 
     context.read<AuthBloc>().add(
