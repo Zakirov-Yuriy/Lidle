@@ -1448,11 +1448,10 @@ packages:
   vkid_flutter_sdk:
     dependency: "direct main"
     description:
-      name: vkid_flutter_sdk
-      sha256: "01edb8b1cc5926acee1a1a929170a4a99c6c97746258e3e234ececda886c2327"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.3"
+      path: "vendor/vkid_flutter_sdk"
+      relative: true
+    source: path
+    version: "1.0.3+lidle1"
   vm_service:
     dependency: transitive
     description:

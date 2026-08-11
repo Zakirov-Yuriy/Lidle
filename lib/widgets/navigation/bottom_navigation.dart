@@ -12,6 +12,7 @@ import 'package:lidle/pages/favorites_screen.dart';
 import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/company_contact_data_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -241,7 +242,16 @@ class BottomNavigation extends StatelessWidget {
           ? 'Заполните контактные данные, чтобы публиковать объявления'
           : 'Заполните обязательные поля: ${labels.join(', ')}';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-      Navigator.of(context).pushNamed(ContactDataScreen.routeName);
+      // По префиксу поля решаем, на какой экран вести. Сейчас гейтинг завязан
+      // только на контакты компании (company.*), поэтому обычно ведём на экран
+      // контактов компании. Если вдруг прилетит user.* — на экран пользователя.
+      final hasCompanyMissing = missing.any((m) =>
+          m is Map &&
+          (m['field']?.toString().startsWith('company.') ?? false));
+      final route = hasCompanyMissing
+          ? CompanyContactDataScreen.routeName
+          : ContactDataScreen.routeName;
+      Navigator.of(context).pushNamed(route);
       return;
     }
 

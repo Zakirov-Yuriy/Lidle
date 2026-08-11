@@ -1,0 +1,17 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+  package="com.vk.vkid.flutter.vkid_flutter_sdk">
+  <application>
+    <!--
+      Захватывает applicationContext при старте процесса (создаётся до
+      Application.onCreate и до любой Activity). Нужен, чтобы возврат кода из
+      VK ID не падал с "onAttachedToEngine wasn't called" после того, как
+      систему выгрузила процесс во время авторизации. authorities с
+      ${applicationId} подставляет gradle приложения, конфликтов не будет.
+    -->
+    <provider
+      android:name="com.vk.vkid.flutter.vkid_flutter_sdk.VkidContextProvider"
+      android:authorities="${applicationId}.vkidcontextprovider"
+      android:exported="false"
+      android:initOrder="99" />
+  </application>
+</manifest>

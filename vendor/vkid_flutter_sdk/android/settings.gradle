@@ -1,0 +1,14 @@
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            url("https://artifactory-external.vkpartner.ru/artifactory/vkid-sdk-android/")
+        }
+        maven {
+            url("https://artifactory-external.vkpartner.ru/artifactory/vk-id-captcha/android/")
+        }
+        maven {
+            url("https://artifactory-external.vkpartner.ru/artifactory/maven/")
+        }
+    }
+}
+rootProject.name = 'VKIDFlutterSDK'

@@ -120,5 +120,11 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
         </intent>
+
+        <package android:name="com.vkontakte.android" />
+        <package android:name="com.vk.im" />
+        <package android:name="ru.mail.mailapp" />
+        <package android:name="ru.ok.android" />
+
     </queries>
 </manifest>

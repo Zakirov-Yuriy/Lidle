@@ -297,33 +297,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                 ),
 
-                const Divider(color: Colors.white24),
-
-                // ───── QR block ─────
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Ваш qr-код',
-                        style: TextStyle(color: Colors.white54, fontSize: 14),
-                      ),
-                      const SizedBox(height: 12),
-                      BlocBuilder<ProfileBloc, ProfileState>(
-                        builder: (context, state) {
-                          final qrCodeBase64 = state is ProfileLoaded
-                              ? state.qrCode
-                              : null;
-                          return _qrBox(qrCodeBase64);
-                        },
-                      ),
-                    ],
-                  ),
-                ),
+                // ───── QR block временно скрыт (по запросу) ─────
+                // Divider + Padding с QR-кодом закомментированы, чтобы не
+                // показывать блок «Ваш qr-код» на экране настроек. Метод _qrBox
+                // и ProfileBloc не тронуты — вернуть блок можно, раскомментировав.
 
                 const Divider(color: Colors.white24),
 
