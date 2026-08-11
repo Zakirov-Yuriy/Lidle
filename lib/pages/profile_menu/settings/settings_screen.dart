@@ -371,7 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 _settingsItem(
                   SvgPicture.asset(
-                    'assets/profile_menu/settings/image-user.svg',
+                    'assets/profile_menu/settings/building-office-01.svg',
                     color: Colors.white,
                     width: 21,
                     height: 21,
