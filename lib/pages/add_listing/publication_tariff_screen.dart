@@ -53,7 +53,11 @@ class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Возврат на предыдущий экран с экрана тарифа запрещён: блокируем
+    // системную кнопку «назад» и свайп. Выйти можно только через «Отмена».
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
       backgroundColor: primaryBackground,
       body: SafeArea(
         child: SingleChildScrollView(
@@ -68,15 +72,9 @@ class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
                 ),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Icon(
-                        Icons.arrow_back_ios,
-                        color: textPrimary,
-                        size: 16,
-                      ),
-                    ),
-
+                    // Стрелка «назад» убрана: с экрана тарифа возврат на
+                    // предыдущий экран запрещён (см. PopScope ниже). Выйти
+                    // можно только через кнопку «Отмена».
                     const Text(
                       'Тариф публикации',
                       style: TextStyle(
@@ -139,6 +137,7 @@ class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
