@@ -64,4 +64,11 @@ abstract final class CacheKeys {
 
   /// Префикс для массовой инвалидации профилей продавцов.
   static const String sellerProfilePrefix = 'seller_profile_';
+
+  /// Строит ключ кеша карточки продавца (название/описание/адрес/контакты
+  /// компании + избранное). Отдельно от списка объявлений продавца.
+  static String sellerInfoKey(String sellerId) => 'seller_info_$sellerId';
+
+  /// Префикс для массовой инвалидации карточек продавцов.
+  static const String sellerInfoPrefix = 'seller_info_';
 }

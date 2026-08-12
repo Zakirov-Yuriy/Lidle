@@ -118,6 +118,10 @@ class DynamicFilter extends StatefulWidget {
   final int? defaultRegionId; // ID области по умолчанию (для быстрой инициализации)
   final int? defaultCityId; // ID города по умолчанию (для быстрой инициализации)
   final String? defaultPhone2; // Второй телефон по умолчанию
+  final String? defaultStreet; // Улица по умолчанию (адрес компании)
+  final int? defaultStreetId; // ID улицы по умолчанию
+  final String? defaultBuilding; // Номер дома по умолчанию (адрес компании)
+  final int? defaultBuildingId; // ID дома по умолчанию
 
   /// Открыт с экрана модерации фидовых объявлений. В этом режиме кнопка
   /// «Обновить» просто сохраняет правки и возвращает на экран модерации
@@ -134,6 +138,10 @@ class DynamicFilter extends StatefulWidget {
     this.defaultRegionId,
     this.defaultCityId,
     this.defaultPhone2,
+    this.defaultStreet,
+    this.defaultStreetId,
+    this.defaultBuilding,
+    this.defaultBuildingId,
     this.fromModeration = false,
   });
 
@@ -177,6 +185,7 @@ class _DynamicFilterState extends State<DynamicFilter>
   List<Map<String, dynamic>> _userEmails = [];
   List<Map<String, dynamic>> _userTelegrams = [];
   List<Map<String, dynamic>> _userWhatsapps = [];
+  List<Map<String, dynamic>> _userMaxes = [];
 
   // Text Controllers
   final TextEditingController _titleController = TextEditingController();
@@ -256,7 +265,10 @@ class _DynamicFilterState extends State<DynamicFilter>
     await Future.wait([_loadAttributes(), _loadUserContacts(), _loadRegions()]);
 
     // 🔧 Инициализируем значения по умолчанию (если они переданы)
-    if (widget.defaultRegion != null || widget.defaultCity != null) {
+    if (widget.defaultRegion != null ||
+        widget.defaultCity != null ||
+        widget.defaultStreet != null ||
+        widget.defaultBuilding != null) {
       await _initializeDefaultAddressValues();
     }
 
@@ -436,6 +448,30 @@ class _DynamicFilterState extends State<DynamicFilter>
         }
       }
       
+      // 3.5️⃣ Улица и номер дома по умолчанию (адрес компании).
+      if (widget.defaultStreet != null &&
+          widget.defaultStreet!.isNotEmpty &&
+          widget.defaultStreetId != null) {
+        setState(() {
+          _selectedStreet = {widget.defaultStreet!};
+          _selectedStreetId = widget.defaultStreetId;
+          _streets = [
+            {'name': widget.defaultStreet!, 'id': widget.defaultStreetId},
+          ];
+          if (widget.defaultBuilding != null &&
+              widget.defaultBuilding!.isNotEmpty &&
+              widget.defaultBuildingId != null) {
+            _selectedBuilding = {widget.defaultBuilding!};
+            _selectedBuildingId = widget.defaultBuildingId;
+            _buildings = [
+              {'name': widget.defaultBuilding!, 'id': widget.defaultBuildingId},
+            ];
+            _buildingController.text = widget.defaultBuilding!;
+          }
+        });
+        log.d('🎯 Default street/building set from company');
+      }
+
       // 4️⃣ Инициализируем второй телефон по умолчанию
       if (widget.defaultPhone2 != null && widget.defaultPhone2!.isNotEmpty) {
         setState(() {
@@ -1486,7 +1522,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       try {
         // log.d('📞 Loading phones from /me/settings/phones...');
         final phonesResponse = await ApiService.get(
-          '/me/settings/phones',
+          '/me/settings/company/phones',
           token: token,
         );
         // API returns { "data": [...] } without success field
@@ -1504,7 +1540,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       try {
         // log.d('📧 Loading emails from /me/settings/emails...');
         final emailsResponse = await ApiService.get(
-          '/me/settings/emails',
+          '/me/settings/company/emails',
           token: token,
         );
         // API returns { "data": [...] } without success field
@@ -1522,7 +1558,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       try {
         // log.d('💬 Loading telegrams from /me/settings/telegrams...');
         final telegramsResponse = await ApiService.get(
-          '/me/settings/telegrams',
+          '/me/settings/company/telegrams',
           token: token,
         );
         // API returns { "data": [...] } without success field
@@ -1538,60 +1574,72 @@ class _DynamicFilterState extends State<DynamicFilter>
         // log.d('❌ Error loading telegrams: $e');
       }
 
-      // Load whatsapps
+      // Max компании (поле «Ссылка на ваш чат в Max»).
       try {
-        // log.d('💬 Loading whatsapps from /me/settings/whatsapps...');
-        final whatsappsResponse = await ApiService.get(
-          '/me/settings/whatsapps',
+        final maxesResponse = await ApiService.get(
+          '/me/settings/company/maxes',
           token: token,
         );
-        // API returns { "data": [...] } without success field
-        if (whatsappsResponse['data'] is List) {
-          _userWhatsapps = List<Map<String, dynamic>>.from(
-            whatsappsResponse['data'],
-          );
-          // log.d('✅ Loaded whatsapps: ${_userWhatsapps.length} whatsapp(s)');
-        } else {
-          // log.d('⚠️ Whatsapps response format incorrect');
+        if (maxesResponse['data'] is List) {
+          _userMaxes = List<Map<String, dynamic>>.from(maxesResponse['data']);
         }
       } catch (e) {
-        // log.d('❌ Error loading whatsapps: $e');
+        // ignore
       }
 
-      // Load user profile to get name
+      // У компании нет whatsapp — не подставляем чужой контакт в объявление.
+      _userWhatsapps = [];
+
+      // Название КОМПАНИИ → «Контактное лицо», плюс первый email/телефон/telegram
+      // компании. Префилл делаем только при СОЗДАНИИ, чтобы при редактировании не
+      // перетереть контакты, сохранённые в самом объявлении.
       try {
-        // log.d('👤 Loading user profile from /me...');
         final userProfile = await UserService.getProfile(token: token);
-        // log.d();
+        String companyName = '';
+        try {
+          final companyResp = await ApiService.get(
+            '/companies/${userProfile.id}',
+            token: token,
+          );
+          final companyData = companyResp['data'] is Map
+              ? Map<String, dynamic>.from(companyResp['data'] as Map)
+              : (companyResp is Map
+                  ? Map<String, dynamic>.from(companyResp)
+                  : <String, dynamic>{});
+          companyName = (companyData['name'] ?? '').toString().trim();
+        } catch (e) {
+          // log.d('⚠️ Error loading company name: $e');
+        }
 
-        // Fill user profile data into controllers
-        if (mounted) {
+        if (mounted && !_isEditMode) {
           setState(() {
-            // 📝 Парсим полное имя на отдельные части - в поле только имя
-            final fullName = '${userProfile.name} ${userProfile.lastName}'
-                .trim();
-            final nameParts = fullName.split(RegExp(r'\s+'));
-            final firstName = nameParts.isNotEmpty ? nameParts.first : '';
-            _contactNameController.text = firstName;
-            // log.d('✅ Filled contact name (first name only): $firstName');
-
-            // Fill email from first available email
-            if (_userEmails.isNotEmpty) {
-              final email = _userEmails[0]['email'] ?? '';
-              _emailController.text = email;
-              // log.d('✅ Filled email: $email');
+            // Контактное лицо = название компании (у компании нет отдельного лица).
+            if (companyName.isNotEmpty) {
+              _contactNameController.text = companyName;
             }
-
-            // Fill phone1 from first available phone
+            // Первый email компании.
+            if (_userEmails.isNotEmpty) {
+              _emailController.text = (_userEmails[0]['email'] ?? '').toString();
+            }
+            // Первый и второй телефон компании.
             if (_userPhones.isNotEmpty) {
-              final phone = _userPhones[0]['phone'] ?? '';
-              _phone1Controller.text = phone;
-              // log.d('✅ Filled phone1: $phone');
+              _phone1Controller.text = (_userPhones[0]['phone'] ?? '').toString();
+            }
+            if (_userPhones.length > 1) {
+              _phone2Controller.text = (_userPhones[1]['phone'] ?? '').toString();
+            }
+            // Ссылка на чат в Max: сначала из maxes компании, иначе telegram.
+            if (_userMaxes.isNotEmpty) {
+              _telegramController.text =
+                  (_userMaxes[0]['username'] ?? '').toString();
+            } else if (_userTelegrams.isNotEmpty) {
+              _telegramController.text =
+                  (_userTelegrams[0]['username'] ?? '').toString();
             }
           });
         }
       } catch (e) {
-        // log.d('⚠️ Error loading user profile: $e');
+        // log.d('⚠️ Error loading company contacts: $e');
       }
 
       if (mounted) {
@@ -2112,6 +2160,9 @@ class _DynamicFilterState extends State<DynamicFilter>
     }
     if (_userWhatsapps.isNotEmpty) {
       contacts['user_whatsapp_id'] = _userWhatsapps.first['id'];
+    }
+    if (_userMaxes.isNotEmpty) {
+      contacts['user_max_id'] = _userMaxes.first['id'];
     }
 
     // log.d('Collected contacts: $contacts');
@@ -2927,7 +2978,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                     const SizedBox(height: 18),
 
                     _buildAddressSection(context),
-                    const SizedBox(height: 27),
+                    const SizedBox(height: 18),
 
                     _buildContactsSection(),
                     const SizedBox(height: 22),
@@ -4595,28 +4646,31 @@ class _DynamicFilterState extends State<DynamicFilter>
                   }
                 },
         ),
-        const SizedBox(height: 9),
 
-        const Text(
-          'Местоположение на карте',
-          style: TextStyle(color: textPrimary, fontSize: 14),
-        ),
-        const SizedBox(height: 9),
+        // Отображение карты пока срата 
+        
+        // const SizedBox(height: 9),
 
-        Container(
-          height: 160,
-          decoration: BoxDecoration(
-            color: formBackground,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.map_outlined,
-              color: textSecondary,
-              size: 40,
-            ),
-          ),
-        ),
+        // const Text(
+        //   'Местоположение на карте',
+        //   style: TextStyle(color: textPrimary, fontSize: 14),
+        // ),
+        // const SizedBox(height: 9),
+
+        // Container(
+        //   height: 160,
+        //   decoration: BoxDecoration(
+        //     color: formBackground,
+        //     borderRadius: BorderRadius.circular(8),
+        //   ),
+        //   child: const Center(
+        //     child: Icon(
+        //       Icons.map_outlined,
+        //       color: textSecondary,
+        //       size: 40,
+        //     ),
+        //   ),
+        // ),
 
       ],
     );

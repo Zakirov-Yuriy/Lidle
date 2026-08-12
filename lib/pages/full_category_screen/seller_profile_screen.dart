@@ -76,6 +76,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   // ── Данные профиля продавца (GET /v1/users/{id}) ──────────────────────
   bool _profileLoading = false;
+  String? _companyName; // название компании продавца (GET /companies/{id})
   String? _description; // поле description (профильное about)
   String? _addressText; // собранная строка регион/город
   String? _registrationDate; // дата регистрации (created_at, формат дд.мм.гггг)
@@ -86,20 +87,29 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   List<String> _telegrams = [];
   List<String> _maxes = [];
 
-  // Состояния «свёрнуто/развёрнуто» для секций.
-  // По умолчанию все секции ЗАКРЫТЫ.
-  bool _descExpanded = false;
-  bool _locExpanded = false;
-  bool _contactsExpanded = false;
+  // Единая секция «Информация» (Описание + Расположение + Контакты).
+  // По умолчанию свёрнута.
+  bool _infoExpanded = false;
   // Блок «Поделиться компанией» по умолчанию свёрнут (как остальные секции).
   bool _shareExpanded = false;
 
   /// TTL кеша объявлений продавца — 5 минут.
   static const _cacheTtl = Duration(minutes: 5);
 
-  /// Сбросить кэш для конкретного продавца (например, после pull-to-refresh).
+  /// TTL кеша карточки продавца (название/описание/адрес/контакты компании).
+  /// Данные компании меняются редко, поэтому держим дольше; при изменении
+  /// данных компании кеш инвалидируется адресно (см. invalidateInfoCache).
+  static const _infoCacheTtl = Duration(minutes: 30);
+
+  /// Сбросить кэш объявлений продавца (например, после pull-to-refresh).
   static void invalidateCache(String userId) =>
       AppCacheService().invalidate(CacheKeys.sellerProfileKey(userId));
+
+  /// Сбросить кэш карточки продавца (инфо о компании + избранное).
+  /// Вызывается после изменения данных компании, чтобы при следующем
+  /// открытии экрана данные подтянулись заново.
+  static void invalidateInfoCache(String userId) =>
+      AppCacheService().invalidate(CacheKeys.sellerInfoKey(userId));
 
   /// Генерирует URL профиля продавца для шарингаnull
   /// Пример: https://lidle.io/ru/users/29/advertisements
@@ -164,91 +174,153 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     return code.isNotEmpty ? '+7 $code ***-**-**' : '+7 ***-**-**';
   }
 
-  /// Загружает профиль продавца (GET /v1/users/{id}): описание, адрес,
-  /// признак избранного (is_wishlisted / wishlist_id) и контакты.
-  Future<void> _loadSellerProfile() async {
+  /// Применяет данные карточки продавца из map (кеш или свежий ответ) в state.
+  void _applyProfileMap(Map<String, dynamic> m) {
+    _companyName = m['companyName'] as String?;
+    _description = m['description'] as String?;
+    _addressText = m['addressText'] as String?;
+    _registrationDate = m['registrationDate'] as String?;
+    _isWishlisted = m['isWishlisted'] == true;
+    _wishlistId = _asInt(m['wishlistId']);
+    _phones = List<String>.from((m['phones'] as List?) ?? const []);
+    _telegrams = List<String>.from((m['telegrams'] as List?) ?? const []);
+    _maxes = List<String>.from((m['maxes'] as List?) ?? const []);
+  }
+
+  /// Сохраняет текущее состояние карточки продавца в кеш.
+  void _cacheProfileMap() {
+    final userId = widget.userId;
+    if (userId == null || userId.isEmpty) return;
+    AppCacheService().set<Map<String, dynamic>>(
+      CacheKeys.sellerInfoKey(userId),
+      {
+        'companyName': _companyName,
+        'description': _description,
+        'addressText': _addressText,
+        'registrationDate': _registrationDate,
+        'isWishlisted': _isWishlisted,
+        'wishlistId': _wishlistId,
+        'phones': _phones,
+        'telegrams': _telegrams,
+        'maxes': _maxes,
+      },
+      ttl: _infoCacheTtl,
+      persist: true,
+    );
+  }
+
+  /// Загружает профиль продавца.
+  /// Описание, расположение и контакты берём из КОМПАНИИ продавца
+  /// (GET /companies/{id}), а не из личного профиля пользователя.
+  /// Признак избранного (is_wishlisted / wishlist_id) и дату регистрации
+  /// по-прежнему читаем из GET /v1/users/{id}.
+  ///
+  /// Кеширование: при обычном открытии экрана данные берутся из кеша
+  /// (мгновенно, без обращения к API). Запрос к API идёт только если кеша
+  /// нет / он устарел (TTL) или [forceRefresh] = true (pull-to-refresh).
+  /// Кеш карточки инвалидируется адресно при изменении данных компании.
+  Future<void> _loadSellerProfile({bool forceRefresh = false}) async {
     final id = int.tryParse(widget.userId ?? '');
     if (id == null) return;
+
+    // 1) Пытаемся отдать из кеша, чтобы не грузить каждый раз.
+    if (!forceRefresh) {
+      final cached = AppCacheService().get<Map>(CacheKeys.sellerInfoKey(id.toString()));
+      if (cached != null) {
+        if (!mounted) return;
+        setState(() {
+          _applyProfileMap(Map<String, dynamic>.from(cached));
+          _profileLoading = false;
+        });
+        return;
+      }
+    }
 
     setState(() => _profileLoading = true);
     try {
       final token = TokenService.currentToken;
-      // Возвращает уже data[0] (см. UserApi.getUserProfile), либо {} при ошибке.
-      final data = await ApiService.getUserProfile(userId: id, token: token);
+      // Параллельно: пользователь (избранное + дата) и компания (инфо).
+      final results = await Future.wait([
+        ApiService.getUserProfile(userId: id, token: token),
+        ApiService.get('/companies/$id', token: token),
+      ]);
 
-      if (data.isEmpty) {
-        if (mounted) setState(() => _profileLoading = false);
-        return;
-      }
+      final userData = results[0];
+      final companyResp = results[1];
+      // Тело компании: {success, data:{...}}.
+      final companyData = (companyResp['data'] is Map)
+          ? Map<String, dynamic>.from(companyResp['data'] as Map)
+          : <String, dynamic>{};
 
-      // Описание.
-      final descRaw = data['description'];
-      final desc = (descRaw is String && descRaw.trim().isNotEmpty)
-          ? descRaw.trim()
+      // ── Данные компании: название, описание, адрес, контакты ──────────
+      final nameRaw = companyData['name'];
+      final companyName = (nameRaw is String && nameRaw.trim().isNotEmpty)
+          ? nameRaw.trim()
           : null;
 
-      // Адрес: собираем строку из main_region / region / city / street /
-      // building (без дублей и null). Улица и дом — необязательный точный
-      // адрес, приходят как объекты { id, name } (id/name = null, если не
-      // указаны). Дом добавляем без проверки на дубли, чтобы номер вроде "1"
-      // не отсекался при совпадении с названием выше.
+      final aboutRaw = companyData['about'];
+      final desc = (aboutRaw is String && aboutRaw.trim().isNotEmpty)
+          ? aboutRaw.trim()
+          : null;
+
+      // Адрес компании: собираем строку из названий регион/город/улица/дом
+      // (поля *_name из GET /companies/{id}). Дом добавляем без дедупликации,
+      // чтобы номер вроде "1" не отсекался при совпадении с названием выше.
       final parts = <String>[];
-      final address = data['address'];
+      final address = companyData['address'];
       if (address is Map) {
-        for (final key in ['main_region', 'region', 'city', 'street']) {
-          final node = address[key];
-          if (node is Map && node['name'] != null) {
-            final name = node['name'].toString().trim();
+        for (final key in [
+          'main_region_name',
+          'region_name',
+          'city_name',
+          'street_name',
+        ]) {
+          final v = address[key];
+          if (v != null) {
+            final name = v.toString().trim();
             if (name.isNotEmpty && !parts.contains(name)) parts.add(name);
           }
         }
-        final building = address['building'];
-        if (building is Map && building['name'] != null) {
-          final name = building['name'].toString().trim();
+        final building = address['building_name'];
+        if (building != null) {
+          final name = building.toString().trim();
           if (name.isNotEmpty) parts.add(name);
         }
       }
       final addr = parts.isNotEmpty ? parts.join(', ') : null;
 
-      // Дата регистрации продавца (created_at приходит как "дд.мм.гггг").
-      final createdRaw = data['created_at'];
+      // Контакты компании. Списки приходят плоскими (pluck): телефоны —
+      // строки, telegrams/maxes — строки-юзернеймы. На всякий случай
+      // поддерживаем и формат объектов {phone/username}.
+      List<String> extract(dynamic list, String key) {
+        final out = <String>[];
+        if (list is List) {
+          for (final e in list) {
+            final v = (e is Map) ? e[key] : e;
+            if (v != null && v.toString().trim().isNotEmpty) {
+              out.add(v.toString().trim());
+            }
+          }
+        }
+        return out;
+      }
+
+      final phones = extract(companyData['phones'], 'phone');
+      final telegrams = extract(companyData['telegrams'], 'username');
+      final maxes = extract(companyData['maxes'], 'username');
+
+      // ── Данные пользователя: избранное и дата регистрации ─────────────
+      final createdRaw = userData['created_at'];
       final registrationDate =
           (createdRaw is String && createdRaw.trim().isNotEmpty)
               ? createdRaw.trim()
               : null;
-
-      // Избранное.
-      final isWishlisted = data['is_wishlisted'] == true;
-      final wishlistId = _asInt(data['wishlist_id']);
-
-      // Контакты.
-      final phones = <String>[];
-      final telegrams = <String>[];
-      final maxes = <String>[];
-      final contacts = data['contacts'];
-      if (contacts is Map) {
-        for (final p in (contacts['phones'] as List? ?? const [])) {
-          final v = (p is Map) ? p['phone'] : p;
-          if (v != null && v.toString().trim().isNotEmpty) {
-            phones.add(v.toString().trim());
-          }
-        }
-        for (final t in (contacts['telegrams'] as List? ?? const [])) {
-          final v = (t is Map) ? t['username'] : t;
-          if (v != null && v.toString().trim().isNotEmpty) {
-            telegrams.add(v.toString().trim());
-          }
-        }
-        for (final m in (contacts['maxes'] as List? ?? const [])) {
-          final v = (m is Map) ? m['username'] : m;
-          if (v != null && v.toString().trim().isNotEmpty) {
-            maxes.add(v.toString().trim());
-          }
-        }
-      }
+      final isWishlisted = userData['is_wishlisted'] == true;
+      final wishlistId = _asInt(userData['wishlist_id']);
 
       if (!mounted) return;
       setState(() {
+        _companyName = companyName;
         _description = desc;
         _addressText = addr;
         _registrationDate = registrationDate;
@@ -259,6 +331,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _maxes = maxes;
         _profileLoading = false;
       });
+
+      // 2) Сохраняем свежие данные в кеш для следующих открытий экрана.
+      _cacheProfileMap();
     } catch (e) {
       log.w('❌ SellerProfileScreen: ошибка загрузки профиля: $e');
       if (mounted) setState(() => _profileLoading = false);
@@ -308,6 +383,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           _wishlistId = wid;
           _subscribing = false;
         });
+        _cacheProfileMap(); // синхронизируем избранное в кеше
       } else {
         // Нужен id записи избранного; если его нет — перечитываем профиль.
         int? wid = prevWishlistId;
@@ -323,6 +399,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           _wishlistId = null;
           _subscribing = false;
         });
+        _cacheProfileMap(); // синхронизируем избранное в кеше
       }
     } catch (e) {
       log.w('❌ SellerProfileScreen: ошибка подписки: $e');
@@ -333,6 +410,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _wishlistId = prevWishlistId;
         _subscribing = false;
       });
+      _cacheProfileMap(); // возвращаем прежнее состояние избранного в кеш
       SnackBarHelper.showError(context, 'Не удалось изменить подписку');
     }
   }
@@ -548,8 +626,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           Future.delayed(const Duration(milliseconds: 500), () {
             if (mounted && widget.userId != null) {
               _SellerProfileScreenState.invalidateCache(widget.userId!);
+              _SellerProfileScreenState.invalidateInfoCache(widget.userId!);
               _loadSellerListings(forceRefresh: true);
-              _loadSellerProfile();
+              _loadSellerProfile(forceRefresh: true);
             }
           });
         }
@@ -579,10 +658,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           onRefresh: () async {
             if (widget.userId != null) {
               _SellerProfileScreenState.invalidateCache(widget.userId!);
+              _SellerProfileScreenState.invalidateInfoCache(widget.userId!);
             }
             await Future.wait([
               _loadSellerListings(forceRefresh: true),
-              _loadSellerProfile(),
+              _loadSellerProfile(forceRefresh: true),
             ]);
           },
           child: SingleChildScrollView(
@@ -606,9 +686,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       _buildSellerInfo(),
 
                       const SizedBox(height: 20),
-                      _buildDescriptionSection(),
-                      _buildLocationSection(),
-                      _buildContactsSection(),
+                      _buildInfoSection(),
 
                       const SizedBox(height: 0),
                       _buildRateSeller(),
@@ -816,7 +894,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.sellerName,
+                    // Показываем название КОМПАНИИ продавца. Пока данные
+                    // компании грузятся — НЕ показываем имя пользователя
+                    // (чтобы не мелькало старое значение), оставляем пусто.
+                    // Имя продавца используем лишь как крайний вариант, когда
+                    // загрузка завершилась, а названия у компании нет.
+                    (_companyName != null && _companyName!.isNotEmpty)
+                        ? _companyName!
+                        : (_profileLoading ? '' : widget.sellerName),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -977,45 +1062,84 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
-  Widget _buildDescriptionSection() {
-    final isEmpty = (_description ?? '').trim().isEmpty;
-    final showHint = _isOwnProfile && !_profileLoading && isEmpty;
+  /// Единая секция «Информация»: внутри три подблока — Описание,
+  /// Расположение и Контакты (данные берутся из КОМПАНИИ продавца).
+  Widget _buildInfoSection() {
+    final descEmpty = (_description ?? '').trim().isEmpty;
+    final addrEmpty = (_addressText ?? '').trim().isEmpty;
+    final hasContacts =
+        _phones.isNotEmpty || _telegrams.isNotEmpty || _maxes.isNotEmpty;
+    // Подсказка «Заполните поля» — только для собственного профиля и только
+    // когда все три блока пустые.
+    final allEmpty = descEmpty && addrEmpty && !hasContacts;
+    final showHint = _isOwnProfile && !_profileLoading && allEmpty;
+
     return _buildCollapsibleSection(
-      title: 'Описание',
-      expanded: _descExpanded,
-      onToggle: () => setState(() => _descExpanded = !_descExpanded),
+      title: 'Информация',
+      leadingIcon: Icons.info_outline,
+      expanded: _infoExpanded,
+      onToggle: () => setState(() => _infoExpanded = !_infoExpanded),
       showFillHint: showHint,
       onFillTap: _openContactDataEditor,
-      child: Text(
-        _profileLoading && _description == null
-            ? 'Загрузка...'
-            : (_description ?? 'Описание отсутствует'),
-        style: const TextStyle(color: textSecondary, fontSize: 15, height: 1.4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoSubHeader('Описание'),
+          const SizedBox(height: 6),
+          _buildDescriptionContent(),
+          const SizedBox(height: 16),
+          _buildInfoSubHeader('Расположение',
+              leadingIcon: Icons.location_on_outlined),
+          const SizedBox(height: 6),
+          _buildLocationContent(),
+          const SizedBox(height: 16),
+          _buildInfoSubHeader('Контакты'),
+          const SizedBox(height: 6),
+          _buildContactsContent(),
+        ],
       ),
     );
   }
 
-  Widget _buildLocationSection() {
-    final isEmpty = (_addressText ?? '').trim().isEmpty;
-    final showHint = _isOwnProfile && !_profileLoading && isEmpty;
-    return _buildCollapsibleSection(
-      title: 'Расположение',
-      // Иконка теперь слева от заголовка «Расположение».
-      leadingIcon: Icons.location_on_outlined,
-      expanded: _locExpanded,
-      onToggle: () => setState(() => _locExpanded = !_locExpanded),
-      showFillHint: showHint,
-      onFillTap: _openContactDataEditor,
-      child: Text(
-        _profileLoading && _addressText == null
-            ? 'Загрузка...'
-            : (_addressText ?? 'Не указано'),
-        style: const TextStyle(color: textPrimary, fontSize: 15),
-      ),
+  /// Заголовок подблока внутри секции «Информация».
+  Widget _buildInfoSubHeader(String title, {IconData? leadingIcon}) {
+    return Row(
+      children: [
+        if (leadingIcon != null) ...[
+          Icon(leadingIcon, color: textSecondary, size: 16),
+          const SizedBox(width: 6),
+        ],
+        Text(
+          title,
+          style: const TextStyle(
+            color: textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildContactsSection() {
+  Widget _buildDescriptionContent() {
+    return Text(
+      _profileLoading && _description == null
+          ? 'Загрузка...'
+          : (_description ?? 'Описание отсутствует'),
+      style: const TextStyle(color: textSecondary, fontSize: 15, height: 1.4),
+    );
+  }
+
+  Widget _buildLocationContent() {
+    return Text(
+      _profileLoading && _addressText == null
+          ? 'Загрузка...'
+          : (_addressText ?? 'Не указано'),
+      style: const TextStyle(color: textPrimary, fontSize: 15),
+    );
+  }
+
+  Widget _buildContactsContent() {
     final hasAny =
         _phones.isNotEmpty || _telegrams.isNotEmpty || _maxes.isNotEmpty;
 
@@ -1051,6 +1175,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ],
         );
 
+    if (!hasAny) {
+      return Text(
+        _profileLoading ? 'Загрузка...' : 'Контакты не указаны',
+        style: const TextStyle(color: textSecondary, fontSize: 15),
+      );
+    }
+
     final children = <Widget>[];
     if (visiblePhones.isNotEmpty) {
       children.add(contactLabel('Номер'));
@@ -1082,22 +1213,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       );
     }
 
-    final showHint = _isOwnProfile && !_profileLoading && !hasAny;
-    return _buildCollapsibleSection(
-      title: 'Контакты',
-      expanded: _contactsExpanded,
-      onToggle: () => setState(() => _contactsExpanded = !_contactsExpanded),
-      showFillHint: showHint,
-      onFillTap: _openContactDataEditor,
-      child: hasAny
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: children,
-            )
-          : Text(
-              _profileLoading ? 'Загрузка...' : 'Контакты не указаны',
-              style: const TextStyle(color: textSecondary, fontSize: 15),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
     );
   }
 

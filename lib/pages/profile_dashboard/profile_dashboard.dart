@@ -7,6 +7,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/pages/profile_menu/profile_menu_screen.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
@@ -631,6 +632,15 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                       final displayName = nick.isNotEmpty
                                           ? nick
                                           : storeName.trim();
+                                      // Название КОМПАНИИ из локального кеша
+                                      // (заполняется на экране контактов компании).
+                                      // Показываем его в карточке магазина вместо
+                                      // имени пользователя.
+                                      final companyName = (UserService.getLocal(
+                                                  'companyName')
+                                              as String? ??
+                                          '')
+                                          .trim();
                                       final userId =
                                           profileState is ProfileLoaded
                                               ? profileState.userId
@@ -649,6 +659,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                         child: _StoreShareCard(
                                           storeName: storeName,
                                           ownerNick: displayName,
+                                          companyName: companyName,
                                           profileImage: profileImg,
                                           // Тап по иконке → системное «Поделиться»
                                           onShare: () => _shareStore(
@@ -1094,6 +1105,7 @@ class _FinancialSupportCard extends StatelessWidget {
 class _StoreShareCard extends StatelessWidget {
   final String storeName;
   final String ownerNick;
+  final String companyName;
   final String? profileImage;
   final VoidCallback onShare;
   final VoidCallback onOpenStore;
@@ -1103,15 +1115,17 @@ class _StoreShareCard extends StatelessWidget {
     required this.onShare,
     required this.onOpenStore,
     this.ownerNick = '',
+    this.companyName = '',
     this.profileImage,
   });
 
   @override
   Widget build(BuildContext context) {
-    // После «Ваш магазин» выводим ник владельца магазина.
-    final title = ownerNick.trim().isEmpty
-        ? 'Ваш магазин'
-        : 'Ваш магазин $ownerNick';
+    // После «Ваш магазин» выводим название КОМПАНИИ. Если названия компании
+    // ещё нет в кеше — используем ник владельца как запасной вариант.
+    final owner =
+        companyName.trim().isNotEmpty ? companyName.trim() : ownerNick.trim();
+    final title = owner.isEmpty ? 'Ваш магазин' : 'Ваш магазин $owner';
 
     return GestureDetector(
       // Тап по всей карточке → переход в магазин продавца

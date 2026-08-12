@@ -229,17 +229,26 @@ class _RealEstateApartmentsScreenState
           title: Text(title, style: const TextStyle(color: Colors.white)),
           onTap: () {
             // Все категории недвижимости теперь используют динамический фильтр
-            // 🔧 Получаем сохраненные область, город и телефон для предзаполнения
-            final defaultRegion = UserService.getLocal('region') as String? ?? '';
-            final defaultCity = UserService.getLocal('city') as String? ?? '';
-            final defaultPhone2 = UserService.getLocal('phone2') as String? ?? '';
-            
+            // 🔧 Подставляем адрес/телефон КОМПАНИИ (объявление выставляет компания),
+            // а не личные контакты пользователя. Ключи заполняет экран компании.
+            final defaultRegion = UserService.getLocal('companyRegion') as String? ?? '';
+            final defaultCity = UserService.getLocal('companyCity') as String? ?? '';
+            final defaultPhone2 = UserService.getLocal('companyPhone2') as String? ?? '';
+
             // ✅ Получаем также ID региона и города для быстрой инициализации
-            final regionIdStr = UserService.getLocal('regionId') as String? ?? '';
-            final cityIdStr = UserService.getLocal('cityId') as String? ?? '';
+            final regionIdStr = UserService.getLocal('companyRegionId') as String? ?? '';
+            final cityIdStr = UserService.getLocal('companyCityId') as String? ?? '';
             final defaultRegionId = regionIdStr.isNotEmpty ? int.tryParse(regionIdStr) : null;
             final defaultCityId = cityIdStr.isNotEmpty ? int.tryParse(cityIdStr) : null;
-            
+
+            // ✅ Улица и номер дома компании
+            final defaultStreet = UserService.getLocal('companyStreet') as String? ?? '';
+            final defaultBuilding = UserService.getLocal('companyBuilding') as String? ?? '';
+            final streetIdStr = UserService.getLocal('companyStreetId') as String? ?? '';
+            final buildingIdStr = UserService.getLocal('companyBuildingId') as String? ?? '';
+            final defaultStreetId = streetIdStr.isNotEmpty ? int.tryParse(streetIdStr) : null;
+            final defaultBuildingId = buildingIdStr.isNotEmpty ? int.tryParse(buildingIdStr) : null;
+
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -250,6 +259,10 @@ class _RealEstateApartmentsScreenState
                   defaultRegionId: defaultRegionId,
                   defaultCityId: defaultCityId,
                   defaultPhone2: defaultPhone2.isNotEmpty ? defaultPhone2 : null,
+                  defaultStreet: defaultStreet.isNotEmpty ? defaultStreet : null,
+                  defaultStreetId: defaultStreetId,
+                  defaultBuilding: defaultBuilding.isNotEmpty ? defaultBuilding : null,
+                  defaultBuildingId: defaultBuildingId,
                 ),
               ),
             );

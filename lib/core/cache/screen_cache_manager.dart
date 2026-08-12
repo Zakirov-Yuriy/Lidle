@@ -18,6 +18,9 @@ class ScreenCacheManager {
   // ── ContactDataScreen ──────────────────────────────────────
   static DateTime? contactDataLastLoadTime;
 
+  // ── CompanyContactDataScreen ───────────────────────────────
+  static DateTime? companyContactDataLastLoadTime;
+
   // ── Общий сброс (вызывается при logout) ───────────────────
   /// Сбрасывает все кеши экранов профиля.
   /// Вызывается из AuthBloc при LogoutEvent и TokenExpiredEvent.
@@ -27,5 +30,6 @@ class ScreenCacheManager {
     profileMenuCachedPhone = null;
     settingsLastLoadTime = null;
     contactDataLastLoadTime = null;
+    companyContactDataLastLoadTime = null;
   }
 }

@@ -12,6 +12,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/services/company_contact_service.dart';
@@ -19,6 +20,9 @@ import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/core/cache/cache_service.dart';
+import 'package:lidle/core/cache/cache_keys.dart';
+import 'package:lidle/core/cache/screen_cache_manager.dart';
 import 'package:lidle/core/logger.dart';
 
 /// Регулярка для обнаружения ссылок (http/https/ftp, www., t.me/, домены с
@@ -114,7 +118,16 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       }
     });
     _loadRegions();
-    _loadCompanyData();
+
+    // 💾 Кеширование как на экране пользователя (contact_data):
+    // если кеш свежий — мгновенно восстанавливаем поля из локального хранилища
+    // (без скелетона) и тихо обновляем данные с бэка в фоне; иначе — обычная
+    // загрузка со скелетоном.
+    if (!_shouldRefreshCompanyData() && _restoreCompanyFromCache()) {
+      _loadCompanyData(silent: true);
+    } else {
+      _loadCompanyData();
+    }
   }
 
   @override
@@ -185,9 +198,12 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     return out;
   }
 
-  Future<void> _loadCompanyData({int retryCount = 0}) async {
+  /// Загружает данные компании с бэка.
+  /// [silent] = true — фоновое обновление: НЕ показываем скелетон (данные уже
+  /// восстановлены из кеша), просто тихо обновляем поля и id контактов.
+  Future<void> _loadCompanyData({int retryCount = 0, bool silent = false}) async {
     setState(() {
-      _isLoading = true;
+      if (!silent) _isLoading = true;
       _errorMessage = null;
     });
 
@@ -323,6 +339,12 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _isLoading = false;
       });
 
+      // Успешная загрузка с бэка — отмечаем время для кеша экрана.
+      ScreenCacheManager.companyContactDataLastLoadTime = DateTime.now();
+
+      // Кэшируем адрес/телефон компании для подстановки при создании объявления.
+      await _cacheCompanyDefaults();
+
       // Предзагружаем города для выбранной области, чтобы диалог не был пустым.
       if (_selectedRegionId != null && _cities.isEmpty) {
         await _loadCitiesForSelectedRegion();
@@ -333,7 +355,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       if (retryCount < maxRetries) {
         log.d('⚠️ Сбой загрузки компании (попытка ${retryCount + 1}), повтор...');
         await Future.delayed(const Duration(milliseconds: retryDelayMs));
-        await _loadCompanyData(retryCount: retryCount + 1);
+        await _loadCompanyData(retryCount: retryCount + 1, silent: silent);
       } else {
         setState(() {
           _errorMessage = 'Ошибка загрузки: ${e.toString()}';
@@ -379,6 +401,120 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       log.d('❌ Ошибка сохранения $label компании: $e');
       return '$label: не удалось сохранить';
     }
+  }
+
+  /// Кэширует адрес и телефон КОМПАНИИ в локальное хранилище под company-ключами.
+  /// Эти значения подставляются при создании объявления (dynamic_filter),
+  /// поскольку объявление выставляет компания. Ключи отдельные от пользовательских
+  /// ('region'/'city'/'phone2'), чтобы не пересекаться с личными контактами.
+  Future<void> _cacheCompanyDefaults() async {
+    final regionName = _selectedRegion.isNotEmpty ? _selectedRegion.first : '';
+    final cityName = _selectedCity.isNotEmpty ? _selectedCity.first : '';
+    await UserService.saveLocal('companyRegion', regionName);
+    await UserService.saveLocal('companyCity', cityName);
+    await UserService.saveLocal('companyRegionId', _selectedRegionId?.toString() ?? '');
+    await UserService.saveLocal('companyCityId', _selectedCityId?.toString() ?? '');
+    await UserService.saveLocal('companyPhone2', _phone2Controller.text.trim());
+
+    // Улица и номер дома компании (для подстановки в форму объявления).
+    final streetName = _selectedStreet.isNotEmpty ? _selectedStreet.first : '';
+    final buildingName = _selectedBuilding.isNotEmpty ? _selectedBuilding.first : '';
+    await UserService.saveLocal('companyStreet', streetName);
+    await UserService.saveLocal('companyStreetId', _selectedStreetId?.toString() ?? '');
+    await UserService.saveLocal('companyBuilding', buildingName);
+    await UserService.saveLocal('companyBuildingId', _selectedBuildingId?.toString() ?? '');
+
+    // Остальные поля формы компании — для мгновенного восстановления экрана
+    // из кеша (без скелетона) при повторном открытии.
+    await UserService.saveLocal('companyName', _nameController.text.trim());
+    await UserService.saveLocal('companyAbout', _aboutController.text);
+    await UserService.saveLocal('companyEmail', _emailController.text.trim());
+    await UserService.saveLocal('companyPhone1', _phone1Controller.text.trim());
+    await UserService.saveLocal('companyTelegram', _telegramController.text.trim());
+    await UserService.saveLocal('companyMax', _maxController.text.trim());
+  }
+
+  /// Кеш экрана компании считается устаревшим, если прошло больше 10 минут
+  /// с последней загрузки с бэка (или её ещё не было).
+  static const Duration _companyDataCacheDuration = Duration(minutes: 10);
+
+  bool _shouldRefreshCompanyData() {
+    final last = ScreenCacheManager.companyContactDataLastLoadTime;
+    if (last == null) return true;
+    return DateTime.now().difference(last).inMinutes >=
+        _companyDataCacheDuration.inMinutes;
+  }
+
+  /// Мгновенно восстанавливает поля формы из локального кеша (без скелетона).
+  /// Возвращает true, если в кеше были какие-то данные компании.
+  bool _restoreCompanyFromCache() {
+    final name = UserService.getLocal('companyName') as String? ?? '';
+    final about = UserService.getLocal('companyAbout') as String? ?? '';
+    final email = UserService.getLocal('companyEmail') as String? ?? '';
+    final phone1 = UserService.getLocal('companyPhone1') as String? ?? '';
+    final phone2 = UserService.getLocal('companyPhone2') as String? ?? '';
+    final telegram = UserService.getLocal('companyTelegram') as String? ?? '';
+    final max = UserService.getLocal('companyMax') as String? ?? '';
+
+    final regionName = UserService.getLocal('companyRegion') as String? ?? '';
+    final cityName = UserService.getLocal('companyCity') as String? ?? '';
+    final regionIdStr = UserService.getLocal('companyRegionId') as String? ?? '';
+    final cityIdStr = UserService.getLocal('companyCityId') as String? ?? '';
+    final streetName = UserService.getLocal('companyStreet') as String? ?? '';
+    final streetIdStr = UserService.getLocal('companyStreetId') as String? ?? '';
+    final buildingName = UserService.getLocal('companyBuilding') as String? ?? '';
+    final buildingIdStr = UserService.getLocal('companyBuildingId') as String? ?? '';
+
+    // Если кеш пуст (первый вход) — сообщаем, что восстанавливать нечего.
+    final hasAnything = [
+      name, about, email, phone1, phone2, telegram, max, regionName, cityName,
+    ].any((s) => s.isNotEmpty);
+    if (!hasAnything) return false;
+
+    setState(() {
+      _nameController.text = name;
+      _aboutController.text = about;
+      _aboutLength = about.length;
+      _emailController.text = email;
+      _phone1Controller.text = phone1;
+      _phone2Controller.text = phone2;
+      _telegramController.text = telegram;
+      _maxController.text = max;
+
+      if (regionName.isNotEmpty) {
+        _selectedRegion = {regionName};
+        _selectedRegionId =
+            regionIdStr.isNotEmpty ? int.tryParse(regionIdStr) : null;
+      }
+      if (cityName.isNotEmpty) {
+        _selectedCity = {cityName};
+        _selectedCityId = cityIdStr.isNotEmpty ? int.tryParse(cityIdStr) : null;
+      }
+      if (streetName.isNotEmpty) {
+        final sid = streetIdStr.isNotEmpty ? int.tryParse(streetIdStr) : null;
+        _selectedStreet = {streetName};
+        _selectedStreetId = sid;
+        if (sid != null) {
+          _streets = [
+            {'name': streetName, 'id': sid},
+          ];
+        }
+        if (buildingName.isNotEmpty) {
+          final bid =
+              buildingIdStr.isNotEmpty ? int.tryParse(buildingIdStr) : null;
+          _selectedBuilding = {buildingName};
+          _selectedBuildingId = bid;
+          if (bid != null) {
+            _buildings = [
+              {'name': buildingName, 'id': bid},
+            ];
+          }
+        }
+      }
+
+      _isLoading = false;
+    });
+    return true;
   }
 
   Future<void> _saveCompanyData() async {
@@ -542,6 +678,17 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _isLoading = false;
         _errorMessage = null;
       });
+
+      // Обновляем кэш адреса/телефона компании для создания объявления.
+      await _cacheCompanyDefaults();
+
+      // Данные компании изменились — сбрасываем кэш карточки продавца, чтобы
+      // на экране профиля продавца при следующем открытии подтянулись новые
+      // название/описание/адрес/контакты (а не старые из кэша).
+      final ownId = await _resolveUserId(token);
+      if (ownId != null) {
+        AppCacheService().invalidate(CacheKeys.sellerInfoKey(ownId.toString()));
+      }
 
       if (errors.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -713,6 +860,115 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   // ─────────────────────────────────────────────
   // UI helpers
   // ─────────────────────────────────────────────
+
+  /// 🧨 Skeleton loader для экрана контактных данных компании.
+  /// Показывает структуру формы во время загрузки (как на contact_data).
+  Widget _buildSkeletonFields() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFF2F4456),
+      highlightColor: const Color(0xFF3F5567),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Описание компании
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Название компании
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Область
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Город
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Улица
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Номер дома
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Email
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Телефон 1
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Телефон 2
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Telegram
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 8),
+
+          // Max
+          _skeletonLabel(),
+          _skeletonField(),
+          const SizedBox(height: 24),
+
+          // Кнопка сохранения
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 25),
+            child: Container(
+              height: 47,
+              decoration: BoxDecoration(
+                color: const Color(0xFF2F4456),
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Skeleton для лейбла (подпись поля).
+  Widget _skeletonLabel() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 14, 25, 6),
+      child: Container(
+        height: 14,
+        width: 120,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2F4456),
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
+    );
+  }
+
+  /// Skeleton для поля ввода.
+  Widget _skeletonField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFF2F4456),
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
+    );
+  }
 
   Widget _label(String text, {String? note}) {
     return Padding(
@@ -1265,12 +1521,9 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 ),
 
               if (_isLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 60),
-                  child: Center(
-                    child: CircularProgressIndicator(color: accentColor),
-                  ),
-                )
+                // 🧨 Skeleton loader вместо простого индикатора загрузки —
+                // заранее показываем структуру формы (как на contact_data).
+                _buildSkeletonFields()
               else ...[
                 _label('Описание компании'),
                 _aboutField(),
