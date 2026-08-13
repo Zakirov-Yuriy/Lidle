@@ -16,6 +16,7 @@ import 'package:lidle/pages/profile_menu/settings/contact_data/company_contact_d
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
+import 'package:lidle/widgets/dialogs/fill_contacts_dialog.dart';
 import 'package:lidle/blocs/messages/messages_bloc.dart';
 import 'package:lidle/blocs/messages/messages_state.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
@@ -234,14 +235,16 @@ class BottomNavigation extends StatelessWidget {
     if (!context.mounted) return;
 
     if (!canCreate) {
-      final labels = missing
-          .map((m) => (m is Map ? m['label'] : null))
-          .whereType<String>()
-          .toList();
-      final msg = labels.isEmpty
-          ? 'Заполните контактные данные, чтобы публиковать объявления'
-          : 'Заполните обязательные поля: ${labels.join(', ')}';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      // Сначала показываем диалог-подсказку. Переход на экран заполнения
+      // происходит ТОЛЬКО если пользователь нажал «Заполнить». Закрытие по
+      // крестику — остаёмся на месте, без перехода.
+      final shouldFill = await showDialog<bool>(
+        context: context,
+        builder: (_) => const FillContactsDialog(),
+      );
+      if (shouldFill != true) return;
+      if (!context.mounted) return;
+
       // По префиксу поля решаем, на какой экран вести. Сейчас гейтинг завязан
       // только на контакты компании (company.*), поэтому обычно ведём на экран
       // контактов компании. Если вдруг прилетит user.* — на экран пользователя.
