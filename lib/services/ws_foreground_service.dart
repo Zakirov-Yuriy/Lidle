@@ -227,7 +227,7 @@ class WsForegroundService {
 
     await FlutterForegroundTask.startService(
       serviceId: _serviceId,
-      notificationTitle: 'ЛИДЛ',
+      notificationTitle: 'ЛИДЛЕ',
       notificationText: 'Слежу за завершением ИИ-обработки',
       callback: startWsForegroundCallback,
     );
