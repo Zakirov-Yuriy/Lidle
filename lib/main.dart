@@ -60,6 +60,23 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 // ── Добавить рядом с routeObserver ──────────────
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Запускает наблюдатели за ИИ-обработкой фида ТОЛЬКО если у пользователя есть
+/// подключённый CRM-фид. Без фида ни следить, ни держать WebSocket/foreground-
+/// сервис с постоянным уведомлением «Слежу за ИИ-обработкой» не нужно.
+Future<void> _startFeedWatchersIfHasFeed() async {
+  if (!await AiCompletionService.userHasFeed()) return;
+
+  AiCompletionService.instance.start();
+
+  // Android — через foreground-сервис (держит связь и при закрытом приложении);
+  // остальные платформы — main-изолят.
+  if (!kIsWeb && Platform.isAndroid) {
+    WsForegroundService.start();
+  } else {
+    WebSocketService().start();
+  }
+}
+
 // ============================================================
 //  Callback Dispatcher для фоновых задач workmanager'а
 // Эта функция вызывается в изолированном контексте (вне UI потока)
@@ -328,20 +345,12 @@ class LidleApp extends StatelessWidget {
               interval: const Duration(seconds: 15),
             );
 
-            // 🤖 Наблюдатель за завершением ИИ-обработки объявлений из фида:
-            // когда ИИ обработал все объявления, покажет оповещение на любом
-            // экране с переходом на предпросмотр для публикации.
-            AiCompletionService.instance.start();
-
-            // 🔌 Подключаемся к Reverb (WebSocket) и слушаем канал пользователя:
-            // сервер мгновенно пришлёт событие о завершении ИИ-обработки.
-            // Android — через foreground-сервис (держит связь и при закрытом
-            // приложении, этап 3); остальные платформы — main-изолят.
-            if (!kIsWeb && Platform.isAndroid) {
-              WsForegroundService.start();
-            } else {
-              WebSocketService().start();
-            }
+            // 🤖 Наблюдатель за завершением ИИ-обработки объявлений из фида и
+            // WebSocket/foreground-сервис запускаем ТОЛЬКО если у пользователя
+            // есть подключённый фид. Если пользователь не заливал фид, следить
+            // не за чем и постоянное уведомление «Слежу за ИИ-обработкой»
+            // показывать не нужно.
+            _startFeedWatchersIfHasFeed();
 
             // 🌙 Запускаем BACKGROUND задачу для проверки сообщений
             // Эта задача запускается периодически даже когда приложение свернуто

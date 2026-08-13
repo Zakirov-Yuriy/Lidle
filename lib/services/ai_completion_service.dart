@@ -38,6 +38,21 @@ class AiCompletionService {
   /// Открыт ли сейчас наш диалог (чтобы не открывать поверх себя же).
   bool _dialogOpen = false;
 
+  /// Есть ли у пользователя хотя бы один подключённый CRM-фид.
+  /// По этому признаку решаем, нужно ли вообще запускать наблюдатель и
+  /// foreground-сервис ИИ-обработки: если пользователь не заливал фид,
+  /// подобных уведомлений быть не должно.
+  static Future<bool> userHasFeed() async {
+    try {
+      final resp = await ApiService.get('/me/crm-feeds');
+      final data = resp['data'];
+      return data is List && data.isNotEmpty;
+    } catch (_) {
+      // Нет сети / ошибка — считаем, что фида нет (не тревожим пользователя).
+      return false;
+    }
+  }
+
   /// Запустить наблюдение (вызывать при авторизации).
   void start() {
     _timer?.cancel();
