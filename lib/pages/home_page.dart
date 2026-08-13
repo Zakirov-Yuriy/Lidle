@@ -987,12 +987,21 @@ class _HomePageState extends State<HomePage>
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          child: const Text(
-                            'Показать больше 100 тыс. объявлений',
-                            style: TextStyle(
-                              color: accentColor,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          // Текст в одну строку с адаптивным размером: на
+                          // широких экранах — 16px, на узких FittedBox
+                          // пропорционально уменьшает его, чтобы влез без
+                          // переноса и остался по центру кнопки.
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Показать больше 100 тыс. объявлений',
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: accentColor,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
