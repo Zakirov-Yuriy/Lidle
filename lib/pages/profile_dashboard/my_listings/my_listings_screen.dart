@@ -440,19 +440,17 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
     }
   }
 
-  /// Загружает ОБЩИЕ счётчики для вкладок «Активные», «Все» и «CRM» — они не
-  /// зависят от выбранной категории (эти вкладки показывают объявления по всем
-  /// категориям), поэтому цифры видны всегда и совпадают со списками.
-  /// Счётчики «Неактивные»/«Архив»/«На модерации» считаются по выбранной
-  /// категории в _loadListingsByCategory/_loadListingsByCatalog (без изменений).
+  /// Загружает ОБЩИЕ счётчики для вкладок «Все» и «CRM» — они не зависят от
+  /// выбранной категории (показывают объявления по всем категориям), поэтому
+  /// цифры видны всегда и совпадают со списками.
+  /// Счётчики «Активные»/«Неактивные»/«Архив»/«На модерации» считаются по
+  /// выбранным каталогу/категории в _loadListingsByCategory/_loadListingsByCatalog.
   Future<void> _loadTabCounts() async {
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) return;
 
       final results = await Future.wait([
-        // Все активные (и ручные, и из фида).
-        MyAdvertsService.getMyAdverts(statusId: 1, token: token, page: 1, limit: _pageSize),
         // CRM.
         MyAdvertsService.getCrmPublishedList(token: token, page: 1, limit: _pageSize),
         // «Все» — созданные вручную активные (statusId 1 + manual_only).
@@ -461,9 +459,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       if (!mounted) return;
       setState(() {
-        _activeTotal = results[0].meta?.total ?? results[0].data.length;
-        _crmTotal = results[1].meta?.total ?? results[1].data.length;
-        _manualTotal = results[2].meta?.total ?? results[2].data.length;
+        _crmTotal = results[0].meta?.total ?? results[0].data.length;
+        _manualTotal = results[1].meta?.total ?? results[1].data.length;
       });
     } catch (_) {
       // Счётчики не критичны — молча игнорируем.
@@ -566,9 +563,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       // Запасной путь (когда категория не определилась). Тоже грузим только
       // первую страницу по каждому статусу.
       final results = await Future.wait([
-        // «Активные» — все активные (и ручные, и из фида) по ВСЕМ категориям.
+        // «Активные» — по выбранному каталогу (как и остальные статусные вкладки).
         MyAdvertsService.getMyAdverts(
-            statusId: 1, token: token, page: 1, limit: _pageSize),
+            statusId: 1, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 2, catalogId: catalogId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
@@ -598,9 +595,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _crmListingsPage = 1;
           _manualListingsPage = 1;
 
-          // Активные/Все/CRM — общие счётчики (см. _loadTabCounts). А для
-          // Неактивных/Модерации/Архива счётчик по выбранной категории — как
-          // и раньше, чтобы совпадал с их отфильтрованным списком.
+          // Все/CRM — общие счётчики (см. _loadTabCounts). Активные/Неактивные/
+          // Модерация/Архив — по выбранному каталогу/категории, чтобы цифра
+          // совпадала с отфильтрованным списком.
+          _activeTotal = results[0].meta?.total ?? results[0].data.length;
           _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
           _archiveTotal = results[3].meta?.total ?? results[3].data.length;
@@ -667,9 +665,9 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       // «Активные» (results[0]) и «Все» (results[5]) — по ВСЕМ категориям.
       // «Неактивные/Модерация/Архив» и «CRM» — по выбранной категории.
       final results = await Future.wait([
-        // «Активные» — все активные (и ручные, и из фида) по ВСЕМ категориям.
+        // «Активные» — по выбранной категории (как и остальные статусные вкладки).
         MyAdvertsService.getMyAdverts(
-            statusId: 1, token: token, page: 1, limit: _pageSize),
+            statusId: 1, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
             statusId: 2, categoryId: categoryId, token: token, page: 1, limit: _pageSize),
         MyAdvertsService.getMyAdverts(
@@ -701,9 +699,10 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           _crmListingsPage = 1;
           _manualListingsPage = 1;
 
-          // Активные/Все/CRM — общие счётчики (см. _loadTabCounts). Для
-          // Неактивных/Модерации/Архива счётчик по выбранной категории — как
-          // и раньше, чтобы совпадал с их отфильтрованным списком.
+          // Все/CRM — общие счётчики (см. _loadTabCounts). Активные/Неактивные/
+          // Модерация/Архив — по выбранной категории, чтобы цифра совпадала со
+          // списком.
+          _activeTotal = results[0].meta?.total ?? results[0].data.length;
           _inactiveTotal = results[1].meta?.total ?? results[1].data.length;
           _moderationTotal = results[2].meta?.total ?? results[2].data.length;
           _archiveTotal = results[3].meta?.total ?? results[3].data.length;
@@ -856,16 +855,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
           page: nextPage,
           limit: _pageSize,
         );
-      } else if (tab == 0) {
-        // «Активные» — все активные по ВСЕМ категориям (без фильтра категории).
-        response = await MyAdvertsService.getMyAdverts(
-          statusId: 1,
-          token: token,
-          page: nextPage,
-          limit: _pageSize,
-        );
       } else {
-        // Неактивные/архив/модерация — по выбранной категории.
+        // Активные/неактивные/архив/модерация — по выбранной категории.
         response = await MyAdvertsService.getMyAdverts(
           statusId: _statusIdForTab(tab),
           categoryId: _selectedCategoryId,
@@ -879,8 +870,8 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
 
       final int loadedPage = response.page ?? nextPage;
       final bool isLast = loadedPage >= (response.lastPage ?? 1);
-      // Для Неактивных/Архива/Модерации держим счётчик в синхроне со списком
-      // (он по категории). Активные/Все/CRM — общий счётчик (_loadTabCounts).
+      // Для Активных/Неактивных/Архива/Модерации держим счётчик в синхроне со
+      // списком (он по категории). Все/CRM — общий счётчик (_loadTabCounts).
       final int total = response.meta?.total ?? 0;
 
       setState(() {
@@ -889,6 +880,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
             _activeListings.addAll(response.data);
             _activeListingsPage = loadedPage;
             _activeIsLastPage = isLast;
+            if (total > 0) _activeTotal = total;
             break;
           case 1:
             _inactiveListings.addAll(response.data);
