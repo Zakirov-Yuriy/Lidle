@@ -83,11 +83,13 @@ class _AdvertQrScreenState extends State<AdvertQrScreen> {
     return slug;
   }
 
-  /// Получить URL объявления
-  /// Формат: https://lidle.io/ru/advertisements/{id}-{slug}
+  /// Получить URL объявления.
+  /// Домен берём из окружения (dev.lidle.io на dev, продовый домен на проде),
+  /// чтобы ссылка вела на тот же сервер, где реально есть объявление, а не
+  /// всегда на прод. Формат: {домен}/ru/advertisements/{id}-{slug}
   String _getAdvertUrl() {
     final slug = _generateSlugFromTitle(widget.advertTitle);
-    return 'https://lidle.io/ru/advertisements/${widget.advertId}-$slug';
+    return '${AppConfig().websiteUrl}/advertisements/${widget.advertId}-$slug';
   }
 
   /// Функция для поделиться ссылкой на объявление
