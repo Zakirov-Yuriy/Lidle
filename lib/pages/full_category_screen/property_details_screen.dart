@@ -10,6 +10,8 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 
 // ============================================================
 // "Полный экран деталей недвижимости"
@@ -172,12 +174,24 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             BlendMode.srcIn,
                           ),
                         ),
-                        onPressed: () => Share.share(
-                          'Присоединяйся к LIDLE! 🚀\n\n'
-                          'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
-                          'Скачай приложение и получи эксклюзивные предложения!\n\n'
-                          '${AppConfig().websiteUrl}',
-                        ),
+                        onPressed: () {
+                          // 📤 Регистрируем «поделились» для статистики
+                          // (дедуп по дню на бэке). Ошибки глушим, ответ не ждём.
+                          final advertIdForShare =
+                              int.tryParse(widget.listing.id);
+                          if (advertIdForShare != null) {
+                            ApiService.shareAdvert(
+                              advertIdForShare,
+                              token: TokenService.currentToken,
+                            );
+                          }
+                          Share.share(
+                            'Присоединяйся к LIDLE! 🚀\n\n'
+                            'Удобный маркетплейс для покупки и продажи автомобилей, недвижимости и товаров.\n\n'
+                            'Скачай приложение и получи эксклюзивные предложения!\n\n'
+                            '${AppConfig().websiteUrl}',
+                          );
+                        },
                       ),
                     ],
                   ),

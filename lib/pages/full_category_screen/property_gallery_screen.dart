@@ -4,6 +4,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 
 class PropertyGalleryScreen extends StatefulWidget {
   final List<String> images;
@@ -155,6 +157,16 @@ class _PropertyGalleryScreenState extends State<PropertyGalleryScreen> {
                       ),
                     ),
                     onPressed: () {
+                      // 📤 Регистрируем «поделились» для статистики
+                      // (дедуп по дню на бэке). Ошибки глушим, ответ не ждём.
+                      final advertIdForShare =
+                          int.tryParse(widget.listingId ?? '');
+                      if (advertIdForShare != null) {
+                        ApiService.shareAdvert(
+                          advertIdForShare,
+                          token: TokenService.currentToken,
+                        );
+                      }
                       final textToShare =
                           'Фото объявления\n'
                           'Присоединяйся к LIDLE!\n'
