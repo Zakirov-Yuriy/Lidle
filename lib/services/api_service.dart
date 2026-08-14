@@ -1391,6 +1391,16 @@ class ApiService {
     }
   }
 
+  /// Зарегистрировать переход по объявлению (открытие/просмотр карточки).
+  /// Некритично: ошибки глушим, так как это фоновая аналитика.
+  static Future<void> saveAdvertClick(int advertId, {String? token}) async {
+    try {
+      await post('/adverts/$advertId/click', {}, token: token);
+    } catch (e) {
+      // log.d('Failed to save advert click: $e');
+    }
+  }
+
   /// Загрузить файл через multipart/form-data
   static Future<Map<String, dynamic>> uploadFile(
     String endpoint, {

@@ -141,10 +141,12 @@ String _calculatePricePerSquareMeter(String price, double area) {
   return '$formatted ₽';
 }
 
-/// Генерирует URL объявления для шаринга
-/// Пример: https://lidle.io/ru/advertisements/192-prodaetsya-dom-v-primorskom-rayone
+/// Генерирует URL объявления для шаринга.
+/// Домен берём из окружения (dev/prod), чтобы ссылка вела на тот же сервер,
+/// с которого работает приложение: dev.lidle.io на dev, lidle.io на prod.
+/// Пример: https://dev.lidle.io/ru/advertisements/192-prodaetsya-dom-v-primorskom-rayone
 String _generateAdvertisementUrl(Listing listing) {
-  final baseUrl = 'https://lidle.io/ru/advertisements';
+  final baseUrl = '${AppConfig().websiteUrl}/advertisements';
   
   // Если slug уже есть, используем его
   if (listing.slug != null && listing.slug!.isNotEmpty) {
@@ -314,7 +316,17 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     super.initState();
     _listing = widget.listing;
     _imagesPrecached = false;
-    
+
+    // 👁 Регистрируем просмотр и переход по объявлению (дедуп по дню на бэке).
+    // Переход = открытие/просмотр карточки объявления. Некритично: ошибки
+    // глушатся внутри методов, ответ не ждём.
+    final advertIdForStats = int.tryParse(_listing.id);
+    if (advertIdForStats != null) {
+      final statsToken = TokenService.currentToken;
+      ApiService.saveAdvertView(advertIdForStats, token: statsToken);
+      ApiService.saveAdvertClick(advertIdForStats, token: statsToken);
+    }
+
     // 🔍 DEBUG: Логируем какие данные пришли с объявлением
     log.d('📥 MiniPropertyDetailsScreen initState:');
     log.d('  ID: ${_listing.id}');
@@ -1550,6 +1562,16 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         'Присоединяйся к LIDLE!\n'
         '$advertisementUrl';
 
+    // 📤 Регистрируем «поделились» для статистики (дедуп по дню на бэке).
+    // Некритично: ошибки глушим внутри shareAdvert, ответ не ждём.
+    final advertIdForShare = int.tryParse(_listing.id);
+    if (advertIdForShare != null) {
+      ApiService.shareAdvert(
+        advertIdForShare,
+        token: TokenService.currentToken,
+      );
+    }
+
     Share.share(textToShare);
   }
 
@@ -1796,19 +1818,18 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         return;
       }
 
-      // 📞 Регистрируем звонок по объявлению для статистики.
-      // Некритично: ошибки глушим внутри saveAdvertCall, ответ не ждём.
-      final advertIdForCall = int.tryParse(_listing.id);
-      if (advertIdForCall != null) {
-        ApiService.saveAdvertCall(advertIdForCall, token: token);
-      }
-
-      // Показываем диалог с телефонами
+      // Показываем диалог с телефонами.
+      // Звонок регистрируем не здесь, а в момент нажатия на конкретный номер
+      // внутри PhoneDialog (передаём id объявления и токен).
       if (!mounted) return;
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          return PhoneDialog(phoneNumbers: phoneNumbers);
+          return PhoneDialog(
+            phoneNumbers: phoneNumbers,
+            advertId: int.tryParse(_listing.id),
+            authToken: token,
+          );
         },
       );
     } catch (e) {

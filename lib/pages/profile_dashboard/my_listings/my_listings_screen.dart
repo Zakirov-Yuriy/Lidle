@@ -2141,11 +2141,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Просмотров: ${advert.viewsCount == 0 ? "_" : advert.viewsCount}',
-                          style: const TextStyle(color: Colors.white54, fontSize: 13),
-                        ),
-                        const SizedBox(height: 4),
+                        // Поле «Просмотров» скрыто от пользователя по требованию.
                         Text(
                           'Переходов: ${advert.clickCount == 0 ? "_" : advert.clickCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),

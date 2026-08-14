@@ -7,11 +7,23 @@ import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/services/api_service.dart';
 
 class PhoneDialog extends StatelessWidget {
   final List<String> phoneNumbers;
 
-  const PhoneDialog({super.key, required this.phoneNumbers});
+  /// Id объявления и токен — для регистрации звонка (статистика call_count)
+  /// в момент нажатия на конкретный номер. Оба необязательны: если id нет,
+  /// звонок просто не засчитывается, но сам вызов работает как обычно.
+  final int? advertId;
+  final String? authToken;
+
+  const PhoneDialog({
+    super.key,
+    required this.phoneNumbers,
+    this.advertId,
+    this.authToken,
+  });
 
   /// 🎨 Красиво форматирует номер для показа: «+7 949 456-78-90».
   /// Только для отображения — на звонок не влияет (там номер чистится до цифр).
@@ -44,6 +56,12 @@ class PhoneDialog extends StatelessWidget {
   /// При ошибке предлагает fallback на SMS
   Future<void> _makePhoneCall(String phoneNumber, BuildContext context) async {
     try {
+      // 📞 Регистрируем звонок по объявлению (нажатие на номер в диалоге).
+      // Некритично: ошибки глушатся внутри saveAdvertCall, ответ не ждём.
+      if (advertId != null) {
+        ApiService.saveAdvertCall(advertId!, token: authToken);
+      }
+
       // Очищаем номер от всех символов кроме цифр и +
       final cleanedNumber = phoneNumber.replaceAll(RegExp(r'[^\d+]'), '');
 

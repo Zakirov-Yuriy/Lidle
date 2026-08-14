@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
@@ -70,7 +71,9 @@ class _PublishedScreenState extends State<PublishedScreen> {
     return slug;
   }
 
-  /// URL объявления. Формат: https://lidle.io/ru/advertisements/{id}-{slug}
+  /// URL объявления. Формат: {домен}/ru/advertisements/{id}-{slug}.
+  /// Домен берём из окружения (dev.lidle.io на dev, lidle.io на prod),
+  /// чтобы ссылка вела на тот же сервер, с которого работает приложение.
   /// Предпочитаем реальный slug из модели, иначе генерим из названия.
   String _getAdvertUrl() {
     final title = advert?.name ?? '';
@@ -79,7 +82,7 @@ class _PublishedScreenState extends State<PublishedScreen> {
         ? rawSlug
         : _generateSlugFromTitle(title);
     final id = advert?.id ?? 0;
-    return 'https://lidle.io/ru/advertisements/$id-$slug';
+    return '${AppConfig().websiteUrl}/advertisements/$id-$slug';
   }
 
   String get _advertTitle => advert?.name ?? 'Объявление';
