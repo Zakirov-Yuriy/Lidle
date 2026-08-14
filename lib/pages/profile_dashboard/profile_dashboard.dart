@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/pages/profile_menu/profile_menu_screen.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/pages/full_category_screen/seller_qr_screen.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
@@ -127,23 +127,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Формирует ссылку на магазин (публичный профиль/витрину продавца).
   /// Prod: https://lidle.io/ru/users/{userId}
   /// Dev:  https://dev.lidle.io/ru/users/{userId}
+  /// Ссылка на страницу компании продавца для QR/шаринга. Домен — по окружению
+  /// (dev.lidle.io/lidle.io), путь /companies/{id}, как у бэкенда и как на
+  /// экране продавца (seller_profile_screen).
   String _buildStoreUrl(String userId) {
     final cleanUserId = userId.replaceFirst('ID: ', '').trim();
-    return '${AppConfig().websiteUrl}/users/$cleanUserId';
-  }
-
-  /// 🔗 Поделиться магазином — та же логика, что у иконки шаринга на других
-  /// экранах (например, _shareAdvert в mini_property_details_screen.dart):
-  /// прямой вызов нативного меню Share.share, которое само показывает список
-  /// приложений/соцсетей. Делимся именно текущим экраном — магазином.
-  void _shareStore(String storeName, String storeUrl) {
-    final title = storeName.trim().isEmpty ? 'мой магазин' : '«$storeName»';
-    final textToShare =
-        'Загляните в $title на LIDLE! 🛍\n\n'
-        'Присоединяйся к LIDLE!\n'
-        '$storeUrl';
-
-    Share.share(textToShare);
+    return '${AppConfig().documentDomain}/companies/$cleanUserId';
   }
 
   /// Загрузить количество объявлений.
@@ -661,11 +650,23 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                           ownerNick: displayName,
                                           companyName: companyName,
                                           profileImage: profileImg,
-                                          // Тап по иконке → системное «Поделиться»
-                                          onShare: () => _shareStore(
-                                            displayName,
-                                            storeUrl,
-                                          ),
+                                          // Тап по иконке → экран QR продавца
+                                          // (как кнопка «Поделиться» на экране
+                                          // продавца seller_profile_screen).
+                                          onShare: () {
+                                            Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                builder: (_) => SellerQrScreen(
+                                                  sellerName: companyName.isNotEmpty
+                                                      ? companyName
+                                                      : (displayName.isNotEmpty
+                                                          ? displayName
+                                                          : storeName),
+                                                  sellerUrl: storeUrl,
+                                                ),
+                                              ),
+                                            );
+                                          },
                                           // Тап по карточке → магазин продавца
                                           onOpenStore: () {
                                             final ImageProvider avatarProvider =

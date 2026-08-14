@@ -111,15 +111,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   static void invalidateInfoCache(String userId) =>
       AppCacheService().invalidate(CacheKeys.sellerInfoKey(userId));
 
-  /// Генерирует URL профиля продавца для шарингаnull
-  /// Пример: https://lidle.io/ru/users/29/advertisements
+  /// Генерирует URL страницы компании продавца для шаринга/QR.
+  /// Домен берём из конфига по окружению (dev.lidle.io на dev, lidle.io на
+  /// prod), а путь — /companies/{id}, как у бэкенда (GET /companies/{id} и его
+  /// qr_code). Старый путь /ru/users/{id}/advertisements давал 404.
   String _generateSellerProfileUrl() {
+    final domain = AppConfig().documentDomain;
     final userId = widget.userId;
     if (userId == null || userId.isEmpty) {
-      // Если нет userId, возвращаем URL главной страницы
-      return 'https://lidle.io/ru';
+      // Если нет userId, возвращаем главную страницу сайта.
+      return domain;
     }
-    return 'https://lidle.io/ru/users/$userId/advertisements';
+    return '$domain/companies/$userId';
   }
 
   @override
