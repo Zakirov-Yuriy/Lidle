@@ -14,6 +14,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 class AdvertQrScreen extends StatefulWidget {
@@ -92,9 +94,22 @@ class _AdvertQrScreenState extends State<AdvertQrScreen> {
     return '${AppConfig().websiteUrl}/advertisements/${widget.advertId}-$slug';
   }
 
+  /// 📤 Регистрирует «поделились» по объявлению для статистики (share_count).
+  /// На бэке дедупа для шеринга нет — считается каждый шеринг. Некритично:
+  /// ошибки глушим внутри shareAdvert, ответ не ждём.
+  void _registerShare() {
+    if (widget.advertId > 0) {
+      ApiService.shareAdvert(
+        widget.advertId,
+        token: TokenService.currentToken,
+      );
+    }
+  }
+
   /// Функция для поделиться ссылкой на объявление
   Future<void> _shareLink() async {
     try {
+      _registerShare();
       final advertUrl = _getAdvertUrl();
       final message = 'Посмотри это объявление в LIDLE:\n${widget.advertTitle}\n${widget.advertPrice} ₽\n$advertUrl';
 
@@ -117,6 +132,7 @@ class _AdvertQrScreenState extends State<AdvertQrScreen> {
   /// Функция для поделиться QR кодом
   Future<void> _shareQrCode() async {
     try {
+      _registerShare();
       // Получаем изображение из RepaintBoundary
       final boundary = qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary == null) return;
