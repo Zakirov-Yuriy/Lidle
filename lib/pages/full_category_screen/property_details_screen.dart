@@ -178,7 +178,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           // 📤 Регистрируем «поделились» для статистики
                           // (дедуп по дню на бэке). Ошибки глушим, ответ не ждём.
                           final advertIdForShare =
-                              int.tryParse(widget.listing.id);
+                              int.tryParse(widget.advertisementId ?? '');
                           if (advertIdForShare != null) {
                             ApiService.shareAdvert(
                               advertIdForShare,
