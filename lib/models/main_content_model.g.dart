@@ -108,6 +108,7 @@ UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
   viewsCount: (json['views_count'] as num?)?.toInt(),
   clickCount: (json['click_count'] as num?)?.toInt(),
   shareCount: (json['share_count'] as num?)?.toInt(),
+  callCount: (json['call_count'] as num?)?.toInt(),
   createdAt: json['created_at'] as String?,
   type: json['type'] == null
       ? null
@@ -129,6 +130,7 @@ Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
       'views_count': instance.viewsCount,
       'click_count': instance.clickCount,
       'share_count': instance.shareCount,
+      'call_count': instance.callCount,
       'created_at': instance.createdAt,
       'type': instance.type,
       'ai_processed': instance.aiProcessed,

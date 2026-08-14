@@ -1381,6 +1381,16 @@ class ApiService {
     }
   }
 
+  /// Зарегистрировать звонок по объявлению (нажатие «Позвонить»).
+  /// Некритично: ошибки глушим, чтобы не мешать самому звонку.
+  static Future<void> saveAdvertCall(int advertId, {String? token}) async {
+    try {
+      await post('/adverts/$advertId/call', {}, token: token);
+    } catch (e) {
+      // log.d('Failed to save advert call: $e');
+    }
+  }
+
   /// Загрузить файл через multipart/form-data
   static Future<Map<String, dynamic>> uploadFile(
     String endpoint, {

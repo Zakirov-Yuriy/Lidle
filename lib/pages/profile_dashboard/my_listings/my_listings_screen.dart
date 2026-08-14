@@ -2155,6 +2155,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           'Поделились: ${advert.shareCount == 0 ? "_" : advert.shareCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Звонки: ${(advert.callCount ?? 0) == 0 ? "_" : advert.callCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
                       ],
                     ),
                   ),

@@ -1796,6 +1796,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
         return;
       }
 
+      // 📞 Регистрируем звонок по объявлению для статистики.
+      // Некритично: ошибки глушим внутри saveAdvertCall, ответ не ждём.
+      final advertIdForCall = int.tryParse(_listing.id);
+      if (advertIdForCall != null) {
+        ApiService.saveAdvertCall(advertIdForCall, token: token);
+      }
+
       // Показываем диалог с телефонами
       if (!mounted) return;
       showDialog(

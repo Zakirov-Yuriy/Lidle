@@ -122,6 +122,8 @@ class UserAdvert {
   final int? clickCount;
   @JsonKey(name: 'share_count')
   final int? shareCount;
+  @JsonKey(name: 'call_count')
+  final int? callCount;
   @JsonKey(name: 'created_at')
   final String? createdAt;
   final ContentType? type;
@@ -156,6 +158,7 @@ class UserAdvert {
     this.viewsCount,
     this.clickCount,
     this.shareCount,
+    this.callCount,
     this.createdAt,
     this.type,
     this.aiProcessed,
