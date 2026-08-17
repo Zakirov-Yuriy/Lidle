@@ -18,11 +18,17 @@ class PhoneDialog extends StatelessWidget {
   final int? advertId;
   final String? authToken;
 
+  /// Вызывается после того, как пользователь реально инициировал звонок
+  /// (нажал на номер и открылся диалер). По нему вызывающий экран показывает
+  /// диалог отзыва «после звонка».
+  final VoidCallback? onCallInitiated;
+
   const PhoneDialog({
     super.key,
     required this.phoneNumbers,
     this.advertId,
     this.authToken,
+    this.onCallInitiated,
   });
 
   /// 🎨 Красиво форматирует номер для показа: «+7 949 456-78-90».
@@ -77,6 +83,13 @@ class PhoneDialog extends StatelessWidget {
       if (await canLaunchUrl(launchUri)) {
         // log.i('✅ Launching call to: $cleanedNumber');
         await launchUrl(launchUri);
+
+        // Звонок инициирован: закрываем диалог телефонов и сообщаем экрану,
+        // чтобы он показал диалог отзыва «после звонка».
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+        onCallInitiated?.call();
       } else {
         // log.w('❌ Could not launch tel: $launchUri, trying SMS fallback...');
         // Fallback на SMS

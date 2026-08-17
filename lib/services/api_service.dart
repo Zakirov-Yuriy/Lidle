@@ -1401,6 +1401,28 @@ class ApiService {
     }
   }
 
+  /// Оставить отзыв к объявлению (после звонка).
+  /// Требует авторизации: без токена бэк вернёт 401.
+  /// Возвращает true при успехе (201), false при любой ошибке.
+  static Future<bool> submitAdvertReview(
+    int advertId, {
+    required int rating,
+    String? comment,
+    String? token,
+  }) async {
+    try {
+      final body = <String, dynamic>{'rating': rating};
+      if (comment != null && comment.trim().isNotEmpty) {
+        body['comment'] = comment.trim();
+      }
+      await post('/advertisements/$advertId/reviews', body, token: token);
+      return true;
+    } catch (e) {
+      // log.d('Failed to submit advert review: $e');
+      return false;
+    }
+  }
+
   /// Загрузить файл через multipart/form-data
   static Future<Map<String, dynamic>> uploadFile(
     String endpoint, {

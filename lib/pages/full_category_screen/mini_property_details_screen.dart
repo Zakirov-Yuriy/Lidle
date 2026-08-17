@@ -23,6 +23,7 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/widgets/dialogs/offer_price_dialog.dart';
 import 'package:lidle/widgets/dialogs/report_advert_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
+import 'package:lidle/widgets/dialogs/review_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/full_category_screen/property_gallery_screen.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/advert_qr_screen.dart';
@@ -1822,16 +1823,33 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       // Звонок регистрируем не здесь, а в момент нажатия на конкретный номер
       // внутри PhoneDialog (передаём id объявления и токен).
       if (!mounted) return;
-      showDialog(
+      var callInitiated = false;
+      await showDialog(
         context: context,
         builder: (BuildContext context) {
           return PhoneDialog(
             phoneNumbers: phoneNumbers,
             advertId: int.tryParse(_listing.id),
             authToken: token,
+            onCallInitiated: () => callInitiated = true,
           );
         },
       );
+
+      // После закрытия диалога телефонов, если пользователь реально позвонил —
+      // предлагаем оставить отзыв (как на сайте).
+      if (callInitiated && mounted) {
+        final advertIdForReview = int.tryParse(_listing.id);
+        if (advertIdForReview != null) {
+          final sellerName = _listing.sellerName?.trim() ?? '';
+          await showReviewDialog(
+            context: context,
+            advertId: advertIdForReview,
+            title: sellerName.isNotEmpty ? sellerName : 'продавца',
+            token: token,
+          );
+        }
+      }
     } catch (e) {
       log.d('❌ Error loading phone numbers: $e');
 
