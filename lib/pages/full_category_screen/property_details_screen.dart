@@ -104,6 +104,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       log.d('📥 Загружаем объявление #${widget.advertisementId}');
       // TODO: Здесь можно добавить загрузку данных с API
       // _loadAdvertisement(widget.advertisementId!);
+
+      // 👁 Переход (открытие карточки): этот экран открывается из чата по
+      // advertisementId. «Просмотр» здесь не шлём (показ = выдача в лентах).
+      // Дедуп по дню на бэке. Некритично: ошибки глушатся внутри метода.
+      final advertIdForStats = int.tryParse(widget.advertisementId!);
+      if (advertIdForStats != null) {
+        ApiService.saveAdvertClick(advertIdForStats, token: TokenService.currentToken);
+      }
     }
     
     _pageController.addListener(() {
