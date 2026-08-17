@@ -2142,28 +2142,30 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Поле «Просмотров» скрыто от пользователя по требованию.
+                        // При нуле значение не показываем (пусто после двоеточия),
+                        // число появляется, как только счётчик вырос.
                         Text(
-                          'Переходов: ${advert.clickCount}',
+                          'Переходов: ${advert.clickCount == 0 ? "" : advert.clickCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Поделились: ${advert.shareCount}',
+                          'Поделились: ${advert.shareCount == 0 ? "" : advert.shareCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Звонки: ${advert.callCount ?? 0}',
+                          'Звонки: ${(advert.callCount ?? 0) == 0 ? "" : advert.callCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Контакты: ${advert.contactCount ?? 0}',
+                          'Контакты: ${(advert.contactCount ?? 0) == 0 ? "" : advert.contactCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Избранные: ${advert.favoritesCount ?? 0}',
+                          'Избранные: ${(advert.favoritesCount ?? 0) == 0 ? "" : advert.favoritesCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                       ],
