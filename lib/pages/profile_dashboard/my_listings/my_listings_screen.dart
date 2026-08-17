@@ -2156,6 +2156,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           'Звонки: ${(advert.callCount ?? 0) == 0 ? "_" : advert.callCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Избранные: ${(advert.favoritesCount ?? 0) == 0 ? "_" : advert.favoritesCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
                       ],
                     ),
                   ),
