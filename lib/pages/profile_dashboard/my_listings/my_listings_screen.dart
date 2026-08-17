@@ -2143,27 +2143,27 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       children: [
                         // Поле «Просмотров» скрыто от пользователя по требованию.
                         Text(
-                          'Переходов: ${advert.clickCount == 0 ? "_" : advert.clickCount}',
+                          'Переходов: ${advert.clickCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Поделились: ${advert.shareCount == 0 ? "_" : advert.shareCount}',
+                          'Поделились: ${advert.shareCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Звонки: ${(advert.callCount ?? 0) == 0 ? "_" : advert.callCount}',
+                          'Звонки: ${advert.callCount ?? 0}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Контакты: ${(advert.contactCount ?? 0) == 0 ? "_" : advert.contactCount}',
+                          'Контакты: ${advert.contactCount ?? 0}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Избранные: ${(advert.favoritesCount ?? 0) == 0 ? "_" : advert.favoritesCount}',
+                          'Избранные: ${advert.favoritesCount ?? 0}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                       ],

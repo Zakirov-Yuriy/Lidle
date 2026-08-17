@@ -302,51 +302,63 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
               ),
               const SizedBox(width: 23),
 
-              // ИМЯ + ТЕЛЕФОН + НИК
-              Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state is ProfileLoaded ? state.name : 'Name',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+              // ИМЯ + ТЕЛЕФОН + НИК. Блок занимает всё свободное место, а имя
+              // авто-уменьшается (FittedBox.scaleDown), если длинное — тогда оно
+              // не выталкивает роль «Покупатель» за край экрана.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          state is ProfileLoaded ? state.name : 'Name',
+                          maxLines: 1,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 7),
-                      Text(
-                        state is ProfileLoaded
-                            ? (_mainPhoneValue != null &&
-                                      _mainPhoneValue!.isNotEmpty
-                                  ? _mainPhoneValue!
-                                  : state.phone)
-                            : '+7 000 00 00 00',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                        ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      state is ProfileLoaded
+                          ? (_mainPhoneValue != null &&
+                                    _mainPhoneValue!.isNotEmpty
+                                ? _mainPhoneValue!
+                                : state.phone)
+                          : '+7 000 00 00 00',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
                       ),
-                      const SizedBox(height: 7),
-                      Text(
-                        state is ProfileLoaded ? '${state.username}' : '@Name',
-                        style: const TextStyle(
-                          color: Color(0xFF009EE2),
-                          fontSize: 14,
-                        ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      state is ProfileLoaded ? '${state.username}' : '@Name',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF009EE2),
+                        fontSize: 14,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
 
-              const Spacer(),
+              const SizedBox(width: 12),
 
-              Column(
+              const Column(
                 children: [
-                  const Text(
+                  Text(
                     'Покупатель',
                     style: TextStyle(
                       color: Color(0xFFEAEF00),
