@@ -10,6 +10,7 @@ import 'package:lidle/hive_service.dart';
 import 'package:lidle/pages/full_category_screen/mini_property_details_screen.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
+import 'package:lidle/services/api_service.dart';
 
 // ============================================================
 // "Утилиты для форматирования"
@@ -40,10 +41,17 @@ class ListingCard extends StatefulWidget {
   final Listing listing;
   final VoidCallback? onBeforeNavigate;
 
+  /// Считать показ карточки как «Просмотр» (импрессия). Включать ТОЛЬКО в
+  /// лентах-выдачах: главная, лента категории, результаты фильтра и строки
+  /// поиска. Не включать в избранном, «Мои объявления» и профиле продавца —
+  /// там показ карточки не является просмотром из поиска.
+  final bool countImpression;
+
   const ListingCard({
-    super.key, 
-    required this.listing, 
+    super.key,
+    required this.listing,
     this.onBeforeNavigate,
+    this.countImpression = false,
   });
 
   @override
@@ -57,6 +65,15 @@ class _ListingCardState extends State<ListingCard> {
   void initState() {
     super.initState();
     _isFavorite = HiveService.getFavorites().contains(widget.listing.id);
+
+    // «Просмотр» = показ карточки в выдаче. Шлём один раз за сессию на
+    // объявление (гуард внутри saveAdvertViewOnce); дневной дедуп — на бэке.
+    if (widget.countImpression) {
+      final id = int.tryParse(widget.listing.id);
+      if (id != null) {
+        ApiService.saveAdvertViewOnce(id);
+      }
+    }
   }
 
   void _toggleFavorite() {

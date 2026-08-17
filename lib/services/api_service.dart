@@ -1371,6 +1371,21 @@ class ApiService {
     }
   }
 
+  /// Id объявлений, по которым показ («Просмотр») уже отправлен за эту сессию
+  /// приложения. Нужен, чтобы прокрутка ленты и повторные ребилды карточки не
+  /// слали десятки запросов: одно объявление шлёт /view не более одного раза за
+  /// запуск. Дневной дедуп на пользователя всё равно есть на бэке.
+  static final Set<int> _viewedAdvertIdsThisSession = <int>{};
+
+  /// Зарегистрировать ПОКАЗ объявления (импрессия в ленте/поиске) — «Просмотр».
+  /// Вызывать при показе карточки в выдаче (главная, лента категории, фильтр,
+  /// строка поиска). За сессию по одному объявлению шлётся один раз.
+  static Future<void> saveAdvertViewOnce(int advertId, {String? token}) async {
+    if (advertId <= 0) return;
+    if (!_viewedAdvertIdsThisSession.add(advertId)) return;
+    await saveAdvertView(advertId, token: token);
+  }
+
   /// Сохранить поделиться объявлением
   static Future<void> shareAdvert(int advertId, {String? token}) async {
     try {

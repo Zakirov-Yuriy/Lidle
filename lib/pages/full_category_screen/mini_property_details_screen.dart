@@ -318,13 +318,14 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     _listing = widget.listing;
     _imagesPrecached = false;
 
-    // 👁 Регистрируем просмотр и переход по объявлению (дедуп по дню на бэке).
-    // Переход = открытие/просмотр карточки объявления. Некритично: ошибки
-    // глушатся внутри методов, ответ не ждём.
+    // 👁 Регистрируем ПЕРЕХОД (открытие карточки). Дедуп по дню на бэке.
+    // «Просмотр» здесь НЕ шлём: просмотр = показ карточки в выдаче (главная,
+    // лента категории, фильтр, поиск), он регистрируется из ListingCard при
+    // показе. Открытие карточки — это переход, а не показ. Некритично: ошибки
+    // глушатся внутри метода, ответ не ждём.
     final advertIdForStats = int.tryParse(_listing.id);
     if (advertIdForStats != null) {
       final statsToken = TokenService.currentToken;
-      ApiService.saveAdvertView(advertIdForStats, token: statsToken);
       ApiService.saveAdvertClick(advertIdForStats, token: statsToken);
     }
 

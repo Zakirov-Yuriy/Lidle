@@ -440,6 +440,7 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
                           delegate: SliverChildBuilderDelegate(
                             (context, index) => ListingCard(
                               listing: _listings[index],
+                              countImpression: true,
                             ),
                             childCount: _listings.length,
                           ),

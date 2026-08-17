@@ -941,6 +941,7 @@ class _HomePageState extends State<HomePage>
                     itemBuilder: (context, index) {
                       return ListingCard(
                         listing: listings[index],
+                        countImpression: true,
                         onBeforeNavigate: () {
                           // 💾 Сохраняем позицию скролла перед навигацией
                           if (_scrollController.hasClients) {

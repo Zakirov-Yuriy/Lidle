@@ -1297,7 +1297,10 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
                             
                             // Показываем карточки до лимита
                             if (i < displayCount) {
-                              return ListingCard(listing: listToDisplay[i]);
+                              return ListingCard(
+                                listing: listToDisplay[i],
+                                countImpression: true,
+                              );
                             }
                             
                             // Показываем надпись если достигнут лимит и есть ещё объявления

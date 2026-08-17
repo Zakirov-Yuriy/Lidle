@@ -2141,16 +2141,22 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Поле «Просмотров» скрыто от пользователя по требованию.
                         // При нуле значение не показываем (пусто после двоеточия),
                         // число появляется, как только счётчик вырос.
+                        // «Просмотров» = показы карточки в выдаче (главная, лента
+                        // категории, фильтр, поиск). «Переходов» = открытия карточки.
                         Text(
-                          'Переходов: ${advert.clickCount == 0 ? "" : advert.clickCount}',
+                          'Просмотров: ${(advert.viewsCount ?? 0) == 0 ? "" : advert.viewsCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Поделились: ${advert.shareCount == 0 ? "" : advert.shareCount}',
+                          'Переходов: ${(advert.clickCount ?? 0) == 0 ? "" : advert.clickCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Поделились: ${(advert.shareCount ?? 0) == 0 ? "" : advert.shareCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
