@@ -2158,6 +2158,11 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
+                          'Контакты: ${(advert.contactCount ?? 0) == 0 ? "_" : advert.contactCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
                           'Избранные: ${(advert.favoritesCount ?? 0) == 0 ? "_" : advert.favoritesCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),

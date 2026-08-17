@@ -109,6 +109,7 @@ UserAdvert _$UserAdvertFromJson(Map<String, dynamic> json) => UserAdvert(
   clickCount: (json['click_count'] as num?)?.toInt(),
   shareCount: (json['share_count'] as num?)?.toInt(),
   callCount: (json['call_count'] as num?)?.toInt(),
+  contactCount: (json['contact_count'] as num?)?.toInt(),
   favoritesCount: (json['favorites_count'] as num?)?.toInt(),
   createdAt: json['created_at'] as String?,
   type: json['type'] == null
@@ -132,6 +133,7 @@ Map<String, dynamic> _$UserAdvertToJson(UserAdvert instance) =>
       'click_count': instance.clickCount,
       'share_count': instance.shareCount,
       'call_count': instance.callCount,
+      'contact_count': instance.contactCount,
       'favorites_count': instance.favoritesCount,
       'created_at': instance.createdAt,
       'type': instance.type,

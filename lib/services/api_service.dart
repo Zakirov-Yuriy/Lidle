@@ -1401,6 +1401,25 @@ class ApiService {
     }
   }
 
+  /// Зарегистрировать контакт по объявлению (первое сообщение по объявлению
+  /// или клик по внешней ссылке менеджера в магазине).
+  /// source: 'message' | 'manager_link'. Некритично: ошибки глушим.
+  static Future<void> saveAdvertContact(
+    int advertId, {
+    String? source,
+    String? token,
+  }) async {
+    try {
+      await post(
+        '/adverts/$advertId/contact',
+        {if (source != null) 'source': source},
+        token: token,
+      );
+    } catch (e) {
+      // log.d('Failed to save advert contact: $e');
+    }
+  }
+
   /// Оставить отзыв к объявлению (после звонка).
   /// Требует авторизации: без токена бэк вернёт 401.
   /// Возвращает true при успехе (201), false при любой ошибке.

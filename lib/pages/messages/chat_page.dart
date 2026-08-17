@@ -44,6 +44,9 @@ class _ChatPageState extends State<ChatPage> {
   bool _isLoading = true;
   Timer? _updateTimer; // 🔄 Таймер для автоматического обновления сообщений
   late int? _chatId; // 💾 ID чата (может быть получен из startChat)
+  // Контакт по объявлению регистрируем один раз за сессию экрана (первое
+  // отправленное сообщение). Дедуп по дню — на бэке.
+  bool _contactRegistered = false;
   // Превью объявления, если доступно (показывается в верхнем блоке и в сообщении превью)
   String? _topAdvertTitle;
   String? _topAdvertImage;
@@ -515,6 +518,17 @@ class _ChatPageState extends State<ChatPage> {
         log.d('📤 Отправляем сообщение в чат #$chatId...');
 
         await ApiService.sendMessage(chatId, messageText);
+      }
+
+      // 📇 Регистрируем контакт по объявлению (первое сообщение по объявлению).
+      // Один раз за сессию экрана; на бэке дополнительно дедуп по дню.
+      if (!_contactRegistered) {
+        final advIdStr = widget.message.advertisementId;
+        final advId = advIdStr != null ? int.tryParse(advIdStr) : null;
+        if (advId != null) {
+          _contactRegistered = true;
+          ApiService.saveAdvertContact(advId, source: 'message');
+        }
       }
 
       // Перезагружаем сообщения чтобы показать новое
