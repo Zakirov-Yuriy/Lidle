@@ -54,6 +54,12 @@ class SellerProfileScreen extends StatefulWidget {
   final String? userId;
   final String? sellerRegistrationDate;
 
+  /// Id объявления, с которого пользователь перешёл в магазин. Нужен, чтобы
+  /// клик по внешней ссылке менеджера (Telegram/MAX) регистрировал «Контакт»
+  /// по этому объявлению (source: 'manager_link'). Может быть null, если экран
+  /// открыт не из объявления (избранное, дашборд) — тогда контакт не считаем.
+  final String? advertId;
+
   const SellerProfileScreen({
     super.key,
     required this.sellerName,
@@ -61,6 +67,7 @@ class SellerProfileScreen extends StatefulWidget {
     this.sellerAvatarUrl,
     this.userId,
     this.sellerRegistrationDate,
+    this.advertId,
   });
 
   @override
@@ -175,6 +182,36 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         : digits;
     final code = rest.length >= 3 ? rest.substring(0, 3) : '';
     return code.isNotEmpty ? '+7 $code ***-**-**' : '+7 ***-**-**';
+  }
+
+  /// Строит внешнюю ссылку мессенджера из сохранённого значения. Значение может
+  /// быть уже готовой ссылкой (`https://t.me/...`, `https://max.ru/...`), либо
+  /// юзернеймом (`@user` или `user`). Для MAX база `https://max.ru/`, для
+  /// Телеграма — `https://t.me/`.
+  String _messengerUrl(String raw, {required bool isMax}) {
+    final v = raw.trim();
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
+    final username = v.startsWith('@') ? v.substring(1) : v;
+    return isMax ? 'https://max.ru/$username' : 'https://t.me/$username';
+  }
+
+  /// Открывает ссылку менеджера (Telegram/MAX) и регистрирует «Контакт» по
+  /// объявлению (source: 'manager_link'), если экран открыт из объявления.
+  /// Регистрация некритична: ошибки глушатся внутри saveAdvertContact, а сам
+  /// переход по ссылке не блокируется ответом аналитики.
+  Future<void> _openMessenger(String raw, {required bool isMax}) async {
+    // Аналитика «Контакт»: не ждём ответ, не мешаем открытию ссылки.
+    final advId = int.tryParse(widget.advertId ?? '');
+    if (advId != null) {
+      ApiService.saveAdvertContact(advId, source: 'manager_link');
+    }
+
+    final url = _messengerUrl(raw, isMax: isMax);
+    try {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    } catch (e) {
+      log.d('Не удалось открыть ссылку менеджера: $e');
+    }
   }
 
   /// Применяет данные карточки продавца из map (кеш или свежий ответ) в state.
@@ -1169,12 +1206,21 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ),
         );
 
-    // Колонка мессенджера (Телеграм / MAX): метка + значения.
-    Widget messengerColumn(String label, List<String> values) => Column(
+    // Колонка мессенджера (Телеграм / MAX): метка + кликабельные значения.
+    // По клику открываем внешнюю ссылку и регистрируем «Контакт» по объявлению
+    // (source: 'manager_link').
+    Widget messengerColumn(String label, List<String> values,
+            {required bool isMax}) =>
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             contactLabel(label),
-            for (final v in values) contactValue(v, link: true),
+            for (final v in values)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _openMessenger(v, isMax: isMax),
+                child: contactValue(v, link: true),
+              ),
           ],
         );
 
@@ -1203,12 +1249,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           children: [
             Expanded(
               child: _telegrams.isNotEmpty
-                  ? messengerColumn('Телеграм', _telegrams)
+                  ? messengerColumn('Телеграм', _telegrams, isMax: false)
                   : const SizedBox.shrink(),
             ),
             Expanded(
               child: _maxes.isNotEmpty
-                  ? messengerColumn('MAX', _maxes)
+                  ? messengerColumn('MAX', _maxes, isMax: true)
                   : const SizedBox.shrink(),
             ),
           ],

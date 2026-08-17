@@ -1546,6 +1546,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
             sellerAvatar: sellerAvatar,
             userId: _listing.userId,
             sellerRegistrationDate: sellerRegDate,
+            advertId: _listing.id,
           ),
           const SizedBox(height: 18),
         ],
@@ -2338,6 +2339,8 @@ class _AllListingsButton extends StatelessWidget {
   final String sellerAvatar;
   final String? userId;
   final String? sellerRegistrationDate;
+  // Id объявления, с которого открыли магазин (для контакта по ссылке менеджера).
+  final String? advertId;
 
   const _AllListingsButton({
     required this.similarListings,
@@ -2345,6 +2348,7 @@ class _AllListingsButton extends StatelessWidget {
     required this.sellerAvatar,
     this.userId,
     this.sellerRegistrationDate,
+    this.advertId,
   });
 
   @override
@@ -2375,6 +2379,7 @@ class _AllListingsButton extends StatelessWidget {
               sellerAvatarUrl: sellerAvatar,
               userId: userId,
               sellerRegistrationDate: sellerRegistrationDate,
+              advertId: advertId,
             ),
           ),
         );
