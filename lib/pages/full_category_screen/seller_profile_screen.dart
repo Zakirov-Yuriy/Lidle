@@ -30,6 +30,7 @@ import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/pages/full_category_screen/seller_qr_screen.dart';
 import 'package:lidle/pages/full_category_screen/company_reviews_screen.dart';
+import 'package:lidle/widgets/dialogs/company_review_dialog.dart';
 import 'package:lidle/core/logger.dart';
 
 // Профиль продавца: контакты (звонок), чат, избранное.
@@ -1376,7 +1377,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             children: List.generate(
               5,
               (index) => GestureDetector(
-                onTap: () => setState(() => selectedStars = index + 1),
+                behavior: HitTestBehavior.opaque,
+                // Тап по звезде открывает диалог отзыва с этой оценкой.
+                onTap: () => _openCompanyReviewDialog(index + 1),
                 child: Icon(
                   Icons.star,
                   color: index < selectedStars ? Colors.amber : Colors.grey,
@@ -1418,6 +1421,51 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   /// Id компании (пользователя) для экрана отзывов; null, если id неизвестен.
   int? get _companyIdForReviews => int.tryParse(widget.userId ?? '');
+
+  /// Тап по звезде: открыть диалог отзыва на продавца с выбранной оценкой.
+  /// После успешной отправки открываем экран «Отзывы», где новый отзыв уже
+  /// подгружается с сервера.
+  Future<void> _openCompanyReviewDialog(int rating) async {
+    final companyId = _companyIdForReviews;
+    if (companyId == null) {
+      SnackBarHelper.showWarning(context, 'Информация о продавце недоступна');
+      return;
+    }
+
+    final token = TokenService.currentToken;
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showAuthRequired(
+        context,
+        'Войдите в профиль, чтобы оставить отзыв продавцу',
+        avatarUrl: widget.sellerAvatarUrl,
+      );
+      return;
+    }
+
+    // Подсветим выбранную звезду сразу, пока открыт диалог.
+    setState(() => selectedStars = rating);
+
+    final sent = await showCompanyReviewDialog(
+      context: context,
+      companyId: companyId,
+      title: widget.sellerName,
+      initialRating: rating,
+      token: token,
+    );
+
+    if (!mounted || sent != true) return;
+
+    // Открываем список отзывов, чтобы пользователь сразу увидел свой отзыв.
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CompanyReviewsScreen(
+          companyId: companyId,
+          companyName: widget.sellerName,
+        ),
+      ),
+    );
+  }
 
   /// Блок «Поделиться компанией» (как на макете): заголовок, подпись и ряд
   /// иконок для шаринга ссылки на профиль продавца.
