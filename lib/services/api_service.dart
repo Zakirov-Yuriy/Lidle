@@ -1435,6 +1435,41 @@ class ApiService {
     }
   }
 
+  /// Отзывы на компанию (продавца). Публичный список с пагинацией.
+  /// GET /v1/companies/{companyId}/reviews
+  /// Возвращает полный ответ (data + meta/links) для постраничной подгрузки.
+  static Future<Map<String, dynamic>> getCompanyReviews(
+    int companyId, {
+    int page = 1,
+    String? token,
+  }) async {
+    return getWithQuery('/companies/$companyId/reviews', {
+      'page': page.toString(),
+    }, token: token);
+  }
+
+  /// Оставить отзыв на компанию (продавца). Требует авторизации.
+  /// POST /v1/companies/{companyId}/reviews
+  /// Возвращает true при успехе (201), false при любой ошибке.
+  static Future<bool> submitCompanyReview(
+    int companyId, {
+    required int rating,
+    String? comment,
+    String? token,
+  }) async {
+    try {
+      final body = <String, dynamic>{'rating': rating};
+      if (comment != null && comment.trim().isNotEmpty) {
+        body['comment'] = comment.trim();
+      }
+      await post('/companies/$companyId/reviews', body, token: token);
+      return true;
+    } catch (e) {
+      // log.d('Failed to submit company review: $e');
+      return false;
+    }
+  }
+
   /// Оставить отзыв к объявлению (после звонка).
   /// Требует авторизации: без токена бэк вернёт 401.
   /// Возвращает true при успехе (201), false при любой ошибке.

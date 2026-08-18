@@ -29,6 +29,7 @@ import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
 import 'package:lidle/pages/full_category_screen/seller_qr_screen.dart';
+import 'package:lidle/pages/full_category_screen/company_reviews_screen.dart';
 import 'package:lidle/core/logger.dart';
 
 // Профиль продавца: контакты (звонок), чат, избранное.
@@ -1384,10 +1385,39 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
             ),
           ),
+          // Ссылка «Все отзывы» → экран со списком отзывов компании (продавца).
+          if (_companyIdForReviews != null) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CompanyReviewsScreen(
+                      companyId: _companyIdForReviews!,
+                      companyName: widget.sellerName,
+                    ),
+                  ),
+                );
+              },
+              child: const Text(
+                'Все отзывы',
+                style: TextStyle(
+                  color: activeIconColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+
+  /// Id компании (пользователя) для экрана отзывов; null, если id неизвестен.
+  int? get _companyIdForReviews => int.tryParse(widget.userId ?? '');
 
   /// Блок «Поделиться компанией» (как на макете): заголовок, подпись и ряд
   /// иконок для шаринга ссылки на профиль продавца.
