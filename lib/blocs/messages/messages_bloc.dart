@@ -51,12 +51,18 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
         final chat = apiChats[idx];
 
         final userData = chat['user'] as Map<String, dynamic>?;
-        if (userData == null) {
-          log.d('  [API $idx] ⚠️ user данные отсутствуют!');
-          continue;
-        }
 
-        final name = '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'.trim();
+        // Собеседник мог быть удалён. Бэк в этом случае отдаёт чат с объектом
+        // user, где все поля null (раньше эндпоинт падал 500). Не пропускаем
+        // такой чат, а показываем заглушку «Пользователь удалён».
+        final bool isDeletedUser = userData == null || userData['id'] == null;
+
+        final rawName = userData == null
+            ? ''
+            : '${userData['name'] ?? ''} ${userData['last_name'] ?? ''}'.trim();
+        final name = isDeletedUser
+            ? 'Пользователь удалён'
+            : (rawName.isEmpty ? 'Пользователь' : rawName);
         final unreadCount = chat['unread_count'] as int? ?? 0;
 
         log.d('  [API $idx] $name → unreadCount: $unreadCount');
@@ -66,7 +72,7 @@ class MessagesBloc extends Bloc<MessagesEvent, MessagesState> {
           'subtitle': 'сейчас',
           'unreadCount': unreadCount,
           'lastMessage': (chat['last_message'] as Map?)?.toString() ?? '',
-          'senderAvatar': userData['avatar'],
+          'senderAvatar': userData?['avatar'],
         });
       }
 

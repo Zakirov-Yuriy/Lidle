@@ -155,7 +155,7 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
                     child: const Row(
                       children: [
                         Icon(Icons.arrow_back_ios,
-                            color: activeIconColor, size: 16),
+                            color: textPrimary, size: 16),
                         SizedBox(width: 4),
                         Text(
                           'Отзывы',
