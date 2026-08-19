@@ -30,30 +30,33 @@ class _ReportAdvertDialogState extends State<ReportAdvertDialog> {
     _loadReportTypes();
   }
 
-  /// Загружает доступные типы жалоб на объявления
+  /// Загружает причины жалоб на объявления с сервера
+  /// (GET /content/reports?type=adverts). Сервер отдаёт {id, title}.
   Future<void> _loadReportTypes() async {
     try {
-      setState(() => isLoading = true);
-      // Локальные типы жалоб на объявления
-      final types = [
-        {'id': 1, 'name': 'Некорректная информация'},
-        {'id': 2, 'name': 'Оскорбления'},
-        {'id': 3, 'name': 'Спам'},
-        {'id': 4, 'name': 'Ссылки на странные ресурсы'},
-      ];
-      if (mounted) {
-        setState(() {
-          reportTypes = types;
-          isLoading = false;
-        });
-      }
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+      final reasons = await ApiService.getReportReasons(type: 'adverts');
+      final types = reasons
+          .map((e) => {
+                'id': e['id'],
+                'name': (e['title'] ?? e['name'] ?? '').toString(),
+              })
+          .where((e) => e['id'] != null)
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        reportTypes = types;
+        isLoading = false;
+      });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          errorMessage = 'Ошибка загрузки типов жалоб: $e';
-          isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        errorMessage = 'Не удалось загрузить причины жалоб';
+        isLoading = false;
+      });
       log.d('❌ Ошибка загрузки типов жалоб: $e');
     }
   }

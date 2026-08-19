@@ -1470,6 +1470,30 @@ class ApiService {
     }
   }
 
+  /// Ответ владельца компании на отзыв. Требует авторизации; компания
+  /// определяется по токену (company_id отзыва == id текущего пользователя),
+  /// поэтому company_id в пути не передаётся.
+  /// POST /v1/company/reviews/{reviewId}/reply  тело: { comment }
+  /// Возвращает тело ответа (в т.ч. `reply`, `replied_at`) при успехе,
+  /// либо null при любой ошибке.
+  static Future<Map<String, dynamic>?> replyCompanyReview(
+    int reviewId, {
+    required String comment,
+    String? token,
+  }) async {
+    try {
+      final res = await post(
+        '/company/reviews/$reviewId/reply',
+        {'comment': comment.trim()},
+        token: token,
+      );
+      return res;
+    } catch (e) {
+      log.d('Не удалось отправить ответ на отзыв компании: $e');
+      return null;
+    }
+  }
+
   /// Оставить отзыв к объявлению (после звонка).
   /// Требует авторизации: без токена бэк вернёт 401.
   /// Возвращает true при успехе (201), false при любой ошибке.
@@ -2209,6 +2233,77 @@ class ApiService {
     } catch (e) {
       log.d('❌ Ошибка отправки жалобы на объявление: $e');
       rethrow;
+    }
+  }
+
+  /// Универсальная загрузка причин жалоб с сервера.
+  /// GET /content/reports?type={type}. Возвращает список [{id, title}].
+  /// [type] — 'adverts' | 'users' | 'advert_review' | 'company_review' и т.п.
+  static Future<List<Map<String, dynamic>>> getReportReasons({
+    required String type,
+    String? token,
+  }) async {
+    try {
+      final response = await getWithBody(
+        '/content/reports',
+        {'type': type},
+        token: token,
+      );
+      final data = response['data'] ?? response['items'] ?? response['reports'];
+      if (data is List) {
+        return data
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      log.d('❌ Ошибка получения причин жалоб ($type): $e');
+      rethrow;
+    }
+  }
+
+  /// Жалоба на отзыв к объявлению.
+  /// POST /v1/reviews/{reviewId}/report  тело: { report_id }
+  static Future<Map<String, dynamic>> reportAdvertReview({
+    required int reviewId,
+    required int reportId,
+    String? token,
+  }) async {
+    return post(
+      '/reviews/$reviewId/report',
+      {'report_id': reportId},
+      token: token,
+    );
+  }
+
+  /// Жалоба на отзыв о компании.
+  /// POST /v1/companies/{companyId}/reviews/{reviewId}/report  тело: { report_id }
+  static Future<Map<String, dynamic>> reportCompanyReview({
+    required int companyId,
+    required int reviewId,
+    required int reportId,
+    String? token,
+  }) async {
+    return post(
+      '/companies/$companyId/reviews/$reviewId/report',
+      {'report_id': reportId},
+      token: token,
+    );
+  }
+
+  /// Удалить свой отзыв к объявлению (только автор).
+  /// DELETE /v1/reviews/{reviewId}. true при успехе, false при ошибке.
+  static Future<bool> deleteAdvertReview({
+    required int reviewId,
+    String? token,
+  }) async {
+    try {
+      await delete('/reviews/$reviewId', token: token);
+      return true;
+    } catch (e) {
+      log.d('❌ Не удалось удалить отзыв: $e');
+      return false;
     }
   }
 }

@@ -7,7 +7,7 @@ import 'package:lidle/services/favorites_service.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
-import 'package:lidle/widgets/dialogs/complaint_dialog.dart';
+import 'package:lidle/widgets/dialogs/report_advert_dialog.dart';
 import 'package:lidle/widgets/dialogs/phone_dialog.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/core/logger.dart';
@@ -534,10 +534,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
   Widget _buildComplaintButton() {
     return GestureDetector(
       onTap: () {
+        final advertId = int.tryParse(widget.listing.id);
+        if (advertId == null) return;
         showDialog(
           context: context,
           builder: (BuildContext context) {
-            return const ComplaintDialog();
+            return ReportAdvertDialog(
+              advertId: advertId,
+              advertTitle: widget.listing.title,
+            );
           },
         );
       },

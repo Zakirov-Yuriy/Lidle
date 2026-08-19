@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/user_service.dart';
+import 'package:lidle/widgets/dialogs/company_reply_dialog.dart';
+import 'package:lidle/widgets/dialogs/review_complaint_dialog.dart';
 import 'package:lidle/core/logger.dart';
 
 // ============================================================
@@ -34,11 +37,109 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
   int _page = 1;
   String? _error;
 
+  /// true — если экран открыл сам владелец компании (продавец). Только ему
+  /// показываем кнопку «Ответить». Компания 1:1 с пользователем, поэтому
+  /// сравниваем id текущего пользователя с companyId.
+  bool _isSeller = false;
+
+  /// Название компании для заголовка «Отзывы на компанию {name}». Сначала
+  /// берём из параметра, затем обновляем актуальным значением с сервера
+  /// (GET /companies/{id} → data.name), чтобы имя менялось динамически.
+  String? _companyName;
+
   @override
   void initState() {
     super.initState();
+    _isSeller = _computeIsSeller();
+    _companyName = (widget.companyName ?? '').trim();
     _scrollController.addListener(_onScroll);
     _loadReviews();
+    _loadCompanyName();
+  }
+
+  bool _computeIsSeller() {
+    final me = UserService.getLocal('userId')?.toString().trim();
+    return me != null && me.isNotEmpty && me == '${widget.companyId}';
+  }
+
+  /// Подтягивает актуальное название компании с сервера, чтобы в заголовке
+  /// всегда было имя компании (а не имя/ник пользователя, переданные извне).
+  Future<void> _loadCompanyName() async {
+    try {
+      final resp = await ApiService.get('/companies/${widget.companyId}');
+      final data = (resp['data'] is Map)
+          ? Map<String, dynamic>.from(resp['data'] as Map)
+          : <String, dynamic>{};
+      final nameRaw = data['name'];
+      final name = (nameRaw is String && nameRaw.trim().isNotEmpty)
+          ? nameRaw.trim()
+          : '';
+      if (name.isEmpty || !mounted) return;
+      setState(() => _companyName = name);
+    } catch (e) {
+      log.d('Не удалось загрузить название компании для заголовка: $e');
+    }
+  }
+
+  /// Заголовок экрана: «Отзывы на компанию {name}», либо просто «Отзывы».
+  String get _headerTitle {
+    final name = (_companyName ?? '').trim();
+    return name.isEmpty ? 'Отзывы' : 'Отзывы на компанию $name';
+  }
+
+  /// Открыть диалог ответа продавца на отзыв [index]. При успехе обновляем
+  /// ответ у этого отзыва прямо в списке (без перезагрузки).
+  Future<void> _openReplyDialog(int index) async {
+    final review = _reviews[index];
+    final reviewId = int.tryParse('${review['id']}');
+    if (reviewId == null) return;
+
+    final current = (review['reply'] ?? '').toString();
+    final res = await showCompanyReplyDialog(
+      context: context,
+      reviewId: reviewId,
+      initialText: current,
+    );
+    if (!mounted || res == null) return;
+
+    setState(() {
+      _reviews[index] = {
+        ...review,
+        'reply': res['reply'] ?? review['reply'],
+        'reply_date':
+            _formatRuDate(res['replied_at']?.toString()) ?? review['reply_date'],
+      };
+    });
+  }
+
+  /// Открыть диалог жалобы на отзыв о компании [index]
+  /// (POST /companies/{companyId}/reviews/{id}/report).
+  Future<void> _openReportDialog(int index) async {
+    final review = _reviews[index];
+    final reviewId = int.tryParse('${review['id']}');
+    if (reviewId == null) return;
+    await showDialog<bool>(
+      context: context,
+      builder: (_) => ReviewComplaintDialog(
+        reviewId: reviewId,
+        target: ReviewComplaintTarget.company,
+        companyId: widget.companyId,
+      ),
+    );
+  }
+
+  /// ISO-дату из ответа сервера превращаем в «19 августа» (как в GET-списке),
+  /// чтобы новый ответ сразу выглядел единообразно. null, если распарсить нельзя.
+  String? _formatRuDate(String? iso) {
+    if (iso == null || iso.isEmpty) return null;
+    final dt = DateTime.tryParse(iso)?.toLocal();
+    if (dt == null) return null;
+    const months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+    ];
+    if (dt.month < 1 || dt.month > 12) return null;
+    return '${dt.day} ${months[dt.month - 1]}';
   }
 
   @override
@@ -149,26 +250,32 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
               padding: const EdgeInsets.fromLTRB(25, 8, 25, 8),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    behavior: HitTestBehavior.opaque,
-                    child: const Row(
-                      children: [
-                        Icon(Icons.arrow_back_ios,
-                            color: textPrimary, size: 16),
-                        SizedBox(width: 4),
-                        Text(
-                          'Отзывы',
-                          style: TextStyle(
-                            color: textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.arrow_back_ios,
+                              color: textPrimary, size: 16),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              _headerTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 12),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
                     behavior: HitTestBehavior.opaque,
@@ -224,7 +331,12 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
               ),
             );
           }
-          return _ReviewCardItem(review: _reviews[index]);
+          return _ReviewCardItem(
+            review: _reviews[index],
+            isSeller: _isSeller,
+            onReplyTap: () => _openReplyDialog(index),
+            onReportTap: () => _openReportDialog(index),
+          );
         },
       ),
     );
@@ -232,16 +344,32 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
 }
 
 /// Карточка одного отзыва: аватар, имя, дата, «Оценка» + звёзды, текст.
+/// Если есть ответ продавца — показываем его блоком под отзывом (виден всем).
+/// Продавцу (владельцу компании) дополнительно показываем кнопку «Ответить».
 class _ReviewCardItem extends StatelessWidget {
   final Map<String, dynamic> review;
+  final bool isSeller;
+  final VoidCallback? onReplyTap;
+  final VoidCallback? onReportTap;
 
-  const _ReviewCardItem({required this.review});
+  const _ReviewCardItem({
+    required this.review,
+    this.isSeller = false,
+    this.onReplyTap,
+    this.onReportTap,
+  });
 
   int get _rating {
     final r = review['rating'];
     if (r is int) return r;
     return int.tryParse('${r ?? 0}') ?? 0;
   }
+
+  String get _reply => (review['reply'] ?? '').toString().trim();
+
+  String get _replyDate => (review['reply_date'] ?? '').toString().trim();
+
+  bool get _hasReply => _reply.isNotEmpty;
 
   String get _name {
     final n = review['user_name'] ?? review['title'];
@@ -343,6 +471,110 @@ class _ReviewCardItem extends StatelessWidget {
                 color: textSecondary,
                 fontSize: 14,
                 height: 1.35,
+              ),
+            ),
+          ],
+          // Ответ продавца (виден всем, если он есть).
+          if (_hasReply) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(8),
+                border: const Border(
+                  left: BorderSide(color: activeIconColor, width: 3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Ответ продавца',
+                        style: TextStyle(
+                          color: activeIconColor,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (_replyDate.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          _replyDate,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _reply,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          // Кнопка ответа — только для владельца компании (продавца).
+          if (isSeller) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onReplyTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: activeIconColor,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: Icon(
+                  _hasReply ? Icons.edit_outlined : Icons.reply,
+                  size: 18,
+                  color: activeIconColor,
+                ),
+                label: Text(
+                  _hasReply ? 'Изменить ответ' : 'Ответить',
+                  style: const TextStyle(
+                    color: activeIconColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          // Жалоба на отзыв — для всех, кроме владельца компании.
+          if (!isSeller) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onReportTap,
+                style: TextButton.styleFrom(
+                  foregroundColor: textSecondary,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.flag_outlined,
+                    size: 16, color: textSecondary),
+                label: const Text(
+                  'Пожаловаться',
+                  style: TextStyle(color: textSecondary, fontSize: 13),
+                ),
               ),
             ),
           ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/review_model.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/widgets/dialogs/reply_review_dialog.dart';
 import 'package:lidle/widgets/dialogs/review_complaint_dialog.dart';
 import 'package:lidle/core/logger.dart';
@@ -9,10 +10,15 @@ class ReviewCard extends StatefulWidget {
   final ReviewModel review;
   final bool isMyListingsTab;
 
+  /// Необязательный колбэк — вызывается после успешного удаления отзыва,
+  /// чтобы родитель мог обновить список.
+  final VoidCallback? onChanged;
+
   const ReviewCard({
     super.key,
     required this.review,
     required this.isMyListingsTab,
+    this.onChanged,
   });
 
   @override
@@ -22,6 +28,42 @@ class ReviewCard extends StatefulWidget {
 class _ReviewCardState extends State<ReviewCard> {
   bool _isExpanded = false;
   final TextEditingController _commentController = TextEditingController();
+
+  /// Подтверждение и удаление собственного отзыва (DELETE /v1/reviews/{id}).
+  Future<void> _confirmDeleteReview(int reviewId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: primaryBackground,
+        title: const Text('Удалить отзыв?',
+            style: TextStyle(color: Colors.white)),
+        content: const Text('Это действие нельзя отменить.',
+            style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final ok = await ApiService.deleteAdvertReview(reviewId: reviewId);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(ok ? 'Отзыв удалён' : 'Не удалось удалить отзыв'),
+        backgroundColor: ok ? Colors.green : Colors.red,
+      ),
+    );
+    if (ok) widget.onChanged?.call();
+  }
 
   @override
   void dispose() {
@@ -288,15 +330,22 @@ class _ReviewCardState extends State<ReviewCard> {
                       widget.isMyListingsTab ? 'Пожаловаться' : 'Удалить',
                       Colors.red,
                       () {
+                        final reviewId = int.tryParse(widget.review.id);
+                        if (reviewId == null) return;
                         if (widget.isMyListingsTab) {
+                          // Жалоба на отзыв к объявлению.
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
-                              return const ReviewComplaintDialog();
+                              return ReviewComplaintDialog(
+                                reviewId: reviewId,
+                                target: ReviewComplaintTarget.advert,
+                              );
                             },
                           );
                         } else {
-                          // TODO: Реализовать функцию удаления
+                          // Удаление собственного отзыва.
+                          _confirmDeleteReview(reviewId);
                         }
                       },
                     ),

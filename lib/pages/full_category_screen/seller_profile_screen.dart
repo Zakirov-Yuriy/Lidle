@@ -1399,7 +1399,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                   MaterialPageRoute(
                     builder: (_) => CompanyReviewsScreen(
                       companyId: _companyIdForReviews!,
-                      companyName: widget.sellerName,
+                      companyName: (_companyName != null && _companyName!.trim().isNotEmpty)
+                          ? _companyName!.trim()
+                          : widget.sellerName,
                     ),
                   ),
                 );
@@ -1461,7 +1463,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       MaterialPageRoute(
         builder: (_) => CompanyReviewsScreen(
           companyId: companyId,
-          companyName: widget.sellerName,
+          companyName: (_companyName != null && _companyName!.trim().isNotEmpty)
+                          ? _companyName!.trim()
+                          : widget.sellerName,
         ),
       ),
     );

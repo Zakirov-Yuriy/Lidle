@@ -71,6 +71,11 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   // ignore: unused_field
   bool _isLoadingPriceOffers = false;
 
+  /// Актуальное название компании (магазина) из GET /companies/{myId}.
+  /// Тянем с сервера, чтобы в карточке «Ваш магазин» показывать правильное имя,
+  /// а не устаревший локальный кеш.
+  String? _companyName;
+
   // ignore: unused_field
   static const String _cacheKeyListings = CacheKeys.profileListingsCounts;
   // ignore: unused_field
@@ -100,6 +105,34 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadListingsCounts(useCache: true);
     // 💰 Загружаем количество предложений цен
     _loadPriceOffersCount(useCache: true);
+    // 🏪 Подтягиваем актуальное название компании (магазина) с сервера
+    _loadCompanyName();
+  }
+
+  /// Подтягивает актуальное название компании (GET /companies/{myId} → data.name)
+  /// и кладёт его в состояние и локальный кеш, чтобы карточка «Ваш магазин»
+  /// показывала правильное имя (а не ник/устаревший кеш).
+  Future<void> _loadCompanyName() async {
+    try {
+      final rawId = UserService.getLocal('userId')?.toString().trim() ?? '';
+      final id = rawId.replaceFirst('ID: ', '').trim();
+      if (id.isEmpty) return;
+      final token = TokenService.currentToken;
+      final resp = await ApiService.get('/companies/$id', token: token);
+      final data = (resp['data'] is Map)
+          ? Map<String, dynamic>.from(resp['data'] as Map)
+          : <String, dynamic>{};
+      final nameRaw = data['name'];
+      final name = (nameRaw is String && nameRaw.trim().isNotEmpty)
+          ? nameRaw.trim()
+          : '';
+      if (name.isEmpty) return;
+      await UserService.saveLocal('companyName', name);
+      if (!mounted) return;
+      setState(() => _companyName = name);
+    } catch (e) {
+      log.d('Не удалось загрузить название компании: $e');
+    }
   }
 
   @override
@@ -621,15 +654,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                       final displayName = nick.isNotEmpty
                                           ? nick
                                           : storeName.trim();
-                                      // Название КОМПАНИИ из локального кеша
-                                      // (заполняется на экране контактов компании).
-                                      // Показываем его в карточке магазина вместо
-                                      // имени пользователя.
-                                      final companyName = (UserService.getLocal(
-                                                  'companyName')
-                                              as String? ??
-                                          '')
-                                          .trim();
+                                      // Название КОМПАНИИ. Приоритет — свежее
+                                      // значение с сервера (_companyName из
+                                      // GET /companies/{id}); если ещё не
+                                      // загрузилось — локальный кеш. Показываем
+                                      // его в карточке магазина вместо ника.
+                                      final freshCompany =
+                                          _companyName?.trim() ?? '';
+                                      final companyName = freshCompany.isNotEmpty
+                                          ? freshCompany
+                                          : (UserService.getLocal('companyName')
+                                                      as String? ??
+                                                  '')
+                                              .trim();
                                       final userId =
                                           profileState is ProfileLoaded
                                               ? profileState.userId

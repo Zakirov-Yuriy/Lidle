@@ -7,6 +7,7 @@ import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/offer_model.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/report_user_dialog.dart';
 
 class UserAccountOnlyPage extends StatelessWidget {
   final PriceOfferItem offerItem;
@@ -104,7 +105,17 @@ class UserAccountOnlyPage extends StatelessWidget {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: () {},
+                        onPressed: () {
+                          final uid = int.tryParse(offerItem.userId ?? '');
+                          if (uid == null) return;
+                          showDialog(
+                            context: context,
+                            builder: (_) => ReportUserDialog(
+                              userId: uid,
+                              userName: offerItem.name,
+                            ),
+                          );
+                        },
                         child: Text(
                           'Пожаловаться на аккаунт',
                           style: TextStyle(
