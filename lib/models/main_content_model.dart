@@ -126,6 +126,8 @@ class UserAdvert {
   final int? callCount;
   @JsonKey(name: 'contact_count')
   final int? contactCount;
+  @JsonKey(name: 'message_count')
+  final int? messageCount;
   @JsonKey(name: 'favorites_count')
   final int? favoritesCount;
   @JsonKey(name: 'created_at')
@@ -164,6 +166,7 @@ class UserAdvert {
     this.shareCount,
     this.callCount,
     this.contactCount,
+    this.messageCount,
     this.favoritesCount,
     this.createdAt,
     this.type,

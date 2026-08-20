@@ -2165,6 +2165,12 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                           style: const TextStyle(color: Colors.white54, fontSize: 13),
                         ),
                         const SizedBox(height: 4),
+                        // «Написали» — сколько человек написали (сообщения).
+                        Text(
+                          'Написали: ${(advert.messageCount ?? 0) == 0 ? "" : advert.messageCount}',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                        const SizedBox(height: 4),
                         Text(
                           'Контакты: ${(advert.contactCount ?? 0) == 0 ? "" : advert.contactCount}',
                           style: const TextStyle(color: Colors.white54, fontSize: 13),

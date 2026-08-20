@@ -279,7 +279,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 10),
                     _buildTextField(
                       'name',
-                      'Ваше имя или название компании ',
+                      'Ваше имя  ',
                       'Введите',
                       validators: [
                         FormBuilderValidators.required(
