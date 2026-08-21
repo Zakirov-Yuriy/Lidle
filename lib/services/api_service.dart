@@ -1435,7 +1435,8 @@ class ApiService {
     }
   }
 
-  /// Отзывы на компанию (продавца). Публичный список с пагинацией.
+  /// Отзывы на компанию (продавца). ПУБЛИЧНЫЙ список: только положительные
+  /// отзывы с оценкой 4-5 (то, что видят поисковики и ИИ). С пагинацией.
   /// GET /v1/companies/{companyId}/reviews
   /// Возвращает полный ответ (data + meta/links) для постраничной подгрузки.
   static Future<Map<String, dynamic>> getCompanyReviews(
@@ -1444,6 +1445,19 @@ class ApiService {
     String? token,
   }) async {
     return getWithQuery('/companies/$companyId/reviews', {
+      'page': page.toString(),
+    }, token: token);
+  }
+
+  /// Отзывы о СВОЕЙ компании для владельца (личный кабинет): ВСЕ отзывы,
+  /// оценки 1-5 (включая 1-3, которых нет на публичной странице). Компания
+  /// определяется по токену, поэтому companyId в пути не передаётся.
+  /// GET /v1/company/reviews
+  static Future<Map<String, dynamic>> getMyCompanyReviews({
+    int page = 1,
+    String? token,
+  }) async {
+    return getWithQuery('/company/reviews', {
       'page': page.toString(),
     }, token: token);
   }

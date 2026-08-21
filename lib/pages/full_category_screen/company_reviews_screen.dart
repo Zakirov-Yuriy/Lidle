@@ -165,8 +165,11 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
       _error = null;
     });
     try {
-      final response =
-          await ApiService.getCompanyReviews(widget.companyId, page: 1);
+      // Владелец компании (продавец) видит ВСЕ свои отзывы (1-5) из личного
+      // кабинета; остальные — только публичные (4-5).
+      final response = _isSeller
+          ? await ApiService.getMyCompanyReviews(page: 1)
+          : await ApiService.getCompanyReviews(widget.companyId, page: 1);
       final list = _extractList(response);
       if (!mounted) return;
       setState(() {
@@ -191,8 +194,9 @@ class _CompanyReviewsScreenState extends State<CompanyReviewsScreen> {
     setState(() => _isLoadingMore = true);
     try {
       final next = _page + 1;
-      final response =
-          await ApiService.getCompanyReviews(widget.companyId, page: next);
+      final response = _isSeller
+          ? await ApiService.getMyCompanyReviews(page: next)
+          : await ApiService.getCompanyReviews(widget.companyId, page: next);
       final list = _extractList(response);
       if (!mounted) return;
       setState(() {
