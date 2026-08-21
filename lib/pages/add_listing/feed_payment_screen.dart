@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../constants.dart';
 import '../../services/api_service.dart';
+import '../../widgets/components/header.dart';
 
 /// Экран оплаты подписки на публикацию фида.
 ///
-/// Показывает подобранный тариф и цену (из GET /me/billing/subscription),
-/// по кнопке «Оплатить» создаёт платёж (POST /me/billing/pay) и открывает
-/// страницу оплаты YooKassa в WebView. После возврата на return_url (или по
-/// кнопке «Проверить оплату») перепроверяет подписку. Возвращает `true`, если
-/// подписка стала активной (оплата прошла) — вызывающий код после этого
-/// повторяет публикацию.
+/// Внешне повторяет экран «Тариф публикации» (карточка «Тариф: … / Цена: …»),
+/// но для фида показывает ПЛАТНЫЙ тариф (без «Бесплатно») и кнопку «Оплатить».
+/// По кнопке создаёт платёж (POST /me/billing/pay) и открывает страницу оплаты
+/// YooKassa в WebView. После возврата на return_url (или по кнопке «Проверить
+/// оплату») перепроверяет подписку. Возвращает `true`, если подписка стала
+/// активной (оплата прошла) — вызывающий код после этого повторяет публикацию.
 class FeedPaymentScreen extends StatefulWidget {
   static const String routeName = '/feed-payment';
 
@@ -109,7 +111,7 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _paying = false);
-      _snack('Не удалось создать платёж, попробуйте ещё раз', Colors.red);
+      _snack('Не удалось создать платёж, попробуйте ещё раз');
     }
   }
 
@@ -149,11 +151,9 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
     });
   }
 
-  void _snack(String text, Color color) {
+  void _snack(String text) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text), backgroundColor: color),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -177,7 +177,7 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
             TextButton(
               onPressed: _onReturned,
               child: const Text('Проверить оплату',
-                  style: TextStyle(color: accentColor)),
+                  style: TextStyle(color: Color(0xFF009EE2))),
             ),
           ],
         ),
@@ -185,27 +185,80 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
       );
     }
 
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      appBar: AppBar(
-        backgroundColor: formBackground,
-        foregroundColor: textPrimary,
-        title: const Text('Публикация фида'),
-      ),
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-                ? _errorView()
-                : _infoView(),
+    // Экран выбора тарифа. Назад запрещён (как на экране тарифа публикации):
+    // выйти можно только кнопкой «Отмена».
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        backgroundColor: primaryBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Header(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 25,
+                    vertical: 19,
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Тариф публикации',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: _paying
+                            ? null
+                            : () => Navigator.of(context).pop(false),
+                        child: const Text(
+                          'Отмена',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: defaultPadding),
+                  child: Column(
+                    children: [
+                      if (_loading)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 60),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_error != null)
+                        _errorView()
+                      else
+                        _buildTariffCard(),
+                      const SizedBox(height: 79),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _errorView() {
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.only(top: 60),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Text(_error!, style: const TextStyle(color: textSecondary)),
           const SizedBox(height: 12),
@@ -215,58 +268,122 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
     );
   }
 
-  Widget _infoView() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+  // Карточка тарифа фида — тот же вид, что на экране «Тариф публикации».
+  Widget _buildTariffCard() {
+    final features = <String>[
+      'Публикация всех объявлений из фида',
+      'Подписка на 30 дней',
+    ];
+
+    return Container(
+      padding: const EdgeInsets.only(left: 14, right: 14, bottom: 20, top: 19),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(5),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Публикация объявлений из фида платная. Оплатите подписку, и объявления опубликуются.',
-            style: TextStyle(color: textSecondary, fontSize: 14, height: 1.4),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          RichText(
+            text: TextSpan(
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               children: [
-                const Text('Тариф',
-                    style: TextStyle(color: textMuted, fontSize: 13)),
-                const SizedBox(height: 6),
-                Text(_tariffTitle,
-                    style: const TextStyle(
-                        color: textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 10),
-                Text('$_priceRub ₽ / мес',
-                    style: const TextStyle(
-                        color: accentColor,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700)),
+                const TextSpan(
+                  text: 'Тариф: ',
+                  style: TextStyle(color: textSecondary),
+                ),
+                TextSpan(
+                  text: _tariffTitle,
+                  style: const TextStyle(color: textPrimary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...features.map(
+            (feature) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 5.0),
+              child: Row(
+                children: [
+                  SvgPicture.asset(
+                    'assets/publication_tariff/check.svg',
+                    width: 20,
+                    height: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      feature,
+                      style: const TextStyle(color: textPrimary, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5.0),
+            child: Row(
+              children: [
+                SvgPicture.asset(
+                  'assets/publication_tariff/icon.svg',
+                  width: 20,
+                  height: 20,
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Без подписки объявления из фида не публикуются.',
+                    style: TextStyle(color: textPrimary, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 15),
+          const Divider(color: textMuted),
+          const SizedBox(height: 4),
+          RichText(
+            text: TextSpan(
+              children: [
+                const TextSpan(
+                  text: 'Цена: ',
+                  style: TextStyle(
+                    color: textMuted,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                TextSpan(
+                  text: '$_priceRub ₽ / мес',
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
           if (_verifyMessage != null) ...[
-            const SizedBox(height: 16),
-            Text(_verifyMessage!,
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 13)),
+            const SizedBox(height: 10),
+            Text(
+              _verifyMessage!,
+              style: const TextStyle(color: Colors.orangeAccent, fontSize: 13),
+            ),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 17),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: formBackground,
+                side: const BorderSide(color: Color(0xFF009EE2)),
+                minimumSize: const Size.fromHeight(43),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: (_paying || _verifying) ? null : _onPay,
               child: (_paying || _verifying)
@@ -274,12 +391,14 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Text('Оплатить',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600)),
+                        strokeWidth: 2,
+                        color: Color(0xFF009EE2),
+                      ),
+                    )
+                  : const Text(
+                      'Оплатить',
+                      style: TextStyle(color: Color(0xFF009EE2), fontSize: 16),
+                    ),
             ),
           ),
           if (_verifyMessage != null) ...[
@@ -289,19 +408,10 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
               child: OutlinedButton(
                 onPressed: _verifying ? null : _verify,
                 child: const Text('Проверить оплату',
-                    style: TextStyle(color: accentColor)),
+                    style: TextStyle(color: Color(0xFF009EE2))),
               ),
             ),
           ],
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Отмена',
-                  style: TextStyle(color: textSecondary)),
-            ),
-          ),
         ],
       ),
     );

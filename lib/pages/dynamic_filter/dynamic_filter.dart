@@ -1601,11 +1601,19 @@ class _DynamicFilterState extends State<DynamicFilter>
             '/companies/${userProfile.id}',
             token: token,
           );
-          final companyData = companyResp['data'] is Map
-              ? Map<String, dynamic>.from(companyResp['data'] as Map)
-              : (companyResp is Map
-                  ? Map<String, dynamic>.from(companyResp)
-                  : <String, dynamic>{});
+          // GET /companies/{id} возвращает data КОЛЛЕКЦИЕЙ (список из одной
+          // компании), поэтому имя лежит в data[0].name. Раньше data парсили
+          // как объект и companyName всегда выходил пустым — контактное лицо
+          // компании не подставлялось. Обрабатываем и список, и объект.
+          final rawCompanyData = companyResp['data'];
+          Map<String, dynamic> companyData = <String, dynamic>{};
+          if (rawCompanyData is List &&
+              rawCompanyData.isNotEmpty &&
+              rawCompanyData.first is Map) {
+            companyData = Map<String, dynamic>.from(rawCompanyData.first as Map);
+          } else if (rawCompanyData is Map) {
+            companyData = Map<String, dynamic>.from(rawCompanyData);
+          }
           companyName = (companyData['name'] ?? '').toString().trim();
         } catch (e) {
           // log.d('⚠️ Error loading company name: $e');
@@ -1620,9 +1628,15 @@ class _DynamicFilterState extends State<DynamicFilter>
         // режиме редактирования тоже.
         if (mounted) {
           setState(() {
-            // Контактное лицо = название компании (у компании нет отдельного лица).
+            // Контактное лицо = ПОЛНОЕ название компании (магазина) из
+            // /companies/{id}. Для фидовых объявлений (режим модерации)
+            // перезаписываем всегда: в объявление контактное лицо приходит из
+            // имени пользователя и обрезается до первого слова («ООО Авангард»
+            // -> «ООО»), поэтому берём полное название компании. Для ручного
+            // создания/редактирования — только если поле пустое.
             if (companyName.isNotEmpty &&
-                _contactNameController.text.trim().isEmpty) {
+                (widget.fromModeration ||
+                    _contactNameController.text.trim().isEmpty)) {
               _contactNameController.text = companyName;
             }
             // Первый email компании.
