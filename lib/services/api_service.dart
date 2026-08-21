@@ -705,6 +705,10 @@ class ApiService {
       }
       // Don't throw exception, let calling code handle it
       return data;
+    } else if (response.statusCode == 402) {
+      // 402 = требуется оплата (payment_required). Не бросаем исключение —
+      // возвращаем тело, чтобы вызывающий код показал экран оплаты.
+      return data;
     } else if (response.statusCode == 500) {
       // log.d('❌ 500 Server Error');
       // log.d('Error message: ${data['message'] ?? 'Server error'}');
@@ -1447,6 +1451,19 @@ class ApiService {
     return getWithQuery('/companies/$companyId/reviews', {
       'page': page.toString(),
     }, token: token);
+  }
+
+  /// Биллинг фид-публикации: текущая подписка и подобранный тариф.
+  /// GET /v1/me/billing/subscription → { data: { is_active, subscription, suggested_tariff } }
+  static Future<Map<String, dynamic>> getBillingSubscription({String? token}) async {
+    return get('/me/billing/subscription', token: token);
+  }
+
+  /// Создать платёж за фид-подписку. Возвращает { data: { confirmation_url, ... } }.
+  /// Пользователя ведём на confirmation_url (страница оплаты YooKassa).
+  /// POST /v1/me/billing/pay
+  static Future<Map<String, dynamic>> createBillingPayment({String? token}) async {
+    return post('/me/billing/pay', {}, token: token);
   }
 
   /// Отзывы о СВОЕЙ компании для владельца (личный кабинет): ВСЕ отзывы,

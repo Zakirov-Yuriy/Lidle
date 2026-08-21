@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/new_listing_notifier.dart';
+import 'package:lidle/pages/add_listing/feed_payment_screen.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
@@ -253,15 +254,32 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
   }
 
   /// Опубликовать объявление из вкладки CRM (кнопка "Опубликовать").
+  /// Если публикация фида платная и подписки нет, бэк вернёт
+  /// `payment_required` — открываем экран оплаты, после успешной оплаты
+  /// объявления публикуются автоматически (плюс повторяем публикацию).
   Future<void> _publishFromCrm(UserAdvert advert) async {
     try {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) return;
 
-      await MyAdvertsService.publishAdvert(
+      final res = await MyAdvertsService.publishAdvert(
         advertId: advert.id,
         token: token,
       );
+
+      if (res['payment_required'] == true) {
+        final paid = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const FeedPaymentScreen()),
+        );
+        if (paid != true) return; // оплату отменили — ничего не меняем
+        // Оплата прошла: подписка активна, ожидавшие объявления уже
+        // опубликованы на бэке; повторяем публикацию этого объявления
+        // (если оно ещё pending — станет active, если уже active — 200).
+        await MyAdvertsService.publishAdvert(
+          advertId: advert.id,
+          token: token,
+        );
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

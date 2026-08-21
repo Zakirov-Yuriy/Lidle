@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/pages/add_listing/feed_payment_screen.dart';
 import 'package:lidle/models/main_content_model.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/constants.dart';
@@ -475,7 +476,17 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
       final token = HiveService.getUserData('token') as String?;
       if (token == null) return;
 
-      await MyAdvertsService.publishAdvert(advertId: advert.id, token: token);
+      final res =
+          await MyAdvertsService.publishAdvert(advertId: advert.id, token: token);
+
+      // Платная публикация фида: нет подписки — открываем экран оплаты.
+      if (res['payment_required'] == true) {
+        final paid = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => const FeedPaymentScreen()),
+        );
+        if (paid != true) return;
+        await MyAdvertsService.publishAdvert(advertId: advert.id, token: token);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -528,14 +539,42 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
 
     int ok = 0;
     int fail = 0;
+    bool needPay = false;
     final ids = _selectedIds.toList();
     for (final id in ids) {
       try {
-        await MyAdvertsService.publishAdvert(advertId: id, token: token);
+        final res =
+            await MyAdvertsService.publishAdvert(advertId: id, token: token);
+        if (res['payment_required'] == true) {
+          needPay = true;
+          break;
+        }
         ok++;
       } catch (_) {
         fail++;
       }
+    }
+
+    // Нужна оплата подписки — открываем экран оплаты один раз. После успешной
+    // оплаты бэк публикует ожидавшие объявления сам (до потолка тарифа),
+    // поэтому просто обновляем список.
+    if (needPay) {
+      if (mounted) setState(() => _processing = false);
+      final paid = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const FeedPaymentScreen()),
+      );
+      if (mounted) {
+        if (paid == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Оплата прошла, объявления опубликованы'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _loadListings();
+        }
+      }
+      return;
     }
 
     if (mounted) {

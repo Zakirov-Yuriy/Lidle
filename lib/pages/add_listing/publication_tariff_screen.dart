@@ -3,6 +3,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/widgets/dialogs/moderation_dialog.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/pages/add_listing/feed_payment_screen.dart';
 import '../../constants.dart';
 import '../../widgets/components/header.dart';
 import '../profile_dashboard/my_listings/my_listings_screen.dart';
@@ -264,11 +265,24 @@ class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
                   // Редактирование фидового объявления: реально публикуем его
                   // (с модерации в активные), а не отправляем на модерацию.
                   if (widget.shouldPublish && widget.advertId != null) {
+                    final token = TokenService.currentToken ?? '';
                     try {
-                      await MyAdvertsService.publishAdvert(
+                      final res = await MyAdvertsService.publishAdvert(
                         advertId: widget.advertId!,
-                        token: TokenService.currentToken ?? '',
+                        token: token,
                       );
+                      // Платная публикация фида: нет подписки — открываем оплату.
+                      if (res['payment_required'] == true) {
+                        final paid = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                              builder: (_) => const FeedPaymentScreen()),
+                        );
+                        if (paid != true) return; // оплату отменили
+                        await MyAdvertsService.publishAdvert(
+                          advertId: widget.advertId!,
+                          token: token,
+                        );
+                      }
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(

@@ -368,19 +368,18 @@ class MyAdvertsService {
 
   /// Опубликовать объявление с модерации.
   /// Применяет сгенерированный черновик и делает объявление активным.
-  static Future<void> publishAdvert({
+  /// Публикация объявления. Возвращает тело ответа. Для фидовых объявлений при
+  /// отсутствии оплаченной подписки бэк вернёт 402 с `payment_required: true`
+  /// (исключение не бросается) — вызывающий код открывает экран оплаты.
+  static Future<Map<String, dynamic>> publishAdvert({
     required int advertId,
     required String token,
   }) async {
-    try {
-      await ApiService.put(
-        '/me/adverts/$advertId/publish',
-        {},
-        token: token,
-      );
-    } catch (e) {
-      throw Exception('Ошибка при публикации объявления: $e');
-    }
+    return ApiService.put(
+      '/me/adverts/$advertId/publish',
+      {},
+      token: token,
+    );
   }
 
   /// Обновить черновик объявления на модерации (редактирование текста).
