@@ -556,25 +556,31 @@ class _CrmFeedPreviewScreenState extends State<CrmFeedPreviewScreen> {
     }
 
     // Нужна оплата подписки — открываем экран оплаты один раз. После успешной
-    // оплаты бэк публикует ожидавшие объявления сам (до потолка тарифа),
-    // поэтому просто обновляем список.
+    // оплаты публикуем ТОЛЬКО выбранные объявления (бэк сам ничего с модерации
+    // не публикует — остальные остаются на модерации для ручной публикации).
     if (needPay) {
       if (mounted) setState(() => _processing = false);
       final paid = await Navigator.of(context).push<bool>(
         MaterialPageRoute(builder: (_) => const FeedPaymentScreen()),
       );
-      if (mounted) {
-        if (paid == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Оплата прошла, объявления опубликованы'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          _loadListings();
+      if (paid != true) return; // оплату отменили — публиковать нечего
+
+      if (mounted) setState(() => _processing = true);
+      ok = 0;
+      fail = 0;
+      for (final id in ids) {
+        try {
+          final res =
+              await MyAdvertsService.publishAdvert(advertId: id, token: token);
+          if (res['payment_required'] == true) {
+            fail++;
+          } else {
+            ok++;
+          }
+        } catch (_) {
+          fail++;
         }
       }
-      return;
     }
 
     if (mounted) {
