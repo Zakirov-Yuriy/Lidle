@@ -1611,30 +1611,43 @@ class _DynamicFilterState extends State<DynamicFilter>
           // log.d('⚠️ Error loading company name: $e');
         }
 
-        if (mounted && !_isEditMode) {
+        // Префилл контактами компании. В режиме редактирования заполняем ТОЛЬКО
+        // пустые поля, чтобы не перетереть контакты, уже сохранённые в самом
+        // объявлении. У фидовых объявлений своих контактов нет (в объявлении
+        // приходит только название компании как «Контактное лицо»), поэтому
+        // раньше при публикации из фида email, телефоны и Max оставались
+        // пустыми. Теперь пустые поля подставляются из данных компании и в
+        // режиме редактирования тоже.
+        if (mounted) {
           setState(() {
             // Контактное лицо = название компании (у компании нет отдельного лица).
-            if (companyName.isNotEmpty) {
+            if (companyName.isNotEmpty &&
+                _contactNameController.text.trim().isEmpty) {
               _contactNameController.text = companyName;
             }
             // Первый email компании.
-            if (_userEmails.isNotEmpty) {
+            if (_userEmails.isNotEmpty &&
+                _emailController.text.trim().isEmpty) {
               _emailController.text = (_userEmails[0]['email'] ?? '').toString();
             }
             // Первый и второй телефон компании.
-            if (_userPhones.isNotEmpty) {
+            if (_userPhones.isNotEmpty &&
+                _phone1Controller.text.trim().isEmpty) {
               _phone1Controller.text = (_userPhones[0]['phone'] ?? '').toString();
             }
-            if (_userPhones.length > 1) {
+            if (_userPhones.length > 1 &&
+                _phone2Controller.text.trim().isEmpty) {
               _phone2Controller.text = (_userPhones[1]['phone'] ?? '').toString();
             }
             // Ссылка на чат в Max: сначала из maxes компании, иначе telegram.
-            if (_userMaxes.isNotEmpty) {
-              _telegramController.text =
-                  (_userMaxes[0]['username'] ?? '').toString();
-            } else if (_userTelegrams.isNotEmpty) {
-              _telegramController.text =
-                  (_userTelegrams[0]['username'] ?? '').toString();
+            if (_telegramController.text.trim().isEmpty) {
+              if (_userMaxes.isNotEmpty) {
+                _telegramController.text =
+                    (_userMaxes[0]['username'] ?? '').toString();
+              } else if (_userTelegrams.isNotEmpty) {
+                _telegramController.text =
+                    (_userTelegrams[0]['username'] ?? '').toString();
+              }
             }
           });
         }
