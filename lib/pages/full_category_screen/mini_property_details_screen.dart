@@ -13,6 +13,7 @@ import 'package:lidle/models/message_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/cards/advert_reviews_card.dart';
+import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
@@ -1609,6 +1610,13 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           const Text(
             "Отправьте ссылку друзьям или в соцсети удобным для вас способом",
             style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          // Ряд иконок соцсетей — тот же виджет, что и в блоке
+          // «Поделиться компанией» на экране продавца.
+          ShareIconsRow(
+            url: _generateAdvertisementUrl(widget.listing),
+            text: widget.listing.title,
           ),
           const SizedBox(height: 14),
           SizedBox(
