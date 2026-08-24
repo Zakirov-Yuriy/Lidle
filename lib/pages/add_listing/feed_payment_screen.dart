@@ -24,9 +24,10 @@ class FeedPaymentScreen extends StatefulWidget {
 }
 
 class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
-  // Куда YooKassa возвращает после оплаты (совпадает с BILLING_RETURN_URL на
-  // бэке). При переходе на этот адрес считаем оплату завершённой и проверяем.
-  static const String _returnUrl = 'https://lidle.io/cabinet/billing';
+  // Возврат после оплаты ловим по ПУТИ, а не по полному адресу: у прода
+  // несколько доменов (lidle.ru, lidle.io, lidle.xn--p1ai), и BILLING_RETURN_URL
+  // на бэке может смениться без пересборки приложения.
+  static const String _returnPath = '/cabinet/billing';
 
   bool _loading = true;
   String? _error;
@@ -37,6 +38,13 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
   bool _paying = false;
   bool _verifying = false;
   String? _verifyMessage;
+
+  // Платёж уже создавался в этой сессии экрана. Пока флаг взведён, главной
+  // кнопкой становится «Проверить оплату», а повторная оплата уезжает во
+  // второстепенную ссылку: иначе пользователь, не дождавшись вебхука, жмёт
+  // привычную синюю кнопку и создаёт ВТОРОЙ платёж (бэк не видит активной
+  // подписки и заводит ещё одну pending) — то есть платит дважды.
+  bool _paymentStarted = false;
 
   String? _webUrl;
   WebViewController? _controller;
@@ -92,7 +100,8 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setNavigationDelegate(NavigationDelegate(
           onNavigationRequest: (NavigationRequest request) {
-            if (request.url.startsWith(_returnUrl)) {
+            final uri = Uri.tryParse(request.url);
+            if (uri != null && uri.path.startsWith(_returnPath)) {
               _onReturned();
               return NavigationDecision.prevent;
             }
@@ -107,6 +116,7 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
         _webUrl = url;
         _controller = controller;
         _verifyMessage = null;
+        _paymentStarted = true;
       });
     } catch (e) {
       if (!mounted) return;
@@ -124,6 +134,16 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
       _controller = null;
     });
     _verify();
+  }
+
+  /// Закрыть WebView, не проверяя оплату (крестик в шапке). Платёж при этом
+  /// уже создан, поэтому на карточке останется «Проверить оплату».
+  void _closeWebView() {
+    if (!mounted) return;
+    setState(() {
+      _webUrl = null;
+      _controller = null;
+    });
   }
 
   /// Перепроверить подписку после оплаты (вебхук + активация занимают секунду).
@@ -147,8 +167,40 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
     setState(() {
       _verifying = false;
       _verifyMessage =
-          'Оплата ещё не подтверждена. Если вы оплатили, подождите немного и нажмите «Проверить оплату».';
+          'Оплата ещё не подтверждена. Если вы оплатили, подождите немного и нажмите «Проверить оплату». Повторно платить не нужно.';
     });
+  }
+
+  /// Повторная оплата — только по явному подтверждению: создаёт НОВЫЙ платёж.
+  Future<void> _onPayAgain() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: formBackground,
+        title: const Text('Оплатить заново?',
+            style: TextStyle(color: textPrimary, fontSize: 18)),
+        content: const Text(
+          'Будет создан новый платёж. Если предыдущая оплата уже прошла, '
+          'деньги спишутся второй раз. Сначала попробуйте «Проверить оплату».',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Создать платёж',
+                style: TextStyle(color: Color(0xFF009EE2))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _onPay();
+    }
   }
 
   void _snack(String text) {
@@ -168,10 +220,7 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
           title: const Text('Оплата'),
           leading: IconButton(
             icon: const Icon(Icons.close),
-            onPressed: () => setState(() {
-              _webUrl = null;
-              _controller = null;
-            }),
+            onPressed: _closeWebView,
           ),
           actions: [
             TextButton(
@@ -268,12 +317,49 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
     );
   }
 
+  /// Синяя кнопка во всю ширину — единый стиль для «Оплатить» и «Проверить оплату».
+  Widget _primaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+    required bool busy,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: formBackground,
+          side: const BorderSide(color: Color(0xFF009EE2)),
+          minimumSize: const Size.fromHeight(43),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+        onPressed: busy ? null : onPressed,
+        child: busy
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF009EE2),
+                ),
+              )
+            : Text(
+                label,
+                style: const TextStyle(color: Color(0xFF009EE2), fontSize: 16),
+              ),
+      ),
+    );
+  }
+
   // Карточка тарифа фида — тот же вид, что на экране «Тариф публикации».
   Widget _buildTariffCard() {
     final features = <String>[
       'Публикация всех объявлений из фида',
       'Подписка на 30 дней',
     ];
+
+    final busy = _paying || _verifying;
 
     return Container(
       padding: const EdgeInsets.only(left: 14, right: 14, bottom: 20, top: 19),
@@ -374,41 +460,30 @@ class _FeedPaymentScreenState extends State<FeedPaymentScreen> {
             ),
           ],
           const SizedBox(height: 17),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: formBackground,
-                side: const BorderSide(color: Color(0xFF009EE2)),
-                minimumSize: const Size.fromHeight(43),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: (_paying || _verifying) ? null : _onPay,
-              child: (_paying || _verifying)
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF009EE2),
-                      ),
-                    )
-                  : const Text(
-                      'Оплатить',
-                      style: TextStyle(color: Color(0xFF009EE2), fontSize: 16),
-                    ),
+
+          // Платёж ещё не создавался — обычная кнопка «Оплатить».
+          if (!_paymentStarted)
+            _primaryButton(
+              label: 'Оплатить',
+              onPressed: _onPay,
+              busy: busy,
+            )
+          // Платёж уже создан: главная кнопка — проверка, повторная оплата
+          // спрятана в неприметную ссылку и требует подтверждения.
+          else ...[
+            _primaryButton(
+              label: 'Проверить оплату',
+              onPressed: _verify,
+              busy: busy,
             ),
-          ),
-          if (_verifyMessage != null) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: _verifying ? null : _verify,
-                child: const Text('Проверить оплату',
-                    style: TextStyle(color: Color(0xFF009EE2))),
+            const SizedBox(height: 6),
+            Center(
+              child: TextButton(
+                onPressed: busy ? null : _onPayAgain,
+                child: const Text(
+                  'Оплатить заново',
+                  style: TextStyle(color: textMuted, fontSize: 14),
+                ),
               ),
             ),
           ],
