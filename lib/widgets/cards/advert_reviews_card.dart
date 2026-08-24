@@ -1,18 +1,15 @@
 // ============================================================
 //  "Блок отзывов на карточке объявления"
-//  Как на сайте: звёзды «Оставить отзыв» + список уже оставленных.
-//  Данные: GET /v1/advertisements/{id}/reviews (публичный, пагинация).
+//  Как в блоке оценки на экране продавца: звёзды «Оставить отзыв»
+//  и ссылка «Все отзывы» на отдельный экран со списком.
+//  Сам список здесь не показываем — карточка объявления и так длинная.
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/core/logger.dart';
-import 'package:lidle/models/review_model.dart';
 import 'package:lidle/pages/full_category_screen/advert_reviews_screen.dart';
-import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
-import 'package:lidle/widgets/common/user_avatar.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/dialogs/review_dialog.dart';
 
@@ -38,36 +35,9 @@ class AdvertReviewsCard extends StatefulWidget {
 }
 
 class _AdvertReviewsCardState extends State<AdvertReviewsCard> {
-  static const _star = Color(0xFFF5B301);
-
-  /// Сколько отзывов показываем прямо в блоке; остальные — на отдельном экране.
-  static const _previewCount = 3;
-
-  List<ReviewModel> _reviews = const [];
-  int _total = 0;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    try {
-      final response = await ApiService.getAdvertReviews(widget.advertId);
-      if (!mounted) return;
-      setState(() {
-        _reviews = ReviewModel.listFromResponse(response, ReviewKind.received);
-        _total = ReviewModel.totalFromResponse(response) ?? _reviews.length;
-        _loading = false;
-      });
-    } catch (e) {
-      log.d('Не удалось загрузить отзывы объявления: $e');
-      if (!mounted) return;
-      setState(() => _loading = false);
-    }
-  }
+  /// Подсвеченная оценка: как у продавца, звезда остаётся закрашенной после
+  /// тапа, пока открыт диалог.
+  int _selectedStars = 0;
 
   /// Своё ли это объявление — бэк отзыв на своё отклонит (422),
   /// поэтому диалог не открываем и сразу объясняем причину.
@@ -99,6 +69,8 @@ class _AdvertReviewsCardState extends State<AdvertReviewsCard> {
       return;
     }
 
+    setState(() => _selectedStars = rating);
+
     final sent = await showReviewDialog(
       context: context,
       advertId: widget.advertId,
@@ -109,10 +81,13 @@ class _AdvertReviewsCardState extends State<AdvertReviewsCard> {
       initialRating: rating,
     );
 
-    if (sent == true && mounted) {
-      // Перечитываем, чтобы новый отзыв сразу появился в блоке.
-      setState(() => _loading = true);
-      _load();
+    if (!mounted) return;
+
+    // Отзыв ушёл — показываем список, чтобы человек увидел свой отзыв.
+    if (sent == true) {
+      _openAllReviews();
+    } else {
+      setState(() => _selectedStars = 0);
     }
   }
 
@@ -123,6 +98,9 @@ class _AdvertReviewsCardState extends State<AdvertReviewsCard> {
         builder: (_) => AdvertReviewsScreen(
           advertId: widget.advertId,
           advertTitle: widget.sellerName,
+          // Владельцу объявления на экране показываем «Ответить»,
+          // остальным — «Пожаловаться».
+          ownerId: widget.ownerId,
         ),
       ),
     );
@@ -130,212 +108,58 @@ class _AdvertReviewsCardState extends State<AdvertReviewsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final preview = _reviews.take(_previewCount).toList();
-
     return Container(
-      padding: const EdgeInsets.only(left: 9, right: 9, top: 8, bottom: 14),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(5),
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 6),
-          const Text(
-            'Оставить отзыв',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: List.generate(5, (i) {
-              final value = i + 1;
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _onStarTap(value),
-                child: const Padding(
-                  padding: EdgeInsets.only(right: 8.0),
-                  child: Icon(Icons.star, color: Colors.white38, size: 36),
-                ),
-              );
-            }),
-          ),
-
-          if (_loading) ...[
-            const SizedBox(height: 14),
-            const Center(
-              child: SizedBox(
-                height: 18,
-                width: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          ] else if (preview.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Divider(color: Color(0xFF474747), height: 0),
-            const SizedBox(height: 12),
-            Text(
-              _total == 1 ? '1 отзыв' : '$_total ${_pluralReviews(_total)}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 0, 18, 3),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Оставить отзыв',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
-            ...preview.map((r) => _reviewItem(r)),
-            if (_total > preview.length) ...[
-              const SizedBox(height: 4),
-              GestureDetector(
-                onTap: _openAllReviews,
-                behavior: HitTestBehavior.opaque,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 6),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Все отзывы',
-                        style: TextStyle(
-                          color: Color(0xFF009EE2),
-                          fontSize: 15,
-                        ),
-                      ),
-                      Icon(Icons.chevron_right,
-                          color: Color(0xFF009EE2), size: 20),
-                    ],
+            const SizedBox(height: 2),
+            Row(
+              children: List.generate(
+                5,
+                (index) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  // Тап по звезде открывает диалог отзыва с этой оценкой.
+                  onTap: () => _onStarTap(index + 1),
+                  child: Icon(
+                    Icons.star,
+                    color: index < _selectedStars ? Colors.amber : Colors.grey,
+                    size: 32,
                   ),
                 ),
               ),
-            ],
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Компактный отзыв: аватар, имя, дата, звёзды, текст и ответ продавца.
-  Widget _reviewItem(ReviewModel review) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              UserAvatar(url: review.imageUrl, size: 36),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      review.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        ...List.generate(
-                          5,
-                          (i) => Icon(
-                            i < review.rating ? Icons.star : Icons.star_border,
-                            color: _star,
-                            size: 14,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          review.date,
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+            ),
+            const SizedBox(height: 0),
+            // Ссылка «Все отзывы» → экран со списком отзывов объявления.
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _openAllReviews,
+              child: const Text(
+                'Все отзывы',
+                style: TextStyle(
+                  color: activeIconColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ],
-          ),
-          if (review.text.trim().isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              review.text,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 14,
-                height: 1.35,
-              ),
             ),
           ],
-          if (review.hasReply) ...[
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Ответ продавца',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      if ((review.replyDate ?? '').isNotEmpty)
-                        Text(
-                          review.replyDate!,
-                          style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    review.reply!,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      height: 1.3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
-  }
-
-  static String _pluralReviews(int count) {
-    if (count % 10 == 1 && count % 100 != 11) return 'отзыв';
-    if ((count % 10 >= 2 && count % 10 <= 4) &&
-        (count % 100 < 10 || count % 100 >= 20)) {
-      return 'отзыва';
-    }
-    return 'отзывов';
   }
 }

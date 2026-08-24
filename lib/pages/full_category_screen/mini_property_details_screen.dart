@@ -213,6 +213,11 @@ class MiniPropertyDetailsScreen extends StatefulWidget {
 }
 
 class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
+  // Блок «Поделиться объявлением» по умолчанию свёрнут: иконки видны
+  // всегда, по шеврону раскрывается текст-подсказка. Как в блоке
+  // «Поделиться компанией» на экране продавца.
+  bool _shareExpanded = false;
+
   bool _showFullDescription = false;
   bool _showAllCharacteristics = false;
   final PageController _pageController = PageController();
@@ -1591,80 +1596,112 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     Share.share(textToShare);
   }
 
-  /// 🔗 Блок «Поделиться объявлением» (нативный шэринг = список ссылок/соцсетей).
+  /// 🔗 Блок «Поделиться объявлением».
+  /// Повторяет блок «Поделиться компанией» с экрана продавца: заголовок с
+  /// шевроном, всегда видимый ряд иконок, кнопка и текст-подсказка,
+  /// который появляется только в раскрытом виде.
   Widget _buildShareCard() {
-    return _card(
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 6),
-          const Text(
-            "Поделиться объявлением",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            "Отправьте ссылку друзьям или в соцсети удобным для вас способом",
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
-          ),
-          const SizedBox(height: 14),
-          // Ряд иконок соцсетей — тот же виджет, что и в блоке
-          // «Поделиться компанией» на экране продавца.
-          ShareIconsRow(
-            url: _generateAdvertisementUrl(widget.listing),
-            text: widget.listing.title,
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 47,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: activeIconColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              // Открываем экран QR-кода объявления (как в «Мои объявления»),
-              // передаём id/название/цену текущего объявления.
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AdvertQrScreen(
-                      advertId: int.tryParse(_listing.id) ?? 0,
-                      advertTitle: _listing.title.isNotEmpty
-                          ? _listing.title
-                          : 'Объявление',
-                      advertPrice: _listing.price,
+          // Заголовок + шеврон (раскрывает/сворачивает текст-подсказку).
+          InkWell(
+            onTap: () => setState(() => _shareExpanded = !_shareExpanded),
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              child: Row(
+                children: [
+                  const Text(
+                    'Поделиться объявлением',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                );
-              },
-              icon: SvgPicture.asset(
-                'assets/home_page/share_outlined.svg',
-                width: 20,
-                height: 20,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
-                ),
+                  const Spacer(),
+                  Icon(
+                    _shareExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: textSecondary,
+                  ),
+                ],
               ),
-              label: const Text(
-                "Поделиться ссылкой",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+            ),
+          ),
+          // Иконки шаринга — видны всегда (и свёрнуто, и раскрыто).
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            child: ShareIconsRow(
+              url: _generateAdvertisementUrl(widget.listing),
+              text: widget.listing.title,
+            ),
+          ),
+          // Кнопка — открывает экран с QR-кодом объявления.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 47,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: activeIconColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdvertQrScreen(
+                        advertId: int.tryParse(_listing.id) ?? 0,
+                        advertTitle: _listing.title.isNotEmpty
+                            ? _listing.title
+                            : 'Объявление',
+                        advertPrice: _listing.price,
+                      ),
+                    ),
+                  );
+                },
+                icon: SvgPicture.asset(
+                  'assets/home_page/share_outlined.svg',
+                  width: 20,
+                  height: 20,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+                label: const Text(
+                  'Поделиться ссылкой',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          // Текст-подсказка — только когда блок раскрыт, под кнопкой.
+          if (_shareExpanded)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 0, 18, 18),
+              child: Text(
+                'Отправьте ссылку друзьям или в соцсети удобным для вас способом',
+                style:
+                    TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+              ),
+            ),
         ],
       ),
     );
