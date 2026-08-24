@@ -38,7 +38,6 @@ const String shoppingCartAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 
 class RealEstateListingsScreen extends StatefulWidget {
   final int? categoryId; // ID категории для фильтрации (одна категория)
-  final List<int>? categoryIds; // ID категорий для фильтрации (несколько категорий)
   final int? catalogId; // ID каталога для фильтрации
   final String? categoryName; // Имя категории для отображения в заголовке
   final String? catalogName; // 🎯 Название каталога (Недвижимость, Автомобили и т.д.)
@@ -51,7 +50,6 @@ class RealEstateListingsScreen extends StatefulWidget {
   const RealEstateListingsScreen({
     super.key,
     this.categoryId,
-    this.categoryIds,
     this.catalogId,
     this.categoryName,
     this.isFromFullCategory = false,
@@ -370,48 +368,8 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
       log.d('\n🔶 ═══════════════════════════════════════════════════════════════');
       log.d('🔶 API REQUEST PARAMETERS:');
       log.d('   categoryId: ${widget.categoryId}');
-      log.d('   categoryIds: ${widget.categoryIds}');
       log.d('   catalogId: ${widget.catalogId}');
       
-      // 🔍 Если передан массив categoryIds - загружаем из каждого и объединяем
-      if (widget.categoryIds != null && widget.categoryIds!.isNotEmpty) {
-        log.d('✅ Using MULTIPLE CATEGORY MODE (categoryIds=${widget.categoryIds})');
-        log.d('   Loading from ${widget.categoryIds!.length} categories');
-        
-        var allListings = <Advert>[];
-        for (final catId in widget.categoryIds!) {
-          log.d('   Loading from categoryId=$catId...');
-          var response = await ApiService.getAdverts(
-            categoryId: catId,
-            sort: sort,
-            filters: filtersForApi.isNotEmpty ? filtersForApi : null,
-            page: 1,
-            limit: 100, // Увеличиваем лимит для получения всех объявлений
-            token: token,
-            withAttributes: filtersForApi.isNotEmpty,
-          );
-          allListings.addAll(response.data);
-          log.d('   ✅ Loaded ${response.data.length} listings from categoryId=$catId');
-        }
-        
-        log.d('   Total listings loaded: ${allListings.length}');
-        
-        // Преобразуем в Listing и применяем фильтрацию
-        final listingsToFilter = allListings.map((advert) => advert.toListing()).toList();
-        
-        var result = listingsToFilter;
-        if (_selectedCityName.isNotEmpty && _selectedCityName != 'Ваш город') {
-          result = _filterByCity(result, _selectedCityName);
-        }
-        
-        var sortedListings = _applyClientSideFiltering(result, filtersForApi);
-        
-        setState(() {
-          _listings = sortedListings;
-          _isLoading = false;
-        });
-        return;
-      }
       
       // 🔍 Валидация: должно быть передано минимум одно из значений
       if (widget.categoryId == null && widget.catalogId == null) {

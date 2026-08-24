@@ -149,21 +149,6 @@ class _UniversalBrowseCategoryScreenState
     }
   }
 
-  /// 🔍 Рекурсивно собирает все листовые (конечные) categoryId из категории
-  List<int> _getAllLeafCategoryIds(Category category) {
-    if (category.children == null || category.children!.isEmpty) {
-      // Это конечная категория
-      return [category.id];
-    } else {
-      // Это родительская категория - собираем ID из всех подкатегорий
-      List<int> allIds = [];
-      for (var child in category.children!) {
-        allIds.addAll(_getAllLeafCategoryIds(child));
-      }
-      return allIds;
-    }
-  }
-
   /// Получить название для заголовка
   String _getTitle() {
     if (widget.category != null) {
@@ -472,19 +457,19 @@ class _UniversalBrowseCategoryScreenState
                                         }
                                         // На промежуточных уровнях - используем currentLevelCategory или category
                                         else if (widget.currentLevelCategory != null || widget.category != null) {
-                                          final currentCategory = widget.currentLevelCategory ?? widget.category;
+                                          final currentCategory = (widget.currentLevelCategory ?? widget.category)!;
                                           
-                                          // Собираем все листовые categoryId из текущей категории
-                                          final leafIds = _getAllLeafCategoryIds(currentCategory!);
-                                          log.d('✅ Using MULTIPLE CATEGORY MODE');
+                                          // Бэк принимает НЕКОНЕЧНУЮ категорию и сам разворачивает её в
+                                          // конечные подкатегории (вики: back/api/adverts-listing-nonleaf-category.md).
+                                          // Раньше листовые id собирались на клиенте и по каждому шёл
+                                          // отдельный запрос — без пагинации и со сломанной сортировкой.
+                                          log.d('✅ Using CATEGORY MODE (non-leaf allowed)');
                                           log.d('   currentCategory: ${currentCategory.name} (ID=${currentCategory.id})');
-                                          log.d('   Leaf category IDs: $leafIds');
                                           
                                           return RealEstateListingsScreen(
-                                            categoryIds: leafIds,
+                                            categoryId: currentCategory.id,
                                             categoryName: currentCategory.name,
                                             isFromFullCategory: true,
-                                            catalogId: widget.catalogId, // 🎯 Передаём catalogId для правильного выбора категорий
                                             catalogName: widget.catalogName, // 🎯 Передаём название каталога
                                           );
                                         }
