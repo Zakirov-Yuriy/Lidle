@@ -1434,6 +1434,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       return;
     }
 
+    // Отзыв на свою же компанию бэк отклоняет (422), поэтому диалог не
+    // открываем и сразу объясняем причину — как на сайте.
+    if (_isOwnProfile) {
+      SnackBarHelper.showWarning(
+        context,
+        'Нельзя оставить отзыв на самого себя',
+      );
+      return;
+    }
+
     final token = TokenService.currentToken;
     if (token == null || token.isEmpty) {
       SnackBarHelper.showAuthRequired(

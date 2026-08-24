@@ -11,6 +11,7 @@ import 'package:lidle/models/home_models.dart';
 import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
@@ -1841,6 +1842,25 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       // После закрытия диалога телефонов, если пользователь реально позвонил —
       // предлагаем оставить отзыв (как на сайте).
       if (callInitiated && mounted) {
+        // На СВОЁ объявление отзыв оставить нельзя — бэк отклонит с 422,
+        // поэтому не открываем диалог вовсе, а сразу говорим почему
+        // (так же ведёт себя сайт).
+        final me = UserService.getLocal('userId')?.toString().trim();
+        final owner = _listing.userId?.trim();
+        final isOwnAdvert = me != null &&
+            me.isNotEmpty &&
+            owner != null &&
+            owner.isNotEmpty &&
+            me == owner;
+
+        if (isOwnAdvert) {
+          SnackBarHelper.showWarning(
+            context,
+            'Нельзя оставить отзыв на своё объявление',
+          );
+          return;
+        }
+
         final advertIdForReview = int.tryParse(_listing.id);
         if (advertIdForReview != null) {
           final sellerName = _listing.sellerName?.trim() ?? '';
