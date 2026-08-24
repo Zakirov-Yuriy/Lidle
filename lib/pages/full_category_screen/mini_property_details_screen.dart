@@ -12,6 +12,7 @@ import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/user_service.dart';
+import 'package:lidle/widgets/cards/advert_reviews_card.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
 import 'package:lidle/blocs/listings/listings_event.dart';
 import 'package:lidle/blocs/listings/listings_state.dart';
@@ -715,6 +716,16 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                               const SizedBox(height: 19),
                               // 🔗 Блок ссылок для шаринга объявления
                               _buildShareCard(),
+                              const SizedBox(height: 19),
+                              // Блок отзывов на само объявление: звёзды
+                              // «Оставить отзыв» + уже оставленные отзывы.
+                              // Порядок как на сайте: после «Поделиться»,
+                              // перед жалобой.
+                              AdvertReviewsCard(
+                                advertId: int.tryParse(_listing.id) ?? 0,
+                                ownerId: _listing.userId,
+                                sellerName: _listing.sellerName ?? '',
+                              ),
                               const SizedBox(height: 19),
                               _buildComplaintButton(),
                               const SizedBox(height: 85),

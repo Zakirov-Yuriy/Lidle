@@ -14,6 +14,7 @@ Future<bool?> showReviewDialog({
   required int advertId,
   required String title,
   String? token,
+  int initialRating = 0,
 }) {
   return showDialog<bool>(
     context: context,
@@ -21,6 +22,7 @@ Future<bool?> showReviewDialog({
       advertId: advertId,
       title: title,
       token: token,
+      initialRating: initialRating,
     ),
   );
 }
@@ -35,11 +37,16 @@ class ReviewDialog extends StatefulWidget {
   /// Токен авторизации (отзыв требует регистрации).
   final String? token;
 
+  /// Предвыбранная оценка: пользователь тапнул по звезде в блоке отзывов
+  /// на карточке объявления, и диалог открывается уже с ней.
+  final int initialRating;
+
   const ReviewDialog({
     super.key,
     required this.advertId,
     required this.title,
     this.token,
+    this.initialRating = 0,
   });
 
   @override
@@ -47,7 +54,7 @@ class ReviewDialog extends StatefulWidget {
 }
 
 class _ReviewDialogState extends State<ReviewDialog> {
-  int _rating = 0;
+  late int _rating = widget.initialRating.clamp(0, 5);
   final TextEditingController _controller = TextEditingController();
   bool _submitting = false;
 
