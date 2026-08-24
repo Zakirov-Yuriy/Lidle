@@ -1547,6 +1547,90 @@ class ApiService {
     }
   }
 
+  /// Изменить СВОЙ отзыв на объявление. Править может только автор — это
+  /// проверяет бэк (иначе 403).
+  /// PUT /v1/reviews/{reviewId}  тело: { rating, comment }
+  /// Возвращает тело ответа при успехе, либо null при любой ошибке
+  /// (в т.ч. 422, если в тексте нашли телефон/почту/ссылку).
+  static Future<Map<String, dynamic>?> updateAdvertReview(
+    int reviewId, {
+    required int rating,
+    String? comment,
+    String? token,
+  }) async {
+    try {
+      final body = <String, dynamic>{'rating': rating};
+      // Пустой комментарий шлём как null — так отзыв остаётся «только оценка».
+      final text = comment?.trim() ?? '';
+      body['comment'] = text.isEmpty ? null : text;
+
+      return await put('/reviews/$reviewId', body, token: token);
+    } catch (e) {
+      log.d('Не удалось изменить отзыв: $e');
+      return null;
+    }
+  }
+
+  /// Отзывы, которые оставил ТЕКУЩИЙ пользователь (вкладка «Мои отзывы»).
+  /// GET /v1/me/reviews — требует авторизации, пагинация по 20.
+  /// Возвращает полный ответ (data + meta/links) для постраничной подгрузки.
+  static Future<Map<String, dynamic>> getMyReviews({
+    int page = 1,
+    String? token,
+  }) async {
+    return getWithQuery('/me/reviews', {
+      'page': page.toString(),
+    }, token: token);
+  }
+
+  /// Отзывы, которые оставили НА ОБЪЯВЛЕНИЯ текущего пользователя
+  /// (вкладка «Мои объявления»).
+  /// GET /v1/me/received-reviews — требует авторизации, пагинация по 20.
+  static Future<Map<String, dynamic>> getReceivedReviews({
+    int page = 1,
+    String? token,
+  }) async {
+    return getWithQuery('/me/received-reviews', {
+      'page': page.toString(),
+    }, token: token);
+  }
+
+  /// Отзывы КОНКРЕТНОГО объявления (блок отзывов на карточке объявления).
+  /// GET /v1/advertisements/{advertId}/reviews — публичный, пагинация по 20.
+  /// В title/thumbnail приходит автор отзыва (имя и аватар).
+  static Future<Map<String, dynamic>> getAdvertReviews(
+    int advertId, {
+    int page = 1,
+    String? token,
+  }) async {
+    return getWithQuery('/advertisements/$advertId/reviews', {
+      'page': page.toString(),
+    }, token: token);
+  }
+
+  /// Ответ владельца ОБЪЯВЛЕНИЯ на отзыв. Требует авторизации; отвечать может
+  /// только владелец объявления, к которому оставлен отзыв.
+  /// POST /v1/reviews/{reviewId}/reply  тело: { comment }
+  /// Возвращает тело ответа (в т.ч. `reply`, `replied_at`) при успехе,
+  /// либо null при любой ошибке.
+  static Future<Map<String, dynamic>?> replyAdvertReview(
+    int reviewId, {
+    required String comment,
+    String? token,
+  }) async {
+    try {
+      final res = await post(
+        '/reviews/$reviewId/reply',
+        {'comment': comment.trim()},
+        token: token,
+      );
+      return res;
+    } catch (e) {
+      log.d('Не удалось отправить ответ на отзыв объявления: $e');
+      return null;
+    }
+  }
+
   /// Загрузить файл через multipart/form-data
   static Future<Map<String, dynamic>> uploadFile(
     String endpoint, {

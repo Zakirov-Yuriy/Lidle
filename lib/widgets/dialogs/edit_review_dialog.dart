@@ -1,58 +1,53 @@
 // ============================================================
-//  "Диалог ответа на отзыв"
-//  Один диалог на два случая: ответ владельца ОБЪЯВЛЕНИЯ на отзыв
-//  (POST /v1/reviews/{id}/reply) и ответ владельца КОМПАНИИ
-//  (POST /v1/company/reviews/{id}/reply). Куда слать — решает kind.
+//  "Диалог редактирования своего отзыва"
+//  Оценка (1..5 звёзд) + текст. Шлёт PUT /v1/reviews/{id}.
+//  Править может только автор — это проверяет бэк.
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
-import 'package:lidle/models/review_model.dart';
 import 'package:lidle/services/api_service.dart';
 
-/// Показать диалог ответа на отзыв.
-/// Возвращает тело ответа сервера (`{ reply, replied_at, ... }`) при успехе,
-/// либо null, если отменили или не удалось отправить.
-Future<Map<String, dynamic>?> showReplyReviewDialog({
+/// Показать диалог редактирования отзыва.
+/// Возвращает true, если изменения сохранены.
+Future<bool?> showEditReviewDialog({
   required BuildContext context,
   required int reviewId,
-  required ReviewKind kind,
-  String? initialText,
+  required int initialRating,
+  String? initialComment,
 }) {
-  return showDialog<Map<String, dynamic>>(
+  return showDialog<bool>(
     context: context,
-    builder: (_) => ReplyReviewDialog(
+    builder: (_) => EditReviewDialog(
       reviewId: reviewId,
-      kind: kind,
-      initialText: initialText,
+      initialRating: initialRating,
+      initialComment: initialComment,
     ),
   );
 }
 
-class ReplyReviewDialog extends StatefulWidget {
-  /// Id отзыва, на который отвечаем.
+class EditReviewDialog extends StatefulWidget {
   final int reviewId;
+  final int initialRating;
+  final String? initialComment;
 
-  /// Отзыв на объявление или на компанию — от этого зависит эндпоинт.
-  final ReviewKind kind;
-
-  /// Текущий текст ответа (если ответ уже был — перезапишем).
-  final String? initialText;
-
-  const ReplyReviewDialog({
+  const EditReviewDialog({
     super.key,
     required this.reviewId,
-    required this.kind,
-    this.initialText,
+    required this.initialRating,
+    this.initialComment,
   });
 
   @override
-  State<ReplyReviewDialog> createState() => _ReplyReviewDialogState();
+  State<EditReviewDialog> createState() => _EditReviewDialogState();
 }
 
-class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
+class _EditReviewDialogState extends State<EditReviewDialog> {
+  static const _star = Color(0xFFF5B301);
+
+  late int _rating = widget.initialRating.clamp(0, 5);
   late final TextEditingController _controller =
-      TextEditingController(text: widget.initialText ?? '');
+      TextEditingController(text: widget.initialComment ?? '');
 
   bool _submitting = false;
   String? _error;
@@ -64,9 +59,8 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
   }
 
   Future<void> _submit() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty) {
-      setState(() => _error = 'Напишите ответ');
+    if (_rating == 0) {
+      setState(() => _error = 'Поставьте оценку');
       return;
     }
 
@@ -75,29 +69,30 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
       _error = null;
     });
 
-    // Отзыв о компании отвечается своим эндпоинтом (компания определяется
-    // по токену), отзыв на объявление — своим.
-    final res = widget.kind == ReviewKind.company
-        ? await ApiService.replyCompanyReview(widget.reviewId, comment: text)
-        : await ApiService.replyAdvertReview(widget.reviewId, comment: text);
+    final result = await ApiService.updateAdvertReview(
+      widget.reviewId,
+      rating: _rating,
+      comment: _controller.text,
+    );
 
     if (!mounted) return;
 
-    if (res == null) {
+    if (result == null) {
       setState(() {
         _submitting = false;
-        _error = 'Не удалось отправить ответ. Попробуйте ещё раз.';
+        // Чаще всего это 422 из-за контактов в тексте — бэк запрещает
+        // телефоны, почту и ссылки в отзыве.
+        _error = 'Не удалось сохранить. Проверьте текст: '
+            'телефоны, почта и ссылки в отзыве запрещены.';
       });
       return;
     }
 
-    Navigator.of(context).pop(res);
+    Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = (widget.initialText ?? '').trim().isNotEmpty;
-
     return Dialog(
       backgroundColor: primaryBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -109,10 +104,10 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
           children: [
             Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
-                    isEditing ? 'Изменить ответ' : 'Ответить на отзыв',
-                    style: const TextStyle(
+                    'Изменить отзыв',
+                    style: TextStyle(
                       color: Colors.white,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -120,12 +115,35 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                   ),
                 ),
                 GestureDetector(
-                  onTap: _submitting
-                      ? null
-                      : () => Navigator.of(context).pop(),
+                  onTap:
+                      _submitting ? null : () => Navigator.of(context).pop(),
                   child: const Icon(Icons.close, color: Colors.white70),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Оценка',
+              style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: List.generate(5, (index) {
+                final filled = index < _rating;
+                return GestureDetector(
+                  onTap: _submitting
+                      ? null
+                      : () => setState(() => _rating = index + 1),
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: Icon(
+                      filled ? Icons.star : Icons.star_border,
+                      color: _star,
+                      size: 32,
+                    ),
+                  ),
+                );
+              }),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -133,10 +151,10 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
               enabled: !_submitting,
               maxLines: 5,
               minLines: 3,
-              maxLength: 2000,
+              maxLength: 400,
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
-                hintText: 'Ваш ответ',
+                hintText: 'Текст отзыва',
                 hintStyle: const TextStyle(color: Colors.white54),
                 counterStyle: const TextStyle(color: Colors.white38),
                 fillColor: Colors.white10,
@@ -179,7 +197,7 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
                           ),
                         )
                       : const Text(
-                          'Отправить',
+                          'Сохранить',
                           style: TextStyle(color: Color(0xFF009EE2)),
                         ),
                 ),

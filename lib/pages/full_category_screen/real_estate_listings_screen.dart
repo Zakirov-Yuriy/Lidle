@@ -1729,7 +1729,9 @@ class _RealEstateListingsScreenState extends State<RealEstateListingsScreen> {
               _buildNavItem(homeIconAsset, 0, _selectedIndex),
               _buildNavItem(gridIconAsset, 1, _selectedIndex),
               _buildCenterAdd(2, _selectedIndex),
-              _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
+              // Корзина скрыта до появления раздела покупок (как в
+              // общем нижнем меню). Индексы не меняем.
+              // _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
               _buildNavItem(messageIconAssetLocal, 4, _selectedIndex),
               _buildNavItem(userIconAsset, 5, _selectedIndex),
             ],

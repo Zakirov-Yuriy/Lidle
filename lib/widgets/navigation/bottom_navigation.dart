@@ -97,7 +97,10 @@ class BottomNavigation extends StatelessWidget {
                   _buildNavItem(context, homeIconAsset, 0, selectedIndex, 0),
                   _buildNavItem(context, heartIconAsset, 1, selectedIndex, 0),
                   _buildCenterAdd(context, 2, selectedIndex),
-                  _buildNavItem(context, shoppingCartIconAsset, 3, selectedIndex, 0),
+                  // Корзина скрыта до появления раздела покупок.
+                  // Индексы остальных пунктов НЕ меняем, чтобы не сломать
+                  // навигацию по index в _navigateToScreen.
+                  // _buildNavItem(context, shoppingCartIconAsset, 3, selectedIndex, 0),
                   // 💬 Передаем количество непрочитанных для иконки сообщений
                   _buildNavItem(context, messageIconAsset, 4, selectedIndex, unreadCount),
                   _buildNavItem(context, userIconAsset, 5, selectedIndex, 0),

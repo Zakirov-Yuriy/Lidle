@@ -24,13 +24,17 @@ import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
-import 'package:lidle/pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
+// Экран покупок пока не открывается с дашборда (карточка «Покупки» скрыта),
+// импорт оставлен закомментированным вместе с ней.
+// ignore: unused_import
+import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/profile_dashboard/offers/price_offers_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
+import 'package:lidle/models/review_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/core/cache/cache_service.dart';
@@ -41,6 +45,18 @@ import 'package:lidle/pages/profile_dashboard/financial_support_dialog.dart';
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
 // ============================================================
+/// Склонение слова «отзыв»: 1 отзыв, 2 отзыва, 5 отзывов.
+String _getReviewsPluralForm(int count) {
+  if (count % 10 == 1 && count % 100 != 11) {
+    return 'отзыв';
+  } else if ((count % 10 >= 2 && count % 10 <= 4) &&
+      (count % 100 < 10 || count % 100 >= 20)) {
+    return 'отзыва';
+  } else {
+    return 'отзывов';
+  }
+}
+
 String _getPluralForm(int count) {
   if (count % 10 == 1 && count % 100 != 11) {
     return 'товар';
@@ -67,6 +83,10 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   // ignore: unused_field
   int _inactiveListingsCount = 0;
   int _priceOffersCount = 0;
+
+  /// Сколько отзывов оставили на объявления пользователя — подпись на
+  /// быстрой карточке «Отзывы». Берём meta.total из /me/received-reviews.
+  int _reviewsCount = 0;
   bool _isLoadingListings = true;
   // ignore: unused_field
   bool _isLoadingPriceOffers = false;
@@ -105,6 +125,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadListingsCounts(useCache: true);
     // 💰 Загружаем количество предложений цен
     _loadPriceOffersCount(useCache: true);
+    // ⭐ Количество отзывов на объявления пользователя
+    _loadReviewsCount();
     // 🏪 Подтягиваем актуальное название компании (магазина) с сервера
     _loadCompanyName();
   }
@@ -153,6 +175,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   }
 
   /// Показывает диалоговое окно финансовой поддержки
+  // Диалог финансовой поддержки: блок скрыт с дашборда, метод оставлен
+  // для быстрого возврата.
+  // ignore: unused_element
   void _showFinancialSupportDialog() {
     FinancialSupportDialog.show(context);
   }
@@ -260,6 +285,21 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Загрузить количество предложений цен (Предложения мне).
   /// [useCache] = true: сначала показать из кэша (если свежий), потом обновить в фоне
   /// [useCache] = false: всегда загружать со свежими указанными данными
+  /// Количество отзывов на объявления пользователя (для подписи быстрой
+  /// карточки «Отзывы»). Берём meta.total первой страницы — сами отзывы
+  /// здесь не нужны, поэтому список не разбираем.
+  Future<void> _loadReviewsCount() async {
+    try {
+      final response = await ApiService.getReceivedReviews(page: 1);
+      final total = ReviewModel.totalFromResponse(response) ?? 0;
+      if (!mounted) return;
+      setState(() => _reviewsCount = total);
+    } catch (e) {
+      // Молча: подпись просто останется нулевой, экран это не ломает.
+      log.d('Не удалось получить количество отзывов: $e');
+    }
+  }
+
   Future<void> _loadPriceOffersCount({bool useCache = false}) async {
     try {
       // Проверяем AppCacheService (L1 RAM, TTL 60с)
@@ -468,23 +508,26 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                             );
                                           },
                                         ),
-                                        SizedBox(width: 10),
-                                        _QuickCard(
-                                          iconPath:
-                                              'assets/profile_dashboard/shopping-cart-01.svg',
-                                          title: 'Покупки',
-                                          subtitle: '0 товаров',
-                                          onTap: () =>
-                                              Navigator.of(context).pushNamed(
-                                                MyPurchasesScreen.routeName,
-                                              ),
-                                        ),
+                                        // Карточка «Покупки» скрыта до появления
+                                        // раздела покупок. Вернуть — раскомментировать.
+                                        // SizedBox(width: 10),
+                                        // _QuickCard(
+                                        //   iconPath:
+                                        //       'assets/profile_dashboard/shopping-cart-01.svg',
+                                        //   title: 'Покупки',
+                                        //   subtitle: '0 товаров',
+                                        //   onTap: () =>
+                                        //       Navigator.of(context).pushNamed(
+                                        //         MyPurchasesScreen.routeName,
+                                        //       ),
+                                        // ),
                                         SizedBox(width: 10),
                                         _QuickCard(
                                           iconPath:
                                               'assets/profile_dashboard/eva_star-fill.svg',
                                           title: 'Отзывы',
-                                          subtitle: '0 отзовов',
+                                          subtitle:
+                                              '$_reviewsCount ${_getReviewsPluralForm(_reviewsCount)}',
                                           onTap: () => Navigator.of(
                                             context,
                                           ).pushNamed(ReviewsEmptyPage.routeName),
@@ -592,43 +635,48 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                     color: Color(0xFF474747),
                                     height: 8,
                                   ),
-                                  _MenuItem(
-                                    title: 'Заказы',
-                                    count: 0,
-                                    trailingChevron: true,
-                                    isHighlight: true,
-                                    onTap: () {},
-                                  ),
-                                  const Divider(
-                                    color: Color(0xFF474747),
-                                    height: 8,
-                                  ),
+                                  // Пункт «Заказы» скрыт до появления раздела
+                                  // заказов — кнопка вела в никуда (onTap пустой).
+                                  // Вернуть: раскомментировать блок ниже.
+                                  // _MenuItem(
+                                  //   title: 'Заказы',
+                                  //   count: 0,
+                                  //   trailingChevron: true,
+                                  //   isHighlight: true,
+                                  //   onTap: () {},
+                                  // ),
+                                  // const Divider(
+                                  //   color: Color(0xFF474747),
+                                  //   height: 8,
+                                  // ),
                                   
                                   
                                   const SizedBox(height: 12),
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Container(
-                                      width: 185,
-                                      height: 48,
-                                      child: _MessageCard(
-                                        title: 'Поддержка LIDLE',
-                                        subtitle: 'Сообщения: Нет',
-                                        highlight: false,
-                                        onTap: () => Navigator.of(
-                                          context,
-                                        ).pushNamed(SupportScreen.routeName),
-                                      ),
-                                    ),
-                                  ),
-
-                                  const SizedBox(height: 12),
-                                  
-                                  // Финансовая поддержка владельца ЛИДЛЕ (адаптивная ширина)
+                                  // Поддержка и ФИНАНСЫ — две карточки в ряд.
+                                  // Блок «Финансовая поддержка владельца ЛИДЛЕ»
+                                  // скрыт (см. _FinancialSupportCard ниже),
+                                  // вместо него — баланс пользователя.
                                   SizedBox(
-                                    width: double.infinity,
-                                    child: _FinancialSupportCard(
-                                      onTap: _showFinancialSupportDialog,
+                                    height: 48,
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: _MessageCard(
+                                            title: 'Поддержка ЛИДЛЕ',
+                                            subtitle: 'Сообщения: Нет',
+                                            highlight: false,
+                                            onTap: () => Navigator.of(context)
+                                                .pushNamed(
+                                                    SupportScreen.routeName),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        const Expanded(
+                                          child: _FinanceCard(balance: 0),
+                                        ),
+                                      ],
                                     ),
                                   ),
 
@@ -1071,6 +1119,76 @@ class _MessageCard extends StatelessWidget {
   }
 }
 
+/// Карточка «ФИНАНСЫ» — баланс пользователя в приложении.
+///
+/// ВАЖНО: API баланса на бэке пока НЕТ. Биллинг сейчас работает через
+/// подписки (feed_subscriptions), а не через лицевой счёт, поэтому число
+/// приходит снаружи и по умолчанию нулевое. Когда появится эндпоинт
+/// баланса — сюда достаточно передать реальное значение.
+class _FinanceCard extends StatelessWidget {
+  /// Баланс в рублях.
+  final int balance;
+
+  const _FinanceCard({this.balance = 0});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: primaryBackground,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: const Color(0xFF474747)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Padding(
+              padding: EdgeInsets.only(bottom: 1.0),
+              child: Text(
+                'ФИНАНСЫ',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                const Text(
+                  'Баланс: ',
+                  style: TextStyle(
+                    color: textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                Text(
+                  '$balance',
+                  style: const TextStyle(
+                    color: Color(0xFF4CD964),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Блок «Финансовая поддержка» временно скрыт с дашборда (вместо него —
+// карточка ФИНАНСЫ). Класс и диалог оставлены, чтобы вернуть блок одной
+// строкой, поэтому анализатор о неиспользуемом коде не предупреждает.
+// ignore: unused_element
 /// Виджет "Финансовая поддержка владельца ЛИДЛЕ LIDLE"
 /// Отображает информацию о программе финансовой поддержки продавцов
 class _FinancialSupportCard extends StatelessWidget {
