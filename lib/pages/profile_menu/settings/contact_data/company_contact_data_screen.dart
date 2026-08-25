@@ -561,10 +561,17 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       final errors = <String>[];
 
       // Название компании (скаляр).
+      // Ошибку не проглатываем: если бэк отклонил значение, человек должен
+      // увидеть причину, иначе поле «просто не сохраняется» без объяснений.
       try {
-        await CompanyContactService.changeName(name: name, token: token);
+        final resp =
+            await CompanyContactService.changeName(name: name, token: token);
+        if (resp['success'] == false) {
+          errors.add(resp['message']?.toString() ?? 'Название компании: ошибка');
+        }
       } catch (e) {
         log.d('❌ Ошибка сохранения названия компании: $e');
+        errors.add('Название компании: не удалось сохранить');
       }
 
       // Описание компании (скаляр). Шлём всегда, в т.ч. пустое (очистка).
@@ -598,6 +605,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       }
 
       // Телефон 1: скаляр + коллекция (первый элемент).
+      //
+      // Порядок в коллекции — по возрастанию id, то есть первым приходит
+      // добавленный первым. Поля формы раскладываются позиционно, поэтому
+      // «Телефон 1» и «Телефон 2» остаются на своих местах после перезагрузки.
       if (phone1.isNotEmpty) {
         try {
           await CompanyContactService.changePhone(phone: phone1, token: token);

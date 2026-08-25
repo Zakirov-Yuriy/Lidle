@@ -681,18 +681,28 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
       final updatedPhone2 = _phone2Controller.text;
       final updatedAbout = _aboutController.text;
 
-      // Обновляем имя на API (если оно изменилось)
+      // Имя и фамилия уходят ОДНИМ запросом, оба поля обязательны на бэке.
+      // Поэтому пустая фамилия роняет и имя тоже — и раньше это происходило
+      // молча: ошибка попадала только в лог, а человек видел, что данные просто
+      // не сохранились. Теперь причину показываем. См. задачу 49.
+      String? nameError;
       if (updatedName.isNotEmpty || updatedLastName.isNotEmpty) {
         try {
           log.d('👤 Updating user name: "$updatedName" "$updatedLastName"');
-          await UserService.updateName(
+          final resp = await UserService.updateName(
             name: updatedName,
             lastName: updatedLastName,
             token: token,
           );
-          log.d('✅ Имя и фамилия обновлены на сервере');
+          if (resp is Map && resp['success'] == false) {
+            nameError = resp['message']?.toString() ??
+                'Имя и фамилию сохранить не удалось';
+          } else {
+            log.d('✅ Имя и фамилия обновлены на сервере');
+          }
         } catch (e) {
           log.d('❌ Ошибка обновления имени: $e');
+          nameError = 'Имя и фамилию сохранить не удалось';
         }
       }
 
@@ -966,7 +976,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
         // Обновляем id телеграма/MAX (после create id меняется).
         _loadMessengers();
 
-        if (messengerErrors.isEmpty) {
+        // Ошибка имени показывается вместе с ошибками мессенджеров: раньше она
+        // терялась, и человек не понимал, почему имя не сохранилось.
+        final saveErrors = <String>[
+          if (nameError != null) nameError,
+          ...messengerErrors,
+        ];
+
+        if (saveErrors.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('✅ Контактные данные сохранены и обновлены'),
@@ -974,11 +991,10 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             ),
           );
         } else {
-          // Часть данных сохранена, но мессенджеры не прошли валидацию.
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Сохранено, но: ${messengerErrors.join('; ')}',
+                'Сохранено, но: ${saveErrors.join('; ')}',
               ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 4),
