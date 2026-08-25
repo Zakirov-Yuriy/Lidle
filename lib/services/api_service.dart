@@ -1659,13 +1659,24 @@ class ApiService {
   /// Отзывы, которые оставили НА ОБЪЯВЛЕНИЯ текущего пользователя
   /// (вкладка «Мои объявления»).
   /// GET /v1/me/received-reviews — требует авторизации, пагинация по 20.
+  /// [advertId] сужает выборку до одного объявления — это список для владельца
+  /// на карточке его собственного объявления, где публичный эндпоинт
+  /// показывает только оценки 4-5, а владельцу нужны все 1-5.
+  ///
+  /// С [advertId] бэк отдаёт элементы В ТОЙ ЖЕ форме, что и публичный
+  /// `getAdvertReviews`: в title/thumbnail автор отзыва, а не объявление.
+  /// Поэтому один и тот же экран работает с обоими списками.
   static Future<Map<String, dynamic>> getReceivedReviews({
     int page = 1,
+    int? advertId,
     String? token,
   }) async {
-    return getWithQuery('/me/received-reviews', {
-      'page': page.toString(),
-    }, token: token);
+    final query = <String, String>{'page': page.toString()};
+    if (advertId != null) {
+      query['advert_id'] = advertId.toString();
+    }
+
+    return getWithQuery('/me/received-reviews', query, token: token);
   }
 
   /// Отзывы КОНКРЕТНОГО объявления (блок отзывов на карточке объявления).

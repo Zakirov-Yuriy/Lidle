@@ -148,13 +148,25 @@ class _AdvertReviewsScreenState extends State<AdvertReviewsScreen> {
     }
   }
 
+  /// Откуда берём отзывы.
+  ///
+  /// Чужое объявление — публичный список, там только оценки 4-5.
+  /// Своё — кабинетный с фильтром по объявлению, там все 1-5: владелец должен
+  /// видеть и то, что покупателям не показывают. Форма элементов у обоих
+  /// списков одинаковая, поэтому остальной экран не различает источник.
+  Future<Map<String, dynamic>> _fetchPage(int page) {
+    return _isOwner
+        ? ApiService.getReceivedReviews(page: page, advertId: widget.advertId)
+        : ApiService.getAdvertReviews(widget.advertId, page: page);
+  }
+
   Future<void> _loadReviews() async {
     setState(() {
       _isLoading = true;
       _error = null;
     });
     try {
-      final response = await ApiService.getAdvertReviews(widget.advertId);
+      final response = await _fetchPage(1);
       final list = _extractList(response);
       if (!mounted) return;
       setState(() {
@@ -179,8 +191,7 @@ class _AdvertReviewsScreenState extends State<AdvertReviewsScreen> {
     setState(() => _isLoadingMore = true);
     try {
       final next = _page + 1;
-      final response =
-          await ApiService.getAdvertReviews(widget.advertId, page: next);
+      final response = await _fetchPage(next);
       final list = _extractList(response);
       if (!mounted) return;
       setState(() {
