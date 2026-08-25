@@ -1571,6 +1571,48 @@ class ApiService {
     }
   }
 
+  /// Удалить СВОЙ отзыв о компании. Удалить может только автор (иначе 403).
+  /// DELETE /v1/companies/{companyId}/reviews/{reviewId}
+  static Future<bool> deleteCompanyReview({
+    required int companyId,
+    required int reviewId,
+    String? token,
+  }) async {
+    try {
+      await delete('/companies/$companyId/reviews/$reviewId', token: token);
+      return true;
+    } catch (e) {
+      log.d('Не удалось удалить отзыв о компании: $e');
+      return false;
+    }
+  }
+
+  /// Изменить СВОЙ отзыв о компании. Править может только автор.
+  /// PUT /v1/companies/{companyId}/reviews/{reviewId}  тело: { rating, comment }
+  static Future<Map<String, dynamic>?> updateCompanyReview({
+    required int companyId,
+    required int reviewId,
+    required int rating,
+    String? comment,
+    String? token,
+  }) async {
+    try {
+      final text = comment?.trim() ?? '';
+      final body = <String, dynamic>{
+        'rating': rating,
+        'comment': text.isEmpty ? null : text,
+      };
+      return await put(
+        '/companies/$companyId/reviews/$reviewId',
+        body,
+        token: token,
+      );
+    } catch (e) {
+      log.d('Не удалось изменить отзыв о компании: $e');
+      return null;
+    }
+  }
+
   /// Отзывы, которые оставил ТЕКУЩИЙ пользователь (вкладка «Мои отзывы»).
   /// GET /v1/me/reviews — требует авторизации, пагинация по 20.
   /// Возвращает полный ответ (data + meta/links) для постраничной подгрузки.

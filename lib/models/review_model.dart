@@ -50,6 +50,18 @@ class ReviewModel {
   /// Дата ответа в виде «19 августа», null если ответа нет.
   final String? replyDate;
 
+  /// На что оставлен отзыв: на компанию или на объявление.
+  ///
+  /// Во вкладке «Мои отзывы» приходят оба типа вперемешку (бэк отдаёт поле
+  /// `type`), а удаление и правка у них ведут на разные эндпоинты — поэтому
+  /// тип надо знать. Для остальных вкладок это всегда отзыв на объявление
+  /// или на компанию по самой вкладке.
+  final bool isCompanyReview;
+
+  /// Id компании — нужен для удаления и правки отзыва о компании
+  /// (путь /v1/companies/{companyId}/reviews/{id}). null для отзыва на объявление.
+  final int? companyId;
+
   const ReviewModel({
     required this.id,
     required this.kind,
@@ -60,6 +72,8 @@ class ReviewModel {
     this.imageUrl,
     this.reply,
     this.replyDate,
+    this.isCompanyReview = false,
+    this.companyId,
   });
 
   /// Есть ли ответ на отзыв.
@@ -82,6 +96,12 @@ class ReviewModel {
     final rawTitle = _str(json['title']) ?? _str(json['user_name']) ?? '';
     final rawImage = _str(json['thumbnail']) ?? _str(json['user_avatar']);
 
+    // Во вкладке «Мои отзывы» бэк присылает type = advert | company.
+    // На вкладке «Моя компания» отдельного type нет — там всё про компанию.
+    final type = _str(json['type']);
+    final isCompany =
+        type == 'company' || (type == null && kind == ReviewKind.company);
+
     return ReviewModel(
       id: _int(json['id']) ?? 0,
       kind: kind,
@@ -92,6 +112,8 @@ class ReviewModel {
       text: _str(json['comment']) ?? '',
       reply: _str(json['reply']),
       replyDate: _str(json['reply_date']),
+      isCompanyReview: isCompany,
+      companyId: _int(json['company_id']),
     );
   }
 
@@ -137,6 +159,8 @@ class ReviewModel {
       imageUrl: imageUrl,
       reply: reply ?? this.reply,
       replyDate: replyDate ?? this.replyDate,
+      isCompanyReview: isCompanyReview,
+      companyId: companyId,
     );
   }
 

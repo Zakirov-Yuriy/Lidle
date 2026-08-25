@@ -15,6 +15,7 @@ Future<bool?> showEditReviewDialog({
   required int reviewId,
   required int initialRating,
   String? initialComment,
+  int? companyId,
 }) {
   return showDialog<bool>(
     context: context,
@@ -22,6 +23,7 @@ Future<bool?> showEditReviewDialog({
       reviewId: reviewId,
       initialRating: initialRating,
       initialComment: initialComment,
+      companyId: companyId,
     ),
   );
 }
@@ -31,11 +33,16 @@ class EditReviewDialog extends StatefulWidget {
   final int initialRating;
   final String? initialComment;
 
+  /// Если задан — правим отзыв О КОМПАНИИ (свой эндпоинт с company_id в пути).
+  /// null — отзыв на объявление.
+  final int? companyId;
+
   const EditReviewDialog({
     super.key,
     required this.reviewId,
     required this.initialRating,
     this.initialComment,
+    this.companyId,
   });
 
   @override
@@ -69,11 +76,19 @@ class _EditReviewDialogState extends State<EditReviewDialog> {
       _error = null;
     });
 
-    final result = await ApiService.updateAdvertReview(
-      widget.reviewId,
-      rating: _rating,
-      comment: _controller.text,
-    );
+    final companyId = widget.companyId;
+    final result = companyId != null
+        ? await ApiService.updateCompanyReview(
+            companyId: companyId,
+            reviewId: widget.reviewId,
+            rating: _rating,
+            comment: _controller.text,
+          )
+        : await ApiService.updateAdvertReview(
+            widget.reviewId,
+            rating: _rating,
+            comment: _controller.text,
+          );
 
     if (!mounted) return;
 

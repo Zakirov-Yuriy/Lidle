@@ -70,9 +70,14 @@ class _ReviewCardState extends State<ReviewCard> {
     );
     if (confirmed != true) return;
 
-    final ok = await ApiService.deleteAdvertReview(
-      reviewId: widget.review.id,
-    );
+    // Отзыв о компании удаляется своим эндпоинтом (с company_id в пути).
+    final companyId = widget.review.companyId;
+    final ok = widget.review.isCompanyReview && companyId != null
+        ? await ApiService.deleteCompanyReview(
+            companyId: companyId,
+            reviewId: widget.review.id,
+          )
+        : await ApiService.deleteAdvertReview(reviewId: widget.review.id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -116,6 +121,8 @@ class _ReviewCardState extends State<ReviewCard> {
       reviewId: widget.review.id,
       initialRating: widget.review.rating.round(),
       initialComment: widget.review.text,
+      // Для отзыва о компании диалог уйдёт на свой эндпоинт.
+      companyId: widget.review.isCompanyReview ? widget.review.companyId : null,
     );
     if (saved != true || !mounted) return;
 
@@ -133,13 +140,18 @@ class _ReviewCardState extends State<ReviewCard> {
   /// Для отзыва о компании бэку нужен company_id в пути — на этой вкладке
   /// компания моя, поэтому берём собственный id пользователя.
   void _openComplaintDialog() {
-    final isCompany = widget.review.kind == ReviewKind.company;
+    // Тип берём у самого отзыва: во вкладке «Мои отзывы» встречаются оба.
+    final isCompany =
+        widget.review.isCompanyReview || widget.review.kind == ReviewKind.company;
 
     int? companyId;
     if (isCompany) {
-      companyId = int.tryParse(
-        UserService.getLocal('userId')?.toString().trim() ?? '',
-      );
+      // Если бэк прислал company_id (вкладка «Мои отзывы») — берём его.
+      // На вкладке «Моя компания» отзывы о МОЕЙ компании, там это мой id.
+      companyId = widget.review.companyId ??
+          int.tryParse(
+            UserService.getLocal('userId')?.toString().trim() ?? '',
+          );
       if (companyId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
