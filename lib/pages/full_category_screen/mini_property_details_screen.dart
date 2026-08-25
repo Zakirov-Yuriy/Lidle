@@ -731,6 +731,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                                 advertId: int.tryParse(_listing.id) ?? 0,
                                 ownerId: _listing.userId,
                                 sellerName: _listing.sellerName ?? '',
+                                advertTitle: _listing.title,
                               ),
                               const SizedBox(height: 19),
                               _buildComplaintButton(),

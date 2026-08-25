@@ -20,13 +20,18 @@ class AdvertReviewsCard extends StatefulWidget {
   /// Id владельца объявления — на своё объявление отзыв оставить нельзя.
   final String? ownerId;
 
-  /// Название продавца для заголовка диалога отзыва.
+  /// Название продавца — идёт в заголовок диалога отзыва («Отзыв на …»).
   final String sellerName;
+
+  /// Название самого объявления — идёт в заголовок экрана «Все отзывы».
+  /// Это разные вещи: на экране отзывов объявления имя продавца ни при чём.
+  final String advertTitle;
 
   const AdvertReviewsCard({
     super.key,
     required this.advertId,
     required this.sellerName,
+    this.advertTitle = '',
     this.ownerId,
   });
 
@@ -97,7 +102,7 @@ class _AdvertReviewsCardState extends State<AdvertReviewsCard> {
       MaterialPageRoute(
         builder: (_) => AdvertReviewsScreen(
           advertId: widget.advertId,
-          advertTitle: widget.sellerName,
+          advertTitle: widget.advertTitle,
           // Владельцу объявления на экране показываем «Ответить»,
           // остальным — «Пожаловаться».
           ownerId: widget.ownerId,
