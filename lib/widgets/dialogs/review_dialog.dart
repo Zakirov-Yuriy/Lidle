@@ -77,7 +77,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
 
     setState(() => _submitting = true);
 
-    final ok = await ApiService.submitAdvertReview(
+    final error = await ApiService.submitAdvertReview(
       widget.advertId,
       rating: _rating,
       comment: _controller.text,
@@ -87,7 +87,7 @@ class _ReviewDialogState extends State<ReviewDialog> {
     if (!mounted) return;
     setState(() => _submitting = false);
 
-    if (ok) {
+    if (error == null) {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop(true);
       messenger.showSnackBar(
@@ -97,10 +97,14 @@ class _ReviewDialogState extends State<ReviewDialog> {
         ),
       );
     } else {
+      // Показываем причину от бэка целиком: чаще всего это запрет на телефоны,
+      // почту и ссылки в тексте, и человеку надо знать, что именно убрать.
+      // Диалог НЕ закрываем — текст остаётся, его можно поправить и отправить.
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось отправить отзыв. Попробуйте позже.'),
+        SnackBar(
+          content: Text(error),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
         ),
       );
     }

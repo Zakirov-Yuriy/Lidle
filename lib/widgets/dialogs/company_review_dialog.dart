@@ -78,7 +78,7 @@ class _CompanyReviewDialogState extends State<CompanyReviewDialog> {
 
     setState(() => _submitting = true);
 
-    final ok = await ApiService.submitCompanyReview(
+    final error = await ApiService.submitCompanyReview(
       widget.companyId,
       rating: _rating,
       comment: _controller.text,
@@ -88,7 +88,7 @@ class _CompanyReviewDialogState extends State<CompanyReviewDialog> {
     if (!mounted) return;
     setState(() => _submitting = false);
 
-    if (ok) {
+    if (error == null) {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.of(context).pop(true);
       messenger.showSnackBar(
@@ -98,10 +98,13 @@ class _CompanyReviewDialogState extends State<CompanyReviewDialog> {
         ),
       );
     } else {
+      // Причина от бэка целиком, диалог остаётся открытым — текст можно
+      // поправить и отправить снова.
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Не удалось отправить отзыв. Попробуйте позже.'),
+        SnackBar(
+          content: Text(error),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
         ),
       );
     }

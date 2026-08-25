@@ -1480,9 +1480,36 @@ class ApiService {
   }
 
   /// Оставить отзыв на компанию (продавца). Требует авторизации.
+  /// Причина отказа из тела ответа, либо null если всё хорошо.
+  ///
+  /// ВАЖНО: `_handleResponse` при 422 НЕ бросает исключение, а возвращает тело
+  /// («Don't throw exception, let calling code handle it»). Поэтому проверять
+  /// успех по отсутствию исключения нельзя — надо смотреть в само тело.
+  /// Из-за этого отзывы с почтой в тексте молча «отправлялись»: бэк отвечал
+  /// 422 `adverts.contact_in_text`, а приложение показывало «Спасибо за отзыв!».
+  ///
+  /// Сначала берём первую ошибку из `errors` (она про конкретное поле и
+  /// понятнее), потом общий `message`.
+  static String? _reviewError(Map<String, dynamic>? data) {
+    if (data == null) return null;
+    if (data['success'] != false && data['errors'] == null) return null;
+
+    final errors = data['errors'];
+    if (errors is Map && errors.isNotEmpty) {
+      final first = errors.values.first;
+      if (first is List && first.isNotEmpty) return first.first.toString();
+      if (first is String && first.trim().isNotEmpty) return first;
+    }
+
+    final message = data['message'];
+    if (message is String && message.trim().isNotEmpty) return message;
+
+    return 'Не удалось сохранить отзыв.';
+  }
+
   /// POST /v1/companies/{companyId}/reviews
-  /// Возвращает true при успехе (201), false при любой ошибке.
-  static Future<bool> submitCompanyReview(
+  /// null — отзыв создан. Строка — причина отказа, её нужно показать человеку.
+  static Future<String?> submitCompanyReview(
     int companyId, {
     required int rating,
     String? comment,
@@ -1493,11 +1520,11 @@ class ApiService {
       if (comment != null && comment.trim().isNotEmpty) {
         body['comment'] = comment.trim();
       }
-      await post('/companies/$companyId/reviews', body, token: token);
-      return true;
+      final res = await post('/companies/$companyId/reviews', body, token: token);
+      return _reviewError(res);
     } catch (e) {
-      // log.d('Failed to submit company review: $e');
-      return false;
+      log.d('Не удалось отправить отзыв о компании: $e');
+      return 'Не удалось отправить отзыв. Проверьте соединение.';
     }
   }
 
@@ -1527,8 +1554,8 @@ class ApiService {
 
   /// Оставить отзыв к объявлению (после звонка).
   /// Требует авторизации: без токена бэк вернёт 401.
-  /// Возвращает true при успехе (201), false при любой ошибке.
-  static Future<bool> submitAdvertReview(
+  /// null — отзыв создан. Строка — причина отказа, её нужно показать человеку.
+  static Future<String?> submitAdvertReview(
     int advertId, {
     required int rating,
     String? comment,
@@ -1539,20 +1566,21 @@ class ApiService {
       if (comment != null && comment.trim().isNotEmpty) {
         body['comment'] = comment.trim();
       }
-      await post('/advertisements/$advertId/reviews', body, token: token);
-      return true;
+      final res =
+          await post('/advertisements/$advertId/reviews', body, token: token);
+      return _reviewError(res);
     } catch (e) {
-      // log.d('Failed to submit advert review: $e');
-      return false;
+      log.d('Не удалось отправить отзыв на объявление: $e');
+      return 'Не удалось отправить отзыв. Проверьте соединение.';
     }
   }
 
   /// Изменить СВОЙ отзыв на объявление. Править может только автор — это
   /// проверяет бэк (иначе 403).
   /// PUT /v1/reviews/{reviewId}  тело: { rating, comment }
-  /// Возвращает тело ответа при успехе, либо null при любой ошибке
-  /// (в т.ч. 422, если в тексте нашли телефон/почту/ссылку).
-  static Future<Map<String, dynamic>?> updateAdvertReview(
+  /// null — сохранено. Строка — причина отказа (в т.ч. 422, если в тексте
+  /// нашли телефон, почту или ссылку).
+  static Future<String?> updateAdvertReview(
     int reviewId, {
     required int rating,
     String? comment,
@@ -1564,10 +1592,11 @@ class ApiService {
       final text = comment?.trim() ?? '';
       body['comment'] = text.isEmpty ? null : text;
 
-      return await put('/reviews/$reviewId', body, token: token);
+      final res = await put('/reviews/$reviewId', body, token: token);
+      return _reviewError(res);
     } catch (e) {
       log.d('Не удалось изменить отзыв: $e');
-      return null;
+      return 'Не удалось сохранить. Проверьте соединение.';
     }
   }
 
@@ -1589,7 +1618,8 @@ class ApiService {
 
   /// Изменить СВОЙ отзыв о компании. Править может только автор.
   /// PUT /v1/companies/{companyId}/reviews/{reviewId}  тело: { rating, comment }
-  static Future<Map<String, dynamic>?> updateCompanyReview({
+  /// null — сохранено. Строка — причина отказа.
+  static Future<String?> updateCompanyReview({
     required int companyId,
     required int reviewId,
     required int rating,
@@ -1602,14 +1632,15 @@ class ApiService {
         'rating': rating,
         'comment': text.isEmpty ? null : text,
       };
-      return await put(
+      final res = await put(
         '/companies/$companyId/reviews/$reviewId',
         body,
         token: token,
       );
+      return _reviewError(res);
     } catch (e) {
       log.d('Не удалось изменить отзыв о компании: $e');
-      return null;
+      return 'Не удалось сохранить. Проверьте соединение.';
     }
   }
 
