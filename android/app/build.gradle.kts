@@ -22,7 +22,12 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "io.lidle.app"
-    compileSdk = flutter.compileSdkVersion
+    // Версию Android задаём числом, а не значением из Flutter.
+    // Google Play с 31.08.2026 принимает новые приложения только под
+    // API 36, и полагаться на то, какую версию подставит установленный
+    // Flutter, тут нельзя: у разных версий Flutter значение разное, и
+    // сборка тихо уедет на 35.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -39,7 +44,8 @@ android {
     defaultConfig {
         applicationId = "io.lidle.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Тоже числом и по той же причине, см. compileSdk выше.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

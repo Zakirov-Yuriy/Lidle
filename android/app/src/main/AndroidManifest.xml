@@ -4,31 +4,56 @@
     <!-- Интернет обязателен -->
     <uses-permission android:name="android.permission.INTERNET"/>
     
-    <!-- Разрешение для телефонных звонков -->
-    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    <!-- CALL_PHONE убран: приложение не звонит само, а открывает системный
+         набор номера через tel:. Для этого разрешение не нужно, а Google
+         Play разбирает его особенно придирчиво: оно даёт право совершать
+         звонки без ведома пользователя. -->
 
     <!-- Разрешение для пуш-уведомлений (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Разрешения для сохранения файлов в галерею -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <!-- Разрешения для сохранения файлов в галерею.
+         Ограничены по версии Android: начиная с Android 13 доступ к
+         картинкам даёт READ_MEDIA_IMAGES, а с Android 10 запись в свою
+         папку галереи разрешения не требует вовсе. Без ограничения Google
+         спрашивает, зачем приложению полный доступ к хранилищу. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 
-    <!-- Разрешения для фоновых задач (workmanager) -->
-    <!-- Позволяет приложению запланировать точное пробуждение (для синхронизации) -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    
+    <!-- SCHEDULE_EXACT_ALARM убран: точные будильники в коде не
+         используются, фоновые задачи идут через workmanager с обычным
+         расписанием. Разрешение относится к особым, его наличие требует
+         обоснования в консоли. -->
+
     <!-- Позволяет приложению предотвращать переход устройства в спящий режим -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
-    <!-- Этап 3: foreground-сервис для удержания WebSocket при закрытом приложении -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+    <!-- Разрешения FOREGROUND_SERVICE, FOREGROUND_SERVICE_DATA_SYNC и
+         REQUEST_IGNORE_BATTERY_OPTIMIZATIONS убраны вместе с сервисом,
+         который держал соединение при закрытом приложении. Последнее из
+         них Google Play отдельно называет допустимым лишь в узком списке
+         случаев, к которым доска объявлений не относится. -->
 
-    <!-- Разрешение для доступа к контактам -->
+    <!-- Разрешение для доступа к контактам.
+         Используется на экране «Пригласить друзей», спрашивается у
+         пользователя в момент открытия экрана. В анкете Data Safety
+         объявляется как «Контакты». -->
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
+
+    <!-- Вычищаем разрешения, которые подмешивают за нас сторонние пакеты.
+         Пакет локальных уведомлений объявляет их на все случаи жизни, а мы
+         ни точных будильников, ни уведомлений во весь экран не используем.
+         Все три относятся к особым: увидев их в сборке, Google Play
+         потребует письменного обоснования, которого у нас нет. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"
+        tools:node="remove"/>
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"
+        tools:node="remove"/>
 
     <!-- Разрешения для бейджей приложения (требуется для Nova, Apex, Samsung) -->
     <uses-permission android:name="android.permission.INSTALL_SHORTCUT" />
@@ -43,11 +68,15 @@
     <uses-permission android:name="com.sec.android.provider.badge.permission.WRITE" /> <!-- Samsung -->
     <uses-permission android:name="com.sonyericsson.home.permission.BROADCAST_BADGE" /> <!-- Apex Launcher -->
 
+    <!-- usesCleartextTraffic=false: обмен только по https. Раньше стояло
+         true, то есть приложению разрешалось ходить и по незашифрованному
+         http. Ни один наш адрес этого не требует, а проверка перед
+         публикацией отмечает такое как замечание по безопасности. -->
     <application
         android:label="LIDLE"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
         
         <activity
             android:name=".MainActivity"
@@ -93,16 +122,11 @@
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
 
-        <!-- Этап 3: сервис flutter_foreground_task.
-             foregroundServiceType=dataSync обязателен для Android 14+.
-             Имя класса сервиса зависит от версии пакета — при ошибке
-             манифест-мёрджа сверить с README установленной версии
-             flutter_foreground_task. -->
-        <service
-            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
-            android:foregroundServiceType="dataSync"
-            android:exported="false"
-            tools:replace="android:foregroundServiceType" />
+        <!-- Здесь был сервис flutter_foreground_task, который держал
+             соединение с сервером при закрытом приложении. Убран: Google
+             Play проверяет каждый фоновый сервис типа dataSync и не
+             принимает обоснование «держим соединение ради уведомлений».
+             Уведомления при закрытом приложении доставляет Firebase. -->
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

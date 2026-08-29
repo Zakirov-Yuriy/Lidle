@@ -161,6 +161,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // ============================================================
   // "Метод открытия ссылок в браузере"
   // ============================================================
+  /// Открыть правовой документ во внешнем браузере.
+  ///
+  /// Документы лежат на lidle.ru — основном домене. Раньше здесь был
+  /// lidle.io: ссылки работали, но вели на второстепенный домен, а Google
+  /// Play при проверке открывает ссылку на политику конфиденциальности
+  /// вручную и сверяет её с той, что указана в консоли.
   Future<void> _openURL(String urlString) async {
     try {
       final Uri url = Uri.parse(urlString);
@@ -336,7 +342,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.io/documents/user-agreement.pdf'),
+                                ..onTap = () => _openURL('https://lidle.ru/documents/user-agreement.pdf'),
                             ),
                             const TextSpan(
                               text: ', ',
@@ -349,7 +355,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.io/documents/offer.pdf'),
+                                ..onTap = () => _openURL('https://lidle.ru/documents/offer.pdf'),
                             ),
                             const TextSpan(
                               text: ' и даю ',
@@ -362,7 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.io/documents/consent.pdf'),
+                                ..onTap = () => _openURL('https://lidle.ru/documents/consent.pdf'),
                             ),
                             const TextSpan(
                               text: ' на обработку персональных данных на условиях ',
@@ -375,7 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.io/documents/privacy-policy.pdf'),
+                                ..onTap = () => _openURL('https://lidle.ru/documents/privacy-policy.pdf'),
                             ),
                           ],
                         ),
@@ -397,7 +403,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.io/documents/mailing.pdf'),
+                                ..onTap = () => _openURL('https://lidle.ru/documents/mailing.pdf'),
                             ),
                             const TextSpan(
                               text: 'и ',
@@ -410,7 +416,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 fontSize: 13,
                               ),
                               recognizer: TapGestureRecognizer()
-                                ..onTap = () => _openURL('https://lidle.io/documents/mailing.pdf'),
+                                ..onTap = () => _openURL('https://lidle.ru/documents/mailing.pdf'),
                             ),
                           ],
                         ),

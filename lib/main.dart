@@ -13,8 +13,6 @@ import 'package:workmanager/workmanager.dart';
 import 'package:lidle/services/background_message_service.dart';
 import 'package:lidle/services/background_ai_status_service.dart';
 import 'package:lidle/services/websocket_service.dart';
-import 'package:lidle/services/ws_foreground_service.dart';
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -63,20 +61,19 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// Запускает наблюдатели за ИИ-обработкой фида ТОЛЬКО если у пользователя есть
-/// подключённый CRM-фид. Без фида ни следить, ни держать WebSocket/foreground-
-/// сервис с постоянным уведомлением «Слежу за ИИ-обработкой» не нужно.
+/// подключённый CRM-фид. Без фида следить не за чем.
+///
+/// Раньше на Android соединение жило в отдельном foreground-сервисе, который
+/// висел с постоянным уведомлением «Слежу за ИИ-обработкой» и держал связь
+/// даже у закрытого приложения. Сервис убран: Google Play считает удержание
+/// соединения ради уведомлений неправильным использованием фонового сервиса
+/// и отказывает в публикации. Уведомления при закрытом приложении теперь
+/// доставляет Firebase, а соединение нужно только пока приложение открыто.
 Future<void> _startFeedWatchersIfHasFeed() async {
   if (!await AiCompletionService.userHasFeed()) return;
 
   AiCompletionService.instance.start();
-
-  // Android — через foreground-сервис (держит связь и при закрытом приложении);
-  // остальные платформы — main-изолят.
-  if (!kIsWeb && Platform.isAndroid) {
-    WsForegroundService.start();
-  } else {
-    WebSocketService().start();
-  }
+  WebSocketService().start();
 }
 
 // ============================================================
@@ -401,11 +398,7 @@ class LidleApp extends StatelessWidget {
             AiCompletionService.instance.stop();
 
             // 🔌 Отключаем WebSocket.
-            if (!kIsWeb && Platform.isAndroid) {
-              WsForegroundService.stop();
-            } else {
-              WebSocketService().stop();
-            }
+            WebSocketService().stop();
 
             // 🌙 Отменяем BACKGROUND задачу
             Workmanager().cancelByTag('check-messages');

@@ -58,7 +58,10 @@ dependencies:
   permission_handler: ^11.4.0 # Для запроса разрешений (Android 13+ для уведомлений)
   web_socket_channel: ^3.0.3 # WebSocket-клиент для Reverb (протокол Pusher, вручную)
   workmanager: ^0.9.0
-  flutter_foreground_task: ^8.0.0 # Этап 3: удержание WebSocket (Reverb) при полностью закрытом приложении (Android FGS)
+  # flutter_foreground_task убран: пакет тянул за собой разрешения
+  # FOREGROUND_SERVICE и удержание соединения при закрытом приложении, а
+  # Google Play считает это неправильным использованием фонового сервиса.
+  # Уведомления при закрытом приложении доставляет firebase_messaging.
   connectivity_plus: ^6.0.0 # Для мониторинга подключения к интернету
   app_links: ^3.5.0 # Для обработки deep links flutter
   flutter_contacts: ^1.1.9 # Для работы с контактами телефона
