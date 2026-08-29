@@ -3,7 +3,8 @@
 // ============================================================
 // Извлечено из lib/services/api_service.dart (строки 2285–2423).
 // Логика идентична оригиналу; дубль `token ?? HiveService.getUserData('token')`
-// заменён на ApiBase.requireToken().
+// заменён на ApiBase.optionalToken(): профиль продавца и его контакты
+// открыты и для гостя, вход для этого не нужен.
 //
 // Методы:
 //   - getUserProfile({userId})
@@ -24,7 +25,12 @@ class UserApi {
     try {
       log.d('👤 Getting user profile for userId: $userId');
 
-      final effectiveToken = ApiBase.requireToken(token);
+      // Токен НЕ обязателен: GET /v1/users/{id} на сервере открытый, и
+      // контакты продавца должны быть видны гостю, который ещё не завёл
+      // аккаунт. Раньше здесь стоял requireToken, и запрос падал с
+      // «Требуется авторизация», не дойдя до сервера. Авторизованному
+      // пользователю токен по-прежнему подставляется и уходит в заголовке.
+      final effectiveToken = ApiBase.optionalToken(token);
 
       final response =
           await ApiService.get('/users/$userId', token: effectiveToken);

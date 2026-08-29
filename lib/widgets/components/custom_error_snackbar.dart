@@ -276,7 +276,9 @@ class SnackBarHelper {
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 5),
+        // 3 секунды: достаточно, чтобы прочитать и нажать кнопку, но окно
+        // не загораживает экран дольше нужного.
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -298,7 +300,8 @@ class SnackBarHelper {
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
+        // 3 секунды, как и у окна с предложением войти.
+        duration: const Duration(seconds: 3),
       ),
     );
   }
