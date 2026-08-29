@@ -73,11 +73,74 @@ class NotificationService {
     // Запрашиваем разрешение POST_NOTIFICATIONS на Android 13+ (API 33+)
     await Permission.notification.request();
 
+    // Каналы уведомлений создаём сразу, до первого уведомления.
+    await _createAndroidChannels();
+
     // 🔔 Инициализируем BadgeService для работы с бейджами на иконке приложения
     await BadgeService().initialize();
 
     _isInitialized = true;
     _logger.i('✅ NotificationService инициализирован');
+  }
+
+  /// Создать каналы уведомлений Android заранее, при запуске приложения.
+  ///
+  /// Зачем это нужно.
+  ///
+  /// Начиная с Android 8 каждое уведомление обязано принадлежать каналу,
+  /// и канал должен существовать на телефоне ДО показа уведомления.
+  /// Раньше каналы у нас появлялись сами собой в момент, когда приложение
+  /// впервые показывало уведомление своими силами. Для локальных уведомлений
+  /// этого хватало, но пуш от Firebase приходит, когда приложение закрыто:
+  /// показывает его система, а не наш код, и создавать канал в этот момент
+  /// уже некому. Канала нет — уведомление молча отбрасывается, при этом
+  /// сервер получает от Google ответ «принято». Именно на этом мы потеряли
+  /// время 29.08.2026: сервер отчитывался об успехе, а на телефоне не
+  /// появлялось ничего.
+  ///
+  /// Важно: у существующего канала система не даёт менять важность и звук,
+  /// это решение пользователя. Название и описание обновляются — их можно
+  /// править спокойно.
+  Future<void> _createAndroidChannels() async {
+    final android = _flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+
+    if (android == null) {
+      return;
+    }
+
+    try {
+      // Сообщения в чатах. Важность максимальная: такое уведомление
+      // всплывает поверх экрана и звучит, как в мессенджерах.
+      const AndroidNotificationChannel chatChannel = AndroidNotificationChannel(
+        'chat_messages_channel',
+        'Сообщения в чатах',
+        description: 'Уведомления о новых сообщениях в чатах',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      // Всё остальное: статус объявлений, новости сервиса. Обычная
+      // важность, без всплытия поверх экрана.
+      const AndroidNotificationChannel generalChannel =
+          AndroidNotificationChannel(
+        'general_channel',
+        'Общие уведомления',
+        description: 'Статус объявлений и другие оповещения сервиса',
+        importance: Importance.defaultImportance,
+      );
+
+      await android.createNotificationChannel(chatChannel);
+      await android.createNotificationChannel(generalChannel);
+
+      _logger.i('✅ Каналы уведомлений созданы');
+    } catch (e) {
+      // Без каналов приложение продолжает работать, просто уведомления
+      // могут не показаться. Ронять запуск из-за этого нельзя.
+      _logger.w('⚠️ Не удалось создать каналы уведомлений: $e');
+    }
   }
 
   /// Отправить уведомление о новом сообщении в чате
