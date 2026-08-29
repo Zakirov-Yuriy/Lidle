@@ -239,6 +239,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           title: 'Смотреть\nвсе',
           color: Color(0xFF00A6FF),
           imagePath: '',
+          isViewAll: true,
         ),
       );
 
@@ -1028,6 +1029,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       'color': category.color.toARGB32(),
       'imagePath': category.imagePath,
       'isCatalog': category.isCatalog,
+      'isViewAll': category.isViewAll,
     };
   }
 
@@ -1354,6 +1356,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       color: Color(json['color'] ?? 0xFF00A6FF),
       imagePath: json['imagePath'] ?? '',
       isCatalog: json['isCatalog'] ?? true,
+      // Кеш от прежних версий этого поля не содержит: там опознаём служебную
+      // карточку по отсутствию id, как её и создаёт блок.
+      isViewAll: json['isViewAll'] ?? (json['id'] == null),
     );
   }
 

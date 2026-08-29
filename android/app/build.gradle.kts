@@ -20,7 +20,11 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "io.lidle.app"
-    compileSdk = flutter.compileSdkVersion
+
+    // Google Play с 31.08.2026 принимает новые приложения и обновления только
+    // с targetSdk 36 (Android 16). Дефолт Flutter 3.35 — 35, этого мало.
+    // Задаём явно, чтобы значение не менялось вместе с версией Flutter.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -37,7 +41,11 @@ android {
     defaultConfig {
         applicationId = "io.lidle.app"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+
+        // См. комментарий к compileSdk выше. Под Android 16 меняется поведение
+        // edge-to-edge, уведомлений и фоновых сервисов — сборку обязательно
+        // прогнать на эмуляторе с Android 16 перед подачей в Play.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

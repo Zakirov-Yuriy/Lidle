@@ -22,7 +22,9 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.9.1" apply false
+    // API 36 официально поддерживается начиная с AGP 8.10; AGP 8.10 требует
+    // Gradle 8.11.1+, в wrapper стоит 8.12 — связка сходится.
+    id("com.android.application") version "8.10.1" apply false
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
 }
 

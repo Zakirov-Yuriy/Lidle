@@ -51,7 +51,8 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'package:lidle/app/routes.dart';
-import 'dart:async';                                              // ← добавить
+import 'dart:async';            
+
   
 
 // RouteObserver для отслеживания навигации
@@ -416,6 +417,7 @@ class LidleApp extends StatelessWidget {
 
           // Production home с обёрткой для проверки интернета
           home: const AppWrapper(),
+          // home: const PublicationTariffScreen(),
           // home: const PublishedScreen(),
           // home: const PropertyDetailsScreen(),
           routes: AppRoutes.routes,

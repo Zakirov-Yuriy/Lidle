@@ -4,15 +4,23 @@
     <!-- Интернет обязателен -->
     <uses-permission android:name="android.permission.INTERNET"/>
     
-    <!-- Разрешение для телефонных звонков -->
-    <uses-permission android:name="android.permission.CALL_PHONE"/>
+    <!-- CALL_PHONE намеренно НЕ запрашиваем: номер открывается через tel: в
+         url_launcher, то есть системным набирателем, и пользователь сам
+         нажимает вызов. Google Play считает CALL_PHONE чувствительным и
+         требует обоснования, а нам оно не нужно. См. phone_dialog.dart -->
 
     <!-- Разрешение для пуш-уведомлений (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Разрешения для сохранения файлов в галерею -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
+    <!-- Разрешения для сохранения файлов в галерею.
+         Ограничены по версиям: начиная с Android 13 работает READ_MEDIA_IMAGES,
+         а запись в общее хранилище система и так не даёт с Android 10.
+         Без ограничения Google Play спрашивает, зачем приложению широкий
+         доступ к файлам. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
 
     <!-- Разрешения для фоновых задач (workmanager) -->

@@ -1173,7 +1173,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
                     // ───── Catalog ─────
                     Padding(
@@ -1189,7 +1189,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 6),
                           if (_isLoadingMetadata)
                             _buildCatalogSkeleton()
                           else if (_visibleCatalogs.isEmpty)
@@ -1252,7 +1252,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
                     // ───── Categories ─────
                     Padding(
@@ -1268,7 +1268,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 6),
                           if (_isLoadingMetadata)
                             _buildCategoriesSkeleton()
                           else if (_advertMetaCategories.isEmpty)
@@ -1319,7 +1319,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
                     // ───── Tabs ─────
                     Padding(
@@ -1446,7 +1446,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 5),
 
                     // ───── Select all section ─────
                     if (_isSelectionMode)
@@ -1587,7 +1587,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       child: ListView(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 3, 16, 16),
         children: [
           for (int i = 0; i < filteredListings.length; i++) ...[
             _listingCard(filteredListings[i], 0),
@@ -1642,7 +1642,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
       child: ListView(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
         children: [
           for (int i = 0; i < filteredListings.length; i++) ...[
             _listingCard(filteredListings[i], 1),

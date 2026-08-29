@@ -25,7 +25,13 @@ class MessageCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
+      // Нажатие ловим на ВСЕЙ строке, а не только на тексте с именем.
+      // behavior: opaque нужен, чтобы срабатывало и на пустом месте справа —
+      // без него жест ловится только там, где реально что-то нарисовано, и
+      // попасть можно было лишь по самому имени.
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
         onLongPress: onLongPress,
         child: Row(
           children: [
@@ -50,28 +56,27 @@ class MessageCard extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: GestureDetector(
-                onTap: onTap,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      message.senderName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.senderName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
-                    Text(
-                      'был(а) недавно',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Text(
+                    'был(а) недавно',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             if (message.unreadCount > 0)

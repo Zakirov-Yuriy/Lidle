@@ -202,20 +202,54 @@ class _PublicationTariffScreenState extends State<PublicationTariffScreen> {
                 ),
               )
               .toList(),
+          // Пояснение, где именно появится объявление.
+          //
+          // Путь к иконке с ЗАГЛАВНОЙ буквы — файл в проекте называется
+          // Icon.svg. На Android имена файлов чувствительны к регистру, и со
+          // строчной 'icon.svg' картинка не находилась и не показывалась.
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5.0),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SvgPicture.asset(
-                  'assets/publication_tariff/icon.svg',
+                  'assets/publication_tariff/Icon.svg',
                   width: 20,
                   height: 20,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    'Для более быстрой модерации используйте платную модерации.',
-                    style: const TextStyle(color: textPrimary, fontSize: 14),
+                  child: RichText(
+                    text: const TextSpan(
+                      style: TextStyle(
+                        color: textMuted,
+                        fontSize: 14,
+                        height: 1.35,
+                      ),
+                      children: [
+                        TextSpan(
+                          text:
+                              'Объявление будет опубликовано на ресурсах Lidle: '
+                              'сайт, приложение и продублировано в официальных '
+                              'каналах ',
+                        ),
+                        TextSpan(
+                          text: 'Телеграм',
+                          style: TextStyle(color: accentColor),
+                        ),
+                        TextSpan(text: ',  '),
+                        TextSpan(
+                          text: 'ВК',
+                          style: TextStyle(color: accentColor),
+                        ),
+                        TextSpan(text: ',  '),
+                        TextSpan(
+                          text: 'ОК',
+                          style: TextStyle(color: accentColor),
+                        ),
+                        TextSpan(text: '.'),
+                      ],
+                    ),
                   ),
                 ),
               ],

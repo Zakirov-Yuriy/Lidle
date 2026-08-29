@@ -568,22 +568,22 @@ class _HomePageState extends State<HomePage>
         ? state.categories
         : <Category>[];
 
-    // Отфильтруем категории, исключив "Смотреть все"
-    final filteredCategories = categories
-        .where(
-          (cat) =>
-              !cat.title.contains('Смотреть') && !cat.title.contains('все'),
-        )
-        .toList();
+    // Отфильтруем категории, исключив служебную карточку «Смотреть все».
+    //
+    // Раньше здесь стояла проверка по словам в названии, и она выбрасывала
+    // из списка настоящий каталог «Работа и вакансии ВСЕХ сфере
+    // специальностях»: в слове «всех» есть подстрока «все». Опознаём
+    // карточку по явному признаку.
+    final filteredCategories = categories.where((cat) => !cat.isViewAll).toList();
 
     // Ограничиваем до 3 категорий
     final displayCategories = filteredCategories.length > 4
         ? filteredCategories.sublist(0, 4)
         : filteredCategories.toList();
 
-    // Добавляем "Смотреть все" в конец если оно есть в исходном списке
+    // Добавляем «Смотреть все» в конец, если карточка есть в исходном списке.
     final viewAllCategory = categories.firstWhere(
-      (cat) => cat.title.contains('Смотреть') || cat.title.contains('все'),
+      (cat) => cat.isViewAll,
       orElse: () => Category(title: '', color: Colors.grey, imagePath: ''),
     );
     if (viewAllCategory.title.isNotEmpty) {
@@ -656,14 +656,12 @@ class _HomePageState extends State<HomePage>
                           child: CategoryCard(
                             category: category,
                             onTap: () {
-                              // ✅ Неавторизованный пользователь может просматривать категории
-                              // Проверяем только на "Смотреть все"
-                              final isViewAll =
-                                  category.title.contains('Смотреть') ||
-                                  category.title.contains('все') ||
-                                  category.title.contains('View All');
-
-                              if (isViewAll) {
+                              // Неавторизованный пользователь может просматривать
+                              // категории. Отдельно обрабатываем только служебную
+                              // карточку «Смотреть все»: по явному признаку, а не
+                              // по словам в названии — иначе каталог со словом
+                              // «всех» открывал бы не тот экран.
+                              if (category.isViewAll) {
                                 // log.d('📍 Navigating to FullCategoryScreen');
                                 Navigator.pushNamed(
                                   context,
