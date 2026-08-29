@@ -51,8 +51,9 @@ import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:path_provider/path_provider.dart';
 import 'constants.dart';
 import 'package:lidle/app/routes.dart';
-import 'dart:async';            
-
+import 'package:firebase_core/firebase_core.dart';
+import 'package:lidle/services/push_service.dart';
+import 'dart:async';                                              // ← добавить
   
 
 // RouteObserver для отслеживания навигации
@@ -142,6 +143,23 @@ void main() async {
     );
   } catch (e) {
     log.w('⚠️ Workmanager инициализация ошибка: $e');
+  }
+
+  // 🔔 ИНИЦИАЛИЗАЦИЯ: Firebase — доставка уведомлений при закрытом
+  // приложении. Настройки берутся из android/app/google-services.json.
+  //
+  // Обработчик фоновых сообщений (onBackgroundMessage) намеренно НЕ
+  // регистрируем. Он поднимает отдельный служебный движок Flutter, в
+  // котором заново регистрируются все плагины, и VK ID при повторной
+  // инициализации падает с «You've already initialized VKID». А нужды в
+  // нём нет: уведомление при закрытом приложении показывает сама система,
+  // данные из него читаются уже после запуска приложения.
+  //
+  // Ошибку глушим: без уведомлений приложение должно работать.
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    log.w('⚠️ Firebase инициализация ошибка: $e');
   }
 
   // 🚀 ОПТИМИЗАЦИЯ #1: Быстрая инициализация Hive (обязательна для кеша)
@@ -341,6 +359,11 @@ class LidleApp extends StatelessWidget {
             // Это обеспечивает показ бейджа сразу после авторизации без открытия messages_page
             context.read<MessagesBloc>().loadMessagesFromAPI();
 
+            // 🔔 Подключаем устройство к пуш-уведомлениям. Именно здесь, а не
+            // при запуске: токен устройства привязывается к аккаунту, и без
+            // авторизации отправлять его некуда.
+            PushService.instance.init();
+
             // �🔔 Запускаем систему мониторинга новых сообщений (FOREGROUND timer)
             sl<MessagePollingService>().startPolling(
               interval: const Duration(seconds: 15),
@@ -369,6 +392,10 @@ class LidleApp extends StatelessWidget {
 
             // 🔔 Останавливаем мониторинг новых сообщений (FOREGROUND)
             sl<MessagePollingService>().stopPolling();
+
+            // 🔕 Отвязываем устройство от уведомлений, чтобы следующему
+            // пользователю этого телефона не приходили чужие сообщения.
+            PushService.instance.unregister();
 
             // 🤖 Останавливаем наблюдатель за ИИ-обработкой.
             AiCompletionService.instance.stop();
@@ -417,7 +444,6 @@ class LidleApp extends StatelessWidget {
 
           // Production home с обёрткой для проверки интернета
           home: const AppWrapper(),
-          // home: const PublicationTariffScreen(),
           // home: const PublishedScreen(),
           // home: const PropertyDetailsScreen(),
           routes: AppRoutes.routes,

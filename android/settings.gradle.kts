@@ -22,10 +22,12 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    // API 36 официально поддерживается начиная с AGP 8.10; AGP 8.10 требует
-    // Gradle 8.11.1+, в wrapper стоит 8.12 — связка сходится.
-    id("com.android.application") version "8.10.1" apply false
+    id("com.android.application") version "8.9.1" apply false
     id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+    // Плагин Google Services читает android/app/google-services.json и
+    // подставляет ключи проекта Firebase в сборку. Без него приложение не
+    // знает, к какому проекту подключаться, и уведомления не работают.
+    id("com.google.gms.google-services") version "4.4.2" apply false
 }
 
 include(":app")

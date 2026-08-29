@@ -7,6 +7,8 @@ plugins {
     // Плагин VK ID SDK: добавляет в манифест meta-data (VKIDClientID/Secret) и
     // intent-filter возврата (схема vk<clientId>), которые SDK читает при init.
     id("vkid.manifest.placeholders")
+    // Firebase Cloud Messaging. Версия плагина задана в settings.gradle.kts.
+    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -20,11 +22,7 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "io.lidle.app"
-
-    // Google Play с 31.08.2026 принимает новые приложения и обновления только
-    // с targetSdk 36 (Android 16). Дефолт Flutter 3.35 — 35, этого мало.
-    // Задаём явно, чтобы значение не менялось вместе с версией Flutter.
-    compileSdk = 36
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -41,11 +39,7 @@ android {
     defaultConfig {
         applicationId = "io.lidle.app"
         minSdk = flutter.minSdkVersion
-
-        // См. комментарий к compileSdk выше. Под Android 16 меняется поведение
-        // edge-to-edge, уведомлений и фоновых сервисов — сборку обязательно
-        // прогнать на эмуляторе с Android 16 перед подачей в Play.
-        targetSdk = 36
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -66,7 +60,7 @@ android {
         debug {
             // Debug версия - встроенная подпись
             isDebuggable = true
-            applicationIdSuffix = ".debug"
+           // applicationIdSuffix = ".debug"
         }
 
         release {
