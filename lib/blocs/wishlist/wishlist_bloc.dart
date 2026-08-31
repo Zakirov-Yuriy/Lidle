@@ -363,10 +363,14 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       final wishlistEntryId = item['id'];
       if (wishable is! Map<String, dynamic>) continue;
 
+      // Номер объявления сервер отдаёт числом, но принимаем и строку:
+      // так разбор не сломается, если формат ответа однажды изменится.
       final rawId = wishable['id'];
       int? advertId;
       if (rawId is int) {
         advertId = rawId;
+      } else if (rawId is num) {
+        advertId = rawId.toInt();
       } else if (rawId is String) {
         advertId = int.tryParse(rawId);
       }
@@ -391,25 +395,46 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       final wishable = item['wishable'];
       if (wishable is! Map<String, dynamic>) continue;
 
-      final rawId = wishable['id'];
-      final id    = rawId is int
-          ? rawId.toString()
-          : (rawId is String ? rawId : null);
-      if (id == null) continue;
+      final id = _asString(wishable['id']);
+      if (id == null || id.isEmpty) continue;
 
       listings.add(Listing(
         id:        id,
-        slug:      wishable['slug']        as String?,
-        imagePath: (wishable['thumbnail']  as String?) ?? '',
+        slug:      _asString(wishable['slug']),
+        imagePath: _asString(wishable['thumbnail'])  ?? '',
         images:    const [],
-        title:     (wishable['name']       as String?) ?? '',
-        price:     (wishable['price']      as String?) ?? '',
-        location:  (wishable['address']    as String?) ?? '',
-        date:      (wishable['created_at'] as String?) ?? '',
+        title:     _asString(wishable['name'])       ?? '',
+        price:     _asString(wishable['price'])      ?? '',
+        location:  _asString(wishable['address'])    ?? '',
+        date:      _asString(wishable['created_at']) ?? '',
       ));
     }
 
     return listings;
+  }
+
+  /// Привести значение из ответа сервера к строке.
+  ///
+  /// Зачем это нужно.
+  ///
+  /// Раньше поля читались жёстким приведением `as String?`. Цена приходит
+  /// с сервера ЧИСЛОМ: в модели объявления стоит приведение
+  /// `'price' => 'integer'`, и в JSON она уходит как 2500000, без кавычек.
+  /// На первом же объявлении разбор падал с
+  /// «type 'int' is not a subtype of type 'String?' in type cast»,
+  /// срабатывал перехват ошибки, и избранное молча откатывалось на
+  /// локальную копию. Со стороны это выглядело так, будто избранное просто
+  /// не синхронизируется между устройствами.
+  ///
+  /// Здесь мы не гадаем, каким типом придёт поле, а приводим к строке всё,
+  /// что к ней приводится. Числа, строки и логические значения проходят,
+  /// вложенные объекты и списки отбрасываются: в строковое поле карточки
+  /// им попадать нечего.
+  static String? _asString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is num || value is bool) return value.toString();
+    return null;
   }
 
   // ── Синхронизация Hive ────────────────────────────────────────────────────
