@@ -1143,19 +1143,16 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     );
   }
 
-  /// Превращает «2026-09-05 14:00» в «5 сентября, 14:00».
+  /// Разбирает «2026-09-05 14:00» на день и время, либо возвращает null,
+  /// если значение датой не является.
   ///
-  /// Время показываем, только если оно не полночь: у посуточной аренды час
-  /// заезда важен, а у обычной даты «00:00» — это просто отсутствие времени,
-  /// и в карточке оно выглядит как ошибка.
-  String? _formatDateStamp(dynamic raw) {
+  /// Вид проверяем строго по «ГГГГ-ММ-ДД»: без этого числовой атрибут вроде
+  /// 20260905 тоже разобрался бы как дата и превратился в «5 сентября».
+  Map<String, String>? _splitDateStamp(dynamic raw) {
     final text = (raw ?? '').toString().trim();
     if (text.isEmpty) return null;
 
     final parts = text.split(' ');
-
-    // Только строгий вид «ГГГГ-ММ-ДД». Без этой проверки числовой атрибут
-    // вроде 20260905 тоже разобрался бы как дата и превратился в «5 сентября».
     if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(parts.first)) return null;
 
     final date = DateTime.tryParse(parts.first);
@@ -1166,21 +1163,49 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
       'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
     ];
 
-    final day = '${date.day} ${months[date.month - 1]}';
-    final time = parts.length > 1 ? parts[1] : '';
+    return {
+      'day': '${date.day} ${months[date.month - 1]}',
+      'time': parts.length > 1 ? parts[1] : '',
+    };
+  }
 
-    return (time.isEmpty || time == '00:00') ? day : '$day, $time';
+  /// День со временем. Полночь не печатаем: у посуточной аренды час заезда
+  /// важен, а «00:00» — это просто отсутствие времени, и в карточке оно
+  /// выглядит как ошибка.
+  String _joinDateStamp(Map<String, String> stamp) {
+    final time = stamp['time'] ?? '';
+
+    return (time.isEmpty || time == '00:00')
+        ? stamp['day']!
+        : '${stamp['day']}, $time';
   }
 
   /// Строка интервала для календарных атрибутов, либо null, если значение
   /// календарём не является — тогда его рисует прежняя ветка.
+  ///
+  /// Два вида интервала дают две разные записи. Полный календарь (стиль J)
+  /// про разные дни: «5 сентября, 14:00 — 12 сентября, 11:00». Компактный
+  /// (стиль K) про часы внутри одного дня: «3 сентября, 14:00 — 14:30» —
+  /// повторять число во второй раз незачем.
   String? _formatDateRange(dynamic value, dynamic valueTo) {
-    final from = _formatDateStamp(value);
+    final from = _splitDateStamp(value);
     if (from == null) return null;
 
-    final to = _formatDateStamp(valueTo);
+    final to = _splitDateStamp(valueTo);
+    if (to == null) return _joinDateStamp(from);
 
-    return to == null ? from : '$from — $to';
+    if (from['day'] == to['day']) {
+      final timeFrom = from['time'] ?? '';
+      final timeTo = to['time'] ?? '';
+
+      if (timeFrom == timeTo) return _joinDateStamp(from);
+      if (timeFrom.isEmpty || timeFrom == '00:00') return _joinDateStamp(to);
+      if (timeTo.isEmpty || timeTo == '00:00') return _joinDateStamp(from);
+
+      return '${from['day']}, $timeFrom — $timeTo';
+    }
+
+    return '${_joinDateStamp(from)} — ${_joinDateStamp(to)}';
   }
 
   Widget _buildAboutApartmentCard() {

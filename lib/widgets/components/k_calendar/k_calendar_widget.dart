@@ -69,32 +69,31 @@ class _KRentTimeWidgetState extends State<KRentTimeWidget> {
     // Если значение пришло сверху (открыли объявление на редактирование),
     // считаем дату выбранной — иначе смена одного лишь времени ничего бы
     // не отправила.
-    _dateFromPicked = widget.dateFrom != null;
-    _dateToPicked = widget.dateTo != null;
+    _datePicked = widget.dateFrom != null;
   }
 
   /// Дату действительно выбрали. Без этого флага виджет отдавал бы сегодняшнее
   /// число (им инициализируется `_selectedDateFrom`) у человека, который
   /// потрогал только время.
-  bool _dateFromPicked = false;
-  bool _dateToPicked = false;
+  bool _datePicked = false;
+
+  /// У компактного календаря дата ОДНА, а «От» и «До» — это время в её
+  /// пределах: запись к врачу 3 сентября с 14:00 до 14:30. Поэтому обе
+  /// половины интервала отдаём с одной и той же датой. Метод выбора второй
+  /// даты в файле есть, но к интерфейсу не подключён — в разметке на дату
+  /// нажимается только верхняя строка.
+  String get _isoDate => DateFormat('yyyy-MM-dd').format(_selectedDateFrom);
 
   void _emitFrom() {
-    if (!_dateFromPicked) return;
+    if (!_datePicked) return;
 
-    widget.onFromChanged?.call(
-      DateFormat('yyyy-MM-dd').format(_selectedDateFrom),
-      _timeFrom,
-    );
+    widget.onFromChanged?.call(_isoDate, _timeFrom);
   }
 
   void _emitTo() {
-    if (!_dateToPicked) return;
+    if (!_datePicked) return;
 
-    widget.onToChanged?.call(
-      DateFormat('yyyy-MM-dd').format(_selectedDateTo),
-      _timeTo,
-    );
+    widget.onToChanged?.call(_isoDate, _timeTo);
   }
 
   /// Парсит дату из строки формата "ПН, 13 Марта"
@@ -175,9 +174,11 @@ class _KRentTimeWidgetState extends State<KRentTimeWidget> {
         _dateFrom = formattedDate;
       });
       // Вызываем callback с выбранной датой
-      _dateFromPicked = true;
+      _datePicked = true;
       widget.onDateFromSelected?.call(formattedDate);
+      // Дата одна на обе половины, поэтому отдаём и начало, и конец.
       _emitFrom();
+      _emitTo();
       widget.onEditFrom?.call();
     }
   }
@@ -203,7 +204,7 @@ class _KRentTimeWidgetState extends State<KRentTimeWidget> {
         _dateTo = formattedDate;
       });
       // Вызываем callback с выбранной датой
-      _dateToPicked = true;
+      _datePicked = true;
       widget.onDateToSelected?.call(formattedDate);
       _emitTo();
       widget.onEditTo?.call();
