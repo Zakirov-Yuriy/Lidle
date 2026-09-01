@@ -36,6 +36,11 @@ class PushService {
   bool _initialized = false;
   String? _lastSentToken;
 
+  /// Токен, полученный до входа в аккаунт. Отправлять его тогда некуда, но и
+  /// терять нельзя: следующий раз Firebase выдаст тот же самый и обновления
+  /// не будет, а сервер про него так и не узнает.
+  String? _pendingToken;
+
   /// Подключить уведомления. Вызывается после успешного входа: без токена
   /// пользователя отправлять регистрацию некуда.
   Future<void> init() async {
@@ -66,6 +71,12 @@ class PushService {
         messaging.onTokenRefresh.listen(_sendTokenToBackend);
 
         _initialized = true;
+      }
+
+      // Отложенный токен, полученный до входа, отправляем в первую очередь.
+      final pending = _pendingToken;
+      if (pending != null) {
+        await _sendTokenToBackend(pending);
       }
 
       final token = await messaging.getToken();
@@ -116,6 +127,8 @@ class PushService {
 
     final authToken = TokenService.currentToken;
     if (authToken == null) {
+      // Запоминаем: отправим, как только человек войдёт.
+      _pendingToken = token;
       log.d('🔒 Токен FCM получен, но пользователь не авторизован — отложим');
       return;
     }
@@ -127,6 +140,7 @@ class PushService {
         token: authToken,
       );
       _lastSentToken = token;
+      _pendingToken = null;
       log.i('✅ Устройство подключено к пуш-уведомлениям');
     } catch (e) {
       log.w('⚠️ Не удалось отправить токен устройства: $e');

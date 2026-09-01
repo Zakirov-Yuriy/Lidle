@@ -237,6 +237,26 @@ class _AppWrapperState extends State<AppWrapper> {
   @override
   void initState() {                              // ← добавить весь блок
     super.initState();
+
+    // 🔔 Подключаем уведомления и при обычном запуске, а не только сразу
+    // после входа.
+    //
+    // Токен устройства выдаёт Firebase, и он меняется: при переустановке
+    // приложения, очистке данных и иногда сам по себе. Старый после этого
+    // мёртв, Google на него отвечает NOT_FOUND. Раньше регистрация висела
+    // только на переходе «вошёл в аккаунт», поэтому у человека с уже
+    // сохранённой сессией новый токен на сервер не уезжал никогда: вход не
+    // повторялся, подписка на обновление токена жила внутри init(), а init()
+    // не вызывался. Уведомления тихо переставали приходить навсегда.
+    //
+    // Если пользователь не авторизован, init() сам ничего не отправит и
+    // просто отложит регистрацию до входа.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (TokenService.currentToken != null) {
+        PushService.instance.init();
+      }
+    });
+
     _newListingSubscription =
         NewListingNotifier.instance.onNewListing.listen((advert) {
       navigatorKey.currentState?.push(
