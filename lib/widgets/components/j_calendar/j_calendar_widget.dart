@@ -18,6 +18,16 @@ class RentTimeWidget extends StatefulWidget {
   final VoidCallback? onEditFrom;
   final VoidCallback? onEditTo;
 
+  /// Машинные значения интервала: дата в формате yyyy-MM-dd и время HH:mm.
+  ///
+  /// Отдельно от [onDateFromSelected], который отдаёт подпись для экрана
+  /// («Пн, 20 апреля»): в ней нет года, и на сервер её не отправить. Время
+  /// раньше не покидало виджет вовсе — выбранный час оставался внутри и
+  /// терялся при публикации. Колбэк срабатывает и на смену даты, и на
+  /// смену времени, и только после того, как дату действительно выбрали.
+  final void Function(String date, String time)? onFromChanged;
+  final void Function(String date, String time)? onToChanged;
+
   const RentTimeWidget({
     super.key,
     this.dateFrom,
@@ -28,6 +38,8 @@ class RentTimeWidget extends StatefulWidget {
     this.onDateToSelected,
     this.onEditFrom,
     this.onEditTo,
+    this.onFromChanged,
+    this.onToChanged,
   });
 
   @override
@@ -53,6 +65,36 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
     // Инициализируем даты с текущего дня
     _selectedDateFrom = DateTime.now();
     _selectedDateTo = DateTime.now();
+
+    // Если значение пришло сверху (открыли объявление на редактирование),
+    // считаем дату выбранной — иначе смена одного лишь времени ничего бы
+    // не отправила.
+    _dateFromPicked = widget.dateFrom != null;
+    _dateToPicked = widget.dateTo != null;
+  }
+
+  /// Дату действительно выбрали. Без этого флага виджет отдавал бы сегодняшнее
+  /// число (им инициализируется `_selectedDateFrom`) у человека, который
+  /// потрогал только время.
+  bool _dateFromPicked = false;
+  bool _dateToPicked = false;
+
+  void _emitFrom() {
+    if (!_dateFromPicked) return;
+
+    widget.onFromChanged?.call(
+      DateFormat('yyyy-MM-dd').format(_selectedDateFrom),
+      _timeFrom,
+    );
+  }
+
+  void _emitTo() {
+    if (!_dateToPicked) return;
+
+    widget.onToChanged?.call(
+      DateFormat('yyyy-MM-dd').format(_selectedDateTo),
+      _timeTo,
+    );
   }
 
   /// Парсит дату из строки формата "ПН, 13 Марта"
@@ -86,6 +128,7 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
       setState(() {
         _timeFrom = result;
       });
+      _emitFrom();
     }
   }
 
@@ -107,6 +150,7 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
       setState(() {
         _timeTo = result;
       });
+      _emitTo();
     }
   }
 
@@ -131,7 +175,9 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
         _dateFrom = formattedDate;
       });
       // Вызываем callback с выбранной датой
+      _dateFromPicked = true;
       widget.onDateFromSelected?.call(formattedDate);
+      _emitFrom();
       widget.onEditFrom?.call();
     }
   }
@@ -157,7 +203,9 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
         _dateTo = formattedDate;
       });
       // Вызываем callback с выбранной датой
+      _dateToPicked = true;
       widget.onDateToSelected?.call(formattedDate);
+      _emitTo();
       widget.onEditTo?.call();
     }
   }

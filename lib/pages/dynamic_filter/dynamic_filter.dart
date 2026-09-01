@@ -2,6 +2,9 @@ import 'dart:io';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+// Для подписи сохранённой даты («Пн, 20 апреля») при открытии объявления
+// на редактирование: с сервера приходит yyyy-MM-dd.
+import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -1012,8 +1015,29 @@ class _DynamicFilterState extends State<DynamicFilter>
                 if (attr.id != 0) {
                   // Найден атрибут
                   if (valueData is Map<String, dynamic>) {
+                    // Календарь (стили J и K): с сервера приходят строки
+                    // "yyyy-MM-dd HH:mm" в value и value_to. Разбираем их
+                    // обратно на подпись для экрана, машинную дату и время.
+                    if (attr.dataType == 'date') {
+                      final from = _parseCalendarStamp(valueData['value']);
+                      final to = _parseCalendarStamp(valueData['value_to']);
+
+                      setState(() {
+                        _selectedValues[attrId] = {
+                          'dateFrom': from?['label'],
+                          'timeFrom': from?['time'],
+                          'isoFrom': from?['iso'],
+                          'dateTo': to?['label'],
+                          'timeTo': to?['time'],
+                          'isoTo': to?['iso'],
+                        };
+                      });
+                      log.d(
+                        '   ✅ Attr $attrId: календарь ${valueData['value']} — ${valueData['value_to']}',
+                      );
+                    }
                     // Проверяем есть ли это диапазон (max_value) или просто значение
-                    if (valueData.containsKey('max_value')) {
+                    else if (valueData.containsKey('max_value')) {
                       // Это диапазон (e.g. пол, площадь)
                       setState(() {
                         _selectedValues[attrId] = {
@@ -1965,6 +1989,25 @@ class _DynamicFilterState extends State<DynamicFilter>
           if (value.isNotEmpty) {
             // debug: value contains selected values
           }
+        }
+      } else if (value is Map && _looksLikeCalendar(value)) {
+        // Календарь (стили J и K). Раньше этот Map попадал в ветку диапазона
+        // ниже, а она читает только ключи min/max — их у календаря нет,
+        // объект получался пустым, и выбранные даты молча не уезжали на
+        // сервер. Теперь начало интервала уходит в value, конец в value_to,
+        // оба в формате "yyyy-MM-dd HH:mm".
+        final attrObj = {};
+        final from = _calendarStamp(value['isoFrom'], value['timeFrom']);
+        final to = _calendarStamp(value['isoTo'], value['timeTo']);
+
+        if (from != null) {
+          attrObj['value'] = from;
+        }
+        if (to != null) {
+          attrObj['value_to'] = to;
+        }
+        if (attrObj.isNotEmpty) {
+          attributes['values']['$key'] = attrObj;
         }
       } else if (value is Map) {
         // Range values - for attributes like 1040 (floor) - but NOT 1127 anymore
@@ -3303,6 +3346,78 @@ class _DynamicFilterState extends State<DynamicFilter>
   }
 
   // Style J1: Rent time widget (calendar with date and time selection)
+  // ==========================================================
+  // Календарные атрибуты (стили J и K)
+  // ==========================================================
+  //
+  // В `_selectedValues` у такого атрибута лежит Map из шести ключей:
+  //   dateFrom / dateTo — подпись для экрана («Пн, 20 апреля»),
+  //   timeFrom / timeTo — время «HH:mm»,
+  //   isoFrom  / isoTo  — дата «yyyy-MM-dd», её и отправляем.
+  // Подпись без года, поэтому на сервер уезжает именно ISO.
+
+  /// Это Map календаря, а не диапазона «от — до» с ключами min/max.
+  bool _looksLikeCalendar(Map value) {
+    return value.containsKey('isoFrom') ||
+        value.containsKey('isoTo') ||
+        value.containsKey('dateFrom') ||
+        value.containsKey('dateTo');
+  }
+
+  /// Склеивает дату и время в строку «yyyy-MM-dd HH:mm» для отправки.
+  /// Без даты значения нет: одно время серверу ни о чём не говорит.
+  String? _calendarStamp(dynamic iso, dynamic time) {
+    final date = (iso ?? '').toString().trim();
+    if (date.isEmpty) return null;
+
+    final value = (time ?? '').toString().trim();
+
+    return value.isEmpty ? '$date 00:00' : '$date $value';
+  }
+
+  /// Разбирает «yyyy-MM-dd HH:mm» с сервера обратно на подпись, дату и время.
+  Map<String, String>? _parseCalendarStamp(dynamic raw) {
+    final text = (raw ?? '').toString().trim();
+    if (text.isEmpty) return null;
+
+    final parts = text.split(' ');
+    final parsed = DateTime.tryParse(parts.first);
+    if (parsed == null) return null;
+
+    // Подпись строим тем же форматом, что и сам календарь. Если данные
+    // локали почему-то не загружены, показываем дату как есть: пустой
+    // экран редактирования хуже некрасивой подписи.
+    String label;
+    try {
+      final formatted = DateFormat('EEE, d MMMM', 'ru_RU').format(parsed);
+      label = formatted[0].toUpperCase() + formatted.substring(1);
+    } catch (_) {
+      label = parts.first;
+    }
+
+    return {
+      'iso': parts.first,
+      'time': parts.length > 1 ? parts[1] : '00:00',
+      'label': label,
+    };
+  }
+
+  /// Обновить одну половину календарного значения, не потеряв вторую.
+  /// Раньше обработчики пересобирали Map из четырёх ключей и стирали то,
+  /// что записал соседний колбэк.
+  void _updateCalendarValue(int attrId, Map<String, dynamic> patch) {
+    final existing = _selectedValues[attrId];
+    final current = existing is Map
+        ? Map<String, dynamic>.from(existing)
+        : <String, dynamic>{};
+
+    current.addAll(patch);
+
+    setState(() {
+      _selectedValues[attrId] = current;
+    });
+  }
+
   Widget _buildJ1Field(Attribute attr) {
     // Initialize storage for date/time values with proper type safety
     // Use a local variable to ensure consistency within this build method
@@ -3340,54 +3455,16 @@ class _DynamicFilterState extends State<DynamicFilter>
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,
           timeTo: timeData['timeTo'] as String?,
-          onDateFromSelected: (date) {
-            setState(() {
-              // Создаём новый Map вместо изменения существующего
-              // Это гарантирует правильную типизацию
-              if (_selectedValues.containsKey(attrId)) {
-                final existing = _selectedValues[attrId];
-                if (existing is Map) {
-                  _selectedValues[attrId] = {
-                    'dateFrom': date,
-                    'timeFrom': existing['timeFrom'] ?? null,
-                    'dateTo': existing['dateTo'] ?? null,
-                    'timeTo': existing['timeTo'] ?? null,
-                  };
-                } else {
-                  _selectedValues[attrId] = {
-                    'dateFrom': date,
-                    'timeFrom': null,
-                    'dateTo': null,
-                    'timeTo': null,
-                  };
-                }
-              }
-            });
-          },
-          onDateToSelected: (date) {
-            setState(() {
-              // Создаём новый Map вместо изменения существующего
-              // Это гарантирует правильную типизацию
-              if (_selectedValues.containsKey(attrId)) {
-                final existing = _selectedValues[attrId];
-                if (existing is Map) {
-                  _selectedValues[attrId] = {
-                    'dateFrom': existing['dateFrom'] ?? null,
-                    'timeFrom': existing['timeFrom'] ?? null,
-                    'dateTo': date,
-                    'timeTo': existing['timeTo'] ?? null,
-                  };
-                } else {
-                  _selectedValues[attrId] = {
-                    'dateFrom': null,
-                    'timeFrom': null,
-                    'dateTo': date,
-                    'timeTo': null,
-                  };
-                }
-              }
-            });
-          },
+          // Подпись для экрана.
+          onDateFromSelected: (date) =>
+              _updateCalendarValue(attrId, {'dateFrom': date}),
+          onDateToSelected: (date) =>
+              _updateCalendarValue(attrId, {'dateTo': date}),
+          // Машинные дата и время — именно они уходят на сервер.
+          onFromChanged: (date, time) =>
+              _updateCalendarValue(attrId, {'isoFrom': date, 'timeFrom': time}),
+          onToChanged: (date, time) =>
+              _updateCalendarValue(attrId, {'isoTo': date, 'timeTo': time}),
         ),
       ],
     );
@@ -3431,54 +3508,16 @@ class _DynamicFilterState extends State<DynamicFilter>
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,
           timeTo: timeData['timeTo'] as String?,
-          onDateFromSelected: (date) {
-            setState(() {
-              // Создаём новый Map вместо изменения существующего
-              // Это гарантирует правильную типизацию
-              if (_selectedValues.containsKey(attrId)) {
-                final existing = _selectedValues[attrId];
-                if (existing is Map) {
-                  _selectedValues[attrId] = {
-                    'dateFrom': date,
-                    'timeFrom': existing['timeFrom'] ?? null,
-                    'dateTo': existing['dateTo'] ?? null,
-                    'timeTo': existing['timeTo'] ?? null,
-                  };
-                } else {
-                  _selectedValues[attrId] = {
-                    'dateFrom': date,
-                    'timeFrom': null,
-                    'dateTo': null,
-                    'timeTo': null,
-                  };
-                }
-              }
-            });
-          },
-          onDateToSelected: (date) {
-            setState(() {
-              // Создаём новый Map вместо изменения существующего
-              // Это гарантирует правильную типизацию
-              if (_selectedValues.containsKey(attrId)) {
-                final existing = _selectedValues[attrId];
-                if (existing is Map) {
-                  _selectedValues[attrId] = {
-                    'dateFrom': existing['dateFrom'] ?? null,
-                    'timeFrom': existing['timeFrom'] ?? null,
-                    'dateTo': date,
-                    'timeTo': existing['timeTo'] ?? null,
-                  };
-                } else {
-                  _selectedValues[attrId] = {
-                    'dateFrom': null,
-                    'timeFrom': null,
-                    'dateTo': date,
-                    'timeTo': null,
-                  };
-                }
-              }
-            });
-          },
+          // Подпись для экрана.
+          onDateFromSelected: (date) =>
+              _updateCalendarValue(attrId, {'dateFrom': date}),
+          onDateToSelected: (date) =>
+              _updateCalendarValue(attrId, {'dateTo': date}),
+          // Машинные дата и время — именно они уходят на сервер.
+          onFromChanged: (date, time) =>
+              _updateCalendarValue(attrId, {'isoFrom': date, 'timeFrom': time}),
+          onToChanged: (date, time) =>
+              _updateCalendarValue(attrId, {'isoTo': date, 'timeTo': time}),
         ),
       ],
     );
