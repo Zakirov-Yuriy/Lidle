@@ -1178,7 +1178,27 @@ class _DynamicFilterState extends State<DynamicFilter>
                   );
                 }
               }
-              // ✅ CASE 2: value + max_value - для диапазонов (E1 типы)
+              // ✅ CASE 2: календарь (стили J и K). Значение приходит парой
+              // строк «yyyy-MM-dd HH:mm»: начало в value, конец в value_to.
+              // Проверять надо ДО ветки диапазона и простого значения, иначе
+              // дата уедет в них как обычная строка и в поля не вернётся.
+              else if (attr.dataType == 'date' && attrItem['value'] != null) {
+                final from = _parseCalendarStamp(attrItem['value']);
+                final to = _parseCalendarStamp(attrItem['value_to']);
+
+                tempSelectedValues[attrId] = {
+                  'dateFrom': from?['label'],
+                  'timeFrom': from?['time'],
+                  'isoFrom': from?['iso'],
+                  'dateTo': to?['label'] ?? from?['label'],
+                  'timeTo': to?['time'],
+                  'isoTo': to?['iso'],
+                };
+                log.d(
+                  '      ✅ Календарь: ${attrItem['value']} — ${attrItem['value_to']}',
+                );
+              }
+              // ✅ CASE 3: value + max_value - для диапазонов (E1 типы)
               else if (attrItem.containsKey('max_value') &&
                   attrItem['max_value'] != null) {
                 final minVal = attrItem['value'];
@@ -1187,7 +1207,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                 tempSelectedValues[attrId] = {'min': minVal, 'max': maxVal};
                 log.d('      ✅ Range: $minVal - $maxVal');
               }
-              // ✅ CASE 3: value - для простых значений (G1, H типы)
+              // ✅ CASE 4: value - для простых значений (G1, H типы)
               else if (attrItem.containsKey('value') &&
                   attrItem['value'] != null) {
                 final value = attrItem['value'];
