@@ -1143,6 +1143,46 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     );
   }
 
+  /// Превращает «2026-09-05 14:00» в «5 сентября, 14:00».
+  ///
+  /// Время показываем, только если оно не полночь: у посуточной аренды час
+  /// заезда важен, а у обычной даты «00:00» — это просто отсутствие времени,
+  /// и в карточке оно выглядит как ошибка.
+  String? _formatDateStamp(dynamic raw) {
+    final text = (raw ?? '').toString().trim();
+    if (text.isEmpty) return null;
+
+    final parts = text.split(' ');
+
+    // Только строгий вид «ГГГГ-ММ-ДД». Без этой проверки числовой атрибут
+    // вроде 20260905 тоже разобрался бы как дата и превратился в «5 сентября».
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(parts.first)) return null;
+
+    final date = DateTime.tryParse(parts.first);
+    if (date == null) return null;
+
+    const months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+    ];
+
+    final day = '${date.day} ${months[date.month - 1]}';
+    final time = parts.length > 1 ? parts[1] : '';
+
+    return (time.isEmpty || time == '00:00') ? day : '$day, $time';
+  }
+
+  /// Строка интервала для календарных атрибутов, либо null, если значение
+  /// календарём не является — тогда его рисует прежняя ветка.
+  String? _formatDateRange(dynamic value, dynamic valueTo) {
+    final from = _formatDateStamp(value);
+    if (from == null) return null;
+
+    final to = _formatDateStamp(valueTo);
+
+    return to == null ? from : '$from — $to';
+  }
+
   Widget _buildAboutApartmentCard() {
     // Безопасно получаем характеристики
     final Map<String, dynamic> chars = _listing.characteristics ?? {};
@@ -1161,9 +1201,16 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
           final title = charData['title'] as String? ?? 'Характеристика';
           final value = charData['value'];
           final maxValue = charData['max_value'];
+          final valueTo = charData['value_to'];
 
           String displayValue = '-';
-          if (value is Map && value.containsKey('value')) {
+          // Календарь (стили J и K). С сервера приходят строки вида
+          // «2026-09-05 14:00»: в value начало, в value_to конец. Показываем
+          // их по-человечески, а не машинным форматом.
+          final calendarText = _formatDateRange(value, valueTo);
+          if (calendarText != null) {
+            displayValue = calendarText;
+          } else if (value is Map && value.containsKey('value')) {
             // Случай: {"value": ..., "max_value": ...}
             displayValue = value['value'].toString();
             if (value.containsKey('max_value')) {

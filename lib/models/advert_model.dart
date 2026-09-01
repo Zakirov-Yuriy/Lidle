@@ -189,6 +189,10 @@ class Advert {
                 'id': item['id'],
                 'title': item['title'] ?? '',
                 'value': item['value'],
+                // Конец интервала у календарных атрибутов (стили J и K).
+                // Без него в карточке от «с 5 по 12 сентября» оставалось
+                // одно только начало.
+                'value_to': item['value_to'],
                 'max_value': item['max_value'],
               };
             }
