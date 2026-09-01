@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/address_model.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
 
@@ -371,6 +372,36 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
     });
   }
 
+  /// Ищет адреса, отдавая предпочтение населённым пунктам.
+  ///
+  /// Сначала спрашиваем сервер прицельно, types: ['city']. Это важно:
+  /// ответ ограничен двадцатью записями, а домов в справочнике на порядки
+  /// больше городов, и все они честно совпадают с запросом. Из-за этого
+  /// «Аксай» возвращал двадцать домов в СНТ «Аксай» и ни одного города —
+  /// человеку приходилось писать «г Аксай».
+  ///
+  /// Если прицельный поиск пуст, повторяем без типа: тогда город можно
+  /// достать из улицы или дома. Это выручает на редких названиях.
+  Future<AddressesResponse> _searchAddressesPreferCities(
+    String query,
+    String? token,
+  ) async {
+    final byCity = await AddressService.searchAddresses(
+      query: query,
+      token: token,
+      types: const ['city'],
+    );
+
+    if (byCity.data.isNotEmpty) {
+      log.d('   🏙  Прицельный поиск по городам: ${byCity.data.length}');
+      return byCity;
+    }
+
+    log.d('   ↩️  Городов не нашлось, ищем без фильтра по типу');
+
+    return AddressService.searchAddresses(query: query, token: token);
+  }
+
   /// 🆕 Поиск городов через переданный callback
   Future<void> _searchCitiesViaCallback(String query) async {
     try {
@@ -385,15 +416,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
 
       final token = TokenService.currentToken;
 
-      // Получаем полные данные городов через API.
-      // 🆕 Не используем types: ['city'] — так API находит города даже по части названия,
-      // возвращая результаты разных типов (улицы/здания/районы), у которых
-      // в поле city указан искомый город (например, улицы Мариуполя при вводе "Мариу").
+      // Получаем полные данные городов через API: сначала прицельно по
+      // городам, при пустом ответе — без фильтра по типу (см. помощник).
       try {
-        final response = await AddressService.searchAddresses(
-          query: query,
-          token: token,
-        );
+        final response = await _searchAddressesPreferCities(query, token);
 
         for (final result in response.data) {
           if (result.city != null) {
@@ -462,16 +488,10 @@ class _CitySelectionDialogState extends State<CitySelectionDialog> {
       final queryLower = query.toLowerCase();
 
       try {
-        // 🆕 НЕ передаём types: ['city'] — это даёт более гибкий поиск.
-        // Раньше API при types=['city'] возвращал только точные совпадения по городу,
-        // и не находил, например, "Мариуполь" по запросу "Мариу".
-        // Теперь API возвращает результаты ВСЕХ типов (улицы, здания, районы),
-        // и из каждого мы извлекаем поле city — так мы находим город,
-        // даже если введена только часть его названия.
-        final response = await AddressService.searchAddresses(
-          query: query,
-          token: token,
-        );
+        // Прицельно по городам, с откатом на поиск без типа. Поиск по части
+        // названия («Мариу») теперь умеет сам сервер, поэтому отказываться от
+        // фильтра по типу ради этого больше не нужно.
+        final response = await _searchAddressesPreferCities(query, token);
 
         for (final result in response.data) {
           // Извлекаем город из любого типа результата (city/street/building/district)
