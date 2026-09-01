@@ -28,6 +28,13 @@ class RentTimeWidget extends StatefulWidget {
   final void Function(String date, String time)? onFromChanged;
   final void Function(String date, String time)? onToChanged;
 
+  /// Сохранённые даты в машинном виде «yyyy-MM-dd». Нужны при открытии
+  /// объявления на редактирование: подписи `dateFrom`/`dateTo` года не
+  /// содержат, и восстановить из них настоящую дату нельзя — виджет
+  /// отправил бы потом сегодняшнее число.
+  final String? isoFrom;
+  final String? isoTo;
+
   const RentTimeWidget({
     super.key,
     this.dateFrom,
@@ -40,6 +47,8 @@ class RentTimeWidget extends StatefulWidget {
     this.onEditTo,
     this.onFromChanged,
     this.onToChanged,
+    this.isoFrom,
+    this.isoTo,
   });
 
   @override
@@ -62,15 +71,61 @@ class _RentTimeWidgetState extends State<RentTimeWidget> {
     _dateTo = widget.dateTo ?? 'Выбрать дату';
     _timeTo = widget.timeTo ?? '00:00';
     
-    // Инициализируем даты с текущего дня
-    _selectedDateFrom = DateTime.now();
-    _selectedDateTo = DateTime.now();
+    // Даты берём из машинных значений, если они пришли, иначе с текущего дня.
+    _selectedDateFrom = DateTime.tryParse(widget.isoFrom ?? '') ?? DateTime.now();
+    _selectedDateTo = DateTime.tryParse(widget.isoTo ?? '') ?? DateTime.now();
 
     // Если значение пришло сверху (открыли объявление на редактирование),
     // считаем дату выбранной — иначе смена одного лишь времени ничего бы
     // не отправила.
-    _dateFromPicked = widget.dateFrom != null;
-    _dateToPicked = widget.dateTo != null;
+    _dateFromPicked = widget.dateFrom != null || widget.isoFrom != null;
+    _dateToPicked = widget.dateTo != null || widget.isoTo != null;
+  }
+
+  /// Значения объявления приезжают ПОЗЖЕ первого построения: форма рисуется,
+  /// как только загружен список атрибутов категории, а сохранённые значения
+  /// подставляются следующим шагом. К тому моменту initState уже отработал,
+  /// и без этой синхронизации поля так и оставались бы пустыми.
+  @override
+  void didUpdateWidget(covariant RentTimeWidget old) {
+    super.didUpdateWidget(old);
+
+    var changed = false;
+
+    if (widget.dateFrom != old.dateFrom && widget.dateFrom != null) {
+      _dateFrom = widget.dateFrom!;
+      changed = true;
+    }
+    if (widget.dateTo != old.dateTo && widget.dateTo != null) {
+      _dateTo = widget.dateTo!;
+      changed = true;
+    }
+    if (widget.timeFrom != old.timeFrom && widget.timeFrom != null) {
+      _timeFrom = widget.timeFrom!;
+      changed = true;
+    }
+    if (widget.timeTo != old.timeTo && widget.timeTo != null) {
+      _timeTo = widget.timeTo!;
+      changed = true;
+    }
+    if (widget.isoFrom != old.isoFrom) {
+      final parsed = DateTime.tryParse(widget.isoFrom ?? '');
+      if (parsed != null) {
+        _selectedDateFrom = parsed;
+        _dateFromPicked = true;
+        changed = true;
+      }
+    }
+    if (widget.isoTo != old.isoTo) {
+      final parsed = DateTime.tryParse(widget.isoTo ?? '');
+      if (parsed != null) {
+        _selectedDateTo = parsed;
+        _dateToPicked = true;
+        changed = true;
+      }
+    }
+
+    if (changed) setState(() {});
   }
 
   /// Дату действительно выбрали. Без этого флага виджет отдавал бы сегодняшнее

@@ -28,6 +28,12 @@ class KRentTimeWidget extends StatefulWidget {
   final void Function(String date, String time)? onFromChanged;
   final void Function(String date, String time)? onToChanged;
 
+  /// Сохранённая дата в машинном виде «yyyy-MM-dd». Нужна при открытии
+  /// объявления на редактирование: подпись `dateFrom` года не содержит, и
+  /// восстановить из неё настоящую дату нельзя — виджет отправил бы потом
+  /// сегодняшнее число.
+  final String? isoFrom;
+
   const KRentTimeWidget({
     super.key,
     this.dateFrom,
@@ -40,6 +46,7 @@ class KRentTimeWidget extends StatefulWidget {
     this.onEditTo,
     this.onFromChanged,
     this.onToChanged,
+    this.isoFrom,
   });
 
   @override
@@ -62,14 +69,49 @@ class _KRentTimeWidgetState extends State<KRentTimeWidget> {
     _dateTo = widget.dateTo ?? 'Выбрать дату';
     _timeTo = widget.timeTo ?? '00:00';
 
-    // Инициализируем даты с текущего дня
-    _selectedDateFrom = DateTime.now();
-    _selectedDateTo = DateTime.now();
+    // Дату берём из машинного значения, если оно пришло, иначе текущий день.
+    _selectedDateFrom = DateTime.tryParse(widget.isoFrom ?? '') ?? DateTime.now();
+    _selectedDateTo = _selectedDateFrom;
 
     // Если значение пришло сверху (открыли объявление на редактирование),
     // считаем дату выбранной — иначе смена одного лишь времени ничего бы
     // не отправила.
-    _datePicked = widget.dateFrom != null;
+    _datePicked = widget.dateFrom != null || widget.isoFrom != null;
+  }
+
+  /// Значения объявления приезжают ПОЗЖЕ первого построения: форма рисуется,
+  /// как только загружен список атрибутов категории, а сохранённые значения
+  /// подставляются следующим шагом. К тому моменту initState уже отработал,
+  /// и без этой синхронизации поля так и оставались бы пустыми.
+  @override
+  void didUpdateWidget(covariant KRentTimeWidget old) {
+    super.didUpdateWidget(old);
+
+    var changed = false;
+
+    if (widget.dateFrom != old.dateFrom && widget.dateFrom != null) {
+      _dateFrom = widget.dateFrom!;
+      changed = true;
+    }
+    if (widget.timeFrom != old.timeFrom && widget.timeFrom != null) {
+      _timeFrom = widget.timeFrom!;
+      changed = true;
+    }
+    if (widget.timeTo != old.timeTo && widget.timeTo != null) {
+      _timeTo = widget.timeTo!;
+      changed = true;
+    }
+    if (widget.isoFrom != old.isoFrom) {
+      final parsed = DateTime.tryParse(widget.isoFrom ?? '');
+      if (parsed != null) {
+        _selectedDateFrom = parsed;
+        _selectedDateTo = parsed;
+        _datePicked = true;
+        changed = true;
+      }
+    }
+
+    if (changed) setState(() {});
   }
 
   /// Дату действительно выбрали. Без этого флага виджет отдавал бы сегодняшнее

@@ -3475,6 +3475,11 @@ class _DynamicFilterState extends State<DynamicFilter>
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,
           timeTo: timeData['timeTo'] as String?,
+          // Машинные даты: подписи выше года не содержат, а виджету он нужен,
+          // чтобы после правки одного лишь времени не отправить сегодняшнее
+          // число вместо сохранённого.
+          isoFrom: timeData['isoFrom'] as String?,
+          isoTo: timeData['isoTo'] as String?,
           // Подпись для экрана.
           onDateFromSelected: (date) =>
               _updateCalendarValue(attrId, {'dateFrom': date}),
@@ -3528,6 +3533,9 @@ class _DynamicFilterState extends State<DynamicFilter>
           timeFrom: timeData['timeFrom'] as String?,
           dateTo: timeData['dateTo'] as String?,
           timeTo: timeData['timeTo'] as String?,
+          // Дата у компактного календаря одна, машинное значение нужно по той
+          // же причине, что и у полного.
+          isoFrom: timeData['isoFrom'] as String?,
           // Подпись для экрана.
           onDateFromSelected: (date) =>
               _updateCalendarValue(attrId, {'dateFrom': date}),
