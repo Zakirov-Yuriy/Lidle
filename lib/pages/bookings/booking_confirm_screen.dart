@@ -148,7 +148,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
           children: [
             const Header(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: const Row(
@@ -171,7 +171,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 children: [
-                  const SizedBox(height: 12),
+                  // const SizedBox(height: 12),
                   const Text(
                     'Подтверждение записи',
                     style: TextStyle(
