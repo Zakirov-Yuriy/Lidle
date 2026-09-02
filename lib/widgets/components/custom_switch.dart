@@ -9,7 +9,17 @@ class CustomSwitch extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  const CustomSwitch({super.key, required this.value, required this.onChanged});
+  /// Цвет дорожки. По умолчанию тёмный, как было: на общем фоне экрана он
+  /// читается. Параметр нужен там, где свич лежит на карточке того же цвета,
+  /// иначе дорожка сливается с ней и остаётся один кружок.
+  final Color? trackColor;
+
+  const CustomSwitch({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    this.trackColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +31,7 @@ class CustomSwitch extends StatelessWidget {
         height: 20,
         padding: const EdgeInsets.all(3),
         decoration: BoxDecoration(
-          color: const Color(0xFF17212B),
+          color: trackColor ?? const Color(0xFF17212B),
           borderRadius: BorderRadius.circular(30),
         ),
         child: AnimatedAlign(

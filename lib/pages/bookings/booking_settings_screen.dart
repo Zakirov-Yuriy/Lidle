@@ -4,6 +4,7 @@ import 'package:lidle/models/bookings/booking_item.dart';
 import 'package:lidle/models/bookings/booking_settings.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
+import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 /// Настройка записи у своего объявления.
@@ -120,7 +121,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
           children: [
             const Header(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: const Row(
@@ -156,7 +157,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
     final settings = _settings!;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(25, 12, 25, 40),
+      padding: const EdgeInsets.fromLTRB(25, 0, 25, 40),
       children: [
         const Text(
           'Запись на объявление',
@@ -233,13 +234,15 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
           Row(
             children: [
               Expanded(child: _title('Принимать записи')),
-              Switch(
+              CustomSwitch(
                 value: settings.isEnabled,
-                activeThumbColor: Colors.white,
-                activeTrackColor: activeIconColor,
-                onChanged: _isSaving
-                    ? null
-                    : (value) => _save({'is_enabled': value}),
+                // Дорожка светлее карточки: на formBackground стандартный
+                // тёмный цвет свича сливается с фоном.
+                trackColor: primaryBackground,
+                onChanged: (value) {
+                  if (_isSaving) return;
+                  _save({'is_enabled': value});
+                },
               ),
             ],
           ),
@@ -316,13 +319,13 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
           Row(
             children: [
               Expanded(child: _title('Подтверждать записи вручную')),
-              Switch(
+              CustomSwitch(
                 value: settings.needsConfirmation,
-                activeThumbColor: Colors.white,
-                activeTrackColor: activeIconColor,
-                onChanged: _isSaving
-                    ? null
-                    : (value) => _save({'needs_confirmation': value}),
+                trackColor: primaryBackground,
+                onChanged: (value) {
+                  if (_isSaving) return;
+                  _save({'needs_confirmation': value});
+                },
               ),
             ],
           ),
@@ -396,19 +399,15 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          SizedBox(
-            width: 26,
-            child: Switch(
-              value: isWorking,
-              activeThumbColor: Colors.white,
-              activeTrackColor: activeIconColor,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              onChanged: _isSaving
-                  ? null
-                  : (value) => _toggleWeekday(settings, weekday, value),
-            ),
+          CustomSwitch(
+            value: isWorking,
+            trackColor: primaryBackground,
+            onChanged: (value) {
+              if (_isSaving) return;
+              _toggleWeekday(settings, weekday, value);
+            },
           ),
-          const SizedBox(width: 18),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               _weekdayNames[weekday]!,
