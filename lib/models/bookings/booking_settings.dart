@@ -22,6 +22,12 @@ class BookingSettings {
   final int cancelBeforeHours;
   final int? maxGuests;
 
+  /// Часы заезда и выезда, только для посуточного режима. Именно они задают
+  /// границы ночи, и по ним же закрываются даты: закрыть «сутки с 00:00 до
+  /// 23:59» у жилья означало бы задеть две ночи, а не одну.
+  final String? checkInTime;
+  final String? checkOutTime;
+
   final List<BookingWorkingHour> workingHours;
 
   const BookingSettings({
@@ -38,6 +44,8 @@ class BookingSettings {
     required this.horizonDays,
     required this.cancelBeforeHours,
     required this.maxGuests,
+    required this.checkInTime,
+    required this.checkOutTime,
     required this.workingHours,
   });
 
@@ -57,6 +65,8 @@ class BookingSettings {
         horizonDays: 90,
         cancelBeforeHours: 24,
         maxGuests: null,
+        checkInTime: null,
+        checkOutTime: null,
         workingHours: const [],
       );
 
@@ -83,6 +93,8 @@ class BookingSettings {
       horizonDays: _int(data['horizon_days']) ?? 90,
       cancelBeforeHours: _int(data['cancel_before_hours']) ?? 24,
       maxGuests: _int(data['max_guests']),
+      checkInTime: _time(data['check_in_time']),
+      checkOutTime: _time(data['check_out_time']),
       workingHours: hours,
     );
   }
@@ -111,8 +123,23 @@ class BookingSettings {
       horizonDays: horizonDays,
       cancelBeforeHours: cancelBeforeHours ?? this.cancelBeforeHours,
       maxGuests: maxGuests,
+      checkInTime: checkInTime,
+      checkOutTime: checkOutTime,
       workingHours: workingHours ?? this.workingHours,
     );
+  }
+
+  /// Посуточный режим: у него закрывается ночь, а не календарные сутки.
+  bool get isDaily => resource?.mode == 'daily';
+
+  /// Сервер отдаёт `14:00:00`, человеку нужны часы и минуты.
+  static String? _time(dynamic value) {
+    if (value == null) return null;
+
+    final text = '$value'.trim();
+    if (text.isEmpty) return null;
+
+    return text.length >= 5 ? text.substring(0, 5) : text;
   }
 
   static int? _int(dynamic value) {

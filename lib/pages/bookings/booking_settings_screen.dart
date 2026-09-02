@@ -517,22 +517,26 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _title('Закрытые дни')),
+              Expanded(
+                child: _title(_settings!.isDaily ? 'Закрытые ночи' : 'Закрытые дни'),
+              ),
               GestureDetector(
                 onTap: _isSaving ? null : _addBlock,
-                child: const Text(
-                  'Закрыть время',
-                  style: TextStyle(color: activeIconColor, fontSize: 14),
+                child: Text(
+                  _settings!.isDaily ? 'Закрыть ночь' : 'Закрыть день',
+                  style: const TextStyle(color: activeIconColor, fontSize: 14),
                 ),
               ),
             ],
           ),
-          _hint('Отпуск, ремонт, личные дела. В закрытое время записаться нельзя.'),
+          _hint(_settings!.isDaily
+              ? 'Отпуск, ремонт, личные дела. Закрывается ночь: заезд в выбранный день, выезд на следующий.'
+              : 'Отпуск, ремонт, личные дела. В закрытое время записаться нельзя.'),
           const SizedBox(height: 8),
           if (_blocks.isEmpty)
-            const Text(
-              'Закрытых дней нет.',
-              style: TextStyle(color: textMuted, fontSize: 14),
+            Text(
+              _settings!.isDaily ? 'Закрытых ночей нет.' : 'Закрытых дней нет.',
+              style: const TextStyle(color: textMuted, fontSize: 14),
             )
           else
             ..._blocks.map(_buildBlockRow),
@@ -548,9 +552,7 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         children: [
           Expanded(
             child: Text(
-              '${_humanDate(block.startsAt)}, '
-              '${_time(block.startsAt)} — ${_time(block.endsAt)}'
-              '${block.comment == null ? '' : ' · ${block.comment}'}',
+              _blockLabel(block),
               style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
           ),
@@ -579,11 +581,35 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
 
     if (date == null || !mounted) return;
 
-    // Закрываем день целиком: закрытие по часам можно будет добавить, когда
-    // станет понятно, что оно кому-то нужно. Пока «уехал на день» покрывает
-    // все известные случаи, а лишние поля усложняют экран на пустом месте.
-    final starts = DateTime(date.year, date.month, date.day, 0, 0);
-    final ends = DateTime(date.year, date.month, date.day, 23, 59);
+    final settings = _settings!;
+
+    // Что именно закрывать, зависит от режима, и это не мелочь.
+    //
+    // У записи к мастеру закрываем календарные сутки: «в этот день не
+    // работаю».
+    //
+    // У жилья единица занятости не сутки, а НОЧЬ: ночь 24-го это заезд 24-го
+    // в 14:00 и выезд 25-го в 11:00. Если у жилья закрыть сутки с 00:00 до
+    // 23:59, промежуток заденет утро — то есть конец предыдущей ночи, — и
+    // закрытыми окажутся ДВЕ ночи вместо одной. Именно так и вышло при первой
+    // проверке: закрыли 25 сентября, а недоступными стали 24-е и 25-е.
+    //
+    // Поэтому для жилья закрываем ровно ночь, от часа заезда до часа выезда
+    // следующего дня.
+    final DateTime starts;
+    final DateTime ends;
+
+    if (settings.isDaily) {
+      final checkIn = _parseTime(settings.checkInTime, fallbackHour: 14);
+      final checkOut = _parseTime(settings.checkOutTime, fallbackHour: 11);
+      final next = date.add(const Duration(days: 1));
+
+      starts = DateTime(date.year, date.month, date.day, checkIn.$1, checkIn.$2);
+      ends = DateTime(next.year, next.month, next.day, checkOut.$1, checkOut.$2);
+    } else {
+      starts = DateTime(date.year, date.month, date.day, 0, 0);
+      ends = DateTime(date.year, date.month, date.day, 23, 59);
+    }
 
     final result = await BookingsService.block(
       widget.advertId,
@@ -603,6 +629,18 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
     await _load();
   }
 
+  /// Разбирает `14:00` в часы и минуты. Запасное значение нужно на случай,
+  /// когда владелец ещё не задавал часы заезда: без него мы бы закрыли
+  /// полночь и снова задели соседнюю ночь.
+  (int, int) _parseTime(String? value, {required int fallbackHour}) {
+    final parts = (value ?? '').split(':');
+
+    final hour = parts.isEmpty ? null : int.tryParse(parts.first);
+    final minute = parts.length > 1 ? int.tryParse(parts[1]) : 0;
+
+    return (hour ?? fallbackHour, minute ?? 0);
+  }
+
   Future<void> _removeBlock(BookingItem block) async {
     final result = await BookingsService.unblock(block.id);
 
@@ -615,6 +653,22 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
     }
 
     await _load();
+  }
+
+  /// Подпись закрытого промежутка.
+  ///
+  /// У жилья пишем «ночь на 26 сентября»: пара дат с часами читается как
+  /// загадка, потому что заканчивается на следующий день.
+  String _blockLabel(BookingItem block) {
+    final comment = block.comment == null ? '' : ' · ${block.comment}';
+
+    if (_settings!.isDaily && block.startsAt != null) {
+      return 'Ночь ${_humanDate(block.startsAt)}, '
+          'выезд ${_humanDate(block.endsAt)}$comment';
+    }
+
+    return '${_humanDate(block.startsAt)}, '
+        '${_time(block.startsAt)} — ${_time(block.endsAt)}$comment';
   }
 
   Widget _chips({
