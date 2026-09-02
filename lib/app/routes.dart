@@ -17,6 +17,7 @@ import 'package:lidle/pages/profile_menu/settings/change_photo/change_photo_scre
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
+import 'package:lidle/pages/bookings/my_bookings_screen.dart';
 import 'package:lidle/pages/profile_menu/profile_menu_screen.dart';
 import 'package:lidle/pages/profile_menu/invite_friends/invite_friends_screen.dart';
 import 'package:lidle/pages/profile_menu/invite_friends/find_by_phone_screen.dart';
@@ -189,6 +190,14 @@ class AppRoutes {
     ResponsesEmptyPage.routeName: (context) =>
         const ResponsesEmptyPage(),
     ReviewsEmptyPage.routeName: (context) => const ReviewsEmptyPage(),
+    // Брони. Открывается и из профиля напрямую, и по имени маршрута:
+    // второе нужно для переходов из уведомлений.
+    MyBookingsScreen.routeName: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      final tab = args is int ? args : 0;
+
+      return MyBookingsScreen(initialTab: tab);
+    },
     MyListingsScreen.routeName: (context) {
       // Обработка параметров для перехода из dynamic_filter при публикации
       final args = ModalRoute.of(context)?.settings.arguments

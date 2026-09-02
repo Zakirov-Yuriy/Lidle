@@ -22,8 +22,11 @@
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
 
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/main.dart' show navigatorKey;
+import 'package:lidle/pages/bookings/my_bookings_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -69,6 +72,16 @@ class PushService {
         // себе. Старый после этого перестаёт работать, поэтому новый сразу
         // отправляем на сервер.
         messaging.onTokenRefresh.listen(_sendTokenToBackend);
+
+        // Нажатие на уведомление, когда приложение свёрнуто.
+        FirebaseMessaging.onMessageOpenedApp.listen(_openFromMessage);
+
+        // И то же самое, если приложение было закрыто совсем: уведомление,
+        // которым его открыли, приходит отдельным способом и только один раз.
+        final initial = await messaging.getInitialMessage();
+        if (initial != null) {
+          _openFromMessage(initial);
+        }
 
         _initialized = true;
       }
@@ -145,6 +158,32 @@ class PushService {
     } catch (e) {
       log.w('⚠️ Не удалось отправить токен устройства: $e');
     }
+  }
+
+  /// Куда вести человека, нажавшего на уведомление.
+  ///
+  /// Пока разбираем только брони: у остальных уведомлений своего экрана
+  /// назначения нет, и открывать что попало хуже, чем не открывать ничего.
+  ///
+  /// Вкладку выбираем по событию, а не по роли из ответа сервера: уведомление
+  /// приходит тому, кто ничего не решал, и этого достаточно, чтобы понять,
+  /// какой список он ждёт увидеть. Заявку и её отмену гостем видит владелец,
+  /// значит ему нужны «Заявки ко мне». Решение владельца видит гость, значит
+  /// ему нужны «Мои брони».
+  void _openFromMessage(RemoteMessage message) {
+    final data = message.data;
+
+    if ('${data['type'] ?? ''}' != 'booking') {
+      return;
+    }
+
+    const ownerEvents = {'created', 'cancelled_by_guest'};
+    final event = '${data['event'] ?? ''}';
+    final tab = ownerEvents.contains(event) ? 1 : 0;
+
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(builder: (_) => MyBookingsScreen(initialTab: tab)),
+    );
   }
 
   /// Показать уведомление, пришедшее при открытом приложении.

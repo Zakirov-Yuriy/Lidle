@@ -33,6 +33,7 @@ import 'package:lidle/pages/profile_dashboard/support/support_screen.dart';
 import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
+import 'package:lidle/pages/bookings/my_bookings_screen.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/models/review_model.dart';
 import 'package:lidle/services/api_service.dart';
@@ -596,6 +597,40 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                     onTap: () => Navigator.of(
                                       context,
                                     ).pushNamed(MyListingsScreen.routeName),
+                                  ),
+                                  const Divider(
+                                    color: Color(0xFF474747),
+                                    height: 8,
+                                  ),
+                                  // Бронирование. Два пункта, а не один:
+                                  // «мои» и «ко мне» человек смотрит разными
+                                  // глазами, и объединять их в один список
+                                  // значит заставлять его фильтровать.
+                                  _MenuItem(
+                                    title: 'Мои брони',
+                                    count: 0,
+                                    trailingChevron: true,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const MyBookingsScreen(initialTab: 0),
+                                      ),
+                                    ),
+                                  ),
+                                  const Divider(
+                                    color: Color(0xFF474747),
+                                    height: 8,
+                                  ),
+                                  _MenuItem(
+                                    title: 'Заявки ко мне',
+                                    count: 0,
+                                    trailingChevron: true,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const MyBookingsScreen(initialTab: 1),
+                                      ),
+                                    ),
                                   ),
                                   const Divider(
                                     color: Color(0xFF474747),

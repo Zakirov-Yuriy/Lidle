@@ -1,5 +1,6 @@
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
+import 'package:lidle/models/bookings/booking_item.dart';
 import 'package:lidle/services/api_service.dart';
 
 /// Результат попытки забронировать.
@@ -123,6 +124,86 @@ class BookingsService {
       return BookingResult(kind: BookingResultKind.rejected, message: message);
     } catch (e) {
       log.e('Ошибка бронирования объявления $advertId: $e');
+      return BookingResult(
+        kind: BookingResultKind.rejected,
+        message: 'Не получилось связаться с сервером. Попробуйте ещё раз.',
+      );
+    }
+  }
+
+  /// Мои брони как гостя.
+  ///
+  /// `scope`: upcoming (по умолчанию), past или all.
+  static Future<List<BookingItem>> myBookings({
+    String scope = 'upcoming',
+  }) async {
+    return _list('/me/bookings?scope=$scope');
+  }
+
+  /// Заявки на мои объявления.
+  static Future<List<BookingItem>> incoming({
+    String scope = 'upcoming',
+  }) async {
+    return _list('/me/bookings/incoming?scope=$scope');
+  }
+
+  static Future<List<BookingItem>> _list(String endpoint) async {
+    final response = await ApiService.get(endpoint);
+
+    final data = response['data'];
+    if (data is! List) return const [];
+
+    final items = <BookingItem>[];
+    for (final row in data) {
+      final item = BookingItem.tryParse(row);
+      if (item != null) items.add(item);
+    }
+
+    return items;
+  }
+
+  /// Владелец подтверждает заявку.
+  static Future<BookingResult> confirm(int bookingId) =>
+      _act('/me/bookings/$bookingId/confirm', 'Бронь подтверждена');
+
+  /// Владелец отклоняет заявку.
+  static Future<BookingResult> reject(int bookingId, {String? reason}) =>
+      _act('/me/bookings/$bookingId/reject', 'Заявка отклонена', reason: reason);
+
+  /// Отмена. Доступна обеим сторонам, но гостя ограничивает срок из настроек
+  /// объявления. Проверять срок здесь не нужно: сервер уже прислал
+  /// `can_cancel`, а если нажать в последнюю секунду, придёт понятный отказ.
+  static Future<BookingResult> cancel(int bookingId, {String? reason}) =>
+      _act('/me/bookings/$bookingId/cancel', 'Бронь отменена', reason: reason);
+
+  static Future<BookingResult> _act(
+    String endpoint,
+    String fallbackMessage, {
+    String? reason,
+  }) async {
+    final body = <String, dynamic>{};
+    if (reason != null && reason.trim().isNotEmpty) {
+      body['reason'] = reason.trim();
+    }
+
+    try {
+      final response = await ApiService.post(endpoint, body);
+
+      if (response['success'] == true) {
+        final data = response['data'];
+        return BookingResult(
+          kind: BookingResultKind.created,
+          message: '${response['message'] ?? fallbackMessage}',
+          status: data is Map ? data['status']?.toString() : null,
+        );
+      }
+
+      return BookingResult(
+        kind: BookingResultKind.rejected,
+        message: '${response['message'] ?? 'Не получилось'}',
+      );
+    } catch (e) {
+      log.e('Ошибка действия над бронью: $e');
       return BookingResult(
         kind: BookingResultKind.rejected,
         message: 'Не получилось связаться с сервером. Попробуйте ещё раз.',
