@@ -162,12 +162,23 @@ class BookingResourceBrief {
   /// одно закроет время в остальных, и владелец должен это знать заранее.
   final int sharedAdvertsCount;
 
+  /// Можно ли ещё переключить режим. Сервер говорит «нет», как только на
+  /// расписании появилась первая живая бронь: в слотах занятость считается
+  /// часами, в посуточной ночами, и переключение сделало бы существующие
+  /// брони бессмысленными.
+  ///
+  /// Умолчание `true` намеренно: если сервер старый и поля не прислал, лучше
+  /// дать нажать и получить внятный отказ, чем показать выбор заблокированным
+  /// без причины.
+  final bool canChangeMode;
+
   const BookingResourceBrief({
     required this.id,
     required this.name,
     required this.mode,
     required this.timezone,
     required this.sharedAdvertsCount,
+    required this.canChangeMode,
   });
 
   bool get isShared => sharedAdvertsCount > 1;
@@ -184,6 +195,7 @@ class BookingResourceBrief {
       mode: '${raw['mode'] ?? 'slots'}',
       timezone: '${raw['timezone'] ?? ''}',
       sharedAdvertsCount: BookingSettings._int(raw['shared_adverts_count']) ?? 1,
+      canChangeMode: raw['can_change_mode'] != false,
     );
   }
 }

@@ -159,9 +159,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(25, 0, 25, 40),
       children: [
-        const Text(
-          'Запись на объявление',
-          style: TextStyle(
+        Text(
+          settings.isDaily ? 'Бронирование объявления' : 'Запись на объявление',
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -177,13 +177,27 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         if (settings.isEnabled) ...[
           const SizedBox(height: 12),
           if (settings.resource?.isShared == true) _buildSharedNotice(settings),
-          _buildSlotCard(settings),
+          _buildModeCard(settings),
+          const SizedBox(height: 12),
+          // Длительность приёма и перерыв имеют смысл только у записи по
+          // часам. У посуточной аренды единица это ночь, и вместо них нужны
+          // часы заезда и выезда: именно они задают её границы.
+          if (settings.isDaily)
+            _buildStayCard(settings)
+          else
+            _buildSlotCard(settings),
           const SizedBox(height: 12),
           _buildConfirmationCard(settings),
           const SizedBox(height: 12),
           _buildCancelCard(settings),
-          const SizedBox(height: 12),
-          _buildWorkingHoursCard(settings),
+          // Рабочие часы посуточная аренда не читает вовсе: ночь считается от
+          // заезда до выезда независимо от дня недели. Показывать здесь
+          // расписание значит предлагать настройку, которая ни на что не
+          // влияет. Закрыть отдельные ночи можно ниже.
+          if (!settings.isDaily) ...[
+            const SizedBox(height: 12),
+            _buildWorkingHoursCard(settings),
+          ],
           const SizedBox(height: 12),
           _buildBlocksCard(),
         ],
@@ -233,7 +247,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _title('Принимать записи')),
+              Expanded(child: _title(
+                settings.isDaily ? 'Принимать брони' : 'Принимать записи',
+              )),
               CustomSwitch(
                 value: settings.isEnabled,
                 // Дорожка светлее карточки: на formBackground стандартный
@@ -246,9 +262,11 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
               ),
             ],
           ),
-          _hint(settings.isEnabled
-              ? 'В карточке объявления появится календарь свободного времени и кнопка «Записаться».'
-              : 'Пока выключено, календарь в карточке не показывается.'),
+          _hint(!settings.isEnabled
+              ? 'Пока выключено, календарь в карточке не показывается.'
+              : settings.isDaily
+                  ? 'В карточке объявления появится календарь свободных ночей и кнопка «Забронировать».'
+                  : 'В карточке объявления появится календарь свободного времени и кнопка «Записаться».'),
         ],
       ),
     );
@@ -281,6 +299,195 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         ),
       ),
     );
+  }
+
+  /// Режим: запись по часам или посуточная аренда.
+  ///
+  /// Раньше этого выбора здесь не было вовсе, и режим задавался только
+  /// консольной командой при первом включении. То есть владелец, сдающий
+  /// квартиру, получал экран записи к мастеру и ничего не мог с этим сделать.
+  ///
+  /// Выбор из двух карточек, а не переключатель: слово «посуточно» само по
+  /// себе ничего не объясняет, а разница между «клиент выбирает час» и «гость
+  /// снимает на ночь» решает, каким объявление увидят люди.
+  Widget _buildModeCard(BookingSettings settings) {
+    final canChange = settings.resource?.canChangeMode ?? true;
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _title('Как бронируют'),
+          const SizedBox(height: 10),
+          _modeOption(
+            settings: settings,
+            mode: 'slots',
+            title: 'По часам, запись',
+            subtitle: 'Клиент выбирает день и время приёма. Стрижка, приём врача, занятие.',
+            canChange: canChange,
+          ),
+          const SizedBox(height: 8),
+          _modeOption(
+            settings: settings,
+            mode: 'daily',
+            title: 'Посуточно, аренда',
+            subtitle: 'Гость выбирает ночи. Заезд днём, выезд утром следующего дня.',
+            canChange: canChange,
+          ),
+          if (!canChange)
+            _hint('Режим уже нельзя поменять: на этом расписании есть брони. '
+                'Отмените их или заведите объявление заново.'),
+        ],
+      ),
+    );
+  }
+
+  Widget _modeOption({
+    required BookingSettings settings,
+    required String mode,
+    required String title,
+    required String subtitle,
+    required bool canChange,
+  }) {
+    final isSelected = (settings.resource?.mode ?? 'slots') == mode;
+
+    return GestureDetector(
+      onTap: (!canChange || isSelected || _isSaving) ? null : () => _changeMode(mode),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? activeIconColor.withValues(alpha: 0.16) : secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? activeIconColor : Colors.transparent,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              color: isSelected
+                  ? activeIconColor
+                  : (canChange ? textSecondary : textMuted),
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: canChange || isSelected ? Colors.white : textMuted,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Смена режима перечитывает экран целиком, а не только настройки.
+  ///
+  /// Закрытые периоды при этом меняют смысл: у записи закрывались календарные
+  /// сутки, у аренды закрывается ночь. Оставить на экране прежний список
+  /// значило бы показывать «закрытые ночи» там, где на самом деле лежат
+  /// закрытые сутки.
+  Future<void> _changeMode(String mode) async {
+    await _save({'mode': mode});
+
+    if (!mounted) return;
+
+    await _load();
+  }
+
+  /// Часы заезда и выезда. Это не украшение: именно они задают границы ночи,
+  /// и по ним же закрываются даты. При заезде 14:00 и выезде 11:00 ночь 24-го
+  /// это промежуток с 24-го 14:00 до 25-го 11:00, поэтому гость, съехавший
+  /// утром, не мешает следующему заехать в тот же день.
+  Widget _buildStayCard(BookingSettings settings) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _title('Заезд и выезд'),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Заезд после',
+                    style: TextStyle(color: Colors.white, fontSize: 15)),
+              ),
+              _timeButton(
+                settings.checkInTime ?? '14:00',
+                () => _pickStayTime(settings, isCheckIn: true),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Expanded(
+                child: Text('Выезд до',
+                    style: TextStyle(color: Colors.white, fontSize: 15)),
+              ),
+              _timeButton(
+                settings.checkOutTime ?? '11:00',
+                () => _pickStayTime(settings, isCheckIn: false),
+              ),
+            ],
+          ),
+          _hint('Одна бронь это ночь: заезд в выбранный день, выезд утром следующего. '
+              'Гость, съехавший утром, не мешает следующему заехать в тот же день.'),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickStayTime(
+    BookingSettings settings, {
+    required bool isCheckIn,
+  }) async {
+    final source = (isCheckIn ? settings.checkInTime : settings.checkOutTime) ??
+        (isCheckIn ? '14:00' : '11:00');
+    final parts = source.split(':');
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: int.tryParse(parts.first) ?? (isCheckIn ? 14 : 11),
+        minute: parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0,
+      ),
+      builder: (context, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(primary: activeIconColor),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    final value = '${picked.hour.toString().padLeft(2, '0')}:'
+        '${picked.minute.toString().padLeft(2, '0')}';
+
+    // Ключ вычисляем заранее: условное выражение прямо в ключе литерала карты
+    // читается двусмысленно из-за двоеточия.
+    final field = isCheckIn ? 'check_in_time' : 'check_out_time';
+
+    await _save({field: value});
   }
 
   Widget _buildSlotCard(BookingSettings settings) {
@@ -318,7 +525,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _title('Подтверждать записи вручную')),
+              Expanded(child: _title(settings.isDaily
+                  ? 'Подтверждать брони вручную'
+                  : 'Подтверждать записи вручную')),
               CustomSwitch(
                 value: settings.needsConfirmation,
                 trackColor: primaryBackground,
@@ -331,7 +540,9 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
           ),
           _hint(settings.needsConfirmation
               ? 'Время держится за человеком, пока вы не ответите. Не ответите вовремя — заявка гаснет и время освобождается.'
-              : 'Человек выбирает время и оно сразу занято, вы просто видите запись.'),
+              : settings.isDaily
+                  ? 'Гость выбирает ночи и они сразу заняты, вы просто видите бронь.'
+                  : 'Человек выбирает время и оно сразу занято, вы просто видите запись.'),
           if (settings.needsConfirmation) ...[
             const SizedBox(height: 14),
             _title('Сколько ждать вашего ответа'),
