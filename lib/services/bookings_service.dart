@@ -68,18 +68,22 @@ class BookingsService {
   /// Границы отправляем целиком, началом и концом, а не «начало плюс
   /// длительность»: у жилья конец приходится на другой день, и считать его
   /// на клиенте значит однажды ошибиться.
+  ///
+  /// И отправляем ровно те строки, которые прислал сервер, вместе с их
+  /// смещением. Ничего не пересчитываем: любая арифметика с часовыми
+  /// поясами на клиенте это будущая ошибка на три часа.
   static Future<BookingResult> create({
     required int advertId,
-    required DateTime startsAt,
-    required DateTime endsAt,
+    required String startsAt,
+    required String endsAt,
     int? guestsCount,
     String? comment,
     String? contactName,
     String? contactPhone,
   }) async {
     final body = <String, dynamic>{
-      'starts_at': startsAt.toIso8601String(),
-      'ends_at': endsAt.toIso8601String(),
+      'starts_at': startsAt,
+      'ends_at': endsAt,
     };
 
     if (guestsCount != null) body['guests_count'] = guestsCount;

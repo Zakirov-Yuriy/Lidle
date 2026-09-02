@@ -12,28 +12,70 @@ library;
 /// Режим бронирования: запись на услуги или посуточное жильё.
 enum BookingMode { slots, daily }
 
+/// Разбирает время так, как его имел в виду сервер, без пересчёта поясов.
+///
+/// Сервер присылает строки вида `2026-09-02T09:00:00+03:00`, где 09:00 это
+/// время по часам мастера. `DateTime.parse` у такой строки переводит момент
+/// в UTC, и час превращается в 06. Показывать это человеку нельзя: он
+/// нажмёт «06:00» и придёт на три часа раньше.
+///
+/// Поэтому отрезаем смещение и читаем оставшееся как есть. Получается
+/// «настенное время» ресурса: ровно то, что человек увидит у мастера на
+/// часах. Обратно на сервер уходит исходная строка целиком, вместе со
+/// смещением, так что момент времени не искажается ни на одном шаге.
+DateTime? parseBookingWallClock(dynamic raw) {
+  if (raw == null) return null;
+
+  final text = '$raw'.trim();
+  if (text.isEmpty) return null;
+
+  // Отрезаем хвост: Z, +03:00, -0500 и подобное. Дату вида 2026-09-02 без
+  // времени это не трогает.
+  final withoutOffset = text.replaceFirst(
+    RegExp(r'(Z|[+-]\d{2}:?\d{2})$'),
+    '',
+  );
+
+  return DateTime.tryParse(withoutOffset);
+}
+
 /// Один слот в режиме записи на услуги.
 class BookingSlot {
+  /// Время по часам мастера, для показа на экране.
   final DateTime startsAt;
   final DateTime endsAt;
+
+  /// Исходные строки сервера со смещением. Именно они уходят обратно при
+  /// создании брони: так момент времени не зависит ни от часов телефона,
+  /// ни от наших пересчётов.
+  final String startsAtRaw;
+  final String endsAtRaw;
+
   final bool isFree;
 
   const BookingSlot({
     required this.startsAt,
     required this.endsAt,
+    required this.startsAtRaw,
+    required this.endsAtRaw,
     required this.isFree,
   });
 
   static BookingSlot? tryParse(dynamic raw) {
     if (raw is! Map) return null;
 
-    final starts = DateTime.tryParse('${raw['starts_at']}');
-    final ends = DateTime.tryParse('${raw['ends_at']}');
+    final startsRaw = '${raw['starts_at']}';
+    final endsRaw = '${raw['ends_at']}';
+
+    final starts = parseBookingWallClock(startsRaw);
+    final ends = parseBookingWallClock(endsRaw);
     if (starts == null || ends == null) return null;
 
     return BookingSlot(
       startsAt: starts,
       endsAt: ends,
+      startsAtRaw: startsRaw,
+      endsAtRaw: endsRaw,
       // Отсутствующий флаг считаем занятым: лучше не показать свободное
       // время, чем предложить занятое и получить отказ на отправке.
       isFree: raw['is_free'] == true,
@@ -58,7 +100,7 @@ class BookingDay {
   static BookingDay? tryParse(dynamic raw) {
     if (raw is! Map) return null;
 
-    final date = DateTime.tryParse('${raw['date']}');
+    final date = parseBookingWallClock(raw['date']);
     if (date == null) return null;
 
     final slots = <BookingSlot>[];
@@ -82,27 +124,36 @@ class BookingNight {
   final DateTime date;
   final DateTime startsAt;
   final DateTime endsAt;
+  final String startsAtRaw;
+  final String endsAtRaw;
   final bool isFree;
 
   const BookingNight({
     required this.date,
     required this.startsAt,
     required this.endsAt,
+    required this.startsAtRaw,
+    required this.endsAtRaw,
     required this.isFree,
   });
 
   static BookingNight? tryParse(dynamic raw) {
     if (raw is! Map) return null;
 
-    final date = DateTime.tryParse('${raw['date']}');
-    final starts = DateTime.tryParse('${raw['starts_at']}');
-    final ends = DateTime.tryParse('${raw['ends_at']}');
+    final startsRaw = '${raw['starts_at']}';
+    final endsRaw = '${raw['ends_at']}';
+
+    final date = parseBookingWallClock(raw['date']);
+    final starts = parseBookingWallClock(startsRaw);
+    final ends = parseBookingWallClock(endsRaw);
     if (date == null || starts == null || ends == null) return null;
 
     return BookingNight(
       date: date,
       startsAt: starts,
       endsAt: ends,
+      startsAtRaw: startsRaw,
+      endsAtRaw: endsRaw,
       isFree: raw['is_free'] == true,
     );
   }

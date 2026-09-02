@@ -18,8 +18,14 @@ import 'package:lidle/widgets/components/header.dart';
 class BookingConfirmScreen extends StatefulWidget {
   final int advertId;
   final String advertTitle;
+  /// Для показа: время по часам мастера.
   final DateTime startsAt;
   final DateTime endsAt;
+
+  /// Для отправки: строки сервера как есть, со смещением.
+  final String startsAtRaw;
+  final String endsAtRaw;
+
   final bool needsConfirmation;
   final int? maxGuests;
 
@@ -29,6 +35,8 @@ class BookingConfirmScreen extends StatefulWidget {
     required this.advertTitle,
     required this.startsAt,
     required this.endsAt,
+    required this.startsAtRaw,
+    required this.endsAtRaw,
     required this.needsConfirmation,
     this.maxGuests,
   });
@@ -90,8 +98,8 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
 
     final result = await BookingsService.create(
       advertId: widget.advertId,
-      startsAt: widget.startsAt,
-      endsAt: widget.endsAt,
+      startsAt: widget.startsAtRaw,
+      endsAt: widget.endsAtRaw,
       guestsCount: widget.maxGuests == null ? null : _guests,
       comment: _commentController.text,
       contactName: _nameController.text,

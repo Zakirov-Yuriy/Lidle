@@ -203,8 +203,10 @@ class _BookingSectionState extends State<BookingSection> {
       spacing: 8,
       runSpacing: 8,
       children: day.slots.map((slot) {
-        final isSelected = _selectedSlot != null &&
-            _selectedSlot!.startsAt.isAtSameMomentAs(slot.startsAt);
+        // Сравниваем по исходной строке сервера: она уникальна и не зависит
+        // от того, как мы разобрали время.
+        final isSelected =
+            _selectedSlot != null && _selectedSlot!.startsAtRaw == slot.startsAtRaw;
 
         return GestureDetector(
           onTap: slot.isFree
@@ -288,6 +290,8 @@ class _BookingSectionState extends State<BookingSection> {
           advertTitle: widget.advertTitle,
           startsAt: slot.startsAt,
           endsAt: slot.endsAt,
+          startsAtRaw: slot.startsAtRaw,
+          endsAtRaw: slot.endsAtRaw,
           needsConfirmation: data.needsConfirmation,
           maxGuests: data.maxGuests,
         ),
