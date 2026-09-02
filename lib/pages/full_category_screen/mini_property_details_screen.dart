@@ -12,6 +12,7 @@ import 'package:lidle/models/advert_model.dart';
 import 'package:lidle/models/message_model.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/user_service.dart';
+import 'package:lidle/widgets/bookings/booking_section.dart';
 import 'package:lidle/widgets/cards/advert_reviews_card.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/blocs/listings/listings_bloc.dart';
@@ -708,6 +709,15 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
                                 ),
                                 const SizedBox(height: 19),
                               ],
+                              // Запись на услугу. Блок сам решает, показываться
+                              // ли: если у объявления не подключена бронь или
+                              // свободного времени нет, он возвращает пустоту.
+                              // Стоит высоко намеренно, это главное действие в
+                              // карточке услуги.
+                              BookingSection(
+                                advertId: int.tryParse(_listing.id) ?? 0,
+                                advertTitle: _listing.title,
+                              ),
                               _buildLocationCard(),
                               const SizedBox(height: 10),
                               _buildAboutApartmentCard(),
