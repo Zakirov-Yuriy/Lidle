@@ -33,6 +33,27 @@ class BookingResult {
   bool get needsOwnerAnswer => status == 'pending';
 }
 
+/// Счётчики броней для меню профиля.
+class BookingCounts {
+  final int mine;
+  final int incoming;
+
+  /// Сколько заявок ждут ответа владельца. Именно они требуют действия,
+  /// поэтому меню выделяет пункт, когда их больше нуля.
+  final int incomingPending;
+
+  const BookingCounts({
+    required this.mine,
+    required this.incoming,
+    required this.incomingPending,
+  });
+
+  const BookingCounts.empty()
+      : mine = 0,
+        incoming = 0,
+        incomingPending = 0;
+}
+
 /// Работа с бронированием: календарь занятости и создание брони.
 class BookingsService {
   /// Свободное время объявления за промежуток.
@@ -160,6 +181,37 @@ class BookingsService {
     }
 
     return items;
+  }
+
+  /// Счётчики для профиля: сколько живых предстоящих броней у меня и сколько
+  /// заявок ко мне, из них ждущих ответа.
+  ///
+  /// Отдельный запрос, а не длина списков: списки постраничные по двадцать, и
+  /// показывать «20» человеку с сотней броней значит врать ему в меню.
+  static Future<BookingCounts> counts() async {
+    try {
+      final response = await ApiService.get('/me/bookings/counts');
+
+      final data = response['data'];
+      if (data is! Map) return const BookingCounts.empty();
+
+      return BookingCounts(
+        mine: _asInt(data['mine']),
+        incoming: _asInt(data['incoming']),
+        incomingPending: _asInt(data['incoming_pending']),
+      );
+    } catch (e) {
+      // Счётчик в меню не стоит того, чтобы из-за него падал профиль.
+      log.d('Не получилось загрузить счётчики броней: $e');
+      return const BookingCounts.empty();
+    }
+  }
+
+  static int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   /// Владелец подтверждает заявку.

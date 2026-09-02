@@ -34,6 +34,7 @@ import 'package:lidle/pages/profile_dashboard/responses/responses_empty_page.dar
 import 'package:lidle/pages/profile_dashboard/reviews/reviews_empty_page.dart';
 import 'package:lidle/pages/profile_dashboard/my_listings/my_listings_screen.dart';
 import 'package:lidle/pages/bookings/my_bookings_screen.dart';
+import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/my_adverts_service.dart';
 import 'package:lidle/models/review_model.dart';
 import 'package:lidle/services/api_service.dart';
@@ -85,6 +86,10 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   int _inactiveListingsCount = 0;
   int _priceOffersCount = 0;
 
+  /// Счётчики броней в меню. Живые предстоящие: отменённая вчера бронь в
+  /// меню не нужна, она там только пугает числом.
+  BookingCounts _bookingCounts = const BookingCounts.empty();
+
   /// Сколько отзывов оставили на объявления пользователя — подпись на
   /// быстрой карточке «Отзывы». Берём meta.total из /me/received-reviews.
   int _reviewsCount = 0;
@@ -128,6 +133,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadPriceOffersCount(useCache: true);
     // ⭐ Количество отзывов на объявления пользователя
     _loadReviewsCount();
+    // 📅 Счётчики броней
+    _loadBookingCounts();
     // 🏪 Подтягиваем актуальное название компании (магазина) с сервера
     _loadCompanyName();
   }
@@ -172,7 +179,22 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     if (state == AppLifecycleState.resumed && mounted) {
       _loadListingsCounts(useCache: true);
       _loadPriceOffersCount(useCache: true);
+      _loadBookingCounts();
     }
+  }
+
+  /// Счётчики броней для меню.
+  ///
+  /// Без кэша: чисел здесь мало, запрос лёгкий, а устаревший счётчик заявок
+  /// хуже отсутствующего — человек решит, что отвечать не на что.
+  Future<void> _loadBookingCounts() async {
+    if (TokenService.currentToken == null) return;
+
+    final counts = await BookingsService.counts();
+
+    if (!mounted) return;
+
+    setState(() => _bookingCounts = counts);
   }
 
   /// Показывает диалоговое окно финансовой поддержки
@@ -608,14 +630,14 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   // значит заставлять его фильтровать.
                                   _MenuItem(
                                     title: 'Мои брони',
-                                    count: 0,
+                                    count: _bookingCounts.mine,
                                     trailingChevron: true,
                                     onTap: () => Navigator.of(context).push(
                                       MaterialPageRoute(
                                         builder: (_) =>
                                             const MyBookingsScreen(initialTab: 0),
                                       ),
-                                    ),
+                                    ).then((_) => _loadBookingCounts()),
                                   ),
                                   const Divider(
                                     color: Color(0xFF474747),
@@ -623,14 +645,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   ),
                                   _MenuItem(
                                     title: 'Заявки ко мне',
-                                    count: 0,
+                                    count: _bookingCounts.incoming,
+                                    // Подсвечиваем, только когда есть чему
+                                    // ждать ответа: подтверждённые брони
+                                    // действия не требуют.
+                                    isHighlight:
+                                        _bookingCounts.incomingPending > 0,
                                     trailingChevron: true,
                                     onTap: () => Navigator.of(context).push(
                                       MaterialPageRoute(
                                         builder: (_) =>
                                             const MyBookingsScreen(initialTab: 1),
                                       ),
-                                    ),
+                                    ).then((_) => _loadBookingCounts()),
                                   ),
                                   const Divider(
                                     color: Color(0xFF474747),
