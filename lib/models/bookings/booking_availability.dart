@@ -179,6 +179,12 @@ class BookingAvailability {
   final List<BookingDay> days;
   final List<BookingNight> nights;
 
+  /// Часы заезда и выезда, только для посуточного режима. Именно они делают
+  /// возможным выезд и заезд в один день: предыдущий гость съезжает утром,
+  /// следующий заезжает днём, и ночь при этом занята ровно одним.
+  final String? checkInTime;
+  final String? checkOutTime;
+
   const BookingAvailability({
     required this.mode,
     required this.timezone,
@@ -189,6 +195,8 @@ class BookingAvailability {
     required this.needsConfirmation,
     required this.days,
     required this.nights,
+    required this.checkInTime,
+    required this.checkOutTime,
   });
 
   factory BookingAvailability.fromJson(Map<String, dynamic> data) {
@@ -218,7 +226,19 @@ class BookingAvailability {
       needsConfirmation: data['needs_confirmation'] == true,
       days: days,
       nights: nights,
+      checkInTime: _timeOrNull(data['check_in_time']),
+      checkOutTime: _timeOrNull(data['check_out_time']),
     );
+  }
+
+  /// Сервер отдаёт время как `14:00:00`, человеку нужны часы и минуты.
+  static String? _timeOrNull(dynamic value) {
+    if (value == null) return null;
+
+    final text = '$value'.trim();
+    if (text.isEmpty) return null;
+
+    return text.length >= 5 ? text.substring(0, 5) : text;
   }
 
   /// Есть ли вообще что предлагать. Если свободного времени нет во всём

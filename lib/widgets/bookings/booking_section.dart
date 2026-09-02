@@ -4,6 +4,7 @@ import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/pages/bookings/booking_confirm_screen.dart';
 import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/widgets/bookings/booking_nights_picker.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 
 /// Блок записи в карточке объявления: выбор дня, свободные слоты и кнопка.
@@ -43,6 +44,11 @@ class _BookingSectionState extends State<BookingSection> {
   BookingDay? _selectedDay;
   BookingSlot? _selectedSlot;
 
+  /// Посуточный режим: первая выбранная ночь (заезд) и последняя (ночь перед
+  /// выездом). Единица здесь ночь, а не день: «с 5 по 12» это семь ночей.
+  BookingNight? _firstNight;
+  BookingNight? _lastNight;
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +71,8 @@ class _BookingSectionState extends State<BookingSection> {
       _isLoading = false;
       _selectedDay = _firstDayWithFreeSlots(data);
       _selectedSlot = null;
+      _firstNight = null;
+      _lastNight = null;
     });
   }
 
@@ -86,14 +94,48 @@ class _BookingSectionState extends State<BookingSection> {
     final data = _availability;
     if (data == null || !data.hasAnythingFree) return const SizedBox.shrink();
 
-    // Посуточное жильё вторым шагом: заказчик просил начать с записи на
-    // услуги. Рисовать половину экрана для аренды хуже, чем не рисовать
-    // ничего: человек решит, что забронировать можно, и упрётся в пустоту.
-    if (data.mode == BookingMode.daily) return const SizedBox.shrink();
+    return data.mode == BookingMode.daily
+        ? _buildDaily(data)
+        : _buildSlots(data);
+  }
 
+  /// Запись на услугу: полоса дней и плитки со временем.
+  Widget _buildSlots(BookingAvailability data) {
     final days = data.days.where((d) => d.isWorking && d.hasFreeSlots).toList();
     if (days.isEmpty) return const SizedBox.shrink();
 
+    return _shell(
+      title: 'Записаться',
+      children: [
+        _buildDayStrip(days),
+        const SizedBox(height: 14),
+        _buildSlotGrid(),
+        const SizedBox(height: 14),
+        _buildActionButton(data),
+      ],
+    );
+  }
+
+  /// Посуточное жильё: календарь ночей и кнопка.
+  Widget _buildDaily(BookingAvailability data) {
+    return _shell(
+      title: 'Забронировать',
+      children: [
+        BookingNightsPicker(
+          availability: data,
+          firstNight: _firstNight,
+          lastNight: _lastNight,
+          onNightTap: (night) => _onNightTap(data, night),
+        ),
+        const SizedBox(height: 14),
+        _buildDailySummary(data),
+        const SizedBox(height: 12),
+        _buildDailyButton(data),
+      ],
+    );
+  }
+
+  Widget _shell({required String title, required List<Widget> children}) {
     return Container(
       // Отступ снизу держим внутри блока, а не в карточке: когда бронь не
       // подключена, виджет исчезает целиком и лишнего пробела не остаётся.
@@ -106,11 +148,11 @@ class _BookingSectionState extends State<BookingSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 6.0),
+          Padding(
+            padding: const EdgeInsets.only(top: 6.0),
             child: Text(
-              'Записаться',
-              style: TextStyle(
+              title,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -118,11 +160,7 @@ class _BookingSectionState extends State<BookingSection> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildDayStrip(days),
-          const SizedBox(height: 14),
-          _buildSlots(),
-          const SizedBox(height: 14),
-          _buildActionButton(data),
+          ...children,
         ],
       ),
     );
@@ -188,7 +226,7 @@ class _BookingSectionState extends State<BookingSection> {
     );
   }
 
-  Widget _buildSlots() {
+  Widget _buildSlotGrid() {
     final day = _selectedDay;
     if (day == null) {
       return const Text(
@@ -268,9 +306,179 @@ class _BookingSectionState extends State<BookingSection> {
     );
   }
 
+  /// Нажатие по ночи в календаре.
+  ///
+  /// Первое касание задаёт заезд, второе выезд. Касание раньше заезда
+  /// начинает выбор заново: человек чаще уточняет начало, чем хочет
+  /// «расширить промежуток назад».
+  void _onNightTap(BookingAvailability data, BookingNight night) {
+    final first = _firstNight;
+
+    if (first == null || _lastNight != null || night.date.isBefore(first.date)) {
+      setState(() {
+        _firstNight = night;
+        _lastNight = null;
+      });
+      return;
+    }
+
+    // Промежуток должен быть свободен ЦЕЛИКОМ. Занятая ночь посередине не
+    // повод молча подрезать выбор: человек хотел неделю, а получил бы три дня
+    // и не заметил. Честнее сказать и начать заново с этой даты.
+    final between = data.nights.where((n) =>
+        !n.date.isBefore(first.date) && !n.date.isAfter(night.date));
+
+    final busy = between.where((n) => !n.isFree).toList();
+
+    if (busy.isNotEmpty) {
+      SnackBarHelper.showWarning(
+        context,
+        'В этом промежутке есть занятые ночи. Выберите другие даты.',
+      );
+
+      setState(() {
+        _firstNight = night;
+        _lastNight = null;
+      });
+      return;
+    }
+
+    setState(() => _lastNight = night);
+  }
+
+  /// Сколько ночей выбрано. Одна выбранная дата это одна ночь: заезд сегодня,
+  /// выезд завтра.
+  int get _nightsCount {
+    final first = _firstNight;
+    if (first == null) return 0;
+
+    final last = _lastNight ?? first;
+
+    return last.date.difference(first.date).inDays + 1;
+  }
+
+  Widget _buildDailySummary(BookingAvailability data) {
+    final first = _firstNight;
+
+    if (first == null) {
+      return const Text(
+        'Выберите дату заезда',
+        style: TextStyle(color: textSecondary, fontSize: 14),
+      );
+    }
+
+    final last = _lastNight ?? first;
+    final checkOutDate = last.date.add(const Duration(days: 1));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _summaryRow(
+          Icons.login,
+          'Заезд ${_humanDate(first.date)}'
+          '${data.checkInTime == null ? '' : ', с ${data.checkInTime}'}',
+        ),
+        const SizedBox(height: 6),
+        _summaryRow(
+          Icons.logout,
+          'Выезд ${_humanDate(checkOutDate)}'
+          '${data.checkOutTime == null ? '' : ', до ${data.checkOutTime}'}',
+        ),
+        const SizedBox(height: 6),
+        _summaryRow(Icons.nightlight_round, _nightsLabel(_nightsCount)),
+        if (_lastNight == null)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text(
+              'Выберите дату выезда или бронируйте одну ночь.',
+              style: TextStyle(color: textMuted, fontSize: 13),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _summaryRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: activeIconColor, size: 17),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDailyButton(BookingAvailability data) {
+    final first = _firstNight;
+
+    return SizedBox(
+      width: double.infinity,
+      height: 47,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: first == null ? secondaryBackground : activeIconColor,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        onPressed: first == null ? null : () => _openDailyConfirm(data),
+        child: Text(
+          first == null
+              ? 'Выберите даты'
+              : 'Забронировать, ${_nightsLabel(_nightsCount)}',
+          style: TextStyle(
+            color: first == null ? textSecondary : Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDailyConfirm(BookingAvailability data) async {
+    final first = _firstNight;
+    if (first == null) return;
+
+    final last = _lastNight ?? first;
+
+    // Границы берём из крайних ночей: начало первой это заезд, конец
+    // последней это выезд. Строки отправляем как есть, без пересчёта поясов.
+    await _openConfirmScreen(
+      data: data,
+      startsAt: first.startsAt,
+      endsAt: last.endsAt,
+      startsAtRaw: first.startsAtRaw,
+      endsAtRaw: last.endsAtRaw,
+    );
+  }
+
   Future<void> _openConfirm(BookingAvailability data, BookingSlot slot) async {
-    // Календарь публичный, а бронь требует входа. Проверяем здесь, чтобы
-    // человек не заполнил форму и только потом узнал, что надо войти.
+    // Календарь публичный, а бронь требует входа. Проверку делает общий
+    // метод ниже: она нужна обоим режимам.
+    await _openConfirmScreen(
+      data: data,
+      startsAt: slot.startsAt,
+      endsAt: slot.endsAt,
+      startsAtRaw: slot.startsAtRaw,
+      endsAtRaw: slot.endsAtRaw,
+    );
+  }
+
+  /// Экран подтверждения, общий для обоих режимов.
+  Future<void> _openConfirmScreen({
+    required BookingAvailability data,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    required String startsAtRaw,
+    required String endsAtRaw,
+  }) async {
     final token = await TokenService.getCurrentToken();
     if (!mounted) return;
 
@@ -288,10 +496,10 @@ class _BookingSectionState extends State<BookingSection> {
         builder: (_) => BookingConfirmScreen(
           advertId: widget.advertId,
           advertTitle: widget.advertTitle,
-          startsAt: slot.startsAt,
-          endsAt: slot.endsAt,
-          startsAtRaw: slot.startsAtRaw,
-          endsAtRaw: slot.endsAtRaw,
+          startsAt: startsAt,
+          endsAt: endsAt,
+          startsAtRaw: startsAtRaw,
+          endsAtRaw: endsAtRaw,
           needsConfirmation: data.needsConfirmation,
           maxGuests: data.maxGuests,
         ),
@@ -300,8 +508,8 @@ class _BookingSectionState extends State<BookingSection> {
 
     if (!mounted) return;
 
-    // Перечитываем календарь в двух случаях: бронь создана (слот стал
-    // занят) и время увели у нас из-под рук (экран вернул false после 409).
+    // Перечитываем календарь в двух случаях: бронь создана (время стало
+    // занято) и его увели у нас из-под рук (экран вернул false после 409).
     if (created != null) {
       setState(() {
         _isLoading = true;
@@ -309,6 +517,25 @@ class _BookingSectionState extends State<BookingSection> {
       });
       await _load();
     }
+  }
+
+  String _nightsLabel(int nights) {
+    final last = nights % 10;
+    final lastTwo = nights % 100;
+
+    if (last == 1 && lastTwo != 11) return '$nights ночь';
+    if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+      return '$nights ночи';
+    }
+    return '$nights ночей';
+  }
+
+  String _humanDate(DateTime date) {
+    const months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+    ];
+    return '${date.day} ${months[(date.month - 1).clamp(0, 11)]}';
   }
 
   bool _isSameDate(DateTime a, DateTime b) =>

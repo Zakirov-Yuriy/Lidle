@@ -245,27 +245,65 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Row(
-            children: [
-              const Icon(Icons.event, color: activeIconColor, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                _humanDate(widget.startsAt),
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              const Icon(Icons.schedule, color: activeIconColor, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                '${_time(widget.startsAt)} — ${_time(widget.endsAt)}',
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-              ),
-            ],
-          ),
+          // Запись на услугу укладывается в один день, и её показываем как
+          // «дата, с и до». Жильё занимает несколько суток, и та же подпись
+          // выглядела бы как «с 14:00 до 11:00», то есть задом наперёд.
+          if (_isSameDay) ...[
+            Row(
+              children: [
+                const Icon(Icons.event, color: activeIconColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  _humanDate(widget.startsAt),
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.schedule, color: activeIconColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  '${_time(widget.startsAt)} — ${_time(widget.endsAt)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                const Icon(Icons.login, color: activeIconColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Заезд ${_humanDate(widget.startsAt)}, с ${_time(widget.startsAt)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.logout, color: activeIconColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'Выезд ${_humanDate(widget.endsAt)}, до ${_time(widget.endsAt)}',
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Icon(Icons.nightlight_round, color: activeIconColor, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  _nightsLabel,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -368,6 +406,31 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
               ),
       ),
     );
+  }
+
+  /// Уложилась ли бронь в один день. У записи на услугу да, у жилья нет.
+  bool get _isSameDay =>
+      widget.startsAt.year == widget.endsAt.year &&
+      widget.startsAt.month == widget.endsAt.month &&
+      widget.startsAt.day == widget.endsAt.day;
+
+  String get _nightsLabel {
+    final nights = DateTime(widget.endsAt.year, widget.endsAt.month, widget.endsAt.day)
+        .difference(DateTime(
+          widget.startsAt.year,
+          widget.startsAt.month,
+          widget.startsAt.day,
+        ))
+        .inDays;
+
+    final last = nights % 10;
+    final lastTwo = nights % 100;
+
+    if (last == 1 && lastTwo != 11) return '$nights ночь';
+    if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) {
+      return '$nights ночи';
+    }
+    return '$nights ночей';
   }
 
   String _time(DateTime value) {
