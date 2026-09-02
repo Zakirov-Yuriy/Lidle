@@ -50,6 +50,15 @@ class _RealEstateFullFiltersScreenState
 
   bool? installmentYes = null; // По умолчанию неактивна (ни да, ни нет)
 
+  /// Даты для поиска по свободному времени.
+  ///
+  /// Ищется РЕАЛЬНАЯ занятость, а не текст объявления: решение заказчика от
+  /// 02.09.2026. Объявления без подключённой брони из выдачи не пропадают —
+  /// их подавляющее большинство, и прятать их значило бы показывать почти
+  /// пустой список на каждый запрос с датами.
+  DateTime? bookingFrom;
+  DateTime? bookingTo;
+
   bool noCommission = false;
   bool exchange = false;
   bool urgent = false;
@@ -2001,6 +2010,8 @@ class _RealEstateFullFiltersScreenState
           ),
         ),
         const SizedBox(height: 14),
+        _buildBookingDatesBlock(),
+        const SizedBox(height: 14),
         // const SizedBox(height: 14),
         // SizedBox(
         //   width: double.infinity,
@@ -2044,6 +2055,14 @@ class _RealEstateFullFiltersScreenState
                       selectedCategory: widget.selectedCategory,
                       categoryId: widget.categoryId,
                       selectedCity: selectedCity.isNotEmpty ? selectedCity.first : null,  // 🟢 ИСПРАВЛЕНО: используем текущий выбранный город
+                      // Обе границы вместе: одна без второй не имеет смысла,
+                      // и сервер её не примет.
+                      bookingFrom: (bookingFrom != null && bookingTo != null)
+                          ? bookingFrom
+                          : null,
+                      bookingTo: (bookingFrom != null && bookingTo != null)
+                          ? bookingTo
+                          : null,
                     ),
                   ),
                 );
@@ -2058,4 +2077,139 @@ class _RealEstateFullFiltersScreenState
       ],
     );
   }
+
+  /// Блок «Свободно в даты».
+  ///
+  /// Стоит рядом с кнопкой показа намеренно: это последнее, что человек
+  /// уточняет перед выдачей, и здесь он видит его, а не ищет среди двух
+  /// десятков фильтров выше.
+  Widget _buildBookingDatesBlock() {
+    final hasRange = bookingFrom != null && bookingTo != null;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Свободно в даты',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _buildDateField(
+                  label: 'С какого',
+                  value: bookingFrom,
+                  onPick: (date) => setState(() {
+                    bookingFrom = date;
+                    // Конец раньше начала не бывает: сбрасываем, чтобы
+                    // человек не отправил перевёрнутый промежуток.
+                    if (bookingTo != null && bookingTo!.isBefore(date)) {
+                      bookingTo = null;
+                    }
+                  }),
+                  firstDate: DateTime.now(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildDateField(
+                  label: 'По какое',
+                  value: bookingTo,
+                  onPick: (date) => setState(() => bookingTo = date),
+                  firstDate: bookingFrom ?? DateTime.now(),
+                ),
+              ),
+            ],
+          ),
+          if (hasRange) ...[
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => setState(() {
+                bookingFrom = null;
+                bookingTo = null;
+              }),
+              child: const Text(
+                'Убрать даты',
+                style: TextStyle(color: activeIconColor, fontSize: 13),
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            hasRange
+                ? 'Покажем то, что действительно свободно в эти даты. Объявления без подключённой брони останутся в списке: их занятость нам неизвестна.'
+                : 'Выберите обе даты, чтобы искать по реальной занятости.',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDateField({
+    required String label,
+    required DateTime? value,
+    required void Function(DateTime) onPick,
+    required DateTime firstDate,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          firstDate: firstDate,
+          lastDate: DateTime.now().add(const Duration(days: 365)),
+          initialDate: value ?? firstDate,
+          builder: (context, child) => Theme(
+            data: ThemeData.dark().copyWith(
+              colorScheme: const ColorScheme.dark(primary: activeIconColor),
+            ),
+            child: child!,
+          ),
+        );
+
+        if (picked != null) onPick(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+            const SizedBox(height: 4),
+            Text(
+              value == null ? 'Выбрать' : _humanDate(value),
+              style: TextStyle(
+                color: value == null ? Colors.grey : Colors.white,
+                fontSize: 15,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _humanDate(DateTime date) {
+    const months = [
+      'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
+      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
+    ];
+    return '${date.day} ${months[(date.month - 1).clamp(0, 11)]}';
+  }
+
 }
