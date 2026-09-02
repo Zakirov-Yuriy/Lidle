@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
@@ -312,6 +313,15 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
                 child: Text(
                   "Дата окончания аренды",
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: Text(
+                  "Ищем по реальной занятости: покажем то, что свободно в эти "
+                  "даты. Объявления без подключённой брони останутся в списке, "
+                  "их даты мы не знаем.",
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ),
               const SizedBox(height: 14),
@@ -1005,6 +1015,46 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
   }
 
   
+  /// Собирает дату из трёх выпадающих списков.
+  ///
+  /// Возвращает null, если заполнено не всё: половина даты это не дата, и
+  /// отправлять её на сервер нельзя. Несуществующее число вроде 31 февраля
+  /// тоже отсеиваем здесь, а не показываем человеку отказ сервера.
+  DateTime? _composeDate(String day, String month, String year) {
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+    ];
+
+    if (day.isEmpty || month.isEmpty || year.isEmpty) return null;
+
+    final d = int.tryParse(day);
+    final y = int.tryParse(year);
+    final m = months.indexOf(month) + 1;
+
+    if (d == null || y == null || m == 0) return null;
+
+    final date = DateTime(y, m, d);
+
+    // DateTime(2026, 2, 31) молча превращается в 3 марта. Сверяем, что число
+    // не уехало: иначе человек выбрал 31 февраля, а искали бы по марту.
+    if (date.month != m || date.day != d) return null;
+
+    return date;
+  }
+
+  /// Даты для поиска по занятости, если человек выбрал обе и не перепутал
+  /// порядок.
+  (DateTime, DateTime)? get _bookingRange {
+    final from = _composeDate(selectedDate, selectedMonth, selectedYear);
+    final to = _composeDate(selectedEndDate, selectedEndMonth, selectedEndYear);
+
+    if (from == null || to == null) return null;
+    if (to.isBefore(from)) return null;
+
+    return (from, to);
+  }
+
   Widget _buildThreePriceBlock() {
   return Row(
     children: [
@@ -1359,12 +1409,42 @@ class _RealEstateRentSubfiltersScreen extends State<RealEstateRentSubfiltersScre
               ),
             ),
             onPressed: () {
+              final from = _composeDate(selectedDate, selectedMonth, selectedYear);
+              final to = _composeDate(
+                selectedEndDate,
+                selectedEndMonth,
+                selectedEndYear,
+              );
+
+              // Половина даты это не дата. Если человек выбрал одну границу и
+              // забыл вторую, честнее сказать об этом, чем молча искать без
+              // дат: он бы решил, что фильтр не работает.
+              if ((from == null) != (to == null)) {
+                SnackBarHelper.showWarning(
+                  context,
+                  'Укажите обе даты: начало и окончание аренды.',
+                );
+                return;
+              }
+
+              if (from != null && to != null && to.isBefore(from)) {
+                SnackBarHelper.showWarning(
+                  context,
+                  'Дата окончания раньше даты начала.',
+                );
+                return;
+              }
+
+              final range = _bookingRange;
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => RealEstateFilteredScreen(
                     selectedCategory: widget.selectedCategory,
                     categoryId: 3, // Default category ID for real estate rent
+                    bookingFrom: range?.$1,
+                    bookingTo: range?.$2,
                   ),
                 ),
               );

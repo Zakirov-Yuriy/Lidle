@@ -32,11 +32,22 @@ class RealEstateFilteredScreen extends StatefulWidget {
   final int categoryId; // ID конечной категории для фильтрации
   final String? selectedCity; // Выбранный город
 
+  /// Поиск по свободным датам.
+  ///
+  /// Ищется РЕАЛЬНАЯ занятость, а не текст объявления: решение заказчика от
+  /// 02.09.2026. Объявления без подключённой брони из выдачи не пропадают —
+  /// их подавляющее большинство, и прятать их значило бы показывать почти
+  /// пустой список на каждый запрос с датами.
+  final DateTime? bookingFrom;
+  final DateTime? bookingTo;
+
   const RealEstateFilteredScreen({
     super.key,
     required this.selectedCategory,
     required this.categoryId,
     this.selectedCity,
+    this.bookingFrom,
+    this.bookingTo,
   });
 
   @override
@@ -49,6 +60,12 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
   Set<String> _selectedSortOptions = {};
   bool _isLoading = true;
   String _errorMessage = '';
+
+  static String _ymd(DateTime date) {
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$m-$d';
+  }
 
   @override
   void initState() {
@@ -94,6 +111,15 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
 
       // ✅ СТРУКТУРИРУЕМ ФИЛЬТРЫ
       final structuredFilters = _structureFiltersForApi(savedFilters);
+
+      // Даты добавляем отдельно: они приходят не из сохранённых фильтров, а
+      // с экрана выбора, и живут в своей ветке filters[booking].
+      if (widget.bookingFrom != null && widget.bookingTo != null) {
+        structuredFilters['booking'] = <String, dynamic>{
+          'from': _ymd(widget.bookingFrom!),
+          'to': _ymd(widget.bookingTo!),
+        };
+      }
       
       // ИСПРАВЛЕНИЕ: Используем categoryId как параметр в API 
       // Больше НЕ загружаем весь каталог - просто используем переданный categoryId
