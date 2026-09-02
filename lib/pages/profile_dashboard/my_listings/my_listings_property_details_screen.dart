@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/bookings/booking_settings_screen.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -364,6 +365,10 @@ class _MyListingsPropertyDetailsScreenState
                         _buildMainInfoCard(),
                         const SizedBox(height: 16),
                         const _OfferPriceButton(),
+                        const SizedBox(height: 12),
+                        // Настройка записи. Стоит у владельца, а не в общей
+                        // карточке: включать бронь может только он.
+                        _buildBookingSettingsButton(),
                         const SizedBox(height: 19),
                         _buildLocationCard(),
                         const SizedBox(height: 10),
@@ -380,6 +385,48 @@ class _MyListingsPropertyDetailsScreenState
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка настройки записи.
+  ///
+  /// До появления этого экрана бронь включалась только консольной командой,
+  /// то есть владелец без разработчика принимать записи не мог.
+  Widget _buildBookingSettingsButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 47,
+      child: OutlinedButton.icon(
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: activeIconColor),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        onPressed: () {
+          final advertId = int.tryParse(_listing.id);
+          if (advertId == null) return;
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BookingSettingsScreen(
+                advertId: advertId,
+                advertTitle: _listing.title,
+              ),
+            ),
+          );
+        },
+        icon: const Icon(Icons.event_available, color: activeIconColor, size: 20),
+        label: const Text(
+          'Настройка записи',
+          style: TextStyle(
+            color: activeIconColor,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

@@ -101,7 +101,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           children: [
             const Header(),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
+              padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: const Row(
@@ -121,7 +121,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               ),
             ),
             const Padding(
-              padding: EdgeInsets.fromLTRB(25, 12, 25, 0),
+              padding: EdgeInsets.fromLTRB(25, 0, 25, 0),
               child: Text(
                 'Брони',
                 style: TextStyle(
@@ -131,7 +131,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            // const SizedBox(height: 8),
             TabBar(
               controller: _tabController,
               labelColor: Colors.white,

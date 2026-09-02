@@ -1,6 +1,7 @@
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/bookings/booking_availability.dart';
 import 'package:lidle/models/bookings/booking_item.dart';
+import 'package:lidle/models/bookings/booking_settings.dart';
 import 'package:lidle/services/api_service.dart';
 
 /// Результат попытки забронировать.
@@ -31,6 +32,17 @@ class BookingResult {
 
   bool get isCreated => kind == BookingResultKind.created;
   bool get needsOwnerAnswer => status == 'pending';
+}
+
+/// Результат сохранения настроек брони.
+class BookingSettingsResult {
+  final BookingSettings? settings;
+  final String? message;
+  final String? error;
+
+  const BookingSettingsResult({this.settings, this.message, this.error});
+
+  bool get isOk => error == null;
 }
 
 /// Счётчики броней для меню профиля.
@@ -204,6 +216,125 @@ class BookingsService {
       // Счётчик в меню не стоит того, чтобы из-за него падал профиль.
       log.d('Не получилось загрузить счётчики броней: $e');
       return const BookingCounts.empty();
+    }
+  }
+
+  /// Настройки брони объявления. Только для владельца.
+  static Future<BookingSettings> settings(int advertId) async {
+    final response = await ApiService.get('/me/adverts/$advertId/booking');
+
+    final data = response['data'];
+    if (data is! Map<String, dynamic>) {
+      return BookingSettings.notConfigured(advertId);
+    }
+
+    return BookingSettings.fromJson(data);
+  }
+
+  /// Сохранить настройки. Запрос частичный: присылаем только то, что меняли.
+  ///
+  /// Возвращает либо новые настройки, либо текст отказа. Отдельный тип
+  /// результата, а не исключение: отказ сервера здесь это нормальный ход
+  /// событий, о котором надо рассказать человеку, а не сбой.
+  static Future<BookingSettingsResult> saveSettings(
+    int advertId,
+    Map<String, dynamic> body,
+  ) async {
+    try {
+      final response = await ApiService.put('/me/adverts/$advertId/booking', body);
+
+      if (response['success'] == true) {
+        final data = response['data'];
+
+        return BookingSettingsResult(
+          settings: data is Map<String, dynamic>
+              ? BookingSettings.fromJson(data)
+              : null,
+          message: '${response['message'] ?? 'Сохранено'}',
+        );
+      }
+
+      return BookingSettingsResult(
+        error: '${response['message'] ?? 'Не получилось сохранить'}',
+      );
+    } catch (e) {
+      log.e('Ошибка сохранения настроек брони: $e');
+      return const BookingSettingsResult(
+        error: 'Не получилось связаться с сервером. Попробуйте ещё раз.',
+      );
+    }
+  }
+
+  /// Закрытые владельцем периоды объявления.
+  static Future<List<BookingItem>> blocks(int advertId) =>
+      _list('/me/adverts/$advertId/booking/blocks');
+
+  /// Закрыть время.
+  ///
+  /// Строки времени отправляем как есть, без пересчёта поясов: правило то же,
+  /// что при создании брони.
+  static Future<BookingResult> block(
+    int advertId, {
+    required String startsAt,
+    required String endsAt,
+    String? comment,
+  }) async {
+    final body = <String, dynamic>{
+      'starts_at': startsAt,
+      'ends_at': endsAt,
+    };
+
+    if (comment != null && comment.trim().isNotEmpty) {
+      body['comment'] = comment.trim();
+    }
+
+    try {
+      final response = await ApiService.post(
+        '/me/adverts/$advertId/booking/blocks',
+        body,
+      );
+
+      if (response['success'] == true) {
+        return BookingResult(
+          kind: BookingResultKind.created,
+          message: '${response['message'] ?? 'Время закрыто'}',
+        );
+      }
+
+      // 409 здесь означает «на это время уже есть чужая бронь»: владельцу
+      // надо решить, отменять ли её, а не поправить форму.
+      return BookingResult(
+        kind: response['status_code'] == 409
+            ? BookingResultKind.conflict
+            : BookingResultKind.rejected,
+        message: '${response['message'] ?? 'Не получилось закрыть время'}',
+      );
+    } catch (e) {
+      log.e('Ошибка закрытия времени: $e');
+      return const BookingResult(
+        kind: BookingResultKind.rejected,
+        message: 'Не получилось связаться с сервером. Попробуйте ещё раз.',
+      );
+    }
+  }
+
+  /// Снять закрытие.
+  static Future<BookingResult> unblock(int bookingId) async {
+    try {
+      final response = await ApiService.delete('/me/bookings/$bookingId/block');
+
+      return BookingResult(
+        kind: response['success'] == true
+            ? BookingResultKind.created
+            : BookingResultKind.rejected,
+        message: '${response['message'] ?? 'Время снова свободно'}',
+      );
+    } catch (e) {
+      log.e('Ошибка снятия закрытия: $e');
+      return const BookingResult(
+        kind: BookingResultKind.rejected,
+        message: 'Не получилось связаться с сервером. Попробуйте ещё раз.',
+      );
     }
   }
 
