@@ -9,6 +9,7 @@ class AdvertsService {
   /// - [catalogId] - ID каталога (если null, используется categoryId)
   /// - [sort] - сортировка ('newest', 'price_asc', 'price_desc')
   /// - [filters] - дополнительные фильтры (price_min, price_max, value_selected)
+  /// - [bookingFrom], [bookingTo] - поиск по свободным датам
   /// - [page] - номер страницы (по умолчанию 1)
   /// - [token] - JWT токен
   static Future<MainAdvertResponse> listAdverts({
@@ -17,6 +18,19 @@ class AdvertsService {
     String? sort,
     String? search,
     Map<String, dynamic>? filters,
+
+    /// Поиск по свободным датам, формат `2026-09-05`.
+    ///
+    /// Ищется РЕАЛЬНАЯ занятость, а не текст объявления: решение заказчика от
+    /// 02.09.2026. Объявления без подключённой брони из выдачи не пропадают,
+    /// их у нас подавляющее большинство, и прятать их значило бы показывать
+    /// почти пустой список на каждый запрос с датами.
+    ///
+    /// Смысл «свободно» разный: для услуги достаточно одного свободного
+    /// времени в промежутке, для жилья свободны должны быть все ночи.
+    DateTime? bookingFrom,
+    DateTime? bookingTo,
+
     int? page,
     required String token,
   }) async {
@@ -46,6 +60,13 @@ class AdvertsService {
         params['page'] = page;
       }
 
+      // Даты передаём вложенными параметрами, рядом с filters[address].
+      // Обе границы обязательны вместе: одна без второй сервер не примет.
+      if (bookingFrom != null && bookingTo != null) {
+        params['filters[booking][from]'] = _ymd(bookingFrom);
+        params['filters[booking][to]'] = _ymd(bookingTo);
+      }
+
       // Добавление фильтров
       if (filters != null) {
         filters.forEach((key, value) {
@@ -63,6 +84,12 @@ class AdvertsService {
     } catch (e) {
       throw Exception('Ошибка при загрузке объявлений: $e');
     }
+  }
+
+  static String _ymd(DateTime date) {
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$m-$d';
   }
 
   /// Получить одно объявление по ID
