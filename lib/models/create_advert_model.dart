@@ -11,6 +11,16 @@ class CreateAdvertRequest {
   final bool isAutoRenew;
   final List<String> images; // URLs of uploaded images
 
+  /// Настройки бронирования из блока стилей L и M.
+  ///
+  /// Уезжают вместе с объявлением, а не отдельным запросом: при создании
+  /// объявления ещё нет, привязать настройки не к чему, а два запроса подряд
+  /// означали бы объявление без брони, если второй не дойдёт.
+  ///
+  /// `null` — блока в форме не было или бронь не включали. Тогда поля в JSON
+  /// нет вовсе, и сервер про него не вспоминает.
+  final Map<String, dynamic>? booking;
+
   CreateAdvertRequest({
     required this.name,
     required this.description,
@@ -22,6 +32,7 @@ class CreateAdvertRequest {
     required this.contacts,
     required this.isAutoRenew,
     this.images = const [],
+    this.booking,
   });
 
   Map<String, dynamic> toJson() {
@@ -71,6 +82,7 @@ class CreateAdvertRequest {
       'contacts': contacts,
       'is_auto_renew': isAutoRenew,
       if (images.isNotEmpty) 'images': images,
+      if (booking != null) 'booking': booking,
     };
 
     // NOTE: attribute 1048 should stay in values as {'value': 1}

@@ -48,6 +48,7 @@ import 'widgets/labeled_dropdown.dart';
 import 'widgets/choice_button.dart';
 import 'widgets/form_primary_button.dart';
 import 'widgets/required_label.dart';
+import 'widgets/booking_field.dart';
 import 'widgets/checkbox_label.dart';
 // Виджеты полей (шаг 3.1 рефакторинга).
 import 'widgets/price_input_field.dart';
@@ -163,6 +164,18 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   // =============== Edit Mode ===============
   bool _isEditMode = false; // Режим редактирования
+
+  /// Настройки бронирования из блока стиля L или M.
+  ///
+  /// `null` значит «блока в форме нет или бронь не включали»: тогда поле
+  /// `booking` в запрос не попадает вовсе, и сервер не заводит лишнего
+  /// расписания каждому объявлению категории.
+  Map<String, dynamic>? _bookingSettings;
+
+  /// Что уже настроено у объявления. Заполняется при редактировании, чтобы
+  /// блок открылся с текущими значениями, а не с умолчаниями: иначе
+  /// сохранение формы молча сбрасывало бы настройки владельца.
+  Map<String, dynamic>? _bookingInitial;
   // ignore: unused_field
   Map<String, dynamic>? _editAdvertData; // Данные объявления для редактирования
   // ignore: unused_field
@@ -935,6 +948,12 @@ class _DynamicFilterState extends State<DynamicFilter>
       // ✅ ЗАПОЛНЯЕМ КОНТАКТЫ ИЗ ОБЪЯВЛЕНИЯ
       _populateContactsFromAdvert(advertData);
 
+      // Настройки бронирования лежат отдельно от объявления, в своих
+      // таблицах, поэтому и запрашиваются отдельно. Без этого блок в форме
+      // открывался бы с умолчаниями, и сохранение молча сбрасывало бы то,
+      // что владелец настроил раньше.
+      await _loadBookingSettings();
+
       // log.d('✅ Advert data loaded successfully');
     } catch (e) {
       // log.d('❌ Error loading advert data: $e');
@@ -944,6 +963,28 @@ class _DynamicFilterState extends State<DynamicFilter>
           context,
         ).showSnackBar(SnackBar(content: Text('Ошибка загрузки данных: $e')));
       }
+    }
+  }
+
+  /// Подтягивает текущие настройки бронирования при редактировании.
+  ///
+  /// Молчим при любой неудаче: блок бронирования есть далеко не у всех
+  /// категорий, и ругаться на человека из-за настроек, которых у объявления
+  /// может и не быть, незачем. Тогда блок просто откроется с умолчаниями.
+  Future<void> _loadBookingSettings() async {
+    final advertId = widget.advertId;
+
+    if (advertId == null) return;
+
+    try {
+      final response = await ApiService.get('/me/adverts/$advertId/booking');
+      final data = response['data'];
+
+      if (data is Map<String, dynamic>) {
+        _bookingInitial = data;
+      }
+    } catch (_) {
+      // Настроек нет или бронь в этой категории не заведена — это не ошибка.
     }
   }
 
@@ -2277,6 +2318,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       attributes: attributes,
       contacts: contacts,
       isAutoRenew: isAutoRenewal,
+      booking: _bookingSettings,
     );
   }
 
@@ -2586,6 +2628,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                 contacts: request.contacts,
                 isAutoRenew: request.isAutoRenew,
                 images: request.images,
+                booking: _bookingSettings,
               );
             }
           }
@@ -3315,7 +3358,27 @@ class _DynamicFilterState extends State<DynamicFilter>
         return _buildJ1Field(a);
       case FilterFieldKind.rentTimeCompact:
         return _buildK1Field(a);
+      case FilterFieldKind.booking:
+        return _buildBookingField(a);
     }
+  }
+
+  /// Блок бронирования (стили L и M).
+  ///
+  /// Настройки НЕ идут в `attributes`: этот атрибут ничего не хранит в
+  /// объявлении, он лишь метка категории. Собранное уезжает отдельным полем
+  /// `booking` вместе с объявлением, одним запросом. Двумя запросами было бы
+  /// хуже: не дошёл бы второй, и объявление осталось бы без брони, а человек
+  /// был бы уверен, что включил её.
+  Widget _buildBookingField(Attribute attr) {
+    final isDaily = attr.style == 'M' || attr.styleSingle == 'M1';
+
+    return BookingField(
+      attribute: attr,
+      mode: isDaily ? 'daily' : 'slots',
+      initial: _bookingInitial,
+      onChanged: (data) => _bookingSettings = data,
+    );
   }
 
   // Style B1: Single checkbox (SUBMISSION MODE)

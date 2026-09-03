@@ -177,8 +177,6 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
         if (settings.isEnabled) ...[
           const SizedBox(height: 12),
           if (settings.resource?.isShared == true) _buildSharedNotice(settings),
-          _buildModeCard(settings),
-          const SizedBox(height: 12),
           // Длительность приёма и перерыв имеют смысл только у записи по
           // часам. У посуточной аренды единица это ночь, и вместо них нужны
           // часы заезда и выезда: именно они задают её границы.
@@ -301,117 +299,16 @@ class _BookingSettingsScreenState extends State<BookingSettingsScreen> {
     );
   }
 
-  /// Режим: запись по часам или посуточная аренда.
-  ///
-  /// Раньше этого выбора здесь не было вовсе, и режим задавался только
-  /// консольной командой при первом включении. То есть владелец, сдающий
-  /// квартиру, получал экран записи к мастеру и ничего не мог с этим сделать.
-  ///
-  /// Выбор из двух карточек, а не переключатель: слово «посуточно» само по
-  /// себе ничего не объясняет, а разница между «клиент выбирает час» и «гость
-  /// снимает на ночь» решает, каким объявление увидят люди.
-  Widget _buildModeCard(BookingSettings settings) {
-    final canChange = settings.resource?.canChangeMode ?? true;
-
-    return _card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _title('Как бронируют'),
-          const SizedBox(height: 10),
-          _modeOption(
-            settings: settings,
-            mode: 'slots',
-            title: 'По часам, запись',
-            subtitle: 'Клиент выбирает день и время приёма. Стрижка, приём врача, занятие.',
-            canChange: canChange,
-          ),
-          const SizedBox(height: 8),
-          _modeOption(
-            settings: settings,
-            mode: 'daily',
-            title: 'Посуточно, аренда',
-            subtitle: 'Гость выбирает ночи. Заезд днём, выезд утром следующего дня.',
-            canChange: canChange,
-          ),
-          if (!canChange)
-            _hint('Режим уже нельзя поменять: на этом расписании есть брони. '
-                'Отмените их или заведите объявление заново.'),
-        ],
-      ),
-    );
-  }
-
-  Widget _modeOption({
-    required BookingSettings settings,
-    required String mode,
-    required String title,
-    required String subtitle,
-    required bool canChange,
-  }) {
-    final isSelected = (settings.resource?.mode ?? 'slots') == mode;
-
-    return GestureDetector(
-      onTap: (!canChange || isSelected || _isSaving) ? null : () => _changeMode(mode),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? activeIconColor.withValues(alpha: 0.16) : secondaryBackground,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? activeIconColor : Colors.transparent,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: isSelected
-                  ? activeIconColor
-                  : (canChange ? textSecondary : textMuted),
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: canChange || isSelected ? Colors.white : textMuted,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: textSecondary, fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Смена режима перечитывает экран целиком, а не только настройки.
-  ///
-  /// Закрытые периоды при этом меняют смысл: у записи закрывались календарные
-  /// сутки, у аренды закрывается ночь. Оставить на экране прежний список
-  /// значило бы показывать «закрытые ночи» там, где на самом деле лежат
-  /// закрытые сутки.
-  Future<void> _changeMode(String mode) async {
-    await _save({'mode': mode});
-
-    if (!mounted) return;
-
-    await _load();
-  }
+  // Выбора режима здесь больше нет.
+  //
+  // Режим задаёт КАТЕГОРИЯ: заказчик вешает в супер-админке атрибут стиля L
+  // (по часам) или M (посуточно), и все объявления категории получают его.
+  // Хозяин квартиры не должен решать, ночами он сдаёт или часами: это
+  // свойство того, что он сдаёт, а не его вкуса.
+  //
+  // Переключатель здесь стоял один день, 02.09.2026. Оставлять его было бы
+  // хуже, чем не иметь вовсе: сервер всё равно подставляет режим категории,
+  // и владелец нажимал бы кнопку, которая молча ничего не меняет.
 
   /// Часы заезда и выезда. Это не украшение: именно они задают границы ночи,
   /// и по ним же закрываются даты. При заезде 14:00 и выезде 11:00 ночь 24-го
