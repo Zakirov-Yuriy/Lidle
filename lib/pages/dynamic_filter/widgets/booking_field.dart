@@ -88,14 +88,20 @@ class _BookingFieldState extends State<BookingField> {
     _wasEnabled = initial?['is_enabled'] == true;
     _enabled = _wasEnabled;
 
-    // У уже настроенного объявления берём его собственный режим, а не
-    // умолчание категории: иначе открытие формы на редактирование молча
-    // переключало бы владельца обратно.
-    final saved = initial?['mode'] ?? (initial?['resource'] is Map
-        ? (initial!['resource'] as Map)['mode']
-        : null);
-
-    _mode = (saved == 'daily' || saved == 'slots') ? '$saved' : widget.mode;
+    // Порядок здесь важен: сначала СВОЙ режим объявления, потом расписание,
+    // потом умолчание категории и только затем стиль атрибута.
+    //
+    // Именно тут была ошибка: сервер отдавал под именем `mode` режим
+    // КАТЕГОРИИ, приложение читало его как режим объявления, и форма
+    // редактирования возвращала владельца назад. Он переключал объявление на
+    // посуточное, в карточке всё менялось, а при следующем открытии формы
+    // снова стояли часы, потому что часы задавала категория.
+    _mode = _firstMode([
+      initial?['mode'],
+      initial?['resource'] is Map ? (initial!['resource'] as Map)['mode'] : null,
+      initial?['default_mode'],
+      widget.mode,
+    ]);
 
     if (initial != null) {
       _slotMinutes = _asInt(initial['slot_minutes']) ?? 60;
@@ -112,6 +118,19 @@ class _BookingFieldState extends State<BookingField> {
         _workTo = _asTime(first['ends_at']) ?? '18:00';
       }
     }
+  }
+
+  /// Первый пригодный режим из списка. Пустые и незнакомые значения
+  /// пропускаем: сервер может не прислать поле вовсе, и падать на этом
+  /// форма подачи не должна.
+  static String _firstMode(List<dynamic> candidates) {
+    for (final candidate in candidates) {
+      if (candidate == 'daily' || candidate == 'slots') {
+        return '$candidate';
+      }
+    }
+
+    return 'slots';
   }
 
   /// Собираем то, что уедет на сервер, и отдаём наверх.
