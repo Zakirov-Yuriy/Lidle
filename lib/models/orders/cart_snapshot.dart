@@ -25,7 +25,7 @@ class CartSnapshot {
   });
 
   factory CartSnapshot.empty() =>
-      const CartState(shops: [], itemsCount: 0, total: 0);
+      const CartSnapshot(shops: [], itemsCount: 0, total: 0);
 
   factory CartSnapshot.fromJson(Map<String, dynamic> data) {
     final shops = data['shops'];
