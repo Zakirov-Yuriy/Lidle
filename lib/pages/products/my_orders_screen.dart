@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -24,13 +25,26 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   bool _showAll = false;
   bool _isLoading = true;
 
+  /// Свои заказы видны только вошедшему: у гостя их попросту нет, сервер
+  /// опознаёт покупателя по аккаунту. Показывать ему пустой список значит
+  /// говорить «покупок нет» там, где правильный ответ «войдите».
+  late bool _isGuest;
+
   List<OrderModel> _orders = const [];
 
   @override
   void initState() {
     super.initState();
     _incoming = widget.startWithIncoming;
-    _load();
+
+    final token = HiveService.getUserData('token');
+    _isGuest = token == null || '$token'.isEmpty;
+
+    if (_isGuest) {
+      _isLoading = false;
+    } else {
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -77,10 +91,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 ),
               ),
             ),
-            _buildTabs(),
-            _buildScopeRow(),
+            if (!_isGuest) ...[
+              _buildTabs(),
+              _buildScopeRow(),
+            ],
             Expanded(
-              child: _isLoading
+              child: _isGuest
+                  ? _buildGuestNotice()
+                  : _isLoading
                   ? const Center(
                       child: CircularProgressIndicator(color: activeIconColor),
                     )
@@ -108,6 +126,42 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             children: _orders.map(_buildOrder).toList(),
                           ),
                         ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Что видит гость.
+  ///
+  /// Заказ оформить он может, а вот список своих заказов существует только у
+  /// аккаунта: гостевой заказ ищется по коду получения, который мы показали
+  /// сразу после оформления.
+  Widget _buildGuestNotice() {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_outline, color: textMuted, size: 44),
+            SizedBox(height: 12),
+            Text(
+              'Войдите, чтобы видеть свои заказы',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Покупать можно и без регистрации: код получения мы показываем '
+              'сразу после оформления заказа.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: textSecondary, fontSize: 14),
             ),
           ],
         ),

@@ -151,8 +151,15 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
         emit(const NavigationToFavorites());
         _navigateToFavorites();
         break;
-      case 2:
       case 3:
+        // 🛒 Товары доступны ВСЕМ: покупка без регистрации предусмотрена
+        // вёрсткой и подтверждена заказчиком. Витрина и корзина за входом
+        // быть не могут, иначе гостевой заказ невозможен. Список своих
+        // заказов внутри раздела спрашивает вход сам.
+        emit(const NavigationToMyPurchases());
+        _navigateToMyPurchases();
+        break;
+      case 2:
       case 4:
       case 5:
         // Остальные разделы требуют авторизацию
@@ -161,10 +168,6 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
             case 2:
               emit(const NavigationToCategorySelection());
               _navigateToCategorySelection();
-              break;
-            case 3: // Мои покупки
-              emit(const NavigationToMyPurchases());
-              _navigateToMyPurchases();
               break;
             case 4: // Сообщения
               emit(const NavigationToMessages());
