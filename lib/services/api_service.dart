@@ -67,7 +67,12 @@ class ApiService {
 
   /// Общие заголовки запроса вместе с токеном корзины, если он есть.
   static Map<String, String> _baseHeaders() {
-    final headers = _baseHeaders();
+    // Здесь именно копия константы, а не вызов самого себя. Ровно на этом
+    // месте 03.09.2026 метод стал рекурсивным: тело писалось как
+    // `{...defaultHeaders}`, а следом по файлу прошла замена этой строки на
+    // вызов `_baseHeaders()`, и заменила её в том числе тут. Приложение
+    // падало переполнением стека на КАЖДОМ запросе.
+    final headers = {...defaultHeaders};
 
     final token = cartToken;
     if (token != null && token.isNotEmpty) {
