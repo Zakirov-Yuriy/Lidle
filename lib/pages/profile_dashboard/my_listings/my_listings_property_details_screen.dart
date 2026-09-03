@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/models/bookings/booking_settings.dart';
 import 'package:lidle/pages/bookings/booking_settings_screen.dart';
+import 'package:lidle/services/bookings_service.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -142,10 +144,18 @@ class _MyListingsPropertyDetailsScreenState
 
   late Listing _listing;
 
+  /// Настройка записи у этого объявления.
+  ///
+  /// `null`, пока не спросили сервер. Именно `null`, а не `false`: пока ответа
+  /// нет, мы не знаем, есть бронь или нет, и рисовать кнопку «на всякий
+  /// случай» нельзя — она мигнёт и пропадёт.
+  bool? _hasBookingSettings;
+
   @override
   void initState() {
     super.initState();
     _listing = widget.listing;
+    _loadBookingState();
     // log.d();
 
     // DEBUG логирование
@@ -239,6 +249,36 @@ class _MyListingsPropertyDetailsScreenState
       setState(() {
         _imagesPrecached = true;
       });
+    }
+  }
+
+  /// Спрашиваем сервер, показывать ли настройку записи.
+  ///
+  /// Раньше кнопка рисовалась безусловно: когда её делали, бронь включалась
+  /// именно с неё, и прятать было не от чего. Теперь бронирование задаёт
+  /// категория, а владелец включает его при создании объявления, поэтому у
+  /// большинства объявлений настраивать нечего и кнопка там лишняя.
+  ///
+  /// Два условия, оба обязательны: категория разрешает (атрибут в админке) и
+  /// владелец включил. Об отказе молчим: не показать кнопку это не ошибка, а
+  /// обычный случай, и ругаться на человека незачем.
+  Future<void> _loadBookingState() async {
+    final advertId = int.tryParse(_listing.id);
+
+    if (advertId == null) {
+      return;
+    }
+
+    try {
+      final BookingSettings settings = await BookingsService.settings(advertId);
+
+      if (!mounted) return;
+
+      setState(() => _hasBookingSettings = settings.hasOwnerSettings);
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _hasBookingSettings = false);
     }
   }
 
@@ -368,8 +408,15 @@ class _MyListingsPropertyDetailsScreenState
                         const SizedBox(height: 12),
                         // Настройка записи. Стоит у владельца, а не в общей
                         // карточке: включать бронь может только он.
-                        _buildBookingSettingsButton(),
-                        const SizedBox(height: 19),
+                        //
+                        // Показываем, только когда бронь у объявления
+                        // действительно есть: категория её разрешает и
+                        // владелец включил её при создании. Пока ответ
+                        // сервера не пришёл, не рисуем ничего.
+                        if (_hasBookingSettings == true) ...[
+                          _buildBookingSettingsButton(),
+                          const SizedBox(height: 19),
+                        ],
                         _buildLocationCard(),
                         const SizedBox(height: 10),
                         _buildAboutApartmentCard(),

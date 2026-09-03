@@ -7,6 +7,18 @@
 /// поведение выглядит как ошибка.
 class BookingSettings {
   final int advertId;
+
+  /// Разрешает ли КАТЕГОРИЯ бронирование вообще.
+  ///
+  /// Приходит с сервера и зависит от атрибута, который заказчик вешает на
+  /// категорию в супер-админке. Снял атрибут — стало `false`, и настройка
+  /// записи пропадает у всех объявлений этой категории.
+  ///
+  /// Отличается от `isEnabled`: то решает владелец объявления, а это заказчик
+  /// для целой категории. Кнопка настройки записи нужна, только когда истинны
+  /// оба: категория разрешила и владелец включил.
+  final bool isAvailable;
+
   final bool isEnabled;
 
   final BookingResourceBrief? resource;
@@ -32,6 +44,7 @@ class BookingSettings {
 
   const BookingSettings({
     required this.advertId,
+    required this.isAvailable,
     required this.isEnabled,
     required this.resource,
     required this.needsConfirmation,
@@ -53,6 +66,7 @@ class BookingSettings {
   /// для экрана настроек «ещё не настроено» нормальное состояние.
   factory BookingSettings.notConfigured(int advertId) => BookingSettings(
         advertId: advertId,
+        isAvailable: false,
         isEnabled: false,
         resource: null,
         needsConfirmation: false,
@@ -81,6 +95,10 @@ class BookingSettings {
 
     return BookingSettings(
       advertId: _int(data['advert_id']) ?? 0,
+      // Старый сервер поля не пришлёт. Тогда считаем, что категория
+      // разрешает: иначе после обновления приложения настройка пропала бы у
+      // всех сразу, включая тех, у кого бронь уже работает.
+      isAvailable: data['is_available'] != false,
       isEnabled: data['is_enabled'] == true,
       resource: BookingResourceBrief.tryParse(data['resource']),
       needsConfirmation: data['needs_confirmation'] == true,
@@ -111,6 +129,7 @@ class BookingSettings {
   }) {
     return BookingSettings(
       advertId: advertId,
+      isAvailable: isAvailable,
       isEnabled: isEnabled ?? this.isEnabled,
       resource: resource,
       needsConfirmation: needsConfirmation ?? this.needsConfirmation,
@@ -131,6 +150,13 @@ class BookingSettings {
 
   /// Посуточный режим: у него закрывается ночь, а не календарные сутки.
   bool get isDaily => resource?.mode == 'daily';
+
+  /// Показывать ли владельцу настройку записи у этого объявления.
+  ///
+  /// Два условия, и оба обязательны. Категория должна разрешать бронирование:
+  /// это решает заказчик атрибутом в админке. И владелец должен был включить
+  /// бронь при создании объявления: без этого настраивать нечего.
+  bool get hasOwnerSettings => isAvailable && isEnabled;
 
   /// Сервер отдаёт `14:00:00`, человеку нужны часы и минуты.
   static String? _time(dynamic value) {
