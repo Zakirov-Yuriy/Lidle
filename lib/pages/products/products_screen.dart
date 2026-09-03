@@ -435,7 +435,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
           crossAxisCount: 2,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 0.62,
+          // Ячейка выше, чем раньше: в ней помещаются картинка, цена,
+          // название в две строки, магазин и кнопка. Само переполнение теперь
+          // невозможно (картинка тянется), но слишком низкая ячейка сплющила
+          // бы её в полоску.
+          childAspectRatio: 0.58,
         ),
         itemCount: _products.length + (_isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {

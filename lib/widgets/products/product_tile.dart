@@ -37,15 +37,25 @@ class ProductTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AspectRatio(
-              aspectRatio: 1,
+            // Картинка занимает ОСТАТОК высоты, а не квадрат.
+            //
+            // Так было: квадратная картинка плюс текст с кнопкой не влезали в
+            // ячейку сетки, и снизу вылезала жёлто-чёрная полоса переполнения.
+            // Причём на сколько именно — зависело от длины названия, то есть
+            // подобрать соотношение сторон раз и навсегда невозможно. Теперь
+            // подпись занимает столько, сколько ей нужно, а картинка забирает
+            // всё, что осталось.
+            Expanded(
               child: Opacity(
                 opacity: available ? 1 : 0.45,
-                child: _image(),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: _image(),
+                ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -62,7 +72,11 @@ class ProductTile extends StatelessWidget {
                     product.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      height: 1.2,
+                    ),
                   ),
                   if (product.shop != null) ...[
                     const SizedBox(height: 4),
