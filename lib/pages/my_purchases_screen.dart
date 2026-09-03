@@ -1,80 +1,142 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // Import Bloc
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:lidle/blocs/navigation/navigation_bloc.dart'; // Import NavigationBloc
-import 'package:lidle/blocs/navigation/navigation_event.dart'; // Import NavigationEvent
-import 'package:lidle/blocs/navigation/navigation_state.dart'; // Import NavigationState
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_event.dart';
+import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
-import 'package:lidle/widgets/navigation/bottom_navigation.dart'; // Import custom BottomNavigation
-import 'package:lidle/constants.dart'; // Import constants
-import 'package:lidle/widgets/components/header.dart'; // Import Header widget
-import 'package:lidle/widgets/no_internet_screen.dart';
-import 'package:lidle/models/home_models.dart'; // Import Listing model
-import 'package:lidle/widgets/components/product_card.dart'; // Import ProductCard widget
-import 'package:lidle/pages/products/products_screen.dart';
+import 'package:lidle/constants.dart';
+import 'package:lidle/hive_service.dart';
+import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/my_orders_screen.dart';
+import 'package:lidle/pages/products/product_details_screen.dart';
+import 'package:lidle/pages/products/products_screen.dart';
+import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/widgets/navigation/bottom_navigation.dart';
+import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/no_internet_screen.dart';
 
-class MyPurchasesScreen extends StatelessWidget {
-  static const String routeName = '/my-purchases'; // Define route name
-  MyPurchasesScreen({super.key});
+/// Мои покупки: то, что человек реально купил и забрал.
+///
+/// Покупка — это выданный заказ (статус `completed`). Живые и отменённые
+/// заказы живут на экране «Мои заказы»: там за ними следят, а здесь — история
+/// того, что уже в руках. Каждая позиция выданного заказа показывается
+/// отдельной строкой: покупают товары, а не номера заказов.
+class MyPurchasesScreen extends StatefulWidget {
+  static const String routeName = '/my-purchases';
 
-// Скрытые обьявления статические для демонстрации состояния "Нет покупок" — оставляем список пустым.
-  //  // Dummy data for purchases
-  // final List<Listing> dummyPurchases = [
-  //   Listing(
-  //     id: '1',
-  //     imagePath: 'assets/product_card/image1.png',
-  //     title: 'Диван раскладной...',
-  //     price: '31 627',
-  //     location: 'Москва, ул. Куусинена, 21А',
-  //     date: 'Сегодня',
-  //     isFavorited: true,
-  //   ),
-  //   Listing(
-  //     id: '2',
-  //     imagePath: 'assets/product_card/image2.png',
-  //     title: 'Лайфмебель Стулья...',
-  //     price: '21 000',
-  //     location: 'Москва, ул. Казакова, 7',
-  //     date: '29.08.2024',
-  //     isFavorited: false,
-  //   ),
-  //   Listing(
-  //     id: '3',
-  //     imagePath: 'assets/product_card/image3.png',
-  //     title: 'Лайфмебель Стулья...',
-  //     price: '16 000',
-  //     location: 'Москва, Отрадная ул., 11',
-  //     date: '29.08.2024',
-  //     isFavorited: true,
-  //   ),
-  // ];
+  const MyPurchasesScreen({super.key});
 
-  // Dummy data for purchases (temporarily hidden)
-  // Чтобы временно показать состояние "Нет покупок" — оставляем список пустым.
-  final List<Listing> dummyPurchases = [];
+  @override
+  State<MyPurchasesScreen> createState() => _MyPurchasesScreenState();
+}
+
+/// Одна купленная позиция: строка заказа плюс то, что нужно для подписи.
+class _PurchaseEntry {
+  final OrderLine line;
+  final String shopName;
+  final DateTime? date;
+
+  const _PurchaseEntry({
+    required this.line,
+    required this.shopName,
+    required this.date,
+  });
+}
+
+class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
+  bool _isLoading = true;
+  bool _newestFirst = true;
+
+  /// Покупки существуют только у аккаунта: сервер опознаёт покупателя по
+  /// токену. Гостю показываем предложение войти, а не «покупок нет».
+  bool _isGuest = true;
+
+  List<_PurchaseEntry> _purchases = const [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    final token = HiveService.getUserData('token');
+    _isGuest = token == null || '$token'.isEmpty;
+
+    if (_isGuest) {
+      _isLoading = false;
+    } else {
+      _load();
+    }
+  }
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+
+    // Берём все свои заказы и оставляем выданные. Фильтр на клиенте: заказов
+    // у человека десятки, а не тысячи, и один запрос проще, чем спор с
+    // сервером о параметрах.
+    final orders = await OrdersService.myOrders(all: true);
+
+    final purchases = <_PurchaseEntry>[];
+
+    for (final order in orders) {
+      if (order.status != 'completed') continue;
+
+      for (final line in order.items) {
+        purchases.add(
+          _PurchaseEntry(
+            line: line,
+            shopName: order.shop?.name ?? '',
+            date: order.pickedUpAt ?? order.createdAt,
+          ),
+        );
+      }
+    }
+
+    _sort(purchases);
+
+    if (!mounted) return;
+
+    setState(() {
+      _purchases = purchases;
+      _isLoading = false;
+    });
+  }
+
+  void _sort(List<_PurchaseEntry> list) {
+    list.sort((a, b) {
+      final left = a.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final right = b.date ?? DateTime.fromMillisecondsSinceEpoch(0);
+
+      return _newestFirst ? right.compareTo(left) : left.compareTo(right);
+    });
+  }
+
+  void _toggleSort() {
+    setState(() {
+      _newestFirst = !_newestFirst;
+      final copy = List<_PurchaseEntry>.from(_purchases);
+      _sort(copy);
+      _purchases = copy;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bool hasPurchases =
-        dummyPurchases.isNotEmpty; // Check if there are purchases
-
     return BlocListener<ConnectivityBloc, ConnectivityState>(
       listener: (context, connectivityState) {
-        if (connectivityState is ConnectedState) {
-          // Refresh screen data when connection is restored
-          Future.delayed(const Duration(milliseconds: 500), () {
-            // Screen will rebuild automatically when state changes
-          });
+        if (connectivityState is ConnectedState && !_isGuest) {
+          _load();
         }
       },
       child: BlocBuilder<ConnectivityBloc, ConnectivityState>(
         builder: (context, connectivityState) {
           if (connectivityState is DisconnectedState) {
             return NoInternetScreen(onRetry: () {
-              context.read<ConnectivityBloc>().add(const CheckConnectivityEvent());
+              context
+                  .read<ConnectivityBloc>()
+                  .add(const CheckConnectivityEvent());
             });
           }
 
@@ -94,7 +156,7 @@ class MyPurchasesScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Header(), // Add the Header widget
+                    const Header(),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 25,
@@ -110,9 +172,9 @@ class MyPurchasesScreen extends StatelessWidget {
                               size: 16,
                             ),
                           ),
-                          const SizedBox(width: 10), // Added spacing
+                          const SizedBox(width: 10),
                           const Text(
-                            'Мои покупки', // Title from the mockup
+                            'Мои покупки',
                             style: TextStyle(
                               color: textPrimary,
                               fontSize: 18,
@@ -124,143 +186,22 @@ class MyPurchasesScreen extends StatelessWidget {
                             icon: const Icon(
                               Icons.import_export,
                               color: textPrimary,
-                            ), // Иконка сортировки
-                            onPressed: () {
-                              // TODO: Реализовать функцию сортировки
-                            },
+                            ),
+                            onPressed:
+                                _purchases.length > 1 ? _toggleSort : null,
                           ),
                         ],
                       ),
                     ),
-                    Expanded(
-                      child: hasPurchases
-                          ? GridView.builder(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 25,
-                                vertical: 0,
-                              ),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    crossAxisSpacing: 9,
-                                    mainAxisSpacing: 5,
-                                    childAspectRatio: 0.55,
-                                  ),
-                              itemCount: dummyPurchases.length,
-                              itemBuilder: (context, index) {
-                                return ProductCard(listing: dummyPurchases[index]);
-                              },
-                            )
-                          : Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  SvgPicture.asset(
-                                    'assets/my_purchases/shopping-bag-01.svg',
-                                    height: 120,
-                                    width: 120,
-                                    colorFilter: const ColorFilter.mode(
-                                      Color(0xFFFEDC02),
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  const Text(
-                                    'Нет покупок',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(horizontal: 40.0),
-                                    child: Text(
-                                      'У вас нет покупок, как только вы\n купите товар здесь он будет\n отображен',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Color(0xFFAAAAAA),
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  // Вход в товары. Экран назывался «Мои
-                                  // покупки» и был пустой заглушкой: списка
-                                  // заказов не существовало, а витрины в
-                                  // приложении не было вовсе. Теперь есть и
-                                  // то, и другое, и попасть туда надо откуда-то.
-                                  const SizedBox(height: 28),
-                                  SizedBox(
-                                    width: 220,
-                                    height: 46,
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: activeIconColor,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const ProductsScreen(),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Перейти к товарам',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  SizedBox(
-                                    width: 220,
-                                    height: 46,
-                                    child: OutlinedButton(
-                                      style: OutlinedButton.styleFrom(
-                                        side: const BorderSide(
-                                            color: activeIconColor),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                      onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const MyOrdersScreen(),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        'Мои заказы',
-                                        style: TextStyle(
-                                          color: activeIconColor,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                    ),
+                    Expanded(child: _buildBody()),
                   ],
                 ),
               ),
               bottomNavigationBar: BottomNavigation(
                 onItemSelected: (index) {
                   context.read<NavigationBloc>().add(
-                    SelectNavigationIndexEvent(index),
-                  );
+                        SelectNavigationIndexEvent(index),
+                      );
                 },
               ),
             ),
@@ -268,5 +209,274 @@ class MyPurchasesScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  Widget _buildBody() {
+    if (_isGuest) return _buildGuestNotice();
+
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: activeIconColor),
+      );
+    }
+
+    if (_purchases.isEmpty) return _buildEmptyState();
+
+    return RefreshIndicator(
+      color: activeIconColor,
+      onRefresh: _load,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(25, 0, 25, 24),
+        itemCount: _purchases.length,
+        itemBuilder: (context, index) => _buildPurchase(_purchases[index]),
+      ),
+    );
+  }
+
+  Widget _buildPurchase(_PurchaseEntry entry) {
+    final line = entry.line;
+
+    return GestureDetector(
+      onTap: line.productId == null
+          ? null
+          : () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      ProductDetailsScreen(productId: line.productId!),
+                ),
+              ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    line.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _money(line.sum),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                if (line.quantity > 1)
+                  Text(
+                    '${_money(double.tryParse(line.price) ?? 0)} × ${line.quantity}',
+                    style: const TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                const Spacer(),
+                Text(
+                  [
+                    if (entry.shopName.isNotEmpty) entry.shopName,
+                    if (entry.date != null) _formatDate(entry.date!),
+                  ].join(' · '),
+                  style: const TextStyle(color: textMuted, fontSize: 13),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Что видит гость.
+  ///
+  /// Купить он может, а вот история покупок существует только у аккаунта:
+  /// гостевой заказ ищется по коду получения.
+  Widget _buildGuestNotice() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.person_outline, color: textMuted, size: 44),
+            const SizedBox(height: 12),
+            const Text(
+              'Войдите, чтобы видеть свои покупки',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Покупать можно и без регистрации: код получения мы показываем '
+              'сразу после оформления заказа.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 220,
+              height: 46,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: activeIconColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ProductsScreen()),
+                ),
+                child: const Text(
+                  'Перейти к товарам',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SvgPicture.asset(
+            'assets/my_purchases/shopping-bag-01.svg',
+            height: 120,
+            width: 120,
+            colorFilter: const ColorFilter.mode(
+              Color(0xFFFEDC02),
+              BlendMode.srcIn,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Нет покупок',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 40.0),
+            child: Text(
+              'У вас нет покупок, как только вы\n купите товар здесь он будет\n отображен',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFFAAAAAA),
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: 220,
+            height: 46,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: activeIconColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProductsScreen()),
+              ),
+              child: const Text(
+                'Перейти к товарам',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: 220,
+            height: 46,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: activeIconColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+                );
+
+                // Пока человек ходил по заказам, он мог забрать один из них:
+                // вернувшись, список покупок должен это знать.
+                if (mounted) _load();
+              },
+              child: const Text(
+                'Мои заказы',
+                style: TextStyle(
+                  color: activeIconColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    String two(int value) => value < 10 ? '0$value' : '$value';
+
+    return '${two(date.day)}.${two(date.month)}.${date.year}';
+  }
+
+  String _money(double value) {
+    final whole = value.truncate().toString();
+
+    final buffer = StringBuffer();
+    for (var i = 0; i < whole.length; i++) {
+      if (i > 0 && (whole.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(whole[i]);
+    }
+
+    return '${buffer.toString()} ₽';
   }
 }

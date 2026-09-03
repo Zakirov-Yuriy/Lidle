@@ -61,9 +61,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       var phone = profile.phone ?? '';
       try {
         final phonesResponse = await ContactService.getPhones(token: token);
-        final phones = phonesResponse.phones;
-        if (phones != null && phones.isNotEmpty) {
-          phone = phones.first.phone;
+        if (phonesResponse.data.isNotEmpty) {
+          phone = phonesResponse.data.first.phone;
         }
       } catch (_) {
         // Keep the scalar profile phone as a fallback.
