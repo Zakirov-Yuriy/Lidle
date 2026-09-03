@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
@@ -173,6 +174,11 @@ void main() async {
     // 🔒 SECURITY МИГРАЦИЯ: Переносим старые токены из Hive в secure storage
     // Это критическая операция - должна выполниться ДО первого использования токенов
     await HiveService.migrateTokensToSecureStorage();
+
+    // Токен гостевой корзины. Достаём сразу после Hive и до первых запросов:
+    // без него человек, закрывший приложение, нашёл бы пустую корзину, потому
+    // что сервер опознаёт гостевую корзину только по этому токену.
+    await CartService.restoreToken();
 
     // 🔧 DEPENDENCY INJECTION: Инициализируем Service Locator
     // Регистрируем все BLoCs, Services и Utilities

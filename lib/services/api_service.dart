@@ -53,6 +53,30 @@ class ApiService {
   static const int _retryDelayMs =
       2000; // 🚀 ОПТИМИЗАЦИЯ: Увеличена стартовая задержка с 1000ms на 2000ms
             // Это дает серверу больше времени на восстановление между попытками
+  /// Токен гостевой корзины.
+  ///
+  /// Ездит заголовком `X-Cart-Token` и опознаёт корзину человека, который ещё
+  /// не вошёл в аккаунт. Держим его здесь, а не передаём параметром в каждый
+  /// вызов: корзина это свойство установки приложения, ровно как и токен
+  /// входа, и таскать его через все экраны значит однажды забыть и потерять
+  /// корзину на ровном месте.
+  ///
+  /// Заполняется из хранилища при старте (см. `CartService.restoreToken`) и
+  /// обновляется, когда сервер выдаёт новый.
+  static String? cartToken;
+
+  /// Общие заголовки запроса вместе с токеном корзины, если он есть.
+  static Map<String, String> _baseHeaders() {
+    final headers = _baseHeaders();
+
+    final token = cartToken;
+    if (token != null && token.isNotEmpty) {
+      headers['X-Cart-Token'] = token;
+    }
+
+    return headers;
+  }
+
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
     // Заголовки согласно официальной документации API Lidle
@@ -107,7 +131,7 @@ class ApiService {
     String? token,
   ) async {
     try {
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -181,7 +205,7 @@ class ApiService {
     String? token,
   ) async {
     try {
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -265,7 +289,7 @@ class ApiService {
     String? token,
   ) async {
     try {
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -316,7 +340,7 @@ class ApiService {
     String? token,
   ) async {
     try {
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -395,7 +419,7 @@ class ApiService {
     String? token,
   ) async {
     try {
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -466,7 +490,7 @@ class ApiService {
     Map<String, dynamic>? body,
   ) async {
     try {
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Читаем токен из параметра или из Hive (для автоматического обновления при refresh)
       final effectiveToken =
           token ?? (HiveService.getUserData('token') as String?);
@@ -1228,7 +1252,7 @@ class ApiService {
         return null;
       }
 
-      final headers = {...defaultHeaders};
+      final headers = _baseHeaders();
       // Передаём REFRESH_TOKEN (не access_token) как Bearer в Authorization
       headers['Authorization'] = 'Bearer $refreshTokenValue';
 

@@ -13,6 +13,8 @@ import 'package:lidle/widgets/components/header.dart'; // Import Header widget
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/models/home_models.dart'; // Import Listing model
 import 'package:lidle/widgets/components/product_card.dart'; // Import ProductCard widget
+import 'package:lidle/pages/products/products_screen.dart';
+import 'package:lidle/pages/products/my_orders_screen.dart';
 
 class MyPurchasesScreen extends StatelessWidget {
   static const String routeName = '/my-purchases'; // Define route name
@@ -180,6 +182,70 @@ class MyPurchasesScreen extends StatelessWidget {
                                       style: TextStyle(
                                         color: Color(0xFFAAAAAA),
                                         fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  // Вход в товары. Экран назывался «Мои
+                                  // покупки» и был пустой заглушкой: списка
+                                  // заказов не существовало, а витрины в
+                                  // приложении не было вовсе. Теперь есть и
+                                  // то, и другое, и попасть туда надо откуда-то.
+                                  const SizedBox(height: 28),
+                                  SizedBox(
+                                    width: 220,
+                                    height: 46,
+                                    child: ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: activeIconColor,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ProductsScreen(),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Перейти к товарам',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  SizedBox(
+                                    width: 220,
+                                    height: 46,
+                                    child: OutlinedButton(
+                                      style: OutlinedButton.styleFrom(
+                                        side: const BorderSide(
+                                            color: activeIconColor),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                      onPressed: () => Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const MyOrdersScreen(),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'Мои заказы',
+                                        style: TextStyle(
+                                          color: activeIconColor,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ),
