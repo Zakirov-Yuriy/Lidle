@@ -52,9 +52,14 @@ class ProductsService {
 
       return ProductsPage.fromJson(response);
     } catch (e) {
-      log.d('Не удалось загрузить товары: $e');
+      log.e('Не удалось загрузить товары: $e');
 
-      return ProductsPage.empty();
+      // Ошибку НЕ превращаем в пустой список. Пустая витрина и сломанный
+      // запрос выглядят одинаково, а причины у них противоположные: в первом
+      // случае надо менять раздел, во втором чинить сервер. Сегодня мы на этом
+      // потеряли полчаса, разыскивая «пропавшие» товары, пока сервер честно
+      // отвечал пятисоткой.
+      return ProductsPage.failed('$e');
     }
   }
 
@@ -138,15 +143,26 @@ class ProductsPage {
   final int lastPage;
   final int total;
 
+  /// Текст ошибки, если загрузка не удалась. `null` — всё хорошо, даже если
+  /// товаров ноль: пустой раздел это не ошибка.
+  final String? error;
+
   const ProductsPage({
     required this.items,
     required this.currentPage,
     required this.lastPage,
     required this.total,
+    this.error,
   });
 
   factory ProductsPage.empty() =>
       const ProductsPage(items: [], currentPage: 1, lastPage: 1, total: 0);
+
+  factory ProductsPage.failed(String error) =>
+      ProductsPage(items: const [], currentPage: 1, lastPage: 1, total: 0,
+          error: error);
+
+  bool get isFailed => error != null;
 
   factory ProductsPage.fromJson(Map<String, dynamic> response) {
     final data = response['data'];

@@ -45,6 +45,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
 
+  /// Текст ошибки загрузки. Отличается от «ничего не нашлось»: пустой раздел
+  /// это нормальный ответ, а сломанный запрос требует починки, и путать их
+  /// нельзя.
+  String? _error;
+
   int _cartCount = 0;
 
   /// Поиск не дёргаем на каждую букву: человек печатает быстрее, чем отвечает
@@ -119,6 +124,8 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (!mounted) return;
 
     setState(() {
+      _error = page.error;
+
       if (more) {
         _products.addAll(page.items);
         _isLoadingMore = false;
@@ -401,6 +408,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Widget _buildGrid() {
+    if (_error != null) {
+      return _buildError();
+    }
+
     if (_products.isEmpty) {
       return const Center(
         child: Padding(
@@ -442,6 +453,60 @@ class _ProductsScreenState extends State<ProductsScreen> {
             onAdd: () => _addToCart(product),
           );
         },
+      ),
+    );
+  }
+
+  /// Экран ошибки с повтором.
+  ///
+  /// Раньше здесь показывалось «здесь пока ничего нет», и пятисотка от сервера
+  /// выглядела как пустой раздел. Человек шёл искать товары в другом разделе,
+  /// хотя чинить надо было сервер.
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFE0A63C), size: 44),
+            const SizedBox(height: 12),
+            const Text(
+              'Не получилось загрузить товары',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 44,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: activeIconColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => _load(),
+                child: const Text(
+                  'Повторить',
+                  style: TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
