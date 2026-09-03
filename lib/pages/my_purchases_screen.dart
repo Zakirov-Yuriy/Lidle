@@ -14,6 +14,7 @@ import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/services/products_service.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
@@ -55,6 +56,11 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
   bool _isGuest = true;
 
   List<_PurchaseEntry> _purchases = const [];
+
+  /// Картинки товаров. В позициях заказа их нет: сервер хранит имя и цену на
+  /// момент покупки, а не витринную карточку. Дотягиваем из карточек товаров
+  /// после загрузки списка, по одному запросу на уникальный товар.
+  final Map<int, String> _images = {};
 
   @override
   void initState() {
@@ -102,6 +108,28 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
       _purchases = purchases;
       _isLoading = false;
     });
+
+    _loadImages(purchases);
+  }
+
+  Future<void> _loadImages(List<_PurchaseEntry> purchases) async {
+    final ids = purchases
+        .map((entry) => entry.line.productId)
+        .whereType<int>()
+        .toSet()
+        .where((id) => !_images.containsKey(id))
+        .toList();
+
+    if (ids.isEmpty) return;
+
+    await Future.wait(ids.map((id) async {
+      final product = await ProductsService.details(id);
+      final image = product?.image;
+
+      if (image != null && image.isNotEmpty) _images[id] = image;
+    }));
+
+    if (mounted) setState(() {});
   }
 
   void _sort(List<_PurchaseEntry> list) {
@@ -225,12 +253,79 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
     return RefreshIndicator(
       color: activeIconColor,
       onRefresh: _load,
-      child: ListView.builder(
+      child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(25, 0, 25, 24),
-        itemCount: _purchases.length,
-        itemBuilder: (context, index) => _buildPurchase(_purchases[index]),
+        children: [
+          ..._purchases.map(_buildPurchase),
+          // Кнопки живут под списком всегда: докрутил покупки — можешь сразу
+          // пойти за новыми или проверить живые заказы.
+          const SizedBox(height: 16),
+          _buildActionButtons(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: 220,
+          height: 46,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: activeIconColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProductsScreen()),
+            ),
+            child: const Text(
+              'Перейти к товарам',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: 220,
+          height: 46,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: activeIconColor),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
+              );
+
+              // Пока человек ходил по заказам, он мог забрать один из них:
+              // вернувшись, список покупок должен это знать.
+              if (mounted) _load();
+            },
+            child: const Text(
+              'Мои заказы',
+              style: TextStyle(
+                color: activeIconColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -249,18 +344,21 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
               ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: formBackground,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
+            _buildThumbnail(line.productId),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     line.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -270,38 +368,57 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  _money(line.sum),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                if (line.quantity > 1)
+                  const SizedBox(height: 4),
                   Text(
-                    '${_money(double.tryParse(line.price) ?? 0)} × ${line.quantity}',
-                    style: const TextStyle(color: textSecondary, fontSize: 13),
+                    line.quantity > 1
+                        ? '${_money(line.sum)} · ${_money(double.tryParse(line.price) ?? 0)} × ${line.quantity}'
+                        : _money(line.sum),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                const Spacer(),
-                Text(
-                  [
-                    if (entry.shopName.isNotEmpty) entry.shopName,
-                    if (entry.date != null) _formatDate(entry.date!),
-                  ].join(' · '),
-                  style: const TextStyle(color: textMuted, fontSize: 13),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    [
+                      if (entry.shopName.isNotEmpty) entry.shopName,
+                      if (entry.date != null) _formatDate(entry.date!),
+                    ].join(' · '),
+                    style: const TextStyle(color: textMuted, fontSize: 13),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(int? productId) {
+    final url = productId == null ? null : _images[productId];
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 72,
+        height: 72,
+        child: url == null || url.isEmpty
+            ? Container(
+                color: secondaryBackground,
+                child: const Icon(Icons.image_outlined,
+                    color: textMuted, size: 24),
+              )
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (c, e, s) => Container(
+                  color: secondaryBackground,
+                  child: const Icon(Icons.image_not_supported_outlined,
+                      color: textMuted, size: 24),
+                ),
+              ),
       ),
     );
   }
@@ -402,61 +519,7 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
             ),
           ),
           const SizedBox(height: 28),
-          SizedBox(
-            width: 220,
-            height: 46,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: activeIconColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProductsScreen()),
-              ),
-              child: const Text(
-                'Перейти к товарам',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: 220,
-            height: 46,
-            child: OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: activeIconColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              onPressed: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MyOrdersScreen()),
-                );
-
-                // Пока человек ходил по заказам, он мог забрать один из них:
-                // вернувшись, список покупок должен это знать.
-                if (mounted) _load();
-              },
-              child: const Text(
-                'Мои заказы',
-                style: TextStyle(
-                  color: activeIconColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
+          _buildActionButtons(),
         ],
       ),
     );
