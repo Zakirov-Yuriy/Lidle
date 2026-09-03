@@ -988,8 +988,10 @@ class _DynamicFilterState extends State<DynamicFilter>
       final response = await ApiService.get('/me/adverts/$advertId/booking');
       final data = response['data'];
 
-      if (data is Map<String, dynamic>) {
-        _bookingInitial = data;
+      if (data is Map<String, dynamic> && mounted) {
+        // Через setState: настройки приезжают ПОСЛЕ первой отрисовки формы, и
+        // без перерисовки блок так и остался бы с умолчаниями.
+        setState(() => _bookingInitial = data);
       }
     } catch (_) {
       // Настроек нет или бронь в этой категории не заведена — это не ошибка.
@@ -3390,6 +3392,11 @@ class _DynamicFilterState extends State<DynamicFilter>
     final isDaily = attr.style == 'M' || attr.styleSingle == 'M1';
 
     return BookingField(
+      // Ключ меняется, когда настройки объявления доехали с сервера. Без
+      // этого Flutter считает виджет тем же самым, сохраняет его состояние и
+      // не перечитывает `initial`: форма редактирования открывалась бы с
+      // умолчаниями поверх реальных настроек владельца.
+      key: ValueKey('booking-${attr.id}-${_bookingInitial != null}'),
       attribute: attr,
       mode: isDaily ? 'daily' : 'slots',
       initial: _bookingInitial,
