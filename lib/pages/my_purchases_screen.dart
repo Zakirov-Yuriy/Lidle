@@ -124,7 +124,15 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
 
     await Future.wait(ids.map((id) async {
       final product = await ProductsService.details(id);
-      final image = product?.image;
+
+      // Картинка в карточке может прийти и скаляром, и галереей: берём что
+      // есть, как делает экран товара.
+      var image = product?.image;
+      if ((image == null || image.isEmpty) &&
+          product != null &&
+          product.images.isNotEmpty) {
+        image = product.images.first;
+      }
 
       if (image != null && image.isNotEmpty) _images[id] = image;
     }));
@@ -257,10 +265,24 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(25, 0, 25, 24),
         children: [
-          ..._purchases.map(_buildPurchase),
+          // Два товара в ряд, той же плиткой, что в витрине: покупают
+          // товары, и выглядеть они должны как товары.
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 9,
+              mainAxisSpacing: 9,
+              childAspectRatio: 0.58,
+            ),
+            itemCount: _purchases.length,
+            itemBuilder: (context, index) =>
+                _buildPurchase(_purchases[index]),
+          ),
           // Кнопки живут под списком всегда: докрутил покупки — можешь сразу
           // пойти за новыми или проверить живые заказы.
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           _buildActionButtons(),
         ],
       ),
@@ -343,50 +365,64 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
                 ),
               ),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: formBackground,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Row(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildThumbnail(line.productId),
-            const SizedBox(width: 12),
+            // Картинка забирает остаток высоты, как в плитке витрины: подпись
+            // берёт сколько нужно, и переполнения не бывает.
             Expanded(
+              child: SizedBox(
+                width: double.infinity,
+                child: _buildThumbnail(line.productId),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    line.quantity > 1
+                        ? '${_money(line.sum)} · × ${line.quantity}'
+                        : _money(line.sum),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     line.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    line.quantity > 1
-                        ? '${_money(line.sum)} · ${_money(double.tryParse(line.price) ?? 0)} × ${line.quantity}'
-                        : _money(line.sum),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                  if (entry.shopName.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.shopName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: textMuted, fontSize: 12),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    [
-                      if (entry.shopName.isNotEmpty) entry.shopName,
-                      if (entry.date != null) _formatDate(entry.date!),
-                    ].join(' · '),
-                    style: const TextStyle(color: textMuted, fontSize: 13),
-                  ),
+                  ],
+                  if (entry.date != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _formatDate(entry.date!),
+                      style: const TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -399,26 +435,22 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
   Widget _buildThumbnail(int? productId) {
     final url = productId == null ? null : _images[productId];
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 72,
-        height: 72,
-        child: url == null || url.isEmpty
-            ? Container(
-                color: secondaryBackground,
-                child: const Icon(Icons.image_outlined,
-                    color: textMuted, size: 24),
-              )
-            : Image.network(
-                url,
-                fit: BoxFit.cover,
-                errorBuilder: (c, e, s) => Container(
-                  color: secondaryBackground,
-                  child: const Icon(Icons.image_not_supported_outlined,
-                      color: textMuted, size: 24),
-                ),
-              ),
+    if (url == null || url.isEmpty) {
+      return Container(
+        color: secondaryBackground,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_outlined, color: textMuted, size: 32),
+      );
+    }
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (c, e, st) => Container(
+        color: secondaryBackground,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_not_supported_outlined,
+            color: textMuted, size: 32),
       ),
     );
   }
