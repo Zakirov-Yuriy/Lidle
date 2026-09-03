@@ -176,6 +176,14 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// блок открылся с текущими значениями, а не с умолчаниями: иначе
   /// сохранение формы молча сбрасывало бы настройки владельца.
   Map<String, dynamic>? _bookingInitial;
+
+  /// Первый встреченный атрибут бронирования.
+  ///
+  /// Блок брони у объявления ровно один, даже если заказчик по недосмотру
+  /// повесил на категорию и L, и M. Два расписания невозможны: часы и ночи
+  /// меряют одно и то же время, и второй блок либо блокировал бы первый, либо
+  /// молча затирал его настройки по дороге на сервер.
+  int? _bookingAttributeId;
   // ignore: unused_field
   Map<String, dynamic>? _editAdvertData; // Данные объявления для редактирования
   // ignore: unused_field
@@ -3371,6 +3379,14 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// хуже: не дошёл бы второй, и объявление осталось бы без брони, а человек
   /// был бы уверен, что включил её.
   Widget _buildBookingField(Attribute attr) {
+    _bookingAttributeId ??= attr.id;
+
+    // Второй такой атрибут в категории не рисуем вовсе: режим выбирается
+    // внутри первого блока.
+    if (_bookingAttributeId != attr.id) {
+      return const SizedBox.shrink();
+    }
+
     final isDaily = attr.style == 'M' || attr.styleSingle == 'M1';
 
     return BookingField(

@@ -11,10 +11,14 @@ import 'required_label.dart';
 /// бронировать». Настройки уезжают отдельным блоком `booking` вместе с
 /// объявлением и ложатся в свои таблицы, а не в значения атрибута.
 ///
-/// Режим приходит стилем и владельцу не показывается: `L` это запись по часам
-/// (приём, просмотр, занятие), `M` посуточно (жильё). Хозяин квартиры не
-/// должен решать, ночами он сдаёт или часами — это свойство того, что он
-/// сдаёт, а не его вкуса.
+/// Стиль атрибута задаёт режим по УМОЛЧАНИЮ: `L` это запись по часам (приём,
+/// просмотр, занятие), `M` посуточно (жильё). Продавец может его поменять:
+/// он мог ошибиться или передумать. Сервер разрешает смену, пока на
+/// расписании нет живых броней, а дальше отказывает вслух.
+///
+/// Режим ровно один. Часы и ночи меряют одно и то же время: ночь на 24-е
+/// занимает и 15:00 того же дня, поэтому два расписания у объявления либо
+/// постоянно блокировали бы друг друга, либо врали о свободном времени.
 ///
 /// Рабочие часы здесь одни на всю неделю. Полноценный недельный редактор с
 /// выходными и обедом живёт на экране настройки записи: в форме подачи он
@@ -31,7 +35,10 @@ class BookingField extends StatefulWidget {
 
   final Attribute attribute;
 
-  /// `slots` или `daily`. Определяется стилем атрибута.
+  /// Режим по умолчанию, `slots` или `daily`. Берётся из стиля атрибута,
+  /// то есть из того, что заказчик задал категории. Продавец может его
+  /// поменять: он мог ошибиться или передумать, и запрещать это неправильно.
+  /// Сервер разрешает смену, пока на расписании нет живых броней.
   final String mode;
 
   /// Настройки для отправки. `null` означает «бронь не включали и включать не
@@ -56,6 +63,9 @@ class _BookingFieldState extends State<BookingField> {
   /// иначе выключение просто не доедет до сервера.
   late bool _wasEnabled;
 
+  /// Выбранный режим. Начинается с умолчания категории.
+  late String _mode;
+
   int _slotMinutes = 60;
   int _bufferMinutes = 0;
   bool _needsConfirmation = false;
@@ -67,7 +77,7 @@ class _BookingFieldState extends State<BookingField> {
   String _checkIn = '14:00';
   String _checkOut = '11:00';
 
-  bool get _isDaily => widget.mode == 'daily';
+  bool get _isDaily => _mode == 'daily';
 
   @override
   void initState() {
@@ -77,6 +87,15 @@ class _BookingFieldState extends State<BookingField> {
 
     _wasEnabled = initial?['is_enabled'] == true;
     _enabled = _wasEnabled;
+
+    // У уже настроенного объявления берём его собственный режим, а не
+    // умолчание категории: иначе открытие формы на редактирование молча
+    // переключало бы владельца обратно.
+    final saved = initial?['mode'] ?? (initial?['resource'] is Map
+        ? (initial!['resource'] as Map)['mode']
+        : null);
+
+    _mode = (saved == 'daily' || saved == 'slots') ? '$saved' : widget.mode;
 
     if (initial != null) {
       _slotMinutes = _asInt(initial['slot_minutes']) ?? 60;
@@ -108,6 +127,7 @@ class _BookingFieldState extends State<BookingField> {
 
     final data = <String, dynamic>{
       'is_enabled': true,
+      'mode': _mode,
       'needs_confirmation': _needsConfirmation,
       'cancel_before_hours': _cancelBeforeHours,
     };
@@ -184,6 +204,28 @@ class _BookingFieldState extends State<BookingField> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _title('Как бронируют'),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _modeChip(
+                  mode: 'slots',
+                  title: 'По часам',
+                  subtitle: 'Приём, просмотр, занятие',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _modeChip(
+                  mode: 'daily',
+                  title: 'Посуточно',
+                  subtitle: 'Ночь: заезд и выезд',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           if (_isDaily) ..._dailyRows() else ..._slotRows(),
           const SizedBox(height: 14),
           Row(
@@ -226,6 +268,54 @@ class _BookingFieldState extends State<BookingField> {
           _hint('Выходные, обед и закрытые дни настраиваются после публикации, '
               'кнопкой «Настройка записи» в вашем объявлении.'),
         ],
+      ),
+    );
+  }
+
+  /// Выбор режима. Два варианта, не переключатель: слово «посуточно» само по
+  /// себе ничего не объясняет, а разница между «клиент выбирает час» и «гость
+  /// снимает на ночь» решает, каким объявление увидят люди.
+  Widget _modeChip({
+    required String mode,
+    required String title,
+    required String subtitle,
+  }) {
+    final isSelected = _mode == mode;
+
+    return GestureDetector(
+      onTap: isSelected
+          ? null
+          : () {
+              setState(() => _mode = mode);
+              _report();
+            },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? activeIconColor : secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? Colors.white : textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: isSelected ? Colors.white70 : textMuted,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
