@@ -5,6 +5,8 @@ import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/order_placed_screen.dart';
 import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/services/contact_service.dart';
+import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -42,6 +44,47 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // не прислал: заставлять человека вводить своё же имя невежливо.
     final token = HiveService.getUserData('token');
     _isGuest = token == null || '$token'.isEmpty;
+
+    if (!_isGuest) {
+      _prefillFromProfile('$token');
+    }
+  }
+
+  /// Prefill contact fields for a signed-in user, so the screen shows the
+  /// same values the server would take from the profile anyway.
+  /// Any failure here is silent: prefill is a convenience, the screen must
+  /// keep working exactly as before.
+  Future<void> _prefillFromProfile(String token) async {
+    try {
+      final profile = await UserService.getProfile(token: token);
+
+      var phone = profile.phone ?? '';
+      try {
+        final phonesResponse = await ContactService.getPhones(token: token);
+        final phones = phonesResponse.phones;
+        if (phones != null && phones.isNotEmpty) {
+          phone = phones.first.phone;
+        }
+      } catch (_) {
+        // Keep the scalar profile phone as a fallback.
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        if (_nameController.text.isEmpty) {
+          _nameController.text = profile.name;
+        }
+        if (_phoneController.text.isEmpty) {
+          _phoneController.text = phone;
+        }
+        if (_emailController.text.isEmpty) {
+          _emailController.text = profile.email;
+        }
+      });
+    } catch (_) {
+      // Silent by design.
+    }
   }
 
   @override
@@ -208,7 +251,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Text(
             _isGuest
                 ? 'Заполните все три поля: по почте придёт код получения.'
-                : 'Можно не заполнять — возьмём из вашего профиля.',
+                : 'Проверьте данные — при необходимости измените для этого заказа.',
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
