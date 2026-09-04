@@ -28,6 +28,13 @@ class ListingsLoaded extends ListingsState {
   /// Количество объявлений на одной странице
   final int itemsPerPage;
 
+  /// Есть ли ещё что подгружать на главной.
+  ///
+  /// Нужно, чтобы список перестал дёргать сервер, когда добирать больше
+  /// нечего: раньше признака не было, и лента, упёршись в потолок, каждые три
+  /// секунды перезапрашивала одну и ту же страницу.
+  final bool hasMore;
+
   ListingsLoaded({
     required this.listings,
     required this.categories,
@@ -35,6 +42,7 @@ class ListingsLoaded extends ListingsState {
     this.currentPage = 1,
     this.totalPages = 1,
     this.itemsPerPage = 10,
+    this.hasMore = true,
   }) : filteredListings = filteredListings ?? listings;
 }
 

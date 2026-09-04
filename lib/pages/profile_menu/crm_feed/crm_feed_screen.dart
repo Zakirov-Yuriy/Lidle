@@ -368,8 +368,7 @@ class _CrmFeedScreenState extends State<CrmFeedScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 25, vertical: 4),
                 child: Text(
-                  'Вставьте ссылку на фид вашей CRM системы. '
-                  'Объявления будут загружаться и обновляться автоматически.',
+                  'Вставьте ссылку на фид в формате (Яндекс) с вашей CRM системы. Ссылку запросите в поддержке вашей CRM системе. Объявления будут загружаться и обновляться автоматически на ЛИДЛЕ.',
                   style: TextStyle(
                     fontSize: 14,
                     color: Colors.white70,

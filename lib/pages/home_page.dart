@@ -339,10 +339,16 @@ class _HomePageState extends State<HomePage>
                                     final state = context.read<ListingsBloc>().state;
                                     
                                     if (state is ListingsLoaded) {
-                                      // 📌 ИСПРАВЛЕНИЕ: Проверяем по количеству объявлений, а не по страницам
-                                      // Это надежнее, т.к. мы не знаем точное количество страниц
-                                      final canLoadMore = state.listings.length < 500;
-                                      
+                                      // Спрашиваем у состояния, есть ли ещё
+                                      // что добирать. Раньше здесь стояло
+                                      // «меньше 500 штук», и когда лента
+                                      // упиралась в потолок, экран каждые три
+                                      // секунды перезапрашивал одну и ту же
+                                      // страницу впустую.
+                                      final canLoadMore = state.hasMore &&
+                                          state.listings.length <
+                                              ListingsBloc.homeFeedLimit;
+
                                       // ⏱️ Добавляем дебоунс на загрузку (минимум 3 секунды между запросами)
                                       final now = DateTime.now();
                                       final shouldLoadMore = _lastLoadMoreTime == null ||

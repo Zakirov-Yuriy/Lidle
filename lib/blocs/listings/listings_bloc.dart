@@ -50,6 +50,37 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// Загружается вместе с объявлениями и остается доступен при поиске.
   List<home.Category> _cachedCategories = [];
 
+  /// Сколько объявлений всего показываем на главной (задача 66).
+  ///
+  /// Главная это витрина, а не каталог: за полной выдачей человек уходит по
+  /// кнопке «Показать больше». Двести штук это примерно десять экранов
+  /// пролистывания — больше на главной никто не смотрит, а память и трафик
+  /// расходуются на каждую карточку.
+  static const int homeFeedLimit = 200;
+
+  /// Размер порции при догрузке.
+  ///
+  /// Двадцать, а не сто: порция должна приходить быстро, иначе человек стоит
+  /// у конца списка и ждёт. Сервер отдаёт ровно столько, сколько попросили,
+  /// с потолком в сотню.
+  static const int homeFeedPageSize = 20;
+
+  /// Номер последней запрошенной страницы общей ленты.
+  ///
+  /// Считаем сами, а не выводим из длины списка. Так было раньше:
+  /// `listings.length ~/ 50 + 1`. Число 50 в этой формуле не имело отношения
+  /// к тому, что реально отдавал сервер (он отдавал 30 и полностью
+  /// игнорировал запрошенный размер), поэтому лента то перепрыгивала через
+  /// десятки объявлений, то бесконечно перезапрашивала первую страницу.
+  int _feedPage = 0;
+
+  /// Сколько раз подряд догрузка не принесла ничего нового.
+  ///
+  /// Первые страницы общей ленты пересекаются с тем, что уже показано:
+  /// начальная загрузка берёт объявления по каталогам. Пара пустых страниц
+  /// это нормально, но если их подряд три, добирать больше нечего.
+  int _emptyPages = 0;
+
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
   ListingsBloc() : super(ListingsInitial()) {
@@ -152,6 +183,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
 
     _isLoadingListings = true;
+
+    // Лента начинается заново: счётчик страниц догрузки тоже.
+    _feedPage = 0;
+    _emptyPages = 0;
+
     if (event.forceRefresh) {
       _lastRefreshTime = DateTime.now();
       // 🔄 ВАЖНО: При forceRefresh сбрасываем флаг _isInitialLoadComplete чтобы гарантировать загрузку
@@ -720,11 +756,19 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
   }
 
-  /// Обработчик события загрузки следующей страницы.
-  /// Добавляет объявления из следующей страницы к существующим.
+  /// Догрузка следующей порции главной (задача 66).
   ///
-  /// Загружает следующую страницу из ВСЕ каталогов параллельно.
-  /// Увеличивает порцию объявлений за один раз.
+  /// Что здесь было не так. Номер страницы считался как
+  /// `listings.length ~/ 50 + 1`, а запрашивалось `limit: 100`. Ни то, ни
+  /// другое не имело отношения к действительности: сервер размер страницы
+  /// вообще не читал и всегда отдавал по 30. Поэтому после первой загрузки
+  /// формула давала `30 ~/ 50 + 1 = 1`, то есть ту же самую первую страницу,
+  /// все объявления в ней оказывались повторами, список не рос — и так каждые
+  /// три секунды, пока человек стоял у конца ленты. Главная упиралась в три
+  /// десятка объявлений и дальше не двигалась.
+  ///
+  /// Теперь размер страницы просит клиент, сервер его соблюдает, номер
+  /// страницы считается честно, а лента останавливается на [homeFeedLimit].
   Future<void> _onLoadNextPage(
     LoadNextPageEvent event,
     Emitter<ListingsState> emit,
@@ -734,32 +778,46 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
     final currentState = state as ListingsLoaded;
 
-    // Проверяем, есть ли еще объявления для загрузки
-    // Предполагаем максимум 1000 объявлений в системе
-    if (currentState.listings.length >= 1000) {
-      return; // Не загружаем, если уже много
+    // Добирать больше нечего: либо упёрлись в потолок главной, либо сервер
+    // уже сказал, что страницы кончились.
+    if (!currentState.hasMore ||
+        currentState.listings.length >= homeFeedLimit) {
+      if (currentState.hasMore) {
+        emit(_withHasMore(currentState, false));
+      }
+
+      return;
     }
 
     try {
       // Получаем токен для аутентификации
       final token = TokenService.currentToken;
 
-      // 🚀 ИСПРАВЛЕНИЕ: Загружаем со ВСЕХ каталогов параллельно
-      // Каталог 1 = все категории (главный каталог, содержит все объявления)
-      // Просто берём очередную страницу из него
-      final nextPage = (currentState.listings.length ~/ 50) + 1;
+      // Первая догрузка начинается не с первой страницы: начальная загрузка
+      // уже показала самые свежие объявления, и они же лежат в начале общей
+      // ленты. Отсчитываем от того, сколько уже показано, — иначе первые
+      // несколько страниц пришли бы целиком повторами.
+      if (_feedPage == 0) {
+        _feedPage = currentState.listings.length ~/ homeFeedPageSize;
+      }
 
-      // log.d('📄 Загрузка: ${currentState.listings.length} текущих, страница $nextPage...');
+      // Каталог 1 — общая лента, все категории. Дальше номер страницы ведём
+      // сами: выводить его из длины списка нельзя, потому что список склеен
+      // из нескольких каталогов и в нём убраны повторы.
+      final nextPage = _feedPage + 1;
 
       final advertsResponse = await ApiService.getAdverts(
-        catalogId: 1, // Главный каталог - все объявления
+        catalogId: 1,
         token: token,
         page: nextPage,
-        limit: 100, // Увеличиваем лимит с 50 до 100 для большей порции
+        limit: homeFeedPageSize,
       );
 
+      _feedPage = nextPage;
+
       if (advertsResponse.data.isEmpty) {
-        // Нет больше объявлений
+        emit(_withHasMore(currentState, false));
+
         return;
       }
 
@@ -775,8 +833,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           .where((listing) => !seenIds.contains(listing.id))
           .toList();
 
+      // Страница пришла, но всё это уже показано: начальная загрузка берёт
+      // объявления по каталогам, и первые страницы общей ленты с ней
+      // пересекаются. Считаем такие страницы подряд.
+      _emptyPages = uniqueNewListings.isEmpty ? _emptyPages + 1 : 0;
+
       // Объединяем существующие объявления с новыми (только с уникальными)
-      final allListings = [...currentState.listings, ...uniqueNewListings];
+      // и обрезаем по потолку главной.
+      final allListings = [
+        ...currentState.listings,
+        ...uniqueNewListings,
+      ].take(homeFeedLimit).toList();
 
       // 📌 НЕ пересортируем при пагинации!
       // Пользователь ожидает видеть новые объявления внизу, а не в начале
@@ -786,7 +853,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final totalPages = advertsResponse.meta.lastPage;
       final itemsPerPage = advertsResponse.meta.perPage;
 
-      // log.d('✅ Загружено ${newListings.length} объявлений (${uniqueNewListings.length} уникальных), всего: ${allListings.length}');
+      final hasMore = allListings.length < homeFeedLimit
+          && nextPage < totalPages
+          && _emptyPages < 3;
 
       // 💾 Обновляем кеш полного списка для корректной работы поиска
       _cachedAllListings = allListings;
@@ -800,15 +869,34 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           currentPage: nextPage,
           totalPages: totalPages,
           itemsPerPage: itemsPerPage,
+          hasMore: hasMore,
         ),
       );
     } catch (e) {
-      // log.d('❌ Ошибка при загрузке следующей страницы: $e');
-      // При ошибке испускаем состояние ошибки
-      emit(
-        ListingsError(message: 'Ошибка при загрузке следующей страницы: $e'),
-      );
+      log.d('Не удалось догрузить страницу главной: $e');
+
+      // Список НЕ выбрасываем.
+      //
+      // Так было: любая ошибка догрузки переводила экран в ListingsError, и
+      // человек, долиставший до конца ленты, вместо своих объявлений видел
+      // пустой экран с ошибкой. Уже показанное менять из-за неудачной
+      // догрузки нельзя: оно на экране и оно верное. Просто перестаём
+      // добирать.
+      emit(_withHasMore(currentState, false));
     }
+  }
+
+  /// Тот же список, но с изменённым признаком «есть ещё».
+  ListingsLoaded _withHasMore(ListingsLoaded state, bool hasMore) {
+    return ListingsLoaded(
+      listings: state.listings,
+      categories: state.categories,
+      filteredListings: state.filteredListings,
+      currentPage: state.currentPage,
+      totalPages: state.totalPages,
+      itemsPerPage: state.itemsPerPage,
+      hasMore: hasMore,
+    );
   }
 
   /// Обработчик события загрузки конкретной страницы.
@@ -1266,13 +1354,17 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         // �📢 GRACEFUL DEGRADATION: Всегда эмитируем успешное состояние
         // Даже если некоторые батчи 429 - показываем данные которые удалось загрузить
         // + уже загруженные данные из фазы 1
+        // На экран отдаём не больше потолка главной (задача 66). В кеше
+        // выше список остаётся полным: по нему работает поиск, и обрезать
+        // его значило бы сузить поиск заодно с лентой.
         emit(
           ListingsLoaded(
-            listings: finalSortedListings,
+            listings: finalSortedListings.take(homeFeedLimit).toList(),
             categories: loadedCategories,
             currentPage: 1,
             totalPages: (finalSortedListings.length / 50).ceil(),
             itemsPerPage: 50,
+            hasMore: finalSortedListings.length < homeFeedLimit,
           ),
         );
 
