@@ -19,17 +19,30 @@ class AccountRecovery extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<PasswordRecoveryBloc, PasswordRecoveryState>(
       listener: (context, state) {
+        // Этот экран остаётся в стеке под экраном ввода кода, и его слушатель
+        // продолжает работать. Без проверки «я сейчас наверху» повторная
+        // отправка кода с того экрана открывала бы второй такой же поверх
+        // первого.
+        final isOnTop = ModalRoute.of(context)?.isCurrent ?? false;
+
         if (state is RecoveryCodeSent) {
+          if (!isOnTop) return;
+
           Navigator.of(context).pushNamed(
             AccountRecoveryCode.routeName,
             arguments: {'email': state.email},
           );
         } else if (state is PasswordRecoveryError) {
+          if (!isOnTop) return;
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message:
-                    'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                // Текст пишет сервер: «код неверный», «срок действия
+                // истёк», «слишком много попыток». Он всегда конкретнее
+                // общего «что-то пошло не так», которое стояло здесь раньше
+                // и не давало человеку ни одной подсказки.
+                message: state.message,
                 onClose: () =>
                     ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),

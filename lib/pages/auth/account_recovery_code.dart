@@ -95,6 +95,13 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
 
     return BlocConsumer<PasswordRecoveryBloc, PasswordRecoveryState>(
       listener: (context, state) {
+        // Экран остаётся в стеке под экраном нового пароля, и его слушатель
+        // продолжает работать. Ошибку с того экрана показывать здесь незачем,
+        // как и открывать его повторно.
+        final isOnTop = ModalRoute.of(context)?.isCurrent ?? false;
+
+        if (!isOnTop) return;
+
         if (state is RecoveryCodeSent) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Код отправлен на email')),
@@ -103,8 +110,11 @@ class _AccountRecoveryCodeState extends State<AccountRecoveryCode> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message:
-                    'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                // Текст пишет сервер: «код неверный», «срок действия
+                // истёк», «слишком много попыток». Он всегда конкретнее
+                // общего «что-то пошло не так», которое стояло здесь раньше
+                // и не давало человеку ни одной подсказки.
+                message: state.message,
                 onClose: () =>
                     ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),

@@ -98,7 +98,11 @@ class _AccountRecoveryNewPasswordState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: CustomErrorSnackBar(
-                message: 'Ой, что-то пошло не так. Пожалуйста, попробуй ещё раз.',
+                // Текст пишет сервер: «код неверный», «срок действия
+                // истёк», «слишком много попыток». Он всегда конкретнее
+                // общего «что-то пошло не так», которое стояло здесь раньше
+                // и не давало человеку ни одной подсказки.
+                message: state.message,
                 onClose: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
               ),
               backgroundColor: primaryBackground,

@@ -143,6 +143,22 @@ class AuthService {
     );
   }
 
+  /// Проверить код восстановления, ничего не меняя.
+  ///
+  /// Отдельный шаг нужен, чтобы человек узнал об ошибке в коде сразу на
+  /// экране ввода кода, а не после того, как дважды наберёт новый пароль.
+  /// Код при этом не гасится: его гасит только сама смена пароля.
+  static Future<Map<String, dynamic>> checkRecoveryCode({
+    required String email,
+    required String code,
+  }) async {
+    return await ApiService.post(
+      '/auth/password/check-code',
+      {'email': email, 'code': code},
+      skipTokenRefresh: true,
+    );
+  }
+
   /// Сброс пароля.
   /// Устанавливает новый пароль по коду восстановления.
   static Future<Map<String, dynamic>> resetPassword({

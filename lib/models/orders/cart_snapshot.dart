@@ -17,11 +17,17 @@ class CartSnapshot {
   /// Токен гостевой корзины. Приходит только тому, кто не вошёл в аккаунт.
   final String? cartToken;
 
+  /// Контакты для подстановки в форму оформления: то, чем этот покупатель
+  /// оформлял в прошлый раз, иначе профиль. Может быть пусто, если он ещё
+  /// ничего не заказывал и не вошёл.
+  final CartContacts contacts;
+
   const CartSnapshot({
     required this.shops,
     required this.itemsCount,
     required this.total,
     this.cartToken,
+    this.contacts = const CartContacts(),
   });
 
   factory CartSnapshot.empty() =>
@@ -40,6 +46,7 @@ class CartSnapshot {
       itemsCount: _int(data['items_count']) ?? 0,
       total: _double(data['total']) ?? 0,
       cartToken: data['cart_token']?.toString(),
+      contacts: CartContacts.fromJson(data['contacts']),
     );
   }
 
@@ -64,6 +71,41 @@ class CartSnapshot {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value);
     return null;
+  }
+}
+
+/// Контакты покупателя, которые сервер предлагает подставить.
+///
+/// Комментария здесь нет намеренно: он относится к конкретному заказу, и
+/// подставить вчерашнее «без лука» в сегодняшний значит молча передать
+/// продавцу чужую просьбу.
+class CartContacts {
+  final String? name;
+  final String? phone;
+  final String? email;
+
+  const CartContacts({this.name, this.phone, this.email});
+
+  factory CartContacts.fromJson(dynamic data) {
+    if (data is! Map) return const CartContacts();
+
+    return CartContacts(
+      name: _text(data['name']),
+      phone: _text(data['phone']),
+      email: _text(data['email']),
+    );
+  }
+
+  bool get isEmpty => name == null && phone == null && email == null;
+
+  /// Пустую строку считаем отсутствием значения: подставленный пробел
+  /// выглядит как заполненное поле и только мешает.
+  static String? _text(dynamic value) {
+    if (value == null) return null;
+
+    final text = '$value'.trim();
+
+    return text.isEmpty ? null : text;
   }
 }
 

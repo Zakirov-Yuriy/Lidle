@@ -5,8 +5,6 @@ import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/order_placed_screen.dart';
 import 'package:lidle/services/orders_service.dart';
-import 'package:lidle/services/contact_service.dart';
-import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -36,54 +34,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool _isGuest = true;
   bool _isSending = false;
 
+  /// Подставили ли мы контакты сами. Нужно только для подписи под заголовком:
+  /// человек должен понимать, откуда взялся текст в полях, иначе заполненная
+  /// форма выглядит подозрительно.
+  bool _isPrefilled = false;
+
   @override
   void initState() {
     super.initState();
 
-    // Вошедшему пользователю контакты подставит сервер из профиля, если он их
-    // не прислал: заставлять человека вводить своё же имя невежливо.
     final token = HiveService.getUserData('token');
     _isGuest = token == null || '$token'.isEmpty;
 
-    if (!_isGuest) {
-      _prefillFromProfile('$token');
-    }
-  }
+    // Контакты приходят вместе с корзиной: то, чем этот покупатель оформлял в
+    // прошлый раз, иначе профиль.
+    //
+    // Так было: поля всегда открывались пустыми, и человек на втором заказе
+    // вводил своё же имя, телефон и почту заново. Нашлось при просмотре
+    // записи экрана.
+    //
+    // Поля остаются обычными и редактируемыми: подстановка это подсказка, а
+    // не решение за человека. Комментарий не подставляем никогда, он
+    // относится к конкретному заказу.
+    final contacts = widget.cart.contacts;
 
-  /// Prefill contact fields for a signed-in user, so the screen shows the
-  /// same values the server would take from the profile anyway.
-  /// Any failure here is silent: prefill is a convenience, the screen must
-  /// keep working exactly as before.
-  Future<void> _prefillFromProfile(String token) async {
-    try {
-      final profile = await UserService.getProfile(token: token);
+    _nameController.text = contacts.name ?? '';
+    _phoneController.text = contacts.phone ?? '';
+    _emailController.text = contacts.email ?? '';
 
-      var phone = profile.phone ?? '';
-      try {
-        final phonesResponse = await ContactService.getPhones(token: token);
-        if (phonesResponse.data.isNotEmpty) {
-          phone = phonesResponse.data.first.phone;
-        }
-      } catch (_) {
-        // Keep the scalar profile phone as a fallback.
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        if (_nameController.text.isEmpty) {
-          _nameController.text = profile.name;
-        }
-        if (_phoneController.text.isEmpty) {
-          _phoneController.text = phone;
-        }
-        if (_emailController.text.isEmpty) {
-          _emailController.text = profile.email;
-        }
-      });
-    } catch (_) {
-      // Silent by design.
-    }
+    _isPrefilled = !contacts.isEmpty;
   }
 
   @override
@@ -248,9 +227,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            _isGuest
-                ? 'Заполните все три поля: по почте придёт код получения.'
-                : 'Проверьте данные — при необходимости измените для этого заказа.',
+            _isPrefilled
+                ? 'Подставили то, чем вы оформляли в прошлый раз. Поправьте, '
+                    'если что-то изменилось.'
+                : _isGuest
+                    ? 'Заполните все три поля: по почте придёт код получения.'
+                    : 'Можно не заполнять — возьмём из вашего профиля.',
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
           const SizedBox(height: 12),
