@@ -269,12 +269,23 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
+                // Сумму недоступной позиции гасим и перечёркиваем.
+                //
+                // Так было: она рисовалась ровно так же, как у доступной, то
+                // есть белым и жирным. Человек видел «1 290 ₽» у товара и
+                // «0 ₽» в итоге и считал, что корзина не умеет складывать.
+                // Перечёркнутая цена сразу говорит, что эти деньги в счёт не
+                // идут.
                 Text(
                   _money(line.sum),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: line.isAvailable ? Colors.white : textMuted,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
+                    decoration: line.isAvailable
+                        ? TextDecoration.none
+                        : TextDecoration.lineThrough,
+                    decorationColor: textMuted,
                   ),
                 ),
                 // Причину приходит готовой с сервера: «товара сегодня нет»,
@@ -375,11 +386,20 @@ class _CartScreenState extends State<CartScreen> {
                 ),
               ],
             ),
-            if (cart.hasUnavailable) ...[
+            // Объясняем расхождение цифр словами, а не оставляем человека
+            // гадать. Числа приходят с сервера готовыми: считать их на
+            // клиенте значит однажды разойтись с сайтом.
+            if (cart.unavailableItemsCount > 0) ...[
               const SizedBox(height: 4),
-              const Text(
-                'Недоступные позиции в сумму не входят и в заказ не попадут.',
-                style: TextStyle(color: textMuted, fontSize: 12),
+              Text(
+                cart.canCheckout
+                    ? 'В заказ пойдёт ${_positions(cart.availableItemsCount)} '
+                        'из ${cart.itemsCount}. Остальное сейчас купить нельзя, '
+                        'в сумму оно не входит.'
+                    : 'Сейчас купить нечего: всё, что лежит в корзине, '
+                        'недоступно. Позиции оставили, чтобы вы видели, что '
+                        'именно отвалилось.',
+                style: const TextStyle(color: textMuted, fontSize: 12),
               ),
             ],
             const SizedBox(height: 10),
@@ -389,15 +409,19 @@ class _CartScreenState extends State<CartScreen> {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: activeIconColor,
+                  disabledBackgroundColor: secondaryBackground,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: _isBusy ? null : _openCheckout,
-                child: const Text(
-                  'Оформить заказ',
+                // Кнопку гасим, когда оформлять нечего. Раньше она была живой
+                // и вела на экран оформления с нулевой суммой, где заказ
+                // всё равно отклонял сервер.
+                onPressed: _isBusy || !cart.canCheckout ? null : _openCheckout,
+                child: Text(
+                  cart.canCheckout ? 'Оформить заказ' : 'Нечего оформлять',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: cart.canCheckout ? Colors.white : textMuted,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -422,6 +446,21 @@ class _CartScreenState extends State<CartScreen> {
     if (placed == true) {
       _load();
     }
+  }
+
+  /// «1 позиция», «2 позиции», «5 позиций».
+  ///
+  /// Слово согласуем с числом: «в заказ пойдёт 2 позиция» читается как
+  /// недоделка, даже если смысл понятен.
+  String _positions(int count) {
+    final tens = count % 100;
+    final ones = count % 10;
+
+    if (tens >= 11 && tens <= 14) return '$count позиций';
+    if (ones == 1) return '$count позиция';
+    if (ones >= 2 && ones <= 4) return '$count позиции';
+
+    return '$count позиций';
   }
 
   String _money(double value) {

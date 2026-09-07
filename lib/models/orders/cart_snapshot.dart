@@ -11,8 +11,28 @@
 /// должен увидеть это до оформления, а не после.
 class CartSnapshot {
   final List<CartShopGroup> shops;
+
+  /// Сколько всего позиций лежит в корзине, включая недоступные. Это число
+  /// для значка на корзине: человек положил их туда, и они там есть.
   final int itemsCount;
+
+  /// Сколько позиций реально уйдёт в заказ. Это число про деньги.
+  ///
+  /// Разделено с `itemsCount` намеренно (задача 69). Одним числом получалась
+  /// картина «одна позиция за 1290 рублей, итого 0 рублей»: сумма считает
+  /// только доступное, а счётчик считал всё, и человек видел просто неверный
+  /// подсчёт.
+  final int availableItemsCount;
+
+  final int unavailableItemsCount;
+
+  /// Сумма к оплате в точке. Ноль при непустой корзине означает «заказать
+  /// сейчас нечего», и экран обязан сказать это словами.
   final double total;
+
+  /// Можно ли оформлять. Приходит с сервера готовым, чтобы приложение и сайт
+  /// не выводили это правило каждый по-своему.
+  final bool canCheckout;
 
   /// Токен гостевой корзины. Приходит только тому, кто не вошёл в аккаунт.
   final String? cartToken;
@@ -26,6 +46,9 @@ class CartSnapshot {
     required this.shops,
     required this.itemsCount,
     required this.total,
+    this.availableItemsCount = 0,
+    this.unavailableItemsCount = 0,
+    this.canCheckout = false,
     this.cartToken,
     this.contacts = const CartContacts(),
   });
@@ -44,6 +67,17 @@ class CartSnapshot {
                 .toList()
           : const [],
       itemsCount: _int(data['items_count']) ?? 0,
+
+      // Старый сервер этих полей не присылает. Тогда считаем, что доступно
+      // всё: так вело себя приложение до задачи 69, и это лучше, чем
+      // заблокировать оформление из-за отсутствующего поля.
+      availableItemsCount:
+          _int(data['available_items_count']) ?? _int(data['items_count']) ?? 0,
+      unavailableItemsCount: _int(data['unavailable_items_count']) ?? 0,
+      canCheckout: data['can_checkout'] is bool
+          ? data['can_checkout'] as bool
+          : (_double(data['total']) ?? 0) > 0,
+
       total: _double(data['total']) ?? 0,
       cartToken: data['cart_token']?.toString(),
       contacts: CartContacts.fromJson(data['contacts']),
