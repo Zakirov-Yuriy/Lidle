@@ -25,8 +25,8 @@ plugins {
     // 8.10 — первая версия плагина Android, которая умеет собирать под
     // API 36. С 8.9.1 сборка с compileSdk = 36 ругается на неизвестную
     // версию платформы. Gradle в wrapper 8.12, ему этого плагина хватает.
-    id("com.android.application") version "8.10.1" apply false
-    id("org.jetbrains.kotlin.android") version "2.1.0" apply false
+    id("com.android.application") version "8.11.1" apply false    
+    id("org.jetbrains.kotlin.android") version "2.2.20" apply false    
     // Плагин Google Services читает android/app/google-services.json и
     // подставляет ключи проекта Firebase в сборку. Без него приложение не
     // знает, к какому проекту подключаться, и уведомления не работают.
