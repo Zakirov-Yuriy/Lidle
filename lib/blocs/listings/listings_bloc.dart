@@ -60,10 +60,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Размер порции при догрузке.
   ///
-  /// Двадцать, а не сто: порция должна приходить быстро, иначе человек стоит
-  /// у конца списка и ждёт. Сервер отдаёт ровно столько, сколько попросили,
-  /// с потолком в сотню.
-  static const int homeFeedPageSize = 20;
+  /// Двенадцать: столько заказчик и обсуждал с фронтом, и столько же сервер
+  /// отдаёт по умолчанию в ленте главной. Порция должна приходить быстро,
+  /// иначе человек стоит у конца списка и ждёт.
+  static const int homeFeedPageSize = 12;
 
   /// Номер последней запрошенной страницы общей ленты.
   ///
@@ -263,8 +263,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       final token = TokenService.currentToken;
 
       //  ФАЗА 1: Загружаем каталоги один раз (НЕ дважды!)
+      // Каталоги нужны только для ленты разделов вверху экрана. Объявления
+      // по ним больше не собираем: их отбирает сервер (задача 70).
       final catalogsResponse = await ApiService.getCatalogs(token: token);
-      final allCatalogIds = catalogsResponse.data.map((c) => c.id).toList();
 
       final loadedCategories = catalogsResponse.data
           .map(_catalogToCategory)
@@ -279,107 +280,55 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         ),
       );
 
-      // 🚀 НОВАЯ ОПТИМИЗАЦИЯ: Фазовая загрузка объявлений
-      // Фаза 1: Загружаем ТОЛЬКО первые 2-3 каталога для быстрого показа
-      // Это обычно содержит 12+ самых свежих объявлений
-      const int initialCatalogsToLoad = 3; // Загружаем 3 первых каталога
-      final firstBatchCatalogIds = allCatalogIds.take(initialCatalogsToLoad).toList();
-      final remainingCatalogIds = allCatalogIds.skip(initialCatalogsToLoad).toList();
+      // Лента главного экрана приходит с сервера готовой (задача 70).
+      //
+      // Так было: приложение по очереди тянуло каталоги, склеивало их у себя
+      // и сортировало по дате. Из-за этого на главной оказывалась почти одна
+      // недвижимость: объявлений там больше всех, и по дате они забивали всё
+      // остальное. Разложить разделы поровну на клиенте невозможно в
+      // принципе, он видит только то, что успел загрузить.
+      //
+      // Теперь сервер сам отбирает до двухсот свежих объявлений за сутки,
+      // раскладывает их равномерно по разделам и отдаёт страницами. Клиенту
+      // остаётся показать первую порцию и догружать следующие при прокрутке.
+      final feedPage = await ApiService.getHomeFeed(
+        token: token,
+        page: 1,
+        perPage: homeFeedPageSize,
+      );
 
-      // 🔥 Загружаем объявления из ПЕРВЫХ каталогов параллельно
-      List<home.Listing> initialListings = [];
-      int totalPages = 1;
-      int itemsPerPage = 50;
-
-      if (firstBatchCatalogIds.isNotEmpty) {
-        // Преобразуем каталоги в список функций для queueBatch
-        final requestFunctions = firstBatchCatalogIds
-            .map(
-              (catalogId) => () => ApiService.getAdverts(
-                catalogId: catalogId,
-                token: token,
-                page: 1,
-                limit: 50,
-              ),
-            )
-            .toList();
-
-        // Используем ApiRequestQueue для ограничения параллельных запросов
-        // 🔧 ОПТИМИЗАЦИЯ: Уменьшена параллельность с 2 до 1 (последовательная загрузка)
-        // Это уменьшает нагрузку на медленное интернет соединение
-        final batchResponses = await ApiRequestQueue.instance.queueBatch(
-          requestFunctions,
-          batchSize: 1,
-        );
-
-        // 🔧 ИСПРАВЛЕНИЕ: Отслеживаем ID объявлений для дедупликации
-        // (несколько каталогов могут содержать одно и то же объявление)
-        final seenIds = <String>{};
-
-        // Парсируем ответы
-        for (final response in batchResponses) {
-          if (response.data.isNotEmpty) {
-            // 🔧 ОПТИМИЗАЦИЯ: Всегда переносим парсинг JSON на фоновый поток
-            // Это предотвращает блокировку UI даже при небольших списках
-            List<home.Listing> parsedListings = await compute<List<Advert>, List<home.Listing>>(
+      final firstBatchListings = feedPage.data.isEmpty
+          ? <home.Listing>[]
+          : await compute<List<Advert>, List<home.Listing>>(
               (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-              response.data,
+              feedPage.data,
             );
 
-            // 🔧 ИСПРАВЛЕНИЕ: Добавляем только уникальные объявления
-            for (final listing in parsedListings) {
-              if (!seenIds.contains(listing.id)) {
-                seenIds.add(listing.id);
-                initialListings.add(listing);
-              }
-            }
-            
-            totalPages = response.meta.lastPage;
-            itemsPerPage = response.meta.perPage;
-          }
-        }
-      }
-
-      // Сортируем и берем ПЕРВЫЕ 12 объявлений для быстрого показа
-      final allSortedListings = _sortListingsByDate(initialListings);
-      final firstBatchListings = allSortedListings.take(12).toList();
-      // �🚀 ФАЗА 1 ЗАВЕРШЕНА: Пользователь видит первые 12 объявлений почти сразу!
       LoadingTimerService().stopLoadingTimer(
         operationKey,
-        label: 'Listings (первые 12 объявлений)',
+        label: 'Listings (первая порция ленты)',
       );
-      
-      // 💾 Кешируем все отсортированные объявления
-      // Необходимо для корректной работы поиска при вводе/удалении текста
-      _cachedAllListings = [
-        ...firstBatchListings,
-        ...allSortedListings.skip(12)
-      ];
+
+      // Ленту НЕ пересортировываем. Порядок задал сервер: он чередует
+      // разделы, чтобы первый экран не занимал один. Сортировка по дате
+      // вернула бы ровно ту картину, из-за которой задачу и завели.
+      _cachedAllListings = firstBatchListings;
       _cachedCategories = loadedCategories;
-      
+
+      _feedPage = 1;
+
       emit(
         ListingsLoaded(
           listings: firstBatchListings,
           categories: loadedCategories,
           currentPage: 1,
-          totalPages: totalPages,
-          itemsPerPage: itemsPerPage,
+          totalPages: feedPage.meta.lastPage,
+          itemsPerPage: feedPage.meta.perPage,
+          hasMore: feedPage.meta.currentPage < feedPage.meta.lastPage,
         ),
       );
 
       _isInitialLoadComplete = true;
-
-      // 🔄 ФАЗА 2: Загружаем ОСТАЛЬНЫЕ каталоги в фоне БЕЗ блокировки UI
-      // Результат придет в виде обновленного состояния с полным списком
-      if (remainingCatalogIds.isNotEmpty) {
-        _loadPhase2AndUpdateUI(
-          remainingCatalogIds,
-          token,
-          loadedCategories,
-          allSortedListings, // Передаем уже загруженные объявления
-          operationKey,
-        );
-      }
     } catch (e, stackTrace) {
       // 🔥 ТАЙМЕР: Зафиксируем время загрузки перед ошибкой
       LoadingTimerService().stopLoadingTimer(
@@ -756,7 +705,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
   }
 
-  /// Догрузка следующей порции главной (задача 66).
+  /// Догрузка следующей порции главной (задачи 66 и 70).
+  ///
+  /// С задачи 70 листаем ленту с сервера: он сам отобрал двести объявлений
+  /// равномерно по разделам и держит их состав неизменным несколько минут,
+  /// поэтому страницы не пересекаются и не пропускают.
   ///
   /// Что здесь было не так. Номер страницы считался как
   /// `listings.length ~/ 50 + 1`, а запрашивалось `limit: 100`. Ни то, ни
@@ -793,24 +746,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Получаем токен для аутентификации
       final token = TokenService.currentToken;
 
-      // Первая догрузка начинается не с первой страницы: начальная загрузка
-      // уже показала самые свежие объявления, и они же лежат в начале общей
-      // ленты. Отсчитываем от того, сколько уже показано, — иначе первые
-      // несколько страниц пришли бы целиком повторами.
-      if (_feedPage == 0) {
-        _feedPage = currentState.listings.length ~/ homeFeedPageSize;
-      }
-
-      // Каталог 1 — общая лента, все категории. Дальше номер страницы ведём
-      // сами: выводить его из длины списка нельзя, потому что список склеен
-      // из нескольких каталогов и в нём убраны повторы.
+      // Ленту листаем по страницам сервера (задача 70). Номер держим сам:
+      // выводить его из длины списка нельзя, там убраны повторы, и счёт
+      // поедет.
       final nextPage = _feedPage + 1;
 
-      final advertsResponse = await ApiService.getAdverts(
-        catalogId: 1,
+      final advertsResponse = await ApiService.getHomeFeed(
         token: token,
         page: nextPage,
-        limit: homeFeedPageSize,
+        perPage: homeFeedPageSize,
       );
 
       _feedPage = nextPage;
@@ -833,9 +777,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           .where((listing) => !seenIds.contains(listing.id))
           .toList();
 
-      // Страница пришла, но всё это уже показано: начальная загрузка берёт
-      // объявления по каталогам, и первые страницы общей ленты с ней
-      // пересекаются. Считаем такие страницы подряд.
+      // Страница пришла, но всё это уже показано. С серверной лентой такого
+      // быть не должно: состав фиксирован и страницы не пересекаются. Счётчик
+      // оставлен страховкой, чтобы лента не крутилась впустую, если состав
+      // всё-таки поменяется между запросами.
       _emptyPages = uniqueNewListings.isEmpty ? _emptyPages + 1 : 0;
 
       // Объединяем существующие объявления с новыми (только с уникальными)
@@ -1139,6 +1084,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// - [loadedCategories] - уже загруженные категории
   /// - [initialListings] - объявления из первой фазы
   /// - [operationKey] - ключ для таймера операции
+  /// БОЛЬШЕ НЕ ВЫЗЫВАЕТСЯ (задача 70).
+  ///
+  /// Догрузка остальных каталогов существовала, пока главную собирал сам
+  /// клиент. Теперь ленту отбирает сервер, и склеивать каталоги не нужно.
+  /// Метод оставлен до конца тестирования ленты: если что-то пойдёт не так,
+  /// откатиться будет быстрее. Убрать вместе с _sortListingsByDate, когда
+  /// лента отработает на проде.
   void _loadPhase2AndUpdateUI(
     List<int> remainingCatalogIds,
     String? token,

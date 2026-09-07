@@ -787,6 +787,28 @@ class ApiService {
       );
 
   /// Получить список объявлений.
+  /// Лента главного экрана (задача 70).
+  ///
+  /// Сервер сам отбирает до двухсот свежих объявлений за сутки и раскладывает
+  /// их равномерно по разделам, поэтому ходить по каталогам и склеивать их у
+  /// себя больше не нужно.
+  ///
+  /// **Порядок в ответе трогать нельзя.** Он специально чередует разделы,
+  /// чтобы первый экран не занимала одна недвижимость. Сортировка по дате на
+  /// клиенте вернёт ровно ту картину, из-за которой задачу и завели.
+  static Future<AdvertsResponse> getHomeFeed({
+    String? token,
+    int page = 1,
+    int perPage = 12,
+  }) async {
+    final response = await get(
+      '/adverts/feed?page=$page&per_page=$perPage',
+      token: token,
+    );
+
+    return AdvertsResponse.fromJson(response);
+  }
+
   static Future<AdvertsResponse> getAdverts({
     int? categoryId,
     int? catalogId,
