@@ -35,6 +35,14 @@ class ListingsLoaded extends ListingsState {
   /// секунды перезапрашивала одну и ту же страницу.
   final bool hasMore;
 
+  /// Город, по которому лента получила приоритет, словами (задача 70).
+  ///
+  /// `null` — приоритета нет: город в профиле не указан или человек не вошёл.
+  /// Экран показывает его подписью и даёт сбросить: город берётся из профиля,
+  /// а человек про это давно забыл, и «почему у меня всё из Мариуполя»
+  /// иначе не объяснить.
+  final String? feedCityName;
+
   ListingsLoaded({
     required this.listings,
     required this.categories,
@@ -43,6 +51,7 @@ class ListingsLoaded extends ListingsState {
     this.totalPages = 1,
     this.itemsPerPage = 10,
     this.hasMore = true,
+    this.feedCityName,
   }) : filteredListings = filteredListings ?? listings;
 }
 

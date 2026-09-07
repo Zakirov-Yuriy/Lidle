@@ -796,7 +796,7 @@ class ApiService {
   /// **Порядок в ответе трогать нельзя.** Он специально чередует разделы,
   /// чтобы первый экран не занимала одна недвижимость. Сортировка по дате на
   /// клиенте вернёт ровно ту картину, из-за которой задачу и завели.
-  static Future<AdvertsResponse> getHomeFeed({
+  static Future<HomeFeedPage> getHomeFeed({
     String? token,
     int page = 1,
     int perPage = 12,
@@ -806,7 +806,17 @@ class ApiService {
       token: token,
     );
 
-    return AdvertsResponse.fromJson(response);
+    // Город, по которому лента получила приоритет, сервер кладёт в
+    // `meta.feed`. Забираем его здесь, чтобы главная могла показать подпись
+    // и кнопку сброса, не выпрашивая профиль отдельным запросом.
+    final meta = response['meta'];
+    final feed = meta is Map ? meta['feed'] : null;
+
+    return HomeFeedPage(
+      response: AdvertsResponse.fromJson(response),
+      cityId: feed is Map ? feed['city_id'] as int? : null,
+      cityName: feed is Map ? feed['city_name'] as String? : null,
+    );
   }
 
   static Future<AdvertsResponse> getAdverts({

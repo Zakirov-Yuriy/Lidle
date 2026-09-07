@@ -61,3 +61,12 @@ class LoadSpecificPageEvent extends ListingsEvent {
 
   LoadSpecificPageEvent({required this.pageNumber});
 }
+
+/// Сбросить город в профиле и перечитать ленту (задача 70).
+///
+/// Город из профиля задаёт приоритет выдачи на главной. Человек мог указать
+/// его когда-то и забыть, поэтому сбросить его надо там же, где виден
+/// результат, а не в глубине настроек. На сайте такая кнопка уже есть.
+class ResetFeedCityEvent extends ListingsEvent {
+  const ResetFeedCityEvent();
+}

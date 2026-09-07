@@ -440,3 +440,25 @@ extension AdvertToListingExtension on Advert {
     );
   }
 }
+
+/// Страница ленты главного экрана вместе с городом, по которому она собрана
+/// (задача 70).
+///
+/// Отдельный класс, а не голый [AdvertsResponse], потому что городу больше
+/// негде жить: разбор `meta` в [Meta] общий для всех списков и про ленту не
+/// знает, а тащить город статическим полем службы значит однажды показать
+/// человеку чужой город.
+class HomeFeedPage {
+  final AdvertsResponse response;
+
+  /// Город из профиля человека, по которому лента получила приоритет.
+  /// `null` — приоритета нет: город не указан или человек не вошёл.
+  final int? cityId;
+  final String? cityName;
+
+  const HomeFeedPage({
+    required this.response,
+    this.cityId,
+    this.cityName,
+  });
+}

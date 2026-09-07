@@ -7,6 +7,7 @@ import '../../models/home_models.dart' as home;
 import '../../models/advert_model.dart';
 import '../../services/api_service.dart';
 import '../../services/token_service.dart';
+import '../../services/user_service.dart';
 import '../../services/loading_timer_service.dart';
 import '../../services/api_request_queue.dart';
 import '../../core/cache/cache_service.dart';
@@ -94,6 +95,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// приложение подхватит ленту само, без переустановки.
   bool _feedAvailable = true;
 
+  /// Город, по которому лента получила приоритет, словами.
+  ///
+  /// Приходит с сервера вместе с лентой. Нужен, чтобы главная могла сказать
+  /// человеку, почему выдача такая, и дать её сбросить: город берётся из
+  /// профиля, а человек про это давно забыл.
+  String? _feedCityName;
+
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
   ListingsBloc() : super(ListingsInitial()) {
@@ -104,6 +112,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     on<LoadAdvertEvent>(_onLoadAdvert);
     on<LoadNextPageEvent>(_onLoadNextPage);
     on<LoadSpecificPageEvent>(_onLoadSpecificPage);
+    on<ResetFeedCityEvent>(_onResetFeedCity);
   }
 
   /// Статические данные объявлений.
@@ -201,6 +210,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     _feedPage = 0;
     _emptyPages = 0;
     _feedAvailable = true;
+    _feedCityName = null;
 
     if (event.forceRefresh) {
       _lastRefreshTime = DateTime.now();
@@ -335,6 +345,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           totalPages: feedPage.meta.lastPage,
           itemsPerPage: feedPage.meta.perPage,
           hasMore: feedPage.meta.currentPage < feedPage.meta.lastPage,
+          feedCityName: _feedCityName,
         ),
       );
 
@@ -821,6 +832,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           totalPages: totalPages,
           itemsPerPage: itemsPerPage,
           hasMore: hasMore,
+          feedCityName: _feedCityName,
         ),
       );
     } catch (e) {
@@ -837,6 +849,35 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     }
   }
 
+  /// Сбросить город в профиле и перечитать ленту (задача 70).
+  ///
+  /// Сбрасываем на сервере, а не только у себя: приоритет считает сервер по
+  /// профилю, и локальный флажок ничего бы не изменил. После сброса
+  /// перечитываем главную целиком, иначе человек нажал бы кнопку и не увидел
+  /// разницы.
+  Future<void> _onResetFeedCity(
+    ResetFeedCityEvent event,
+    Emitter<ListingsState> emit,
+  ) async {
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) return;
+
+    try {
+      await UserService.clearAddress(token: token);
+    } catch (e) {
+      log.e('Не удалось сбросить город: $e');
+
+      // Список не трогаем: он на экране и он верный. Молча оставить как есть
+      // честнее, чем показать пустоту из-за неудачного сброса.
+      return;
+    }
+
+    _feedCityName = null;
+
+    add(LoadListingsEvent(forceRefresh: true));
+  }
+
   /// Страница ленты главной, с запасным путём.
   ///
   /// Сначала спрашиваем ленту (задача 70). Если сервер про неё не знает и
@@ -846,16 +887,21 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   Future<AdvertsResponse> _loadFeedPage(int page, String? token) async {
     if (_feedAvailable) {
       try {
-        return await ApiService.getHomeFeed(
+        final feed = await ApiService.getHomeFeed(
           token: token,
           page: page,
           perPage: homeFeedPageSize,
         );
+
+        _feedCityName = feed.cityName;
+
+        return feed.response;
       } catch (e) {
         if (!e.toString().contains('404')) rethrow;
 
         log.w('Лента главной на этом сервере недоступна, беру обычный список');
         _feedAvailable = false;
+        _feedCityName = null;
       }
     }
 
@@ -877,6 +923,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       totalPages: state.totalPages,
       itemsPerPage: state.itemsPerPage,
       hasMore: hasMore,
+      feedCityName: state.feedCityName,
     );
   }
 

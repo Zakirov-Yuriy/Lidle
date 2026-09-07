@@ -709,6 +709,48 @@ class _HomePageState extends State<HomePage>
 
   /// Приватный метод для построения секции последних объявлений.
   /// Включает заголовок "Самое новое" и адаптивную сетку карточек объявлений.
+  /// Подпись «лента по вашему городу» и кнопка сброса (задача 70).
+  ///
+  /// Город берётся из профиля, а человек мог указать его когда-то и забыть.
+  /// Без подписи выдача выглядит просто странной: «почему у меня всё из
+  /// Мариуполя». Сбрасывать надо там же, где виден результат, а не в глубине
+  /// настроек, поэтому кнопка стоит прямо над лентой. На сайте она уже есть,
+  /// и логика теперь одинаковая.
+  Widget _buildFeedCityNotice(String cityName) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.place_outlined, size: 16, color: textSecondary),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              'Сначала показываем ваш город: $cityName',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              context.read<ListingsBloc>().add(const ResetFeedCityEvent());
+            },
+            behavior: HitTestBehavior.opaque,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Text(
+                'Сбросить',
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildLatestSection(ListingsState state, AuthState authState) {
     if (state is AdvertLoaded) {
       // Если состояние AdvertLoaded (после возврата с деталей), перезагружаем объявления
@@ -923,6 +965,8 @@ class _HomePageState extends State<HomePage>
               ),
             ),
           ),
+          if (state is ListingsLoaded && state.feedCityName != null)
+            _buildFeedCityNotice(state.feedCityName!),
           const SizedBox(height: 10),
           LayoutBuilder(
             builder: (context, constraints) {
