@@ -81,6 +81,19 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// это нормально, но если их подряд три, добирать больше нечего.
   int _emptyPages = 0;
 
+  /// Есть ли на этом сервере лента главной (задача 70).
+  ///
+  /// Эндпоинт новый, и сервер может быть старее приложения: так и вышло при
+  /// первой проверке, когда сборка смотрела на прод до выкладки. Тогда
+  /// главная умирала целиком, вместе с лентой разделов, потому что весь экран
+  /// падал в состояние ошибки. Теперь при 404 молча возвращаемся к обычному
+  /// списку объявлений: он хуже (разделы снова неравномерны), но это рабочий
+  /// экран вместо мёртвого.
+  ///
+  /// Признак сбрасывается на каждой полной загрузке, поэтому после выкладки
+  /// приложение подхватит ленту само, без переустановки.
+  bool _feedAvailable = true;
+
   /// Конструктор ListingsBloc.
   /// Инициализирует Bloc с начальным состоянием ListingsInitial.
   ListingsBloc() : super(ListingsInitial()) {
@@ -187,6 +200,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // Лента начинается заново: счётчик страниц догрузки тоже.
     _feedPage = 0;
     _emptyPages = 0;
+    _feedAvailable = true;
 
     if (event.forceRefresh) {
       _lastRefreshTime = DateTime.now();
@@ -291,11 +305,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Теперь сервер сам отбирает до двухсот свежих объявлений за сутки,
       // раскладывает их равномерно по разделам и отдаёт страницами. Клиенту
       // остаётся показать первую порцию и догружать следующие при прокрутке.
-      final feedPage = await ApiService.getHomeFeed(
-        token: token,
-        page: 1,
-        perPage: homeFeedPageSize,
-      );
+      final feedPage = await _loadFeedPage(1, token);
 
       final firstBatchListings = feedPage.data.isEmpty
           ? <home.Listing>[]
@@ -751,11 +761,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // поедет.
       final nextPage = _feedPage + 1;
 
-      final advertsResponse = await ApiService.getHomeFeed(
-        token: token,
-        page: nextPage,
-        perPage: homeFeedPageSize,
-      );
+      final advertsResponse = await _loadFeedPage(nextPage, token);
 
       _feedPage = nextPage;
 
@@ -829,6 +835,36 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // добирать.
       emit(_withHasMore(currentState, false));
     }
+  }
+
+  /// Страница ленты главной, с запасным путём.
+  ///
+  /// Сначала спрашиваем ленту (задача 70). Если сервер про неё не знает и
+  /// отвечает 404, один раз запоминаем это и дальше берём обычный список
+  /// объявлений, как было до задачи. Любую другую ошибку пробрасываем: тихо
+  /// подменять сломанный сервер запасным путём значит прятать поломку.
+  Future<AdvertsResponse> _loadFeedPage(int page, String? token) async {
+    if (_feedAvailable) {
+      try {
+        return await ApiService.getHomeFeed(
+          token: token,
+          page: page,
+          perPage: homeFeedPageSize,
+        );
+      } catch (e) {
+        if (!e.toString().contains('404')) rethrow;
+
+        log.w('Лента главной на этом сервере недоступна, беру обычный список');
+        _feedAvailable = false;
+      }
+    }
+
+    return ApiService.getAdverts(
+      catalogId: 1,
+      token: token,
+      page: page,
+      limit: homeFeedPageSize,
+    );
   }
 
   /// Тот же список, но с изменённым признаком «есть ещё».
