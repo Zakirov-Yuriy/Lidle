@@ -15,7 +15,6 @@
 //
 // Запуск: WebSocketService().start();  Стоп: WebSocketService().stop();
 
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:async';
 
 import 'package:logger/logger.dart';
@@ -35,20 +34,6 @@ class WebSocketService {
 
   static const int _aiNotificationId = 90031;
   static const int _feedNotificationId = 90032;
-
-  // Тестовое уведомление сразу после успешной подписки: показывает, что слой
-  // уведомлений вообще работает, ещё до всякого broadcast.
-  //
-  // Привязано к режиму отладки, а не к ручной галочке. Так было: галочка
-  // стояла `true` с пометкой «перед релизом поставить false», про неё забыли,
-  // и сборка с отладочным «Тест WebSocket. Соединение установлено» уехала в
-  // закрытый тест Google Play. Пользователь видел его при каждом подключении
-  // и не понимал, что это.
-  //
-  // В сборке для магазина `kDebugMode` всегда false, поэтому забыть теперь
-  // нечего.
-  static const bool _debugSelfTest = kDebugMode;
-  bool _selfTested = false;
 
   ReverbConnection? _conn;
   bool _started = false;
@@ -82,13 +67,19 @@ class WebSocketService {
       tokenProvider: () async => TokenService.currentToken,
       onAiEvent: _showAi,
       onFeedEvent: _showFeed,
-      onSubscribed: () {
-        if (_debugSelfTest && !_selfTested) {
-          _selfTested = true;
-          _showAi('Тест WebSocket',
-              'Соединение установлено — уведомления работают ✅');
-        }
-      },
+      // Подписка состоялась. Уведомления человеку здесь не показываем.
+      //
+      // Так было: тут висело отладочное «Тест WebSocket. Соединение
+      // установлено», которое всплывало при каждом подключении, то есть при
+      // каждом запуске приложения и после каждого обрыва связи. С пометкой
+      // «перед релизом поставить false» оно уехало в закрытый тест Google
+      // Play, и тестировщики недоумевали, что это такое.
+      //
+      // Убрано насовсем, а не спрятано за флагом: проверять доставку
+      // уведомлений есть чем и без него — на сервере командой
+      // `php artisan push:check {id}`, которая показывает ответ Google по
+      // каждому устройству.
+      onSubscribed: () => _logger.i('Reverb: подписка на канал состоялась'),
       log: (m) => _logger.i(m),
     );
     await _conn!.start();
