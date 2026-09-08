@@ -132,8 +132,23 @@ class NotificationService {
         importance: Importance.defaultImportance,
       );
 
+      // Заказы. Отдельно от общего канала намеренно: у общего обычная
+      // важность, и уведомление тихо ложится в шторку, не всплывая и не
+      // звуча. Для заказа это неверно: продавца ждёт покупатель, а
+      // покупателя ждёт собранный заказ. Важность как у сообщений в чате.
+      const AndroidNotificationChannel ordersChannel =
+          AndroidNotificationChannel(
+        'orders_channel',
+        'Заказы',
+        description: 'Новые заказы, готовность к выдаче и отмены',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+
       await android.createNotificationChannel(chatChannel);
       await android.createNotificationChannel(generalChannel);
+      await android.createNotificationChannel(ordersChannel);
 
       _logger.i('✅ Каналы уведомлений созданы');
     } catch (e) {
@@ -265,6 +280,11 @@ class NotificationService {
     required String body,
     required int id,
     String? payload,
+
+    /// Канал уведомления. По умолчанию общий, тихий: статусы объявлений и
+    /// новости сервиса всплывать поверх экрана не должны. Заказы передают
+    /// сюда свой канал, у него важность как у чата.
+    String channelId = 'general_channel',
   }) async {
     if (!_isInitialized) {
       _logger.w('⚠️ NotificationService не инициализирован');
@@ -272,15 +292,17 @@ class NotificationService {
     }
 
     try {
-      const AndroidNotificationDetails androidDetails =
+      final bool isLoud = channelId != 'general_channel';
+
+      final AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
-        'general_channel',
-        'General Notifications',
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
+        channelId,
+        isLoud ? 'Заказы' : 'General Notifications',
+        importance: isLoud ? Importance.max : Importance.defaultImportance,
+        priority: isLoud ? Priority.high : Priority.defaultPriority,
       );
 
-      const NotificationDetails platformDetails = NotificationDetails(
+      final NotificationDetails platformDetails = NotificationDetails(
         android: androidDetails,
       );
 

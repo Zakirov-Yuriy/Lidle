@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/main.dart' show navigatorKey;
 import 'package:lidle/pages/bookings/my_bookings_screen.dart';
+import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/notification_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -173,6 +174,20 @@ class PushService {
   void _openFromMessage(RemoteMessage message) {
     final data = message.data;
 
+    // Заказы: продавцу «Заказы ко мне», покупателю «Мои покупки». Правило
+    // то же, что у броней: уведомление приходит тому, кто ничего не решал.
+    if ('${data['type'] ?? ''}' == 'order') {
+      final event = '${data['event'] ?? ''}';
+
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => MyOrdersScreen(startWithIncoming: event == 'created'),
+        ),
+      );
+
+      return;
+    }
+
     if ('${data['type'] ?? ''}' != 'booking') {
       return;
     }
@@ -208,11 +223,17 @@ class PushService {
       return;
     }
 
+    // Заказ показываем в своём канале: он всплывает и звучит. Продавец
+    // может держать приложение открытым весь день, и тихое уведомление в
+    // шторке он попросту не заметит.
+    final isOrder = '${data['type'] ?? ''}' == 'order';
+
     await NotificationService().showNotification(
       title: notification.title ?? 'ЛИДЛЕ',
       body: notification.body ?? '',
       id: message.hashCode,
       payload: data['url'] as String?,
+      channelId: isOrder ? 'orders_channel' : 'general_channel',
     );
   }
 }
