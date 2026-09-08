@@ -39,6 +39,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// форма выглядит подозрительно.
   bool _isPrefilled = false;
 
+  /// Подтвердил ли человек, что платит продавцу напрямую.
+  ///
+  /// Требование заказчика от 08.09.2026: «главное написать уведомление, что
+  /// деньги покупатель платит продавцу за товар напрямую, с галочкой
+  /// подтверждения, что покупатель понял, куда отправил деньги».
+  ///
+  /// Заранее её НЕ ставим: галочка, проставленная за человека, ничего не
+  /// подтверждает.
+  bool _paymentAcknowledged = false;
+
   @override
   void initState() {
     super.initState();
@@ -91,6 +101,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
     }
 
+    if (_needsAcknowledgement && !_paymentAcknowledged) {
+      SnackBarHelper.showWarning(
+        context,
+        'Подтвердите, что вы поняли, кому и куда отправляете деньги',
+      );
+      return;
+    }
+
     setState(() => _isSending = true);
 
     final result = await OrdersService.place(
@@ -98,6 +116,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       contactPhone: _phoneController.text.trim(),
       contactEmail: _emailController.text.trim(),
       comment: _commentController.text.trim(),
+      paymentAcknowledged: _paymentAcknowledged,
     );
 
     if (!mounted) return;
@@ -176,6 +195,105 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _buildContacts(),
         const SizedBox(height: 12),
         _buildShops(),
+        if (_needsAcknowledgement) ...[
+          const SizedBox(height: 12),
+          _buildPaymentNotice(),
+        ],
+      ],
+    );
+  }
+
+  /// Требует ли сервер подтверждение оплаты.
+  ///
+  /// Старый сервер этого блока не присылает. Тогда галочки нет и оформление
+  /// работает как раньше: ломать заказ из-за отсутствующего поля нельзя.
+  bool get _needsAcknowledgement => widget.cart.payment.required;
+
+  /// Предупреждение об оплате и галочка.
+  ///
+  /// Стоит последним блоком, прямо над кнопкой: человек читает его, когда уже
+  /// видел, кому и сколько платит.
+  Widget _buildPaymentNotice() {
+    final payment = widget.cart.payment;
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Оплата',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            payment.notice,
+            style: const TextStyle(color: textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () => setState(
+              () => _paymentAcknowledged = !_paymentAcknowledged,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  value: _paymentAcknowledged,
+                  activeColor: activeIconColor,
+                  onChanged: (value) => setState(
+                    () => _paymentAcknowledged = value ?? false,
+                  ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      payment.confirmLabel,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Реквизиты точки: куда именно уходят деньги.
+  ///
+  /// Показываются рядом с её товарами, а не общим списком: точек в заказе
+  /// может быть несколько, и счета у них разные.
+  Widget _buildPaymentMethods(List<CartPaymentMethod> methods) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        const Text(
+          'Оплата продавцу',
+          style: TextStyle(color: textSecondary, fontSize: 12),
+        ),
+        for (final method in methods) ...[
+          const SizedBox(height: 4),
+          Text(
+            method.title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          for (final entry in method.fields.entries)
+            Text(
+              '${CartPaymentMethod.fieldTitle(entry.key)}: ${entry.value}',
+              style: const TextStyle(color: textSecondary, fontSize: 12),
+            ),
+        ],
       ],
     );
   }
@@ -317,6 +435,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                   ),
+              if (group.paymentMethods.isNotEmpty)
+                _buildPaymentMethods(group.paymentMethods),
             ],
           ),
         );
@@ -357,7 +477,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                onPressed: _isSending ? null : _submit,
+                onPressed: _isSending || (_needsAcknowledgement && !_paymentAcknowledged)
+                    ? null
+                    : _submit,
                 child: Text(
                   _isSending ? 'Отправляем…' : 'Подтвердить заказ',
                   style: const TextStyle(

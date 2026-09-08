@@ -42,6 +42,13 @@ class CartSnapshot {
   /// ничего не заказывал и не вошёл.
   final CartContacts contacts;
 
+  /// Предупреждение об оплате и подпись к галочке подтверждения.
+  ///
+  /// Текст приходит с сервера, а не зашит в приложении: он один для сайта и
+  /// приложения, и переписывать его в двух местах значит однажды переписать
+  /// в одном.
+  final CartPaymentNotice payment;
+
   const CartSnapshot({
     required this.shops,
     required this.itemsCount,
@@ -51,6 +58,7 @@ class CartSnapshot {
     this.canCheckout = false,
     this.cartToken,
     this.contacts = const CartContacts(),
+    this.payment = const CartPaymentNotice(),
   });
 
   factory CartSnapshot.empty() =>
@@ -81,6 +89,7 @@ class CartSnapshot {
       total: _double(data['total']) ?? 0,
       cartToken: data['cart_token']?.toString(),
       contacts: CartContacts.fromJson(data['contacts']),
+      payment: CartPaymentNotice.fromJson(data['payment']),
     );
   }
 
@@ -150,6 +159,12 @@ class CartShopGroup {
   final String? phone;
   final bool shopIsActive;
 
+  /// Куда платить этой точке: список способов с реквизитами.
+  ///
+  /// Показывается ДО оформления, а не после: деньги идут продавцу напрямую,
+  /// мимо площадки, и вернуть их мы не сможем.
+  final List<CartPaymentMethod> paymentMethods;
+
   final List<CartLine> items;
   final double total;
 
@@ -166,6 +181,7 @@ class CartShopGroup {
     this.phone,
     this.shopIsActive = true,
     this.cookingTimeMinutes,
+    this.paymentMethods = const [],
   });
 
   factory CartShopGroup.fromJson(Map<String, dynamic> data) {
@@ -178,6 +194,13 @@ class CartShopGroup {
       address: shop is Map ? shop['address']?.toString() : null,
       phone: shop is Map ? shop['phone']?.toString() : null,
       shopIsActive: shop is Map ? shop['is_active'] != false : true,
+      paymentMethods: shop is Map && shop['payment_details'] is List
+          ? (shop['payment_details'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map(CartPaymentMethod.fromJson)
+                .where((method) => method.type.isNotEmpty)
+                .toList()
+          : const [],
       items: items is List
           ? items.whereType<Map<String, dynamic>>().map(CartLine.fromJson).toList()
           : const [],
@@ -226,4 +249,99 @@ class CartLine {
       unavailableReason: data['unavailable_reason']?.toString(),
     );
   }
+}
+
+/// Предупреждение об оплате: текст и подпись к галочке.
+///
+/// Пустые значения означают старый сервер, который этого блока не присылает.
+/// Тогда галочка не показывается и не требуется: ломать оформление из-за
+/// отсутствующего поля нельзя.
+class CartPaymentMethod {
+  final String type;
+  final Map<String, String> fields;
+
+  const CartPaymentMethod({required this.type, this.fields = const {}});
+
+  factory CartPaymentMethod.fromJson(Map<String, dynamic> data) {
+    final fields = <String, String>{};
+
+    data.forEach((key, value) {
+      if (key == 'type') return;
+      final text = '${value ?? ''}'.trim();
+      if (text.isNotEmpty) fields[key] = text;
+    });
+
+    return CartPaymentMethod(
+      type: '${data['type'] ?? ''}'.trim(),
+      fields: fields,
+    );
+  }
+
+  /// Название способа по-русски. Незнакомый вид показываем как есть: лучше
+  /// непонятное слово, чем пустая строка вместо способа оплаты.
+  String get title {
+    switch (type) {
+      case 'cash':
+        return 'Наличными';
+      case 'card':
+        return 'Переводом на карту';
+      case 'sbp':
+        return 'По СБП';
+      case 'account':
+        return 'На расчётный счёт';
+      default:
+        return type;
+    }
+  }
+
+  /// Подпись поля реквизита.
+  static String fieldTitle(String key) {
+    switch (key) {
+      case 'phone':
+        return 'Телефон';
+      case 'bank':
+        return 'Банк';
+      case 'number':
+        return 'Номер карты';
+      case 'holder':
+        return 'Получатель';
+      case 'account':
+        return 'Счёт';
+      case 'bic':
+        return 'БИК';
+      case 'inn':
+        return 'ИНН';
+      case 'comment':
+        return 'Комментарий';
+      default:
+        return key;
+    }
+  }
+}
+
+class CartPaymentNotice {
+  final String notice;
+  final String confirmLabel;
+
+  /// Требует ли сервер галочку. Старый сервер поля не присылает, и тогда
+  /// оформление работает как раньше.
+  final bool required;
+
+  const CartPaymentNotice({
+    this.notice = '',
+    this.confirmLabel = '',
+    this.required = false,
+  });
+
+  factory CartPaymentNotice.fromJson(dynamic data) {
+    if (data is! Map) return const CartPaymentNotice();
+
+    return CartPaymentNotice(
+      notice: '${data['notice'] ?? ''}'.trim(),
+      confirmLabel: '${data['confirm_label'] ?? ''}'.trim(),
+      required: data['required'] == true,
+    );
+  }
+
+  bool get isEmpty => notice.isEmpty && confirmLabel.isEmpty;
 }

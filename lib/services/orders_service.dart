@@ -21,8 +21,15 @@ class OrdersService {
     String? contactEmail,
     String? comment,
     List<int>? shopIds,
+    bool paymentAcknowledged = false,
   }) async {
     final body = <String, dynamic>{};
+
+    // Подтверждение, что человек понял, кому и куда платит. Сервер требует
+    // его обязательно: деньги идут продавцу напрямую, мимо площадки, и
+    // вернуть их мы не сможем. Без галочки оформление отвечает 422 с
+    // понятным текстом, его и показываем.
+    body['payment_acknowledged'] = paymentAcknowledged;
 
     if (contactName != null && contactName.isNotEmpty) {
       body['contact_name'] = contactName;
