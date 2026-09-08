@@ -45,8 +45,8 @@ class OrderPlacedScreen extends StatelessWidget {
                     orders.length > 1
                         ? 'Товары были из разных точек, поэтому заказов '
                             '${orders.length}. В каждой точке называйте её код.'
-                        : 'Приходите в точку и назовите код. Оплата на месте, '
-                            'напрямую продавцу.',
+                        : 'Приходите в точку и назовите код. Деньги вы '
+                            'платите продавцу напрямую.',
                     style: const TextStyle(color: textSecondary, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
