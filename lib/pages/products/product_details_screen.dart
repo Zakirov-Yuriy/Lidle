@@ -181,6 +181,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
         ],
+        if (product.attributes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildAttributes(product),
+        ],
         if (product.description != null && product.description!.isNotEmpty) ...[
           const SizedBox(height: 12),
           _card(
@@ -205,6 +209,56 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  /// Характеристики товара.
+  ///
+  /// Название слева, значение справа: так их читают глазами, сравнивая два
+  /// товара. Набор полей задаётся в админке на раздел, поэтому рисуем то,
+  /// что пришло, и ничего не подписываем от себя.
+  Widget _buildAttributes(ProductItem product) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Характеристики',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...product.attributes.map(
+            (attribute) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      attribute.title,
+                      style: const TextStyle(color: textSecondary, fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      attribute.value,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

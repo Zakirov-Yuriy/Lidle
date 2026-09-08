@@ -33,6 +33,12 @@ class ProductItem {
   /// Время приготовления, для еды. Пустое у обычных товаров.
   final int? cookingTimeMinutes;
 
+  /// Характеристики: разрешение экрана, материал, вес. Набор задаётся в
+  /// админке на раздел, поэтому фронт его не знает заранее и просто рисует
+  /// то, что пришло. В списке товаров пустой: сервер отдаёт характеристики
+  /// только в карточке.
+  final List<ProductAttribute> attributes;
+
   const ProductItem({
     required this.id,
     required this.name,
@@ -50,6 +56,7 @@ class ProductItem {
     this.rating,
     this.reviewsCount = 0,
     this.cookingTimeMinutes,
+    this.attributes = const [],
   });
 
   factory ProductItem.fromJson(Map<String, dynamic> data) {
@@ -72,6 +79,12 @@ class ProductItem {
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
+      attributes: data['attributes'] is List
+          ? (data['attributes'] as List)
+                .map(ProductAttribute.tryParse)
+                .whereType<ProductAttribute>()
+                .toList()
+          : const [],
     );
   }
 
@@ -102,6 +115,40 @@ class ProductItem {
     if (value is num) return value.toDouble();
     if (value is String) return double.tryParse(value);
     return null;
+  }
+}
+
+/// Одна характеристика товара.
+///
+/// Значение приходит уже готовой строкой: несколько выбранных значений
+/// сервер склеивает запятой сам. Собирать это в приложении значило бы
+/// повторять одну работу в приложении, на сайте и в админке, и получить три
+/// разных «Хлопок, Шёлк».
+class ProductAttribute {
+  final int id;
+  final String title;
+  final String value;
+
+  const ProductAttribute({
+    required this.id,
+    required this.title,
+    required this.value,
+  });
+
+  static ProductAttribute? tryParse(dynamic raw) {
+    if (raw is! Map) return null;
+
+    final id = ProductItem._int(raw['id']);
+    if (id == null) return null;
+
+    final title = '${raw['title'] ?? ''}'.trim();
+    final value = '${raw['value'] ?? ''}'.trim();
+
+    // Характеристика без названия или без значения ничего не сообщает:
+    // строка «: 4K» в карточке выглядит поломкой.
+    if (title.isEmpty || value.isEmpty) return null;
+
+    return ProductAttribute(id: id, title: title, value: value);
   }
 }
 
