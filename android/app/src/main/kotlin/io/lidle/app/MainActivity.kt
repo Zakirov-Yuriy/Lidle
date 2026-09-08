@@ -96,6 +96,23 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    /// «1 новое сообщение», «2 новых сообщения», «5 новых сообщений».
+    ///
+    /// Согласуем слово с числом: «7 новое сообщение» читается как недоделка,
+    /// даже если смысл понятен. Одиннадцать-четырнадцать это исключение из
+    /// правила единиц, поэтому проверяются первыми.
+    private fun newMessagesWord(count: Int): String {
+        val tens = count % 100
+        val ones = count % 10
+
+        return when {
+            tens in 11..14 -> "новых сообщений"
+            ones == 1 -> "новое сообщение"
+            ones in 2..4 -> "новых сообщения"
+            else -> "новых сообщений"
+        }
+    }
+
     /// Обновляем Notification Badge (работает везде, включая эмулятор)
     /// Это делает бейдж видимым в уведомлениях и в некоторых лаунчерах
     private fun updateNotificationBadge(count: Int) {
@@ -108,7 +125,7 @@ class MainActivity : FlutterFragmentActivity() {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     val channel = android.app.NotificationChannel(
                         BADGE_CHANNEL_ID,
-                        "Badge Notifications",
+                        "Значок непрочитанных",
                         NotificationManager.IMPORTANCE_LOW
                     )
                     channel.setShowBadge(true)
@@ -117,8 +134,15 @@ class MainActivity : FlutterFragmentActivity() {
 
                 // Создаём уведомление только для бейджа (не показывается пользователю)
                 val notification = NotificationCompat.Builder(this, BADGE_CHANNEL_ID)
-                    .setContentTitle("New messages")
-                    .setContentText("You have $count new messages")
+                    // Текст по-русски и с согласованным окончанием.
+                    //
+                    // Так было: «New messages. You have 7 new messages» в
+                    // русском приложении. Уведомление задумывалось как
+                    // невидимое, ради одного значка на иконке, но в шторке
+                    // его прекрасно видно, и человек читал английскую строку
+                    // непонятного происхождения.
+                    .setContentTitle("Непрочитанные сообщения")
+                    .setContentText("У вас " + count + " " + newMessagesWord(count))
                     .setSmallIcon(android.R.drawable.ic_notification_overlay) // ⭐ Встроенная иконка Android
                     .setAutoCancel(false) // ⭐ НЕ закрывать уведомление, иначе исчезнет бейдж!
                     .setPriority(NotificationCompat.PRIORITY_LOW)
