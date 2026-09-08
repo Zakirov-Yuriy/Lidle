@@ -15,6 +15,7 @@
 //
 // Запуск: WebSocketService().start();  Стоп: WebSocketService().stop();
 
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:async';
 
 import 'package:logger/logger.dart';
@@ -35,10 +36,18 @@ class WebSocketService {
   static const int _aiNotificationId = 90031;
   static const int _feedNotificationId = 90032;
 
-  // DEBUG: показать одно тестовое уведомление сразу после успешной подписки,
-  // чтобы проверить, что слой уведомлений вообще работает (без broadcast).
-  // Перед релизом поставить false.
-  static const bool _debugSelfTest = true;
+  // Тестовое уведомление сразу после успешной подписки: показывает, что слой
+  // уведомлений вообще работает, ещё до всякого broadcast.
+  //
+  // Привязано к режиму отладки, а не к ручной галочке. Так было: галочка
+  // стояла `true` с пометкой «перед релизом поставить false», про неё забыли,
+  // и сборка с отладочным «Тест WebSocket. Соединение установлено» уехала в
+  // закрытый тест Google Play. Пользователь видел его при каждом подключении
+  // и не понимал, что это.
+  //
+  // В сборке для магазина `kDebugMode` всегда false, поэтому забыть теперь
+  // нечего.
+  static const bool _debugSelfTest = kDebugMode;
   bool _selfTested = false;
 
   ReverbConnection? _conn;
