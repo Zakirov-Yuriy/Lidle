@@ -70,7 +70,10 @@ class OrderPlacedScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              onPressed: () => Navigator.pop(context),
+              // Возвращаем признак успеха: экран корзины перечитывает себя
+              // в любом случае, но признак пригодится другим экранам, с
+              // которых сюда придут позже.
+              onPressed: () => Navigator.pop(context, true),
               child: const Text(
                 'Готово',
                 style: TextStyle(
