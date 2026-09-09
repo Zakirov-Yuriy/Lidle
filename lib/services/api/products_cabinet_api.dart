@@ -175,6 +175,23 @@ class ProductsCabinetApi {
     return fields;
   }
 
+  /// Справочник цветов.
+  ///
+  /// Цвет у товара это своё поле, а не характеристика раздела, поэтому в
+  /// списке полей формы его нет и приходит он отдельной ручкой.
+  static Future<List<ProductColor>> colors() async {
+    final response = await ApiService.get('/me/products/colors');
+
+    final data = response['data'];
+
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ProductColor.fromJson)
+        .toList();
+  }
+
   /// Завести позицию. Это обычный товар: `/me/products`.
   static Future<int> createPosition({
     required int publicationId,
@@ -185,6 +202,7 @@ class ProductsCabinetApi {
     int? groupId,
     int? position,
     int? brandId,
+    int? colorId,
     String? description,
     Map<String, dynamic>? attributes,
   }) async {
@@ -199,6 +217,7 @@ class ProductsCabinetApi {
       'price': price,
       'stock_quantity': stockQuantity,
       if (brandId != null) 'brand_id': brandId,
+      if (colorId != null) 'color_id': colorId,
       if (attributes != null) 'attributes': attributes,
     });
 
@@ -233,6 +252,7 @@ class ProductsCabinetApi {
     int? groupId,
     int? position,
     int? brandId,
+    int? colorId,
     String? description,
     Map<String, dynamic>? attributes,
   }) async {
@@ -244,6 +264,7 @@ class ProductsCabinetApi {
       if (groupId != null) 'group_id': groupId,
       if (position != null) 'position': position,
       if (brandId != null) 'brand_id': brandId,
+      if (colorId != null) 'color_id': colorId,
       if (attributes != null) 'attributes': attributes,
     });
   }

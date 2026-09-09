@@ -51,6 +51,28 @@ class ProductGroup {
   }
 }
 
+/// Цвет из общего справочника.
+///
+/// У товара цвет это НЕ характеристика раздела, а своё поле: так товары
+/// устроены с 2023 года. Поэтому он приезжает отдельно от `attributes` и в
+/// форме позиции стоит своим полем.
+class ProductColor {
+  const ProductColor({required this.id, required this.name, this.code});
+
+  final int id;
+  final String name;
+
+  /// Код цвета для квадратика, «#43A047». Может быть пустым: в справочнике
+  /// его заполняли не у всех.
+  final String? code;
+
+  factory ProductColor.fromJson(Map<String, dynamic> data) => ProductColor(
+    id: _int(data['id']) ?? 0,
+    name: '${data['name'] ?? ''}',
+    code: data['code']?.toString(),
+  );
+}
+
 /// Характеристика позиции: «Размер: 54», «Цвет: зелёный».
 ///
 /// Набор характеристик у каждого раздела свой, его заводит администратор.
@@ -105,6 +127,7 @@ class ProductPosition {
     this.brandId,
     this.stockQuantity = 0,
     this.attributes = const [],
+    this.color,
   });
 
   final int id;
@@ -125,6 +148,9 @@ class ProductPosition {
 
   /// Характеристики раздела, заполненные при заведении.
   final List<ProductPositionAttribute> attributes;
+
+  /// Цвет из справочника. Своё поле товара, а не характеристика раздела.
+  final ProductColor? color;
 
   factory ProductPosition.fromJson(Map<String, dynamic> data) {
     final images = data['images'];
@@ -154,6 +180,11 @@ class ProductPosition {
                 .map(ProductPositionAttribute.fromJson)
                 .toList()
           : const [],
+      color: data['color'] is Map
+          ? ProductColor.fromJson(
+              Map<String, dynamic>.from(data['color'] as Map),
+            )
+          : null,
     );
   }
 }

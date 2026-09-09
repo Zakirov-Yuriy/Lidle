@@ -86,6 +86,13 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   /// живут здесь и показываются прямо с диска.
   final List<String> _photos = [];
 
+  /// Справочник цветов и выбранный цвет.
+  ///
+  /// Цвет у товара это своё поле `color_id`, а не характеристика раздела:
+  /// поэтому он не приходил вместе с полями формы, и выбрать его было негде.
+  List<ProductColor> _colors = const [];
+  ProductColor? _color;
+
   int? _brandId;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -107,6 +114,7 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       _quantity.text = '${existing.stockQuantity}';
       _description.text = existing.description;
       _saved.addAll(existing.images);
+      _color = existing.color;
     }
 
     _loadFields();
@@ -125,10 +133,16 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   }
 
   Future<void> _loadFields() async {
+    // Цвета тянем рядом с полями и молча переживаем отказ: без справочника
+    // форма всё равно работает, просто без выбора цвета.
+    final colors = _loadColors();
+
     try {
       final fields = await ProductsCabinetApi.positionFields(
         widget.publication.categoryId,
       );
+
+      _colors = await colors;
 
       if (!mounted) return;
 
@@ -148,10 +162,125 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     } catch (e) {
       log.e('Характеристики раздела не загрузились: $e');
 
+      _colors = await colors;
+
       // Форму всё равно показываем: без характеристик товар сохранить можно,
       // а пустой экран человеку не объяснить.
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Раздел уже спрашивает цвет своей характеристикой?
+  bool get _hasColorAttribute => _fields.any(
+        (field) => field.title.toLowerCase().contains('цвет'),
+      );
+
+  Future<List<ProductColor>> _loadColors() async {
+    try {
+      return await ProductsCabinetApi.colors();
+    } catch (e) {
+      log.d('Справочник цветов не пришёл: $e');
+
+      return const [];
+    }
+  }
+
+  /// Выбор цвета из справочника.
+  Future<void> _pickColor() async {
+    if (_colors.isEmpty) {
+      _say('Справочник цветов пуст: цвета заводятся в админке.');
+
+      return;
+    }
+
+    final chosen = await showModalBottomSheet<ProductColor>(
+      context: context,
+      backgroundColor: primaryBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(defaultPadding, 20, defaultPadding, 12),
+              child: Text(
+                'Цвет',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _colors.length,
+                itemBuilder: (context, index) {
+                  final color = _colors[index];
+
+                  return ListTile(
+                    leading: _swatch(color) ??
+                        const Icon(Icons.circle_outlined,
+                            color: textMuted, size: 22),
+                    title: Text(
+                      color.name,
+                      style: const TextStyle(color: textPrimary, fontSize: 15),
+                    ),
+                    trailing: color.id == _color?.id
+                        ? const Icon(Icons.check,
+                            color: activeIconColor, size: 20)
+                        : null,
+                    onTap: () => Navigator.pop(context, color),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null || !mounted) return;
+
+    setState(() => _color = chosen);
+  }
+
+  /// Квадратик цвета. Пусто, если код цвета в справочнике не заполнен.
+  Widget? _swatch(ProductColor color) {
+    final parsed = _parseColor(color.code);
+
+    if (parsed == null) return null;
+
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: parsed,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: textMuted.withValues(alpha: 0.4)),
+      ),
+    );
+  }
+
+  /// «#43A047» и «43A047» в цвет. Мусор превращаем в пустоту, а не в чёрный
+  /// квадрат: чёрный квадрат человек примет за настоящий цвет.
+  Color? _parseColor(String? code) {
+    var value = (code ?? '').trim().replaceFirst('#', '');
+
+    if (value.length == 3) {
+      value = value.split('').map((ch) => '$ch$ch').join();
+    }
+
+    if (value.length != 6) return null;
+
+    final parsed = int.tryParse(value, radix: 16);
+
+    return parsed == null ? null : Color(0xFF000000 | parsed);
   }
 
   Future<void> _save() async {
@@ -217,6 +346,7 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
           price: price,
           stockQuantity: int.parse(_quantity.text.trim()),
           brandId: brandId,
+          colorId: _color?.id,
           attributes: _attributes.payload(),
         );
       }
@@ -232,6 +362,7 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             price: price,
             stockQuantity: int.parse(_quantity.text.trim()),
             brandId: brandId,
+            colorId: _color?.id,
             attributes: _attributes.payload(),
           );
 
@@ -375,6 +506,19 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                   fields: _fields,
                 ),
 
+              // Цвет из общего справочника товаров. Показываем, только если
+              // раздел не завёл свой «Цвет» характеристикой: два одинаковых
+              // поля в одной форме означают два разных ответа на один вопрос,
+              // и человек не поймёт, какой из них попадёт в карточку.
+              if (!_hasColorAttribute) ...[
+                const SizedBox(height: 20),
+                const Text('Цвет',
+                    style: TextStyle(color: textPrimary, fontSize: 15)),
+                const SizedBox(height: 8),
+                _colorField(),
+              ],
+
+              const SizedBox(height: 20),
               _text('Бренд товара', _brand, hint: 'Введите'),
 
               const SizedBox(height: 20),
@@ -612,6 +756,50 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  /// Строка выбора цвета: квадратик, название и «Изменить».
+  Widget _colorField() {
+    final color = _color;
+
+    return GestureDetector(
+      onTap: _pickColor,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            if (color != null) ...[
+              _swatch(color) ?? const SizedBox.shrink(),
+              if (_swatch(color) != null) const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                color?.name ??
+                    (_colors.isEmpty
+                        ? 'Цвета не заведены в админке'
+                        : 'Выберите цвет'),
+                style: TextStyle(
+                  color: color == null ? textMuted : textPrimary,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            if (color != null)
+              GestureDetector(
+                onTap: () => setState(() => _color = null),
+                child: const Icon(Icons.close, color: textMuted, size: 18),
+              )
+            else
+              const Icon(Icons.keyboard_arrow_down, color: textMuted, size: 20),
+          ],
+        ),
+      ),
     );
   }
 
