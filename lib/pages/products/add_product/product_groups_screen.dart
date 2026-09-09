@@ -570,24 +570,36 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
       runSpacing: 16,
       children: [
         ...positions.map(_positionCard),
-        GestureDetector(
-          onTap: _addPosition,
-          child: Container(
-            width: 150,
-            height: 180,
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add_circle_outline, color: textSecondary, size: 28),
-                SizedBox(height: 8),
-                Text('Добавить позицию',
-                    style: TextStyle(color: textSecondary, fontSize: 13)),
-              ],
-            ),
+        // Плитка «Добавить позицию» ровно того же размера и формы, что
+        // картинка позиции, и прижата к верху: подписи под карточками разной
+        // длины, и плитка в 180 точек торчала из ряда.
+        SizedBox(
+          width: 150,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: _addPosition,
+                child: Container(
+                  width: double.infinity,
+                  height: 150,
+                  decoration: BoxDecoration(
+                    color: formBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add_circle_outline,
+                          color: textSecondary, size: 24),
+                      SizedBox(height: 8),
+                      Text('Добавить позицию',
+                          style: TextStyle(color: textSecondary, fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
