@@ -834,7 +834,9 @@ class ApiService {
       for (final item in raw) {
         if (item is! Map<String, dynamic>) continue;
 
-        if (item['type'] == 'product') {
+        // Тип карточки лежит в `kind`, а не в `type`: у объявления поле
+        // `type` занято его собственным типом каталога.
+        if (item['kind'] == 'product') {
           listings.add(_productListing(item));
 
           continue;
