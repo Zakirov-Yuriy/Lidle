@@ -133,13 +133,13 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       if (!mounted) return;
 
       setState(() {
-        _fields = fields;
+        _fields = fields.where(_isRealField).toList();
         _isLoading = false;
 
         // Подставляем сохранённое ПОСЛЕ полей: выбранные варианты приходят
         // номерами значений, а перевести их в названия можно только по
         // справочнику раздела.
-        _attributes.fields = fields;
+        _attributes.fields = _fields;
 
         final existing = widget.existing;
 
@@ -152,6 +152,20 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       // а пустой экран человеку не объяснить.
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  /// Настоящее поле формы, а не служебная метка категории.
+  ///
+  /// Стили N и L/M это НЕ свойства товара, а метки раздела: «здесь можно
+  /// заказывать» и «здесь можно бронировать». Значения у них есть (наличными,
+  /// картой, переводом), поэтому общее правило рисовало их выпадашкой, и в
+  /// форме позиции появлялось поле «Заказ и оплата», которое человек честно
+  /// заполнял, а сохранять его некуда.
+  bool _isRealField(Attribute field) {
+    const service = {'N', 'N1', 'L', 'L1', 'M', 'M1'};
+
+    return !service.contains(field.style) &&
+        !service.contains(field.styleSingle);
   }
 
   Future<void> _save() async {
