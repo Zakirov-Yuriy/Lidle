@@ -322,9 +322,7 @@ class _ListingCardState extends State<ListingCard> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardHeight = constraints.maxHeight;
-        final cardWidth = constraints.maxWidth;
 
-        final imageHeight = cardHeight * (cardWidth < 140 ? 0.46 : 0.52);
         final scale = cardHeight / 263;
 
         return GestureDetector(
@@ -345,32 +343,41 @@ class _ListingCardState extends State<ListingCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  height: imageHeight,
-                  width: double.infinity,
-                  child: widget.listing.imagePath.isEmpty
-                      ? Container(
-                          color: formBackground,
-                          child: const Icon(
-                            Icons.photo_outlined,
-                            color: textMuted,
-                            size: 28,
-                          ),
-                        )
-                      : Image.network(
-                          widget.listing.imagePath,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+              // Картинка забирает ОСТАТОК высоты, а не свою долю от неё.
+              //
+              // Так было: у картинки была фиксированная доля, а низ карточки
+              // держался распоркой. При длинном названии колонка перерастала
+              // свою клетку в сетке, и кнопка «В корзину» наползала на
+              // соседнюю карточку снизу. Теперь наоборот: текст и кнопка
+              // занимают сколько нужно, картинка — сколько осталось, и
+              // выйти за клетку карточка не может.
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: widget.listing.imagePath.isEmpty
+                        ? Container(
                             color: formBackground,
                             child: const Icon(
                               Icons.photo_outlined,
                               color: textMuted,
                               size: 28,
                             ),
+                          )
+                        : Image.network(
+                            widget.listing.imagePath,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: formBackground,
+                              child: const Icon(
+                                Icons.photo_outlined,
+                                color: textMuted,
+                                size: 28,
+                              ),
+                            ),
                           ),
-                        ),
+                  ),
                 ),
               ),
 
@@ -389,22 +396,20 @@ class _ListingCardState extends State<ListingCard> {
 
               Text(
                 widget.listing.title,
-                maxLines: 2,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: textPrimary, fontSize: 14 * scale),
               ),
 
-              if (widget.listing.location.isNotEmpty) ...[
-                SizedBox(height: 2 * scale),
+              if (widget.listing.location.isNotEmpty)
                 Text(
                   widget.listing.location,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: textMuted, fontSize: 12 * scale),
                 ),
-              ],
 
-              const Spacer(),
+              SizedBox(height: 6 * scale),
 
               if (widget.listing.canOrder)
                 SizedBox(
@@ -431,10 +436,20 @@ class _ListingCardState extends State<ListingCard> {
               else
                 // Товар без корзины: говорим об этом прямо, иначе человек
                 // ищет кнопку и думает, что приложение сломалось.
-                Text(
-                  'Покупка на месте',
-                  style: TextStyle(color: textMuted, fontSize: 12 * scale),
+                SizedBox(
+                  height: 34 * scale,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Покупка на месте',
+                      style: TextStyle(color: textMuted, fontSize: 12 * scale),
+                    ),
+                  ),
                 ),
+
+              // Отступ до следующего ряда сетки: у сетки главной он нулевой,
+              // и без него карточки слипаются низом.
+              SizedBox(height: 10 * scale),
             ],
           ),
         );
