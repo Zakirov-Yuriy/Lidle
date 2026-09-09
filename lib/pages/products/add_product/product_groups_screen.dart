@@ -456,17 +456,28 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           if (index == _publication.groups.length) {
-            return GestureDetector(
-              onTap: _createGroup,
-              child: Container(
-                width: 116,
-                height: 88,
-                decoration: BoxDecoration(
-                  color: formBackground,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.add_circle_outline,
-                    color: textSecondary, size: 28),
+            // Плитка «плюс» той же формы и того же размера, что обложка
+            // группы, и прижата к верху: лента идёт одной строкой, и плитка
+            // другой высоты сбивает её.
+            return SizedBox(
+              width: 116,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GestureDetector(
+                    onTap: _createGroup,
+                    child: Container(
+                      width: double.infinity,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: formBackground,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.add_circle_outline,
+                          color: textSecondary, size: 24),
+                    ),
+                  ),
+                ],
               ),
             );
           }
@@ -485,6 +496,11 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
                   Stack(
                     children: [
                       Container(
+                        // Ширину задаём явно. Container с ребёнком и без
+                        // ширины сжимается до этого ребёнка, и группа без
+                        // обложки выходила узкой полоской в ширину значка,
+                        // а с обложкой — нормальной плиткой.
+                        width: double.infinity,
                         height: 88,
                         decoration: BoxDecoration(
                           color: formBackground,
@@ -587,6 +603,7 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
           Stack(
             children: [
               Container(
+                width: double.infinity,
                 height: 150,
                 decoration: BoxDecoration(
                   color: formBackground,
