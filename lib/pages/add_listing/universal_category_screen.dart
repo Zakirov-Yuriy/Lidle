@@ -8,6 +8,7 @@ import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
+import 'package:lidle/pages/products/add_product/product_publication_screen.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
@@ -33,12 +34,20 @@ class UniversalCategoryScreen extends StatefulWidget {
   /// Уровень вложенности для отладки
   final int level;
 
+  /// Раздел ведёт к заведению ТОВАРА, а не объявления.
+  ///
+  /// Ставится на первом экране выбора каталога и дальше едет по всем
+  /// уровням: подкатегории не знают, из какого списка человек пришёл, а
+  /// определять это заново на каждом уровне значит однажды определить иначе.
+  final bool isProduct;
+
   const UniversalCategoryScreen({
     super.key,
     this.catalogId,
     this.category,
     this.catalogName,
     this.level = 0,
+    this.isProduct = false,
   }) : assert(
          (catalogId != null && catalogName != null) || category != null,
          'Необходимо указать либо catalogId с catalogName, либо category',
@@ -277,6 +286,22 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                                   category: category,
                                   catalogName: widget.catalogName,
                                   level: widget.level + 1,
+                                  isProduct: widget.isProduct,
+                                ),
+                              ),
+                            );
+                          } else if (category.isEndpoint && widget.isProduct) {
+                            // Товарный раздел: вместо подачи объявления
+                            // открываем заведение товара. Форма другая
+                            // (группы, позиции, цена, остаток), и общего у
+                            // них только характеристики раздела.
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ProductPublicationScreen(
+                                  categoryId: category.id,
+                                  categoryName: category.name,
+                                  categoryPath: widget.catalogName ?? '',
                                 ),
                               ),
                             );

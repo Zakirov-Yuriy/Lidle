@@ -4,6 +4,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/no_internet_screen.dart';
 import 'package:lidle/models/catalog_model.dart';
+import 'package:lidle/services/products_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
@@ -49,10 +50,32 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   bool _isLoading = true;
   String? _error;
 
+  /// Каталоги ТОВАРОВ.
+  ///
+  /// Один и тот же каталог может лежать сразу в двух списках, в объявлениях и
+  /// в товарах (решение заказчика от 09.09.2026), поэтому по названию или по
+  /// типу отличить его нельзя. Спрашиваем витрину товаров, какие каталоги её,
+  /// и по этому списку решаем, какую форму открыть: подачу объявления или
+  /// заведение товара.
+  Set<int> _productCatalogIds = {};
+
   @override
   void initState() {
     super.initState();
     _loadCatalogs();
+    _loadProductCatalogs();
+  }
+
+  Future<void> _loadProductCatalogs() async {
+    final catalogs = await ProductsService.catalogs();
+
+    if (!mounted) return;
+
+    // Пустой ответ это не ошибка: товарных каталогов может не быть вовсе.
+    // Тогда всё ведёт себя как раньше, и подача объявлений не ломается.
+    setState(() {
+      _productCatalogIds = catalogs.map((c) => c.id).toSet();
+    });
   }
 
   /// Загружает список каталогов из API.
@@ -272,6 +295,12 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                             UniversalCategoryScreen(
                                               catalogId: catalog.id,
                                               catalogName: catalog.name,
+
+                                              // Товарный каталог ведёт к
+                                              // форме товара, обычный — к
+                                              // подаче объявления.
+                                              isProduct: _productCatalogIds
+                                                  .contains(catalog.id),
                                             ),
                                       ),
                                     );
