@@ -191,14 +191,23 @@ class ProductPublication {
 
 /// Бренд из справочника.
 class ProductBrand {
-  const ProductBrand({required this.id, required this.name});
+  const ProductBrand({
+    required this.id,
+    required this.name,
+    this.productsCount = 0,
+  });
 
   final int id;
   final String name;
 
+  /// Сколько товаров продавца уже заведено под этим брендом. Считает сервер:
+  /// по своим товарам, а не по всему справочнику.
+  final int productsCount;
+
   factory ProductBrand.fromJson(Map<String, dynamic> data) => ProductBrand(
     id: _int(data['id']) ?? 0,
     name: '${data['name'] ?? ''}',
+    productsCount: _int(data['products_count']) ?? 0,
   );
 }
 

@@ -15,6 +15,12 @@
 // ними ещё нет. Они нарисованы и намеренно неактивны: показать кнопку,
 // которая ничего не делает, честнее, чем спрятать её и потом переделывать
 // вёрстку.
+//
+// БРЕНД ЗДЕСЬ ГЛАВНЫЙ (решение заказчика от 09.09.2026). Публикация
+// определяется парой раздел + бренд: у продавца бывает несколько брендов, и
+// в каждом свои товары. Поэтому экран сначала спрашивает бренд, а уже потом
+// заводит публикацию — выбранный бренд открывает то, что под ним в этом
+// разделе уже заведено, а новый бренд начинает новую витрину.
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
@@ -48,6 +54,10 @@ class ProductPublicationScreen extends StatefulWidget {
 class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
   ProductPublication? _publication;
 
+  /// Бренды продавца с числом товаров в каждом. Пусто у того, кто заводит
+  /// первый товар: ему показываем поле ввода, а не выбор из ничего.
+  List<ProductBrand> _brands = const [];
+
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
@@ -67,16 +77,61 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
   }
 
   Future<void> _start() async {
+    _brands = await _loadBrands();
+
+    if (!mounted) return;
+
+    // Бренды есть — спрашиваем сразу, до заведения публикации. Так публикация
+    // заводится одна и та, что нужна: выбранный бренд открывает свою витрину
+    // в этом разделе, а не плодит пустые черновики без бренда.
+    if (_brands.isNotEmpty) {
+      final chosen = await _chooseBrand();
+
+      if (!mounted) return;
+
+      if (chosen != null) {
+        await _openPublication(brand: chosen);
+
+        return;
+      }
+    }
+
+    await _openPublication();
+  }
+
+  /// Мои бренды. Отказ сервера не должен ронять экран: без списка человек
+  /// просто впишет название руками.
+  Future<List<ProductBrand>> _loadBrands() async {
+    try {
+      return await ProductsCabinetApi.myBrands();
+    } catch (e) {
+      log.d('Список брендов не пришёл: $e');
+
+      return const [];
+    }
+  }
+
+  /// Открыть публикацию по паре раздел + бренд.
+  ///
+  /// Сервер сам решает, завести новую или вернуть ту, что уже есть под этим
+  /// брендом: для экрана оба случая одинаковые.
+  Future<void> _openPublication({ProductBrand? brand}) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
       final publication = await ProductsCabinetApi.createPublication(
         categoryId: widget.categoryId,
+        brandId: brand?.id,
       );
 
       if (!mounted) return;
 
       setState(() {
         _publication = publication;
-        _brand.text = publication.brandName ?? '';
+        _brand.text = publication.brandName ?? brand?.name ?? '';
         _isLoading = false;
       });
 
@@ -114,23 +169,53 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
     }
   }
 
+  /// Кнопка «Создать» у поля ввода: завести бренд и открыть его витрину.
   Future<void> _saveBrand() async {
-    final id = _publication?.id;
     final name = _brand.text.trim();
 
-    if (id == null || name.isEmpty) return;
+    if (name.isEmpty) return;
 
     try {
       // Сервер сам решит, заводить бренд или вернуть существующий с таким же
       // названием. Поэтому кнопка одна, а не «выбрать» и «создать».
       final brand = await ProductsCabinetApi.createBrand(name);
 
-      await ProductsCabinetApi.updatePublication(id, brandId: brand.id);
+      await _useBrand(brand);
+    } catch (e) {
+      log.e('Бренд не сохранился: $e');
+      _say('Бренд не сохранился. Попробуйте ещё раз.');
+    }
+  }
+
+  /// Поставить публикации бренд.
+  ///
+  /// Пустой черновик без бренда переиспользуем, а не бросаем: иначе каждый
+  /// выбор бренда оставлял бы в базе брошенную публикацию. Во всех остальных
+  /// случаях уходим на пару раздел + бренд, и сервер отдаёт витрину этого
+  /// бренда со всем, что в ней уже есть.
+  Future<void> _useBrand(ProductBrand brand) async {
+    final current = _publication;
+
+    _rememberBrand(brand);
+
+    final isEmptyDraft = current != null &&
+        current.brandId == null &&
+        current.groups.isEmpty &&
+        !current.isPublished;
+
+    if (!isEmptyDraft) {
+      await _openPublication(brand: brand);
+
+      return;
+    }
+
+    try {
+      await ProductsCabinetApi.updatePublication(current.id, brandId: brand.id);
 
       if (!mounted) return;
 
       setState(() {
-        _publication = _publication?.copyWith(
+        _publication = current.copyWith(
           brandId: brand.id,
           brandName: brand.name,
         );
@@ -142,6 +227,157 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
       log.e('Бренд не сохранился: $e');
       _say('Бренд не сохранился. Попробуйте ещё раз.');
     }
+  }
+
+  /// Держим новый бренд в списке своих, не перезапрашивая его с сервера.
+  void _rememberBrand(ProductBrand brand) {
+    if (_brands.any((item) => item.id == brand.id)) return;
+
+    _brands = [..._brands, brand]..sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  /// Выбор бренда: список своих с числом товаров плюс «Новый бренд».
+  ///
+  /// Возвращает null, если человек закрыл список ничего не выбрав.
+  Future<ProductBrand?> _chooseBrand() async {
+    final result = await showModalBottomSheet<Object>(
+      context: context,
+      backgroundColor: primaryBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => _brandSheet(),
+    );
+
+    if (result is ProductBrand) return result;
+
+    if (result == 'new') return _askNewBrand();
+
+    return null;
+  }
+
+  Widget _brandSheet() {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(defaultPadding, 20, defaultPadding, 12),
+            child: Text(
+              'Выберите бренд',
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _brands.length,
+              itemBuilder: (context, index) {
+                final brand = _brands[index];
+                final isCurrent = brand.id == _publication?.brandId;
+
+                return ListTile(
+                  title: Text(
+                    brand.name,
+                    style: const TextStyle(color: textPrimary, fontSize: 15),
+                  ),
+                  subtitle: Text(
+                    brand.productsCount == 0
+                        ? 'Пока без товаров'
+                        : 'Товаров: ${brand.productsCount}',
+                    style: const TextStyle(color: textMuted, fontSize: 12),
+                  ),
+                  trailing: isCurrent
+                      ? const Icon(Icons.check, color: activeIconColor, size: 20)
+                      : null,
+                  onTap: () => Navigator.pop(context, brand),
+                );
+              },
+            ),
+          ),
+          const Divider(color: Color(0xFF2A3744), height: 1),
+          ListTile(
+            leading: const Icon(Icons.add_circle_outline,
+                color: activeIconColor, size: 24),
+            title: const Text(
+              'Новый бренд',
+              style: TextStyle(color: activeIconColor, fontSize: 15),
+            ),
+            onTap: () => Navigator.pop(context, 'new'),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  /// Название нового бренда.
+  Future<ProductBrand?> _askNewBrand() async {
+    final field = TextEditingController();
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: primaryBackground,
+        title: const Text(
+          'Новый бренд',
+          style: TextStyle(color: textPrimary, fontSize: 18),
+        ),
+        content: TextField(
+          controller: field,
+          autofocus: true,
+          style: const TextStyle(color: textPrimary, fontSize: 15),
+          decoration: const InputDecoration(
+            hintText: 'Введите название',
+            hintStyle: TextStyle(color: textMuted, fontSize: 15),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена', style: TextStyle(color: textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, field.text.trim()),
+            child: const Text('Создать',
+                style: TextStyle(color: activeIconColor)),
+          ),
+        ],
+      ),
+    );
+
+    field.dispose();
+
+    if (name == null || name.isEmpty) return null;
+
+    try {
+      final brand = await ProductsCabinetApi.createBrand(name);
+
+      _rememberBrand(brand);
+
+      return brand;
+    } catch (e) {
+      log.e('Бренд не завёлся: $e');
+      _say('Бренд не завёлся. Попробуйте ещё раз.');
+
+      return null;
+    }
+  }
+
+  /// «Изменить» у бренда: выбрать другой и открыть его витрину.
+  Future<void> _switchBrand() async {
+    final brand = await _chooseBrand();
+
+    if (brand == null || !mounted) return;
+
+    if (brand.id == _publication?.brandId) return;
+
+    await _useBrand(brand);
   }
 
   Future<void> _toggleAutoRenew(bool value) async {
@@ -249,6 +485,18 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
     );
   }
 
+  /// Подпись под брендом: сколько товаров под ним уже заведено.
+  String _brandHint(ProductPublication publication) {
+    final id = publication.brandId;
+
+    if (id == null) return 'Выберите из своих или заведите новый';
+
+    final known = _brands.where((brand) => brand.id == id);
+    final count = known.isEmpty ? _positions : known.first.productsCount;
+
+    return count == 0 ? 'Пока без товаров' : 'Товаров в бренде: $count';
+  }
+
   int get _positions {
     final groups = _publication?.groups ?? const <ProductGroup>[];
 
@@ -353,7 +601,19 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
 
               const SizedBox(height: 20),
               _label('Название бренда*'),
-              _brandField(),
+
+              // Первому товару выбирать не из чего: показываем поле ввода.
+              // Дальше бренд выбирается из своих, и в каждом видно, сколько
+              // товаров уже заведено.
+              if (_brands.isEmpty && publication.brandId == null)
+                _brandField()
+              else
+                _card(
+                  title: publication.brandName ?? 'Выберите бренд',
+                  subtitle: _brandHint(publication),
+                  action: 'Изменить',
+                  onAction: _switchBrand,
+                ),
 
               const SizedBox(height: 20),
               _label('Добавить товар'),

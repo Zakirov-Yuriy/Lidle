@@ -230,6 +230,25 @@ class ProductsCabinetApi {
         .toList();
   }
 
+  /// Мои бренды: те, под которыми продавец уже что-то завёл, с числом
+  /// товаров в каждом.
+  ///
+  /// У продавца бывает несколько брендов, и в каждом свои товары (решение
+  /// заказчика от 09.09.2026). Выбор бренда на экране публикации переключает
+  /// витрину: открывается то, что под этим брендом уже заведено.
+  static Future<List<ProductBrand>> myBrands() async {
+    final response = await ApiService.get('/me/brands/mine');
+
+    final data = response['data'];
+
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ProductBrand.fromJson)
+        .toList();
+  }
+
   /// Кнопка «Создать» у бренда.
   ///
   /// Бренд с таким же названием сервер не заводит второй раз, а возвращает
