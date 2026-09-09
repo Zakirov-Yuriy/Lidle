@@ -21,6 +21,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_groups_screen.dart';
+import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -192,7 +193,26 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
       if (!mounted) return;
 
       _say('Товары опубликованы.');
-      Navigator.pop(context, true);
+
+      // Ведём на витрину товаров, а не назад в категории.
+      //
+      // Так было: человек нажимал «Опубликовать» и оказывался на экране
+      // выбора категорий, ровно там, откуда пришёл. Понять, получилось ли,
+      // было невозможно. Теперь он сразу видит свой товар глазами
+      // покупателя, с кнопкой «В корзину».
+      //
+      // pushAndRemoveUntil, а не push: экраны заведения за спиной больше не
+      // нужны, и кнопка «назад» не должна возвращать в форму, которая уже
+      // опубликована.
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => ProductsScreen(
+            categoryId: widget.categoryId,
+            categoryName: widget.categoryName,
+          ),
+        ),
+        (route) => route.isFirst,
+      );
     } catch (e) {
       log.e('Публикация не прошла: $e');
 
