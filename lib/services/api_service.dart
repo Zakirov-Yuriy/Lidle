@@ -1876,9 +1876,16 @@ class ApiService {
     String? token,
   }) async {
     try {
-      final headers = {'X-App-Client': 'mobile'};
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
+      final headers = {'X-App-Client': 'mobile', 'Accept': 'application/json'};
+
+      // Токен читаем из хранилища, если его не передали: вызывающему коду
+      // незачем знать, где он лежит, а забытый токен здесь означал бы 401 на
+      // ровном месте.
+      final effectiveToken =
+          token ?? (HiveService.getUserData('token') as String?);
+
+      if (effectiveToken != null) {
+        headers['Authorization'] = 'Bearer $effectiveToken';
       }
 
       // log.d('═══════════════════════════════════════════════════════');
@@ -1909,6 +1916,87 @@ class ApiService {
       throw Exception('Превышено время ожидания ответа от сервера');
     } catch (e) {
       throw Exception('Ошибка загрузки файла: $e');
+    }
+  }
+
+  /// Загрузить картинки multipart-ом.
+  ///
+  /// Общий вид для всего проекта: новые файлы уходят полями `images[0]`,
+  /// `images[1]`, уже сохранённые картинки — теми же полями строками с
+  /// именами файлов. Порядок массива становится порядком в карточке, поэтому
+  /// existingImages идут после файлов только если так задумано вызывающим
+  /// кодом.
+  ///
+  /// ВАЖНО: сервер заменяет набор картинок целиком. Прислать одни новые файлы
+  /// значит стереть прежние, и если старые надо сохранить, их имена обязаны
+  /// приехать в том же запросе.
+  static Future<Map<String, dynamic>> uploadImages(
+    String endpoint, {
+    List<String> filePaths = const [],
+    List<String> existingImages = const [],
+    String field = 'images',
+  }) async {
+    return _retryRequest(
+      () => _uploadImagesRequest(endpoint, filePaths, existingImages, field),
+      endpoint,
+    );
+  }
+
+  static Future<Map<String, dynamic>> _uploadImagesRequest(
+    String endpoint,
+    List<String> filePaths,
+    List<String> existingImages,
+    String field,
+  ) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl$endpoint'),
+      );
+
+      final token = HiveService.getUserData('token') as String?;
+
+      // Content-Type здесь НЕ ставим: его собирает сам MultipartRequest
+      // вместе с границей частей, и подмена на application/json означала бы
+      // запрос, который сервер разобрать не сможет.
+      request.headers.addAll({
+        'Accept': 'application/json',
+        'X-App-Client': 'mobile',
+        if (token != null) 'Authorization': 'Bearer $token',
+      });
+
+      var index = 0;
+
+      for (final path in filePaths) {
+        if (!await File(path).exists()) continue;
+
+        request.files.add(
+          await http.MultipartFile.fromPath('$field[$index]', path),
+        );
+
+        index++;
+      }
+
+      for (final name in existingImages) {
+        if (name.isEmpty) continue;
+
+        request.fields['$field[$index]'] = name;
+        index++;
+      }
+
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+
+      return _handleResponse(await http.Response.fromStream(streamed));
+    } on TokenExpiredException {
+      rethrow;
+    } on RateLimitException {
+      rethrow;
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа от сервера');
     }
   }
 

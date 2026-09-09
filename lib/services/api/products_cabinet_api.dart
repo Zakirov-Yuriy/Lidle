@@ -123,6 +123,24 @@ class ProductsCabinetApi {
     await ApiService.delete('/me/product-publications/groups/$groupId');
   }
 
+  /// Обложка группы.
+  ///
+  /// Обложка одна: новая заменяет старую, старый файл сервер удаляет сам.
+  static Future<ProductGroup> uploadGroupImage(
+    int groupId,
+    String filePath,
+  ) async {
+    final response = await ApiService.uploadFile(
+      '/me/product-publications/groups/$groupId/image',
+      filePath: filePath,
+      fieldName: 'image',
+    );
+
+    return ProductGroup.fromJson(
+      Map<String, dynamic>.from(response['data'] as Map),
+    );
+  }
+
   // ── Позиция ───────────────────────────────────────────────────────
 
   /// Поля формы позиции для раздела: «Тип одежды», «С принтом», «Размер».
@@ -187,6 +205,24 @@ class ProductsCabinetApi {
     final data = response['data'];
 
     return data is Map && data['id'] is int ? data['id'] as int : 0;
+  }
+
+  /// Картинки позиции. Ручка та же, что у товаров кабинета с задачи 4.
+  ///
+  /// Сервер заменяет набор целиком, поэтому уже сохранённые картинки, если их
+  /// надо оставить, приезжают именами в том же запросе.
+  static Future<void> uploadPositionImages(
+    int productId,
+    List<String> filePaths, {
+    List<String> keep = const [],
+  }) async {
+    if (filePaths.isEmpty && keep.isEmpty) return;
+
+    await ApiService.uploadImages(
+      '/me/products/$productId/images',
+      filePaths: filePaths,
+      existingImages: keep,
+    );
   }
 
   static Future<void> updatePosition(

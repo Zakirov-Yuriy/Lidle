@@ -15,12 +15,15 @@
 // Блок «Кластер» ведёт на экран кластеров, у которого пока нет бэкенда:
 // заказчик не назвал, что кластер значит. Подробности там же.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_attributes_form.dart';
+import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_clusters_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -47,6 +50,9 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   /// Столько символов просит макет в описании позиции.
   static const int _minDescription = 70;
 
+  /// Столько же картинок, сколько у объявления и у товара в кабинете.
+  static const int _maxPhotos = 15;
+
   final _name = TextEditingController();
   final _position = TextEditingController();
   final _price = TextEditingController();
@@ -57,6 +63,13 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   final _attributes = ProductAttributesController();
 
   List<Attribute> _fields = const [];
+
+  /// Выбранные фотографии позиции: пути к файлам на телефоне.
+  ///
+  /// Уходят на сервер уже ПОСЛЕ сохранения товара: ручка картинок принимает
+  /// их только к существующей записи. Поэтому до нажатия «Сохранить» они
+  /// живут здесь и показываются прямо с диска.
+  final List<String> _photos = [];
 
   int? _brandId;
   bool _isLoading = true;
@@ -157,7 +170,7 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
         brandId = (await ProductsCabinetApi.createBrand(brandName)).id;
       }
 
-      await ProductsCabinetApi.createPosition(
+      final productId = await ProductsCabinetApi.createPosition(
         publicationId: widget.publication.id,
         groupId: widget.group.id,
         position: int.tryParse(_position.text.trim()),
@@ -169,6 +182,23 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
         brandId: brandId,
         attributes: _attributes.payload(),
       );
+
+      // Фотографии заливаем вторым запросом, и его неудача позицию не
+      // отменяет: товар уже заведён, и выбрасывать заполненную форму из-за
+      // сорвавшейся картинки значит потерять работу человека. Просто
+      // говорим, что фото не долетело.
+      if (_photos.isNotEmpty && productId > 0) {
+        try {
+          await ProductsCabinetApi.uploadPositionImages(productId, _photos);
+        } catch (e) {
+          log.e('Фотографии позиции не загрузились: $e');
+
+          if (mounted) {
+            _say('Позиция сохранена, а фотографии не загрузились.'
+                ' Добавьте их из карточки позиции.');
+          }
+        }
+      }
 
       if (!mounted) return;
 
@@ -353,28 +383,128 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     );
   }
 
-  /// Плитка «Добавить изображение».
+  /// Выбрать фотографии позиции.
   ///
-  /// Картинки позиции заливаются отдельной ручкой и уже после сохранения:
-  /// сервер принимает их только к существующему товару. Поэтому здесь пока
-  /// заглушка, а не выбор файла — иначе человек выберет фото, а оно
-  /// потеряется вместе с несохранённой формой.
+  /// Сами файлы уходят на сервер после сохранения товара: ручка картинок
+  /// принимает их только к существующей записи. До этого показываем их прямо
+  /// с диска, чтобы человек видел, что выбрал.
+  Future<void> _addPhotos() async {
+    final picked = await pickProductPhotos(context, multiple: true);
+
+    if (picked.isEmpty || !mounted) return;
+
+    var dropped = 0;
+
+    setState(() {
+      for (final path in picked) {
+        if (_photos.contains(path)) continue;
+
+        if (_photos.length >= _maxPhotos) {
+          dropped++;
+
+          continue;
+        }
+
+        _photos.add(path);
+      }
+    });
+
+    if (dropped > 0) {
+      _say('Больше $_maxPhotos фотографий к одной позиции не добавить.');
+    }
+  }
+
+  /// Фотографии позиции: выбранные плитками и плитка «плюс».
+  ///
+  /// Первая фотография становится главной — той, что видно на витрине и в
+  /// ленте. Поэтому она подписана: иначе человек узнаёт об этом уже после
+  /// публикации.
   Widget _imagePlaceholder() {
-    return Container(
-      height: 120,
-      decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.add_circle_outline, color: textSecondary, size: 28),
-          SizedBox(height: 8),
-          Text('Добавить изображение',
-              style: TextStyle(color: textSecondary, fontSize: 14)),
-        ],
-      ),
+    if (_photos.isEmpty) {
+      return GestureDetector(
+        onTap: _addPhotos,
+        child: Container(
+          height: 120,
+          decoration: BoxDecoration(
+            color: formBackground,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.add_circle_outline, color: textSecondary, size: 28),
+              SizedBox(height: 8),
+              Text('Добавить изображение',
+                  style: TextStyle(color: textSecondary, fontSize: 14)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (var index = 0; index < _photos.length; index++)
+          SizedBox(
+            width: 104,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(_photos[index]),
+                        width: 104,
+                        height: 104,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _photos.removeAt(index)),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(Icons.close,
+                              color: Colors.white, size: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (index == 0)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text('Главная',
+                        style: TextStyle(color: textMuted, fontSize: 11)),
+                  ),
+              ],
+            ),
+          ),
+        if (_photos.length < _maxPhotos)
+          GestureDetector(
+            onTap: _addPhotos,
+            child: Container(
+              width: 104,
+              height: 104,
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.add_circle_outline,
+                  color: textSecondary, size: 28),
+            ),
+          ),
+      ],
     );
   }
 

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -196,6 +197,80 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
         ],
       ),
     );
+  }
+
+  /// Обложка группы.
+  ///
+  /// Обложка одна, новая заменяет старую — так же, как главная фотография у
+  /// объявления. Сервер удаляет прежний файл сам, поэтому спрашивать
+  /// подтверждение не о чем: терять нечего, обложку всегда можно поставить
+  /// другую.
+  Future<void> _setGroupImage(ProductGroup group) async {
+    final picked = await pickProductPhotos(context);
+
+    if (picked.isEmpty || !mounted) return;
+
+    _say('Загружаем обложку…');
+
+    try {
+      await ProductsCabinetApi.uploadGroupImage(group.id, picked.first);
+
+      await _reload();
+    } catch (e) {
+      log.e('Обложка группы не загрузилась: $e');
+      _say('Обложка не загрузилась. Проверьте связь и попробуйте ещё раз.');
+    }
+  }
+
+  /// Фотографии уже заведённой позиции.
+  ///
+  /// Сервер заменяет набор картинок целиком, а прежние имена файлов в
+  /// приложение не приезжают — только готовые ссылки. Поэтому у позиции с
+  /// фотографией сначала спрашиваем: то, что там лежит, заменится.
+  Future<void> _setPositionImages(ProductPosition position) async {
+    if (position.image != null) {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: secondaryBackground,
+          title: const Text('Заменить фотографии?',
+              style: TextStyle(color: textPrimary, fontSize: 17)),
+          content: const Text(
+            'Новые фотографии встанут вместо тех, что уже загружены.',
+            style: TextStyle(color: textSecondary, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Отмена',
+                  style: TextStyle(color: textSecondary)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Заменить',
+                  style: TextStyle(color: activeIconColor)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+    }
+
+    final picked = await pickProductPhotos(context, multiple: true);
+
+    if (picked.isEmpty || !mounted) return;
+
+    _say('Загружаем фотографии…');
+
+    try {
+      await ProductsCabinetApi.uploadPositionImages(position.id, picked);
+
+      await _reload();
+    } catch (e) {
+      log.e('Фотографии позиции не загрузились: $e');
+      _say('Фотографии не загрузились. Проверьте связь и попробуйте ещё раз.');
+    }
   }
 
   Future<void> _addPosition() async {
@@ -407,26 +482,50 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: formBackground,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isOpen ? activeIconColor : Colors.transparent,
-                        width: 2,
+                  Stack(
+                    children: [
+                      Container(
+                        height: 88,
+                        decoration: BoxDecoration(
+                          color: formBackground,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isOpen ? activeIconColor : Colors.transparent,
+                            width: 2,
+                          ),
+                          image: group.image == null
+                              ? null
+                              : DecorationImage(
+                                  image: NetworkImage(group.image!),
+                                  fit: BoxFit.cover,
+                                ),
+                        ),
+                        child: group.image != null
+                            ? null
+                            : const Icon(Icons.photo_outlined,
+                                color: textMuted, size: 24),
                       ),
-                      image: group.image == null
-                          ? null
-                          : DecorationImage(
-                              image: NetworkImage(group.image!),
-                              fit: BoxFit.cover,
+
+                      // Значок фотоаппарата в углу: обложку ставят прямо
+                      // отсюда. Прятать это в длинное нажатие нельзя — про
+                      // длинное нажатие человек не догадается.
+                      Positioned(
+                        right: 4,
+                        bottom: 4,
+                        child: GestureDetector(
+                          onTap: () => _setGroupImage(group),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.55),
+                              borderRadius: BorderRadius.circular(6),
                             ),
-                    ),
-                    child: group.image != null
-                        ? null
-                        : const Icon(Icons.photo_outlined,
-                            color: textMuted, size: 24),
+                            child: const Icon(Icons.photo_camera_outlined,
+                                color: Colors.white, size: 16),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -485,21 +584,42 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 150,
-            decoration: BoxDecoration(
-              color: formBackground,
-              borderRadius: BorderRadius.circular(8),
-              image: position.image == null
-                  ? null
-                  : DecorationImage(
-                      image: NetworkImage(position.image!),
-                      fit: BoxFit.cover,
+          Stack(
+            children: [
+              Container(
+                height: 150,
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(8),
+                  image: position.image == null
+                      ? null
+                      : DecorationImage(
+                          image: NetworkImage(position.image!),
+                          fit: BoxFit.cover,
+                        ),
+                ),
+                child: position.image != null
+                    ? null
+                    : const Icon(Icons.photo_outlined,
+                        color: textMuted, size: 24),
+              ),
+              Positioned(
+                right: 6,
+                bottom: 6,
+                child: GestureDetector(
+                  onTap: () => _setPositionImages(position),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(6),
                     ),
-            ),
-            child: position.image != null
-                ? null
-                : const Icon(Icons.photo_outlined, color: textMuted, size: 24),
+                    child: const Icon(Icons.photo_camera_outlined,
+                        color: Colors.white, size: 18),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
