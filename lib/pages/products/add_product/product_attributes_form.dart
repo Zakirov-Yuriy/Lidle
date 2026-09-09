@@ -16,6 +16,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/filter_models.dart';
+import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter_field_resolver.dart';
 import 'package:lidle/pages/dynamic_filter/widgets/boolean_field.dart';
 import 'package:lidle/pages/dynamic_filter/widgets/button_group_field.dart';
@@ -61,6 +62,44 @@ class ProductAttributesController {
   void setSelected(int id, Set<String> values) => _selected[id] = values;
 
   void setFlag(int id, bool value) => _flags[id] = value;
+
+  /// Подставить уже сохранённое: правка открывается заполненной формой.
+  ///
+  /// Выбранные варианты приходят номерами значений, а поля хранят их
+  /// названиями — поэтому номера переводим по справочнику раздела. Значит,
+  /// подставлять надо ПОСЛЕ того, как поля загружены: иначе переводить не по
+  /// чему.
+  ///
+  /// Характеристику, которой в разделе больше нет (администратор удалил),
+  /// молча пропускаем: показать её всё равно нечем.
+  void prefill(List<ProductPositionAttribute> saved) {
+    for (final item in saved) {
+      final match = _fields.where((field) => field.id == item.id);
+
+      if (match.isEmpty) continue;
+
+      final field = match.first;
+
+      if (item.valueIds.isNotEmpty) {
+        final titles = field.values
+            .where((value) => item.valueIds.contains(value.id))
+            .map((value) => value.value)
+            .toSet();
+
+        if (titles.isNotEmpty) {
+          _selected[item.id] = titles;
+
+          // Характеристика с единственным значением рисуется переключателем
+          // («С принтом»), и её состояние живёт отдельно от выбора.
+          if (field.values.length == 1) _flags[item.id] = true;
+
+          continue;
+        }
+      }
+
+      if (item.value.isNotEmpty) text(item.id).text = item.value;
+    }
+  }
 
   /// Названия незаполненных обязательных полей.
   ///

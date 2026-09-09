@@ -51,20 +51,60 @@ class ProductGroup {
   }
 }
 
+/// Характеристика позиции: «Размер: 54», «Цвет: зелёный».
+///
+/// Набор характеристик у каждого раздела свой, его заводит администратор.
+/// Поэтому здесь не поля «размер» и «цвет», а список: в мебели это будет
+/// «Материал» и «Ширина», и карточка покажет их без единой правки.
+class ProductPositionAttribute {
+  const ProductPositionAttribute({
+    required this.id,
+    required this.title,
+    required this.value,
+    this.valueIds = const [],
+  });
+
+  final int id;
+  final String title;
+  final String value;
+
+  /// Номера выбранных значений справочника. Пусто у характеристик, которые
+  /// человек вписывает руками. Нужны, чтобы открыть правку с уже отмеченными
+  /// вариантами.
+  final List<int> valueIds;
+
+  factory ProductPositionAttribute.fromJson(Map<String, dynamic> data) {
+    final ids = data['values_id'];
+
+    return ProductPositionAttribute(
+      id: _int(data['id']) ?? 0,
+      title: '${data['title'] ?? ''}',
+      value: '${data['value'] ?? ''}',
+      valueIds: ids is List
+          ? ids.map(_int).whereType<int>().toList()
+          : const [],
+    );
+  }
+}
+
 /// Позиция: тот же товар, что лежит на витрине.
 ///
-/// Здесь только то, что показывает экран группы: картинка, название, цена,
-/// размер и цвет. Полная карточка товара живёт в `ProductItem`.
+/// Здесь то, что показывает карточка позиции в кабинете и что нужно, чтобы
+/// открыть её на правку. Полная карточка товара для покупателя живёт в
+/// `ProductItem`.
 class ProductPosition {
   const ProductPosition({
     required this.id,
     required this.name,
     required this.price,
     this.image,
+    this.images = const [],
     this.position,
-    this.size,
-    this.color,
+    this.description = '',
+    this.groupId,
+    this.brandId,
     this.stockQuantity = 0,
+    this.attributes = const [],
   });
 
   final int id;
@@ -72,15 +112,23 @@ class ProductPosition {
   final num price;
   final String? image;
 
+  /// Все картинки позиции ссылками.
+  final List<String> images;
+
   /// «Номер позиции» с макета.
   final int? position;
 
-  final String? size;
-  final String? color;
+  final String description;
+  final int? groupId;
+  final int? brandId;
   final int stockQuantity;
+
+  /// Характеристики раздела, заполненные при заведении.
+  final List<ProductPositionAttribute> attributes;
 
   factory ProductPosition.fromJson(Map<String, dynamic> data) {
     final images = data['images'];
+    final attributes = data['attributes'];
 
     return ProductPosition(
       id: _int(data['id']) ?? 0,
@@ -89,8 +137,23 @@ class ProductPosition {
       image: data['image']?.toString().isNotEmpty == true
           ? data['image'].toString()
           : (images is List && images.isNotEmpty ? '${images.first}' : null),
+      images: images is List
+          ? images.map((item) => '$item').where((item) => item.isNotEmpty).toList()
+          : const [],
       position: _int(data['position']),
+      description: '${data['description'] ?? ''}',
+      groupId: _int(data['group_id']),
+      brandId: _int(data['brand_id']),
       stockQuantity: _int(data['stock_quantity']) ?? 0,
+
+      // Характеристики приезжают только с полной публикацией: в списке
+      // товаров сервер их не считает.
+      attributes: attributes is List
+          ? attributes
+                .whereType<Map<String, dynamic>>()
+                .map(ProductPositionAttribute.fromJson)
+                .toList()
+          : const [],
     );
   }
 }

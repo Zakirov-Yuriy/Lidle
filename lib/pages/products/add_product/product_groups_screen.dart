@@ -273,6 +273,27 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
     }
   }
 
+  /// Правка позиции: тот же экран, что и заведение, но с заполненной формой.
+  Future<void> _editPosition(ProductPosition position) async {
+    final group = _openGroup;
+
+    if (group == null) return;
+
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPositionScreen(
+          publication: _publication,
+          group: group,
+          nextPosition: position.position ?? 1,
+          existing: position,
+        ),
+      ),
+    );
+
+    if (saved == true) await _reload();
+  }
+
   Future<void> _addPosition() async {
     final group = _openGroup;
 
@@ -651,19 +672,137 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text(
-            position.name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: textPrimary, fontSize: 14),
+
+          // Название и карандаш в одной строке: правка начинается там же, где
+          // человек читает название, а не в отдельном меню.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  position.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: textPrimary, fontSize: 14),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => _editPosition(position),
+                child: const Padding(
+                  padding: EdgeInsets.only(left: 6, top: 2),
+                  child: Icon(Icons.edit_outlined,
+                      color: activeIconColor, size: 18),
+                ),
+              ),
+            ],
           ),
+
           const SizedBox(height: 2),
           Text(
-            '${position.price} ₽',
+            _price(position.price),
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
+
+          // Кластер пока показываем названием позиции, как на макете. Своего
+          // значения у него нет: экран кластеров ничего не сохраняет, потому
+          // что заказчик не назвал, что кластер значит.
+          const SizedBox(height: 4),
+          _attributeLine('Кластер', position.name, muted: true),
+
+          for (final attribute in position.attributes)
+            _attributeLine(attribute.title, attribute.value),
         ],
       ),
     );
+  }
+
+  /// Цена без хвоста «.0»: 4559.0 читается как ошибка, а не как цена.
+  String _price(num value) {
+    final rounded = value % 1 == 0 ? value.toInt().toString() : '$value';
+    final digits = rounded.split('').reversed.toList();
+    final grouped = <String>[];
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && i % 3 == 0) grouped.add(' ');
+
+      grouped.add(digits[i]);
+    }
+
+    return '${grouped.reversed.join()} ₽';
+  }
+
+  /// Строка «Размер: 54» под карточкой.
+  ///
+  /// Набор характеристик у каждого раздела свой, поэтому строки не зашиты, а
+  /// приходят с сервера: в мебели тут будут «Материал» и «Ширина».
+  Widget _attributeLine(String title, String value, {bool muted = false}) {
+    final swatch = _colorOf(title, value);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$title: ',
+            style: const TextStyle(color: textSecondary, fontSize: 13),
+          ),
+          if (swatch != null)
+            Container(
+              width: 16,
+              height: 16,
+              margin: const EdgeInsets.only(top: 2),
+              decoration: BoxDecoration(
+                color: swatch,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            )
+          else
+            Expanded(
+              child: Text(
+                value,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: muted ? textMuted : textPrimary,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Цвет квадратиком, как на макете.
+  ///
+  /// Только для характеристики про цвет и только для названий, которые мы
+  /// знаем: в справочнике цвет хранится словом, кода цвета там нет. Незнакомое
+  /// название покажем текстом — это честнее, чем угадать не тот оттенок.
+  Color? _colorOf(String title, String value) {
+    if (!title.toLowerCase().contains('цвет')) return null;
+
+    const known = <String, Color>{
+      'белый': Color(0xFFFFFFFF),
+      'чёрный': Color(0xFF1A1A1A),
+      'черный': Color(0xFF1A1A1A),
+      'серый': Color(0xFF9E9E9E),
+      'красный': Color(0xFFE53935),
+      'оранжевый': Color(0xFFFB8C00),
+      'жёлтый': Color(0xFFFDD835),
+      'желтый': Color(0xFFFDD835),
+      'зелёный': Color(0xFF43A047),
+      'зеленый': Color(0xFF43A047),
+      'голубой': Color(0xFF29B6F6),
+      'синий': Color(0xFF1E88E5),
+      'фиолетовый': Color(0xFF8E24AA),
+      'розовый': Color(0xFFEC407A),
+      'коричневый': Color(0xFF6D4C41),
+      'бежевый': Color(0xFFD7CCC8),
+      'золотой': Color(0xFFC9A227),
+      'серебряный': Color(0xFFBDBDBD),
+    };
+
+    return known[value.trim().toLowerCase()];
   }
 }

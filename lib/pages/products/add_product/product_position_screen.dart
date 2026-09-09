@@ -34,6 +34,7 @@ class ProductPositionScreen extends StatefulWidget {
     required this.publication,
     required this.group,
     this.nextPosition = 1,
+    this.existing,
   });
 
   final ProductPublication publication;
@@ -41,6 +42,13 @@ class ProductPositionScreen extends StatefulWidget {
 
   /// Номер позиции по умолчанию: следующий по счёту в группе.
   final int nextPosition;
+
+  /// Позиция, которую правим. Пусто — заводим новую.
+  ///
+  /// Экран один на оба случая намеренно: поля, характеристики и проверки у
+  /// заведения и правки одни и те же, а вторая форма разъехалась бы с первой
+  /// на первой же правке макета.
+  final ProductPosition? existing;
 
   @override
   State<ProductPositionScreen> createState() => _ProductPositionScreenState();
@@ -64,6 +72,13 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
 
   List<Attribute> _fields = const [];
 
+  /// Уже загруженные фотографии: готовые ссылки с сервера.
+  ///
+  /// Показываем их при правке, но дописать к ним новые нельзя: сервер
+  /// заменяет набор целиком, а имена файлов в приложение не приезжают. Поэтому
+  /// выбор новых означает замену, и экран говорит об этом прямо.
+  final List<String> _saved = [];
+
   /// Выбранные фотографии позиции: пути к файлам на телефоне.
   ///
   /// Уходят на сервер уже ПОСЛЕ сохранения товара: ручка картинок принимает
@@ -80,9 +95,19 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   void initState() {
     super.initState();
 
-    _position.text = '${widget.nextPosition}';
+    final existing = widget.existing;
+
+    _position.text = '${existing?.position ?? widget.nextPosition}';
     _brand.text = widget.publication.brandName ?? '';
-    _brandId = widget.publication.brandId;
+    _brandId = existing?.brandId ?? widget.publication.brandId;
+
+    if (existing != null) {
+      _name.text = existing.name;
+      _price.text = existing.price.toString();
+      _quantity.text = '${existing.stockQuantity}';
+      _description.text = existing.description;
+      _saved.addAll(existing.images);
+    }
 
     _loadFields();
   }
@@ -110,6 +135,15 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       setState(() {
         _fields = fields;
         _isLoading = false;
+
+        // Подставляем сохранённое ПОСЛЕ полей: выбранные варианты приходят
+        // номерами значений, а перевести их в названия можно только по
+        // справочнику раздела.
+        _attributes.fields = fields;
+
+        final existing = widget.existing;
+
+        if (existing != null) _attributes.prefill(existing.attributes);
       });
     } catch (e) {
       log.e('Характеристики раздела не загрузились: $e');
@@ -170,18 +204,36 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
         brandId = (await ProductsCabinetApi.createBrand(brandName)).id;
       }
 
-      final productId = await ProductsCabinetApi.createPosition(
-        publicationId: widget.publication.id,
-        groupId: widget.group.id,
-        position: int.tryParse(_position.text.trim()),
-        categoryId: widget.publication.categoryId,
-        name: _name.text.trim(),
-        description: _description.text.trim(),
-        price: num.parse(_price.text.replaceAll(' ', '').replaceAll(',', '.')),
-        stockQuantity: int.parse(_quantity.text.trim()),
-        brandId: brandId,
-        attributes: _attributes.payload(),
-      );
+      final existing = widget.existing;
+      final price = num.parse(_price.text.replaceAll(' ', '').replaceAll(',', '.'));
+
+      if (existing != null) {
+        await ProductsCabinetApi.updatePosition(
+          existing.id,
+          groupId: widget.group.id,
+          position: int.tryParse(_position.text.trim()),
+          name: _name.text.trim(),
+          description: _description.text.trim(),
+          price: price,
+          stockQuantity: int.parse(_quantity.text.trim()),
+          brandId: brandId,
+          attributes: _attributes.payload(),
+        );
+      }
+
+      final productId = existing?.id ??
+          await ProductsCabinetApi.createPosition(
+            publicationId: widget.publication.id,
+            groupId: widget.group.id,
+            position: int.tryParse(_position.text.trim()),
+            categoryId: widget.publication.categoryId,
+            name: _name.text.trim(),
+            description: _description.text.trim(),
+            price: price,
+            stockQuantity: int.parse(_quantity.text.trim()),
+            brandId: brandId,
+            attributes: _attributes.payload(),
+          );
 
       // Фотографии заливаем вторым запросом, и его неудача позицию не
       // отменяет: товар уже заведён, и выбрасывать заполненную форму из-за
@@ -251,9 +303,11 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                 child: const Icon(Icons.arrow_back_ios,
                     color: textPrimary, size: 18),
               ),
-              const Text(
-                'Добавить позицию',
-                style: TextStyle(
+              Text(
+                widget.existing == null
+                    ? 'Добавить позицию'
+                    : 'Изменить позицию',
+                style: const TextStyle(
                   color: textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -420,7 +474,7 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   /// ленте. Поэтому она подписана: иначе человек узнаёт об этом уже после
   /// публикации.
   Widget _imagePlaceholder() {
-    if (_photos.isEmpty) {
+    if (_photos.isEmpty && _saved.isEmpty) {
       return GestureDetector(
         onTap: _addPhotos,
         child: Container(
@@ -439,6 +493,59 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             ],
           ),
         ),
+      );
+    }
+
+    // Пока новых фотографий не выбрали, показываем загруженные. Как только
+    // выбрали — показываем выбранные: именно они встанут вместо прежних.
+    if (_photos.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final url in _saved)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    url,
+                    width: 104,
+                    height: 104,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 104,
+                      height: 104,
+                      color: formBackground,
+                      child: const Icon(Icons.photo_outlined,
+                          color: textMuted, size: 24),
+                    ),
+                  ),
+                ),
+              GestureDetector(
+                onTap: _addPhotos,
+                child: Container(
+                  width: 104,
+                  height: 104,
+                  decoration: BoxDecoration(
+                    color: formBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.add_circle_outline,
+                      color: textSecondary, size: 24),
+                ),
+              ),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Новые фотографии встанут вместо загруженных',
+              style: TextStyle(color: textMuted, fontSize: 12),
+            ),
+          ),
+        ],
       );
     }
 

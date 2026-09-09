@@ -142,3 +142,5 @@ build/
 .env
 .env.local
 .env.*.local
+# Widget Preview related
+.widget_preview/
