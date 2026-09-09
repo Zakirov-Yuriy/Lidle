@@ -33,6 +33,20 @@ class ProductItem {
   /// Время приготовления, для еды. Пустое у обычных товаров.
   final int? cookingTimeMinutes;
 
+  /// Можно ли заказать товар через сайт.
+  ///
+  /// Решает раздел, а не товар: если администратор не повесил на него атрибут
+  /// оплаты, корзины нет. Товар при этом остаётся на витрине и покупается на
+  /// месте у продавца.
+  ///
+  /// По умолчанию `true`: старый сервер поля не присылает, и приложение
+  /// должно вести себя как раньше, а не прятать кнопку у всех подряд.
+  final bool canOrder;
+
+  /// Готовый текст «почему заказа нет». Приходит с сервера, пустой когда
+  /// заказ есть.
+  final String? orderNotice;
+
   /// Характеристики: разрешение экрана, материал, вес. Набор задаётся в
   /// админке на раздел, поэтому фронт его не знает заранее и просто рисует
   /// то, что пришло. В списке товаров пустой: сервер отдаёт характеристики
@@ -57,6 +71,8 @@ class ProductItem {
     this.reviewsCount = 0,
     this.cookingTimeMinutes,
     this.attributes = const [],
+    this.canOrder = true,
+    this.orderNotice,
   });
 
   factory ProductItem.fromJson(Map<String, dynamic> data) {
@@ -79,6 +95,11 @@ class ProductItem {
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
+      canOrder: data['can_order'] != false,
+      orderNotice: () {
+        final notice = '${data['order_notice'] ?? ''}'.trim();
+        return notice.isEmpty ? null : notice;
+      }(),
       attributes: data['attributes'] is List
           ? (data['attributes'] as List)
                 .map(ProductAttribute.tryParse)

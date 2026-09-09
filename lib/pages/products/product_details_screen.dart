@@ -217,6 +217,54 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   /// Название слева, значение справа: так их читают глазами, сравнивая два
   /// товара. Набор полей задаётся в админке на раздел, поэтому рисуем то,
   /// что пришло, и ничего не подписываем от себя.
+  /// «Этот товар покупают на месте».
+  ///
+  /// Текст берём с сервера: одна и та же фраза нужна сайту, приложению и
+  /// админке, и написанная в трёх местах она разойдётся. Свой запасной
+  /// вариант оставлен на случай старого сервера, который поле не присылает.
+  Widget _buildOfflineNotice(ProductItem product) {
+    final shopName = product.shop?.name;
+
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(25, 8, 25, 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.storefront_outlined,
+                    color: textSecondary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    product.orderNotice ??
+                        'Этот товар не заказывают через сайт: '
+                            'оплата и получение на месте, у продавца.',
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
+            if (shopName != null && shopName.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Точка: $shopName',
+                style: const TextStyle(color: textSecondary, fontSize: 13),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAttributes(ProductItem product) {
     return _card(
       child: Column(
@@ -409,6 +457,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildBottomBar(ProductItem product) {
+    // Раздел без атрибута оплаты не заказывается вовсе. Кнопку не рисуем:
+    // нажать её всё равно нельзя, сервер откажет при оформлении, и человек
+    // решит, что сломалось приложение. Вместо неё объяснение с сервера.
+    if (!product.canOrder) {
+      return _buildOfflineNotice(product);
+    }
+
     final canBuy = product.inStock;
 
     return SafeArea(
