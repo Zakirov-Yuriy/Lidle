@@ -175,23 +175,6 @@ class ProductsCabinetApi {
     return fields;
   }
 
-  /// Справочник цветов.
-  ///
-  /// Цвет у товара это своё поле, а не характеристика раздела, поэтому в
-  /// списке полей формы его нет и приходит он отдельной ручкой.
-  static Future<List<ProductColor>> colors() async {
-    final response = await ApiService.get('/me/products/colors');
-
-    final data = response['data'];
-
-    if (data is! List) return const [];
-
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(ProductColor.fromJson)
-        .toList();
-  }
-
   /// Завести позицию. Это обычный товар: `/me/products`.
   static Future<int> createPosition({
     required int publicationId,
