@@ -9,6 +9,7 @@ import 'package:lidle/services/token_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/pages/products/add_product/product_publication_screen.dart';
+import 'package:lidle/services/product_catalogs.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
@@ -34,11 +35,13 @@ class UniversalCategoryScreen extends StatefulWidget {
   /// Уровень вложенности для отладки
   final int level;
 
-  /// Раздел ведёт к заведению ТОВАРА, а не объявления.
+  /// Подсказка «этот каталог товарный», если её уже знает вызывающий экран.
   ///
-  /// Ставится на первом экране выбора каталога и дальше едет по всем
-  /// уровням: подкатегории не знают, из какого списка человек пришёл, а
-  /// определять это заново на каждом уровне значит однажды определить иначе.
+  /// Только подсказка: решение всё равно принимается в момент выбора
+  /// конечного раздела, по каталогу самого раздела. 09.09.2026 мы на этом
+  /// обожглись — признак вычислялся один раз на экране каталогов, список
+  /// товарных каталогов приезжал вторым запросом, и человек успевал нажать
+  /// раньше. Помеченные каталоги открывали форму объявления.
   final bool isProduct;
 
   const UniversalCategoryScreen({
@@ -66,9 +69,30 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
   bool _isLoading = true;
   String? _error;
 
+  /// Товарный ли раздел, к которому относится категория.
+  ///
+  /// Решаем ЗДЕСЬ, в момент выбора конечного раздела, и по каталогу самой
+  /// категории, а не по признаку, привезённому с первого экрана. Список
+  /// товарных каталогов служба помнит и отдаёт мгновенно; если он ещё не
+  /// пришёл, ждём его — это доли секунды, и это лучше, чем открыть не ту
+  /// форму.
+  Future<bool> _isProductCategory(Category category) async {
+    if (widget.isProduct) return true;
+
+    final known = ProductCatalogs.knows(category.catalogId);
+
+    if (known != null) return known;
+
+    return ProductCatalogs.contains(category.catalogId);
+  }
+
   @override
   void initState() {
     super.initState();
+
+    // Прогреваем список товарных каталогов, пока человек выбирает: к
+    // нажатию он уже будет на руках, и ждать не придётся.
+    ProductCatalogs.ids();
     _loadCategories();
   }
 
@@ -273,7 +297,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                         category: category,
                         level: widget.level + 1,
                         catalogName: widget.catalogName,
-                        onTap: () {
+                        onTap: () async {
                           // log.d();
 
                           // Если есть подкатегории, переходим на экран с ними
@@ -290,7 +314,10 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                                 ),
                               ),
                             );
-                          } else if (category.isEndpoint && widget.isProduct) {
+                          } else if (category.isEndpoint &&
+                              await _isProductCategory(category)) {
+                            if (!context.mounted) return;
+
                             // Товарный раздел: вместо подачи объявления
                             // открываем заведение товара. Форма другая
                             // (группы, позиции, цена, остаток), и общего у
