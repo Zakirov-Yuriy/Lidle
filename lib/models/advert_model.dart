@@ -451,6 +451,11 @@ extension AdvertToListingExtension on Advert {
 class HomeFeedPage {
   final AdvertsResponse response;
 
+  /// Карточки ленты в порядке показа: объявления и товары вперемешку
+  /// (09.09.2026). Пусто у старого ответа без товаров — тогда карточки
+  /// собираются из `response`, как раньше.
+  final List<Listing> listings;
+
   /// Город из профиля человека, по которому лента получила приоритет.
   /// `null` — приоритета нет: город не указан или человек не вошёл.
   final int? cityId;
@@ -458,6 +463,7 @@ class HomeFeedPage {
 
   const HomeFeedPage({
     required this.response,
+    this.listings = const [],
     this.cityId,
     this.cityName,
   });

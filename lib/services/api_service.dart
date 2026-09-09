@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:lidle/models/filter_models.dart'; // Import the new model
 import 'package:lidle/models/advert_model.dart';
+import 'package:lidle/models/home_models.dart' show Listing;
 import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
@@ -800,9 +801,17 @@ class ApiService {
     String? token,
     int page = 1,
     int perPage = 12,
+
+    /// Просить у сервера ТОВАРЫ вместе с объявлениями (09.09.2026).
+    ///
+    /// Флагом, а не всегда: сервер без него отдаёт прежний ответ, и старые
+    /// сборки приложения продолжают работать. Здесь мы новая сборка и
+    /// просим смешанную ленту.
+    bool withProducts = true,
   }) async {
     final response = await get(
-      '/adverts/feed?page=$page&per_page=$perPage',
+      '/adverts/feed?page=$page&per_page=$perPage'
+          '${withProducts ? '&with_products=1' : ''}',
       token: token,
     );
 
@@ -812,10 +821,70 @@ class ApiService {
     final meta = response['meta'];
     final feed = meta is Map ? meta['feed'] : null;
 
+    // Разбираем смешанную ленту в один список карточек, СОХРАНЯЯ ПОРЯДОК.
+    //
+    // Порядок здесь не косметика: сервер чередует разделы и ведёт список от
+    // свежих к старым. Разложить объявления и товары по двум спискам и
+    // склеить их потом значит выбросить всю работу ленты.
+    final raw = response['data'];
+    final listings = <Listing>[];
+    final adverts = <Map<String, dynamic>>[];
+
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is! Map<String, dynamic>) continue;
+
+        if (item['type'] == 'product') {
+          listings.add(_productListing(item));
+
+          continue;
+        }
+
+        adverts.add(item);
+        listings.add(Advert.fromJson(item).toListing());
+      }
+    }
+
     return HomeFeedPage(
-      response: AdvertsResponse.fromJson(response),
+      // В `response` кладём только объявления: он ездит дальше в местах, где
+      // ждут именно их, и товар там оказался бы неопознанным.
+      response: AdvertsResponse.fromJson({
+        ...response,
+        'data': adverts,
+      }),
+      listings: listings,
       cityId: feed is Map ? feed['city_id'] as int? : null,
       cityName: feed is Map ? feed['city_name'] as String? : null,
+    );
+  }
+
+  /// Карточка товара для ленты главной.
+  ///
+  /// Номер делаем составным (`product:20`): номера объявлений и товаров
+  /// совпадают сплошь и рядом, а лента убирает повторы по номеру — без
+  /// приставки товар исчез бы как «уже показанное объявление».
+  static Listing _productListing(Map<String, dynamic> item) {
+    final price = item['price'];
+
+    return Listing(
+      id: 'product:${item['id']}',
+      productId: item['id'] is int
+          ? item['id'] as int
+          : int.tryParse('${item['id']}'),
+      isProduct: true,
+      imagePath: '${item['image'] ?? ''}',
+      title: '${item['name'] ?? ''}',
+
+      // Цена товара приходит строкой («10.00»), у объявления числом.
+      // Приводим к виду, к которому привыкла карточка, здесь: разбирать два
+      // формата в вёрстке значит однажды показать «10.00 ₽».
+      price: price is num
+          ? price.toString()
+          : '${num.tryParse('$price')?.toString() ?? price ?? ''}',
+      location: '${(item['shop'] is Map ? item['shop']['name'] : '') ?? ''}',
+      date: '',
+      canOrder: item['can_order'] == true,
+      inStock: item['in_stock'] != false,
     );
   }
 

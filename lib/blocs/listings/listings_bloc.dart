@@ -315,14 +315,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Теперь сервер сам отбирает до двухсот свежих объявлений за сутки,
       // раскладывает их равномерно по разделам и отдаёт страницами. Клиенту
       // остаётся показать первую порцию и догружать следующие при прокрутке.
+      // Карточки приходят уже разобранными: в ленте лежат и объявления, и
+      // товары, и раскладывать их обратно по типам ради фонового разбора
+      // дороже, чем разобрать двенадцать штук на месте.
       final feedPage = await _loadFeedPage(1, token);
-
-      final firstBatchListings = feedPage.data.isEmpty
-          ? <home.Listing>[]
-          : await compute<List<Advert>, List<home.Listing>>(
-              (adverts) => _parseAdvertsOnBackgroundThread(adverts),
-              feedPage.data,
-            );
+      final firstBatchListings = feedPage.listings;
 
       LoadingTimerService().stopLoadingTimer(
         operationKey,
@@ -342,9 +339,9 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
           listings: firstBatchListings,
           categories: loadedCategories,
           currentPage: 1,
-          totalPages: feedPage.meta.lastPage,
-          itemsPerPage: feedPage.meta.perPage,
-          hasMore: feedPage.meta.currentPage < feedPage.meta.lastPage,
+          totalPages: feedPage.lastPage,
+          itemsPerPage: feedPage.perPage,
+          hasMore: feedPage.currentPage < feedPage.lastPage,
           feedCityName: _feedCityName,
         ),
       );
@@ -772,20 +769,16 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // поедет.
       final nextPage = _feedPage + 1;
 
-      final advertsResponse = await _loadFeedPage(nextPage, token);
+      final nextFeedPage = await _loadFeedPage(nextPage, token);
+      final newListings = nextFeedPage.listings;
 
       _feedPage = nextPage;
 
-      if (advertsResponse.data.isEmpty) {
+      if (newListings.isEmpty) {
         emit(_withHasMore(currentState, false));
 
         return;
       }
-
-      // Преобразуем Advert в Listing
-      final newListings = advertsResponse.data.map((advert) {
-        return advert.toListing();
-      }).toList();
 
       // 🔧 ИСПРАВЛЕНИЕ: Дедупликация при объединении - избегаем дублей при пагинации
       // Используем Set для отслеживания уже загруженных ID
@@ -812,8 +805,8 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       // Сортировка происходит только при первой загрузке
 
       // Извлекаем информацию о пагинации
-      final totalPages = advertsResponse.meta.lastPage;
-      final itemsPerPage = advertsResponse.meta.perPage;
+      final totalPages = nextFeedPage.lastPage;
+      final itemsPerPage = nextFeedPage.perPage;
 
       final hasMore = allListings.length < homeFeedLimit
           && nextPage < totalPages
@@ -884,7 +877,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
   /// отвечает 404, один раз запоминаем это и дальше берём обычный список
   /// объявлений, как было до задачи. Любую другую ошибку пробрасываем: тихо
   /// подменять сломанный сервер запасным путём значит прятать поломку.
-  Future<AdvertsResponse> _loadFeedPage(int page, String? token) async {
+  Future<_FeedPage> _loadFeedPage(int page, String? token) async {
     if (_feedAvailable) {
       try {
         final feed = await ApiService.getHomeFeed(
@@ -895,7 +888,15 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
         _feedCityName = feed.cityName;
 
-        return feed.response;
+        // Лента отдаёт объявления и товары одним списком, разобранным
+        // сервисом. Порядок его, а не наш: он чередует разделы и ведёт
+        // список от свежих к старым.
+        return _FeedPage(
+          listings: feed.listings,
+          currentPage: feed.response.meta.currentPage,
+          lastPage: feed.response.meta.lastPage,
+          perPage: feed.response.meta.perPage,
+        );
       } catch (e) {
         if (!e.toString().contains('404')) rethrow;
 
@@ -905,11 +906,18 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       }
     }
 
-    return ApiService.getAdverts(
+    final adverts = await ApiService.getAdverts(
       catalogId: 1,
       token: token,
       page: page,
       limit: homeFeedPageSize,
+    );
+
+    return _FeedPage(
+      listings: adverts.data.map((advert) => advert.toListing()).toList(),
+      currentPage: adverts.meta.currentPage,
+      lastPage: adverts.meta.lastPage,
+      perPage: adverts.meta.perPage,
     );
   }
 
@@ -1565,4 +1573,24 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 /// Используется с compute() для выполнения на изолированном потоке.
 List<home.Listing> _parseAdvertsOnBackgroundThread(List<Advert> adverts) {
   return adverts.map((advert) => advert.toListing()).toList();
+}
+
+/// Страница ленты главной: карточки и данные пагинации.
+///
+/// Появился 09.09.2026 вместе с товарами в ленте. До этого страница была
+/// просто ответом со списком объявлений, но теперь в ней два разных типа
+/// карточек, и разбирает их сервис. Блоку остаются готовые карточки и три
+/// числа про страницы.
+class _FeedPage {
+  const _FeedPage({
+    required this.listings,
+    required this.currentPage,
+    required this.lastPage,
+    required this.perPage,
+  });
+
+  final List<home.Listing> listings;
+  final int currentPage;
+  final int lastPage;
+  final int perPage;
 }

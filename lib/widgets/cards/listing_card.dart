@@ -11,6 +11,8 @@ import 'package:lidle/pages/full_category_screen/mini_property_details_screen.da
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/pages/products/product_details_screen.dart';
 
 // ============================================================
 // "Утилиты для форматирования"
@@ -61,10 +63,20 @@ class ListingCard extends StatefulWidget {
 class _ListingCardState extends State<ListingCard> {
   late bool _isFavorite;
 
+  /// Кнопка «В корзину» нажата и ответ ещё не пришёл.
+  bool _isAdding = false;
+
   @override
   void initState() {
     super.initState();
     _isFavorite = HiveService.getFavorites().contains(widget.listing.id);
+
+    // Товар в ленте главной (09.09.2026) — не объявление: ни просмотров, ни
+    // избранного у него здесь нет. Счётчик просмотров объявлений принял бы
+    // номер товара за номер объявления и накрутил чужую статистику.
+    if (widget.listing.isProduct) {
+      return;
+    }
 
     // «Просмотр» = показ карточки в выдаче. Шлём один раз за сессию на
     // объявление (гуард внутри saveAdvertViewOnce); дневной дедуп — на бэке.
@@ -109,8 +121,48 @@ class _ListingCardState extends State<ListingCard> {
     }
   }
 
+  /// Положить товар в корзину прямо из ленты.
+  Future<void> _addToCart() async {
+    final productId = widget.listing.productId;
+
+    if (productId == null || _isAdding) return;
+
+    setState(() => _isAdding = true);
+
+    final result = await CartService.add(productId);
+
+    if (!mounted) return;
+
+    setState(() => _isAdding = false);
+
+    if (!result.isOk) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.error ?? 'Не получилось добавить в корзину'),
+          backgroundColor: secondaryBackground,
+        ),
+      );
+
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Товар в корзине'),
+        backgroundColor: secondaryBackground,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Карточка ТОВАРА. Отдельной веткой, а не флажками внутри общей вёрстки:
+    // у товара нет адреса, даты и сердечка, зато есть кнопка «В корзину», и
+    // сшивать это в один макет значит получить карточку из одних условий.
+    if (widget.listing.isProduct) {
+      return _buildProductCard(context);
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final cardHeight = constraints.maxHeight;
@@ -254,6 +306,135 @@ class _ListingCardState extends State<ListingCard> {
                   ],
                 ),
               ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Карточка товара: картинка, цена, название, магазин и «В корзину».
+  ///
+  /// Кнопки нет, когда у раздела не заведён атрибут оплаты (`can_order`):
+  /// такой товар покупают на месте, и корзина для него не работает. Рисовать
+  /// кнопку, которая ответит отказом, значит водить человека по кругу.
+  Widget _buildProductCard(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardHeight = constraints.maxHeight;
+        final cardWidth = constraints.maxWidth;
+
+        final imageHeight = cardHeight * (cardWidth < 140 ? 0.46 : 0.52);
+        final scale = cardHeight / 263;
+
+        return GestureDetector(
+          onTap: () {
+            widget.onBeforeNavigate?.call();
+
+            final productId = widget.listing.productId;
+
+            if (productId == null) return;
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductDetailsScreen(productId: productId),
+              ),
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: imageHeight,
+                  width: double.infinity,
+                  child: widget.listing.imagePath.isEmpty
+                      ? Container(
+                          color: formBackground,
+                          child: const Icon(
+                            Icons.photo_outlined,
+                            color: textMuted,
+                            size: 28,
+                          ),
+                        )
+                      : Image.network(
+                          widget.listing.imagePath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: formBackground,
+                            child: const Icon(
+                              Icons.photo_outlined,
+                              color: textMuted,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+
+              SizedBox(height: 6 * scale),
+
+              Text(
+                '${widget.listing.price} ₽',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16 * scale,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+
+              SizedBox(height: 2 * scale),
+
+              Text(
+                widget.listing.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: textPrimary, fontSize: 14 * scale),
+              ),
+
+              if (widget.listing.location.isNotEmpty) ...[
+                SizedBox(height: 2 * scale),
+                Text(
+                  widget.listing.location,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: textMuted, fontSize: 12 * scale),
+                ),
+              ],
+
+              const Spacer(),
+
+              if (widget.listing.canOrder)
+                SizedBox(
+                  width: double.infinity,
+                  height: 34 * scale,
+                  child: OutlinedButton(
+                    onPressed: _isAdding ? null : _addToCart,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: activeIconColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: Text(
+                      _isAdding ? 'Добавляем…' : 'В корзину',
+                      style: TextStyle(
+                        color: activeIconColor,
+                        fontSize: 13 * scale,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                // Товар без корзины: говорим об этом прямо, иначе человек
+                // ищет кнопку и думает, что приложение сломалось.
+                Text(
+                  'Покупка на месте',
+                  style: TextStyle(color: textMuted, fontSize: 12 * scale),
+                ),
             ],
           ),
         );
