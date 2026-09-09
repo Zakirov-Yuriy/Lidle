@@ -16,6 +16,7 @@ import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
+import 'package:lidle/utils/color_names.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class ProductGroupsScreen extends StatefulWidget {
@@ -736,7 +737,8 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
   /// Набор характеристик у каждого раздела свой, поэтому строки не зашиты, а
   /// приходят с сервера: в мебели тут будут «Материал» и «Ширина».
   Widget _attributeLine(String title, String value, {bool muted = false}) {
-    final swatch = _colorOf(title, value);
+    // Квадратик цвета — тот же, что в диалоге выбора.
+    final swatch = isColorAttribute(title) ? colorByName(value) : null;
 
     return Padding(
       padding: const EdgeInsets.only(top: 2),
@@ -748,14 +750,9 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
           if (swatch != null)
-            Container(
-              width: 16,
-              height: 16,
-              margin: const EdgeInsets.only(top: 2),
-              decoration: BoxDecoration(
-                color: swatch,
-                borderRadius: BorderRadius.circular(3),
-              ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: colorSwatch(swatch, size: 16),
             )
           else
             Expanded(
@@ -772,39 +769,5 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
         ],
       ),
     );
-  }
-
-  /// Цвет квадратиком, как на макете.
-  ///
-  /// Цвет приходит характеристикой раздела, как «Размер»: администратор
-  /// заводит его в админке той категории, где он нужен. Своего кода цвета в
-  /// справочнике характеристик нет, поэтому квадратик рисуем только для
-  /// названий, которые знаем; незнакомое покажем текстом — это честнее, чем
-  /// угадать не тот оттенок.
-  Color? _colorOf(String title, String value) {
-    if (!title.toLowerCase().contains('цвет')) return null;
-
-    const known = <String, Color>{
-      'белый': Color(0xFFFFFFFF),
-      'чёрный': Color(0xFF1A1A1A),
-      'черный': Color(0xFF1A1A1A),
-      'серый': Color(0xFF9E9E9E),
-      'красный': Color(0xFFE53935),
-      'оранжевый': Color(0xFFFB8C00),
-      'жёлтый': Color(0xFFFDD835),
-      'желтый': Color(0xFFFDD835),
-      'зелёный': Color(0xFF43A047),
-      'зеленый': Color(0xFF43A047),
-      'голубой': Color(0xFF29B6F6),
-      'синий': Color(0xFF1E88E5),
-      'фиолетовый': Color(0xFF8E24AA),
-      'розовый': Color(0xFFEC407A),
-      'коричневый': Color(0xFF6D4C41),
-      'бежевый': Color(0xFFD7CCC8),
-      'золотой': Color(0xFFC9A227),
-      'серебряный': Color(0xFFBDBDBD),
-    };
-
-    return known[value.trim().toLowerCase()];
   }
 }

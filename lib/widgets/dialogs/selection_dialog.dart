@@ -8,6 +8,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/utils/color_names.dart';
 import '../components/custom_checkbox.dart';
 import '../components/custom_radio_button.dart';
 
@@ -58,6 +59,13 @@ class _SelectionDialogState extends State<SelectionDialog> {
 
   /// 🆕 Определить, это режим выбора города
   bool get _isCityMode => widget.title.toLowerCase().contains('город');
+
+  /// Выбор цвета: рядом с названием рисуем квадратик, как на макете.
+  ///
+  /// По заголовку, а не по отдельному флагу: диалог общий на весь проект, и
+  /// протаскивать признак через каждый виджет-обёртку значило бы поправить
+  /// пять файлов ради одного квадрата.
+  bool get _isColorMode => isColorAttribute(widget.title);
 
   @override
   void initState() {
@@ -571,6 +579,10 @@ class _SelectionDialogState extends State<SelectionDialog> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          if (_isColorMode && colorByName(title) != null) ...[
+            colorSwatch(colorByName(title)!),
+            const SizedBox(width: 10),
+          ],
           Expanded(
             child: GestureDetector(
               onTap: () {
