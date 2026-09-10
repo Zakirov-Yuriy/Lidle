@@ -24,8 +24,12 @@ import 'package:lidle/pages/products/add_product/product_groups_screen.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/header.dart';
+
+/// Что делает человек с отмеченными позициями.
+enum _PickMode { none, delete, edit }
 
 class ProductReviewScreen extends StatefulWidget {
   const ProductReviewScreen({super.key, required this.publication});
@@ -44,6 +48,13 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   final Set<int> _open = {};
 
   List<ProductBrand> _brands = const [];
+
+  /// Выбор позиций внутри одной группы: чекбоксы появляются по нажатию на
+  /// «Удалить» или «Изменить» и живут только в этой группе. Одновременно
+  /// выбирать в двух группах незачем: удаление и правка идут по одной папке.
+  int? _pickGroupId;
+  _PickMode _pickMode = _PickMode.none;
+  final Set<int> _picked = {};
 
   bool _isSaving = false;
 
@@ -381,6 +392,165 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     }
   }
 
+  // ── Выбор позиций ───────────────────────────────────────────────
+
+  /// Отметить или снять позицию.
+  ///
+  /// В режиме правки выбор один: править две карточки одновременно нельзя, а
+  /// молча брать первую отмеченную значит открыть не то, что человек думал.
+  void _pick(int productId) {
+    setState(() {
+      if (_pickMode == _PickMode.edit) {
+        _picked
+          ..clear()
+          ..add(productId);
+
+        return;
+      }
+
+      if (!_picked.remove(productId)) _picked.add(productId);
+    });
+  }
+
+  void _startPicking(int groupId, _PickMode mode) {
+    setState(() {
+      _pickGroupId = groupId;
+      _pickMode = mode;
+      _picked.clear();
+    });
+  }
+
+  void _stopPicking() {
+    setState(() {
+      _pickGroupId = null;
+      _pickMode = _PickMode.none;
+      _picked.clear();
+    });
+  }
+
+  /// «Удалить»: первое нажатие включает выбор, второе удаляет отмеченное.
+  Future<void> _onDelete(ProductGroup group) async {
+    if (_pickGroupId != group.id || _pickMode != _PickMode.delete) {
+      if (group.products.isEmpty) {
+        // Позиций нет — удалять человек хочет саму папку.
+        await _deleteGroup(group);
+
+        return;
+      }
+
+      _startPicking(group.id, _PickMode.delete);
+
+      return;
+    }
+
+    if (_picked.isEmpty) {
+      _say('Отметьте, какие товары удалить.');
+
+      return;
+    }
+
+    await _deletePicked(group);
+  }
+
+  /// «Изменить»: первое нажатие включает выбор, второе открывает правку.
+  Future<void> _onEdit(ProductGroup group) async {
+    if (_pickGroupId != group.id || _pickMode != _PickMode.edit) {
+      if (group.products.isEmpty) {
+        // Позиций нет — менять человек хочет саму группу.
+        await _openGroups();
+
+        return;
+      }
+
+      _startPicking(group.id, _PickMode.edit);
+
+      return;
+    }
+
+    if (_picked.isEmpty) {
+      _say('Отметьте товар, который хотите изменить.');
+
+      return;
+    }
+
+    final position = group.products.where((item) => item.id == _picked.first);
+
+    if (position.isEmpty) return;
+
+    _stopPicking();
+
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPositionScreen(
+          publication: _publication,
+          group: group,
+          existing: position.first,
+        ),
+      ),
+    );
+
+    await _reload();
+  }
+
+  /// Удалить отмеченные позиции.
+  ///
+  /// Спрашиваем прямо: товар уходит насовсем. Заказанный сервер удалять
+  /// откажется и объяснит почему — его ответ показываем как есть.
+  Future<void> _deletePicked(ProductGroup group) async {
+    final names = group.products
+        .where((item) => _picked.contains(item.id))
+        .map((item) => item.name)
+        .toList();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: Text(
+          names.length == 1 ? 'Удалить товар?' : 'Удалить товары (${names.length})?',
+          style: const TextStyle(color: textPrimary, fontSize: 17),
+        ),
+        content: Text(
+          '${names.join(', ')}\n\nУдаление безвозвратно: вернуть товар и его'
+          ' фотографии будет нельзя.',
+          style: const TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить',
+                style: TextStyle(color: Color(0xFFE05B5B))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final failed = <String>[];
+
+    for (final id in _picked.toList()) {
+      try {
+        await ProductsCabinetApi.deletePosition(id);
+      } catch (e) {
+        log.e('Позиция $id не удалилась: $e');
+
+        failed.add('$e'.replaceFirst('Exception: ', ''));
+      }
+    }
+
+    _stopPicking();
+
+    await _reload();
+
+    if (failed.isNotEmpty) _say(failed.first);
+  }
+
   // ── Публикация ──────────────────────────────────────────────────
 
   Future<void> _toggleAutoRenew(bool value) async {
@@ -613,26 +783,44 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
       if (!isOpen) continue;
 
+      final picking = _pickGroupId == group.id && _pickMode != _PickMode.none;
+
       for (final position in group.products) {
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    position.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            child: GestureDetector(
+              onTap: picking ? () => _pick(position.id) : null,
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  if (picking) ...[
+                    CustomCheckbox(
+                      value: _picked.contains(position.id),
+                      onChanged: (_) => _pick(position.id),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Text(
+                      position.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: picking && _picked.contains(position.id)
+                            ? textPrimary
+                            : textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${position.stockQuantity} шт',
                     style: const TextStyle(color: textSecondary, fontSize: 14),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  '${position.stockQuantity} шт',
-                  style: const TextStyle(color: textSecondary, fontSize: 14),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -656,15 +844,30 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
           child: Row(
             children: [
               GestureDetector(
-                onTap: () => _deleteGroup(group),
-                child: const Text(
-                  'Удалить',
-                  style: TextStyle(color: Color(0xFFE05B5B), fontSize: 14),
+                onTap: () => _onDelete(group),
+                child: Text(
+                  picking && _pickMode == _PickMode.delete && _picked.isNotEmpty
+                      ? 'Удалить (${_picked.length})'
+                      : 'Удалить',
+                  style: const TextStyle(
+                    color: Color(0xFFE05B5B),
+                    fontSize: 14,
+                  ),
                 ),
               ),
+              if (picking) ...[
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: _stopPicking,
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ),
+              ],
               const Spacer(),
               GestureDetector(
-                onTap: _openGroups,
+                onTap: () => _onEdit(group),
                 child: const Text(
                   'Изменить',
                   style: TextStyle(color: activeIconColor, fontSize: 14),
@@ -674,6 +877,22 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
           ),
         ),
       );
+
+      // Подсказка, что делать дальше: чекбоксы появились, а зачем — человеку
+      // никто не сказал.
+      if (picking) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              _pickMode == _PickMode.delete
+                  ? 'Отметьте товары и нажмите «Удалить»'
+                  : 'Отметьте один товар и нажмите «Изменить»',
+              style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
+          ),
+        );
+      }
     }
 
     return widgets;

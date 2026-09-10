@@ -252,6 +252,14 @@ class ProductsCabinetApi {
     });
   }
 
+  /// Удалить позицию. Это обычный товар: `/me/products/{id}`.
+  ///
+  /// Заказанный товар сервер удалять отказывается и отвечает понятным
+  /// текстом: в заказе покупателя лежит ссылка на него.
+  static Future<void> deletePosition(int productId) async {
+    await ApiService.delete('/me/products/$productId');
+  }
+
   // ── Бренды ────────────────────────────────────────────────────────
 
   /// Поиск по мере ввода.
