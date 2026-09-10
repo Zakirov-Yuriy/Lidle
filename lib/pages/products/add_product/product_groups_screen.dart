@@ -784,13 +784,15 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
 
   /// Строка «Размер: 54» под карточкой.
   ///
+  /// Одним текстовым блоком, а не строкой из двух колонок: у длинного
+  /// значения вторая строка уезжала вправо, под колонку значения, и подписи
+  /// шли рваной лесенкой. Text.rich переносит всё по левому краю.
+  ///
   /// Набор характеристик у каждого раздела свой, поэтому строки не зашиты, а
   /// приходят с сервера: в мебели тут будут «Материал» и «Ширина».
   Widget _attributeLine(String title, String value, {bool muted = false}) {
-    // Цветов у позиции может быть несколько: сервер отдаёт их одной строкой
-    // через запятую. Разбираем и рисуем квадратиками — так строка «Чёрный,
-    // Синий, Красный» читается с одного взгляда и не переносится на три
-    // строки под карточкой.
+    // Цветов у позиции бывает несколько: сервер отдаёт их одной строкой через
+    // запятую. Разбираем и рисуем квадратиками.
     final swatches = isColorAttribute(title)
         ? value
               .split(',')
@@ -801,40 +803,55 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
 
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '$title: ',
-            style: const TextStyle(color: textSecondary, fontSize: 13),
-          ),
-          if (swatches.isNotEmpty)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: [
-                    for (final color in swatches) colorSwatch(color, size: 16),
-                  ],
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: Text(
-                value,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '${_shortTitle(title)}: ',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+            if (swatches.isNotEmpty)
+              for (final color in swatches)
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: colorSwatch(color, size: 16),
+                  ),
+                )
+            else
+              TextSpan(
+                text: value,
                 style: TextStyle(
                   color: muted ? textMuted : textPrimary,
                   fontSize: 13,
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
+        textAlign: TextAlign.start,
+        maxLines: 3,
+        overflow: TextOverflow.ellipsis,
       ),
     );
+  }
+
+  /// Название характеристики для карточки.
+  ///
+  /// В форме поле называется так, как его завёл администратор, — «Выберите
+  /// размер». Под карточкой это читается странно: там уже выбранное значение,
+  /// а не приглашение выбрать. Приглашение отрезаем.
+  String _shortTitle(String title) {
+    for (final prefix in const ['Выберите ', 'Выбери ', 'Выбрать ', 'Укажите ']) {
+      if (title.startsWith(prefix)) {
+        final rest = title.substring(prefix.length);
+
+        if (rest.isEmpty) return title;
+
+        return rest[0].toUpperCase() + rest.substring(1);
+      }
+    }
+
+    return title;
   }
 }

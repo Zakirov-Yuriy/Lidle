@@ -139,9 +139,16 @@ class ProductAttributesController {
       final chosen = selected(attr.id);
 
       if (chosen.isNotEmpty) {
-        // Атрибут с одним значением: даже если человек успел отметить
-        // несколько, отправляем первое. Сервер второе всё равно отклонит.
-        final take = attr.isMultiple ? chosen : {chosen.first};
+        // Сколько значений разрешено, решает ТОТ ЖЕ разбор, что рисует поле.
+        //
+        // Так было: смотрели на `isMultiple` самого атрибута. У характеристики
+        // с несколькими значениями (цвет) сервер отдаёт это стилем F, а
+        // `isMultiple` в ней означает совсем другое — «один выбор при
+        // создании». Человек отмечал три цвета галочками, а на сервер уезжал
+        // один, и в карточке был один квадратик.
+        final allowsMany = resolveFilterField(attr).attribute.isMultiple;
+
+        final take = allowsMany ? chosen : {chosen.first};
 
         for (final title in take) {
           final match = attr.values.where((v) => v.value == title);
