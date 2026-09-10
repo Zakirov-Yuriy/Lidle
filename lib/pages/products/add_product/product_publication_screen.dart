@@ -28,6 +28,7 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
+import 'package:lidle/pages/products/add_product/product_staff_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
@@ -433,6 +434,22 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
     await _reload();
   }
 
+  /// Экран сотрудников: те же группы и карточки.
+  Future<void> _openStaff() async {
+    final publication = _publication;
+
+    if (publication == null) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffScreen(publication: publication),
+      ),
+    );
+
+    await _reload();
+  }
+
   Future<void> _openGroups() async {
     final publication = _publication;
 
@@ -672,8 +689,8 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
 
               const SizedBox(height: 20),
               _label('Добавить сотрудника'),
-              _addRow(hint: 'Добавить', onTap: null),
-              _more(onTap: null),
+              _addRow(hint: 'Добавить', onTap: _openStaff),
+              _more(onTap: _openStaff),
 
               const SizedBox(height: 20),
               _label('Добавить оплату'),
