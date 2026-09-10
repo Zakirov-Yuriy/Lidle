@@ -17,7 +17,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_delivery.dart';
 import 'package:lidle/models/products/product_publication.dart';
-import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
+import 'package:lidle/pages/products/add_product/group_dialog.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_option_screen.dart';
 import 'package:lidle/pages/products/add_product/product_review_screen.dart';
 import 'package:lidle/services/api/products_delivery_api.dart';
@@ -96,16 +96,23 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
 
   // ── Группы ──────────────────────────────────────────────────────
 
+  /// Завести группу: название и обложка одним диалогом.
   Future<void> _createGroup() async {
-    final name = await _askText('Новая группа', hint: 'Например, Курьер');
+    final form = await showGroupDialog(context);
 
-    if (name == null || name.isEmpty) return;
+    if (form == null) return;
 
     try {
       final group = await ProductsDeliveryApi.createGroup(
         publicationId: widget.publication.id,
-        name: name,
+        name: form.name,
       );
+
+      // Обложку грузим вторым запросом: у новой группы её некуда было
+      // грузить, пока группы не было.
+      if (form.photoPath != null) {
+        await ProductsDeliveryApi.uploadGroupImage(group.id, form.photoPath!);
+      }
 
       if (mounted) setState(() => _openGroupId = group.id);
 
@@ -116,22 +123,32 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
     }
   }
 
-  Future<void> _renameGroup() async {
-    final group = _openGroup;
+  /// Правка группы: тот же диалог с заполненными полями.
+  ///
+  /// Сюда ведут и строка названия, и значок фотоаппарата на обложке.
+  Future<void> _editGroup(DeliveryGroup group) async {
+    final form = await showGroupDialog(
+      context,
+      title: 'Изменить группу',
+      initialName: group.name,
+      imageUrl: group.image,
+    );
 
-    if (group == null) return;
-
-    final name = await _askText('Название группы', initial: group.name);
-
-    if (name == null || name.isEmpty) return;
+    if (form == null) return;
 
     try {
-      await ProductsDeliveryApi.renameGroup(group.id, name);
+      if (form.name != group.name) {
+        await ProductsDeliveryApi.renameGroup(group.id, form.name);
+      }
+
+      if (form.photoPath != null) {
+        await ProductsDeliveryApi.uploadGroupImage(group.id, form.photoPath!);
+      }
 
       await _reload();
     } catch (e) {
-      log.e('Группа не переименовалась: $e');
-      _say('Не получилось сохранить название.');
+      log.e('Группа не сохранилась: $e');
+      _say('Не получилось сохранить группу.');
     }
   }
 
@@ -154,23 +171,6 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
     } catch (e) {
       log.e('Группа не удалилась: $e');
       _say('Не получилось удалить группу.');
-    }
-  }
-
-  Future<void> _setGroupImage(DeliveryGroup group) async {
-    final picked = await pickProductPhotos(context);
-
-    if (picked.isEmpty || !mounted) return;
-
-    _say('Загружаем обложку…');
-
-    try {
-      await ProductsDeliveryApi.uploadGroupImage(group.id, picked.first);
-
-      await _reload();
-    } catch (e) {
-      log.e('Обложка группы не загрузилась: $e');
-      _say('Обложка не загрузилась. Проверьте связь и попробуйте ещё раз.');
     }
   }
 
@@ -251,53 +251,6 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
   }
 
   // ── Диалоги ─────────────────────────────────────────────────────
-
-  Future<String?> _askText(
-    String title, {
-    String initial = '',
-    String hint = 'Введите название',
-  }) async {
-    final field = TextEditingController(text: initial);
-
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: secondaryBackground,
-        title: Text(title,
-            style: const TextStyle(color: textPrimary, fontSize: 17)),
-        content: TextField(
-          controller: field,
-          autofocus: true,
-          style: const TextStyle(color: textPrimary),
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: textMuted),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, field.text.trim()),
-            child: const Text('Сохранить',
-                style: TextStyle(color: activeIconColor)),
-          ),
-        ],
-      ),
-    );
-
-    // Контроллер НЕ освобождаем здесь намеренно.
-    //
-    // Диалог закрывается с анимацией, и его поле ввода живёт ещё несколько
-    // кадров после того, как `showDialog` вернул результат. Освобождение в
-    // этот момент оставляет живой TextField с мёртвым контроллером: на
-    // телефоне это выглядит как намертво зависшее приложение, что и случилось
-    // 10.09.2026 при заведении группы доставки.
-
-    return value;
-  }
 
   Future<bool> _confirm(String title, String text) async {
     final answer = await showDialog<bool>(
@@ -439,7 +392,7 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
                   style: TextStyle(color: textPrimary, fontSize: 15)),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: group == null ? null : _renameGroup,
+                onTap: group == null ? null : () => _editGroup(group),
                 child: Container(
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -597,7 +550,7 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
                         right: 4,
                         bottom: 4,
                         child: GestureDetector(
-                          onTap: () => _setGroupImage(group),
+                          onTap: () => _editGroup(group),
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(

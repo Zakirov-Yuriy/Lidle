@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/group_dialog.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/add_product/product_review_screen.dart';
@@ -94,16 +95,23 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
     return null;
   }
 
+  /// Завести группу: название и обложка одним диалогом.
   Future<void> _createGroup() async {
-    final name = await _askName('Новая группа', '');
+    final form = await showGroupDialog(context);
 
-    if (name == null || name.trim().isEmpty) return;
+    if (form == null) return;
 
     try {
       final group = await ProductsCabinetApi.createGroup(
         publicationId: _publication.id,
-        name: name.trim(),
+        name: form.name,
       );
+
+      // Обложку грузим вторым запросом: у новой группы её некуда было
+      // грузить, пока группы не было.
+      if (form.photoPath != null) {
+        await ProductsCabinetApi.uploadGroupImage(group.id, form.photoPath!);
+      }
 
       if (!mounted) return;
 
@@ -116,21 +124,33 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
     }
   }
 
-  Future<void> _renameGroup() async {
-    final group = _openGroup;
+  /// Правка группы: тот же диалог, что и заведение, с заполненными полями.
+  ///
+  /// Сюда ведут и строка названия, и значок фотоаппарата на обложке: название
+  /// и картинка меняются в одном месте, а не двумя разными жестами.
+  Future<void> _editGroup(ProductGroup group) async {
+    final form = await showGroupDialog(
+      context,
+      title: 'Изменить группу',
+      initialName: group.name,
+      imageUrl: group.image,
+    );
 
-    if (group == null) return;
-
-    final name = await _askName('Название группы', group.name);
-
-    if (name == null || name.trim().isEmpty) return;
+    if (form == null) return;
 
     try {
-      await ProductsCabinetApi.renameGroup(group.id, name.trim());
+      if (form.name != group.name) {
+        await ProductsCabinetApi.renameGroup(group.id, form.name);
+      }
+
+      if (form.photoPath != null) {
+        await ProductsCabinetApi.uploadGroupImage(group.id, form.photoPath!);
+      }
+
       await _reload();
     } catch (e) {
-      log.e('Группа не переименовалась: $e');
-      _say('Не получилось сохранить название.');
+      log.e('Группа не сохранилась: $e');
+      _say('Не получилось сохранить группу.');
     }
   }
 
@@ -174,60 +194,6 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
     } catch (e) {
       log.e('Группа не удалилась: $e');
       _say('Не получилось удалить группу.');
-    }
-  }
-
-  Future<String?> _askName(String title, String initial) {
-    final controller = TextEditingController(text: initial);
-
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: secondaryBackground,
-        title: Text(title, style: const TextStyle(color: textPrimary, fontSize: 17)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: const TextStyle(color: textPrimary),
-          decoration: const InputDecoration(
-            hintText: 'Например, Куртки зима',
-            hintStyle: TextStyle(color: textMuted),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Сохранить', style: TextStyle(color: activeIconColor)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Обложка группы.
-  ///
-  /// Обложка одна, новая заменяет старую — так же, как главная фотография у
-  /// объявления. Сервер удаляет прежний файл сам, поэтому спрашивать
-  /// подтверждение не о чем: терять нечего, обложку всегда можно поставить
-  /// другую.
-  Future<void> _setGroupImage(ProductGroup group) async {
-    final picked = await pickProductPhotos(context);
-
-    if (picked.isEmpty || !mounted) return;
-
-    _say('Загружаем обложку…');
-
-    try {
-      await ProductsCabinetApi.uploadGroupImage(group.id, picked.first);
-
-      await _reload();
-    } catch (e) {
-      log.e('Обложка группы не загрузилась: $e');
-      _say('Обложка не загрузилась. Проверьте связь и попробуйте ещё раз.');
     }
   }
 
@@ -454,7 +420,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                   style: TextStyle(color: textPrimary, fontSize: 15)),
               const SizedBox(height: 8),
               GestureDetector(
-                onTap: group == null ? null : _renameGroup,
+                onTap: group == null ? null : () => _editGroup(group),
                 child: Container(
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -626,7 +592,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                         right: 4,
                         bottom: 4,
                         child: GestureDetector(
-                          onTap: () => _setGroupImage(group),
+                          onTap: () => _editGroup(group),
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
