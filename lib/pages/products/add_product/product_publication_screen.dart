@@ -25,12 +25,16 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/products/product_delivery.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
+import 'package:lidle/services/api/products_delivery_api.dart';
+import 'package:lidle/services/api/products_staff_api.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -59,6 +63,12 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
   /// Бренды продавца с числом товаров в каждом. Пусто у того, кто заводит
   /// первый товар: ему показываем поле ввода, а не выбор из ничего.
   List<ProductBrand> _brands = const [];
+
+  /// Доставка и сотрудники этой публикации. Нужны только ради счётчиков в
+  /// строках: человек должен видеть, что у него уже заведено, не проваливаясь
+  /// в каждый блок.
+  PublicationDelivery _delivery = const PublicationDelivery();
+  PublicationStaff _staff = const PublicationStaff();
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -177,6 +187,30 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
       if (mounted) setState(() => _publication = fresh);
     } catch (e) {
       log.d('Не удалось обновить публикацию: $e');
+    }
+
+    await _reloadBlocks(id);
+  }
+
+  /// Доставка и сотрудники: только для счётчиков в строках.
+  ///
+  /// Молча переживаем отказ: без счётчика форма работает, а красная плашка
+  /// поверх пустой формы пугает больше, чем помогает.
+  Future<void> _reloadBlocks(int id) async {
+    try {
+      final delivery = await ProductsDeliveryApi.load(id);
+
+      if (mounted) setState(() => _delivery = delivery);
+    } catch (e) {
+      log.d('Доставка не пришла: $e');
+    }
+
+    try {
+      final staff = await ProductsStaffApi.load(id);
+
+      if (mounted) setState(() => _staff = staff);
+    } catch (e) {
+      log.d('Сотрудники не пришли: $e');
     }
   }
 
@@ -682,15 +716,25 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
               const Divider(color: Color(0xFF2A3744), height: 32),
 
               _label('Добавить доставку'),
-              _addRow(hint: 'Добавить', onTap: _openDelivery),
+              _addRow(
+                hint: _delivery.total == 0
+                    ? 'Добавить'
+                    : 'Способов: ${_delivery.total}',
+                onTap: _openDelivery,
+              ),
               _more(onTap: _openDelivery),
-
-              // ── Блоки, за которыми ещё нет экранов ──────────────────
 
               const SizedBox(height: 20),
               _label('Добавить сотрудника'),
-              _addRow(hint: 'Добавить', onTap: _openStaff),
+              _addRow(
+                hint: _staff.total == 0
+                    ? 'Добавить'
+                    : 'Сотрудников: ${_staff.total}',
+                onTap: _openStaff,
+              ),
               _more(onTap: _openStaff),
+
+              // ── Блок, за которым ещё нет экрана ─────────────────────
 
               const SizedBox(height: 20),
               _label('Добавить оплату'),

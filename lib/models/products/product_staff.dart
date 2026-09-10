@@ -145,6 +145,11 @@ class PublicationStaff {
 
   bool get isEmpty => groups.isEmpty && ungrouped.isEmpty;
 
+  /// Сколько сотрудников заведено всего, включая тех, кто вне групп.
+  int get total =>
+      ungrouped.length +
+      groups.fold<int>(0, (sum, group) => sum + group.members.length);
+
   factory PublicationStaff.fromJson(Map<String, dynamic> data) {
     final groups = data['groups'];
     final loose = data['ungrouped'];

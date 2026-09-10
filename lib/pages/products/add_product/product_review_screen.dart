@@ -20,14 +20,18 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_delivery.dart';
+import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_option_screen.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
+import 'package:lidle/pages/products/add_product/product_staff_member_screen.dart';
+import 'package:lidle/pages/products/add_product/product_staff_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/services/api/products_delivery_api.dart';
+import 'package:lidle/services/api/products_staff_api.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -64,6 +68,15 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   _PickMode _pickDeliveryMode = _PickMode.none;
   final Set<int> _pickedDelivery = {};
 
+  /// Сотрудники публикации и такой же выбор в них.
+  PublicationStaff _staff = const PublicationStaff();
+
+  final Set<int> _openStaffGroups = {};
+
+  int? _pickStaffGroupId;
+  _PickMode _pickStaffMode = _PickMode.none;
+  final Set<int> _pickedStaff = {};
+
   /// Выбор позиций внутри одной группы: чекбоксы появляются по нажатию на
   /// «Удалить» или «Изменить» и живут только в этой группе. Одновременно
   /// выбирать в двух группах незачем: удаление и правка идут по одной папке.
@@ -84,6 +97,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     _reload();
     _loadBrands();
     _reloadDelivery();
+    _reloadStaff();
   }
 
   Future<void> _reload() async {
@@ -119,6 +133,24 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       });
     } catch (e) {
       log.d('Доставка не обновилась: $e');
+    }
+  }
+
+  Future<void> _reloadStaff() async {
+    try {
+      final fresh = await ProductsStaffApi.load(_publication.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _staff = fresh;
+
+        if (_openStaffGroups.isEmpty && fresh.groups.isNotEmpty) {
+          _openStaffGroups.add(fresh.groups.first.id);
+        }
+      });
+    } catch (e) {
+      log.d('Сотрудники не обновились: $e');
     }
   }
 
@@ -938,6 +970,300 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     }
   }
 
+  // ── Сотрудники ──────────────────────────────────────────────────
+
+  Future<void> _openStaffScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffScreen(
+          publication: _publication,
+          openReview: false,
+        ),
+      ),
+    );
+
+    await _reloadStaff();
+  }
+
+  /// «Добавить»: сразу к заведению сотрудника.
+  Future<void> _addStaffMember() async {
+    final groups = _staff.groups;
+
+    if (groups.isEmpty) {
+      _say('Сначала добавьте группу сотрудников.');
+
+      await _openStaffScreen();
+
+      return;
+    }
+
+    final group = groups.length == 1 ? groups.first : await _chooseStaffGroup();
+
+    if (group == null || !mounted) return;
+
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffMemberScreen(
+          publicationId: _publication.id,
+          categoryId: _publication.categoryId,
+          groups: groups,
+          groupId: group.id,
+        ),
+      ),
+    );
+
+    await _reloadStaff();
+  }
+
+  Future<StaffGroup?> _chooseStaffGroup() {
+    return showModalBottomSheet<StaffGroup>(
+      context: context,
+      backgroundColor: primaryBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(defaultPadding, 20, defaultPadding, 12),
+              child: Text(
+                'В какую группу',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _staff.groups.length,
+                itemBuilder: (context, index) {
+                  final group = _staff.groups[index];
+
+                  return ListTile(
+                    title: Text(
+                      group.name,
+                      style: const TextStyle(color: textPrimary, fontSize: 15),
+                    ),
+                    subtitle: Text(
+                      'Сотрудников: ${group.members.length}',
+                      style: const TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                    onTap: () => Navigator.pop(context, group),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _pickStaff(int memberId) {
+    setState(() {
+      if (_pickStaffMode == _PickMode.edit) {
+        _pickedStaff
+          ..clear()
+          ..add(memberId);
+
+        return;
+      }
+
+      if (!_pickedStaff.remove(memberId)) _pickedStaff.add(memberId);
+    });
+  }
+
+  void _startPickingStaff(int groupId, _PickMode mode) {
+    setState(() {
+      _pickStaffGroupId = groupId;
+      _pickStaffMode = mode;
+      _pickedStaff.clear();
+    });
+  }
+
+  void _stopPickingStaff() {
+    setState(() {
+      _pickStaffGroupId = null;
+      _pickStaffMode = _PickMode.none;
+      _pickedStaff.clear();
+    });
+  }
+
+  Future<void> _onStaffDelete(StaffGroup group) async {
+    final picking =
+        _pickStaffGroupId == group.id && _pickStaffMode != _PickMode.none;
+
+    if (!picking) {
+      if (group.members.isEmpty) {
+        await _deleteStaffGroup(group);
+
+        return;
+      }
+
+      _startPickingStaff(group.id, _PickMode.delete);
+
+      return;
+    }
+
+    if (_pickedStaff.isEmpty) {
+      _say('Отметьте, кого удалить.');
+
+      return;
+    }
+
+    final names = group.members
+        .where((item) => _pickedStaff.contains(item.id))
+        .map((item) => item.name)
+        .toList();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: Text(
+          names.length == 1
+              ? 'Удалить сотрудника?'
+              : 'Удалить сотрудников (${names.length})?',
+          style: const TextStyle(color: textPrimary, fontSize: 17),
+        ),
+        content: Text(
+          '${names.join(', ')}\n\nУдаление безвозвратно.',
+          style: const TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить',
+                style: TextStyle(color: Color(0xFFE05B5B))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    for (final id in _pickedStaff.toList()) {
+      try {
+        await ProductsStaffApi.deleteMember(id);
+      } catch (e) {
+        log.e('Сотрудник $id не удалился: $e');
+      }
+    }
+
+    _stopPickingStaff();
+
+    await _reloadStaff();
+  }
+
+  Future<void> _onStaffEdit(StaffGroup group) async {
+    final picking =
+        _pickStaffGroupId == group.id && _pickStaffMode != _PickMode.none;
+
+    if (!picking) {
+      if (group.members.isEmpty) {
+        await _openStaffScreen();
+
+        return;
+      }
+
+      _startPickingStaff(group.id, _PickMode.edit);
+
+      return;
+    }
+
+    if (_pickedStaff.isEmpty) {
+      _say('Отметьте сотрудника, которого хотите изменить.');
+
+      return;
+    }
+
+    if (_pickedStaff.length > 1) {
+      _say('Для изменения отметьте одного сотрудника.');
+
+      return;
+    }
+
+    final pickedId = _pickedStaff.first;
+
+    final matches = group.members.where((item) => item.id == pickedId).toList();
+
+    if (matches.isEmpty) {
+      _stopPickingStaff();
+
+      await _reloadStaff();
+
+      return;
+    }
+
+    final member = matches.first;
+
+    _stopPickingStaff();
+
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffMemberScreen(
+          publicationId: _publication.id,
+          categoryId: _publication.categoryId,
+          groups: _staff.groups,
+          existing: member,
+        ),
+      ),
+    );
+
+    await _reloadStaff();
+  }
+
+  Future<void> _deleteStaffGroup(StaffGroup group) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: const Text('Удалить группу сотрудников?',
+            style: TextStyle(color: textPrimary, fontSize: 17)),
+        content: const Text(
+          'Сотрудники останутся, исчезнет только папка.',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить',
+                style: TextStyle(color: Color(0xFFE05B5B))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await ProductsStaffApi.deleteGroup(group.id);
+
+      await _reloadStaff();
+    } catch (e) {
+      log.e('Группа сотрудников не удалилась: $e');
+      _say('Не получилось удалить группу.');
+    }
+  }
+
   // ── Публикация ──────────────────────────────────────────────────
 
   Future<void> _toggleAutoRenew(bool value) async {
@@ -1093,8 +1419,8 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
                   const SizedBox(height: 20),
                   _label('Добавить сотрудника'),
-                  _addRow(onTap: null),
-                  _soon('Экран сотрудников ещё не сделан'),
+                  _addRow(onTap: _addStaffMember),
+                  ..._staffBlocks(),
 
                   const SizedBox(height: 20),
                   _label('Добавить оплату'),
@@ -1282,6 +1608,213 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   ? 'Отметьте товары и нажмите «Удалить». Для правки отметьте один и нажмите «Изменить»'
                   : 'Отметьте один товар и нажмите «Изменить»',
               style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
+          ),
+        );
+      }
+    }
+
+    return widgets;
+  }
+
+  /// Группы сотрудников с людьми: тот же вид, что у товаров и доставки.
+  List<Widget> _staffBlocks() {
+    if (_staff.isEmpty) {
+      return [
+        const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Text(
+            'Сотрудников пока нет. Добавьте первого — он появится в группе.',
+            style: TextStyle(color: textMuted, fontSize: 13),
+          ),
+        ),
+      ];
+    }
+
+    final widgets = <Widget>[];
+
+    for (final group in _staff.groups) {
+      final isOpen = _openStaffGroups.contains(group.id);
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: GestureDetector(
+            onTap: () => setState(() {
+              isOpen
+                  ? _openStaffGroups.remove(group.id)
+                  : _openStaffGroups.add(group.id);
+            }),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    group.name,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  isOpen ? Icons.expand_less : Icons.expand_more,
+                  color: textSecondary,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      if (!isOpen) continue;
+
+      final picking =
+          _pickStaffGroupId == group.id && _pickStaffMode != _PickMode.none;
+
+      for (final member in group.members) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: GestureDetector(
+              onTap: picking ? () => _pickStaff(member.id) : null,
+              onLongPress: picking
+                  ? null
+                  : () {
+                      _startPickingStaff(group.id, _PickMode.delete);
+                      _pickStaff(member.id);
+                    },
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  if (picking) ...[
+                    CustomCheckbox(
+                      value: _pickedStaff.contains(member.id),
+                      onChanged: (_) => _pickStaff(member.id),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Text(
+                      member.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: picking && _pickedStaff.contains(member.id)
+                            ? textPrimary
+                            : textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    member.position == null || member.position!.isEmpty
+                        ? 'без должности'
+                        : member.position!,
+                    style: const TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (group.members.isEmpty) {
+        widgets.add(
+          const Padding(
+            padding: EdgeInsets.only(top: 10),
+            child: Text(
+              'В группе пока нет сотрудников',
+              style: TextStyle(color: textMuted, fontSize: 13),
+            ),
+          ),
+        );
+      }
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => _onStaffDelete(group),
+                child: Text(
+                  picking &&
+                          _pickStaffMode == _PickMode.delete &&
+                          _pickedStaff.isNotEmpty
+                      ? 'Удалить (${_pickedStaff.length})'
+                      : 'Удалить',
+                  style: const TextStyle(
+                    color: Color(0xFFE05B5B),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              if (picking) ...[
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: _stopPickingStaff,
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ),
+              ],
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _onStaffEdit(group),
+                child: const Text(
+                  'Изменить',
+                  style: TextStyle(color: activeIconColor, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Сотрудники без группы: папку удалили, а люди остались.
+    if (_staff.ungrouped.isNotEmpty) {
+      widgets.add(
+        const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: Text(
+            'Без группы',
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+
+      for (final member in _staff.ungrouped) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    member.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  member.position == null || member.position!.isEmpty
+                      ? 'без должности'
+                      : member.position!,
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                ),
+              ],
             ),
           ),
         );
