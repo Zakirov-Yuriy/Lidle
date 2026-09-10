@@ -473,9 +473,29 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       return;
     }
 
-    final position = group.products.where((item) => item.id == _picked.first);
+    // Достаём позицию ДО сброса отметок и сразу списком.
+    //
+    // Так было: `where(...)` откладывал вычисление, а `_stopPicking()`
+    // очищал отметки раньше, чем до него добирались, и `_picked.first`
+    // падал на пустом множестве. Ленивые последовательности и состояние
+    // экрана вместе не живут.
+    final pickedId = _picked.first;
 
-    if (position.isEmpty) return;
+    final matches = group.products
+        .where((item) => item.id == pickedId)
+        .toList();
+
+    if (matches.isEmpty) {
+      _say('Этот товар уже изменился. Обновляю список.');
+
+      _stopPicking();
+
+      await _reload();
+
+      return;
+    }
+
+    final position = matches.first;
 
     _stopPicking();
 
@@ -485,7 +505,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
         builder: (_) => ProductPositionScreen(
           publication: _publication,
           group: group,
-          existing: position.first,
+          existing: position,
         ),
       ),
     );
