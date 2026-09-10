@@ -57,23 +57,35 @@ enum StaffScheduleMode { weeks, rotation, days, hours }
 /// только «с» и «до» одного дня. Складывать это в один класс значит показать
 /// на экране «Дни и часы» перерыв, которого макет там не просит.
 class StaffDayHours {
-  const StaffDayHours({this.start, this.end});
+  const StaffDayHours({required this.weekday, this.start, this.end});
+
+  /// Номер дня недели, 1 — понедельник.
+  ///
+  /// Обычным полем, а не ключом объекта: объект с числовыми ключами PHP на
+  /// сервере переиндексирует, и «понедельник и суббота» превращаются в
+  /// «первый и второй». Поймали это проверкой 10.09.2026.
+  final int weekday;
 
   final String? start;
   final String? end;
 
   bool get isEmpty => start == null && end == null;
 
-  Map<String, dynamic> toJson() => {'start': start, 'end': end};
+  Map<String, dynamic> toJson() =>
+      {'weekday': weekday, 'start': start, 'end': end};
 
-  factory StaffDayHours.fromJson(Map<String, dynamic> data) {
+  factory StaffDayHours.fromJson(Map<String, dynamic> data, {int? weekday}) {
     String? time(dynamic value) {
       final text = value?.toString().trim() ?? '';
 
       return text.isEmpty || text == 'null' ? null : text;
     }
 
-    return StaffDayHours(start: time(data['start']), end: time(data['end']));
+    return StaffDayHours(
+      weekday: _int(data['weekday']) ?? weekday ?? 1,
+      start: time(data['start']),
+      end: time(data['end']),
+    );
   }
 }
 
@@ -314,9 +326,9 @@ class StaffSchedule {
           'to': rotationTo == null ? null : dayKey(rotationTo!),
         },
         'days': days,
-        'hours': weekdayHours.map(
-          (weekday, hours) => MapEntry('$weekday', hours.toJson()),
-        ),
+        'hours': (weekdayHours.keys.toList()..sort())
+            .map((weekday) => weekdayHours[weekday]!.toJson())
+            .toList(),
         'time': time.toJson(),
       };
 
@@ -363,20 +375,35 @@ class StaffSchedule {
 }
 
 /// Часы по дням недели из ответа сервера.
+///
+/// Разбираем и список, и старый вид «номер дня → часы»: графики, заведённые
+/// до перехода на список, должны открываться.
 Map<int, StaffDayHours> _hours(dynamic raw) {
-  if (raw is! Map) return const {};
-
   final result = <int, StaffDayHours>{};
 
-  raw.forEach((key, value) {
-    final weekday = int.tryParse('$key');
+  void add(Map<String, dynamic> data, {int? weekday}) {
+    final hours = StaffDayHours.fromJson(data, weekday: weekday);
 
-    if (weekday == null || weekday < 1 || weekday > 7) return;
-    if (value is! Map) return;
+    if (hours.weekday < 1 || hours.weekday > 7) return;
 
-    result[weekday] =
-        StaffDayHours.fromJson(Map<String, dynamic>.from(value));
-  });
+    result[hours.weekday] = hours;
+  }
+
+  if (raw is List) {
+    for (final item in raw) {
+      if (item is Map) add(Map<String, dynamic>.from(item));
+    }
+
+    return result;
+  }
+
+  if (raw is Map) {
+    raw.forEach((key, value) {
+      if (value is! Map) return;
+
+      add(Map<String, dynamic>.from(value), weekday: int.tryParse('$key'));
+    });
+  }
 
   return result;
 }

@@ -46,6 +46,7 @@ class _ProductStaffScheduleHoursScreenState
       final previous = _hours.values.isEmpty ? null : _hours.values.last;
 
       _hours[weekday] = StaffDayHours(
+        weekday: weekday,
         start: previous?.start,
         end: previous?.end,
       );
@@ -89,6 +90,7 @@ class _ProductStaffScheduleHoursScreenState
 
     setState(() {
       _hours[weekday] = StaffDayHours(
+        weekday: weekday,
         start: isStart ? value : current.start,
         end: isStart ? current.end : value,
       );
@@ -109,6 +111,7 @@ class _ProductStaffScheduleHoursScreenState
 
     _hours.forEach((weekday, hours) {
       filled[weekday] = StaffDayHours(
+        weekday: weekday,
         start: hours.start ?? '09:00',
         end: hours.end ?? '18:00',
       );
