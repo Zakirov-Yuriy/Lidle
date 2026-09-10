@@ -20,6 +20,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_staff.dart';
+import 'package:lidle/pages/products/add_product/product_staff_schedule_hours_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_schedule_rotation_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_schedule_weeks_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -97,13 +98,25 @@ class _ProductStaffScheduleSetupScreenState
     });
   }
 
-  void _notReady() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Этот способ ещё не сделан, он следующий на очереди'),
-        backgroundColor: secondaryBackground,
+  Future<void> _openHours() async {
+    final changed = await Navigator.push<StaffSchedule>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffScheduleHoursScreen(schedule: _schedule),
       ),
     );
+
+    if (changed != null && mounted) setState(() => _schedule = changed);
+  }
+
+  /// Убрать «Дни и часы».
+  void _clearHours() {
+    setState(() {
+      _schedule = _schedule.copyWith(
+        mode: StaffScheduleMode.days,
+        weekdayHours: const {},
+      );
+    });
   }
 
   void _explain() {
@@ -188,6 +201,25 @@ class _ProductStaffScheduleSetupScreenState
     ];
   }
 
+  /// Что показывать в карточке «Дни и часы»: строка на каждый рабочий день.
+  List<MapEntry<String, String>> get _hoursSummary {
+    if (_schedule.mode != StaffScheduleMode.hours) return const [];
+
+    final hours = _schedule.weekdayHours;
+
+    if (hours.isEmpty) return const [];
+
+    final weekdays = hours.keys.toList()..sort();
+
+    return [
+      for (final weekday in weekdays)
+        MapEntry(
+          '${StaffSchedule.weekdayShort[weekday - 1]}:',
+          'с ${hours[weekday]?.start ?? '—'} - до ${hours[weekday]?.end ?? '—'}',
+        ),
+    ];
+  }
+
   // ── Вёрстка ───────────────────────────────────────────────────────
 
   @override
@@ -258,7 +290,10 @@ class _ProductStaffScheduleSetupScreenState
                     icon: '⏱',
                     title: 'Дни и часы',
                     hint: 'Тут вы можете настроить рабочие дни и часы',
-                    onTap: _notReady,
+                    onTap: _openHours,
+                    summary: _hoursSummary,
+                    onClear: _clearHours,
+                    onChange: _openHours,
                   ),
                 ],
               ),

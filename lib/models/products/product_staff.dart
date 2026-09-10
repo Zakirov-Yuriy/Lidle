@@ -49,7 +49,33 @@ class StaffAccessDictionary {
 /// `weeks` — одни и те же дни недели каждую неделю;
 /// `rotation` — чередование: столько-то рабочих, столько-то выходных;
 /// `days` — человек отмечает дни в календаре руками.
-enum StaffScheduleMode { weeks, rotation, days }
+enum StaffScheduleMode { weeks, rotation, days, hours }
+
+/// Часы одного дня недели.
+///
+/// Отдельно от [StaffWorkTime]: там время всего графика с перерывом, здесь
+/// только «с» и «до» одного дня. Складывать это в один класс значит показать
+/// на экране «Дни и часы» перерыв, которого макет там не просит.
+class StaffDayHours {
+  const StaffDayHours({this.start, this.end});
+
+  final String? start;
+  final String? end;
+
+  bool get isEmpty => start == null && end == null;
+
+  Map<String, dynamic> toJson() => {'start': start, 'end': end};
+
+  factory StaffDayHours.fromJson(Map<String, dynamic> data) {
+    String? time(dynamic value) {
+      final text = value?.toString().trim() ?? '';
+
+      return text.isEmpty || text == 'null' ? null : text;
+    }
+
+    return StaffDayHours(start: time(data['start']), end: time(data['end']));
+  }
+}
 
 /// Рабочее время: одно на весь график.
 ///
@@ -133,6 +159,7 @@ class StaffSchedule {
     this.rotationFrom,
     this.rotationTo,
     this.days = const [],
+    this.weekdayHours = const {},
     this.time = const StaffWorkTime(),
   });
 
@@ -160,6 +187,10 @@ class StaffSchedule {
   /// Дни, отмеченные руками, в виде `2026-12-01`.
   final List<String> days;
 
+  /// Часы по дням недели: ключ — номер дня, 1 понедельник. Заполняется на
+  /// экране «Дни и часы»; день, которого здесь нет, нерабочий.
+  final Map<int, StaffDayHours> weekdayHours;
+
   final StaffWorkTime time;
 
   bool get isEmpty =>
@@ -168,7 +199,8 @@ class StaffSchedule {
           weeksPreset == null &&
           weekdays.isEmpty) ||
       (mode == StaffScheduleMode.rotation &&
-          (rotationFrom == null || weekdays.isEmpty));
+          (rotationFrom == null || weekdays.isEmpty)) ||
+      (mode == StaffScheduleMode.hours && weekdayHours.isEmpty);
 
   /// Короткие названия дней недели, где 1 — понедельник.
   static const List<String> weekdayShort = [
@@ -207,6 +239,7 @@ class StaffSchedule {
     DateTime? rotationTo,
     bool clearRotationDates = false,
     List<String>? days,
+    Map<int, StaffDayHours>? weekdayHours,
     StaffWorkTime? time,
   }) {
     return StaffSchedule(
@@ -219,6 +252,7 @@ class StaffSchedule {
           clearRotationDates ? null : (rotationFrom ?? this.rotationFrom),
       rotationTo: clearRotationDates ? null : (rotationTo ?? this.rotationTo),
       days: days ?? this.days,
+      weekdayHours: weekdayHours ?? this.weekdayHours,
       time: time ?? this.time,
     );
   }
@@ -263,6 +297,9 @@ class StaffSchedule {
 
       case StaffScheduleMode.days:
         return days.contains(dayKey(day));
+
+      case StaffScheduleMode.hours:
+        return weekdayHours.containsKey(day.weekday);
     }
   }
 
@@ -277,6 +314,9 @@ class StaffSchedule {
           'to': rotationTo == null ? null : dayKey(rotationTo!),
         },
         'days': days,
+        'hours': weekdayHours.map(
+          (weekday, hours) => MapEntry('$weekday', hours.toJson()),
+        ),
         'time': time.toJson(),
       };
 
@@ -314,11 +354,31 @@ class StaffSchedule {
       days: data['days'] is List
           ? (data['days'] as List).map((item) => '$item').toList()
           : const [],
+      weekdayHours: _hours(data['hours']),
       time: time is Map
           ? StaffWorkTime.fromJson(Map<String, dynamic>.from(time))
           : const StaffWorkTime(),
     );
   }
+}
+
+/// Часы по дням недели из ответа сервера.
+Map<int, StaffDayHours> _hours(dynamic raw) {
+  if (raw is! Map) return const {};
+
+  final result = <int, StaffDayHours>{};
+
+  raw.forEach((key, value) {
+    final weekday = int.tryParse('$key');
+
+    if (weekday == null || weekday < 1 || weekday > 7) return;
+    if (value is! Map) return;
+
+    result[weekday] =
+        StaffDayHours.fromJson(Map<String, dynamic>.from(value));
+  });
+
+  return result;
 }
 
 /// Дата так, как её читает человек: `13.12.2025`.

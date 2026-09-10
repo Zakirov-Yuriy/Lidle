@@ -792,7 +792,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.chevron_right,
-                    color: activeIconColor, size: 22),
+                    color: textMuted, size: 22),
               ),
             ],
           ),
@@ -839,6 +839,19 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
         return schedule.days.isEmpty
             ? 'Перейти'
             : 'Дней: ${schedule.days.length}, $hours';
+
+      case StaffScheduleMode.hours:
+        final weekdays = schedule.weekdayHours.keys.toList()..sort();
+
+        if (weekdays.isEmpty) return 'Перейти';
+
+        final days = weekdays
+            .map((day) => StaffSchedule.weekdayShort[day - 1])
+            .join(', ');
+
+        // Часы у каждого дня свои, и в одну строку они не влезают: показываем
+        // дни, а часы человек увидит, открыв график.
+        return '$days, свои часы';
     }
   }
 
