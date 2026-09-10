@@ -812,11 +812,17 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
 
     switch (schedule.mode) {
       case StaffScheduleMode.weeks:
+        final preset = schedule.weeksPreset;
+
+        if (preset != null) {
+          return '${StaffSchedule.weeksPresetTitle(preset)}, $hours';
+        }
+
         const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
         final days = schedule.weekdays.map((day) => names[day - 1]).join(', ');
 
-        return days.isEmpty ? hours : '$days, $hours';
+        return days.isEmpty ? 'Перейти' : '$days, $hours';
 
       case StaffScheduleMode.rotation:
         return '${schedule.rotationWork} через ${schedule.rotationRest}, $hours';

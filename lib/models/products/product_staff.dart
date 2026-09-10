@@ -127,6 +127,7 @@ class StaffSchedule {
   const StaffSchedule({
     this.mode = StaffScheduleMode.days,
     this.weekdays = const [],
+    this.weeksPreset,
     this.rotationWork = 2,
     this.rotationRest = 2,
     this.rotationFrom,
@@ -137,7 +138,15 @@ class StaffSchedule {
   final StaffScheduleMode mode;
 
   /// Дни недели, где 1 — понедельник, 7 — воскресенье.
+  ///
+  /// Осталось от первой версии экрана и сейчас не заполняется: рабочие недели
+  /// задаются готовым набором (`weeksPreset`). Поле оставлено, чтобы графики,
+  /// заведённые до 10.09.2026, не пропали.
   final List<int> weekdays;
+
+  /// Готовый набор рабочих недель: `all`, `workdays`, `even`, `odd`.
+  /// Пусто — «По неделям» ещё не настроили.
+  final String? weeksPreset;
 
   final int rotationWork;
   final int rotationRest;
@@ -152,11 +161,31 @@ class StaffSchedule {
 
   bool get isEmpty =>
       (mode == StaffScheduleMode.days && days.isEmpty) ||
-      (mode == StaffScheduleMode.weeks && weekdays.isEmpty);
+      (mode == StaffScheduleMode.weeks &&
+          weeksPreset == null &&
+          weekdays.isEmpty);
+
+  /// Как набор рабочих недель называется на экране.
+  static String weeksPresetTitle(String? preset) {
+    switch (preset) {
+      case 'all':
+        return 'Все дни';
+      case 'workdays':
+        return 'Будни';
+      case 'even':
+        return 'Чётные';
+      case 'odd':
+        return 'Нечётные';
+      default:
+        return 'Не настроено';
+    }
+  }
 
   StaffSchedule copyWith({
     StaffScheduleMode? mode,
     List<int>? weekdays,
+    String? weeksPreset,
+    bool clearWeeksPreset = false,
     int? rotationWork,
     int? rotationRest,
     DateTime? rotationFrom,
@@ -166,6 +195,7 @@ class StaffSchedule {
     return StaffSchedule(
       mode: mode ?? this.mode,
       weekdays: weekdays ?? this.weekdays,
+      weeksPreset: clearWeeksPreset ? null : (weeksPreset ?? this.weeksPreset),
       rotationWork: rotationWork ?? this.rotationWork,
       rotationRest: rotationRest ?? this.rotationRest,
       rotationFrom: rotationFrom ?? this.rotationFrom,
@@ -178,6 +208,21 @@ class StaffSchedule {
   bool isWorkingDay(DateTime day) {
     switch (mode) {
       case StaffScheduleMode.weeks:
+        switch (weeksPreset) {
+          case 'all':
+            return true;
+          case 'workdays':
+            return day.weekday <= 5;
+
+          // «Чётные» и «нечётные» это числа месяца, как о них и говорят:
+          // «работаю по чётным». Недели тут ни при чём, хотя блок на макете
+          // называется «Рабочие недели».
+          case 'even':
+            return day.day.isEven;
+          case 'odd':
+            return day.day.isOdd;
+        }
+
         return weekdays.contains(day.weekday);
 
       case StaffScheduleMode.rotation:
@@ -202,6 +247,7 @@ class StaffSchedule {
   Map<String, dynamic> toJson() => {
         'mode': mode.name,
         'weekdays': weekdays,
+        'weeks': {'preset': weeksPreset},
         'rotation': {
           'work': rotationWork,
           'rest': rotationRest,
@@ -212,6 +258,10 @@ class StaffSchedule {
       };
 
   factory StaffSchedule.fromJson(Map<String, dynamic> data) {
+    final weeks = data['weeks'];
+    final weeksMap =
+        weeks is Map ? Map<String, dynamic>.from(weeks) : const <String, dynamic>{};
+
     final rotation = data['rotation'];
     final rotationMap = rotation is Map
         ? Map<String, dynamic>.from(rotation)
@@ -231,6 +281,9 @@ class StaffSchedule {
               .where((item) => item >= 1 && item <= 7)
               .toList()
           : const [],
+      weeksPreset: weeksMap['preset'] == null
+          ? null
+          : '${weeksMap['preset']}',
       rotationWork: _int(rotationMap['work']) ?? 2,
       rotationRest: _int(rotationMap['rest']) ?? 2,
       rotationFrom: DateTime.tryParse('${rotationMap['from']}'),
