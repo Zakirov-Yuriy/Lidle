@@ -6,8 +6,15 @@
 // («Куртки зима», «Куртки осень-весна») и плитка «плюс» для новой группы,
 // ниже содержимое выбранной группы: позиции и плитка «Добавить позицию».
 //
+// Файл назывался `product_groups_screen.dart`, и это вводило в заблуждение:
+// экран называется «Добавить товар» и заводит товары, а группы здесь лишь
+// папки. Переименован 10.09.2026.
+//
 // Группа это папка при заведении. Покупателю групп не показывают: на витрине
 // он видит каждую позицию отдельной карточкой с кнопкой «в корзину».
+//
+// Экран доставки (`product_delivery_screen.dart`) устроен так же и намеренно:
+// человек, заведя товар, узнаёт тот же экран и не учится заново.
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
@@ -20,16 +27,16 @@ import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/utils/color_names.dart';
 import 'package:lidle/widgets/components/header.dart';
 
-class ProductGroupsScreen extends StatefulWidget {
-  const ProductGroupsScreen({super.key, required this.publication});
+class ProductItemsScreen extends StatefulWidget {
+  const ProductItemsScreen({super.key, required this.publication});
 
   final ProductPublication publication;
 
   @override
-  State<ProductGroupsScreen> createState() => _ProductGroupsScreenState();
+  State<ProductItemsScreen> createState() => _ProductItemsScreenState();
 }
 
-class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
+class _ProductItemsScreenState extends State<ProductItemsScreen> {
   late ProductPublication _publication = widget.publication;
 
   /// Какая группа раскрыта. Номер, а не объект: после обновления с сервера

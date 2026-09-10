@@ -21,7 +21,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
-import 'package:lidle/pages/products/add_product/product_groups_screen.dart';
+import 'package:lidle/pages/products/add_product/product_items_screen.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
@@ -365,7 +365,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ProductGroupsScreen(publication: _publication),
+        builder: (_) => ProductItemsScreen(publication: _publication),
       ),
     );
 

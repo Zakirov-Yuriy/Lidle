@@ -471,6 +471,45 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
               _hintLink('Что такое группы?'),
 
               const SizedBox(height: 12),
+              const Text('Категория',
+                  style: TextStyle(color: textPrimary, fontSize: 15)),
+              const SizedBox(height: 8),
+
+              // Тот же блок, что на экране товара: человек проваливается сюда
+              // через несколько экранов и должен видеть, к чему заводит
+              // доставку.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.publication.categoryName.isEmpty
+                          ? 'Раздел не указан'
+                          : widget.publication.categoryName,
+                      style: TextStyle(
+                        color: widget.publication.categoryName.isEmpty
+                            ? textMuted
+                            : textPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (widget.publication.categoryPath.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.publication.categoryPath,
+                        style: const TextStyle(color: textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
               const Text('Название группы',
                   style: TextStyle(color: textPrimary, fontSize: 15)),
               const SizedBox(height: 8),
