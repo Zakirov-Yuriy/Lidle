@@ -278,13 +278,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           const SizedBox(height: 10),
           ...order.items.map(
             (line) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
+                  _lineImage(line),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       '${line.name} × ${line.quantity}',
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style:
                           const TextStyle(color: textSecondary, fontSize: 13),
@@ -346,6 +348,36 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       ),
     );
   }
+
+
+  /// Картинка позиции: узнать покупку в списке по фотографии быстрее, чем
+  /// по названию. Заказы, оформленные до появления поля, и товары без
+  /// фотографии показывают заглушку — пустое место в ряду хуже серого
+  /// квадрата, строки разъезжаются.
+  Widget _lineImage(OrderLine line) {
+    final url = line.image;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: url == null
+            ? _lineImagePlaceholder()
+            : Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _lineImagePlaceholder(),
+              ),
+      ),
+    );
+  }
+
+  Widget _lineImagePlaceholder() => Container(
+        color: primaryBackground,
+        alignment: Alignment.center,
+        child: const Icon(Icons.image_outlined, color: textMuted, size: 18),
+      );
 
   Widget _statusChip(OrderModel order) {
     Color color = textMuted;

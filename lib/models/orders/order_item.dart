@@ -110,6 +110,14 @@ class OrderModel {
   }
 }
 
+/// Строка или ничего: пустую строку сервер не присылает, но чужой ответ
+/// проще привести к `null` здесь, чем ловить пустую картинку на экране.
+String? _text(dynamic value) {
+  final text = value?.toString().trim() ?? '';
+
+  return text.isEmpty ? null : text;
+}
+
 double? _double(dynamic value) {
   if (value is double) return value;
   if (value is num) return value.toDouble();
@@ -121,6 +129,11 @@ class OrderLine {
   final int? productId;
   final String name;
   final String? sku;
+
+  /// Картинка товара готовой ссылкой. Пусто у заказов, оформленных до
+  /// 10.09.2026, и у товаров без фотографии — тогда рисуем заглушку.
+  final String? image;
+
   final String price;
   final int quantity;
   final double sum;
@@ -132,6 +145,7 @@ class OrderLine {
     required this.sum,
     this.productId,
     this.sku,
+    this.image,
   });
 
   factory OrderLine.fromJson(Map<String, dynamic> data) {
@@ -139,6 +153,7 @@ class OrderLine {
       productId: OrderModel._int(data['product_id']),
       name: '${data['name'] ?? ''}',
       sku: data['sku']?.toString(),
+      image: _text(data['image']),
       price: '${data['price'] ?? '0'}',
       quantity: OrderModel._int(data['quantity']) ?? 1,
       sum: _double(data['sum']) ?? 0,
