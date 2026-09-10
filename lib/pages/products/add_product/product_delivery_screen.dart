@@ -19,13 +19,25 @@ import 'package:lidle/models/products/product_delivery.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_option_screen.dart';
+import 'package:lidle/pages/products/add_product/product_review_screen.dart';
 import 'package:lidle/services/api/products_delivery_api.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class ProductDeliveryScreen extends StatefulWidget {
-  const ProductDeliveryScreen({super.key, required this.publication});
+  const ProductDeliveryScreen({
+    super.key,
+    required this.publication,
+    this.openReview = true,
+  });
 
   final ProductPublication publication;
+
+  /// Куда ведёт «Сохранить»: на сводку публикации или назад.
+  ///
+  /// Со сводки сюда и приходят, и открывать её второй раз поверх себя же
+  /// значит уложить в стопку две одинаковые страницы: кнопка «назад» потом
+  /// проведёт человека по ним обеим.
+  final bool openReview;
 
   @override
   State<ProductDeliveryScreen> createState() => _ProductDeliveryScreenState();
@@ -215,6 +227,27 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
       log.e('Способ доставки не удалился: $e');
       _say('Не получилось удалить способ доставки.');
     }
+  }
+
+  /// «Сохранить»: к сводке публикации.
+  ///
+  /// Сохранять здесь нечего — группы и способы уходят на сервер сразу, как их
+  /// завели. Кнопка означает «я закончил с доставкой».
+  Future<void> _onSave() async {
+    if (!widget.openReview) {
+      Navigator.pop(context, true);
+
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductReviewScreen(publication: widget.publication),
+      ),
+    );
+
+    if (mounted) await _reload();
   }
 
   // ── Диалоги ─────────────────────────────────────────────────────
@@ -461,7 +494,7 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
             16,
           ),
           child: GestureDetector(
-            onTap: () => Navigator.pop(context, true),
+            onTap: _onSave,
             child: Container(
               height: 52,
               alignment: Alignment.center,

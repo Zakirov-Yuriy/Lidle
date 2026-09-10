@@ -19,12 +19,15 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/products/product_delivery.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/product_delivery_option_screen.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
+import 'package:lidle/services/api/products_delivery_api.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -50,6 +53,17 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
   List<ProductBrand> _brands = const [];
 
+  /// Доставка публикации: те же группы и карточки, что на своём экране, но
+  /// показанные списком.
+  PublicationDelivery _delivery = const PublicationDelivery();
+
+  final Set<int> _openDeliveryGroups = {};
+
+  /// Выбор способов доставки: устроен так же, как выбор позиций.
+  int? _pickDeliveryGroupId;
+  _PickMode _pickDeliveryMode = _PickMode.none;
+  final Set<int> _pickedDelivery = {};
+
   /// Выбор позиций внутри одной группы: чекбоксы появляются по нажатию на
   /// «Удалить» или «Изменить» и живут только в этой группе. Одновременно
   /// выбирать в двух группах незачем: удаление и правка идут по одной папке.
@@ -69,6 +83,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
     _reload();
     _loadBrands();
+    _reloadDelivery();
   }
 
   Future<void> _reload() async {
@@ -86,6 +101,24 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       });
     } catch (e) {
       log.d('Публикация не обновилась: $e');
+    }
+  }
+
+  Future<void> _reloadDelivery() async {
+    try {
+      final fresh = await ProductsDeliveryApi.load(_publication.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _delivery = fresh;
+
+        if (_openDeliveryGroups.isEmpty && fresh.groups.isNotEmpty) {
+          _openDeliveryGroups.add(fresh.groups.first.id);
+        }
+      });
+    } catch (e) {
+      log.d('Доставка не обновилась: $e');
     }
   }
 
@@ -349,15 +382,21 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   }
 
   /// Экран доставки.
-  Future<void> _openDelivery() async {
+  Future<void> _openDeliveryScreen() async {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ProductDeliveryScreen(publication: _publication),
+        builder: (_) => ProductDeliveryScreen(
+          publication: _publication,
+
+          // Сюда мы уже пришли: открывать сводку поверх себя же не надо.
+          openReview: false,
+        ),
       ),
     );
 
     await _reload();
+    await _reloadDelivery();
   }
 
   /// Экран групп: правка названий, обложек и содержимого.
@@ -617,6 +656,288 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     if (failed.isNotEmpty) _say(failed.first);
   }
 
+  // ── Доставка ────────────────────────────────────────────────────
+
+  /// «Добавить»: сразу к заведению способа доставки.
+  ///
+  /// Как и у товара: способ кладётся в группу, поэтому группу надо знать.
+  /// Одна — берём молча, несколько — спрашиваем, ни одной — отправляем на
+  /// экран доставки заводить папку.
+  Future<void> _addDeliveryOption() async {
+    final groups = _delivery.groups;
+
+    if (groups.isEmpty) {
+      _say('Сначала добавьте группу доставки.');
+
+      await _openDeliveryScreen();
+
+      return;
+    }
+
+    final group = groups.length == 1 ? groups.first : await _chooseDeliveryGroup();
+
+    if (group == null || !mounted) return;
+
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDeliveryOptionScreen(
+          publicationId: _publication.id,
+          groups: groups,
+          groupId: group.id,
+        ),
+      ),
+    );
+
+    await _reloadDelivery();
+  }
+
+  Future<DeliveryGroup?> _chooseDeliveryGroup() {
+    return showModalBottomSheet<DeliveryGroup>(
+      context: context,
+      backgroundColor: primaryBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(defaultPadding, 20, defaultPadding, 12),
+              child: Text(
+                'В какую группу',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _delivery.groups.length,
+                itemBuilder: (context, index) {
+                  final group = _delivery.groups[index];
+
+                  return ListTile(
+                    title: Text(
+                      group.name,
+                      style: const TextStyle(color: textPrimary, fontSize: 15),
+                    ),
+                    subtitle: Text(
+                      'Способов: ${group.options.length}',
+                      style: const TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                    onTap: () => Navigator.pop(context, group),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _pickDelivery(int optionId) {
+    setState(() {
+      if (_pickDeliveryMode == _PickMode.edit) {
+        _pickedDelivery
+          ..clear()
+          ..add(optionId);
+
+        return;
+      }
+
+      if (!_pickedDelivery.remove(optionId)) _pickedDelivery.add(optionId);
+    });
+  }
+
+  void _startPickingDelivery(int groupId, _PickMode mode) {
+    setState(() {
+      _pickDeliveryGroupId = groupId;
+      _pickDeliveryMode = mode;
+      _pickedDelivery.clear();
+    });
+  }
+
+  void _stopPickingDelivery() {
+    setState(() {
+      _pickDeliveryGroupId = null;
+      _pickDeliveryMode = _PickMode.none;
+      _pickedDelivery.clear();
+    });
+  }
+
+  Future<void> _onDeliveryDelete(DeliveryGroup group) async {
+    final picking = _pickDeliveryGroupId == group.id &&
+        _pickDeliveryMode != _PickMode.none;
+
+    if (!picking) {
+      if (group.options.isEmpty) {
+        await _deleteDeliveryGroup(group);
+
+        return;
+      }
+
+      _startPickingDelivery(group.id, _PickMode.delete);
+
+      return;
+    }
+
+    if (_pickedDelivery.isEmpty) {
+      _say('Отметьте, какие способы удалить.');
+
+      return;
+    }
+
+    final names = group.options
+        .where((item) => _pickedDelivery.contains(item.id))
+        .map((item) => item.name)
+        .toList();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: Text(
+          names.length == 1
+              ? 'Удалить способ доставки?'
+              : 'Удалить способы (${names.length})?',
+          style: const TextStyle(color: textPrimary, fontSize: 17),
+        ),
+        content: Text(
+          '${names.join(', ')}\n\nУдаление безвозвратно.',
+          style: const TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить',
+                style: TextStyle(color: Color(0xFFE05B5B))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    for (final id in _pickedDelivery.toList()) {
+      try {
+        await ProductsDeliveryApi.deleteOption(id);
+      } catch (e) {
+        log.e('Способ $id не удалился: $e');
+      }
+    }
+
+    _stopPickingDelivery();
+
+    await _reloadDelivery();
+  }
+
+  Future<void> _onDeliveryEdit(DeliveryGroup group) async {
+    final picking = _pickDeliveryGroupId == group.id &&
+        _pickDeliveryMode != _PickMode.none;
+
+    if (!picking) {
+      if (group.options.isEmpty) {
+        await _openDeliveryScreen();
+
+        return;
+      }
+
+      _startPickingDelivery(group.id, _PickMode.edit);
+
+      return;
+    }
+
+    if (_pickedDelivery.isEmpty) {
+      _say('Отметьте способ, который хотите изменить.');
+
+      return;
+    }
+
+    if (_pickedDelivery.length > 1) {
+      _say('Для изменения отметьте один способ.');
+
+      return;
+    }
+
+    final pickedId = _pickedDelivery.first;
+
+    final matches = group.options.where((item) => item.id == pickedId).toList();
+
+    if (matches.isEmpty) {
+      _stopPickingDelivery();
+
+      await _reloadDelivery();
+
+      return;
+    }
+
+    final option = matches.first;
+
+    _stopPickingDelivery();
+
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDeliveryOptionScreen(
+          publicationId: _publication.id,
+          groups: _delivery.groups,
+          existing: option,
+        ),
+      ),
+    );
+
+    await _reloadDelivery();
+  }
+
+  Future<void> _deleteDeliveryGroup(DeliveryGroup group) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: const Text('Удалить группу доставки?',
+            style: TextStyle(color: textPrimary, fontSize: 17)),
+        content: const Text(
+          'Способы доставки останутся, исчезнет только папка.',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить',
+                style: TextStyle(color: Color(0xFFE05B5B))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await ProductsDeliveryApi.deleteGroup(group.id);
+
+      await _reloadDelivery();
+    } catch (e) {
+      log.e('Группа доставки не удалилась: $e');
+      _say('Не получилось удалить группу.');
+    }
+  }
+
   // ── Публикация ──────────────────────────────────────────────────
 
   Future<void> _toggleAutoRenew(bool value) async {
@@ -765,7 +1086,8 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   const Divider(color: Color(0xFF2A3744), height: 32),
 
                   _label('Добавить доставку'),
-                  _addRow(onTap: _openDelivery),
+                  _addRow(onTap: _addDeliveryOption),
+                  ..._deliveryBlocks(),
 
                   // ── Блоки, за которыми ещё нет экранов ──────────────
 
@@ -960,6 +1282,213 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   ? 'Отметьте товары и нажмите «Удалить». Для правки отметьте один и нажмите «Изменить»'
                   : 'Отметьте один товар и нажмите «Изменить»',
               style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
+          ),
+        );
+      }
+    }
+
+    return widgets;
+  }
+
+  /// Группы доставки со способами: тот же вид, что у товаров.
+  List<Widget> _deliveryBlocks() {
+    if (_delivery.isEmpty) {
+      return [
+        const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Text(
+            'Доставки пока нет. Добавьте способ — покупатель увидит условия.',
+            style: TextStyle(color: textMuted, fontSize: 13),
+          ),
+        ),
+      ];
+    }
+
+    final widgets = <Widget>[];
+
+    for (final group in _delivery.groups) {
+      final isOpen = _openDeliveryGroups.contains(group.id);
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: GestureDetector(
+            onTap: () => setState(() {
+              isOpen
+                  ? _openDeliveryGroups.remove(group.id)
+                  : _openDeliveryGroups.add(group.id);
+            }),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    group.name,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  isOpen ? Icons.expand_less : Icons.expand_more,
+                  color: textSecondary,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      if (!isOpen) continue;
+
+      final picking = _pickDeliveryGroupId == group.id &&
+          _pickDeliveryMode != _PickMode.none;
+
+      for (final option in group.options) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: GestureDetector(
+              onTap: picking ? () => _pickDelivery(option.id) : null,
+              onLongPress: picking
+                  ? null
+                  : () {
+                      _startPickingDelivery(group.id, _PickMode.delete);
+                      _pickDelivery(option.id);
+                    },
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  if (picking) ...[
+                    CustomCheckbox(
+                      value: _pickedDelivery.contains(option.id),
+                      onChanged: (_) => _pickDelivery(option.id),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: Text(
+                      option.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: picking && _pickedDelivery.contains(option.id)
+                            ? textPrimary
+                            : textSecondary,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    option.priceFrom == null
+                        ? 'бесплатно'
+                        : option.priceLabel.replaceFirst('Стоимость: ', ''),
+                    style: const TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (group.options.isEmpty) {
+        widgets.add(
+          const Padding(
+            padding: EdgeInsets.only(top: 10),
+            child: Text(
+              'В группе пока нет способов',
+              style: TextStyle(color: textMuted, fontSize: 13),
+            ),
+          ),
+        );
+      }
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => _onDeliveryDelete(group),
+                child: Text(
+                  picking &&
+                          _pickDeliveryMode == _PickMode.delete &&
+                          _pickedDelivery.isNotEmpty
+                      ? 'Удалить (${_pickedDelivery.length})'
+                      : 'Удалить',
+                  style: const TextStyle(
+                    color: Color(0xFFE05B5B),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              if (picking) ...[
+                const SizedBox(width: 16),
+                GestureDetector(
+                  onTap: _stopPickingDelivery,
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ),
+              ],
+              const Spacer(),
+              GestureDetector(
+                onTap: () => _onDeliveryEdit(group),
+                child: const Text(
+                  'Изменить',
+                  style: TextStyle(color: activeIconColor, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Способы без группы: папку удалили, а условия остались.
+    if (_delivery.ungrouped.isNotEmpty) {
+      widgets.add(
+        const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: Text(
+            'Без группы',
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+
+      for (final option in _delivery.ungrouped) {
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    option.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  option.priceFrom == null
+                      ? 'бесплатно'
+                      : option.priceLabel.replaceFirst('Стоимость: ', ''),
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                ),
+              ],
             ),
           ),
         );
