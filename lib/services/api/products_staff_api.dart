@@ -78,6 +78,7 @@ class ProductsStaffApi {
     num? salary,
     List<String>? venueAccess,
     List<String>? accountAccess,
+    StaffSchedule? schedule,
     String? description,
     int? groupId,
   }) async {
@@ -90,6 +91,7 @@ class ProductsStaffApi {
         if (salary != null) 'salary': salary,
         if (venueAccess != null) 'venue_access': venueAccess,
         if (accountAccess != null) 'account_access': accountAccess,
+        if (schedule != null) 'schedule': schedule.toJson(),
         if (description != null) 'description': description,
         if (groupId != null) 'group_id': groupId,
       },
@@ -113,6 +115,8 @@ class ProductsStaffApi {
     bool touchSalary = false,
     List<String>? venueAccess,
     List<String>? accountAccess,
+    StaffSchedule? schedule,
+    bool touchSchedule = false,
     String? description,
     int? groupId,
   }) async {
@@ -125,6 +129,11 @@ class ProductsStaffApi {
         if (touchSalary) 'salary': salary,
         if (venueAccess != null) 'venue_access': venueAccess,
         if (accountAccess != null) 'account_access': accountAccess,
+
+        // График, как и зарплату, шлём только когда его трогали: `null`
+        // здесь означает «снять», а не «не менял».
+        if (touchSchedule) 'schedule': schedule?.toJson(),
+
         if (description != null) 'description': description,
         if (groupId != null) 'group_id': groupId,
       },

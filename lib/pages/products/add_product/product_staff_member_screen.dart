@@ -14,9 +14,10 @@
 // Доступы, наоборот, приходят из кода сервера: каждый пункт — это раздел
 // приложения, и список должен совпадать с ним один в один.
 //
-// График работы на макете есть, за ним три отдельных экрана (период,
-// календарь, часы). Кнопка нарисована и погашена: показать её честнее, чем
-// потом переделывать вёрстку.
+// График работы живёт на своих экранах (календарь и настройка), а сюда
+// возвращается целиком и уходит на сервер вместе с карточкой. Отдельно он не
+// сохраняется намеренно: иначе «Отмена» здесь оставляла бы сохранённый график
+// от несохранённого сотрудника.
 
 import 'dart:io';
 
@@ -26,6 +27,7 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
+import 'package:lidle/pages/products/add_product/product_staff_schedule_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/services/api/products_staff_api.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
@@ -75,6 +77,9 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
   List<String> _positions = const [];
   StaffAccessDictionary _access = const StaffAccessDictionary();
 
+  /// График работы. Пусто — его не задавали.
+  StaffSchedule? _schedule;
+
   String? _photo;
   String? _saved;
 
@@ -98,6 +103,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
       _saved = existing.image;
       _venue.addAll(existing.venueAccess);
       _account.addAll(existing.accountAccess);
+      _schedule = existing.schedule;
 
       if (existing.number != null) _number.text = '${existing.number}';
 
@@ -336,6 +342,10 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           touchSalary: true,
           venueAccess: _venue.toList(),
           accountAccess: _account.toList(),
+          schedule: _schedule,
+
+          // Как и зарплата: пустой график означает «снять», а не «не менял».
+          touchSchedule: true,
           description: _description.text.trim(),
           groupId: _groupId,
         );
@@ -348,6 +358,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           salary: salary,
           venueAccess: _venue.toList(),
           accountAccess: _account.toList(),
+          schedule: _schedule,
           description: _description.text.trim(),
           groupId: _groupId,
         );
@@ -736,7 +747,10 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
     );
   }
 
-  /// График работы: экраны за ним ещё не сделаны.
+  /// График работы: открывает календарь и забирает результат себе.
+  ///
+  /// Строка показывает не «Перейти», а то, что уже задано: человек должен
+  /// видеть, заполнял он график или нет, не проваливаясь внутрь.
   Widget _scheduleRow() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,44 +758,85 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
         const Text('График работы сотрудника',
             style: TextStyle(color: textPrimary, fontSize: 15)),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: Container(
+        GestureDetector(
+          onTap: _openSchedule,
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  alignment: Alignment.centerLeft,
+                  decoration: BoxDecoration(
+                    color: formBackground,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _scheduleLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _schedule == null ? textMuted : textPrimary,
+                      fontSize: 15,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 48,
                 height: 48,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: formBackground,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Перейти',
-                    style: TextStyle(color: textMuted, fontSize: 15)),
+                child: const Icon(Icons.chevron_right,
+                    color: activeIconColor, size: 22),
               ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              width: 48,
-              height: 48,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: formBackground,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.chevron_right,
-                  color: textMuted, size: 22),
-            ),
-          ],
-        ),
-        const Padding(
-          padding: EdgeInsets.only(top: 6),
-          child: Text(
-            'Экран графика ещё не сделан',
-            style: TextStyle(color: textMuted, fontSize: 12),
+            ],
           ),
         ),
       ],
     );
+  }
+
+  /// Короткая подпись графика для строки.
+  String get _scheduleLabel {
+    final schedule = _schedule;
+
+    if (schedule == null) return 'Перейти';
+
+    final time = schedule.time;
+    final hours = time.allDay ? 'весь день' : '${time.start}–${time.end}';
+
+    switch (schedule.mode) {
+      case StaffScheduleMode.weeks:
+        const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+        final days = schedule.weekdays.map((day) => names[day - 1]).join(', ');
+
+        return days.isEmpty ? hours : '$days, $hours';
+
+      case StaffScheduleMode.rotation:
+        return '${schedule.rotationWork} через ${schedule.rotationRest}, $hours';
+
+      case StaffScheduleMode.days:
+        return schedule.days.isEmpty
+            ? 'Перейти'
+            : 'Дней: ${schedule.days.length}, $hours';
+    }
+  }
+
+  Future<void> _openSchedule() async {
+    final changed = await Navigator.push<StaffSchedule>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffScheduleScreen(schedule: _schedule),
+      ),
+    );
+
+    if (changed != null && mounted) setState(() => _schedule = changed);
   }
 
   Widget _text(
