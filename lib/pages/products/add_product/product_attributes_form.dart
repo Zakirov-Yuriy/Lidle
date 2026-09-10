@@ -232,34 +232,11 @@ class _ProductAttributesFormState extends State<ProductAttributesForm> {
     );
   }
 
-  /// Какое поле рисовать.
-  ///
-  /// Правила общие с подачей объявления (`resolveFilterField`) с одной
-  /// поправкой: у стиля D оно всегда даёт ОДИН вариант при заведении
-  /// карточки. Для товара это не так — у позиции бывает несколько цветов
-  /// сразу (решение заказчика от 10.09.2026), — поэтому здесь решает флаг
-  /// самого атрибута «Множественный выбор». Им администратор управляет в
-  /// админке, по каждой характеристике отдельно.
-  ///
-  /// Правило объявлений при этом не тронуто: там та же характеристика
-  /// по-прежнему спрашивает один вариант.
-  FilterFieldPlan _planFor(Attribute attr) {
-    final plan = resolveFilterField(attr);
-
-    final wasForcedSingle = plan.kind == FilterFieldKind.multipleSelectPopup &&
-        attr.isMultiple &&
-        !plan.attribute.isMultiple;
-
-    if (!wasForcedSingle) return plan;
-
-    return FilterFieldPlan(
-      plan.kind,
-      plan.attribute.copyWith(isMultiple: true, isPopup: true),
-    );
-  }
-
   Widget _buildField(Attribute attr) {
-    final plan = _planFor(attr);
+    // Правила общие с подачей объявления. Одно отличие — несколько значений
+    // у позиции (несколько цветов) — решает сервер: он отдаёт такому полю
+    // стиль F, см. ProductFieldResource на бэкенде.
+    final plan = resolveFilterField(attr);
     final field = plan.attribute;
     final controller = widget.controller;
 

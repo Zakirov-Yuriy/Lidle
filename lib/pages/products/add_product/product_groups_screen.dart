@@ -386,6 +386,45 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
               _hintLink('Что такое группы?'),
 
               const SizedBox(height: 12),
+              const Text('Категория',
+                  style: TextStyle(color: textPrimary, fontSize: 15)),
+              const SizedBox(height: 8),
+
+              // Раздел, выбранный на прошлом экране. Человек проваливается
+              // сюда через несколько экранов подряд и к моменту заведения
+              // групп уже не помнит, куда именно кладёт товар.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _publication.categoryName.isEmpty
+                          ? 'Раздел не указан'
+                          : _publication.categoryName,
+                      style: TextStyle(
+                        color: _publication.categoryName.isEmpty
+                            ? textMuted
+                            : textPrimary,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (_publication.categoryPath.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        _publication.categoryPath,
+                        style: const TextStyle(color: textMuted, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
               const Text('Название группы',
                   style: TextStyle(color: textPrimary, fontSize: 15)),
               const SizedBox(height: 8),
@@ -394,17 +433,28 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
                 child: Container(
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  alignment: Alignment.centerLeft,
                   decoration: BoxDecoration(
                     color: formBackground,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    group?.name ?? 'Группы пока нет',
-                    style: TextStyle(
-                      color: group == null ? textMuted : textPrimary,
-                      fontSize: 15,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          group?.name ?? 'Группы пока нет',
+                          style: TextStyle(
+                            color: group == null ? textMuted : textPrimary,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+
+                      // Карандаш, а не молчаливое нажатие по строке: иначе про
+                      // переименование группы никто не догадается.
+                      if (group != null)
+                        const Icon(Icons.edit_outlined,
+                            color: activeIconColor, size: 18),
+                    ],
                   ),
                 ),
               ),

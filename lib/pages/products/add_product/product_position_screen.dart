@@ -65,10 +65,15 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   final _position = TextEditingController();
   final _price = TextEditingController();
   final _quantity = TextEditingController();
-  final _brand = TextEditingController();
   final _description = TextEditingController();
 
   final _attributes = ProductAttributesController();
+
+  /// Бренды продавца в этом разделе и выбранный. Поле выбора, а не ввод:
+  /// бренд у публикации уже есть, а вписанное руками название заводило бы
+  /// новый бренд на каждую опечатку.
+  List<ProductBrand> _brands = const [];
+  ProductBrand? _brand;
 
   List<Attribute> _fields = const [];
 
@@ -86,7 +91,6 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   /// живут здесь и показываются прямо с диска.
   final List<String> _photos = [];
 
-  int? _brandId;
   bool _isLoading = true;
   bool _isSaving = false;
   final Map<String, String> _errors = {};
@@ -98,8 +102,15 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     final existing = widget.existing;
 
     _position.text = '${existing?.position ?? widget.nextPosition}';
-    _brand.text = widget.publication.brandName ?? '';
-    _brandId = existing?.brandId ?? widget.publication.brandId;
+
+    // Пока список не приехал, показываем бренд публикации: он верен в
+    // большинстве случаев, и пустое поле на секунду выглядит потерей данных.
+    final brandId = existing?.brandId ?? widget.publication.brandId;
+    final brandName = widget.publication.brandName;
+
+    if (brandId != null) {
+      _brand = ProductBrand(id: brandId, name: brandName ?? '');
+    }
 
     if (existing != null) {
       _name.text = existing.name;
@@ -118,22 +129,28 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     _position.dispose();
     _price.dispose();
     _quantity.dispose();
-    _brand.dispose();
     _description.dispose();
     _attributes.dispose();
     super.dispose();
   }
 
   Future<void> _loadFields() async {
+    // Бренды тянем рядом с полями и молча переживаем отказ: без списка
+    // остаётся бренд публикации, и позиция всё равно сохранится.
+    final brands = _loadBrands();
+
     try {
       final fields = await ProductsCabinetApi.positionFields(
         widget.publication.categoryId,
       );
 
+      _brands = await brands;
+
       if (!mounted) return;
 
       setState(() {
         _fields = fields.where(_isRealField).toList();
+        _brand = _knownBrand(_brand);
         _isLoading = false;
 
         // Подставляем сохранённое ПОСЛЕ полей: выбранные варианты приходят
@@ -148,9 +165,171 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     } catch (e) {
       log.e('Характеристики раздела не загрузились: $e');
 
+      _brands = await brands;
+
       // Форму всё равно показываем: без характеристик товар сохранить можно,
       // а пустой экран человеку не объяснить.
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<List<ProductBrand>> _loadBrands() async {
+    try {
+      return await ProductsCabinetApi.myBrands(
+        categoryId: widget.publication.categoryId,
+      );
+    } catch (e) {
+      log.d('Бренды не пришли: $e');
+
+      return const [];
+    }
+  }
+
+  /// Тот же бренд, но с названием из списка.
+  ///
+  /// В публикации приезжает только номер и название бренда публикации, а в
+  /// списке у бренда есть ещё и счётчик товаров. Берём запись из списка, если
+  /// она там есть.
+  ProductBrand? _knownBrand(ProductBrand? brand) {
+    if (brand == null) return null;
+
+    for (final item in _brands) {
+      if (item.id == brand.id) return item;
+    }
+
+    return brand.name.isEmpty ? null : brand;
+  }
+
+  /// Выбор бренда: свои в этом разделе плюс «Новый бренд».
+  Future<void> _pickBrand() async {
+    final chosen = await showModalBottomSheet<Object>(
+      context: context,
+      backgroundColor: primaryBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(defaultPadding, 20, defaultPadding, 12),
+              child: Text(
+                'Бренд товара',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _brands.length,
+                itemBuilder: (context, index) {
+                  final brand = _brands[index];
+
+                  return ListTile(
+                    title: Text(
+                      brand.name,
+                      style: const TextStyle(color: textPrimary, fontSize: 15),
+                    ),
+                    subtitle: Text(
+                      brand.productsCount == 0
+                          ? 'Пока без товаров'
+                          : 'Товаров: ${brand.productsCount}',
+                      style: const TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                    trailing: brand.id == _brand?.id
+                        ? const Icon(Icons.check,
+                            color: activeIconColor, size: 20)
+                        : null,
+                    onTap: () => Navigator.pop(context, brand),
+                  );
+                },
+              ),
+            ),
+            const Divider(color: Color(0xFF2A3744), height: 1),
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline,
+                  color: activeIconColor, size: 24),
+              title: const Text(
+                'Новый бренд',
+                style: TextStyle(color: activeIconColor, fontSize: 15),
+              ),
+              onTap: () => Navigator.pop(context, 'new'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (chosen is ProductBrand) {
+      setState(() => _brand = chosen);
+
+      return;
+    }
+
+    if (chosen == 'new') await _askNewBrand();
+  }
+
+  /// Завести бренд прямо из формы позиции.
+  Future<void> _askNewBrand() async {
+    final field = TextEditingController();
+
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: const Text('Новый бренд',
+            style: TextStyle(color: textPrimary, fontSize: 17)),
+        content: TextField(
+          controller: field,
+          autofocus: true,
+          style: const TextStyle(color: textPrimary),
+          decoration: const InputDecoration(
+            hintText: 'Введите название',
+            hintStyle: TextStyle(color: textMuted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, field.text.trim()),
+            child: const Text('Создать',
+                style: TextStyle(color: activeIconColor)),
+          ),
+        ],
+      ),
+    );
+
+    field.dispose();
+
+    if (name == null || name.isEmpty || !mounted) return;
+
+    try {
+      final brand = await ProductsCabinetApi.createBrand(name);
+
+      if (!mounted) return;
+
+      setState(() {
+        if (!_brands.any((item) => item.id == brand.id)) {
+          _brands = [..._brands, brand];
+        }
+
+        _brand = brand;
+      });
+    } catch (e) {
+      log.e('Бренд не завёлся: $e');
+      _say('Бренд не завёлся. Попробуйте ещё раз.');
     }
   }
 
@@ -209,14 +388,8 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     setState(() => _isSaving = true);
 
     try {
-      // Бренд позиции: если человек написал своё название, заводим или
-      // находим его. Пустое поле означает бренд публикации.
-      final brandName = _brand.text.trim();
-      var brandId = _brandId;
-
-      if (brandName.isNotEmpty && brandName != widget.publication.brandName) {
-        brandId = (await ProductsCabinetApi.createBrand(brandName)).id;
-      }
+      // Бренд позиции: выбранный в форме, иначе бренд публикации.
+      final brandId = _brand?.id ?? widget.publication.brandId;
 
       final existing = widget.existing;
       final price = num.parse(_price.text.replaceAll(' ', '').replaceAll(',', '.'));
@@ -390,7 +563,10 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                 ),
 
               const SizedBox(height: 20),
-              _text('Бренд товара', _brand, hint: 'Введите'),
+              const Text('Бренд товара',
+                  style: TextStyle(color: textPrimary, fontSize: 15)),
+              const SizedBox(height: 8),
+              _brandField(),
 
               const SizedBox(height: 20),
               _text('Описание позиции', _description,
@@ -627,6 +803,37 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  /// Строка выбора бренда.
+  Widget _brandField() {
+    final brand = _brand;
+
+    return GestureDetector(
+      onTap: _pickBrand,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                brand?.name.isNotEmpty == true ? brand!.name : 'Выберите',
+                style: TextStyle(
+                  color: brand?.name.isNotEmpty == true ? textPrimary : textMuted,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down, color: textMuted, size: 20),
+          ],
+        ),
+      ),
     );
   }
 
