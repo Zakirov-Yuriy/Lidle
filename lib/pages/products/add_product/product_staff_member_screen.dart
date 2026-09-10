@@ -825,7 +825,15 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
         return days.isEmpty ? 'Перейти' : '$days, $hours';
 
       case StaffScheduleMode.rotation:
-        return '${schedule.rotationWork} через ${schedule.rotationRest}, $hours';
+        final from = schedule.rotationFrom;
+
+        if (from == null || schedule.weekdays.isEmpty) return 'Перейти';
+
+        final days = schedule.weekdays
+            .map((day) => StaffSchedule.weekdayShort[day - 1])
+            .join(', ');
+
+        return '$days, с ${dayLabel(from)}, $hours';
 
       case StaffScheduleMode.days:
         return schedule.days.isEmpty

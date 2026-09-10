@@ -131,6 +131,7 @@ class StaffSchedule {
     this.rotationWork = 2,
     this.rotationRest = 2,
     this.rotationFrom,
+    this.rotationTo,
     this.days = const [],
     this.time = const StaffWorkTime(),
   });
@@ -151,8 +152,10 @@ class StaffSchedule {
   final int rotationWork;
   final int rotationRest;
 
-  /// С какого дня считать чередование. Пусто — с первого дня календаря.
+  /// Начало и конец периода чередования. Пусто — период не задан, и рабочих
+  /// дней по этому правилу нет.
   final DateTime? rotationFrom;
+  final DateTime? rotationTo;
 
   /// Дни, отмеченные руками, в виде `2026-12-01`.
   final List<String> days;
@@ -163,7 +166,19 @@ class StaffSchedule {
       (mode == StaffScheduleMode.days && days.isEmpty) ||
       (mode == StaffScheduleMode.weeks &&
           weeksPreset == null &&
-          weekdays.isEmpty);
+          weekdays.isEmpty) ||
+      (mode == StaffScheduleMode.rotation &&
+          (rotationFrom == null || weekdays.isEmpty));
+
+  /// Короткие названия дней недели, где 1 — понедельник.
+  static const List<String> weekdayShort = [
+    'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс',
+  ];
+
+  static const List<String> weekdayFull = [
+    'Понедельник', 'Вторник', 'Среда', 'Четверг',
+    'Пятница', 'Суббота', 'Воскресенье',
+  ];
 
   /// Как набор рабочих недель называется на экране.
   static String weeksPresetTitle(String? preset) {
@@ -189,6 +204,8 @@ class StaffSchedule {
     int? rotationWork,
     int? rotationRest,
     DateTime? rotationFrom,
+    DateTime? rotationTo,
+    bool clearRotationDates = false,
     List<String>? days,
     StaffWorkTime? time,
   }) {
@@ -198,7 +215,9 @@ class StaffSchedule {
       weeksPreset: clearWeeksPreset ? null : (weeksPreset ?? this.weeksPreset),
       rotationWork: rotationWork ?? this.rotationWork,
       rotationRest: rotationRest ?? this.rotationRest,
-      rotationFrom: rotationFrom ?? this.rotationFrom,
+      rotationFrom:
+          clearRotationDates ? null : (rotationFrom ?? this.rotationFrom),
+      rotationTo: clearRotationDates ? null : (rotationTo ?? this.rotationTo),
       days: days ?? this.days,
       time: time ?? this.time,
     );
@@ -226,18 +245,21 @@ class StaffSchedule {
         return weekdays.contains(day.weekday);
 
       case StaffScheduleMode.rotation:
-        final length = rotationWork + rotationRest;
+        // Чередование это «вот эти дни недели, вот в этот период». Так его
+        // задаёт экран, и считать иначе значит показать в календаре не то,
+        // что человек только что отметил галочками.
+        final from = rotationFrom;
+        final to = rotationTo;
 
-        if (rotationWork <= 0 || length <= 0) return false;
+        if (from == null || to == null || weekdays.isEmpty) return false;
 
-        final from = rotationFrom ?? DateTime(day.year, day.month, 1);
-        final shift = DateTime(day.year, day.month, day.day)
-            .difference(DateTime(from.year, from.month, from.day))
-            .inDays;
+        final current = DateTime(day.year, day.month, day.day);
+        final start = DateTime(from.year, from.month, from.day);
+        final end = DateTime(to.year, to.month, to.day);
 
-        if (shift < 0) return false;
+        if (current.isBefore(start) || current.isAfter(end)) return false;
 
-        return shift % length < rotationWork;
+        return weekdays.contains(current.weekday);
 
       case StaffScheduleMode.days:
         return days.contains(dayKey(day));
@@ -252,6 +274,7 @@ class StaffSchedule {
           'work': rotationWork,
           'rest': rotationRest,
           'from': rotationFrom == null ? null : dayKey(rotationFrom!),
+          'to': rotationTo == null ? null : dayKey(rotationTo!),
         },
         'days': days,
         'time': time.toJson(),
@@ -287,6 +310,7 @@ class StaffSchedule {
       rotationWork: _int(rotationMap['work']) ?? 2,
       rotationRest: _int(rotationMap['rest']) ?? 2,
       rotationFrom: DateTime.tryParse('${rotationMap['from']}'),
+      rotationTo: DateTime.tryParse('${rotationMap['to']}'),
       days: data['days'] is List
           ? (data['days'] as List).map((item) => '$item').toList()
           : const [],
@@ -296,6 +320,12 @@ class StaffSchedule {
     );
   }
 }
+
+/// Дата так, как её читает человек: `13.12.2025`.
+String dayLabel(DateTime day) =>
+    '${day.day.toString().padLeft(2, '0')}.'
+    '${day.month.toString().padLeft(2, '0')}.'
+    '${day.year}';
 
 /// Дата в тот вид, в котором она ездит на сервер: `2026-12-01`.
 String dayKey(DateTime day) =>

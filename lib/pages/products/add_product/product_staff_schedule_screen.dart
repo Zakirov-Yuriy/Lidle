@@ -20,11 +20,42 @@ import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/products/add_product/product_staff_schedule_setup_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
+/// Отрезок дат: с какого по какое.
+class DayRange {
+  const DayRange(this.from, this.to);
+
+  final DateTime from;
+  final DateTime to;
+}
+
 class ProductStaffScheduleScreen extends StatefulWidget {
-  const ProductStaffScheduleScreen({super.key, this.schedule});
+  const ProductStaffScheduleScreen({super.key, this.schedule})
+      : pickRange = false,
+        rangeFrom = null,
+        rangeTo = null;
+
+  /// Тот же календарь, но для выбора отрезка дат.
+  ///
+  /// Отдельным экраном его делать не стали: человек видит ровно ту же сетку
+  /// месяцев, и два разных календаря в одном графике он воспримет как
+  /// недоделку. Возвращает [DayRange].
+  const ProductStaffScheduleScreen.range({
+    super.key,
+    DateTime? from,
+    DateTime? to,
+  })  : schedule = null,
+        pickRange = true,
+        rangeFrom = from,
+        rangeTo = to;
 
   /// График, который уже задан. Пусто — заводим с нуля.
   final StaffSchedule? schedule;
+
+  /// Выбираем отрезок дат, а не рабочие дни.
+  final bool pickRange;
+
+  final DateTime? rangeFrom;
+  final DateTime? rangeTo;
 
   @override
   State<ProductStaffScheduleScreen> createState() =>
@@ -38,6 +69,10 @@ class _ProductStaffScheduleScreenState
   static const int _monthsAhead = 12;
 
   late StaffSchedule _schedule = widget.schedule ?? const StaffSchedule();
+
+  /// Края выбираемого отрезка. Работают только в режиме выбора дат.
+  late DateTime? _from = widget.rangeFrom;
+  late DateTime? _to = widget.rangeTo;
 
   /// Свёрнутые месяцы. По умолчанию открыты все: человек пришёл смотреть
   /// календарь, а не искать, где его развернуть.
@@ -61,6 +96,12 @@ class _ProductStaffScheduleScreenState
   /// становится тем, что выбрано. Иначе следующее открытие экрана пересчитало
   /// бы всё заново и стёрло правку.
   void _toggleDay(DateTime day) {
+    if (widget.pickRange) {
+      _pickEdge(day);
+
+      return;
+    }
+
     final key = dayKey(day);
 
     final days = _schedule.mode == StaffScheduleMode.days
@@ -76,6 +117,40 @@ class _ProductStaffScheduleScreenState
       );
     });
   }
+
+  /// Первое нажатие ставит начало, второе конец.
+  ///
+  /// Нажатие раньше начала начинает выбор заново, а не двигает край:
+  /// «хочу с другого числа» встречается чаще, чем «ошибся концом», и
+  /// объяснять человеку разницу нечем.
+  void _pickEdge(DateTime day) {
+    setState(() {
+      final start = _from;
+
+      if (start == null || _to != null || day.isBefore(start)) {
+        _from = day;
+        _to = null;
+
+        return;
+      }
+
+      _to = day;
+    });
+  }
+
+  bool _inRange(DateTime day) {
+    final start = _from;
+
+    if (start == null) return false;
+
+    final end = _to ?? start;
+
+    return !day.isBefore(start) && !day.isAfter(end);
+  }
+
+  bool _isEdge(DateTime day) =>
+      (_from != null && DateUtils.isSameDay(_from, day)) ||
+      (_to != null && DateUtils.isSameDay(_to, day));
 
   /// Рабочие дни по правилу, посчитанные на весь показанный период.
   List<String> _materialise() {
@@ -199,7 +274,8 @@ class _ProductStaffScheduleScreenState
                     // «Настроить» стоит после первого месяца, как на макете:
                     // правило одно на весь график, и повторять кнопку у
                     // каждого месяца значило бы обещать помесячные настройки.
-                    if (index == 0) ...[
+                    // При выборе дат её нет: настраивать отсюда нечего.
+                    if (index == 0 && !widget.pickRange) ...[
                       const SizedBox(height: 16),
                       _setupButton(),
                     ],
@@ -216,27 +292,64 @@ class _ProductStaffScheduleScreenState
                 defaultPadding,
                 16,
               ),
-              child: GestureDetector(
-                onTap: () => Navigator.pop(context, _schedule),
-                child: Container(
-                  height: 52,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: activeIconColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Text(
-                    'Сохранить',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
+              child: widget.pickRange ? _confirmButton() : _saveButton(),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// «Сохранить» на своём графике: возвращаем весь график.
+  Widget _saveButton() {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context, _schedule),
+      child: Container(
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: activeIconColor,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Text(
+          'Сохранить',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// «Подтвердить» при выборе дат: возвращаем отрезок.
+  ///
+  /// Пока начало не выбрано, кнопка приглушена: возвращать пустой отрезок
+  /// значит показать на прошлом экране «с — до —» и заставить человека гадать,
+  /// что пошло не так.
+  Widget _confirmButton() {
+    final start = _from;
+    final ready = start != null;
+
+    return GestureDetector(
+      onTap: ready
+          ? () => Navigator.pop(context, DayRange(start, _to ?? start))
+          : null,
+      child: Container(
+        height: 52,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: ready ? activeIconColor : textMuted),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'Подтвердить',
+          style: TextStyle(
+            color: ready ? activeIconColor : textMuted,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );
@@ -404,7 +517,10 @@ class _ProductStaffScheduleScreenState
   }
 
   Widget _dayCell(DateTime day) {
-    final selected = _schedule.isWorkingDay(day);
+    final selected =
+        widget.pickRange ? _inRange(day) : _schedule.isWorkingDay(day);
+
+    final edge = widget.pickRange && _isEdge(day);
 
     return GestureDetector(
       onTap: () => _toggleDay(day),
@@ -413,16 +529,41 @@ class _ProductStaffScheduleScreenState
         margin: const EdgeInsets.all(2),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selected ? activeIconColor : formBackground,
+          // В режиме выбора дат заливка приглушённая: отрезок это «с и по»,
+          // а не список рабочих дней, и красить его тем же ярким синим
+          // значит путать два разных смысла на одной сетке.
+          color: selected
+              ? (widget.pickRange
+                  ? const Color(0xFF14384D)
+                  : activeIconColor)
+              : formBackground,
           borderRadius: BorderRadius.circular(6),
+          border: edge ? Border.all(color: activeIconColor) : null,
         ),
-        child: Text(
-          '${day.day}',
-          style: TextStyle(
-            color: selected ? Colors.white : textPrimary,
-            fontSize: 15,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-          ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                color: selected && !widget.pickRange
+                    ? Colors.white
+                    : textPrimary,
+                fontSize: 15,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+
+            // Кружок с галочкой на краях отрезка: он показывает, откуда и
+            // докуда, а не просто «этот день внутри».
+            if (edge)
+              const Positioned(
+                top: 2,
+                left: 4,
+                child: Icon(Icons.check_circle,
+                    color: activeIconColor, size: 13),
+              ),
+          ],
         ),
       ),
     );

@@ -20,6 +20,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_staff.dart';
+import 'package:lidle/pages/products/add_product/product_staff_schedule_rotation_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_schedule_weeks_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -68,6 +69,30 @@ class _ProductStaffScheduleSetupScreenState
       _schedule = _schedule.copyWith(
         mode: StaffScheduleMode.days,
         clearWeeksPreset: true,
+      );
+    });
+  }
+
+  Future<void> _openRotation() async {
+    final changed = await Navigator.push<StaffSchedule>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductStaffScheduleRotationScreen(
+          schedule: _schedule,
+        ),
+      ),
+    );
+
+    if (changed != null && mounted) setState(() => _schedule = changed);
+  }
+
+  /// Убрать чередование: дни недели и период. Отмеченные руками дни остаются.
+  void _clearRotation() {
+    setState(() {
+      _schedule = _schedule.copyWith(
+        mode: StaffScheduleMode.days,
+        weekdays: const [],
+        clearRotationDates: true,
       );
     });
   }
@@ -135,6 +160,34 @@ class _ProductStaffScheduleSetupScreenState
     );
   }
 
+  /// Что показывать в карточке чередования.
+  ///
+  /// Пусто, пока не выбраны и дни недели, и период: половина настройки в
+  /// карточке выглядит как готовая, а рабочих дней от неё не появится.
+  List<MapEntry<String, String>> get _rotationSummary {
+    if (_schedule.mode != StaffScheduleMode.rotation) return const [];
+
+    final from = _schedule.rotationFrom;
+    final to = _schedule.rotationTo;
+
+    if (from == null || _schedule.weekdays.isEmpty) return const [];
+
+    final days = _schedule.weekdays
+        .map((day) => StaffSchedule.weekdayShort[day - 1])
+        .join(', ');
+
+    final time = _schedule.time;
+
+    return [
+      MapEntry('Рабочие дни недели:', days),
+      MapEntry(
+        'Рабочие даты:',
+        'с ${dayLabel(from)} - до ${dayLabel(to ?? from)}',
+      ),
+      MapEntry('Рабочие часы:', 'с ${time.start} - до ${time.end}'),
+    ];
+  }
+
   // ── Вёрстка ───────────────────────────────────────────────────────
 
   @override
@@ -178,10 +231,15 @@ class _ProductStaffScheduleSetupScreenState
                     title: 'По неделям',
                     hint: 'Тут вы можете настроить рабочие недели',
                     onTap: _openWeeks,
-                    summaryLabel: weeksSet ? 'Рабочие недели:' : null,
-                    summaryValue: weeksSet
-                        ? StaffSchedule.weeksPresetTitle(_schedule.weeksPreset)
-                        : null,
+                    summary: weeksSet
+                        ? [
+                            MapEntry(
+                              'Рабочие недели:',
+                              StaffSchedule.weeksPresetTitle(
+                                  _schedule.weeksPreset),
+                            ),
+                          ]
+                        : const [],
                     onClear: _clearWeeks,
                     onChange: _openWeeks,
                   ),
@@ -190,7 +248,10 @@ class _ProductStaffScheduleSetupScreenState
                     icon: '🗓',
                     title: 'Чередование рабочих дней',
                     hint: 'Тут вы можете настроить рабочие дни',
-                    onTap: _notReady,
+                    onTap: _openRotation,
+                    summary: _rotationSummary,
+                    onClear: _clearRotation,
+                    onChange: _openRotation,
                   ),
                   const SizedBox(height: 14),
                   _card(
@@ -273,12 +334,11 @@ class _ProductStaffScheduleSetupScreenState
     required String title,
     required String hint,
     required VoidCallback onTap,
-    String? summaryLabel,
-    String? summaryValue,
+    List<MapEntry<String, String>> summary = const [],
     VoidCallback? onClear,
     VoidCallback? onChange,
   }) {
-    final showsSummary = summaryValue != null;
+    final showsSummary = summary.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
@@ -333,27 +393,31 @@ class _ProductStaffScheduleSetupScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text.rich(
-                    TextSpan(
-                      children: [
+                  for (final line in summary)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text.rich(
                         TextSpan(
-                          text: '$summaryLabel ',
-                          style: const TextStyle(
-                            color: textMuted,
-                            fontSize: 15,
-                          ),
+                          children: [
+                            TextSpan(
+                              text: '${line.key} ',
+                              style: const TextStyle(
+                                color: textMuted,
+                                fontSize: 15,
+                              ),
+                            ),
+                            TextSpan(
+                              text: line.value,
+                              style: const TextStyle(
+                                color: textPrimary,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
                         ),
-                        TextSpan(
-                          text: summaryValue,
-                          style: const TextStyle(
-                            color: textPrimary,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       GestureDetector(
