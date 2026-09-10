@@ -15,6 +15,7 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
+import 'package:lidle/pages/products/add_product/product_review_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/utils/color_names.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -318,6 +319,23 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
     if (saved == true) await _reload();
   }
 
+  /// «Сохранить»: к сводке публикации.
+  ///
+  /// Сохранять здесь нечего — группы и позиции уходят на сервер сразу, как их
+  /// завели. Кнопка означает «я закончил с группами», и дальше человек видит
+  /// всё заведённое одним списком и оттуда публикует.
+  Future<void> _openReview() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductReviewScreen(publication: _publication),
+      ),
+    );
+
+    // Со сводки можно было менять группы и позиции.
+    await _reload();
+  }
+
   void _say(String message) {
     if (!mounted) return;
 
@@ -487,7 +505,7 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
             16,
           ),
           child: GestureDetector(
-            onTap: () => Navigator.pop(context, true),
+            onTap: _openReview,
             child: Container(
               height: 52,
               alignment: Alignment.center,
