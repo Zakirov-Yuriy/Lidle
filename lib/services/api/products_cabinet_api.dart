@@ -270,14 +270,18 @@ class ProductsCabinetApi {
         .toList();
   }
 
-  /// Мои бренды: те, под которыми продавец уже что-то завёл, с числом
-  /// товаров в каждом.
+  /// Мои бренды В ЭТОМ РАЗДЕЛЕ, с числом товаров в каждом.
   ///
   /// У продавца бывает несколько брендов, и в каждом свои товары (решение
   /// заказчика от 09.09.2026). Выбор бренда на экране публикации переключает
   /// витрину: открывается то, что под этим брендом уже заведено.
-  static Future<List<ProductBrand>> myBrands() async {
-    final response = await ApiService.get('/me/brands/mine');
+  ///
+  /// Раздел обязателен. Без него, зайдя в «Мужскую одежду», продавец видел
+  /// бренды своих автозапчастей — так и было 10.09.2026.
+  static Future<List<ProductBrand>> myBrands({required int categoryId}) async {
+    final response = await ApiService.getWithQuery('/me/brands/mine', {
+      'category_id': '$categoryId',
+    });
 
     final data = response['data'];
 

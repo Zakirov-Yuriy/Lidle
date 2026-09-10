@@ -737,8 +737,17 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
   /// Набор характеристик у каждого раздела свой, поэтому строки не зашиты, а
   /// приходят с сервера: в мебели тут будут «Материал» и «Ширина».
   Widget _attributeLine(String title, String value, {bool muted = false}) {
-    // Квадратик цвета — тот же, что в диалоге выбора.
-    final swatch = isColorAttribute(title) ? colorByName(value) : null;
+    // Цветов у позиции может быть несколько: сервер отдаёт их одной строкой
+    // через запятую. Разбираем и рисуем квадратиками — так строка «Чёрный,
+    // Синий, Красный» читается с одного взгляда и не переносится на три
+    // строки под карточкой.
+    final swatches = isColorAttribute(title)
+        ? value
+              .split(',')
+              .map((item) => colorByName(item))
+              .whereType<Color>()
+              .toList()
+        : const <Color>[];
 
     return Padding(
       padding: const EdgeInsets.only(top: 2),
@@ -749,10 +758,18 @@ class _ProductGroupsScreenState extends State<ProductGroupsScreen> {
             '$title: ',
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
-          if (swatch != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: colorSwatch(swatch, size: 16),
+          if (swatches.isNotEmpty)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final color in swatches) colorSwatch(color, size: 16),
+                  ],
+                ),
+              ),
             )
           else
             Expanded(

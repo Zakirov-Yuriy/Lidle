@@ -81,10 +81,19 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
 
     if (!mounted) return;
 
-    // Бренды есть — спрашиваем сразу, до заведения публикации. Так публикация
-    // заводится одна и та, что нужна: выбранный бренд открывает свою витрину
-    // в этом разделе, а не плодит пустые черновики без бренда.
-    if (_brands.isNotEmpty) {
+    // Три случая, и все три решает число брендов ПРОДАВЦА В ЭТОМ РАЗДЕЛЕ
+    // (решение заказчика от 10.09.2026):
+    //
+    //  - брендов нет — открываем пустую форму, бренд человек заведёт сам;
+    //  - бренд один — открываем сразу его витрину, спрашивать не о чем;
+    //  - брендов несколько — спрашиваем, какой.
+    if (_brands.length == 1) {
+      await _openPublication(brand: _brands.first);
+
+      return;
+    }
+
+    if (_brands.length > 1) {
       final chosen = await _chooseBrand();
 
       if (!mounted) return;
@@ -99,11 +108,11 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
     await _openPublication();
   }
 
-  /// Мои бренды. Отказ сервера не должен ронять экран: без списка человек
-  /// просто впишет название руками.
+  /// Мои бренды В ЭТОМ РАЗДЕЛЕ. Отказ сервера не должен ронять экран: без
+  /// списка человек просто впишет название руками.
   Future<List<ProductBrand>> _loadBrands() async {
     try {
-      return await ProductsCabinetApi.myBrands();
+      return await ProductsCabinetApi.myBrands(categoryId: widget.categoryId);
     } catch (e) {
       log.d('Список брендов не пришёл: $e');
 
@@ -489,7 +498,11 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
   String _brandHint(ProductPublication publication) {
     final id = publication.brandId;
 
-    if (id == null) return 'Выберите из своих или заведите новый';
+    if (id == null) {
+      return _brands.isEmpty
+          ? 'В этом разделе брендов ещё нет'
+          : 'Выберите из своих или заведите новый';
+    }
 
     final known = _brands.where((brand) => brand.id == id);
     final count = known.isEmpty ? _positions : known.first.productsCount;
