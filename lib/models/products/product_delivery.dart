@@ -11,6 +11,7 @@ class DeliveryOption {
   const DeliveryOption({
     required this.id,
     required this.name,
+    this.description = '',
     this.priceFrom,
     this.image,
     this.groupId,
@@ -19,6 +20,9 @@ class DeliveryOption {
 
   final int id;
   final String name;
+
+  /// Условия доставки словами: сроки, зона, ограничения по весу.
+  final String description;
 
   /// «от 400 ₽». Пусто означает, что цену продавец не называл: доставка
   /// бывает бесплатной, и выдуманный ноль там хуже пустоты.
@@ -31,6 +35,7 @@ class DeliveryOption {
   factory DeliveryOption.fromJson(Map<String, dynamic> data) => DeliveryOption(
     id: _int(data['id']) ?? 0,
     name: '${data['name'] ?? ''}',
+    description: '${data['description'] ?? ''}',
     priceFrom: _num(data['price_from']),
     image: data['image']?.toString(),
     groupId: _int(data['group_id']),

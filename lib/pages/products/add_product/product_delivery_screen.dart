@@ -18,6 +18,7 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_delivery.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
+import 'package:lidle/pages/products/add_product/product_delivery_option_screen.dart';
 import 'package:lidle/services/api/products_delivery_api.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -163,47 +164,39 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
 
   // ── Способы ─────────────────────────────────────────────────────
 
+  /// Завести способ доставки: отдельным экраном, как позицию товара.
   Future<void> _addOption() async {
-    final form = await _askOption();
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDeliveryOptionScreen(
+          publicationId: widget.publication.id,
+          groups: _delivery.groups,
+          groupId: _openGroupId,
+        ),
+      ),
+    );
 
-    if (form == null) return;
-
-    try {
-      await ProductsDeliveryApi.createOption(
-        publicationId: widget.publication.id,
-        name: form.name,
-        priceFrom: form.price,
-        groupId: _openGroupId,
-      );
-
-      await _reload();
-    } catch (e) {
-      log.e('Способ доставки не завёлся: $e');
-      _say('Не получилось добавить способ доставки.');
-    }
+    await _reload();
   }
 
+  /// Правка способа: тот же экран с заполненной формой.
+  ///
+  /// Сюда же ведут и карандаш, и значок фотоаппарата на карточке: картинка
+  /// меняется там же, где остальное, а не отдельным жестом.
   Future<void> _editOption(DeliveryOption option) async {
-    final form = await _askOption(option: option);
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDeliveryOptionScreen(
+          publicationId: widget.publication.id,
+          groups: _delivery.groups,
+          existing: option,
+        ),
+      ),
+    );
 
-    if (form == null) return;
-
-    try {
-      await ProductsDeliveryApi.updateOption(
-        option.id,
-        name: form.name,
-        priceFrom: form.price,
-
-        // Цену отправляем всегда: пустое поле означает «убрать цену», и
-        // отличить это от «не менял» можно только так.
-        touchPrice: true,
-      );
-
-      await _reload();
-    } catch (e) {
-      log.e('Способ доставки не сохранился: $e');
-      _say('Не получилось сохранить способ доставки.');
-    }
+    await _reload();
   }
 
   Future<void> _deleteOption(DeliveryOption option) async {
@@ -221,23 +214,6 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
     } catch (e) {
       log.e('Способ доставки не удалился: $e');
       _say('Не получилось удалить способ доставки.');
-    }
-  }
-
-  Future<void> _setOptionImage(DeliveryOption option) async {
-    final picked = await pickProductPhotos(context);
-
-    if (picked.isEmpty || !mounted) return;
-
-    _say('Загружаем картинку…');
-
-    try {
-      await ProductsDeliveryApi.uploadOptionImage(option.id, picked.first);
-
-      await _reload();
-    } catch (e) {
-      log.e('Картинка способа не загрузилась: $e');
-      _say('Картинка не загрузилась. Проверьте связь и попробуйте ещё раз.');
     }
   }
 
@@ -288,90 +264,6 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
     // 10.09.2026 при заведении группы доставки.
 
     return value;
-  }
-
-  /// Название и стоимость способа доставки.
-  ///
-  /// Цена необязательна: доставка бывает бесплатной, и заставлять человека
-  /// выдумывать число ради заполненного поля незачем.
-  Future<_OptionForm?> _askOption({DeliveryOption? option}) async {
-    final name = TextEditingController(text: option?.name ?? '');
-    final price = TextEditingController(
-      text: option?.priceFrom == null
-          ? ''
-          : '${option!.priceFrom! % 1 == 0 ? option.priceFrom!.toInt() : option.priceFrom}',
-    );
-
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: secondaryBackground,
-        title: Text(
-          option == null ? 'Способ доставки' : 'Изменить способ',
-          style: const TextStyle(color: textPrimary, fontSize: 17),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: name,
-              autofocus: true,
-              style: const TextStyle(color: textPrimary),
-              decoration: const InputDecoration(
-                labelText: 'Название',
-                labelStyle: TextStyle(color: textMuted),
-                hintText: 'Например, Доставка на авто',
-                hintStyle: TextStyle(color: textMuted),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: price,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(color: textPrimary),
-              decoration: const InputDecoration(
-                labelText: 'Стоимость от, ₽',
-                labelStyle: TextStyle(color: textMuted),
-                hintText: 'Можно не указывать',
-                hintStyle: TextStyle(color: textMuted),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Сохранить',
-                style: TextStyle(color: activeIconColor)),
-          ),
-        ],
-      ),
-    );
-
-    final result = saved == true && name.text.trim().isNotEmpty
-        ? _OptionForm(
-            name: name.text.trim(),
-            price: num.tryParse(
-              price.text.trim().replaceAll(' ', '').replaceAll(',', '.'),
-            ),
-          )
-        : null;
-
-    if (saved == true && result == null) _say('Напишите название способа.');
-
-    // Контроллер НЕ освобождаем здесь намеренно.
-    //
-    // Диалог закрывается с анимацией, и его поле ввода живёт ещё несколько
-    // кадров после того, как `showDialog` вернул результат. Освобождение в
-    // этот момент оставляет живой TextField с мёртвым контроллером: на
-    // телефоне это выглядит как намертво зависшее приложение, что и случилось
-    // 10.09.2026 при заведении группы доставки.
-
-    return result;
   }
 
   Future<bool> _confirm(String title, String text) async {
@@ -776,7 +668,7 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
                   right: 6,
                   bottom: 6,
                   child: GestureDetector(
-                    onTap: () => _setOptionImage(option),
+                    onTap: () => _editOption(option),
                     child: Container(
                       padding: const EdgeInsets.all(5),
                       decoration: BoxDecoration(
@@ -822,12 +714,4 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
       ),
     );
   }
-}
-
-/// Что человек ввёл в диалоге способа доставки.
-class _OptionForm {
-  const _OptionForm({required this.name, this.price});
-
-  final String name;
-  final num? price;
 }

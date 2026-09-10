@@ -67,6 +67,7 @@ class ProductsDeliveryApi {
   static Future<DeliveryOption> createOption({
     required int publicationId,
     required String name,
+    String? description,
     num? priceFrom,
     int? groupId,
     int? order,
@@ -75,6 +76,7 @@ class ProductsDeliveryApi {
       '/me/product-publications/$publicationId/delivery-options',
       {
         'name': name,
+        if (description != null) 'description': description,
         if (priceFrom != null) 'price_from': priceFrom,
         if (groupId != null) 'group_id': groupId,
         if (order != null) 'order': order,
@@ -86,13 +88,14 @@ class ProductsDeliveryApi {
     );
   }
 
-  /// Изменить способ.
+  /// Изменить способ. Группу можно снять, прислав `groupId` = 0.
   ///
   /// Цену передаём всегда, когда её трогали: `null` здесь означает «убрать
   /// цену», а не «не менять», и различить это можно только флагом.
   static Future<void> updateOption(
     int optionId, {
     String? name,
+    String? description,
     num? priceFrom,
     bool touchPrice = false,
     int? groupId,
@@ -102,6 +105,7 @@ class ProductsDeliveryApi {
       '/me/product-publications/delivery-options/$optionId',
       {
         if (name != null) 'name': name,
+        if (description != null) 'description': description,
         if (touchPrice) 'price_from': priceFrom,
         if (groupId != null) 'group_id': groupId,
         if (order != null) 'order': order,
