@@ -428,9 +428,26 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     });
   }
 
-  /// «Удалить»: первое нажатие включает выбор, второе удаляет отмеченное.
+  /// Долгое нажатие по позиции: включить выбор и отметить её.
+  void _pickFromLongPress(ProductGroup group, ProductPosition position) {
+    setState(() {
+      _pickGroupId = group.id;
+
+      // Множественный выбор: с отмеченного товара можно и удалить, и перейти
+      // к правке, а вот отметить второй для удаления — только так.
+      _pickMode = _PickMode.delete;
+
+      _picked
+        ..clear()
+        ..add(position.id);
+    });
+  }
+
+  /// «Удалить»: без отметок включает выбор, с отметками удаляет их.
   Future<void> _onDelete(ProductGroup group) async {
-    if (_pickGroupId != group.id || _pickMode != _PickMode.delete) {
+    final picking = _pickGroupId == group.id && _pickMode != _PickMode.none;
+
+    if (!picking) {
       if (group.products.isEmpty) {
         // Позиций нет — удалять человек хочет саму папку.
         await _deleteGroup(group);
@@ -452,9 +469,11 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     await _deletePicked(group);
   }
 
-  /// «Изменить»: первое нажатие включает выбор, второе открывает правку.
+  /// «Изменить»: без отметок включает выбор, с одной отметкой открывает правку.
   Future<void> _onEdit(ProductGroup group) async {
-    if (_pickGroupId != group.id || _pickMode != _PickMode.edit) {
+    final picking = _pickGroupId == group.id && _pickMode != _PickMode.none;
+
+    if (!picking) {
       if (group.products.isEmpty) {
         // Позиций нет — менять человек хочет саму группу.
         await _openGroups();
@@ -469,6 +488,14 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
     if (_picked.isEmpty) {
       _say('Отметьте товар, который хотите изменить.');
+
+      return;
+    }
+
+    // Править можно только одну карточку: какую из трёх открыть, человек не
+    // говорил, а угадывать значит открыть не то.
+    if (_picked.length > 1) {
+      _say('Для изменения отметьте один товар.');
 
       return;
     }
@@ -811,6 +838,11 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
             padding: const EdgeInsets.only(top: 10),
             child: GestureDetector(
               onTap: picking ? () => _pick(position.id) : null,
+
+              // Долгое нажатие включает выбор и сразу отмечает эту позицию:
+              // так человек, который хотел «что-то сделать вот с этим
+              // товаром», попадает туда же, куда и через кнопки под группой.
+              onLongPress: picking ? null : () => _pickFromLongPress(group, position),
               behavior: HitTestBehavior.opaque,
               child: Row(
                 children: [
@@ -906,7 +938,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               _pickMode == _PickMode.delete
-                  ? 'Отметьте товары и нажмите «Удалить»'
+                  ? 'Отметьте товары и нажмите «Удалить». Для правки отметьте один и нажмите «Изменить»'
                   : 'Отметьте один товар и нажмите «Изменить»',
               style: const TextStyle(color: textMuted, fontSize: 12),
             ),
