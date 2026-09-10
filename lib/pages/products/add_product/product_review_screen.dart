@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_groups_screen.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
@@ -339,6 +340,18 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
         ),
       ),
     );
+  }
+
+  /// Экран доставки.
+  Future<void> _openDelivery() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDeliveryScreen(publication: _publication),
+      ),
+    );
+
+    await _reload();
   }
 
   /// Экран групп: правка названий, обложек и содержимого.
@@ -745,10 +758,10 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   const SizedBox(height: 8),
                   const Divider(color: Color(0xFF2A3744), height: 32),
 
-                  // ── Блоки, за которыми ещё нет экранов ──────────────
                   _label('Добавить доставку'),
-                  _addRow(onTap: null),
-                  _soon('Экран доставки ещё не сделан'),
+                  _addRow(onTap: _openDelivery),
+
+                  // ── Блоки, за которыми ещё нет экранов ──────────────
 
                   const SizedBox(height: 20),
                   _label('Добавить сотрудника'),
