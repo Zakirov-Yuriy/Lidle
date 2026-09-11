@@ -1,47 +1,34 @@
 // ============================================================
-// Настройка способа оплаты: реквизиты организации (макет 11.09.2026).
+// Настройка способа оплаты: кошелёк (макет 11.09.2026).
 // ============================================================
 //
-// Открывается кнопкой «Настроить» у способов, которым нужны данные
-// организации: «Системы быстрых платежей», SberPay и безналичный перевод.
-// Какую форму открыть, говорит сервер полем `form` в справочнике: приложение
-// не держит своего списка «что чем настраивается».
+// Открывается кнопкой «Настроить» у ЮMoney. Какую форму открыть, говорит
+// сервер полем `form` в справочнике, здесь это `wallet`.
 //
-// Форм здесь на самом деле две, и различает их то же поле `form`:
+// Спрашивается ровно две вещи:
 //
-//   company — только данные организации. Так настраиваются СБП и SberPay:
-//   деньги идут через платёжную систему, и наш счёт ей не нужен;
+//   номер кошелька — куда переводить. Подпись поля приходит с сервера, чтобы
+//   переименование кошелька не требовало новой версии приложения;
 //
-//   bank — то же самое плюс банковские реквизиты. Нужны безналичному
-//   переводу: покупатель заполняет платёжное поручение руками, и без счёта,
-//   БИК и корсчёта заполнять его нечем.
+//   касса — наличный или безналичный оборот. Тот же вопрос, что и у
+//   остальных способов: он нужен продавцу для отчётности.
 //
-// Разводить это по двум экранам незачем: отличаются они одним блоком внизу, а
-// две почти одинаковые формы разъезжаются при первой же правке.
+// Реквизитов организации здесь нет намеренно: кошелёк бывает и у человека без
+// юр. лица, а лишние обязательные поля отрезали бы таких продавцов от
+// способа, который им как раз и подходит.
 //
-// Что здесь спрашивается и зачем:
-//
-//   касса — куда приходят деньги, в кассу или на расчётный счёт;
-//   полное и краткое название — так организация называется в документах и в
-//   приложении;
-//   название в чеках — то, что покупатель увидит в чеке, и оно часто
-//   отличается от названия юр. лица: человек покупал в «Москвиче», а не в
-//   «ООО Москвич 2140»;
-//   ИНН, КПП, ОГРН — по ним платёж находит получателя;
-//   самозанятый — у него нет ни КПП, ни ОГРН, поэтому эти поля прячутся.
-//
-// Номера набираются с пробелами, а хранятся цифрами: сервер режет лишнее
-// сам, чтобы «123 445 123» и «123445123» не оказались разными реквизитами.
+// Номер набирается с пробелами и дефисами, а хранится цифрами: сервер режет
+// лишнее сам, чтобы «410 011-234» и «410011234» не оказались разными
+// кошельками.
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_publication.dart';
-import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_radio_button.dart';
 import 'package:lidle/widgets/components/header.dart';
 
-class ProductPaymentCompanyScreen extends StatefulWidget {
-  const ProductPaymentCompanyScreen({
+class ProductPaymentWalletScreen extends StatefulWidget {
+  const ProductPaymentWalletScreen({
     super.key,
     required this.method,
     required this.accounts,
@@ -53,35 +40,18 @@ class ProductPaymentCompanyScreen extends StatefulWidget {
   final PaymentSetting? setting;
 
   @override
-  State<ProductPaymentCompanyScreen> createState() =>
-      _ProductPaymentCompanyScreenState();
+  State<ProductPaymentWalletScreen> createState() =>
+      _ProductPaymentWalletScreenState();
 }
 
-class _ProductPaymentCompanyScreenState
-    extends State<ProductPaymentCompanyScreen> {
-  // Контроллеры намеренно не освобождаем: экран закрывается с анимацией, и
-  // поля живут ещё несколько кадров. Освобождение здесь оставляет живой
+class _ProductPaymentWalletScreenState
+    extends State<ProductPaymentWalletScreen> {
+  // Контроллер намеренно не освобождаем: экран закрывается с анимацией, и
+  // поле живёт ещё несколько кадров. Освобождение здесь оставляет живой
   // TextField с мёртвым контроллером, а это зависание приложения.
-  late final _legal = TextEditingController(text: widget.setting?.legalName);
-  late final _short = TextEditingController(text: widget.setting?.shortName);
-  late final _receipt =
-      TextEditingController(text: widget.setting?.receiptName);
-  late final _inn = TextEditingController(text: widget.setting?.inn);
-  late final _kpp = TextEditingController(text: widget.setting?.kpp);
-  late final _ogrn = TextEditingController(text: widget.setting?.ogrn);
-
-  late final _bank = TextEditingController(text: widget.setting?.bankName);
-  late final _accountNumber =
-      TextEditingController(text: widget.setting?.accountNumber);
-  late final _bic = TextEditingController(text: widget.setting?.bic);
-  late final _corr =
-      TextEditingController(text: widget.setting?.corrAccount);
+  late final _wallet = TextEditingController(text: widget.setting?.wallet);
 
   late String? _account = widget.setting?.account;
-  late bool _selfEmployed = widget.setting?.selfEmployed ?? false;
-
-  /// Нужен ли блок банковских реквизитов. Решает сервер полем `form`.
-  bool get _isBank => widget.method.form == 'bank';
 
   String get _accountTitle {
     for (final account in widget.accounts) {
@@ -115,22 +85,10 @@ class _ProductPaymentCompanyScreenState
       return;
     }
 
-    String? text(TextEditingController controller) {
-      final value = controller.text.trim();
+    final wallet = _wallet.text.trim();
 
-      return value.isEmpty ? null : value;
-    }
-
-    if (text(_legal) == null) {
-      _say('Укажите полное название организации');
-
-      return;
-    }
-
-    // Без счёта и БИК перевод сделать не по чему: покупатель увидит
-    // реквизиты, в которых не хватает главного.
-    if (_isBank && (text(_accountNumber) == null || text(_bic) == null)) {
-      _say('Укажите расчётный счёт и БИК банка');
+    if (wallet.isEmpty) {
+      _say('Укажите номер кошелька');
 
       return;
     }
@@ -139,26 +97,18 @@ class _ProductPaymentCompanyScreenState
       context,
       PaymentSetting(
         account: account,
+
+        // Остальное этому способу не принадлежит, но и терять его нельзя:
+        // человек мог настроить кошелёк, а до того завести реквизиты.
         last4: widget.setting?.last4,
-
-        // Банковские реквизиты храним только там, где они спрашиваются:
-        // у СБП их нет и взяться им неоткуда.
-        bankName: _isBank ? text(_bank) : null,
-        accountNumber: _isBank ? text(_accountNumber) : null,
-        bic: _isBank ? text(_bic) : null,
-        corrAccount: _isBank ? text(_corr) : null,
-        wallet: widget.setting?.wallet,
-        legalName: text(_legal),
-        shortName: text(_short),
-        receiptName: text(_receipt),
-        inn: text(_inn),
-
-        // У самозанятого нет ни КПП, ни ОГРН: сохранять то, что он мог
-        // ввести до того, как поставил галочку, значит отдать в платёж
-        // чужие номера.
-        kpp: _selfEmployed ? null : text(_kpp),
-        ogrn: _selfEmployed ? null : text(_ogrn),
-        selfEmployed: _selfEmployed,
+        legalName: widget.setting?.legalName,
+        shortName: widget.setting?.shortName,
+        receiptName: widget.setting?.receiptName,
+        inn: widget.setting?.inn,
+        kpp: widget.setting?.kpp,
+        ogrn: widget.setting?.ogrn,
+        selfEmployed: widget.setting?.selfEmployed ?? false,
+        wallet: wallet,
       ),
     );
   }
@@ -191,18 +141,14 @@ class _ProductPaymentCompanyScreenState
                 ),
               ),
               const SizedBox(height: 12),
-              Text(
-                'По этим данным платёж находит получателя, а покупатель '
-                'видит, кому он заплатил.\n\n'
-                'Название в чеках часто отличается от названия юр. лица: '
-                'человек покупал в «Москвиче», а не в «ООО Москвич 2140».\n\n'
-                'Если вы самозанятый, поставьте галочку: КПП и ОГРН у вас '
-                'нет, и спрашивать их незачем.'
-                '${_isBank ? '\n\nБанковские реквизиты покупатель перенесёт '
-                    'в платёжное поручение, поэтому сверьте их со справкой '
-                    'из банка: ошибка в счёте или БИК вернёт платёж '
-                    'отправителю.' : ''}',
-                style: const TextStyle(
+              const Text(
+                'Номер кошелька это то, куда придут деньги покупателя. Он '
+                'виден в самом кошельке рядом с балансом и состоит только из '
+                'цифр.\n\n'
+                'Касса и расчётный счёт это то, как вы этот приход учитываете: '
+                'касса — наличный оборот точки, расчётный счёт — безналичный. '
+                'Выбор влияет на вашу отчётность, поэтому спрашиваем заранее.',
+                style: TextStyle(
                   color: textSecondary,
                   fontSize: 14,
                   height: 1.45,
@@ -300,69 +246,10 @@ class _ProductPaymentCompanyScreenState
                   ),
                   const SizedBox(height: 14),
 
-                  _field(
-                    'Полное название юр. лица, организации (ООО, ИП)',
-                    _legal,
-                  ),
-                  _field(
-                    'Краткое название юр. лица, организации (ООО, ИП)',
-                    _short,
-                  ),
-                  _field('Наименование проекта в чеках', _receipt),
-                  _field('ИНН', _inn, digits: true),
-
-                  if (!_selfEmployed) _field('КПП', _kpp, digits: true),
-
-                  GestureDetector(
-                    onTap: () =>
-                        setState(() => _selfEmployed = !_selfEmployed),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
-                      child: Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Самозанятый',
-                              style: TextStyle(
-                                color: textPrimary,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                          CustomCheckbox(
-                            value: _selfEmployed,
-                            onChanged: (_) => setState(
-                              () => _selfEmployed = !_selfEmployed,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  if (!_selfEmployed) ...[
-                    const SizedBox(height: 14),
-                    _field('ОГРН', _ogrn, digits: true),
-                  ],
-
-                  // Банковские реквизиты: только у безналичного перевода.
-                  if (_isBank) ...[
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Банковские реквизиты',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _field('Название банка', _bank),
-                    _field('Расчётный счёт', _accountNumber, digits: true),
-                    _field('БИК банка', _bic, digits: true),
-                    _field('Корреспондентский счёт', _corr, digits: true),
-                  ],
+                  // Подпись поля приходит с сервера: у разных кошельков она
+                  // разная, а переименование не должно требовать новой
+                  // версии приложения.
+                  _field(widget.method.field ?? 'Номер кошелька', _wallet),
                 ],
               ),
             ),
@@ -420,7 +307,7 @@ class _ProductPaymentCompanyScreenState
             ),
           ),
 
-          // «Отмена» уходит, ничего не меняя: реквизиты остаются прежними.
+          // «Отмена» уходит, ничего не меняя: настройка остаётся прежней.
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: const Text(
@@ -433,11 +320,7 @@ class _ProductPaymentCompanyScreenState
     );
   }
 
-  Widget _field(
-    String label,
-    TextEditingController controller, {
-    bool digits = false,
-  }) {
+  Widget _field(String label, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(
@@ -460,8 +343,7 @@ class _ProductPaymentCompanyScreenState
             ),
             child: TextField(
               controller: controller,
-              keyboardType:
-                  digits ? TextInputType.number : TextInputType.text,
+              keyboardType: TextInputType.number,
               style: const TextStyle(color: textPrimary, fontSize: 15),
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -477,6 +359,10 @@ class _ProductPaymentCompanyScreenState
 }
 
 /// Диалог «Касса»: куда приходят деньги.
+///
+/// Копия того же диалога с соседних экранов. Вынести его в общий файл стоит,
+/// когда экранов станет больше трёх: пока перенос тронул бы уже проверенные
+/// экраны ради одной новой кнопки.
 class _AccountDialog extends StatefulWidget {
   const _AccountDialog({required this.accounts, this.chosen});
 

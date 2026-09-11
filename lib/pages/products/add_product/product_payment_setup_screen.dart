@@ -21,6 +21,7 @@ import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_payment_company_screen.dart';
 import 'package:lidle/pages/products/add_product/product_payment_method_screen.dart';
 import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
+import 'package:lidle/pages/products/add_product/product_payment_wallet_screen.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -52,8 +53,8 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
 
   /// Открыть настройку способа.
   ///
-  /// Экран есть пока только у банковской карты. Понимаем это по справочнику:
-  /// у способов, чей экран не согласован, сервер не присылает подписей.
+  /// Какую форму открыть, решает сервер полем `form`. Если формы нет, экрана
+  /// для этого способа ещё не согласовали, и открывать нечего.
   Future<void> _openMethod(PaymentMethod method) async {
     if (!method.hasSetupScreen) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,22 +67,32 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
       return;
     }
 
-    // Какую форму открыть, говорит сервер полем `form`: у карты своя, у
-    // СБП реквизиты организации.
+    // Какую форму открыть, говорит сервер полем `form`:
+    //
+    //   card    — номер банковской карты;
+    //   wallet  — номер кошелька ЮMoney;
+    //   company — реквизиты организации: СБП и SberPay;
+    //   bank    — они же плюс банковские: безналичный перевод.
     final setting = await Navigator.push<PaymentSetting>(
       context,
       MaterialPageRoute(
-        builder: (_) => method.form == 'company'
-            ? ProductPaymentCompanyScreen(
-                method: method,
-                accounts: widget.dictionary.accounts,
-                setting: _settings[method.key],
-              )
-            : ProductPaymentMethodScreen(
-                method: method,
-                accounts: widget.dictionary.accounts,
-                setting: _settings[method.key],
-              ),
+        builder: (_) => switch (method.form) {
+          'company' || 'bank' => ProductPaymentCompanyScreen(
+              method: method,
+              accounts: widget.dictionary.accounts,
+              setting: _settings[method.key],
+            ),
+          'wallet' => ProductPaymentWalletScreen(
+              method: method,
+              accounts: widget.dictionary.accounts,
+              setting: _settings[method.key],
+            ),
+          _ => ProductPaymentMethodScreen(
+              method: method,
+              accounts: widget.dictionary.accounts,
+              setting: _settings[method.key],
+            ),
+        },
       ),
     );
 
@@ -313,6 +324,11 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
 
         _line('Касса', widget.dictionary.accountTitle(setting.account)),
 
+        // Кошелёк: подпись берём из справочника, как и на самом экране
+        // настройки.
+        if (method.form == 'wallet')
+          _line(method.field ?? 'Номер кошелька', setting.wallet),
+
         // Реквизиты организации. Показываем только заполненное: пустая
         // строка с подписью выглядит как потерянные данные.
         _line('Полное название юр. лица, организации (ООО, ИП)',
@@ -346,6 +362,12 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
           ),
 
         _line('ОГРН', setting.ogrn),
+
+        // Банковские реквизиты: только у безналичного перевода.
+        _line('Название банка', setting.bankName),
+        _line('Расчётный счёт', setting.accountNumber),
+        _line('БИК банка', setting.bic),
+        _line('Корреспондентский счёт', setting.corrAccount),
 
         const SizedBox(height: 2),
         Align(

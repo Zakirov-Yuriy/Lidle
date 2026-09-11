@@ -316,6 +316,11 @@ class PaymentSetting {
     this.kpp,
     this.ogrn,
     this.selfEmployed = false,
+    this.wallet,
+    this.bankName,
+    this.accountNumber,
+    this.bic,
+    this.corrAccount,
   });
 
   /// Куда приходят деньги: `cash` или `bank_account`.
@@ -329,7 +334,8 @@ class PaymentSetting {
   /// на себя требования к их защите.
   final String? last4;
 
-  /// Реквизиты организации: нужны СБП, чтобы платёж дошёл и попал в чек.
+  /// Реквизиты организации: нужны СБП и SberPay, чтобы платёж дошёл и попал
+  /// в чек.
   final String? legalName;
   final String? shortName;
   final String? receiptName;
@@ -339,6 +345,16 @@ class PaymentSetting {
 
   /// Самозанятый: у него нет ни КПП, ни ОГРН.
   final bool selfEmployed;
+
+  /// Номер кошелька ЮMoney.
+  final String? wallet;
+
+  /// Банковские реквизиты для безналичного перевода: без них платёжное
+  /// поручение не заполнить.
+  final String? bankName;
+  final String? accountNumber;
+  final String? bic;
+  final String? corrAccount;
 
   /// Номер карты так, как его показывают везде: «•••• •••• •••• 2345».
   String get maskedCard => last4 == null ? '' : '•••• •••• •••• $last4';
@@ -353,6 +369,11 @@ class PaymentSetting {
         if (kpp != null) 'kpp': kpp,
         if (ogrn != null) 'ogrn': ogrn,
         'self_employed': selfEmployed,
+        if (wallet != null) 'wallet': wallet,
+        if (bankName != null) 'bank_name': bankName,
+        if (accountNumber != null) 'account_number': accountNumber,
+        if (bic != null) 'bic': bic,
+        if (corrAccount != null) 'corr_account': corrAccount,
       };
 }
 
@@ -387,6 +408,11 @@ Map<String, PaymentSetting> _settings(dynamic raw) {
       kpp: text(value['kpp']),
       ogrn: text(value['ogrn']),
       selfEmployed: value['self_employed'] == true,
+      wallet: text(value['wallet']),
+      bankName: text(value['bank_name']),
+      accountNumber: text(value['account_number']),
+      bic: text(value['bic']),
+      corrAccount: text(value['corr_account']),
     );
   });
 
@@ -420,7 +446,8 @@ class PaymentMethod {
   /// кнопки просто объяснение.
   final bool needsSetup;
 
-  /// Какую форму открывать: `card` или `company`. Пусто — экрана ещё нет.
+  /// Какую форму открывать: `card`, `wallet`, `company` или `bank`. Пусто —
+  /// экрана ещё нет.
   ///
   /// Решает сервер, чтобы приложение не держало свой список «что чем
   /// настраивается»: он разошёлся бы с правдой в первый же день.
