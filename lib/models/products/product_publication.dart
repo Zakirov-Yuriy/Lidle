@@ -306,7 +306,17 @@ class ProductPublication {
 
 /// Настройка одного способа оплаты.
 class PaymentSetting {
-  const PaymentSetting({required this.account, this.last4});
+  const PaymentSetting({
+    required this.account,
+    this.last4,
+    this.legalName,
+    this.shortName,
+    this.receiptName,
+    this.inn,
+    this.kpp,
+    this.ogrn,
+    this.selfEmployed = false,
+  });
 
   /// Куда приходят деньги: `cash` или `bank_account`.
   final String account;
@@ -319,17 +329,30 @@ class PaymentSetting {
   /// на себя требования к их защите.
   final String? last4;
 
+  /// Реквизиты организации: нужны СБП, чтобы платёж дошёл и попал в чек.
+  final String? legalName;
+  final String? shortName;
+  final String? receiptName;
+  final String? inn;
+  final String? kpp;
+  final String? ogrn;
+
+  /// Самозанятый: у него нет ни КПП, ни ОГРН.
+  final bool selfEmployed;
+
   /// Номер карты так, как его показывают везде: «•••• •••• •••• 2345».
   String get maskedCard => last4 == null ? '' : '•••• •••• •••• $last4';
-
-  PaymentSetting copyWith({String? account, String? last4}) => PaymentSetting(
-        account: account ?? this.account,
-        last4: last4 ?? this.last4,
-      );
 
   Map<String, dynamic> toJson() => {
         'account': account,
         if (last4 != null) 'last4': last4,
+        if (legalName != null) 'legal_name': legalName,
+        if (shortName != null) 'short_name': shortName,
+        if (receiptName != null) 'receipt_name': receiptName,
+        if (inn != null) 'inn': inn,
+        if (kpp != null) 'kpp': kpp,
+        if (ogrn != null) 'ogrn': ogrn,
+        'self_employed': selfEmployed,
       };
 }
 
@@ -348,9 +371,22 @@ Map<String, PaymentSetting> _settings(dynamic raw) {
 
     final last4 = value['last4']?.toString().trim() ?? '';
 
+    String? text(dynamic raw) {
+      final value = raw?.toString().trim() ?? '';
+
+      return value.isEmpty ? null : value;
+    }
+
     result['$key'] = PaymentSetting(
       account: '$account',
       last4: last4.isEmpty ? null : last4,
+      legalName: text(value['legal_name']),
+      shortName: text(value['short_name']),
+      receiptName: text(value['receipt_name']),
+      inn: text(value['inn']),
+      kpp: text(value['kpp']),
+      ogrn: text(value['ogrn']),
+      selfEmployed: value['self_employed'] == true,
     );
   });
 
@@ -368,6 +404,7 @@ class PaymentMethod {
     required this.title,
     this.hint = '',
     this.needsSetup = false,
+    this.form,
     this.field,
     this.action,
     this.actionHint,
@@ -383,6 +420,12 @@ class PaymentMethod {
   /// кнопки просто объяснение.
   final bool needsSetup;
 
+  /// Какую форму открывать: `card` или `company`. Пусто — экрана ещё нет.
+  ///
+  /// Решает сервер, чтобы приложение не держало свой список «что чем
+  /// настраивается»: он разошёлся бы с правдой в первый же день.
+  final String? form;
+
   /// Подпись поля на экране настройки, например «Номер банковской карты».
   final String? field;
 
@@ -397,7 +440,7 @@ class PaymentMethod {
   /// Узнаём по текстам с сервера: у способов, чей экран ещё не нарисован,
   /// их нет. Так приложению не приходится держать список «что уже сделано»,
   /// который разойдётся с правдой в первый же день.
-  bool get hasSetupScreen => needsSetup && (action ?? '').isNotEmpty;
+  bool get hasSetupScreen => needsSetup && (form ?? '').isNotEmpty;
 
   factory PaymentMethod.fromJson(Map<String, dynamic> data) {
     String? text(dynamic value) {
@@ -411,6 +454,7 @@ class PaymentMethod {
       title: '${data['title'] ?? ''}',
       hint: '${data['hint'] ?? ''}',
       needsSetup: data['needs_setup'] == true,
+      form: text(data['form']),
       field: text(data['field']),
       action: text(data['action']),
       actionHint: text(data['action_hint']),

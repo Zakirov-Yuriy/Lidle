@@ -18,8 +18,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/product_payment_company_screen.dart';
 import 'package:lidle/pages/products/add_product/product_payment_method_screen.dart';
 import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 class ProductPaymentSetupScreen extends StatefulWidget {
@@ -64,14 +66,22 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
       return;
     }
 
+    // Какую форму открыть, говорит сервер полем `form`: у карты своя, у
+    // СБП реквизиты организации.
     final setting = await Navigator.push<PaymentSetting>(
       context,
       MaterialPageRoute(
-        builder: (_) => ProductPaymentMethodScreen(
-          method: method,
-          accounts: widget.dictionary.accounts,
-          setting: _settings[method.key],
-        ),
+        builder: (_) => method.form == 'company'
+            ? ProductPaymentCompanyScreen(
+                method: method,
+                accounts: widget.dictionary.accounts,
+                setting: _settings[method.key],
+              )
+            : ProductPaymentMethodScreen(
+                method: method,
+                accounts: widget.dictionary.accounts,
+                setting: _settings[method.key],
+              ),
       ),
     );
 
@@ -298,32 +308,46 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (setting.last4 != null) ...[
-          Text(
-            method.field ?? 'Реквизиты',
-            style: const TextStyle(color: textMuted, fontSize: 14),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            setting.maskedCard,
-            style: const TextStyle(
-              color: textPrimary,
-              fontSize: 16,
-              letterSpacing: 1.1,
+        if (setting.last4 != null)
+          _line(method.field ?? 'Реквизиты', setting.maskedCard),
+
+        _line('Касса', widget.dictionary.accountTitle(setting.account)),
+
+        // Реквизиты организации. Показываем только заполненное: пустая
+        // строка с подписью выглядит как потерянные данные.
+        _line('Полное название юр. лица, организации (ООО, ИП)',
+            setting.legalName),
+        _line('Краткое название юр. лица, организации (ООО, ИП)',
+            setting.shortName),
+        _line('Наименование проекта в чеках', setting.receiptName),
+        _line('ИНН', setting.inn),
+        _line('КПП', setting.kpp),
+
+        if (setting.legalName != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Самозанятый',
+                    style: TextStyle(color: textPrimary, fontSize: 15),
+                  ),
+                ),
+                CustomCheckbox(
+                  value: setting.selfEmployed,
+
+                  // Здесь только показываем: менять реквизиты надо на их
+                  // экране, а не мимоходом из списка.
+                  onChanged: (_) => _openMethod(method),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
-        ],
 
-        const Text('Касса',
-            style: TextStyle(color: textMuted, fontSize: 14)),
+        _line('ОГРН', setting.ogrn),
+
         const SizedBox(height: 2),
-        Text(
-          widget.dictionary.accountTitle(setting.account),
-          style: const TextStyle(color: textPrimary, fontSize: 16),
-        ),
-
-        const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
           child: GestureDetector(
@@ -335,6 +359,33 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Строка «подпись и значение». Пустое значение не показываем вовсе.
+  Widget _line(String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: textMuted,
+              fontSize: 14,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(color: textPrimary, fontSize: 16),
+          ),
+        ],
+      ),
     );
   }
 
