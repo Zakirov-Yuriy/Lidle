@@ -610,25 +610,30 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
 
     if (publication == null) return;
 
-    final chosen = await Navigator.push<List<String>>(
+    final choice = await Navigator.push<PaymentChoice>(
       context,
       MaterialPageRoute(
         builder: (_) => ProductPaymentScreen(
           chosen: publication.paymentMethods,
+          settings: publication.paymentSettings,
         ),
       ),
     );
 
-    if (chosen == null || !mounted) return;
+    if (choice == null || !mounted) return;
 
     setState(() {
-      _publication = publication.copyWith(paymentMethods: chosen);
+      _publication = publication.copyWith(
+        paymentMethods: choice.methods,
+        paymentSettings: choice.settings,
+      );
     });
 
     try {
       await ProductsCabinetApi.updatePublication(
         publication.id,
-        paymentMethods: chosen,
+        paymentMethods: choice.methods,
+        paymentSettings: choice.settings,
       );
     } catch (e) {
       log.e('Способы оплаты не сохранились: $e');

@@ -61,6 +61,7 @@ class ProductsCabinetApi {
     int? shopId,
     bool? isAutoRenew,
     List<String>? paymentMethods,
+    Map<String, String>? paymentSettings,
   }) async {
     final response = await ApiService.put('/me/product-publications/$id', {
       if (categoryId != null) 'category_id': categoryId,
@@ -71,6 +72,12 @@ class ProductsCabinetApi {
       // Пустой список означает «снял все галочки», поэтому шлём его, как
       // только человек трогал оплату, а не только когда что-то выбрано.
       if (paymentMethods != null) 'payment_methods': paymentMethods,
+
+      // Настройки способов: ключ способа → куда приходят деньги.
+      if (paymentSettings != null)
+        'payment_settings': paymentSettings.map(
+          (key, account) => MapEntry(key, {'account': account}),
+        ),
     });
 
     return ProductPublication.fromJson(
@@ -78,20 +85,25 @@ class ProductsCabinetApi {
     );
   }
 
-  /// Справочник способов оплаты: ключ и название.
-  static Future<List<PaymentMethod>> paymentMethods() async {
+  /// Справочник оплаты: способы и счета, куда приходят деньги.
+  static Future<PaymentDictionary> paymentMethods() async {
     final response = await ApiService.get(
       '/me/product-publications/payment-methods',
     );
 
     final data = response['data'];
 
-    return data is List
-        ? data
-              .whereType<Map<String, dynamic>>()
-              .map(PaymentMethod.fromJson)
-              .toList()
-        : const [];
+    if (data is! Map) return const PaymentDictionary();
+
+    List<T> list<T>(dynamic raw, T Function(Map<String, dynamic>) parse) =>
+        raw is List
+            ? raw.whereType<Map<String, dynamic>>().map(parse).toList()
+            : <T>[];
+
+    return PaymentDictionary(
+      methods: list(data['methods'], PaymentMethod.fromJson),
+      accounts: list(data['accounts'], PaymentAccount.fromJson),
+    );
   }
 
   /// Опубликовать: публикация и все её позиции уходят на витрину разом.

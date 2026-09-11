@@ -18,28 +18,75 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/product_payment_method_screen.dart';
 import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
-class ProductPaymentSetupScreen extends StatelessWidget {
+class ProductPaymentSetupScreen extends StatefulWidget {
   const ProductPaymentSetupScreen({
     super.key,
     required this.chosen,
-    required this.methods,
+    required this.dictionary,
+    this.settings = const {},
   });
 
   /// Ключи способов, которые человек отметил.
   final List<String> chosen;
 
-  /// Справочник целиком: из него берём названия, подсказки и признак
-  /// «нужны реквизиты».
-  final List<PaymentMethod> methods;
+  /// Справочник целиком: названия, подсказки, признак «нужны реквизиты» и
+  /// список счетов.
+  final PaymentDictionary dictionary;
+
+  /// Настройки, заданные раньше: ключ способа → счёт.
+  final Map<String, String> settings;
+
+  @override
+  State<ProductPaymentSetupScreen> createState() =>
+      _ProductPaymentSetupScreenState();
+}
+
+class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
+  late final Map<String, String> _settings = {...widget.settings};
+
+  /// Открыть настройку способа.
+  ///
+  /// Экран есть пока только у банковской карты. Понимаем это по справочнику:
+  /// у способов, чей экран не согласован, сервер не присылает подписей.
+  Future<void> _openMethod(PaymentMethod method) async {
+    if (!method.hasSetupScreen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Экран настройки этого способа ещё не сделан'),
+          backgroundColor: secondaryBackground,
+        ),
+      );
+
+      return;
+    }
+
+    final account = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPaymentMethodScreen(
+          method: method,
+          accounts: widget.dictionary.accounts,
+          account: _settings[method.key],
+        ),
+      ),
+    );
+
+    if (account == null || !mounted) return;
+
+    setState(() => _settings[method.key] = account);
+  }
 
   @override
   Widget build(BuildContext context) {
     // Порядок справочника, а не порядок нажатий: иначе карточки на экране
     // прыгали бы местами от того, что человек отмечал первым.
-    final picked = methods.where((m) => chosen.contains(m.key)).toList();
+    final picked = widget.dictionary.methods
+        .where((m) => widget.chosen.contains(m.key))
+        .toList();
 
     return Scaffold(
       backgroundColor: primaryBackground,
@@ -48,14 +95,14 @@ class ProductPaymentSetupScreen extends StatelessWidget {
           children: [
             const Header(),
             const SizedBox(height: 8),
-            _titleRow(context),
+            _titleRow(),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
-                  onTap: () => _explain(context),
+                  onTap: _explain,
                   child: const Text(
                     'Как это работает?',
                     style: TextStyle(color: activeIconColor, fontSize: 14),
@@ -94,7 +141,7 @@ class ProductPaymentSetupScreen extends StatelessWidget {
                     ),
 
                   for (final method in picked) ...[
-                    _card(context, method),
+                    _card(method),
                     const SizedBox(height: 14),
                   ],
                 ],
@@ -108,7 +155,7 @@ class ProductPaymentSetupScreen extends StatelessWidget {
                 16,
               ),
               child: GestureDetector(
-                onTap: () => Navigator.pop(context, true),
+                onTap: () => Navigator.pop(context, _settings),
                 child: Container(
                   height: 52,
                   alignment: Alignment.center,
@@ -133,7 +180,7 @@ class ProductPaymentSetupScreen extends StatelessWidget {
     );
   }
 
-  Widget _titleRow(BuildContext context) {
+  Widget _titleRow() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: defaultPadding),
       child: Row(
@@ -157,7 +204,7 @@ class ProductPaymentSetupScreen extends StatelessWidget {
           // «Отмена» закрывает оплату целиком, не сохраняя выбор: человек
           // передумал, а не хочет поправить отметки.
           GestureDetector(
-            onTap: () => Navigator.pop(context, false),
+            onTap: () => Navigator.pop(context),
             child: const Text(
               'Отмена',
               style: TextStyle(color: activeIconColor, fontSize: 15),
@@ -168,7 +215,7 @@ class ProductPaymentSetupScreen extends StatelessWidget {
     );
   }
 
-  Widget _card(BuildContext context, PaymentMethod method) {
+  Widget _card(PaymentMethod method) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
       decoration: BoxDecoration(
@@ -207,10 +254,18 @@ class ProductPaymentSetupScreen extends StatelessWidget {
               height: 1.35,
             ),
           ),
+          if (_settings[method.key] != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Деньги приходят: '
+              '${widget.dictionary.accountTitle(_settings[method.key])}',
+              style: const TextStyle(color: textPrimary, fontSize: 14),
+            ),
+          ],
           if (method.needsSetup) ...[
             const SizedBox(height: 14),
             GestureDetector(
-              onTap: () => _notReady(context),
+              onTap: () => _openMethod(method),
               child: Container(
                 height: 44,
                 alignment: Alignment.center,
@@ -256,16 +311,7 @@ class ProductPaymentSetupScreen extends StatelessWidget {
     return const Icon(Icons.payment, color: activeIconColor, size: 16);
   }
 
-  void _notReady(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Экран ввода реквизитов ещё не сделан'),
-        backgroundColor: secondaryBackground,
-      ),
-    );
-  }
-
-  void _explain(BuildContext context) {
+  void _explain() {
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(

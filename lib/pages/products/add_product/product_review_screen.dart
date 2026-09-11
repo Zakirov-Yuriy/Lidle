@@ -2095,25 +2095,30 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   /// Экран оплаты. Выбор принадлежит публикации, поэтому уходит на сервер
   /// сразу: публикация уже заведена, терять нечего.
   Future<void> _openPayment() async {
-    final chosen = await Navigator.push<List<String>>(
+    final choice = await Navigator.push<PaymentChoice>(
       context,
       MaterialPageRoute(
         builder: (_) => ProductPaymentScreen(
           chosen: _publication.paymentMethods,
+          settings: _publication.paymentSettings,
         ),
       ),
     );
 
-    if (chosen == null || !mounted) return;
+    if (choice == null || !mounted) return;
 
     setState(() {
-      _publication = _publication.copyWith(paymentMethods: chosen);
+      _publication = _publication.copyWith(
+        paymentMethods: choice.methods,
+        paymentSettings: choice.settings,
+      );
     });
 
     try {
       await ProductsCabinetApi.updatePublication(
         _publication.id,
-        paymentMethods: chosen,
+        paymentMethods: choice.methods,
+        paymentSettings: choice.settings,
       );
     } catch (e) {
       log.e('Способы оплаты не сохранились: $e');

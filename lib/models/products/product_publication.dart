@@ -203,6 +203,7 @@ class ProductPublication {
     this.isAutoRenew = false,
     this.isPublished = false,
     this.paymentMethods = const [],
+    this.paymentSettings = const {},
     this.groups = const [],
     this.needsShop = false,
   });
@@ -229,6 +230,10 @@ class ProductPublication {
   /// Ключи способов оплаты, которые принимает продавец. Пусто означает, что
   /// он ещё не выбирал, а не «не принимает ничего».
   final List<String> paymentMethods;
+
+  /// Настройки способов: ключ способа → куда приходят деньги (`cash` или
+  /// `bank_account`). Пусто у тех, кого ещё не настраивали.
+  final Map<String, String> paymentSettings;
 
   final List<ProductGroup> groups;
 
@@ -261,6 +266,7 @@ class ProductPublication {
                 .where((item) => item.isNotEmpty)
                 .toList()
           : const [],
+      paymentSettings: _settings(data['payment_settings']),
       groups: groups is List
           ? groups
                 .whereType<Map<String, dynamic>>()
@@ -276,6 +282,7 @@ class ProductPublication {
     String? brandName,
     bool? isAutoRenew,
     List<String>? paymentMethods,
+    Map<String, String>? paymentSettings,
     List<ProductGroup>? groups,
   }) {
     return ProductPublication(
@@ -290,10 +297,30 @@ class ProductPublication {
       isAutoRenew: isAutoRenew ?? this.isAutoRenew,
       isPublished: isPublished,
       paymentMethods: paymentMethods ?? this.paymentMethods,
+      paymentSettings: paymentSettings ?? this.paymentSettings,
       groups: groups ?? this.groups,
       needsShop: needsShop,
     );
   }
+}
+
+/// Настройки способов из ответа сервера: ключ способа → счёт.
+Map<String, String> _settings(dynamic raw) {
+  if (raw is! Map) return const {};
+
+  final result = <String, String>{};
+
+  raw.forEach((key, value) {
+    if (value is! Map) return;
+
+    final account = value['account'];
+
+    if (account == null) return;
+
+    result['$key'] = '$account';
+  });
+
+  return result;
 }
 
 /// Способ оплаты из справочника сервера: ключ и название.
@@ -307,6 +334,9 @@ class PaymentMethod {
     required this.title,
     this.hint = '',
     this.needsSetup = false,
+    this.field,
+    this.action,
+    this.actionHint,
   });
 
   final String key;
@@ -319,12 +349,68 @@ class PaymentMethod {
   /// кнопки просто объяснение.
   final bool needsSetup;
 
-  factory PaymentMethod.fromJson(Map<String, dynamic> data) => PaymentMethod(
+  /// Подпись поля на экране настройки, например «Номер банковской карты».
+  final String? field;
+
+  /// Надпись на кнопке привязки, например «Привязать карту».
+  final String? action;
+
+  /// Объяснение под кнопкой привязки.
+  final String? actionHint;
+
+  /// Есть ли у способа готовый экран настройки.
+  ///
+  /// Узнаём по текстам с сервера: у способов, чей экран ещё не нарисован,
+  /// их нет. Так приложению не приходится держать список «что уже сделано»,
+  /// который разойдётся с правдой в первый же день.
+  bool get hasSetupScreen => needsSetup && (action ?? '').isNotEmpty;
+
+  factory PaymentMethod.fromJson(Map<String, dynamic> data) {
+    String? text(dynamic value) {
+      final result = value?.toString().trim() ?? '';
+
+      return result.isEmpty ? null : result;
+    }
+
+    return PaymentMethod(
+      key: '${data['key'] ?? ''}',
+      title: '${data['title'] ?? ''}',
+      hint: '${data['hint'] ?? ''}',
+      needsSetup: data['needs_setup'] == true,
+      field: text(data['field']),
+      action: text(data['action']),
+      actionHint: text(data['action_hint']),
+    );
+  }
+}
+
+/// Куда приходят деньги по способу: касса или расчётный счёт.
+class PaymentAccount {
+  const PaymentAccount({required this.key, required this.title});
+
+  final String key;
+  final String title;
+
+  factory PaymentAccount.fromJson(Map<String, dynamic> data) => PaymentAccount(
         key: '${data['key'] ?? ''}',
         title: '${data['title'] ?? ''}',
-        hint: '${data['hint'] ?? ''}',
-        needsSetup: data['needs_setup'] == true,
       );
+}
+
+/// Справочник оплаты целиком: способы и счета.
+class PaymentDictionary {
+  const PaymentDictionary({this.methods = const [], this.accounts = const []});
+
+  final List<PaymentMethod> methods;
+  final List<PaymentAccount> accounts;
+
+  String accountTitle(String? key) {
+    for (final account in accounts) {
+      if (account.key == key) return account.title;
+    }
+
+    return '';
+  }
 }
 
 /// Бренд из справочника.

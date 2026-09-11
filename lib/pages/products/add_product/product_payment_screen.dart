@@ -25,11 +25,28 @@ import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/header.dart';
 
+/// Что человек выбрал в оплате: способы и их настройки.
+class PaymentChoice {
+  const PaymentChoice({required this.methods, required this.settings});
+
+  final List<String> methods;
+
+  /// Ключ способа → куда приходят деньги.
+  final Map<String, String> settings;
+}
+
 class ProductPaymentScreen extends StatefulWidget {
-  const ProductPaymentScreen({super.key, this.chosen = const []});
+  const ProductPaymentScreen({
+    super.key,
+    this.chosen = const [],
+    this.settings = const {},
+  });
 
   /// Ключи способов, отмеченных сейчас.
   final List<String> chosen;
+
+  /// Настройки способов, заданные раньше.
+  final Map<String, String> settings;
 
   /// Фирменные значки способов. Ключи те же, что у сервера.
   ///
@@ -79,7 +96,9 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
   late final Set<String> _chosen = {...widget.chosen};
 
-  List<PaymentMethod> _methods = const [];
+  late final Map<String, String> _settings = {...widget.settings};
+
+  PaymentDictionary _dictionary = const PaymentDictionary();
   bool _isLoading = true;
   String? _error;
 
@@ -92,12 +111,12 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
   Future<void> _load() async {
     try {
-      final methods = await ProductsCabinetApi.paymentMethods();
+      final dictionary = await ProductsCabinetApi.paymentMethods();
 
       if (!mounted) return;
 
       setState(() {
-        _methods = methods;
+        _dictionary = dictionary;
         _isLoading = false;
       });
     } catch (e) {
@@ -135,19 +154,23 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
       return;
     }
 
-    final saved = await Navigator.push<bool>(
+    final saved = await Navigator.push<Map<String, String>>(
       context,
       MaterialPageRoute(
         builder: (_) => ProductPaymentSetupScreen(
           chosen: _chosen.toList(),
-          methods: _methods,
+          dictionary: _dictionary,
+          settings: _settings,
         ),
       ),
     );
 
-    if (saved != true || !mounted) return;
+    if (saved == null || !mounted) return;
 
-    Navigator.pop(context, _chosen.toList());
+    Navigator.pop(
+      context,
+      PaymentChoice(methods: _chosen.toList(), settings: saved),
+    );
   }
 
   void _explain() {
@@ -317,7 +340,7 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        for (final method in _methods) _row(method),
+        for (final method in _dictionary.methods) _row(method),
       ],
     );
   }
