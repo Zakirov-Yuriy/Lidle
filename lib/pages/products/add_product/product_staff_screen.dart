@@ -697,7 +697,61 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                 : 'Роль: ${member.position}',
             style: const TextStyle(color: textSecondary, fontSize: 13),
           ),
+
+          // Дальше то, что человек заполнил. Незаполненное не показываем
+          // вовсе: пять строк «не указано» под каждой карточкой превратят
+          // список в простыню, а должность и так уже об этом сказала.
+          if (member.salaryShort.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              member.salaryShort,
+              style: const TextStyle(color: textPrimary, fontSize: 13),
+            ),
+          ],
+
+          if (member.hasSchedule) ...[
+            const SizedBox(height: 3),
+            Text(
+              member.schedule!.shortTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: textSecondary, fontSize: 12),
+            ),
+          ],
+
+          // Доступы числом, а не списком: названий у них по пять штук на
+          // каждый, и в карточку шириной в полэкрана они не встанут. Кому
+          // нужно, какие именно, открывает сотрудника.
+          if (member.venueAccess.isNotEmpty ||
+              member.accountAccess.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (member.venueAccess.isNotEmpty)
+                  _accessChip('Заведение', member.venueAccess.length),
+                if (member.accountAccess.isNotEmpty)
+                  _accessChip('Аккаунт', member.accountAccess.length),
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// Плашка доступа: к чему и сколько пунктов отмечено.
+  Widget _accessChip(String label, int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        '$label $count',
+        style: const TextStyle(color: textSecondary, fontSize: 11),
       ),
     );
   }

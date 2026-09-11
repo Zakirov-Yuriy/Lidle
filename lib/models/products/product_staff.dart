@@ -269,6 +269,53 @@ class StaffSchedule {
     );
   }
 
+  /// Как настроен график, в пару слов: для карточки сотрудника.
+  ///
+  /// Живёт рядом с моделью, а не в экране: та же строка понадобится на
+  /// сводке, и вторая такая же сборка разойдётся с первой.
+  ///
+  /// Карточка узкая, поэтому здесь именно правило и время, а не пересказ
+  /// всех отмеченных дней: подробности человек смотрит в самом графике.
+  String get shortTitle {
+    final hours = time.allDay ? 'круглосуточно' : '${time.start}–${time.end}';
+
+    switch (mode) {
+      case StaffScheduleMode.weeks:
+        final preset = weeksPreset;
+
+        return preset == null
+            ? hours
+            : '${weeksPresetTitle(preset)}, $hours';
+
+      case StaffScheduleMode.rotation:
+        return '$rotationWork/$rotationRest, $hours';
+
+      case StaffScheduleMode.days:
+        return '${days.length} ${daysWord(days.length)}, $hours';
+
+      case StaffScheduleMode.hours:
+        return 'По часам: ${weekdayHours.length} ${daysWord(weekdayHours.length)}';
+    }
+  }
+
+  /// «день», «дня», «дней» по числу.
+  static String daysWord(int count) {
+    final tail = count % 100;
+
+    if (tail >= 11 && tail <= 14) return 'дней';
+
+    switch (count % 10) {
+      case 1:
+        return 'день';
+      case 2:
+      case 3:
+      case 4:
+        return 'дня';
+      default:
+        return 'дней';
+    }
+  }
+
   /// Рабочий ли этот день по правилу графика.
   bool isWorkingDay(DateTime day) {
     switch (mode) {
@@ -458,6 +505,31 @@ class StaffMember {
   final String? image;
   final int? groupId;
   final int order;
+
+  /// Зарплата так, как её читают: «40 000 ₽». Пусто — не указана.
+  ///
+  /// Разряды разделяем пробелами: без них «40000» на карточке приходится
+  /// пересчитывать глазами, а карточка нужна для беглого взгляда.
+  String get salaryShort {
+    final value = salary;
+
+    if (value == null) return '';
+
+    final whole = value.floor();
+    final digits = whole.toString();
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+
+      buffer.write(digits[i]);
+    }
+
+    return '$buffer ₽';
+  }
+
+  /// Есть ли у графика что показывать. Пустой график это «не настроен».
+  bool get hasSchedule => schedule != null && !schedule!.isEmpty;
 
   factory StaffMember.fromJson(Map<String, dynamic> data) {
     List<String> keys(dynamic raw) => raw is List
