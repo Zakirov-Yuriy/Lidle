@@ -29,6 +29,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_direction_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -129,8 +130,12 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   /// Идёт загрузка снимка на сервер.
   bool _isUploadingImage = false;
 
-  /// Направление работы, например «Косметология».
-  String? _workDirection;
+  /// Направления работы: номера отмеченных категорий и их названия.
+  ///
+  /// Названия держим рядом с номерами, чтобы строка на экране не ходила за
+  /// деревом категорий ради двух слов.
+  List<int> _workDirectionIds = [];
+  List<String> _workDirectionNames = [];
 
   /// График работы заведения.
   String? _workSchedule;
@@ -311,6 +316,22 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       // Фотография компании: готовая ссылка с сервера или пусто.
       final companyImage = (data['image'] ?? '').toString();
 
+      // Направления работы: сервер отдаёт номер и название каждого.
+      final directionIds = <int>[];
+      final directionNames = <String>[];
+
+      for (final raw in (data['work_directions'] as List? ?? const [])) {
+        if (raw is! Map) continue;
+
+        final id = int.tryParse('${raw['id']}');
+        final name = '${raw['name'] ?? ''}'.trim();
+
+        if (id == null || name.isEmpty) continue;
+
+        directionIds.add(id);
+        directionNames.add(name);
+      }
+
       // Email: приоритет коллекции, иначе скаляр company_contacts.
       String email = (data['email'] ?? '').toString();
       if (emails.isNotEmpty) {
@@ -365,6 +386,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _aboutController.text = about;
         _aboutLength = about.length;
         _companyImage = companyImage.isEmpty ? null : companyImage;
+        _workDirectionIds = directionIds;
+        _workDirectionNames = directionNames;
         _emailController.text = email;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
@@ -1149,6 +1172,43 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   // выбор, который никуда не денется.
   // ─────────────────────────────────────────────────────────────
 
+  /// Открыть «Выбор категории» и сохранить то, что человек отметил.
+  ///
+  /// Сохраняем сразу, а не по общей кнопке «Сохранить», как и фотографию:
+  /// направления лежат в своей ручке, и отложенная отправка означала бы, что
+  /// на экране видно одно, а на сервере другое.
+  Future<void> _openWorkDirections() async {
+    final choice = await Navigator.push<WorkDirectionChoice>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            CompanyWorkDirectionScreen(chosen: _workDirectionIds),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    setState(() {
+      _workDirectionIds = choice.ids;
+      _workDirectionNames = choice.names;
+    });
+
+    try {
+      await CompanyContactService.changeWorkDirections(
+        categoryIds: choice.ids,
+        token: TokenService.currentToken,
+      );
+    } catch (e) {
+      log.d('❌ Не удалось сохранить направления работы: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось сохранить направления: $e')),
+      );
+    }
+  }
+
   void _notReady(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Поле «$title» ещё не подключено')),
@@ -1913,8 +1973,13 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 _field(_nameController, 'Введите название компании'),
 
                 _label('Направление работы'),
-                _pickerRow(_workDirection, 'Выбрать',
-                    () => _notReady('Направление работы')),
+                _pickerRow(
+                  _workDirectionNames.isEmpty
+                      ? null
+                      : _workDirectionNames.join(', '),
+                  'Выбрать',
+                  _openWorkDirections,
+                ),
 
                 _label('График работы'),
                 _pickerRow(

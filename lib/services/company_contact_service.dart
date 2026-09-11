@@ -49,6 +49,29 @@ class CompanyContactService {
     return (response['image'] ?? '').toString();
   }
 
+  // ───── Направления работы ─────
+  /// GET /me/settings/company/work-directions → {groups: [...], chosen: [id]}.
+  ///
+  /// Справочник и выбор приходят вместе: экран показывает их разом, и два
+  /// запроса означали бы, что на секунду виден список без галочек.
+  static Future<Map<String, dynamic>> getWorkDirections({String? token}) {
+    return ApiService.get('/me/settings/company/work-directions', token: token);
+  }
+
+  /// PUT /me/settings/company/work-directions, тело `category_ids`.
+  ///
+  /// Список заменяет прежний целиком, пустой снимает все отметки.
+  static Future<Map<String, dynamic>> changeWorkDirections({
+    required List<int> categoryIds,
+    String? token,
+  }) {
+    return ApiService.put(
+      '/me/settings/company/work-directions',
+      {'category_ids': categoryIds},
+      token: token,
+    );
+  }
+
   // ───── Скалярные поля компании (company_contacts) ─────
   static Future<Map<String, dynamic>> changeName({
     required String name,
