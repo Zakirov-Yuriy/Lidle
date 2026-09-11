@@ -699,12 +699,12 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
           ),
 
           // Дальше то, что человек заполнил. Незаполненное не показываем
-          // вовсе: пять строк «не указано» под каждой карточкой превратят
-          // список в простыню, а должность и так уже об этом сказала.
+          // вовсе: строки «не указано» под каждой карточкой превратят список
+          // в простыню, а должность и так уже об этом сказала.
           if (member.salaryShort.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(
-              member.salaryShort,
+              'Оклад: ${member.salaryShort}',
               style: const TextStyle(color: textPrimary, fontSize: 13),
             ),
           ],
@@ -719,39 +719,10 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
             ),
           ],
 
-          // Доступы числом, а не списком: названий у них по пять штук на
-          // каждый, и в карточку шириной в полэкрана они не встанут. Кому
-          // нужно, какие именно, открывает сотрудника.
-          if (member.venueAccess.isNotEmpty ||
-              member.accountAccess.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                if (member.venueAccess.isNotEmpty)
-                  _accessChip('Заведение', member.venueAccess.length),
-                if (member.accountAccess.isNotEmpty)
-                  _accessChip('Аккаунт', member.accountAccess.length),
-              ],
-            ),
-          ],
+          // Доступов на карточке нет намеренно: числом они мало о чём
+          // говорят, а названиями в карточку шириной в полэкрана не влезают.
+          // Какие отмечены, видно внутри сотрудника.
         ],
-      ),
-    );
-  }
-
-  /// Плашка доступа: к чему и сколько пунктов отмечено.
-  Widget _accessChip(String label, int count) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        '$label $count',
-        style: const TextStyle(color: textSecondary, fontSize: 11),
       ),
     );
   }
