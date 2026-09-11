@@ -97,6 +97,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   List<String> _telegrams = [];
   List<String> _maxes = [];
 
+  /// Ссылки компании на сайт и соцсети: `{type, title, url}`.
+  ///
+  /// Telegram и MAX сюда НЕ попадают, хотя сервер отдаёт их в том же списке:
+  /// у них на экране свои колонки, и показать их дважды значит сбить с толку.
+  List<Map<String, String>> _links = [];
+
   // Единая секция «Информация» (Описание + Расположение + Контакты).
   // По умолчанию свёрнута.
   bool _infoExpanded = false;
@@ -203,17 +209,25 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// Регистрация некритична: ошибки глушатся внутри saveAdvertContact, а сам
   /// переход по ссылке не блокируется ответом аналитики.
   Future<void> _openMessenger(String raw, {required bool isMax}) async {
-    // Аналитика «Контакт»: не ждём ответ, не мешаем открытию ссылки.
+    await _openExternal(_messengerUrl(raw, isMax: isMax));
+  }
+
+  /// Открыть внешнюю ссылку и зарегистрировать «Контакт».
+  ///
+  /// Общая для мессенджеров и для ссылок на сайт и соцсети: переход по любой
+  /// из них это одно и то же действие человека — он пошёл к продавцу.
+  /// Регистрация некритична: ошибки глушатся внутри saveAdvertContact, а сам
+  /// переход не ждёт ответа аналитики.
+  Future<void> _openExternal(String url) async {
     final advId = int.tryParse(widget.advertId ?? '');
     if (advId != null) {
       ApiService.saveAdvertContact(advId, source: 'manager_link');
     }
 
-    final url = _messengerUrl(raw, isMax: isMax);
     try {
       await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (e) {
-      log.d('Не удалось открыть ссылку менеджера: $e');
+      log.d('Не удалось открыть ссылку: $e');
     }
   }
 
@@ -228,6 +242,34 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _phones = List<String>.from((m['phones'] as List?) ?? const []);
     _telegrams = List<String>.from((m['telegrams'] as List?) ?? const []);
     _maxes = List<String>.from((m['maxes'] as List?) ?? const []);
+    _links = _readLinks(m['links']);
+  }
+
+  /// Разбор списка ссылок из ответа сервера или из кеша.
+  ///
+  /// Формат один и тот же, поэтому и разбор один: две копии разошлись бы, и
+  /// из кеша приезжало бы не то, что с сервера.
+  List<Map<String, String>> _readLinks(dynamic raw) {
+    final out = <Map<String, String>>[];
+
+    if (raw is! List) return out;
+
+    for (final item in raw) {
+      if (item is! Map) continue;
+
+      final type = '${item['type'] ?? ''}'.trim();
+      final url = '${item['url'] ?? ''}'.trim();
+      final title = '${item['title'] ?? ''}'.trim();
+
+      if (type.isEmpty || url.isEmpty) continue;
+
+      // Мессенджеры пропускаем: у них свои колонки выше.
+      if (type == 'telegram' || type == 'max') continue;
+
+      out.add({'type': type, 'title': title.isEmpty ? type : title, 'url': url});
+    }
+
+    return out;
   }
 
   /// Сохраняет текущее состояние карточки продавца в кеш.
@@ -246,6 +288,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'phones': _phones,
         'telegrams': _telegrams,
         'maxes': _maxes,
+        'links': _links,
       },
       ttl: _infoCacheTtl,
       persist: true,
@@ -352,6 +395,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final telegrams = extract(companyData['telegrams'], 'username');
       final maxes = extract(companyData['maxes'], 'username');
 
+      // Ссылки на сайт и соцсети. Приходят одним списком вместе с
+      // мессенджерами, мессенджеры отсеиваются при разборе.
+      final links = _readLinks(companyData['links']);
+
       // ── Данные пользователя: избранное и дата регистрации ─────────────
       final createdRaw = userData['created_at'];
       final registrationDate =
@@ -372,6 +419,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _phones = phones;
         _telegrams = telegrams;
         _maxes = maxes;
+        _links = links;
         _profileLoading = false;
       });
 
@@ -1110,8 +1158,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Widget _buildInfoSection() {
     final descEmpty = (_description ?? '').trim().isEmpty;
     final addrEmpty = (_addressText ?? '').trim().isEmpty;
-    final hasContacts =
-        _phones.isNotEmpty || _telegrams.isNotEmpty || _maxes.isNotEmpty;
+    final hasContacts = _phones.isNotEmpty ||
+        _telegrams.isNotEmpty ||
+        _maxes.isNotEmpty ||
+        _links.isNotEmpty;
     // Подсказка «Заполните поля» — только для собственного профиля и только
     // когда все три блока пустые.
     final allEmpty = descEmpty && addrEmpty && !hasContacts;
@@ -1183,8 +1233,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildContactsContent() {
-    final hasAny =
-        _phones.isNotEmpty || _telegrams.isNotEmpty || _maxes.isNotEmpty;
+    final hasAny = _phones.isNotEmpty ||
+        _telegrams.isNotEmpty ||
+        _maxes.isNotEmpty ||
+        _links.isNotEmpty;
 
     // Показываем только два последних номера.
     final visiblePhones =
@@ -1263,6 +1315,23 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ],
         ),
       );
+    }
+
+    // Сайт и соцсети. Идут после мессенджеров и в один столбец: адреса
+    // длинные, и в две колонки они обрезались бы до неузнаваемости.
+    if (_links.isNotEmpty) {
+      children.add(const SizedBox(height: 6));
+
+      for (final link in _links) {
+        children.add(contactLabel(link['title'] ?? ''));
+        children.add(
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _openExternal(link['url'] ?? ''),
+            child: contactValue(link['url'] ?? '', link: true),
+          ),
+        );
+      }
     }
 
     return Column(
