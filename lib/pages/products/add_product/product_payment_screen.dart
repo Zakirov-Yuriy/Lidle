@@ -31,8 +31,8 @@ class PaymentChoice {
 
   final List<String> methods;
 
-  /// Ключ способа → куда приходят деньги.
-  final Map<String, String> settings;
+  /// Ключ способа → его настройка.
+  final Map<String, PaymentSetting> settings;
 }
 
 class ProductPaymentScreen extends StatefulWidget {
@@ -46,7 +46,7 @@ class ProductPaymentScreen extends StatefulWidget {
   final List<String> chosen;
 
   /// Настройки способов, заданные раньше.
-  final Map<String, String> settings;
+  final Map<String, PaymentSetting> settings;
 
   /// Фирменные значки способов. Ключи те же, что у сервера.
   ///
@@ -96,7 +96,7 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
   late final Set<String> _chosen = {...widget.chosen};
 
-  late final Map<String, String> _settings = {...widget.settings};
+  late final Map<String, PaymentSetting> _settings = {...widget.settings};
 
   PaymentDictionary _dictionary = const PaymentDictionary();
   bool _isLoading = true;
@@ -154,7 +154,7 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
       return;
     }
 
-    final saved = await Navigator.push<Map<String, String>>(
+    final saved = await Navigator.push<Map<String, PaymentSetting>>(
       context,
       MaterialPageRoute(
         builder: (_) => ProductPaymentSetupScreen(

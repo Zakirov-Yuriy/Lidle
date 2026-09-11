@@ -61,7 +61,7 @@ class ProductsCabinetApi {
     int? shopId,
     bool? isAutoRenew,
     List<String>? paymentMethods,
-    Map<String, String>? paymentSettings,
+    Map<String, PaymentSetting>? paymentSettings,
   }) async {
     final response = await ApiService.put('/me/product-publications/$id', {
       if (categoryId != null) 'category_id': categoryId,
@@ -76,7 +76,7 @@ class ProductsCabinetApi {
       // Настройки способов: ключ способа → куда приходят деньги.
       if (paymentSettings != null)
         'payment_settings': paymentSettings.map(
-          (key, account) => MapEntry(key, {'account': account}),
+          (key, setting) => MapEntry(key, setting.toJson()),
         ),
     });
 

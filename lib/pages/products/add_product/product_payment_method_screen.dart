@@ -18,6 +18,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/card_bind_dialog.dart';
 import 'package:lidle/widgets/components/custom_radio_button.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -26,7 +27,7 @@ class ProductPaymentMethodScreen extends StatefulWidget {
     super.key,
     required this.method,
     required this.accounts,
-    this.account,
+    this.setting,
   });
 
   final PaymentMethod method;
@@ -34,8 +35,8 @@ class ProductPaymentMethodScreen extends StatefulWidget {
   /// Куда можно направить деньги: касса и расчётный счёт.
   final List<PaymentAccount> accounts;
 
-  /// Что выбрано сейчас. Пусто — ещё не выбирали.
-  final String? account;
+  /// Что задано сейчас. Пусто — ещё не настраивали.
+  final PaymentSetting? setting;
 
   @override
   State<ProductPaymentMethodScreen> createState() =>
@@ -44,7 +45,8 @@ class ProductPaymentMethodScreen extends StatefulWidget {
 
 class _ProductPaymentMethodScreenState
     extends State<ProductPaymentMethodScreen> {
-  late String? _account = widget.account;
+  late String? _account = widget.setting?.account;
+  late String? _last4 = widget.setting?.last4;
 
   String get _accountTitle {
     for (final account in widget.accounts) {
@@ -69,13 +71,37 @@ class _ProductPaymentMethodScreenState
     setState(() => _account = chosen);
   }
 
-  void _bind() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Привязка ещё не подключена'),
-        backgroundColor: secondaryBackground,
-      ),
-    );
+  /// Ввод номера карты.
+  ///
+  /// Диалог возвращает только последние четыре цифры: полный номер не
+  /// покидает поля ввода. Подробнее в card_bind_dialog.dart.
+  Future<void> _bind() async {
+    final last4 = await showCardBindDialog(context);
+
+    if (last4 == null || !mounted) return;
+
+    setState(() => _last4 = last4);
+  }
+
+  /// «Сохранить»: возвращаем настройку способа целиком.
+  ///
+  /// Без выбранного счёта не отпускаем: настройка наполовину выглядит
+  /// готовой, а деньги по ней отправлять некуда.
+  void _save() {
+    final account = _account;
+
+    if (account == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Выберите, куда приходят деньги'),
+          backgroundColor: secondaryBackground,
+        ),
+      );
+
+      return;
+    }
+
+    Navigator.pop(context, PaymentSetting(account: account, last4: _last4));
   }
 
   void _explain() {
@@ -174,25 +200,64 @@ class _ProductPaymentMethodScreenState
                     ),
                   ),
                   const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: _bind,
-                    child: Container(
-                      height: 48,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        border: Border.all(color: activeIconColor),
-                        borderRadius: BorderRadius.circular(8),
+
+                  // Карта уже указана: вместо кнопки показываем её хвост и
+                  // даём заменить. Кнопка «Привязать» рядом с указанной
+                  // картой читается так, будто первая привязка не удалась.
+                  if (_last4 != null)
+                    GestureDetector(
+                      onTap: _bind,
+                      child: Container(
+                        height: 48,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: formBackground,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '•••• •••• •••• $_last4',
+                                style: const TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 16,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            const Text(
+                              'Заменить',
+                              style: TextStyle(
+                                color: activeIconColor,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Text(
-                        method.action ?? 'Привязать',
-                        style: const TextStyle(
-                          color: activeIconColor,
-                          fontSize: 15,
+                    )
+                  else
+                    GestureDetector(
+                      onTap: _bind,
+                      child: Container(
+                        height: 48,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: activeIconColor),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          method.action ?? 'Привязать',
+                          style: const TextStyle(
+                            color: activeIconColor,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (method.actionHint != null) ...[
+
+                  if (method.actionHint != null && _last4 == null) ...[
                     const SizedBox(height: 10),
                     Text(
                       method.actionHint!,
@@ -251,7 +316,7 @@ class _ProductPaymentMethodScreenState
                 16,
               ),
               child: GestureDetector(
-                onTap: () => Navigator.pop(context, _account),
+                onTap: _save,
                 child: Container(
                   height: 52,
                   alignment: Alignment.center,

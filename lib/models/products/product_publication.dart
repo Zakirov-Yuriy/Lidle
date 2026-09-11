@@ -231,9 +231,9 @@ class ProductPublication {
   /// он ещё не выбирал, а не «не принимает ничего».
   final List<String> paymentMethods;
 
-  /// Настройки способов: ключ способа → куда приходят деньги (`cash` или
-  /// `bank_account`). Пусто у тех, кого ещё не настраивали.
-  final Map<String, String> paymentSettings;
+  /// Настройки способов: ключ способа → его настройка. Пусто у тех, кого
+  /// ещё не настраивали.
+  final Map<String, PaymentSetting> paymentSettings;
 
   final List<ProductGroup> groups;
 
@@ -282,7 +282,7 @@ class ProductPublication {
     String? brandName,
     bool? isAutoRenew,
     List<String>? paymentMethods,
-    Map<String, String>? paymentSettings,
+    Map<String, PaymentSetting>? paymentSettings,
     List<ProductGroup>? groups,
   }) {
     return ProductPublication(
@@ -304,11 +304,40 @@ class ProductPublication {
   }
 }
 
-/// Настройки способов из ответа сервера: ключ способа → счёт.
-Map<String, String> _settings(dynamic raw) {
+/// Настройка одного способа оплаты.
+class PaymentSetting {
+  const PaymentSetting({required this.account, this.last4});
+
+  /// Куда приходят деньги: `cash` или `bank_account`.
+  final String account;
+
+  /// Последние четыре цифры карты.
+  ///
+  /// Только четыре, и это не экономия: полный номер карты нигде не
+  /// хранится, ни на сервере, ни в приложении. Продавцу для узнавания своей
+  /// карты хватает хвоста, а держать у себя платёжные данные значит брать
+  /// на себя требования к их защите.
+  final String? last4;
+
+  /// Номер карты так, как его показывают везде: «•••• •••• •••• 2345».
+  String get maskedCard => last4 == null ? '' : '•••• •••• •••• $last4';
+
+  PaymentSetting copyWith({String? account, String? last4}) => PaymentSetting(
+        account: account ?? this.account,
+        last4: last4 ?? this.last4,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'account': account,
+        if (last4 != null) 'last4': last4,
+      };
+}
+
+/// Настройки способов из ответа сервера.
+Map<String, PaymentSetting> _settings(dynamic raw) {
   if (raw is! Map) return const {};
 
-  final result = <String, String>{};
+  final result = <String, PaymentSetting>{};
 
   raw.forEach((key, value) {
     if (value is! Map) return;
@@ -317,7 +346,12 @@ Map<String, String> _settings(dynamic raw) {
 
     if (account == null) return;
 
-    result['$key'] = '$account';
+    final last4 = value['last4']?.toString().trim() ?? '';
+
+    result['$key'] = PaymentSetting(
+      account: '$account',
+      last4: last4.isEmpty ? null : last4,
+    );
   });
 
   return result;

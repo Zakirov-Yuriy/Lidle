@@ -37,8 +37,8 @@ class ProductPaymentSetupScreen extends StatefulWidget {
   /// список счетов.
   final PaymentDictionary dictionary;
 
-  /// Настройки, заданные раньше: ключ способа → счёт.
-  final Map<String, String> settings;
+  /// Настройки, заданные раньше: ключ способа → его настройка.
+  final Map<String, PaymentSetting> settings;
 
   @override
   State<ProductPaymentSetupScreen> createState() =>
@@ -46,7 +46,7 @@ class ProductPaymentSetupScreen extends StatefulWidget {
 }
 
 class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
-  late final Map<String, String> _settings = {...widget.settings};
+  late final Map<String, PaymentSetting> _settings = {...widget.settings};
 
   /// Открыть настройку способа.
   ///
@@ -64,20 +64,20 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
       return;
     }
 
-    final account = await Navigator.push<String>(
+    final setting = await Navigator.push<PaymentSetting>(
       context,
       MaterialPageRoute(
         builder: (_) => ProductPaymentMethodScreen(
           method: method,
           accounts: widget.dictionary.accounts,
-          account: _settings[method.key],
+          setting: _settings[method.key],
         ),
       ),
     );
 
-    if (account == null || !mounted) return;
+    if (setting == null || !mounted) return;
 
-    setState(() => _settings[method.key] = account);
+    setState(() => _settings[method.key] = setting);
   }
 
   @override
@@ -255,14 +255,11 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
             ),
           ),
           if (_settings[method.key] != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Деньги приходят: '
-              '${widget.dictionary.accountTitle(_settings[method.key])}',
-              style: const TextStyle(color: textPrimary, fontSize: 14),
-            ),
-          ],
-          if (method.needsSetup) ...[
+            const SizedBox(height: 14),
+            const Divider(color: Color(0xFF2A3744), height: 1),
+            const SizedBox(height: 12),
+            _summary(method, _settings[method.key]!),
+          ] else if (method.needsSetup) ...[
             const SizedBox(height: 14),
             GestureDetector(
               onTap: () => _openMethod(method),
@@ -290,6 +287,54 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  /// Настроенный способ: что задано и кнопка «Изменить».
+  ///
+  /// Показываем прямо в карточке, а не прячем за нажатием: человек должен
+  /// видеть, чем именно он настроил способ, не проваливаясь внутрь.
+  Widget _summary(PaymentMethod method, PaymentSetting setting) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (setting.last4 != null) ...[
+          Text(
+            method.field ?? 'Реквизиты',
+            style: const TextStyle(color: textMuted, fontSize: 14),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            setting.maskedCard,
+            style: const TextStyle(
+              color: textPrimary,
+              fontSize: 16,
+              letterSpacing: 1.1,
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+
+        const Text('Касса',
+            style: TextStyle(color: textMuted, fontSize: 14)),
+        const SizedBox(height: 2),
+        Text(
+          widget.dictionary.accountTitle(setting.account),
+          style: const TextStyle(color: textPrimary, fontSize: 16),
+        ),
+
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: () => _openMethod(method),
+            child: const Text(
+              'Изменить',
+              style: TextStyle(color: activeIconColor, fontSize: 15),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
