@@ -16,6 +16,7 @@
 // сохранённый выбор от несохранённой публикации.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
@@ -38,11 +39,22 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
   ///
   /// Лежат в приложении, а не приходят с сервера: это оформление, и гонять
   /// его по сети незачем.
+  ///
+  /// Векторные: рисуются одинаково чётко на любом экране.
+  static const Map<String, String> _vectors = {
+    'card': 'assets/payment/card.svg',
+    'yoomoney': 'assets/payment/yoomoney.svg',
+    'sberpay': 'assets/payment/sberpay.svg',
+    'sbp': 'assets/payment/sbp.svg',
+    'cash': 'assets/payment/cash.svg',
+  };
+
+  /// Растровые.
+  ///
+  /// «Безналичный перевод» только здесь: в его SVG вклеена растровая
+  /// картинка, а такие flutter_svg не рисует и оставляет пустоту. Рисунок
+  /// тот же, просто в другом виде.
   static const Map<String, String> _images = {
-    'card': 'assets/payment/card.png',
-    'yoomoney': 'assets/payment/yoomoney.png',
-    'sberpay': 'assets/payment/sberpay.png',
-    'sbp': 'assets/payment/sbp.png',
     'bank_transfer': 'assets/payment/bank_transfer.png',
   };
 
@@ -303,11 +315,22 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
   /// Значок способа: фирменная картинка, если она есть, иначе значок.
   Widget _badge(String key) {
-    final asset = _images[key];
+    final vector = _vectors[key];
 
-    if (asset != null) {
+    if (vector != null) {
+      return SvgPicture.asset(
+        vector,
+        height: 22,
+        fit: BoxFit.contain,
+        placeholderBuilder: (_) => const SizedBox(width: 32, height: 22),
+      );
+    }
+
+    final image = _images[key];
+
+    if (image != null) {
       return Image.asset(
-        asset,
+        image,
         height: 22,
         fit: BoxFit.contain,
         errorBuilder: (_, __, ___) => _fallback(key),
