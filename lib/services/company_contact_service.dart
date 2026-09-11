@@ -97,6 +97,36 @@ class CompanyContactService {
     );
   }
 
+  // ───── Валюта расчёта и языки уведомлений ─────
+  /// GET /me/settings/company/preferences → {currencies, locales, chosen}.
+  ///
+  /// Одной ручкой на три поля: это одно и то же по смыслу, и три запроса ради
+  /// двух списков по два пункта означали бы три круга по сети на экране.
+  static Future<Map<String, dynamic>> getPreferences({String? token}) {
+    return ApiService.get('/me/settings/company/preferences', token: token);
+  }
+
+  /// PUT /me/settings/company/preferences.
+  ///
+  /// Не присланное поле остаётся как было: диалоги открываются по одному, и
+  /// сохранение валюты не должно сбрасывать язык.
+  static Future<Map<String, dynamic>> changePreferences({
+    String? currency,
+    String? clientLocale,
+    String? staffLocale,
+    String? token,
+  }) {
+    return ApiService.put(
+      '/me/settings/company/preferences',
+      {
+        if (currency != null) 'currency': currency,
+        if (clientLocale != null) 'client_locale': clientLocale,
+        if (staffLocale != null) 'staff_locale': staffLocale,
+      },
+      token: token,
+    );
+  }
+
   // ───── Скалярные поля компании (company_contacts) ─────
   static Future<Map<String, dynamic>> changeName({
     required String name,

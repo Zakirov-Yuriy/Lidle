@@ -29,6 +29,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/constants.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/company_choice_dialog.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_direction_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_schedule_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -178,12 +179,26 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   /// Ссылки на страницы компании.
   final List<String> _links = [];
 
-  /// Язык уведомлений: отдельно для клиентов и для сотрудников.
-  String? _clientLanguage;
-  String? _staffLanguage;
+  /// Язык уведомлений: отдельно для клиентов и для сотрудников. Храним код,
+  /// названия берём из справочника сервера.
+  String? _clientLocale;
+  String? _staffLocale;
 
-  /// Валюта расчёта.
+  /// Валюта расчёта, код по ISO: `RUB`, `USD`.
   String? _currency;
+
+  /// Справочники валют и языков. Грузятся вместе с данными компании, чтобы
+  /// диалог открывался сразу, без ожидания сети.
+  List<CompanyChoiceOption> _currencyOptions = [];
+  List<CompanyChoiceOption> _localeOptions = [];
+
+  String _optionTitle(List<CompanyChoiceOption> options, String? code) {
+    for (final option in options) {
+      if (option.code == code) return option.title;
+    }
+
+    return '';
+  }
 
   static const bgColor = Color(0xFF243241);
 
@@ -337,6 +352,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
           await CompanyContactService.getTelegrams(token: token), 'username');
       final maxes =
           _extractList(await CompanyContactService.getMaxes(token: token), 'username');
+
+      // Справочники валют и языков. Тянем здесь же, чтобы диалог открывался
+      // сразу, без ожидания сети под пальцем.
+      await _loadPreferences(token);
 
       if (!mounted) return;
 
@@ -1307,6 +1326,146 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     }
   }
 
+  /// Справочники валют и языков. Молча пропускаем ошибку: без них экран
+  /// работает, просто три строки не откроются, и ругаться на это при каждом
+  /// заходе незачем.
+  Future<void> _loadPreferences(String? token) async {
+    try {
+      final response =
+          await CompanyContactService.getPreferences(token: token);
+
+      final data = (response['data'] is Map)
+          ? Map<String, dynamic>.from(response['data'] as Map)
+          : <String, dynamic>{};
+
+      List<CompanyChoiceOption> read(String key, {bool withNote = false}) {
+        final out = <CompanyChoiceOption>[];
+
+        for (final raw in (data[key] as List? ?? const [])) {
+          if (raw is! Map) continue;
+
+          final code = '${raw['code'] ?? ''}'.trim();
+          final title = '${raw['title'] ?? ''}'.trim();
+
+          if (code.isEmpty || title.isEmpty) continue;
+
+          out.add(CompanyChoiceOption(
+            code: code,
+            title: title,
+            // Код валюты приписываем серым, как на макете: «Российский рубль
+            // (RUB)». У языков кода в макете нет.
+            note: withNote ? '($code)' : null,
+          ));
+        }
+
+        return out;
+      }
+
+      final chosen = (data['chosen'] is Map)
+          ? Map<String, dynamic>.from(data['chosen'] as Map)
+          : <String, dynamic>{};
+
+      String? code(dynamic value) {
+        final text = '${value ?? ''}'.trim();
+
+        return text.isEmpty ? null : text;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _currencyOptions = read('currencies', withNote: true);
+        _localeOptions = read('locales');
+        _currency = code(chosen['currency']);
+        _clientLocale = code(chosen['client_locale']);
+        _staffLocale = code(chosen['staff_locale']);
+      });
+    } catch (e) {
+      log.d('❌ Не удалось загрузить справочники компании: $e');
+    }
+  }
+
+  Future<void> _pickCurrency() => _pickPreference(
+        title: 'Укажите валюту расчёта',
+        options: _currencyOptions,
+        selected: _currency,
+        apply: (code) => _currency = code,
+        send: (code) => CompanyContactService.changePreferences(
+          currency: code,
+          token: TokenService.currentToken,
+        ),
+      );
+
+  Future<void> _pickClientLocale() => _pickPreference(
+        title: 'Язык уведомлений',
+        subtitle: '(клиентов)',
+        options: _localeOptions,
+        selected: _clientLocale,
+        apply: (code) => _clientLocale = code,
+        send: (code) => CompanyContactService.changePreferences(
+          clientLocale: code,
+          token: TokenService.currentToken,
+        ),
+      );
+
+  Future<void> _pickStaffLocale() => _pickPreference(
+        title: 'Язык уведомлений',
+        subtitle: '(сотрудников)',
+        options: _localeOptions,
+        selected: _staffLocale,
+        apply: (code) => _staffLocale = code,
+        send: (code) => CompanyContactService.changePreferences(
+          staffLocale: code,
+          token: TokenService.currentToken,
+        ),
+      );
+
+  /// Общая часть трёх диалогов: показать, применить, отправить.
+  ///
+  /// Отправляем сразу, как фотографию, направления и график: поля лежат в
+  /// своей ручке, и откладывать до общей кнопки значит показывать на экране
+  /// то, чего на сервере нет.
+  Future<void> _pickPreference({
+    required String title,
+    String? subtitle,
+    required List<CompanyChoiceOption> options,
+    required String? selected,
+    required void Function(String code) apply,
+    required Future<void> Function(String code) send,
+  }) async {
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Справочник ещё не загрузился')),
+      );
+
+      return;
+    }
+
+    final code = await showCompanyChoiceDialog(
+      context,
+      title: title,
+      subtitle: subtitle,
+      options: options,
+      selected: selected,
+    );
+
+    if (code == null || !mounted) return;
+
+    setState(() => apply(code));
+
+    try {
+      await send(code);
+    } catch (e) {
+      log.d('❌ Не удалось сохранить настройку компании: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось сохранить: $e')),
+      );
+    }
+  }
+
   void _notReady(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Поле «$title» ещё не подключено')),
@@ -2120,18 +2279,27 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 _divider(),
 
                 _label('Язык уведомлений', note: '(клиентов)'),
-                _pickerRow(_clientLanguage, 'Выбрать',
-                    () => _notReady('Язык уведомлений клиентов')),
+                _pickerRow(
+                  _optionTitle(_localeOptions, _clientLocale),
+                  'Выбрать',
+                  _pickClientLocale,
+                ),
 
                 _label('Язык уведомлений', note: '(сотрудников)'),
-                _pickerRow(_staffLanguage, 'Выбрать',
-                    () => _notReady('Язык уведомлений сотрудников')),
+                _pickerRow(
+                  _optionTitle(_localeOptions, _staffLocale),
+                  'Выбрать',
+                  _pickStaffLocale,
+                ),
 
                 _divider(),
 
                 _label('Укажите валюту расчёта'),
                 _pickerRow(
-                    _currency, 'Выбрать', () => _notReady('Валюта расчёта')),
+                  _optionTitle(_currencyOptions, _currency),
+                  'Выбрать',
+                  _pickCurrency,
+                ),
 
                 const SizedBox(height: 24),
 
