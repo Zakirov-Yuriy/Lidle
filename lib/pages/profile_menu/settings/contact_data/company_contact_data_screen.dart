@@ -30,6 +30,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_direction_screen.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_schedule_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -137,8 +138,18 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   List<int> _workDirectionIds = [];
   List<String> _workDirectionNames = [];
 
-  /// График работы заведения.
-  String? _workSchedule;
+  /// График работы: начало и конец рабочего дня в виде «ЧЧ:ММ».
+  String? _workStart;
+  String? _workEnd;
+
+  /// Как график выглядит в строке: «09:00 – 18:00». Пусто — не задавали.
+  String? get _workScheduleTitle {
+    if (_workStart == null && _workEnd == null) return null;
+
+    // Показываем и половину: человек мог задать только начало, и прятать это
+    // значит делать вид, что он ничего не выбирал.
+    return '${_workStart ?? '—'} – ${_workEnd ?? '—'}';
+  }
 
   /// Страна. Отдельно от области: область у нас из адресного справочника, а
   /// страна на макете стоит выше и, судя по всему, задаётся сама.
@@ -332,6 +343,14 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         directionNames.add(name);
       }
 
+      // График работы: `{start, end, days}` или пусто.
+      final schedule = (data['work_schedule'] is Map)
+          ? Map<String, dynamic>.from(data['work_schedule'] as Map)
+          : <String, dynamic>{};
+
+      final workStart = '${schedule['start'] ?? ''}'.trim();
+      final workEnd = '${schedule['end'] ?? ''}'.trim();
+
       // Email: приоритет коллекции, иначе скаляр company_contacts.
       String email = (data['email'] ?? '').toString();
       if (emails.isNotEmpty) {
@@ -388,6 +407,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _companyImage = companyImage.isEmpty ? null : companyImage;
         _workDirectionIds = directionIds;
         _workDirectionNames = directionNames;
+        _workStart = workStart.isEmpty ? null : workStart;
+        _workEnd = workEnd.isEmpty ? null : workEnd;
         _emailController.text = email;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
@@ -1209,6 +1230,46 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     }
   }
 
+  /// Открыть «График работы» и сохранить выбранное время.
+  ///
+  /// Сохраняем сразу по возвращении, как направления и фотографию: график
+  /// лежит в своей ручке, и откладывать отправку до общей кнопки значит
+  /// показывать на экране то, чего на сервере нет.
+  Future<void> _openWorkSchedule() async {
+    final choice = await Navigator.push<WorkScheduleChoice>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CompanyWorkScheduleScreen(
+          start: _workStart,
+          end: _workEnd,
+        ),
+      ),
+    );
+
+    if (choice == null || !mounted) return;
+
+    setState(() {
+      _workStart = choice.start;
+      _workEnd = choice.end;
+    });
+
+    try {
+      await CompanyContactService.changeWorkSchedule(
+        start: choice.start,
+        end: choice.end,
+        token: TokenService.currentToken,
+      );
+    } catch (e) {
+      log.d('❌ Не удалось сохранить график работы: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось сохранить график: $e')),
+      );
+    }
+  }
+
   void _notReady(String title) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Поле «$title» ещё не подключено')),
@@ -1982,8 +2043,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 ),
 
                 _label('График работы'),
-                _pickerRow(
-                    _workSchedule, 'Выбрать', () => _notReady('График работы')),
+                _pickerRow(_workScheduleTitle, 'Выбрать', _openWorkSchedule),
 
                 _divider(),
 

@@ -72,6 +72,24 @@ class CompanyContactService {
     );
   }
 
+  // ───── График работы ─────
+  /// PUT /me/settings/company/work-schedule, тело `start` и `end` в виде
+  /// «ЧЧ:ММ» (может быть null).
+  ///
+  /// Не присланное поле сервер оставляет как было, поэтому время можно
+  /// сохранять отдельно от рабочих дней.
+  static Future<Map<String, dynamic>> changeWorkSchedule({
+    String? start,
+    String? end,
+    String? token,
+  }) {
+    return ApiService.put(
+      '/me/settings/company/work-schedule',
+      {'start': start, 'end': end},
+      token: token,
+    );
+  }
+
   // ───── Скалярные поля компании (company_contacts) ─────
   static Future<Map<String, dynamic>> changeName({
     required String name,
