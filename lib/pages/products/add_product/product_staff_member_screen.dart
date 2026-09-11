@@ -594,64 +594,72 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
     );
   }
 
+  /// Фотография сотрудника с кнопкой съёмки в правом нижнем углу.
+  ///
+  /// Кнопка лежит НА картинке, а не сбоку от неё: вынесенная в строку, она
+  /// отжимала картинку влево, и та переставала стоять по центру экрана.
+  ///
+  /// Значок фотоаппарата, а не карандаш: карандашом в приложении меняют
+  /// текст, и на снимке он читается как «переименовать». Тот же значок и в
+  /// том же углу стоит на карточках в списке сотрудников.
   Widget _photoBlock() {
     final local = _photo;
     final saved = _saved;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: _pickPhoto,
-            child: Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: formBackground,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: local != null
-                  ? Image.file(File(local), fit: BoxFit.cover)
-                  : saved != null
-                      ? Image.network(
-                          saved,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.person_outline,
-                            color: textMuted,
-                            size: 28,
-                          ),
-                        )
-                      : const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.add_circle_outline,
-                                color: textSecondary, size: 28),
-                            SizedBox(height: 8),
-                            Text('Добавить изображение',
-                                style: TextStyle(
-                                    color: textSecondary, fontSize: 14)),
-                          ],
-                        ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        GestureDetector(
-          onTap: _pickPhoto,
-          child: Container(
-            width: 36,
-            height: 36,
+    return GestureDetector(
+      onTap: _pickPhoto,
+      child: Stack(
+        children: [
+          Container(
+            height: 150,
+            width: double.infinity,
             decoration: BoxDecoration(
               color: formBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.edit_outlined,
-                color: activeIconColor, size: 18),
+            clipBehavior: Clip.antiAlias,
+            child: local != null
+                ? Image.file(File(local), fit: BoxFit.cover)
+                : saved != null
+                    ? Image.network(
+                        saved,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person_outline,
+                          color: textMuted,
+                          size: 28,
+                        ),
+                      )
+                    : const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_circle_outline,
+                              color: textSecondary, size: 28),
+                          SizedBox(height: 8),
+                          Text('Добавить изображение',
+                              style: TextStyle(
+                                  color: textSecondary, fontSize: 14)),
+                        ],
+                      ),
           ),
-        ),
-      ],
+
+          // Подложка под значком нужна: на светлом снимке белый значок без
+          // неё пропадает.
+          Positioned(
+            right: 8,
+            bottom: 8,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Icon(Icons.photo_camera_outlined,
+                  color: Colors.white, size: 18),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
