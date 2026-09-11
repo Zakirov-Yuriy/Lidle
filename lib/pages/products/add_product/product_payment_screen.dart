@@ -34,11 +34,21 @@ class ProductPaymentScreen extends StatefulWidget {
 }
 
 class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
-  /// Значки способов. Ключи те же, что у сервера.
+  /// Фирменные значки способов. Ключи те же, что у сервера.
   ///
-  /// Значки лежат здесь, а не приходят с сервера: это оформление, и гонять
-  /// его по сети незачем. Если заказчик пришлёт фирменные картинки, меняется
-  /// только эта таблица.
+  /// Лежат в приложении, а не приходят с сервера: это оформление, и гонять
+  /// его по сети незачем.
+  static const Map<String, String> _images = {
+    'card': 'assets/payment/card.png',
+    'yoomoney': 'assets/payment/yoomoney.png',
+    'sberpay': 'assets/payment/sberpay.png',
+    'sbp': 'assets/payment/sbp.png',
+    'bank_transfer': 'assets/payment/bank_transfer.png',
+  };
+
+  /// Запасные значки: для способов без картинки и на случай, если файл не
+  /// открылся. Пустое место в ряду хуже простого значка: строка разъезжается,
+  /// и человек думает, что экран сломался.
   static const Map<String, IconData> _icons = {
     'card': Icons.credit_card,
     'yoomoney': Icons.account_balance_wallet_outlined,
@@ -269,19 +279,10 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
         padding: const EdgeInsets.symmetric(vertical: 9),
         child: Row(
           children: [
-            Container(
+            SizedBox(
               width: 34,
-              height: 24,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: formBackground,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Icon(
-                _icons[method.key] ?? Icons.payment,
-                color: activeIconColor,
-                size: 16,
-              ),
+              height: 26,
+              child: Center(child: _badge(method.key)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -299,6 +300,37 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
       ),
     );
   }
+
+  /// Значок способа: фирменная картинка, если она есть, иначе значок.
+  Widget _badge(String key) {
+    final asset = _images[key];
+
+    if (asset != null) {
+      return Image.asset(
+        asset,
+        height: 22,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => _fallback(key),
+      );
+    }
+
+    return _fallback(key);
+  }
+
+  Widget _fallback(String key) => Container(
+        width: 32,
+        height: 22,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Icon(
+          _icons[key] ?? Icons.payment,
+          color: activeIconColor,
+          size: 15,
+        ),
+      );
 
   Widget _titleRow() {
     return Padding(
