@@ -20,6 +20,16 @@
 //
 // Старые поля не тронуты: их загрузка, сохранение и кеш работают как
 // работали.
+//
+// ССЫЛКИ (11.09.2026). Отдельных полей «Telegram» и «Max» на этом экране
+// больше НЕТ: они переехали в «Ссылки», к сайту и соцсетям, и сохраняются
+// оттуда. Здесь только показываем список и кнопку «Добавить ещё». Оставить
+// их и тут значило бы, что кнопка «Сохранить» на этом экране затирает
+// ссылки, заведённые на соседнем.
+//
+// На сервере Telegram и MAX по-прежнему лежат в своих таблицах: на их id
+// ссылается публикация объявления. Ручка ссылок прячет это и отдаёт один
+// список.
 // ─────────────────────────────────────────────────────────────
 // ============================================================
 
@@ -30,6 +40,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
 import 'package:lidle/constants.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_choice_dialog.dart';
+import 'package:lidle/pages/profile_menu/settings/contact_data/company_links_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_direction_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_schedule_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -81,8 +92,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phone1Controller;
   late TextEditingController _phone2Controller;
-  late TextEditingController _telegramController;
-  late TextEditingController _maxController;
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -96,8 +105,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   int? _phone1Id;
   int? _phone2Id;
   int? _emailId;
-  int? _telegramId;
-  int? _maxId;
 
   // Область / город.
   Set<String> _selectedRegion = {};
@@ -176,8 +183,16 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   /// страна на макете стоит выше и, судя по всему, задаётся сама.
   String? _country;
 
-  /// Ссылки на страницы компании.
-  final List<String> _links = [];
+  /// Ссылки компании: сайт, соцсети, Telegram и MAX одним списком.
+  ///
+  /// Заводятся на отдельном экране «Ссылки». Здесь только показываем: пока
+  /// ни одной нет, строка предлагает «Выбрать», дальше идёт список и
+  /// «Добавить ещё» под ним.
+  List<CompanyLink> _links = [];
+
+  /// Названия типов по коду: «telegram» → «Telegram». Приходят с сервера
+  /// вместе со ссылками, чтобы не держать вторую копию списка соцсетей.
+  Map<String, String> _linkTitles = {};
 
   /// Язык уведомлений: отдельно для клиентов и для сотрудников. Храним код,
   /// названия берём из справочника сервера.
@@ -217,8 +232,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     _emailController = TextEditingController();
     _phone1Controller = TextEditingController();
     _phone2Controller = TextEditingController();
-    _telegramController = TextEditingController();
-    _maxController = TextEditingController();
     _aboutController.addListener(() {
       if (_aboutLength != _aboutController.text.length) {
         setState(() => _aboutLength = _aboutController.text.length);
@@ -244,8 +257,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     _emailController.dispose();
     _phone1Controller.dispose();
     _phone2Controller.dispose();
-    _telegramController.dispose();
-    _maxController.dispose();
     super.dispose();
   }
 
@@ -348,11 +359,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
           _extractList(await CompanyContactService.getPhones(token: token), 'phone');
       final emails =
           _extractList(await CompanyContactService.getEmails(token: token), 'email');
-      final telegrams = _extractList(
-          await CompanyContactService.getTelegrams(token: token), 'username');
-      final maxes =
-          _extractList(await CompanyContactService.getMaxes(token: token), 'username');
-
       // Справочники валют и языков. Тянем здесь же, чтобы диалог открывался
       // сразу, без ожидания сети под пальцем.
       await _loadPreferences(token);
@@ -391,6 +397,25 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       final workEnd = '${schedule['end'] ?? ''}'.trim();
       final workNoBreak = schedule['no_break'] == true;
 
+      // Ссылки: сервер отдаёт тип, название типа и адрес одним списком, куда
+      // входят и Telegram с MAX.
+      final links = <CompanyLink>[];
+      final linkTitles = <String, String>{};
+
+      for (final raw in (data['links'] as List? ?? const [])) {
+        if (raw is! Map) continue;
+
+        final type = '${raw['type'] ?? ''}'.trim();
+        final url = '${raw['url'] ?? ''}'.trim();
+        final title = '${raw['title'] ?? ''}'.trim();
+
+        if (type.isEmpty || url.isEmpty) continue;
+
+        links.add(CompanyLink(type: type, url: url));
+
+        if (title.isNotEmpty) linkTitles[type] = title;
+      }
+
       final workDays = <int>[];
 
       for (final raw in (schedule['days'] as List? ?? const [])) {
@@ -426,17 +451,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         if (phone2.isNotEmpty && !phone2.startsWith('+')) phone2 = '+$phone2';
       }
 
-      // Telegram / MAX.
-      String telegram = '';
-      if (telegrams.isNotEmpty) {
-        _telegramId = telegrams.first['id'] as int?;
-        telegram = telegrams.first['value'] as String;
-      }
-      String max = '';
-      if (maxes.isNotEmpty) {
-        _maxId = maxes.first['id'] as int?;
-        max = maxes.first['value'] as String;
-      }
+      // Telegram и MAX отдельно больше не читаем: они приходят в общем
+      // списке ссылок, вместе с сайтом и соцсетями.
 
       // Адрес: id и названия прямо из ответа.
       final regionName = (address['main_region_name'] ?? '').toString();
@@ -459,11 +475,11 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _workStart = workStart.isEmpty ? null : workStart;
         _workEnd = workEnd.isEmpty ? null : workEnd;
         _workNoBreak = workNoBreak;
+        _links = links;
+        _linkTitles = linkTitles;
         _emailController.text = email;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
-        _telegramController.text = telegram;
-        _maxController.text = max;
 
         if (regionName.isNotEmpty) {
           _selectedRegion = {regionName};
@@ -584,8 +600,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     await UserService.saveLocal('companyAbout', _aboutController.text);
     await UserService.saveLocal('companyEmail', _emailController.text.trim());
     await UserService.saveLocal('companyPhone1', _phone1Controller.text.trim());
-    await UserService.saveLocal('companyTelegram', _telegramController.text.trim());
-    await UserService.saveLocal('companyMax', _maxController.text.trim());
+    // Telegram и MAX в кеш экрана больше не кладём: они переехали в
+    // «Ссылки» и приходят вместе с ними.
   }
 
   /// Кеш экрана компании считается устаревшим, если прошло больше 10 минут
@@ -607,8 +623,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     final email = UserService.getLocal('companyEmail') as String? ?? '';
     final phone1 = UserService.getLocal('companyPhone1') as String? ?? '';
     final phone2 = UserService.getLocal('companyPhone2') as String? ?? '';
-    final telegram = UserService.getLocal('companyTelegram') as String? ?? '';
-    final max = UserService.getLocal('companyMax') as String? ?? '';
 
     final regionName = UserService.getLocal('companyRegion') as String? ?? '';
     final cityName = UserService.getLocal('companyCity') as String? ?? '';
@@ -621,7 +635,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
 
     // Если кеш пуст (первый вход) — сообщаем, что восстанавливать нечего.
     final hasAnything = [
-      name, about, email, phone1, phone2, telegram, max, regionName, cityName,
+      name, about, email, phone1, phone2, regionName, cityName,
     ].any((s) => s.isNotEmpty);
     if (!hasAnything) return false;
 
@@ -632,8 +646,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       _emailController.text = email;
       _phone1Controller.text = phone1;
       _phone2Controller.text = phone2;
-      _telegramController.text = telegram;
-      _maxController.text = max;
 
       if (regionName.isNotEmpty) {
         _selectedRegion = {regionName};
@@ -812,31 +824,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         }
       }
 
-      // Telegram.
-      final tgErr = await _saveSingle(
-        value: _telegramController.text,
-        existingId: _telegramId,
-        create: () => CompanyContactService.addTelegram(
-            username: _telegramController.text.trim(), token: token),
-        update: (id) => CompanyContactService.updateTelegram(
-            id: id, username: _telegramController.text.trim(), token: token),
-        label: 'Telegram',
-        onId: (id) => _telegramId = id,
-      );
-      if (tgErr != null) errors.add(tgErr);
-
-      // MAX.
-      final maxErr = await _saveSingle(
-        value: _maxController.text,
-        existingId: _maxId,
-        create: () => CompanyContactService.addMax(
-            username: _maxController.text.trim(), token: token),
-        update: (id) => CompanyContactService.updateMax(
-            id: id, username: _maxController.text.trim(), token: token),
-        label: 'MAX',
-        onId: (id) => _maxId = id,
-      );
-      if (maxErr != null) errors.add(maxErr);
+      // Telegram и MAX здесь больше не сохраняются: они переехали на экран
+      // «Ссылки» и уходят на сервер оттуда, вместе с сайтом и соцсетями.
+      // Оставить сохранение и тут значило бы, что кнопка «Сохранить» на этом
+      // экране затирает ссылки, заведённые на соседнем.
 
       if (!mounted) return;
       setState(() {
@@ -1080,12 +1071,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
           _skeletonField(),
           const SizedBox(height: 8),
 
-          // Telegram
-          _skeletonLabel(),
-          _skeletonField(),
-          const SizedBox(height: 8),
-
-          // Max
+          // Ссылки
           _skeletonLabel(),
           _skeletonField(),
           const SizedBox(height: 24),
@@ -1732,20 +1718,70 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     );
   }
 
-  /// Ссылки: строка выбора и «Добавить ещё» под ней.
+  /// Ссылки: список заведённого и «Добавить ещё» под ним.
+  ///
+  /// Пока ни одной ссылки нет, показываем строку «Выбрать»: пустой список с
+  /// подписью «Добавить ещё» выглядит так, будто что-то потерялось.
   Widget _linksBlock() {
+    if (_links.isEmpty) {
+      return _pickerRow(null, 'Выбрать', _openLinks);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _pickerRow(
-          _links.isEmpty ? null : _links.first,
-          'Выбрать',
-          () => _notReady('Ссылки'),
-        ),
+        for (final link in _links)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: GestureDetector(
+              onTap: _openLinks,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: fieldColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: [
+                      // Название типа слева: без него в списке из семи
+                      // адресов не разобрать, где сайт, а где TikTok.
+                      SizedBox(
+                        width: 82,
+                        child: Text(
+                          _linkTitles[link.type] ?? link.type,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          link.url,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(25, 10, 25, 0),
+          padding: const EdgeInsets.fromLTRB(25, 0, 25, 0),
           child: GestureDetector(
-            onTap: () => _notReady('Ссылки'),
+            onTap: _openLinks,
             child: const Text(
               'Добавить ещё',
               style: TextStyle(color: accentColor, fontSize: 15),
@@ -1754,6 +1790,22 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         ),
       ],
     );
+  }
+
+  /// Открыть экран «Ссылки».
+  ///
+  /// Сохраняет он сам: сервер проверяет каждую ссылку, и об ошибке человек
+  /// должен узнать, пока поля перед глазами. Сюда возвращается уже принятый
+  /// сервером список.
+  Future<void> _openLinks() async {
+    final links = await Navigator.push<List<CompanyLink>>(
+      context,
+      MaterialPageRoute(builder: (_) => const CompanyLinksScreen()),
+    );
+
+    if (links == null || !mounted) return;
+
+    setState(() => _links = links);
   }
 
   /// Черта между смысловыми частями экрана, как на макете.
@@ -2267,12 +2319,9 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 _label('Номер телефона 2'),
                 _field(_phone2Controller, 'Введите'),
 
-                _label('Ссылка на ваш чат в Telegram'),
-                _field(_telegramController, '@username или t.me/username'),
-
-                _label('Ссылка на ваш чат в Max'),
-                _field(_maxController, '@username или max.ru/username'),
-
+                // Telegram и Max отдельными полями больше нет: они переехали
+                // в «Ссылки» вместе с сайтом и соцсетями. Два места для
+                // одного и того же значения разошлись бы в первый же день.
                 _label('Ссылки'),
                 _linksBlock(),
 

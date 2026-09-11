@@ -127,6 +127,29 @@ class CompanyContactService {
     );
   }
 
+  // ───── Ссылки на сайт и соцсети ─────
+  /// GET /me/settings/company/links → {types: [...], links: [{type, url}]}.
+  ///
+  /// Telegram и MAX приходят этим же списком, хотя на сервере лежат в своих
+  /// таблицах: экрану они нужны наравне с остальными ссылками.
+  static Future<Map<String, dynamic>> getLinks({String? token}) {
+    return ApiService.get('/me/settings/company/links', token: token);
+  }
+
+  /// PUT /me/settings/company/links, тело `links`.
+  ///
+  /// Список заменяет прежний целиком. Пустые адреса сервер отбрасывает сам.
+  static Future<Map<String, dynamic>> changeLinks({
+    required List<Map<String, String>> links,
+    String? token,
+  }) {
+    return ApiService.put(
+      '/me/settings/company/links',
+      {'links': links},
+      token: token,
+    );
+  }
+
   // ───── Скалярные поля компании (company_contacts) ─────
   static Future<Map<String, dynamic>> changeName({
     required String name,
