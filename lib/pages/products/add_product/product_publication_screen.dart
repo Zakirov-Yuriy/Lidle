@@ -72,6 +72,9 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
   PublicationDelivery _delivery = const PublicationDelivery();
   PublicationStaff _staff = const PublicationStaff();
 
+  /// Справочник оплаты: из него берём названия выбранных способов.
+  PaymentDictionary _payment = const PaymentDictionary();
+
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
@@ -219,6 +222,14 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
       if (mounted) setState(() => _staff = staff);
     } catch (e) {
       log.d('Сотрудники не пришли: $e');
+    }
+
+    try {
+      final payment = await ProductsCabinetApi.paymentMethods();
+
+      if (mounted) setState(() => _payment = payment);
+    } catch (e) {
+      log.d('Справочник оплаты не пришёл: $e');
     }
   }
 
@@ -599,9 +610,39 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
   String get _paymentLabel {
     final chosen = _publication?.paymentMethods ?? const <String>[];
 
-    if (chosen.isEmpty) return 'Добавить';
+    // Не «Способов: N»: ровно так подписана доставка, и две одинаковые
+    // строки на одном экране человек читает как ошибку.
+    return chosen.isEmpty ? 'Добавить' : 'Выбрано способов: ${chosen.length}';
+  }
 
-    return 'Способов: ${chosen.length}';
+  /// Названия выбранных способов оплаты под строкой.
+  ///
+  /// Число само по себе ничего не говорит: продавцу важно видеть, что он
+  /// принимает карту и наличные, а не что способов три.
+  List<Widget> _paymentNames() {
+    final chosen = _publication?.paymentMethods ?? const <String>[];
+
+    if (chosen.isEmpty) return const [];
+
+    // Порядок справочника, а не порядок нажатий.
+    final titles = _payment.methods
+        .where((method) => chosen.contains(method.key))
+        .map((method) => method.title)
+        .toList();
+
+    if (titles.isEmpty) return const [];
+
+    return [
+      const SizedBox(height: 10),
+      for (final title in titles)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Text(
+            title,
+            style: const TextStyle(color: textSecondary, fontSize: 15),
+          ),
+        ),
+    ];
   }
 
   /// Экран оплаты. Выбор возвращается сюда и сразу уходит на сервер: он
@@ -811,6 +852,7 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
               const SizedBox(height: 20),
               _label('Добавить оплату'),
               _addRow(hint: _paymentLabel, onTap: _openPayment),
+              ..._paymentNames(),
               _more(onTap: _openPayment),
 
               const SizedBox(height: 24),
