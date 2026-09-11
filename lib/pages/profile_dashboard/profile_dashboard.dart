@@ -102,6 +102,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// а не устаревший локальный кеш.
   String? _companyName;
 
+  /// Фотография компании из того же `GET /companies/{myId}`.
+  ///
+  /// В карточке «Ваш магазин» стоит именно она, а не аватарка владельца:
+  /// покупатель узнаёт магазин, а не человека, и эта же картинка видна ему на
+  /// витрине. Пусто — показываем значок по умолчанию.
+  String? _companyImage;
+
   // ignore: unused_field
   static const String _cacheKeyListings = CacheKeys.profileListingsCounts;
   // ignore: unused_field
@@ -152,14 +159,32 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       final data = (resp['data'] is Map)
           ? Map<String, dynamic>.from(resp['data'] as Map)
           : <String, dynamic>{};
+      // Фотография компании. Забираем тем же запросом, что и название: он уже
+      // делается, и второй поход за одной картинкой ничего не даст.
+      final imageRaw = data['image'];
+      final image = (imageRaw is String && imageRaw.trim().isNotEmpty)
+          ? imageRaw.trim()
+          : '';
+
+      if (image.isNotEmpty) {
+        await UserService.saveLocal('companyImage', image);
+      }
+
       final nameRaw = data['name'];
       final name = (nameRaw is String && nameRaw.trim().isNotEmpty)
           ? nameRaw.trim()
           : '';
-      if (name.isEmpty) return;
-      await UserService.saveLocal('companyName', name);
+
+      if (name.isNotEmpty) {
+        await UserService.saveLocal('companyName', name);
+      }
+
       if (!mounted) return;
-      setState(() => _companyName = name);
+
+      setState(() {
+        if (name.isNotEmpty) _companyName = name;
+        if (image.isNotEmpty) _companyImage = image;
+      });
     } catch (e) {
       log.d('Не удалось загрузить название компании: $e');
     }
@@ -782,10 +807,29 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                               ? profileState.userId
                                               : '';
                                       final storeUrl = _buildStoreUrl(userId);
+
+                                      // Аватарка владельца. Нужна только для
+                                      // перехода на страницу продавца: там
+                                      // показан человек, а не магазин.
                                       final profileImg =
                                           profileState is ProfileLoaded
                                               ? profileState.profileImage
                                               : null;
+
+                                      // Фотография КОМПАНИИ, не владельца:
+                                      // сначала свежая с сервера, иначе
+                                      // локальный кеш. Аватарка пользователя
+                                      // здесь не подставляется вовсе — это
+                                      // карточка магазина.
+                                      final freshImage =
+                                          _companyImage?.trim() ?? '';
+                                      final companyImg = freshImage.isNotEmpty
+                                          ? freshImage
+                                          : (UserService.getLocal(
+                                                          'companyImage')
+                                                      as String? ??
+                                                  '')
+                                              .trim();
                                       // SellerProfileScreen ждёт числовой id (int.tryParse)
                                       final cleanUserId = userId
                                           .replaceFirst('ID: ', '')
@@ -796,7 +840,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                           storeName: storeName,
                                           ownerNick: displayName,
                                           companyName: companyName,
-                                          profileImage: profileImg,
+                                          companyImage:
+                                              companyImg.isEmpty ? null : companyImg,
                                           // Тап по иконке → экран QR продавца
                                           // (как кнопка «Поделиться» на экране
                                           // продавца seller_profile_screen).
@@ -1324,7 +1369,15 @@ class _StoreShareCard extends StatelessWidget {
   final String storeName;
   final String ownerNick;
   final String companyName;
-  final String? profileImage;
+
+  /// Фотография КОМПАНИИ. Пусто — показываем значок по умолчанию.
+  ///
+  /// Раньше здесь стояла аватарка владельца. Это вводило в заблуждение:
+  /// карточка про магазин, покупатель видит на витрине снимок компании, а
+  /// продавец в кабинете — своё лицо, и понять, что именно увидят люди, было
+  /// невозможно.
+  final String? companyImage;
+
   final VoidCallback onShare;
   final VoidCallback onOpenStore;
 
@@ -1334,7 +1387,7 @@ class _StoreShareCard extends StatelessWidget {
     required this.onOpenStore,
     this.ownerNick = '',
     this.companyName = '',
-    this.profileImage,
+    this.companyImage,
   });
 
   @override
@@ -1373,9 +1426,9 @@ class _StoreShareCard extends StatelessWidget {
                           child: SizedBox(
                             width: 32,
                             height: 32,
-                            child: profileImage != null
+                            child: companyImage != null
                                 ? buildProfileImage(
-                                    profileImage,
+                                    companyImage,
                                     width: 32,
                                     height: 32,
                                     fit: BoxFit.cover,

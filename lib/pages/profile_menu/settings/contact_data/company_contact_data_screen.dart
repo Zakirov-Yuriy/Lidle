@@ -25,8 +25,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
+import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/services/company_contact_service.dart';
 import 'package:lidle/services/user_service.dart';
@@ -115,8 +119,15 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   // Пока только хранятся на экране. Как только назовут логику каждого, здесь
   // же появятся загрузка и сохранение.
 
-  /// Изображения проекта: пути к выбранным файлам.
-  final List<String> _projectImages = [];
+  /// Фотография компании: ссылка с сервера. Пусто — ещё не загружали.
+  ///
+  /// Это НЕ аватарка владельца. Аватарка живёт у пользователя и меняется на
+  /// экране «Смена фотографии»; здесь снимок компании, который видят
+  /// покупатели на витрине и в карточке магазина.
+  String? _companyImage;
+
+  /// Идёт загрузка снимка на сервер.
+  bool _isUploadingImage = false;
 
   /// Направление работы, например «Косметология».
   String? _workDirection;
@@ -139,7 +150,11 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   String? _currency;
 
   static const bgColor = Color(0xFF243241);
-  static const fieldColor = Color(0xFF1F2C3A);
+
+  // Фон полей ввода. Тот же, что на экране фильтров (dynamic_filter):
+  // поле должно быть темнее подложки, иначе на экране не видно, где кончается
+  // подпись и начинается ввод.
+  static const fieldColor = formBackground;
   static const accentColor = Color(0xFF00B7FF);
   static const hintColor = Colors.white54;
 
@@ -293,6 +308,9 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       final name = (data['name'] ?? '').toString();
       final about = (data['about'] ?? '').toString();
 
+      // Фотография компании: готовая ссылка с сервера или пусто.
+      final companyImage = (data['image'] ?? '').toString();
+
       // Email: приоритет коллекции, иначе скаляр company_contacts.
       String email = (data['email'] ?? '').toString();
       if (emails.isNotEmpty) {
@@ -346,6 +364,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _nameController.text = name;
         _aboutController.text = about;
         _aboutLength = about.length;
+        _companyImage = companyImage.isEmpty ? null : companyImage;
         _emailController.text = email;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
@@ -1136,58 +1155,227 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     );
   }
 
-  /// Изображения компании: плитка «Добавить изображение» с пояснением.
+  /// Фотография компании.
   ///
-  /// Пояснение прямо на плитке, а не подписью сбоку: человек должен понимать,
-  /// что снимки увидят его клиенты, ДО того, как выберет их.
+  /// Пока снимка нет — плитка «Добавить изображение» с пояснением прямо на
+  /// ней: человек должен понимать, что снимок увидят его клиенты, ДО того,
+  /// как выберет его.
+  ///
+  /// Снимок есть — он и стоит на этом месте, а сменить его даёт фотоаппарат в
+  /// правом нижнем углу. Тот же приём и тот же значок, что в карточках
+  /// товаров, доставки и сотрудников.
   Widget _imagesBlock() {
+    final image = _companyImage;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(25, 10, 25, 0),
       child: GestureDetector(
-        onTap: () => _notReady('Изображения'),
-        child: Container(
-          height: 150,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: fieldColor,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.add_circle_outline,
-                  color: Colors.white54, size: 30),
-              const SizedBox(height: 10),
-              const Text(
-                'Добавить изображение',
-                style: TextStyle(color: Colors.white54, fontSize: 15),
+        onTap: _isUploadingImage ? null : _showImageSourceSheet,
+        child: Stack(
+          children: [
+            Container(
+              height: 150,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: fieldColor,
+                borderRadius: BorderRadius.circular(6),
               ),
-              const SizedBox(height: 6),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  'Эти изображения будут видны и будут доступны вашим '
-                  'клиентам',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white38,
-                    fontSize: 13,
-                    height: 1.3,
+              clipBehavior: Clip.antiAlias,
+              child: image == null
+                  ? _imagePlaceholder()
+                  : buildProfileImage(
+                      image,
+                      width: double.infinity,
+                      height: 150,
+                      fit: BoxFit.cover,
+                    ),
+            ),
+
+            // Пока снимок уходит на сервер, закрываем плитку: повторное
+            // нажатие в этот момент загрузило бы второй файл поверх первого.
+            if (_isUploadingImage)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(color: accentColor),
                   ),
                 ),
               ),
-              if (_projectImages.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'Выбрано: ${_projectImages.length}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+
+            // Фотоаппарат показываем только когда снимок есть: на пустой
+            // плитке уже написано, что делать.
+            if (image != null && !_isUploadingImage)
+              Positioned(
+                right: 8,
+                bottom: 8,
+                child: GestureDetector(
+                  onTap: _showImageSourceSheet,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.photo_camera_outlined,
+                        color: Colors.white, size: 18),
+                  ),
                 ),
-              ],
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _imagePlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: const [
+        Icon(Icons.add_circle_outline, color: Colors.white54, size: 30),
+        SizedBox(height: 10),
+        Text(
+          'Добавить изображение',
+          style: TextStyle(color: Colors.white54, fontSize: 15),
+        ),
+        SizedBox(height: 6),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Эти изображения будут видны и будут доступны вашим клиентам',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 13,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Откуда взять снимок: камера или галерея.
+  ///
+  /// Ровно то же окно, что при смене фотографии профиля, вплоть до значков:
+  /// два разных окна под одно и то же действие человек воспримет как разные
+  /// вещи.
+  void _showImageSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF232E3C),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      builder: (BuildContext sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 13),
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 30),
+                child: Column(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: SvgPicture.asset(
+                        'assets/showImageSourceActionSheet/camera-01.svg',
+                      ),
+                      title: const Text(
+                        'Сделать фотографию',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        _pickCompanyImage(ImageSource.camera);
+                      },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: SvgPicture.asset(
+                        'assets/showImageSourceActionSheet/image-01.svg',
+                      ),
+                      title: const Text(
+                        'Загрузить фотографию',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        _pickCompanyImage(ImageSource.gallery);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Выбрать снимок и сразу отправить его на сервер.
+  ///
+  /// Сразу, а не по кнопке «Сохранить», как и аватарка: файл заливается
+  /// отдельной ручкой, и отложенная загрузка означала бы, что человек видит
+  /// на экране снимок, которого на сервере ещё нет.
+  Future<void> _pickCompanyImage(ImageSource source) async {
+    final picked = await ImagePicker().pickImage(source: source);
+
+    if (picked == null || !mounted) return;
+
+    setState(() => _isUploadingImage = true);
+
+    try {
+      final token = TokenService.currentToken;
+
+      final url = await CompanyContactService.uploadImage(
+        filePath: picked.path,
+        token: token,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _companyImage = url.isEmpty ? _companyImage : url;
+        _isUploadingImage = false;
+      });
+
+      // Карточка «Ваш магазин» в кабинете берёт снимок отсюда же: без этого
+      // она показывала бы прежний до следующего захода.
+      if (url.isNotEmpty) {
+        await UserService.saveLocal('companyImage', url);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Фотография компании обновлена')),
+        );
+      }
+    } catch (e) {
+      log.d('❌ Не удалось загрузить фото компании: $e');
+
+      if (!mounted) return;
+
+      setState(() => _isUploadingImage = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось загрузить фото: $e')),
+      );
+    }
   }
 
   /// Строка выбора: значение и шеврон. Пусто — показываем подсказку.

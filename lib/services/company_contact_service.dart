@@ -22,6 +22,33 @@ class CompanyContactService {
     return ApiService.get('/companies/$userId', token: token);
   }
 
+  // ───── Фотография компании ─────
+  /// POST /me/settings/company/image, файл в поле `image`.
+  ///
+  /// Устроена как аватарка пользователя и теми же правилами: до 2 МБ,
+  /// jpg/jpeg/png/gif/webp/avif. Снимок один: новый заменяет прежний, старый
+  /// файл сервер удаляет сам.
+  ///
+  /// Возвращает готовую ссылку на загруженный снимок или пустую строку, если
+  /// сервер её не прислал.
+  static Future<String> uploadImage({
+    required String filePath,
+    String? token,
+  }) async {
+    final response = await ApiService.uploadFile(
+      '/me/settings/company/image',
+      filePath: filePath,
+      fieldName: 'image',
+      token: token,
+    );
+
+    if (response['success'] != true) {
+      throw Exception(response['message'] ?? 'Не удалось загрузить фото');
+    }
+
+    return (response['image'] ?? '').toString();
+  }
+
   // ───── Скалярные поля компании (company_contacts) ─────
   static Future<Map<String, dynamic>> changeName({
     required String name,
