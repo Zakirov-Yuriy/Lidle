@@ -1255,6 +1255,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         categoryIds: choice.ids,
         token: TokenService.currentToken,
       );
+
+      await _invalidateSellerCache();
     } catch (e) {
       log.d('❌ Не удалось сохранить направления работы: $e');
 
@@ -1301,6 +1303,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         noBreak: choice.noBreak,
         token: TokenService.currentToken,
       );
+
+      await _invalidateSellerCache();
     } catch (e) {
       log.d('❌ Не удалось сохранить график работы: $e');
 
@@ -1441,6 +1445,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
 
     try {
       await send(code);
+      await _invalidateSellerCache();
     } catch (e) {
       log.d('❌ Не удалось сохранить настройку компании: $e');
 
@@ -1450,6 +1455,27 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         SnackBar(content: Text('Не удалось сохранить: $e')),
       );
     }
+  }
+
+  /// Сбросить кеш карточки продавца.
+  ///
+  /// Карточка держит данные компании полчаса, поэтому после правки её надо
+  /// толкнуть, иначе человек меняет ссылку и видит на своей карточке старую,
+  /// думая, что ничего не сохранилось.
+  ///
+  /// Нужно КАЖДОМУ полю, которое сохраняется сразу, а не по общей кнопке:
+  /// фотографии, направлениям, графику, языкам и ссылкам. У общей кнопки
+  /// «Сохранить» такой сброс уже есть.
+  Future<void> _invalidateSellerCache() async {
+    final token = TokenService.currentToken;
+
+    if (token == null) return;
+
+    final ownId = await _resolveUserId(token);
+
+    if (ownId == null) return;
+
+    AppCacheService().invalidate(CacheKeys.sellerInfoKey(ownId.toString()));
   }
 
   void _notReady(String title) {
@@ -1663,6 +1689,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         await UserService.saveLocal('companyImage', url);
       }
 
+      await _invalidateSellerCache();
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Фотография компании обновлена')),
@@ -1806,6 +1834,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     if (links == null || !mounted) return;
 
     setState(() => _links = links);
+
+    await _invalidateSellerCache();
   }
 
   /// Черта между смысловыми частями экрана, как на макете.
