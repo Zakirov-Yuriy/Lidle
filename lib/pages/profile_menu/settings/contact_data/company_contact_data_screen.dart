@@ -138,17 +138,37 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   List<int> _workDirectionIds = [];
   List<String> _workDirectionNames = [];
 
-  /// График работы: начало и конец рабочего дня в виде «ЧЧ:ММ».
+  /// График работы: рабочие дни, время и признак работы без перерыва.
+  List<int> _workDays = [];
   String? _workStart;
   String? _workEnd;
+  bool _workNoBreak = false;
 
-  /// Как график выглядит в строке: «09:00 – 18:00». Пусто — не задавали.
+  /// Как график выглядит в строке: «Пн, Вт, Ср · 09:00 – 18:00».
+  /// Пусто — график не задавали.
   String? get _workScheduleTitle {
-    if (_workStart == null && _workEnd == null) return null;
+    final parts = <String>[];
 
-    // Показываем и половину: человек мог задать только начало, и прятать это
-    // значит делать вид, что он ничего не выбирал.
-    return '${_workStart ?? '—'} – ${_workEnd ?? '—'}';
+    if (_workDays.length == 7) {
+      parts.add('Без выходных');
+    } else if (_workDays.isNotEmpty) {
+      const short = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+      parts.add(
+        (_workDays.toList()..sort())
+            .where((d) => d >= 1 && d <= 7)
+            .map((d) => short[d - 1])
+            .join(', '),
+      );
+    }
+
+    if (_workStart != null || _workEnd != null) {
+      // Показываем и половину: человек мог задать только начало, и прятать
+      // это значит делать вид, что он ничего не выбирал.
+      parts.add('${_workStart ?? '—'} – ${_workEnd ?? '—'}');
+    }
+
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
   /// Страна. Отдельно от области: область у нас из адресного справочника, а
@@ -350,6 +370,15 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
 
       final workStart = '${schedule['start'] ?? ''}'.trim();
       final workEnd = '${schedule['end'] ?? ''}'.trim();
+      final workNoBreak = schedule['no_break'] == true;
+
+      final workDays = <int>[];
+
+      for (final raw in (schedule['days'] as List? ?? const [])) {
+        final day = int.tryParse('$raw');
+
+        if (day != null && day >= 1 && day <= 7) workDays.add(day);
+      }
 
       // Email: приоритет коллекции, иначе скаляр company_contacts.
       String email = (data['email'] ?? '').toString();
@@ -407,8 +436,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         _companyImage = companyImage.isEmpty ? null : companyImage;
         _workDirectionIds = directionIds;
         _workDirectionNames = directionNames;
+        _workDays = workDays;
         _workStart = workStart.isEmpty ? null : workStart;
         _workEnd = workEnd.isEmpty ? null : workEnd;
+        _workNoBreak = workNoBreak;
         _emailController.text = email;
         _phone1Controller.text = phone1;
         _phone2Controller.text = phone2;
@@ -1240,8 +1271,10 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => CompanyWorkScheduleScreen(
+          days: _workDays,
           start: _workStart,
           end: _workEnd,
+          noBreak: _workNoBreak,
         ),
       ),
     );
@@ -1249,14 +1282,18 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     if (choice == null || !mounted) return;
 
     setState(() {
+      _workDays = choice.days;
       _workStart = choice.start;
       _workEnd = choice.end;
+      _workNoBreak = choice.noBreak;
     });
 
     try {
       await CompanyContactService.changeWorkSchedule(
+        days: choice.days,
         start: choice.start,
         end: choice.end,
+        noBreak: choice.noBreak,
         token: TokenService.currentToken,
       );
     } catch (e) {

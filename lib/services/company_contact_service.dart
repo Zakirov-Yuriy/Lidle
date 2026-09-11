@@ -79,13 +79,20 @@ class CompanyContactService {
   /// Не присланное поле сервер оставляет как было, поэтому время можно
   /// сохранять отдельно от рабочих дней.
   static Future<Map<String, dynamic>> changeWorkSchedule({
+    List<int> days = const [],
     String? start,
     String? end,
+    bool noBreak = false,
     String? token,
   }) {
     return ApiService.put(
       '/me/settings/company/work-schedule',
-      {'start': start, 'end': end},
+      {
+        'days': days,
+        'start': start,
+        'end': end,
+        'no_break': noBreak,
+      },
       token: token,
     );
   }
