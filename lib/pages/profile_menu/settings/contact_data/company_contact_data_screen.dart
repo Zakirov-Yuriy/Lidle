@@ -8,6 +8,19 @@
 // значений: GET /companies/{userId} (скаляры + адрес с названиями) плюс
 // index-эндпоинты контактов (для id, нужных при обновлении).
 // У компании НЕТ поля «Фамилия» — это личное поле пользователя.
+//
+// ─────────────────────────────────────────────────────────────
+// ПОЛЯ МАКЕТА 11.09.2026 (изображения, направление работы, график,
+// страна, ссылки, языки уведомлений, валюта расчёта).
+//
+// Они добавлены на экран, но НИКУДА НЕ СОХРАНЯЮТСЯ: логику каждого из них
+// ещё не назвали, ручек на сервере под них нет. Значение живёт в состоянии
+// экрана, нажатие честно говорит, что поле не подключено, а не открывает
+// форму, которую никто не согласовывал.
+//
+// Старые поля не тронуты: их загрузка, сохранение и кеш работают как
+// работали.
+// ─────────────────────────────────────────────────────────────
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -96,6 +109,34 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   List<Map<String, dynamic>> _streets = [];
   List<Map<String, dynamic>> _buildings = [];
   final Map<String, int> _lastStreetsSearchResults = {};
+
+  // ── Поля макета 11.09.2026 ──
+  //
+  // Пока только хранятся на экране. Как только назовут логику каждого, здесь
+  // же появятся загрузка и сохранение.
+
+  /// Изображения проекта: пути к выбранным файлам.
+  final List<String> _projectImages = [];
+
+  /// Направление работы, например «Косметология».
+  String? _workDirection;
+
+  /// График работы заведения.
+  String? _workSchedule;
+
+  /// Страна. Отдельно от области: область у нас из адресного справочника, а
+  /// страна на макете стоит выше и, судя по всему, задаётся сама.
+  String? _country;
+
+  /// Ссылки на страницы компании.
+  final List<String> _links = [];
+
+  /// Язык уведомлений: отдельно для клиентов и для сотрудников.
+  String? _clientLanguage;
+  String? _staffLanguage;
+
+  /// Валюта расчёта.
+  String? _currency;
 
   static const bgColor = Color(0xFF243241);
   static const fieldColor = Color(0xFF1F2C3A);
@@ -1081,6 +1122,143 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // Поля макета 11.09.2026.
+  //
+  // Ни одно из них пока ничего не сохраняет. Нажатие говорит об этом прямо:
+  // открыть форму, логику которой ещё не назвали, значит показать человеку
+  // выбор, который никуда не денется.
+  // ─────────────────────────────────────────────────────────────
+
+  void _notReady(String title) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Поле «$title» ещё не подключено')),
+    );
+  }
+
+  /// Изображения компании: плитка «Добавить изображение» с пояснением.
+  ///
+  /// Пояснение прямо на плитке, а не подписью сбоку: человек должен понимать,
+  /// что снимки увидят его клиенты, ДО того, как выберет их.
+  Widget _imagesBlock() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 10, 25, 0),
+      child: GestureDetector(
+        onTap: () => _notReady('Изображения'),
+        child: Container(
+          height: 150,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: fieldColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.add_circle_outline,
+                  color: Colors.white54, size: 30),
+              const SizedBox(height: 10),
+              const Text(
+                'Добавить изображение',
+                style: TextStyle(color: Colors.white54, fontSize: 15),
+              ),
+              const SizedBox(height: 6),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  'Эти изображения будут видны и будут доступны вашим '
+                  'клиентам',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white38,
+                    fontSize: 13,
+                    height: 1.3,
+                  ),
+                ),
+              ),
+              if (_projectImages.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Выбрано: ${_projectImages.length}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Строка выбора: значение и шеврон. Пусто — показываем подсказку.
+  Widget _pickerRow(String? value, String hint, VoidCallback onTap) {
+    final filled = value != null && value.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          height: 48,
+          decoration: BoxDecoration(
+            color: fieldColor,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  filled ? value : hint,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: filled ? Colors.white : hintColor,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white54, size: 22),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Ссылки: строка выбора и «Добавить ещё» под ней.
+  Widget _linksBlock() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _pickerRow(
+          _links.isEmpty ? null : _links.first,
+          'Выбрать',
+          () => _notReady('Ссылки'),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(25, 10, 25, 0),
+          child: GestureDetector(
+            onTap: () => _notReady('Ссылки'),
+            child: const Text(
+              'Добавить ещё',
+              style: TextStyle(color: accentColor, fontSize: 15),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Черта между смысловыми частями экрана, как на макете.
+  Widget _divider() {
+    return const Padding(
+      padding: EdgeInsets.only(top: 22),
+      child: Divider(color: Colors.white12, height: 1),
+    );
+  }
+
   Widget _buildRegionDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -1536,11 +1714,28 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 // заранее показываем структуру формы (как на contact_data).
                 _buildSkeletonFields()
               else ...[
+                // Изображения стоят первыми, как на макете: экран начинается
+                // с того, что человек увидит на витрине.
+                _imagesBlock(),
+
                 _label('Описание компании'),
                 _aboutField(),
 
                 _label('Название компании'),
                 _field(_nameController, 'Введите название компании'),
+
+                _label('Направление работы'),
+                _pickerRow(_workDirection, 'Выбрать',
+                    () => _notReady('Направление работы')),
+
+                _label('График работы'),
+                _pickerRow(
+                    _workSchedule, 'Выбрать', () => _notReady('График работы')),
+
+                _divider(),
+
+                _label('Ваша страна'),
+                _pickerRow(_country, 'Выбрать', () => _notReady('Страна')),
 
                 _label('Ваша область'),
                 _buildRegionDropdown(),
@@ -1568,6 +1763,25 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
 
                 _label('Ссылка на ваш чат в Max'),
                 _field(_maxController, '@username или max.ru/username'),
+
+                _label('Ссылки'),
+                _linksBlock(),
+
+                _divider(),
+
+                _label('Язык уведомлений', note: '(клиентов)'),
+                _pickerRow(_clientLanguage, 'Выбрать',
+                    () => _notReady('Язык уведомлений клиентов')),
+
+                _label('Язык уведомлений', note: '(сотрудников)'),
+                _pickerRow(_staffLanguage, 'Выбрать',
+                    () => _notReady('Язык уведомлений сотрудников')),
+
+                _divider(),
+
+                _label('Укажите валюту расчёта'),
+                _pickerRow(
+                    _currency, 'Выбрать', () => _notReady('Валюта расчёта')),
 
                 const SizedBox(height: 24),
 
