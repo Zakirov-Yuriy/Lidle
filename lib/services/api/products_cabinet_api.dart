@@ -60,17 +60,38 @@ class ProductsCabinetApi {
     int? brandId,
     int? shopId,
     bool? isAutoRenew,
+    List<String>? paymentMethods,
   }) async {
     final response = await ApiService.put('/me/product-publications/$id', {
       if (categoryId != null) 'category_id': categoryId,
       if (brandId != null) 'brand_id': brandId,
       if (shopId != null) 'shop_id': shopId,
       if (isAutoRenew != null) 'is_auto_renew': isAutoRenew,
+
+      // Пустой список означает «снял все галочки», поэтому шлём его, как
+      // только человек трогал оплату, а не только когда что-то выбрано.
+      if (paymentMethods != null) 'payment_methods': paymentMethods,
     });
 
     return ProductPublication.fromJson(
       Map<String, dynamic>.from(response['data'] as Map),
     );
+  }
+
+  /// Справочник способов оплаты: ключ и название.
+  static Future<List<PaymentMethod>> paymentMethods() async {
+    final response = await ApiService.get(
+      '/me/product-publications/payment-methods',
+    );
+
+    final data = response['data'];
+
+    return data is List
+        ? data
+              .whereType<Map<String, dynamic>>()
+              .map(PaymentMethod.fromJson)
+              .toList()
+        : const [];
   }
 
   /// Опубликовать: публикация и все её позиции уходят на витрину разом.

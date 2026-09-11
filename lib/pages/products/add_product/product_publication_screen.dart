@@ -30,6 +30,7 @@ import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
+import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
@@ -590,6 +591,52 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
     return count == 0 ? 'Пока без товаров' : 'Товаров в бренде: $count';
   }
 
+  /// Короткая подпись строки оплаты.
+  ///
+  /// Показываем не «Добавить», а то, что уже выбрано: человек должен видеть
+  /// свой выбор, не проваливаясь в экран.
+  String get _paymentLabel {
+    final chosen = _publication?.paymentMethods ?? const <String>[];
+
+    if (chosen.isEmpty) return 'Добавить';
+
+    return 'Способов: ${chosen.length}';
+  }
+
+  /// Экран оплаты. Выбор возвращается сюда и сразу уходит на сервер: он
+  /// принадлежит публикации, а она уже заведена.
+  Future<void> _openPayment() async {
+    final publication = _publication;
+
+    if (publication == null) return;
+
+    final chosen = await Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPaymentScreen(
+          chosen: publication.paymentMethods,
+        ),
+      ),
+    );
+
+    if (chosen == null || !mounted) return;
+
+    setState(() {
+      _publication = publication.copyWith(paymentMethods: chosen);
+    });
+
+    try {
+      await ProductsCabinetApi.updatePublication(
+        publication.id,
+        paymentMethods: chosen,
+      );
+    } catch (e) {
+      log.e('Способы оплаты не сохранились: $e');
+
+      if (mounted) _say('Способы оплаты не сохранились. Проверьте связь.');
+    }
+  }
+
   int get _positions {
     final groups = _publication?.groups ?? const <ProductGroup>[];
 
@@ -740,12 +787,10 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
               ),
               _more(onTap: _openStaff),
 
-              // ── Блок, за которым ещё нет экрана ─────────────────────
-
               const SizedBox(height: 20),
               _label('Добавить оплату'),
-              _addRow(hint: 'Добавить', onTap: null),
-              _more(onTap: null),
+              _addRow(hint: _paymentLabel, onTap: _openPayment),
+              _more(onTap: _openPayment),
 
               const SizedBox(height: 24),
               _autoRenew(publication),

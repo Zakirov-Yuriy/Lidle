@@ -202,6 +202,7 @@ class ProductPublication {
     this.shopName,
     this.isAutoRenew = false,
     this.isPublished = false,
+    this.paymentMethods = const [],
     this.groups = const [],
     this.needsShop = false,
   });
@@ -224,6 +225,10 @@ class ProductPublication {
 
   final bool isAutoRenew;
   final bool isPublished;
+
+  /// Ключи способов оплаты, которые принимает продавец. Пусто означает, что
+  /// он ещё не выбирал, а не «не принимает ничего».
+  final List<String> paymentMethods;
 
   final List<ProductGroup> groups;
 
@@ -250,6 +255,12 @@ class ProductPublication {
       shopName: shop is Map ? '${shop['name'] ?? ''}' : null,
       isAutoRenew: data['is_auto_renew'] == true,
       isPublished: data['is_published'] == true,
+      paymentMethods: data['payment_methods'] is List
+          ? (data['payment_methods'] as List)
+                .map((item) => '$item')
+                .where((item) => item.isNotEmpty)
+                .toList()
+          : const [],
       groups: groups is List
           ? groups
                 .whereType<Map<String, dynamic>>()
@@ -264,6 +275,7 @@ class ProductPublication {
     int? brandId,
     String? brandName,
     bool? isAutoRenew,
+    List<String>? paymentMethods,
     List<ProductGroup>? groups,
   }) {
     return ProductPublication(
@@ -277,10 +289,28 @@ class ProductPublication {
       shopName: shopName,
       isAutoRenew: isAutoRenew ?? this.isAutoRenew,
       isPublished: isPublished,
+      paymentMethods: paymentMethods ?? this.paymentMethods,
       groups: groups ?? this.groups,
       needsShop: needsShop,
     );
   }
+}
+
+/// Способ оплаты из справочника сервера: ключ и название.
+///
+/// Названия приходят с сервера, чтобы приложение не держало вторую копию
+/// списка: пункт переименуют — переименуется везде. Так же устроены доступы
+/// сотрудника.
+class PaymentMethod {
+  const PaymentMethod({required this.key, required this.title});
+
+  final String key;
+  final String title;
+
+  factory PaymentMethod.fromJson(Map<String, dynamic> data) => PaymentMethod(
+        key: '${data['key'] ?? ''}',
+        title: '${data['title'] ?? ''}',
+      );
 }
 
 /// Бренд из справочника.

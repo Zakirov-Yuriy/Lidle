@@ -27,6 +27,7 @@ import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_member_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
+import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
@@ -1424,8 +1425,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
                   const SizedBox(height: 20),
                   _label('Добавить оплату'),
-                  _addRow(onTap: null),
-                  _soon('Способы оплаты пока задаёт администратор в разделе'),
+                  _addRow(hint: _paymentLabel, onTap: _openPayment),
 
                   const SizedBox(height: 24),
                   _autoRenew(),
@@ -2085,7 +2085,44 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   }
 
   /// Строка «Добавить» с синим плюсом справа.
-  Widget _addRow({VoidCallback? onTap}) {
+  /// Короткая подпись строки оплаты: что уже выбрано.
+  String get _paymentLabel {
+    final chosen = _publication.paymentMethods;
+
+    return chosen.isEmpty ? 'Добавить' : 'Способов: ${chosen.length}';
+  }
+
+  /// Экран оплаты. Выбор принадлежит публикации, поэтому уходит на сервер
+  /// сразу: публикация уже заведена, терять нечего.
+  Future<void> _openPayment() async {
+    final chosen = await Navigator.push<List<String>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPaymentScreen(
+          chosen: _publication.paymentMethods,
+        ),
+      ),
+    );
+
+    if (chosen == null || !mounted) return;
+
+    setState(() {
+      _publication = _publication.copyWith(paymentMethods: chosen);
+    });
+
+    try {
+      await ProductsCabinetApi.updatePublication(
+        _publication.id,
+        paymentMethods: chosen,
+      );
+    } catch (e) {
+      log.e('Способы оплаты не сохранились: $e');
+
+      if (mounted) _say('Способы оплаты не сохранились. Проверьте связь.');
+    }
+  }
+
+  Widget _addRow({VoidCallback? onTap, String hint = 'Добавить'}) {
     final enabled = onTap != null;
 
     return Row(
@@ -2102,7 +2139,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                'Добавить',
+                hint,
                 style: TextStyle(
                   color: enabled ? textPrimary : textMuted,
                   fontSize: 15,
@@ -2131,18 +2168,6 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       ],
     );
   }
-
-  /// Подпись под неактивным блоком.
-  ///
-  /// Пустой блок без объяснения читается как поломка, а выдуманные строки в
-  /// нём — как чужие данные.
-  Widget _soon(String text) => Padding(
-        padding: const EdgeInsets.only(top: 8),
-        child: Text(
-          text,
-          style: const TextStyle(color: textMuted, fontSize: 12),
-        ),
-      );
 
   Widget _autoRenew() {
     return Row(
