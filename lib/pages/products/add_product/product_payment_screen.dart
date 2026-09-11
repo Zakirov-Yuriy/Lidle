@@ -20,6 +20,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/products/add_product/product_payment_setup_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -30,18 +31,14 @@ class ProductPaymentScreen extends StatefulWidget {
   /// Ключи способов, отмеченных сейчас.
   final List<String> chosen;
 
-  @override
-  State<ProductPaymentScreen> createState() => _ProductPaymentScreenState();
-}
-
-class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
   /// Фирменные значки способов. Ключи те же, что у сервера.
   ///
   /// Лежат в приложении, а не приходят с сервера: это оформление, и гонять
-  /// его по сети незачем.
+  /// его по сети незачем. Отсюда же их берёт экран настройки: два разных
+  /// набора значков для одного и того же человек воспримет как разные вещи.
   ///
-  /// Векторные: рисуются одинаково чётко на любом экране.
-  static const Map<String, String> _vectors = {
+  /// Векторные рисуются одинаково чётко на любом экране.
+  static const Map<String, String> vectors = {
     'card': 'assets/payment/card.svg',
     'yoomoney': 'assets/payment/yoomoney.svg',
     'sberpay': 'assets/payment/sberpay.svg',
@@ -54,9 +51,19 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
   /// «Безналичный перевод» только здесь: в его SVG вклеена растровая
   /// картинка, а такие flutter_svg не рисует и оставляет пустоту. Рисунок
   /// тот же, просто в другом виде.
-  static const Map<String, String> _images = {
+  static const Map<String, String> images = {
     'bank_transfer': 'assets/payment/bank_transfer.png',
   };
+
+  static String? vectorFor(String key) => vectors[key];
+
+  static String? imageFor(String key) => images[key];
+
+  @override
+  State<ProductPaymentScreen> createState() => _ProductPaymentScreenState();
+}
+
+class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
   /// Запасные значки: для способов без картинки и на случай, если файл не
   /// открылся. Пустое место в ряду хуже простого значка: строка разъезжается,
@@ -109,6 +116,38 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
     setState(() {
       _chosen.contains(key) ? _chosen.remove(key) : _chosen.add(key);
     });
+  }
+
+  /// «Выбрать» ведёт на настройку выбранного, а не закрывает экран.
+  ///
+  /// Выбор возвращается публикации только после «Сохранить» на втором шаге:
+  /// человек ещё может вернуться и поправить отметки, и запоминать
+  /// промежуточное состояние значит сохранить то, чего он не подтверждал.
+  Future<void> _openSetup() async {
+    if (_chosen.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Отметьте хотя бы один способ оплаты'),
+          backgroundColor: secondaryBackground,
+        ),
+      );
+
+      return;
+    }
+
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductPaymentSetupScreen(
+          chosen: _chosen.toList(),
+          methods: _methods,
+        ),
+      ),
+    );
+
+    if (saved != true || !mounted) return;
+
+    Navigator.pop(context, _chosen.toList());
   }
 
   void _explain() {
@@ -196,7 +235,7 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
                 16,
               ),
               child: GestureDetector(
-                onTap: () => Navigator.pop(context, _chosen.toList()),
+                onTap: _openSetup,
                 child: Container(
                   height: 52,
                   alignment: Alignment.center,
@@ -315,7 +354,7 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
 
   /// Значок способа: фирменная картинка, если она есть, иначе значок.
   Widget _badge(String key) {
-    final vector = _vectors[key];
+    final vector = ProductPaymentScreen.vectors[key];
 
     if (vector != null) {
       return SvgPicture.asset(
@@ -326,7 +365,7 @@ class _ProductPaymentScreenState extends State<ProductPaymentScreen> {
       );
     }
 
-    final image = _images[key];
+    final image = ProductPaymentScreen.images[key];
 
     if (image != null) {
       return Image.asset(

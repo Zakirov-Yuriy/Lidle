@@ -302,14 +302,28 @@ class ProductPublication {
 /// списка: пункт переименуют — переименуется везде. Так же устроены доступы
 /// сотрудника.
 class PaymentMethod {
-  const PaymentMethod({required this.key, required this.title});
+  const PaymentMethod({
+    required this.key,
+    required this.title,
+    this.hint = '',
+    this.needsSetup = false,
+  });
 
   final String key;
   final String title;
 
+  /// Что показать под названием на экране настройки.
+  final String hint;
+
+  /// Нужны ли этому способу реквизиты. Наличным не нужны: у них вместо
+  /// кнопки просто объяснение.
+  final bool needsSetup;
+
   factory PaymentMethod.fromJson(Map<String, dynamic> data) => PaymentMethod(
         key: '${data['key'] ?? ''}',
         title: '${data['title'] ?? ''}',
+        hint: '${data['hint'] ?? ''}',
+        needsSetup: data['needs_setup'] == true,
       );
 }
 
