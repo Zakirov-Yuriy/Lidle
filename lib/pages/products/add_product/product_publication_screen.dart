@@ -31,6 +31,7 @@ import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/products/add_product/product_delivery_screen.dart';
 import 'package:lidle/pages/products/add_product/product_items_screen.dart';
 import 'package:lidle/pages/products/add_product/product_payment_screen.dart';
+import 'package:lidle/pages/products/add_product/product_review_screen.dart';
 import 'package:lidle/pages/products/add_product/product_staff_screen.dart';
 import 'package:lidle/pages/products/products_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
@@ -639,7 +640,22 @@ class _ProductPublicationScreenState extends State<ProductPublicationScreen> {
       log.e('Способы оплаты не сохранились: $e');
 
       if (mounted) _say('Способы оплаты не сохранились. Проверьте связь.');
+
+      return;
     }
+
+    if (!mounted) return;
+
+    // Как у товара, доставки и сотрудников: «Сохранить» ведёт на сводку.
+    // Человек закончил с оплатой и должен увидеть публикацию целиком.
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductReviewScreen(publication: _publication!),
+      ),
+    );
+
+    if (mounted) await _reload();
   }
 
   int get _positions {

@@ -52,6 +52,9 @@ class ProductReviewScreen extends StatefulWidget {
 class _ProductReviewScreenState extends State<ProductReviewScreen> {
   late ProductPublication _publication = widget.publication;
 
+  /// Справочник оплаты: из него берём названия выбранных способов.
+  PaymentDictionary _payment = const PaymentDictionary();
+
   /// Какие группы раскрыты. Номера, а не объекты: после обновления с сервера
   /// объекты новые, а раскрытое человеком должно остаться раскрытым.
   final Set<int> _open = {};
@@ -99,6 +102,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     _loadBrands();
     _reloadDelivery();
     _reloadStaff();
+    _loadPaymentDictionary();
   }
 
   Future<void> _reload() async {
@@ -134,6 +138,20 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       });
     } catch (e) {
       log.d('Доставка не обновилась: $e');
+    }
+  }
+
+  /// Справочник оплаты: нужен, чтобы показать названия выбранных способов.
+  ///
+  /// Отказ не показываем: без справочника блок оплаты просто свернётся в
+  /// «Добавить», а красная плашка поверх сводки пугает больше, чем помогает.
+  Future<void> _loadPaymentDictionary() async {
+    try {
+      final dictionary = await ProductsCabinetApi.paymentMethods();
+
+      if (mounted) setState(() => _payment = dictionary);
+    } catch (e) {
+      log.d('Справочник оплаты не пришёл: $e');
     }
   }
 
@@ -1426,6 +1444,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   const SizedBox(height: 20),
                   _label('Добавить оплату'),
                   _addRow(hint: _paymentLabel, onTap: _openPayment),
+                  ..._paymentBlock(),
 
                   const SizedBox(height: 24),
                   _autoRenew(),
@@ -2085,6 +2104,111 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   }
 
   /// Строка «Добавить» с синим плюсом справа.
+  /// Выбранные способы оплаты списком, с «Удалить» и «Изменить».
+  ///
+  /// Показываем прямо на сводке, как товары и доставку: человек пришёл сюда
+  /// посмотреть, что получилось, и прятать от него оплату незачем.
+  List<Widget> _paymentBlock() {
+    final chosen = _publication.paymentMethods;
+
+    if (chosen.isEmpty) return const [];
+
+    // Порядок справочника, а не порядок нажатий.
+    final titles = _payment.methods
+        .where((method) => chosen.contains(method.key))
+        .map((method) => method.title)
+        .toList();
+
+    // Справочник ещё не пришёл: показываем хотя бы число, чтобы блок не
+    // выглядел пустым.
+    if (titles.isEmpty) {
+      titles.add('Способов: ${chosen.length}');
+    }
+
+    return [
+      const SizedBox(height: 12),
+      for (final title in titles)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            title,
+            style: const TextStyle(color: textSecondary, fontSize: 15),
+          ),
+        ),
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          GestureDetector(
+            onTap: _clearPayment,
+            child: const Text(
+              'Удалить',
+              style: TextStyle(color: Color(0xFFE05A5A), fontSize: 15),
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: _openPayment,
+            child: const Text(
+              'Изменить',
+              style: TextStyle(color: activeIconColor, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  /// Убрать оплату целиком.
+  ///
+  /// Спрашиваем подтверждение: без способов оплаты покупатель не сможет
+  /// заплатить, и случайное нажатие здесь стоит дорого.
+  Future<void> _clearPayment() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: secondaryBackground,
+        title: const Text('Убрать оплату?',
+            style: TextStyle(color: textPrimary, fontSize: 17)),
+        content: const Text(
+          'Все выбранные способы оплаты и их настройки будут удалены.',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена', style: TextStyle(color: textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Убрать',
+                style: TextStyle(color: Color(0xFFE05B5B))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _publication = _publication.copyWith(
+        paymentMethods: const [],
+        paymentSettings: const {},
+      );
+    });
+
+    try {
+      await ProductsCabinetApi.updatePublication(
+        _publication.id,
+        paymentMethods: const [],
+        paymentSettings: const {},
+      );
+    } catch (e) {
+      log.e('Оплата не убралась: $e');
+
+      if (mounted) _say('Не получилось убрать оплату. Проверьте связь.');
+    }
+  }
+
   /// Короткая подпись строки оплаты: что уже выбрано.
   String get _paymentLabel {
     final chosen = _publication.paymentMethods;
