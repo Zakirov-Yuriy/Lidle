@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton loader
+import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/services/contact_service.dart';
@@ -103,7 +104,11 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   static const Duration _contactDataCacheDuration = Duration(minutes: 10);
 
   static const bgColor = Color(0xFF243241);
-  static const fieldColor = Color(0xFF1F2C3A);
+
+  // Фон полей ввода. Тот же, что на экране фильтров и на контактных данных
+  // компании: поле должно быть темнее подложки, иначе не видно, где кончается
+  // подпись и начинается ввод.
+  static const fieldColor = formBackground;
   static const accentColor = Color(0xFF00B7FF);
   static const hintColor = Colors.white54;
 
