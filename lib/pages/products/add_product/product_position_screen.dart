@@ -25,6 +25,7 @@ import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_attributes_form.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_clusters_screen.dart';
+import 'package:lidle/pages/products/add_product/product_variants_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -596,6 +597,30 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                 ),
               ),
 
+              // ── Варианты: цвет и размер (14.09.2026) ──────────────────
+              //
+              // Блок показывается только у СОХРАНЁННОЙ позиции: вариант
+              // привязывается к модели по её номеру, а у незаведённой формы
+              // номера ещё нет. Говорим об этом словами, а не прячем блок:
+              // иначе человек ищет, куда делись размеры.
+              const SizedBox(height: 20),
+              const Text(
+                'Варианты',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Одна вещь в разных цветах и размерах. Покупатель видит одну '
+                'карточку и выбирает вариант внутри неё.',
+                style: TextStyle(color: textMuted, fontSize: 13, height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              _variantsRow(),
+
               const SizedBox(height: 20),
               const Text(
                 'Кластер',
@@ -844,6 +869,68 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               ),
             ),
             const Icon(Icons.keyboard_arrow_down, color: textMuted, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Строка «Варианты»: сколько их и переход к списку.
+  Widget _variantsRow() {
+    final existing = widget.existing;
+
+    if (existing == null) {
+      return Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Text(
+          'Сначала сохраните позицию',
+          style: TextStyle(color: textMuted, fontSize: 15),
+        ),
+      );
+    }
+
+    final count = existing.variants.length;
+
+    return GestureDetector(
+      onTap: () async {
+        final changed = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductVariantsScreen(
+              model: existing,
+              categoryId: widget.publication.categoryId,
+            ),
+          ),
+        );
+
+        // Экран вариантов меняет карточку модели, а форма держит её копию,
+        // снятую при открытии. Возвращаемся к списку позиций, чтобы он
+        // перечитал данные: иначе число вариантов в строке останется старым.
+        if (changed == true && mounted) Navigator.pop(context, true);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                count == 0 ? 'Вариантов нет' : 'Вариантов: $count',
+                style: const TextStyle(color: textPrimary, fontSize: 15),
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_right, color: textMuted, size: 20),
           ],
         ),
       ),

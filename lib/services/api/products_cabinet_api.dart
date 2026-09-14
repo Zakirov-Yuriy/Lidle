@@ -273,6 +273,83 @@ class ProductsCabinetApi {
   }
 
   /// Завести позицию. Это обычный товар: `/me/products`.
+  /// Справочник цветов. Ведёт его администратор, один на всю площадку.
+  static Future<List<ProductColor>> colors() async {
+    final response = await ApiService.get('/me/products/colors');
+    final data = response['data'];
+
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ProductColor.fromJson)
+        .toList();
+  }
+
+  /// Справочник размеров.
+  ///
+  /// Таблица одна на всё, поэтому тип написан прямо в названии: «Обувь 42»,
+  /// «Рост 104 см». Приложение ничего не разбирает и показывает как есть.
+  static Future<List<ProductDimension>> dimensions() async {
+    final response = await ApiService.get('/me/products/dimensions');
+    final data = response['data'];
+
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ProductDimension.fromJson)
+        .toList();
+  }
+
+  /// Варианты модели: та же карточка товара, но с вариантами внутри.
+  ///
+  /// Отдельной ручки списка нет намеренно: варианты приезжают вместе с
+  /// моделью, и спрашивать их вторым запросом значит показать человеку
+  /// карточку, которая на секунду противоречит сама себе.
+  static Future<ProductPosition?> withVariants(int productId) async {
+    final response = await ApiService.get('/me/products/$productId');
+    final data = response['data'];
+
+    if (data is! Map<String, dynamic>) return null;
+
+    return ProductPosition.fromJson(data);
+  }
+
+  /// Завести вариант модели: цвет плюс размер.
+  ///
+  /// Это тот же товар, что и позиция, только с родителем. Раздел, витрину и
+  /// папку сервер берёт у модели — присылать их незачем.
+  static Future<int> createVariant({
+    required int parentId,
+    required int categoryId,
+    required String name,
+    required num price,
+    required int stockQuantity,
+    int? colorId,
+    int? dimensionId,
+    String? sku,
+  }) async {
+    final response = await ApiService.post('/me/products', {
+      'parent_id': parentId,
+      'category_id': categoryId,
+      'name': name,
+      'price': price,
+      'stock_quantity': stockQuantity,
+      if (colorId != null) 'color_id': colorId,
+      if (dimensionId != null) 'dimension_id': dimensionId,
+      if (sku != null && sku.isNotEmpty) 'sku': sku,
+    });
+
+    if (response['success'] != true) {
+      throw Exception('${response['message'] ?? 'Не получилось сохранить вариант'}');
+    }
+
+    final data = response['data'];
+
+    return data is Map && data['id'] is int ? data['id'] as int : 0;
+  }
+
   static Future<int> createPosition({
     required int publicationId,
     required int categoryId,
@@ -353,6 +430,29 @@ class ProductsCabinetApi {
   ///
   /// Заказанный товар сервер удалять отказывается и отвечает понятным
   /// текстом: в заказе покупателя лежит ссылка на него.
+  /// Поправить вариант: цена, остаток, цвет, размер.
+  ///
+  /// Отдельно от `updatePosition`, чтобы не тащить в форму варианта поля
+  /// модели: название и описание у вариантов общие, они живут в модели.
+  static Future<void> updateVariant(
+    int productId, {
+    num? price,
+    int? stockQuantity,
+    int? colorId,
+    int? dimensionId,
+  }) async {
+    final response = await ApiService.put('/me/products/$productId', {
+      if (price != null) 'price': price,
+      if (stockQuantity != null) 'stock_quantity': stockQuantity,
+      if (colorId != null) 'color_id': colorId,
+      if (dimensionId != null) 'dimension_id': dimensionId,
+    });
+
+    if (response['success'] != true) {
+      throw Exception('${response['message'] ?? 'Не получилось сохранить вариант'}');
+    }
+  }
+
   static Future<void> deletePosition(int productId) async {
     await ApiService.delete('/me/products/$productId');
   }

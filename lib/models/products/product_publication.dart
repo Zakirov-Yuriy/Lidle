@@ -73,6 +73,23 @@ class ProductColor {
   );
 }
 
+/// Размер из справочника: «46», «Обувь 42», «Рост 104 см».
+///
+/// Таблица размеров одна на всё и колонки типа у неё нет, поэтому тип написан
+/// прямо в названии. Приложение ничего не разбирает и показывает как есть.
+class ProductDimension {
+  const ProductDimension({required this.id, required this.name});
+
+  final int id;
+  final String name;
+
+  factory ProductDimension.fromJson(Map<String, dynamic> data) =>
+      ProductDimension(
+        id: _int(data['id']) ?? 0,
+        name: '${data['name'] ?? ''}',
+      );
+}
+
 /// Характеристика позиции: «Размер: 54», «Цвет: зелёный».
 ///
 /// Набор характеристик у каждого раздела свой, его заводит администратор.
@@ -179,6 +196,10 @@ class ProductPosition {
     this.isPublished = true,
     this.attributes = const [],
     this.color,
+    this.dimension,
+    this.parentId,
+    this.variantLabel,
+    this.variants = const [],
   });
 
   final int id;
@@ -209,6 +230,21 @@ class ProductPosition {
 
   /// Цвет из справочника. Своё поле товара, а не характеристика раздела.
   final ProductColor? color;
+
+  /// Размер из справочника. Вместе с цветом отличает вариант от варианта.
+  final ProductDimension? dimension;
+
+  /// Модель, вариантом которой позиция является. Пусто у самой модели.
+  final int? parentId;
+
+  /// «красный, 46». Пусто, если позиция не вариант.
+  final String? variantLabel;
+
+  /// Варианты этой модели. Приезжают только в карточке, не в списке.
+  final List<ProductPosition> variants;
+
+  bool get isVariant => parentId != null;
+  bool get hasVariants => variants.isNotEmpty;
 
   factory ProductPosition.fromJson(Map<String, dynamic> data) {
     final images = data['images'];
@@ -249,6 +285,21 @@ class ProductPosition {
               Map<String, dynamic>.from(data['color'] as Map),
             )
           : null,
+      dimension: data['dimension'] is Map
+          ? ProductDimension.fromJson(
+              Map<String, dynamic>.from(data['dimension'] as Map),
+            )
+          : null,
+      parentId: _int(data['parent_id']),
+      variantLabel: data['variant_label']?.toString().isNotEmpty == true
+          ? data['variant_label'].toString()
+          : null,
+      variants: data['variants'] is List
+          ? (data['variants'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map(ProductPosition.fromJson)
+                .toList()
+          : const [],
     );
   }
 }
