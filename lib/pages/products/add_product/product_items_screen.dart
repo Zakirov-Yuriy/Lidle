@@ -844,11 +844,84 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
           const SizedBox(height: 4),
           _attributeLine('Кластер', position.name, muted: true),
 
+          // Варианты: цвет плюс размер (14.09.2026).
+          //
+          // Отдельной строкой, а не среди характеристик раздела: «Цвет» и
+          // «Размер» в списке ниже это то, что продавец выбрал ОПИСАНИЕМ
+          // модели, а здесь то, что реально лежит на складе и заказывается.
+          // Аня 14.09.2026 завела четыре варианта и не нашла их в карточке.
+          if (position.variants.isNotEmpty) _variantsLine(position),
+
           for (final attribute in position.attributes)
             _attributeLine(attribute.title, attribute.value),
         ],
       ),
     );
+  }
+
+  /// Строка вариантов: квадратики цветов и размеры.
+  ///
+  /// Цвета не повторяем: у четырёх вариантов «чёрный S, чёрный M, красный L,
+  /// красный XL» цветов всего два, и четыре квадратика вместо двух читались
+  /// бы как четыре разных цвета.
+  Widget _variantsLine(ProductPosition position) {
+    final colors = <String, Color>{};
+    final sizes = <String>[];
+
+    for (final variant in position.variants) {
+      final name = variant.color?.name;
+
+      // Сначала КОД из справочника, и только потом словарь названий: код
+      // ведёт администратор, и он точнее нашей таблицы известных слов.
+      final parsed = _hex(variant.color?.code) ??
+          (name == null ? null : colorByName(name));
+
+      if (name != null && parsed != null) colors[name] = parsed;
+
+      final size = variant.dimension?.name;
+
+      if (size != null && size.isNotEmpty && !sizes.contains(size)) {
+        sizes.add(size);
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: 'Варианты (${position.variants.length}): ',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+            for (final color in colors.values)
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: colorSwatch(color, size: 16),
+                ),
+              ),
+            if (sizes.isNotEmpty)
+              TextSpan(
+                text: sizes.join(', '),
+                style: const TextStyle(color: textPrimary, fontSize: 13),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// «#43A047» в цвет. Пусто, если код кривой или его нет.
+  Color? _hex(String? code) {
+    final hex = (code ?? '').replaceFirst('#', '').trim();
+
+    if (hex.length != 6) return null;
+
+    final value = int.tryParse(hex, radix: 16);
+
+    return value == null ? null : Color(0xFF000000 | value);
   }
 
   /// Цена без хвоста «.0»: 4559.0 читается как ошибка, а не как цена.

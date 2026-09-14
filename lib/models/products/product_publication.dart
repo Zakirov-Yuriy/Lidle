@@ -200,6 +200,7 @@ class ProductPosition {
     this.parentId,
     this.variantLabel,
     this.variants = const [],
+    this.variantsCount = 0,
   });
 
   final int id;
@@ -240,11 +241,17 @@ class ProductPosition {
   /// «красный, 46». Пусто, если позиция не вариант.
   final String? variantLabel;
 
-  /// Варианты этой модели. Приезжают только в карточке, не в списке.
+  /// Варианты этой модели. Приезжают только там, где их запросили.
   final List<ProductPosition> variants;
 
+  /// Сколько вариантов у модели.
+  ///
+  /// Отдельно от списка: строке «Вариантов: 4» массив не нужен, а ответ без
+  /// него легче. Если сервер прислал сам список, число берём из него.
+  final int variantsCount;
+
   bool get isVariant => parentId != null;
-  bool get hasVariants => variants.isNotEmpty;
+  bool get hasVariants => variants.isNotEmpty || variantsCount > 0;
 
   factory ProductPosition.fromJson(Map<String, dynamic> data) {
     final images = data['images'];
@@ -300,6 +307,8 @@ class ProductPosition {
                 .map(ProductPosition.fromJson)
                 .toList()
           : const [],
+      variantsCount: _int(data['variants_count']) ??
+          (data['variants'] is List ? (data['variants'] as List).length : 0),
     );
   }
 }

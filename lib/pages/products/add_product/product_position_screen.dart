@@ -895,7 +895,9 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       );
     }
 
-    final count = existing.variants.length;
+    // Число берём из `variantsCount`: список вариантов в карточку позиции
+    // приезжает не всегда, а счётчик приходит везде.
+    final count = existing.variantsCount;
 
     return GestureDetector(
       onTap: () async {
