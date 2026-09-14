@@ -890,6 +890,58 @@ class ApiService {
     );
   }
 
+  /// Товары раздела: витрина категории или каталога (14.09.2026).
+  ///
+  /// Зачем отдельным запросом. Список раздела ходит в ручку ОБЪЯВЛЕНИЙ, а
+  /// товары лежат в своей таблице и в её выдачу не попадают. Из-за этого
+  /// раздел с товарами показывал «Пока объявлений нет», хотя товары в нём
+  /// есть: Саша нашёл это 14.09.2026 на экране раздела.
+  ///
+  /// Сервер сам разворачивает раздел до всех вложенных, поэтому номер
+  /// категории передаём как есть, без обхода дерева на клиенте.
+  ///
+  /// Ошибку не поднимаем: товары это добавка к списку объявлений, и если
+  /// ручка недоступна, раздел должен открыться прежним образом, а не пустым
+  /// экраном с ошибкой.
+  static Future<List<Listing>> getCategoryProducts({
+    int? categoryId,
+    int? catalogId,
+    String? sort,
+    int page = 1,
+    int perPage = 60,
+    String? token,
+  }) async {
+    // Оба номера сразу сервер не ждёт: каталог шире категории, и прислав
+    // оба, мы получили бы раздел шире запрошенного.
+    final params = <String>['page=$page', 'per_page=$perPage'];
+
+    if (categoryId != null) {
+      params.add('category_id=$categoryId');
+    } else if (catalogId != null) {
+      params.add('catalog_id=$catalogId');
+    }
+
+    if (sort != null && sort.isNotEmpty) {
+      params.add('sort=$sort');
+    }
+
+    try {
+      final response = await get('/products?${params.join('&')}', token: token);
+      final raw = response['data'];
+
+      if (raw is! List) return const [];
+
+      return raw
+          .whereType<Map<String, dynamic>>()
+          .map(_productListing)
+          .toList();
+    } catch (e) {
+      log.d('Товары раздела не загрузились: $e');
+
+      return const [];
+    }
+  }
+
   static Future<AdvertsResponse> getAdverts({
     int? categoryId,
     int? catalogId,
