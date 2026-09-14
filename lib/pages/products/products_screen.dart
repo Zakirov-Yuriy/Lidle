@@ -9,6 +9,7 @@ import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/services/products_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/widgets/products/product_tile.dart';
 
 /// Витрина товаров.
@@ -79,7 +80,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _loadCategories() async {
-    final tree = await ProductsService.catalogs();
+    // Только разделы, в которых есть товары: пустой раздел в ленте кнопок
+    // сверху обещает то, чего нет, и человек решает, что приложение
+    // сломалось. Заказчик 14.09.2026 назвал прежнюю ленту «длинной
+    // портянкой».
+    final tree = await ProductsService.catalogs(onlyWithProducts: true);
 
     if (!mounted) return;
 
@@ -193,6 +198,26 @@ class _ProductsScreenState extends State<ProductsScreen> {
           ],
         ),
       ),
+
+      // Нижнее меню, как на главной. Витрина это отдельный экран, и без меню
+      // человек упирался в неё тупиком: выйти можно было только назад.
+      //
+      // Корзина здесь ведёт ПРЯМО в корзину, а не в «Мои покупки»: тот экран
+      // спрашивает «к товарам или к заказам», а человек уже среди товаров.
+      bottomNavigationBar: BottomNavigation(
+        onCartTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CartScreen()),
+          );
+
+          if (!mounted) return;
+
+          // Из корзины можно было что-то удалить или оформить: счётчик на
+          // этом экране должен это увидеть.
+          _refreshCartCount();
+        },
+      ),
     );
   }
 
@@ -294,10 +319,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
 
   Widget _buildCategories() {
     return SizedBox(
-      height: 42,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 6),
+
+        // Без вертикального отступа: в горизонтальном списке он растягивал
+        // кнопку на всю оставшуюся высоту, и надпись прижималась к верху
+        // синей подложки. Высоту кнопки задаём сами, а по вертикали её
+        // центрирует Center внутри `_categoryChip`.
+        padding: const EdgeInsets.symmetric(horizontal: 25),
         children: [
           _categoryChip(null, 'Все'),
           ..._categories.map((c) => _categoryChip(c, c.name)),
@@ -319,18 +349,31 @@ class _ProductsScreenState extends State<ProductsScreen> {
           });
           _load();
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected ? activeIconColor : formBackground,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : textSecondary,
-              fontSize: 14,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+        child: Center(
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+
+            // Надпись строго по центру подложки, и по вертикали, и по
+            // горизонтали. Раньше центрирования не было вовсе: кнопка тянулась
+            // на всю высоту списка, а текст оставался сверху.
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? activeIconColor : formBackground,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : textSecondary,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                // Высота строки ровно в кегль: у Roboto над буквами остаётся
+                // воздух, из-за которого текст кажется поднятым даже в
+                // отцентрованной коробке.
+                height: 1.0,
+              ),
             ),
           ),
         ),

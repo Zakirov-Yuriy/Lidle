@@ -27,7 +27,14 @@ import 'package:lidle/core/logger.dart';
 class BottomNavigation extends StatelessWidget {
   final ValueChanged<int>? onItemSelected;
 
-  const BottomNavigation({super.key, this.onItemSelected});
+  /// Своё действие для иконки корзины (14.09.2026).
+  ///
+  /// Обычно корзина ведёт в «Мои покупки» — экран с выбором «к товарам» или
+  /// «мои заказы». Но на самой витрине человек уже среди товаров, и лишний
+  /// перевалочный экран ему не нужен: оттуда корзина открывает корзину.
+  final VoidCallback? onCartTap;
+
+  const BottomNavigation({super.key, this.onItemSelected, this.onCartTap});
 
   @override
   Widget build(BuildContext context) {
@@ -149,6 +156,15 @@ class BottomNavigation extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(50),
         onTap: () {
+          // Корзина с подменённым действием никуда не переходит по номеру:
+          // экран сам решил, что показать.
+          if (index == 3 && onCartTap != null) {
+            onCartTap!();
+            onItemSelected?.call(index);
+
+            return;
+          }
+
           final wasNavigated = _navigateToScreen(context, index);
           // Вызываем callback только если навигация была успешна
           if (wasNavigated) {

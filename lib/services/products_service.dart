@@ -67,9 +67,18 @@ class ProductsService {
   ///
   /// Приходит готовым деревом, а не плоским списком: собирать его на клиенте
   /// значит повторять ту же работу в приложении, на сайте и в админке.
-  static Future<List<ProductCategory>> catalogs() async {
+  static Future<List<ProductCategory>> catalogs({
+    /// Только разделы, в которых есть товары (14.09.2026).
+    ///
+    /// Витрина рисует разделы лентой кнопок сверху, и пустой раздел там
+    /// только мешает: человек нажимает «Обувь», видит «ничего не найдено» и
+    /// решает, что приложение сломалось.
+    bool onlyWithProducts = false,
+  }) async {
     try {
-      final response = await ApiService.get('/products/catalogs');
+      final response = await ApiService.get(
+        '/products/catalogs${onlyWithProducts ? '?only_with_products=1' : ''}',
+      );
       final data = response['data'];
 
       if (data is! List) return const [];
