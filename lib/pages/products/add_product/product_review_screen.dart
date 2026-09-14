@@ -451,6 +451,34 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
   }
 
   /// Экран групп: правка названий, обложек и содержимого.
+  /// «Предпросмотр»: показать витрину так, как она собрана.
+  ///
+  /// Ведём на экран товаров, а не рисуем отдельный экран показа: там уже
+  /// видно всё, что человек завёл, — группы, обложки, позиции, цены. Второй
+  /// экран с тем же содержимым разошёлся бы с этим в первую же правку.
+  ///
+  /// Отдельного сохранения перед переходом не нужно: каждое поле сводки
+  /// уходит на сервер сразу, как его меняют. Но данные перечитываем: человек
+  /// мог править позиции на соседнем экране, и предпросмотр обязан показать
+  /// последнее состояние, а не то, что лежало в памяти.
+  ///
+  /// Неопубликованную витрину экран товаров помечает полосой «покупатели их
+  /// не видят»: без неё предпросмотр выглядит как готовый магазин.
+  Future<void> _preview() async {
+    await _reload();
+
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductItemsScreen(publication: _publication),
+      ),
+    );
+
+    await _reload();
+  }
+
   Future<void> _openGroups() async {
     await Navigator.push(
       context,
@@ -1450,7 +1478,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   _autoRenew(),
 
                   const SizedBox(height: 24),
-                  _secondaryButton('Предпросмотр', onTap: null),
+                  _secondaryButton('Предпросмотр', onTap: _preview),
                   const SizedBox(height: 12),
                   _primaryButton(
                     _isSaving ? 'Публикуем…' : 'Опубликовать',

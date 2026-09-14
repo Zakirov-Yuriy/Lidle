@@ -376,6 +376,14 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
               _hintLink('Как это работает?'),
               _hintLink('Что такое группы?'),
 
+              // Пока витрина не опубликована, говорим об этом прямо здесь.
+              //
+              // Экран открывается и из предпросмотра со сводки, и человек
+              // видит свои товары ровно так, как их увидит покупатель. Без
+              // этой полосы он решает, что товар уже продаётся, закрывает
+              // приложение и ждёт заказов, которых не будет.
+              if (!_publication.isPublished) _draftNotice(),
+
               const SizedBox(height: 12),
               const Text('Категория',
                   style: TextStyle(color: textPrimary, fontSize: 15)),
@@ -509,10 +517,49 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
         ),
       );
 
+  /// Полоса «ещё не опубликовано».
+  ///
+  /// Не диалог и не всплывающее сообщение: человек должен видеть это всё
+  /// время, пока смотрит товары, а не один раз при входе.
+  Widget _draftNotice() {
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3A2E14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF7A5C1E)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFFE0B33C), size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Товары ещё не опубликованы. Покупатели их не видят: '
+              'вернитесь назад и нажмите «Опубликовать».',
+              style: TextStyle(
+                color: Color(0xFFE8D6A8),
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Лента групп с обложками и плиткой «плюс».
+  ///
+  /// Высота считается, а не подбирается на глаз: обложка 88, отступ 4 и две
+  /// строки подписи по 12 кегля. При 116 подпись из двух строк не влезала, и
+  /// у групп с длинным названием («Бесплатно (животные и вязка)») экран
+  /// показывал полосатую ленту переполнения. Поймали 14.09.2026.
   Widget _groupsStrip() {
     return SizedBox(
-      height: 116,
+      height: 132,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _publication.groups.length + 1,
@@ -607,13 +654,19 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    group.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isOpen ? textPrimary : textSecondary,
-                      fontSize: 12,
+
+                  // Flexible, а не голый Text: человек мог увеличить шрифт в
+                  // системе, и тогда даже посчитанной высоты не хватит.
+                  // Подпись в этом случае обрежется, а не порвёт ленту.
+                  Flexible(
+                    child: Text(
+                      group.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isOpen ? textPrimary : textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ],
