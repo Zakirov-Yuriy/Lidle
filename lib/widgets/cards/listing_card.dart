@@ -451,36 +451,96 @@ class _ListingCardState extends State<ListingCard> {
   ///
   /// Размер и место постоянные, без множителя высоты: это область НАЖАТИЯ, и
   /// в узкой колонке она не должна становиться меньше пальца.
+  ///
+  /// Если товар уже в корзине, иконка становится закрашенной, а над ней
+  /// встаёт счётчик — как на знакомых маркетплейсах (14.09.2026). Без него
+  /// человек, вернувшийся к ленте, не помнит, что уже положил, и кладёт
+  /// второй раз.
   Widget _cartButton() {
-    return GestureDetector(
-      onTap: _isAdding ? null : _addToCart,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: activeIconColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: _isAdding
-              // Кружок ожидания ровно на месте иконки: кнопка не должна
-              // менять размер, иначе картинка под ней дёргается.
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : const Icon(
-                  Icons.shopping_cart_outlined,
-                  color: Colors.white,
-                  size: 20,
+    final productId = widget.listing.productId;
+
+    return ValueListenableBuilder<Map<int, int>>(
+      valueListenable: CartService.quantities,
+      builder: (context, quantities, _) {
+        // Считаем прямо из общего состояния корзины, а не из своего поля:
+        // товар мог уехать из корзины на другом экране, и собственная
+        // память карточки разошлась бы с правдой.
+        final inCart = productId == null ? 0 : (quantities[productId] ?? 0);
+
+        return GestureDetector(
+          onTap: _isAdding ? null : _addToCart,
+          behavior: HitTestBehavior.opaque,
+          child: Stack(
+            // Счётчик выходит за край кнопки: без этого он обрезался бы.
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: activeIconColor,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-        ),
-      ),
+                child: Center(
+                  child: _isAdding
+                      // Кружок ожидания ровно на месте иконки: кнопка не
+                      // должна менять размер, иначе картинка под ней
+                      // дёргается.
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Icon(
+                          // Закрашенная корзина = товар уже внутри. Отличие
+                          // видно и без счётчика, боковым зрением.
+                          inCart > 0
+                              ? Icons.shopping_cart
+                              : Icons.shopping_cart_outlined,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                ),
+              ),
+
+              if (inCart > 0)
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 20),
+                    height: 20,
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE53935),
+                      borderRadius: BorderRadius.circular(10),
+                      // Обводка цветом подложки: на пёстрой картинке красный
+                      // кружок иначе сливается с фоном товара.
+                      border: Border.all(color: primaryBackground, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        // Больше 99 не показываем числом: «100» не влезает в
+                        // кружок, а точное число здесь никому не нужно.
+                        inCart > 99 ? '99+' : '$inCart',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          height: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 

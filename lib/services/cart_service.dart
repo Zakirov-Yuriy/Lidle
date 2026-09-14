@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
@@ -15,6 +16,48 @@ import 'package:lidle/services/api_service.dart';
 /// входа, хотя бы один раз, иначе переносить будет нечего.
 class CartService {
   static const String _tokenKey = 'cart_token';
+
+  /// Что сейчас в корзине: номер товара → количество (14.09.2026).
+  ///
+  /// Нужно карточкам товара на главной и в разделах: у добавленного товара
+  /// на кнопке корзины стоит счётчик, как на знакомых маркетплейсах. Раньше
+  /// карточка о корзине ничего не знала, и человек, вернувшись к ленте, не
+  /// помнил, что уже положил.
+  ///
+  /// `ValueNotifier`, а не запрос из карточки: карточек на экране десятки, и
+  /// спрашивать корзину у каждой значит выстрелить десятком запросов на
+  /// прокрутку. Корзина и так приходит целиком на любое действие — здесь мы
+  /// просто запоминаем её состав.
+  static final ValueNotifier<Map<int, int>> quantities =
+      ValueNotifier<Map<int, int>>(const {});
+
+  /// Сколько всего позиций в корзине. Для значка на нижнем меню.
+  static final ValueNotifier<int> itemsCount = ValueNotifier<int>(0);
+
+  /// Сколько штук этого товара лежит в корзине. Ноль — не лежит.
+  static int quantityOf(int productId) => quantities.value[productId] ?? 0;
+
+  /// Перечитать корзину молча, ничего не показывая человеку.
+  ///
+  /// Зовётся при запуске приложения: без этого счётчики на карточках были бы
+  /// пустыми до первого действия с корзиной, хотя товары в ней лежат.
+  static Future<void> sync() async {
+    await show();
+  }
+
+  /// Запомнить состав корзины из ответа сервера.
+  static void _remember(CartSnapshot cart) {
+    final map = <int, int>{};
+
+    for (final shop in cart.shops) {
+      for (final line in shop.items) {
+        map[line.productId] = line.quantity;
+      }
+    }
+
+    quantities.value = map;
+    itemsCount.value = cart.itemsCount;
+  }
 
   /// Ответ на любое действие с корзиной: она всегда приходит целиком.
   ///
@@ -85,10 +128,17 @@ class CartService {
       final data = response['data'];
 
       if (data is! Map<String, dynamic>) {
+        _remember(CartSnapshot.empty());
+
         return CartResult.success(CartSnapshot.empty());
       }
 
       final cart = CartSnapshot.fromJson(data);
+
+      // Состав запоминаем на КАЖДЫЙ ответ, а не только на добавление:
+      // корзина приходит целиком, и удаление с изменением количества должны
+      // гасить счётчики так же, как добавление их зажигает.
+      _remember(cart);
 
       await _saveToken(cart.cartToken);
 

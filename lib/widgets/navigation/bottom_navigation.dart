@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/home_page.dart';
@@ -104,7 +105,22 @@ class BottomNavigation extends StatelessWidget {
                   //
                   // Индекс 3 сохранён намеренно: навигация в _navigateToScreen
                   // идёт по номеру, и сдвиг сломал бы остальные пункты.
-                  _buildNavItem(context, shoppingCartIconAsset, 3, selectedIndex, 0),
+                  //
+                  // Со значком: сколько позиций лежит в корзине (14.09.2026).
+                  // Тот же механизм, что у непрочитанных сообщений. Число
+                  // берётся из общего состояния корзины, которое обновляется
+                  // на любой ответ сервера, — отдельных запросов меню не
+                  // делает.
+                  ValueListenableBuilder<int>(
+                    valueListenable: CartService.itemsCount,
+                    builder: (context, count, _) => _buildNavItem(
+                      context,
+                      shoppingCartIconAsset,
+                      3,
+                      selectedIndex,
+                      count,
+                    ),
+                  ),
                   // 💬 Передаем количество непрочитанных для иконки сообщений
                   _buildNavItem(context, messageIconAsset, 4, selectedIndex, unreadCount),
                   _buildNavItem(context, userIconAsset, 5, selectedIndex, 0),
