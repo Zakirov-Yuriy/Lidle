@@ -1430,6 +1430,15 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   24,
                 ),
                 children: [
+                  // Полоса «ещё не опубликовано» стоит ПЕРВОЙ строкой сводки.
+                  //
+                  // Человек попадает сюда сразу после «Сохранить» в форме
+                  // позиции и должен прочитать главное до того, как начнёт
+                  // листать: товар сохранён, но не продаётся. До 14.09.2026
+                  // позиция уходила на витрину в момент сохранения, и
+                  // говорить было не о чем; теперь она ждёт кнопки внизу.
+                  if (_publication.hasUnpublished) _draftNotice(),
+
                   _label('Категория'),
                   _card(
                     title: _publication.categoryName.isEmpty
@@ -1489,6 +1498,45 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Полоса «ещё не опубликовано».
+  ///
+  /// Та же, что на экране позиций: человек ходит между этими двумя экранами
+  /// и должен видеть одно и то же сообщение, а не гадать, где правда.
+  Widget _draftNotice() {
+    final waiting = _publication.unpublishedCount;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3A2E14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF7A5C1E)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFFE0B33C), size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _publication.isPublished
+                  ? 'Сохранено, но ещё не опубликовано: $waiting поз. '
+                        'Покупатели их не видят. Нажмите «Опубликовать» внизу.'
+                  : 'Товары сохранены, но ещё не опубликованы. Покупатели их '
+                        'не видят. Нажмите «Опубликовать» внизу.',
+              style: const TextStyle(
+                color: Color(0xFFE8D6A8),
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

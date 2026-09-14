@@ -202,6 +202,7 @@ class ProductPublication {
     this.shopName,
     this.isAutoRenew = false,
     this.isPublished = false,
+    this.unpublishedCount = 0,
     this.paymentMethods = const [],
     this.paymentSettings = const {},
     this.groups = const [],
@@ -226,6 +227,17 @@ class ProductPublication {
 
   final bool isAutoRenew;
   final bool isPublished;
+
+  /// Сколько позиций ждут кнопки «Опубликовать».
+  ///
+  /// Отдельно от `isPublished`, потому что это РАЗНЫЕ вещи: витрина может
+  /// быть опубликована ещё на прошлой неделе, а добавленная сегодня позиция
+  /// покупателю не видна. По одному `isPublished` приложение говорило бы
+  /// продавцу, что всё в продаже.
+  final int unpublishedCount;
+
+  /// Есть что публиковать: витрина не опубликована или в ней ждут позиции.
+  bool get hasUnpublished => !isPublished || unpublishedCount > 0;
 
   /// Ключи способов оплаты, которые принимает продавец. Пусто означает, что
   /// он ещё не выбирал, а не «не принимает ничего».
@@ -260,6 +272,7 @@ class ProductPublication {
       shopName: shop is Map ? '${shop['name'] ?? ''}' : null,
       isAutoRenew: data['is_auto_renew'] == true,
       isPublished: data['is_published'] == true,
+      unpublishedCount: _int(data['unpublished_count']) ?? 0,
       paymentMethods: data['payment_methods'] is List
           ? (data['payment_methods'] as List)
                 .map((item) => '$item')
@@ -296,6 +309,7 @@ class ProductPublication {
       shopName: shopName,
       isAutoRenew: isAutoRenew ?? this.isAutoRenew,
       isPublished: isPublished,
+      unpublishedCount: unpublishedCount,
       paymentMethods: paymentMethods ?? this.paymentMethods,
       paymentSettings: paymentSettings ?? this.paymentSettings,
       groups: groups ?? this.groups,
