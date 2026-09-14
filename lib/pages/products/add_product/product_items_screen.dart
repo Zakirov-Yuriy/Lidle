@@ -853,11 +853,27 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
           if (position.color != null || position.variants.isNotEmpty)
             _variantsLine(position),
 
+          // Характеристики раздела, КРОМЕ цвета и размера: они уже показаны
+          // строкой выше, и притом по-настоящему — тем, что лежит на складе.
+          // Строка характеристики это описание модели, и рядом со строкой
+          // склада она читалась как задвоение (Аня 14.09.2026).
           for (final attribute in position.attributes)
-            _attributeLine(attribute.title, attribute.value),
+            if (!_isVariantAttribute(attribute.title))
+              _attributeLine(attribute.title, attribute.value),
         ],
       ),
     );
+  }
+
+  /// Характеристика про цвет или размер?
+  ///
+  /// Такие в карточке не показываем: цвет и размеры товара приходят из его
+  /// собственных полей и из вариантов, а характеристика раздела говорила бы о
+  /// том же самом вторым голосом.
+  bool _isVariantAttribute(String title) {
+    final lower = title.toLowerCase();
+
+    return lower.contains('цвет') || lower.contains('размер');
   }
 
   /// Строка «Цвет и размеры»: квадратик цвета и перечень размеров.

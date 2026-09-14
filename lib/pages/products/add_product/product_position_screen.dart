@@ -22,6 +22,8 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/products/product_publication.dart';
+import 'package:lidle/pages/dynamic_filter/widgets/labeled_dropdown.dart';
+import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/pages/products/add_product/product_attributes_form.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_clusters_screen.dart';
@@ -739,26 +741,27 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               // Товар это модель ОДНОГО цвета с набором размеров. Другой цвет
               // это другой товар в том же кластере, поэтому цвет один, а
               // размеров сразу несколько.
+              // Цвет и размеры — такими же плашками, как остальные поля
+              // формы, и с тем же диалогом выбора. Свои квадратики и кнопки
+              // выглядели чужеродно рядом с «Тип одежды» и «Бренд».
               const SizedBox(height: 20),
-              const Text(
-                'Цвет',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              LabeledDropdown(
+                label: 'Цвет',
+                hint: _color?.name ?? 'Выбрать',
+                showChangeText: _color != null,
+                icon: const Icon(Icons.keyboard_arrow_down,
+                    color: textMuted, size: 20),
+                onTap: _colors.isEmpty ? null : _pickColor,
               ),
-              const SizedBox(height: 8),
-              _colorPicker(),
 
               const SizedBox(height: 20),
-              const Text(
-                'Выберите размер',
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+              LabeledDropdown(
+                label: 'Выберите размер',
+                hint: _sizesHint(),
+                showChangeText: _sizes.isNotEmpty,
+                icon: const Icon(Icons.keyboard_arrow_down,
+                    color: textMuted, size: 20),
+                onTap: _dimensions.isEmpty ? null : _pickSizes,
               ),
               const SizedBox(height: 6),
               const Text(
@@ -766,8 +769,6 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                 'остаток, и покупатель выбирает размер в карточке.',
                 style: TextStyle(color: textMuted, fontSize: 13, height: 1.35),
               ),
-              const SizedBox(height: 8),
-              _sizePicker(),
 
               const SizedBox(height: 20),
               const Text(
@@ -1062,97 +1063,76 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     );
   }
 
-  /// Цвет: один на товар. Квадратики, как их показывают в магазинах.
-  Widget _colorPicker() {
-    if (_colors.isEmpty) {
-      return const Text(
-        'Справочник цветов пуст, его заводит администратор.',
-        style: TextStyle(color: textMuted, fontSize: 13),
-      );
+  /// Что написано в поле размеров.
+  String _sizesHint() {
+    if (_sizes.isEmpty) return 'Выбрать';
+
+    final names = <String>[];
+
+    for (final dimension in _dimensions) {
+      if (_sizes.contains(dimension.id)) names.add(dimension.name);
     }
 
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: _colors.map((color) {
-        final selected = _color?.id == color.id;
-        final swatch = _hex(color.code);
+    return names.join(', ');
+  }
 
-        return GestureDetector(
-          // Повторное нажатие снимает выбор: цвет не обязателен, и человека,
-          // передумавшего его указывать, не надо загонять в угол.
-          onTap: () => setState(() => _color = selected ? null : color),
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: swatch ?? formBackground,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: selected ? activeIconColor : Colors.white24,
-                width: selected ? 3 : 1,
-              ),
-            ),
-            child: swatch == null
-                ? const Icon(Icons.palette_outlined, color: textMuted, size: 18)
-                : null,
-          ),
-        );
-      }).toList(),
+  /// Цвет: один на товар.
+  ///
+  /// Тот же диалог, что у характеристик раздела. Он сам рисует квадратики,
+  /// когда в заголовке есть слово «цвет», — поэтому заголовок именно «Цвет».
+  Future<void> _pickColor() async {
+    final byName = <String, ProductColor>{
+      for (final color in _colors) color.name: color,
+    };
+
+    await showDialog(
+      context: context,
+      builder: (_) => SelectionDialog(
+        title: 'Цвет',
+        options: byName.keys.toList(),
+        selectedOptions: _color == null ? <String>{} : {_color!.name},
+        allowMultipleSelection: false,
+        onSelectionChanged: (chosen) {
+          setState(() {
+            // Пустой выбор это «цвет не указан»: он не обязателен, и человека,
+            // передумавшего его указывать, не надо загонять в угол.
+            _color = chosen.isEmpty ? null : byName[chosen.first];
+          });
+        },
+      ),
     );
   }
 
-  /// Размеры: сразу несколько. Кнопками, отмеченные залиты синим.
-  Widget _sizePicker() {
-    if (_dimensions.isEmpty) {
-      return const Text(
-        'Справочник размеров пуст, его заводит администратор.',
-        style: TextStyle(color: textMuted, fontSize: 13),
-      );
-    }
+  /// Размеры: сразу несколько.
+  Future<void> _pickSizes() async {
+    final byName = <String, ProductDimension>{
+      for (final dimension in _dimensions) dimension.name: dimension,
+    };
 
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _dimensions.map((dimension) {
-        final selected = _sizes.contains(dimension.id);
+    final selected = <String>{
+      for (final dimension in _dimensions)
+        if (_sizes.contains(dimension.id)) dimension.name,
+    };
 
-        return GestureDetector(
-          onTap: () => setState(() {
-            if (!_sizes.remove(dimension.id)) _sizes.add(dimension.id);
-          }),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: selected ? activeIconColor : formBackground,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: selected ? activeIconColor : Colors.white24,
-              ),
-            ),
-            child: Text(
-              dimension.name,
-              style: TextStyle(
-                color: selected ? Colors.white : textPrimary,
-                fontSize: 14,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    await showDialog(
+      context: context,
+      builder: (_) => SelectionDialog(
+        title: 'Выберите размер',
+        options: byName.keys.toList(),
+        selectedOptions: selected,
+        onSelectionChanged: (chosen) {
+          setState(() {
+            _sizes
+              ..clear()
+              ..addAll(
+                chosen
+                    .map((name) => byName[name]?.id)
+                    .whereType<int>(),
+              );
+          });
+        },
+      ),
     );
-  }
-
-  /// «#43A047» в цвет.
-  Color? _hex(String? code) {
-    final hex = (code ?? '').replaceFirst('#', '').trim();
-
-    if (hex.length != 6) return null;
-
-    final value = int.tryParse(hex, radix: 16);
-
-    return value == null ? null : Color(0xFF000000 | value);
   }
 
   Widget _clusterRow() {
