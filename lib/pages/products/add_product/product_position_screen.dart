@@ -720,7 +720,10 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               LabeledDropdown(
                 label: 'Цвет',
                 hint: _color?.name ?? 'Выбрать',
-                showChangeText: _color != null,
+
+                // Без слова «Изменить»: длинный перечень размеров упирался в
+                // него и обрывался многоточием раньше времени, а стрелка и
+                // так говорит, что поле открывается.
                 icon: const Icon(Icons.keyboard_arrow_down,
                     color: textMuted, size: 20),
                 onTap: _colors.isEmpty ? null : _pickColor,
@@ -730,7 +733,6 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               LabeledDropdown(
                 label: 'Выберите размер',
                 hint: _sizesHint(),
-                showChangeText: _sizes.isNotEmpty,
                 icon: const Icon(Icons.keyboard_arrow_down,
                     color: textMuted, size: 20),
                 onTap: _dimensions.isEmpty ? null : _pickSizes,
