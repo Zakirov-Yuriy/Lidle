@@ -452,7 +452,34 @@ class LidleApp extends StatelessWidget {
           title: appTitle,
           debugShowCheckedModeBanner: false,
           navigatorKey: navigatorKey,   // ← добавить эту строку
-          theme: ThemeData(fontFamily: 'Roboto', brightness: Brightness.dark),
+          theme: ThemeData(
+            fontFamily: 'Roboto',
+            brightness: Brightness.dark,
+
+            // Всплывающие сообщения внизу экрана: белый текст на тёмном.
+            //
+            // Так было: цвет текста брался у Material по умолчанию, а он
+            // рассчитан на светлую подложку. Мы же почти везде передаём свой
+            // тёмный фон, и получался тёмно-серый текст на тёмно-синем —
+            // «Товар в корзине» приходилось разглядывать. Поймали
+            // 14.09.2026.
+            //
+            // Лечим ТЕМОЙ, а не по месту: сообщений в приложении больше
+            // четырёхсот, и править их поштучно значит пропустить половину и
+            // развести десять оттенков.
+            snackBarTheme: const SnackBarThemeData(
+              backgroundColor: secondaryBackground,
+              contentTextStyle: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                height: 1.35,
+              ),
+
+              // Кнопка внутри сообщения («Отменить», «Перейти») — фирменным
+              // синим: белым она сливалась бы с текстом.
+              actionTextColor: activeIconColor,
+            ),
+          ),
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           supportedLocales: const [Locale('en', ''), Locale('ru', '')],
           navigatorObservers: [routeObserver],
