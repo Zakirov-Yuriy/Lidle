@@ -208,6 +208,29 @@ class ProductsCabinetApi {
     return fields;
   }
 
+  /// Должности раздела для карточки сотрудника (14.09.2026).
+  ///
+  /// Своя ручка, а не поиск нужного поля в характеристиках товара. Раньше
+  /// список брался из `positionFields()` по слову «должность» в названии, и
+  /// это выходило боком: справочник должностей висит на том же разделе, что
+  /// размеры и цвета, поэтому поле «Должность» вылезало в форме заведения
+  /// куртки. Теперь форма товара служебные справочники не отдаёт вовсе.
+  static Future<List<String>> staffPositions(int categoryId) async {
+    final response = await ApiService.getWithQuery(
+      '/me/product-publications/staff-positions',
+      {'category_id': categoryId},
+    );
+
+    final data = response['data'];
+
+    if (data is! List) return const [];
+
+    return data
+        .map((item) => '$item'.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
   /// Завести позицию. Это обычный товар: `/me/products`.
   static Future<int> createPosition({
     required int publicationId,

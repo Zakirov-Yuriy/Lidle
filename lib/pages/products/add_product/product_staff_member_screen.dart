@@ -24,7 +24,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
-import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/products/product_staff.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_staff_schedule_screen.dart';
@@ -130,9 +129,8 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
   /// списков сотрудник всё равно сохранится, просто без должности и галочек.
   Future<void> _load() async {
     try {
-      final fields = await ProductsCabinetApi.positionFields(widget.categoryId);
-
-      final positions = _positionsFrom(fields);
+      final positions =
+          await ProductsCabinetApi.staffPositions(widget.categoryId);
 
       if (mounted) setState(() => _positions = positions);
     } catch (e) {
@@ -146,17 +144,6 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
     } catch (e) {
       log.d('Справочник доступов не пришёл: $e');
     }
-  }
-
-  /// Значения характеристики «Должность» этого раздела.
-  List<String> _positionsFrom(List<Attribute> fields) {
-    for (final field in fields) {
-      if (!field.title.toLowerCase().contains('должност')) continue;
-
-      return field.values.map((value) => value.value).toList();
-    }
-
-    return const [];
   }
 
   // ── Действия ────────────────────────────────────────────────────
