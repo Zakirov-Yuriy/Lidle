@@ -51,8 +51,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
   /// нельзя.
   String? _error;
 
-  int _cartCount = 0;
-
   /// Поиск не дёргаем на каждую букву: человек печатает быстрее, чем отвечает
   /// сервер, и без задержки список дёргался бы на каждом символе.
   Timer? _searchDebounce;
@@ -98,13 +96,12 @@ class _ProductsScreenState extends State<ProductsScreen> {
     setState(() => _categories = flat);
   }
 
-  Future<void> _refreshCartCount() async {
-    final result = await CartService.show();
-
-    if (!mounted || !result.isOk) return;
-
-    setState(() => _cartCount = result.cart?.itemsCount ?? 0);
-  }
+  /// Перечитать корзину.
+  ///
+  /// Числа себе не забираем: они живут в `CartService`, и экран подписан на
+  /// них. Здесь мы только просим сервер прислать свежую корзину — например,
+  /// когда человек вернулся из неё и мог что-то удалить.
+  Future<void> _refreshCartCount() => CartService.sync();
 
   Future<void> _load({bool more = false}) async {
     if (more && (!_hasMore || _isLoadingMore)) return;
@@ -171,7 +168,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
       return;
     }
 
-    setState(() => _cartCount = result.cart?.itemsCount ?? _cartCount);
     SnackBarHelper.showSuccess(context, 'Товар в корзине');
   }
 
@@ -246,33 +242,43 @@ class _ProductsScreenState extends State<ProductsScreen> {
           const Spacer(),
           GestureDetector(
             onTap: _openCart,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.shopping_cart_outlined,
-                    color: Colors.white, size: 26),
-                if (_cartCount > 0)
-                  Positioned(
-                    right: -6,
-                    top: -6,
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: activeIconColor,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '$_cartCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+
+            // Счётчик берём из общего состояния корзины, а не из своего поля.
+            //
+            // Так было: число обновлялось только после явного обращения к
+            // корзине. С 14.09.2026 количество меняется прямо в плитке товара
+            // (минус и плюс), и своё поле отставало бы от того, что человек
+            // видит на той же странице.
+            child: ValueListenableBuilder<int>(
+              valueListenable: CartService.itemsCount,
+              builder: (context, count, _) => Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.shopping_cart_outlined,
+                      color: Colors.white, size: 26),
+                  if (count > 0)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: activeIconColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
