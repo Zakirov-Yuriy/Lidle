@@ -351,33 +351,50 @@ class _ListingCardState extends State<ListingCard> {
               // соседнюю карточку снизу. Теперь наоборот: текст и кнопка
               // занимают сколько нужно, картинка — сколько осталось, и
               // выйти за клетку карточка не может.
+              // Картинка забирает ОСТАТОК высоты, а кнопка корзины лежит
+              // НА ней, в правом нижнем углу.
+              //
+              // Так было: кнопка «В корзину» во всю ширину карточки отдельной
+              // строкой. Она съедала треть высоты, спорила с ценой за
+              // внимание и делала витрину рыхлой. Заказчик 14.09.2026 просил
+              // как на знакомых маркетплейсах: иконка поверх картинки.
               Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: widget.listing.imagePath.isEmpty
-                        ? Container(
-                            color: formBackground,
-                            child: const Icon(
-                              Icons.photo_outlined,
-                              color: textMuted,
-                              size: 28,
-                            ),
-                          )
-                        : Image.network(
-                            widget.listing.imagePath,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: formBackground,
-                              child: const Icon(
-                                Icons.photo_outlined,
-                                color: textMuted,
-                                size: 28,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: widget.listing.imagePath.isEmpty
+                            ? Container(
+                                color: formBackground,
+                                child: const Icon(
+                                  Icons.photo_outlined,
+                                  color: textMuted,
+                                  size: 28,
+                                ),
+                              )
+                            : Image.network(
+                                widget.listing.imagePath,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: formBackground,
+                                  child: const Icon(
+                                    Icons.photo_outlined,
+                                    color: textMuted,
+                                    size: 28,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                  ),
+                      ),
+                    ),
+
+                    if (widget.listing.canOrder)
+                      Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: _cartButton(),
+                      ),
+                  ],
                 ),
               ),
 
@@ -396,54 +413,27 @@ class _ListingCardState extends State<ListingCard> {
 
               Text(
                 widget.listing.title,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: textPrimary, fontSize: 14 * scale),
               ),
 
-              if (widget.listing.location.isNotEmpty)
-                Text(
-                  widget.listing.location,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: textMuted, fontSize: 12 * scale),
-                ),
+              // Название точки убрано 14.09.2026: покупателю на витрине оно
+              // ничего не решает, а место занимало. Продавец виден в карточке
+              // товара, куда человек и идёт за подробностями.
 
-              SizedBox(height: 6 * scale),
-
-              if (widget.listing.canOrder)
-                SizedBox(
-                  width: double.infinity,
-                  height: 34 * scale,
-                  child: OutlinedButton(
-                    onPressed: _isAdding ? null : _addToCart,
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: activeIconColor),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                    child: Text(
-                      _isAdding ? 'Добавляем…' : 'В корзину',
-                      style: TextStyle(
-                        color: activeIconColor,
-                        fontSize: 13 * scale,
-                      ),
-                    ),
-                  ),
-                )
-              else
+              if (widget.listing.rating != null &&
+                  widget.listing.reviewsCount > 0) ...[
+                SizedBox(height: 3 * scale),
+                _ratingRow(scale),
+              ] else if (!widget.listing.canOrder)
                 // Товар без корзины: говорим об этом прямо, иначе человек
                 // ищет кнопку и думает, что приложение сломалось.
-                SizedBox(
-                  height: 34 * scale,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Покупка на месте',
-                      style: TextStyle(color: textMuted, fontSize: 12 * scale),
-                    ),
+                Padding(
+                  padding: EdgeInsets.only(top: 3 * scale),
+                  child: Text(
+                    'Покупка на месте',
+                    style: TextStyle(color: textMuted, fontSize: 12 * scale),
                   ),
                 ),
 
@@ -455,5 +445,92 @@ class _ListingCardState extends State<ListingCard> {
         );
       },
     );
+  }
+
+  /// Кнопка корзины: круглая, поверх картинки.
+  ///
+  /// Размер и место постоянные, без множителя высоты: это область НАЖАТИЯ, и
+  /// в узкой колонке она не должна становиться меньше пальца.
+  Widget _cartButton() {
+    return GestureDetector(
+      onTap: _isAdding ? null : _addToCart,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: activeIconColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: _isAdding
+              // Кружок ожидания ровно на месте иконки: кнопка не должна
+              // менять размер, иначе картинка под ней дёргается.
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                )
+              : const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.white,
+                  size: 20,
+                ),
+        ),
+      ),
+    );
+  }
+
+  /// Оценка товара: звезда, значение и число оценок.
+  Widget _ratingRow(double scale) {
+    final rating = widget.listing.rating ?? 0;
+    final count = widget.listing.reviewsCount;
+
+    return Row(
+      children: [
+        Icon(Icons.star, color: const Color(0xFFFFB800), size: 14 * scale),
+        SizedBox(width: 3 * scale),
+        Text(
+          // Запятая, а не точка: по-русски дробную часть отделяют запятой, и
+          // «4.7» на витрине читается как чужое.
+          rating.toStringAsFixed(1).replaceAll('.', ','),
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 12 * scale,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        SizedBox(width: 4 * scale),
+        Expanded(
+          child: Text(
+            '· $count ${_reviewsWord(count)}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: textMuted, fontSize: 12 * scale),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// «оценка», «оценки», «оценок» — по числу.
+  static String _reviewsWord(int count) {
+    final tail = count % 100;
+
+    if (tail >= 11 && tail <= 14) return 'оценок';
+
+    switch (count % 10) {
+      case 1:
+        return 'оценка';
+      case 2:
+      case 3:
+      case 4:
+        return 'оценки';
+      default:
+        return 'оценок';
+    }
   }
 }

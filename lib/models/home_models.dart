@@ -134,6 +134,13 @@ class Listing {
   /// лежит отдельно.
   final int? productId;
 
+  /// Средняя оценка товара. Пусто — оценок ещё нет, и рисовать звезду не
+  /// нужно: «0,0» читается как «плохой товар», а не как «никто не оценивал».
+  final double? rating;
+
+  /// Сколько оценок. Ноль означает то же самое, что пустая оценка.
+  final int reviewsCount;
+
   /// Конструктор для создания экземпляра [Listing].
   Listing({
     // Changed to non-const constructor
@@ -166,6 +173,8 @@ class Listing {
     this.canOrder = false,
     this.inStock = true,
     this.productId,
+    this.rating,
+    this.reviewsCount = 0,
   });
 
   /// 🎯 Проверяет, нужно ли показывать кнопку "Предложить свою цену"

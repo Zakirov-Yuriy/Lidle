@@ -887,6 +887,15 @@ class ApiService {
       date: '',
       canOrder: item['can_order'] == true,
       inStock: item['in_stock'] != false,
+
+      // Оценка и число отзывов: карточка товара на главной показывает их
+      // строкой под названием, как на любой знакомой человеку витрине.
+      rating: item['rating'] == null
+          ? null
+          : double.tryParse('${item['rating']}'),
+      reviewsCount: item['reviews_count'] is int
+          ? item['reviews_count'] as int
+          : int.tryParse('${item['reviews_count'] ?? 0}') ?? 0,
     );
   }
 
