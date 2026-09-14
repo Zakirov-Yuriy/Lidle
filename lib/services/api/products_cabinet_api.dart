@@ -397,9 +397,17 @@ class ProductsCabinetApi {
     int? colorId,
     String? description,
     Map<String, dynamic>? attributes,
+
+    /// Взять фотографии у этого своего товара (14.09.2026).
+    ///
+    /// Нужно кнопке «Сохранить как новый товар»: вторая куртка того же
+    /// фасона другого цвета обходится теми же снимками, пока продавец не
+    /// загрузит свои. Копируются имена файлов, а не сами файлы.
+    int? copyImagesFrom,
   }) async {
     final response = await ApiService.post('/me/products', {
       'publication_id': publicationId,
+      if (copyImagesFrom != null) 'copy_images_from': copyImagesFrom,
       if (groupId != null) 'group_id': groupId,
       if (position != null) 'position': position,
       'category_id': categoryId,

@@ -516,6 +516,11 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             brandId: brandId,
             colorId: _color?.id,
             attributes: _attributes.payload(),
+
+            // «Сохранить как новый товар»: фотографии берём у той позиции, из
+            // которой делаем копию. Своих у нового цвета обычно нет, а
+            // карточка без картинки выглядит недоделанной.
+            copyImagesFrom: asNew ? widget.existing?.id : null,
           );
 
       // Размеры: у каждого свой остаток, поэтому на сервере это отдельные
@@ -703,21 +708,6 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               const SizedBox(height: 8),
               _brandField(),
 
-              const SizedBox(height: 20),
-              _text('Описание позиции', _description,
-                  hint: 'Чем больше информации вы укажете о вашем товаре, тем'
-                      ' более привлекательнее он будет для клиентов.'
-                      ' Без ссылок, телефонов, матерных слов.',
-                  maxLines: 5,
-                  error: _errors['description']),
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  'Введите не менее $_minDescription символов',
-                  style: const TextStyle(color: textMuted, fontSize: 12),
-                ),
-              ),
-
               // ── Цвет и размеры (14.09.2026) ───────────────────────────
               //
               // Товар это модель ОДНОГО цвета с набором размеров. Другой цвет
@@ -750,6 +740,21 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                 'Можно отметить сразу несколько: у каждого размера свой '
                 'остаток, и покупатель выбирает размер в карточке.',
                 style: TextStyle(color: textMuted, fontSize: 13, height: 1.35),
+              ),
+
+              const SizedBox(height: 20),
+              _text('Описание позиции', _description,
+                  hint: 'Чем больше информации вы укажете о вашем товаре, тем'
+                      ' более привлекательнее он будет для клиентов.'
+                      ' Без ссылок, телефонов, матерных слов.',
+                  maxLines: 5,
+                  error: _errors['description']),
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Введите не менее $_minDescription символов',
+                  style: const TextStyle(color: textMuted, fontSize: 12),
+                ),
               ),
 
               const SizedBox(height: 20),

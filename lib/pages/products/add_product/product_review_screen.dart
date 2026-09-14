@@ -97,7 +97,13 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
 
     // Первую группу раскрываем сразу: свёрнутый список выглядит пустым, и
     // человек решает, что его позиции пропали.
-    if (_publication.groups.isNotEmpty) _open.add(_publication.groups.first.id);
+    // Раскрываем ВСЕ группы, а не первую.
+    //
+    // Так было: открывалась только первая, и человек, заведя вторую группу,
+    // видел на сводке одну позицию и решал, что остальные пропали. Поймали
+    // 14.09.2026 на «Куртках осень-весна». Групп у витрины единицы, и
+    // прятать их ради экономии экрана незачем.
+    _open.addAll(_publication.groups.map((group) => group.id));
 
     _reload();
     _loadBrands();
@@ -115,9 +121,9 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       setState(() {
         _publication = fresh;
 
-        if (_open.isEmpty && fresh.groups.isNotEmpty) {
-          _open.add(fresh.groups.first.id);
-        }
+        // Новая группа тоже раскрыта: человек только что её завёл и хочет
+        // видеть, что в ней.
+        _open.addAll(fresh.groups.map((group) => group.id));
       });
     } catch (e) {
       log.d('Публикация не обновилась: $e');
