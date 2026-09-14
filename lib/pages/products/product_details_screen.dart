@@ -535,7 +535,37 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (colors.isNotEmpty) ...[
+        // Цвет у товара ОДИН: зелёная куртка это другой товар, а не другой
+        // вариант этого (решение заказчика 14.09.2026). Поэтому при одном
+        // цвете рисуем строку словом, а не квадратик, который некуда
+        // переключать. Несколько цветов остались возможны у товаров, заведённых
+        // до этого решения, и для них выбор работает по-прежнему.
+        if (colors.length == 1) ...[
+          Row(
+            children: [
+              const Text(
+                'Цвет: ',
+                style: TextStyle(color: textSecondary, fontSize: 14),
+              ),
+              if (_hex(colors.values.first.colorCode) != null) ...[
+                Container(
+                  width: 18,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: _hex(colors.values.first.colorCode),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                colors.values.first.colorName ?? '',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ],
+          ),
+        ] else if (colors.length > 1) ...[
           Text(
             _variant?.colorName == null
                 ? 'Цвет'

@@ -25,7 +25,6 @@ import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/product_attributes_form.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_clusters_screen.dart';
-import 'package:lidle/pages/products/add_product/product_variants_screen.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -77,6 +76,20 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   ProductBrand? _brand;
 
   List<Attribute> _fields = const [];
+
+  // ── Цвет и размеры (14.09.2026) ────────────────────────────────────────
+  //
+  // Товар это модель ОДНОГО ЦВЕТА с набором размеров: чёрная куртка S…XXL —
+  // одна позиция, такая же зелёная — вторая позиция в том же кластере.
+  // Поэтому цвет здесь один, а размеров сразу несколько.
+  //
+  // Размеры хранятся вариантами товара: у каждого свой остаток, и заказывают
+  // именно размер. Экран об этом не знает — он просто присылает список.
+  List<ProductColor> _colors = const [];
+  List<ProductDimension> _dimensions = const [];
+
+  ProductColor? _color;
+  final Set<int> _sizes = <int>{};
 
   /// Уже загруженные фотографии: готовые ссылки с сервера.
   ///
@@ -147,12 +160,27 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
 
       _brands = await brands;
 
+      // Справочники цвета и размера: их ведёт администратор, один на всю
+      // площадку. Ошибку глушим — без справочников форма всё равно должна
+      // открыться, просто цвет с размерами выбрать будет нечем.
+      try {
+        final colors = await ProductsCabinetApi.colors();
+        final dimensions = await ProductsCabinetApi.dimensions();
+
+        _colors = colors;
+        _dimensions = dimensions;
+      } catch (e) {
+        log.e('Справочники цвета и размера не загрузились: $e');
+      }
+
       if (!mounted) return;
 
       setState(() {
         _fields = fields.where(_isRealField).toList();
         _brand = _knownBrand(_brand);
         _isLoading = false;
+
+        _prefillVariants();
 
         // Подставляем сохранённое ПОСЛЕ полей: выбранные варианты приходят
         // номерами значений, а перевести их в названия можно только по
@@ -171,6 +199,35 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       // Форму всё равно показываем: без характеристик товар сохранить можно,
       // а пустой экран человеку не объяснить.
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Подставить цвет и размеры уже заведённой позиции.
+  ///
+  /// Цвет лежит на самой позиции, размеры — в её вариантах. Человек открывает
+  /// чёрную куртку карандашом и видит выбранным чёрный и все её размеры:
+  /// именно из этого состояния он делает зелёную «Сохранить как новый».
+  void _prefillVariants() {
+    final existing = widget.existing;
+
+    if (existing == null) return;
+
+    final colorId = existing.color?.id;
+
+    if (colorId != null) {
+      for (final color in _colors) {
+        if (color.id == colorId) {
+          _color = color;
+
+          break;
+        }
+      }
+    }
+
+    for (final variant in existing.variants) {
+      final sizeId = variant.dimension?.id;
+
+      if (sizeId != null) _sizes.add(sizeId);
     }
   }
 
@@ -354,7 +411,16 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
         !service.contains(field.styleSingle);
   }
 
-  Future<void> _save() async {
+  /// Сохранить.
+  ///
+  /// `asNew` — «Сохранить как новый товар»: человек открыл чёрную куртку,
+  /// поменял цвет на зелёный и хочет ВТОРУЮ куртку в том же кластере, а не
+  /// перекрашенную первую (решение заказчика 14.09.2026).
+  ///
+  /// Две кнопки, а не догадка по изменившемуся цвету: иначе исправить
+  /// ошибочно выбранный цвет было бы нечем — каждая попытка плодила бы ещё
+  /// один товар.
+  Future<void> _save({bool asNew = false}) async {
     if (_isSaving) return;
 
     setState(() {
@@ -398,7 +464,9 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       // Бренд позиции: выбранный в форме, иначе бренд публикации.
       final brandId = _brand?.id ?? widget.publication.brandId;
 
-      final existing = widget.existing;
+      // «Сохранить как новый» ведёт себя ровно как заведение позиции:
+      // существующую не трогаем вовсе.
+      final existing = asNew ? null : widget.existing;
       final price = num.parse(_price.text.replaceAll(' ', '').replaceAll(',', '.'));
 
       if (existing != null) {
@@ -418,6 +486,7 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
           price: price,
           stockQuantity: int.parse(_quantity.text.trim()),
           brandId: brandId,
+          colorId: _color?.id,
           attributes: _attributes.payload(),
         );
       }
@@ -433,8 +502,20 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             price: price,
             stockQuantity: int.parse(_quantity.text.trim()),
             brandId: brandId,
+            colorId: _color?.id,
             attributes: _attributes.payload(),
           );
+
+      // Размеры: у каждого свой остаток, поэтому на сервере это отдельные
+      // товары-варианты. Синхронизируем с тем, что отмечено в форме.
+      if (productId > 0) {
+        await _syncSizes(
+          productId: productId,
+          existing: existing,
+          price: price,
+          quantity: int.parse(_quantity.text.trim()),
+        );
+      }
 
       // Фотографии заливаем вторым запросом, и его неудача позицию не
       // отменяет: товар уже заведён, и выбрасывать заполненную форму из-за
@@ -466,6 +547,62 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       // Сервер отвечает понятным текстом («Заполните обязательные
       // характеристики: …»), поэтому показываем его, а не своё «ошибка».
       _say('$e'.replaceFirst('Exception: ', ''));
+    }
+  }
+
+  /// Привести размеры товара к тому, что отмечено в форме.
+  ///
+  /// Отмеченный размер, которого нет, — заводим. Снятый — удаляем. Остальные
+  /// не трогаем: у них уже свой остаток, и пересоздание обнулило бы его.
+  ///
+  /// Цвет варианту ставим тот же, что у товара: подпись в корзине собирается
+  /// из цвета и размера, и вариант без цвета читался бы просто как «S».
+  ///
+  /// Отдельные запросы, а не один общий: ручки заведения и удаления товара
+  /// уже есть, а размеров у вещи пять-шесть, не пятьсот.
+  Future<void> _syncSizes({
+    required int productId,
+    required ProductPosition? existing,
+    required num price,
+    required int quantity,
+  }) async {
+    final had = <int, int>{};
+
+    for (final variant in existing?.variants ?? const <ProductPosition>[]) {
+      final sizeId = variant.dimension?.id;
+
+      if (sizeId != null) had[sizeId] = variant.id;
+    }
+
+    // Заводим недостающие.
+    for (final sizeId in _sizes) {
+      if (had.containsKey(sizeId)) continue;
+
+      await ProductsCabinetApi.createVariant(
+        parentId: productId,
+        categoryId: widget.publication.categoryId,
+        name: _name.text.trim(),
+        price: price,
+        stockQuantity: quantity,
+        colorId: _color?.id,
+        dimensionId: sizeId,
+      );
+    }
+
+    // Убираем снятые. Ошибку не поднимаем: заказанный размер сервер удалять
+    // откажется, и валить из-за этого всё сохранение неправильно.
+    for (final entry in had.entries) {
+      if (_sizes.contains(entry.key)) continue;
+
+      try {
+        await ProductsCabinetApi.deletePosition(entry.value);
+      } catch (e) {
+        log.e('Размер не удалился: $e');
+
+        if (mounted) {
+          _say('Размер не удалился: возможно, его уже заказывали.');
+        }
+      }
     }
   }
 
@@ -597,15 +734,26 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                 ),
               ),
 
-              // ── Варианты: цвет и размер (14.09.2026) ──────────────────
+              // ── Цвет и размеры (14.09.2026) ───────────────────────────
               //
-              // Блок показывается только у СОХРАНЁННОЙ позиции: вариант
-              // привязывается к модели по её номеру, а у незаведённой формы
-              // номера ещё нет. Говорим об этом словами, а не прячем блок:
-              // иначе человек ищет, куда делись размеры.
+              // Товар это модель ОДНОГО цвета с набором размеров. Другой цвет
+              // это другой товар в том же кластере, поэтому цвет один, а
+              // размеров сразу несколько.
               const SizedBox(height: 20),
               const Text(
-                'Варианты',
+                'Цвет',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _colorPicker(),
+
+              const SizedBox(height: 20),
+              const Text(
+                'Выберите размер',
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: 16,
@@ -614,12 +762,12 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Одна вещь в разных цветах и размерах. Покупатель видит одну '
-                'карточку и выбирает вариант внутри неё.',
+                'Можно отметить сразу несколько: у каждого размера свой '
+                'остаток, и покупатель выбирает размер в карточке.',
                 style: TextStyle(color: textMuted, fontSize: 13, height: 1.35),
               ),
-              const SizedBox(height: 12),
-              _variantsRow(),
+              const SizedBox(height: 8),
+              _sizePicker(),
 
               const SizedBox(height: 20),
               const Text(
@@ -659,6 +807,45 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
                   ),
                 ),
               ),
+
+              // «Сохранить как новый товар» — только при правке.
+              //
+              // Так продавец заводит вторую куртку той же модели: открыл
+              // чёрную, поменял цвет и размеры, нажал эту кнопку — рядом в
+              // кластере появилась зелёная, а чёрная осталась как была.
+              //
+              // Отдельной кнопкой, а не догадкой по изменившемуся цвету:
+              // иначе исправить ошибочно выбранный цвет было бы нечем, каждая
+              // попытка плодила бы ещё один товар.
+              if (widget.existing != null) ...[
+                const SizedBox(height: 10),
+                GestureDetector(
+                  onTap: _isSaving ? null : () => _save(asNew: true),
+                  child: Container(
+                    height: 52,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: primaryBackground,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: activeIconColor),
+                    ),
+                    child: Text(
+                      _isSaving ? 'Сохраняем…' : 'Сохранить как новый товар',
+                      style: TextStyle(
+                        color: _isSaving ? textMuted : activeIconColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Создаст такую же вещь другого цвета рядом, в этом же '
+                  'кластере. Эта позиция останется без изменений.',
+                  style: TextStyle(color: textMuted, fontSize: 12, height: 1.3),
+                ),
+              ],
             ],
           ),
         ),
@@ -875,68 +1062,97 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     );
   }
 
-  /// Строка «Варианты»: сколько их и переход к списку.
-  Widget _variantsRow() {
-    final existing = widget.existing;
-
-    if (existing == null) {
-      return Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: formBackground,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Text(
-          'Сначала сохраните позицию',
-          style: TextStyle(color: textMuted, fontSize: 15),
-        ),
+  /// Цвет: один на товар. Квадратики, как их показывают в магазинах.
+  Widget _colorPicker() {
+    if (_colors.isEmpty) {
+      return const Text(
+        'Справочник цветов пуст, его заводит администратор.',
+        style: TextStyle(color: textMuted, fontSize: 13),
       );
     }
 
-    // Число берём из `variantsCount`: список вариантов в карточку позиции
-    // приезжает не всегда, а счётчик приходит везде.
-    final count = existing.variantsCount;
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: _colors.map((color) {
+        final selected = _color?.id == color.id;
+        final swatch = _hex(color.code);
 
-    return GestureDetector(
-      onTap: () async {
-        final changed = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ProductVariantsScreen(
-              model: existing,
-              categoryId: widget.publication.categoryId,
+        return GestureDetector(
+          // Повторное нажатие снимает выбор: цвет не обязателен, и человека,
+          // передумавшего его указывать, не надо загонять в угол.
+          onTap: () => setState(() => _color = selected ? null : color),
+          child: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: swatch ?? formBackground,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected ? activeIconColor : Colors.white24,
+                width: selected ? 3 : 1,
+              ),
+            ),
+            child: swatch == null
+                ? const Icon(Icons.palette_outlined, color: textMuted, size: 18)
+                : null,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Размеры: сразу несколько. Кнопками, отмеченные залиты синим.
+  Widget _sizePicker() {
+    if (_dimensions.isEmpty) {
+      return const Text(
+        'Справочник размеров пуст, его заводит администратор.',
+        style: TextStyle(color: textMuted, fontSize: 13),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _dimensions.map((dimension) {
+        final selected = _sizes.contains(dimension.id);
+
+        return GestureDetector(
+          onTap: () => setState(() {
+            if (!_sizes.remove(dimension.id)) _sizes.add(dimension.id);
+          }),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? activeIconColor : formBackground,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected ? activeIconColor : Colors.white24,
+              ),
+            ),
+            child: Text(
+              dimension.name,
+              style: TextStyle(
+                color: selected ? Colors.white : textPrimary,
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
             ),
           ),
         );
-
-        // Экран вариантов меняет карточку модели, а форма держит её копию,
-        // снятую при открытии. Возвращаемся к списку позиций, чтобы он
-        // перечитал данные: иначе число вариантов в строке останется старым.
-        if (changed == true && mounted) Navigator.pop(context, true);
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: formBackground,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                count == 0 ? 'Вариантов нет' : 'Вариантов: $count',
-                style: const TextStyle(color: textPrimary, fontSize: 15),
-              ),
-            ),
-            const Icon(Icons.keyboard_arrow_right, color: textMuted, size: 20),
-          ],
-        ),
-      ),
+      }).toList(),
     );
+  }
+
+  /// «#43A047» в цвет.
+  Color? _hex(String? code) {
+    final hex = (code ?? '').replaceFirst('#', '').trim();
+
+    if (hex.length != 6) return null;
+
+    final value = int.tryParse(hex, radix: 16);
+
+    return value == null ? null : Color(0xFF000000 | value);
   }
 
   Widget _clusterRow() {

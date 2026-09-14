@@ -844,13 +844,14 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
           const SizedBox(height: 4),
           _attributeLine('Кластер', position.name, muted: true),
 
-          // Варианты: цвет плюс размер (14.09.2026).
+          // Цвет товара и его размеры (14.09.2026).
           //
           // Отдельной строкой, а не среди характеристик раздела: «Цвет» и
-          // «Размер» в списке ниже это то, что продавец выбрал ОПИСАНИЕМ
-          // модели, а здесь то, что реально лежит на складе и заказывается.
-          // Аня 14.09.2026 завела четыре варианта и не нашла их в карточке.
-          if (position.variants.isNotEmpty) _variantsLine(position),
+          // «Размер» в списке ниже это ОПИСАНИЕ модели, которое продавец
+          // выбрал в форме, а здесь то, что реально лежит на складе и
+          // заказывается.
+          if (position.color != null || position.variants.isNotEmpty)
+            _variantsLine(position),
 
           for (final attribute in position.attributes)
             _attributeLine(attribute.title, attribute.value),
@@ -859,25 +860,22 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
     );
   }
 
-  /// Строка вариантов: квадратики цветов и размеры.
+  /// Строка «Цвет и размеры»: квадратик цвета и перечень размеров.
   ///
-  /// Цвета не повторяем: у четырёх вариантов «чёрный S, чёрный M, красный L,
-  /// красный XL» цветов всего два, и четыре квадратика вместо двух читались
-  /// бы как четыре разных цвета.
+  /// Цвет у товара один: другой цвет это другой товар в том же кластере.
+  /// Размеры перечисляем все, что заведены, — они и есть то, что покупатель
+  /// выбирает в карточке.
   Widget _variantsLine(ProductPosition position) {
-    final colors = <String, Color>{};
+    final colorName = position.color?.name;
+
+    // Сначала КОД из справочника, и только потом словарь названий: код ведёт
+    // администратор, и он точнее нашей таблицы известных слов.
+    final swatch = _hex(position.color?.code) ??
+        (colorName == null ? null : colorByName(colorName));
+
     final sizes = <String>[];
 
     for (final variant in position.variants) {
-      final name = variant.color?.name;
-
-      // Сначала КОД из справочника, и только потом словарь названий: код
-      // ведёт администратор, и он точнее нашей таблицы известных слов.
-      final parsed = _hex(variant.color?.code) ??
-          (name == null ? null : colorByName(name));
-
-      if (name != null && parsed != null) colors[name] = parsed;
-
       final size = variant.dimension?.name;
 
       if (size != null && size.isNotEmpty && !sizes.contains(size)) {
@@ -890,23 +888,29 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
       child: Text.rich(
         TextSpan(
           children: [
-            TextSpan(
-              text: 'Варианты (${position.variants.length}): ',
-              style: const TextStyle(color: textSecondary, fontSize: 13),
-            ),
-            for (final color in colors.values)
+            if (swatch != null) ...[
+              const TextSpan(
+                text: 'Цвет: ',
+                style: TextStyle(color: textSecondary, fontSize: 13),
+              ),
               WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: colorSwatch(color, size: 16),
+                  padding: const EdgeInsets.only(right: 6),
+                  child: colorSwatch(swatch, size: 16),
                 ),
               ),
-            if (sizes.isNotEmpty)
+            ],
+            if (sizes.isNotEmpty) ...[
+              const TextSpan(
+                text: 'Размеры: ',
+                style: TextStyle(color: textSecondary, fontSize: 13),
+              ),
               TextSpan(
                 text: sizes.join(', '),
                 style: const TextStyle(color: textPrimary, fontSize: 13),
               ),
+            ],
           ],
         ),
       ),
