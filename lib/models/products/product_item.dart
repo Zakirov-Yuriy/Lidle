@@ -53,6 +53,15 @@ class ProductItem {
   /// только в карточке.
   final List<ProductAttribute> attributes;
 
+  /// Варианты модели: красная 46-го, зелёная 48-го.
+  ///
+  /// Пусто у книги и у любого товара без цветов и размеров. Когда список не
+  /// пуст, покупатель ВЫБИРАЕТ вариант, и в корзину уходит его номер, а не
+  /// номер модели: остаток и цена лежат на варианте.
+  final List<ProductVariant> variants;
+
+  bool get hasVariants => variants.isNotEmpty;
+
   const ProductItem({
     required this.id,
     required this.name,
@@ -73,6 +82,7 @@ class ProductItem {
     this.attributes = const [],
     this.canOrder = true,
     this.orderNotice,
+    this.variants = const [],
   });
 
   factory ProductItem.fromJson(Map<String, dynamic> data) {
@@ -106,6 +116,19 @@ class ProductItem {
                 .whereType<ProductAttribute>()
                 .toList()
           : const [],
+
+      // Варианты модели: цвет плюс размер (14.09.2026). Сервер кладёт их и в
+      // `variants`, и в `children` — второе имя осталось ради сайта.
+      variants: () {
+        final raw = data['variants'] ?? data['children'];
+
+        if (raw is! List) return const <ProductVariant>[];
+
+        return raw
+            .whereType<Map<String, dynamic>>()
+            .map(ProductVariant.fromJson)
+            .toList();
+      }(),
     );
   }
 
@@ -269,4 +292,88 @@ class ProductCategory {
   }
 
   bool get hasChildren => children.isNotEmpty;
+}
+
+/// Вариант модели: цвет плюс размер.
+///
+/// Это отдельный товар со своим номером, ценой и остатком. Покупателю он
+/// показывается не карточкой, а выбором внутри карточки модели.
+class ProductVariant {
+  const ProductVariant({
+    required this.id,
+    required this.price,
+    required this.stockQuantity,
+    this.inStock = false,
+    this.isAvailable = false,
+    this.image,
+    this.images = const [],
+    this.colorId,
+    this.colorName,
+    this.colorCode,
+    this.dimensionId,
+    this.dimensionName,
+    this.label,
+  });
+
+  final int id;
+  final String price;
+  final int stockQuantity;
+  final bool inStock;
+
+  /// Можно ли его купить прямо сейчас: считает сервер тем же правилом, что и
+  /// витрина. Снятый с продажи вариант недоступен даже с остатком.
+  final bool isAvailable;
+
+  final String? image;
+  final List<String> images;
+
+  final int? colorId;
+  final String? colorName;
+
+  /// «#43A047». Может быть пустым: код заполняли не у всех цветов.
+  final String? colorCode;
+
+  final int? dimensionId;
+  final String? dimensionName;
+
+  /// «красный, 46» — собирает сервер, чтобы приложение и сайт писали
+  /// одинаково.
+  final String? label;
+
+  factory ProductVariant.fromJson(Map<String, dynamic> data) {
+    final color = data['color'];
+    final dimension = data['dimension'];
+
+    return ProductVariant(
+      id: ProductItem._int(data['id']) ?? 0,
+      price: '${data['price'] ?? '0'}',
+      stockQuantity: ProductItem._int(data['stock_quantity']) ?? 0,
+      inStock: data['in_stock'] == true,
+      isAvailable: data['is_available'] == true,
+      image: data['image']?.toString(),
+      images: data['images'] is List
+          ? (data['images'] as List).map((e) => '$e').toList()
+          : const [],
+      colorId: color is Map ? ProductItem._int(color['id']) : null,
+      colorName: color is Map ? color['name']?.toString() : null,
+      colorCode: color is Map ? color['code']?.toString() : null,
+      dimensionId: dimension is Map ? ProductItem._int(dimension['id']) : null,
+      dimensionName: dimension is Map ? dimension['name']?.toString() : null,
+      label: data['label']?.toString(),
+    );
+  }
+
+  /// Цена варианта в виде «4 900 ₽».
+  String get priceLabel {
+    final value = double.tryParse(price) ?? 0;
+    final whole = value.truncate().toString();
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < whole.length; i++) {
+      if (i > 0 && (whole.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(whole[i]);
+    }
+
+    return '$buffer ₽';
+  }
 }

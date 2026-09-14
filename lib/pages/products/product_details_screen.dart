@@ -27,6 +27,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   int _quantity = 1;
   int _currentImage = 0;
 
+  /// Выбранный вариант: цвет плюс размер (14.09.2026).
+  ///
+  /// Пусто, пока человек не выбрал, и у товаров без вариантов всегда. Именно
+  /// его номер уходит в корзину: остаток и цена лежат на варианте, а не на
+  /// модели.
+  int? _variantId;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +54,104 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     setState(() {
       _product = product;
       _isLoading = false;
+
+      // Сразу выбираем первый доступный вариант: карточка с ценой «от» и
+      // погашенной кнопкой выглядит сломанной, а человек в девяти случаях из
+      // десяти берёт то, что есть.
+      final variants = product?.variants ?? const [];
+
+      if (variants.isNotEmpty) {
+        final first = variants.firstWhere(
+          (variant) => variant.isAvailable && variant.inStock,
+          orElse: () => variants.first,
+        );
+
+        _variantId = first.id;
+      }
+    });
+  }
+
+  /// Выбранный вариант, если он есть.
+  ProductVariant? get _variant {
+    final variants = _product?.variants ?? const <ProductVariant>[];
+
+    for (final variant in variants) {
+      if (variant.id == _variantId) return variant;
+    }
+
+    return null;
+  }
+
+  /// Что кладём в корзину и по чему считаем остаток.
+  ///
+  /// У товара с вариантами это ВАРИАНТ, у обычного — сам товар. Одно место на
+  /// весь экран: цена, остаток, счётчик и кнопка должны говорить об одном и
+  /// том же.
+  int get _orderId => _variant?.id ?? _product?.id ?? 0;
+
+  int get _availableStock => _variant?.stockQuantity ?? _product?.stockQuantity ?? 0;
+
+  bool get _canBuy {
+    final product = _product;
+
+    if (product == null) return false;
+
+    if (product.hasVariants) {
+      final variant = _variant;
+
+      return variant != null && variant.isAvailable && variant.inStock;
+    }
+
+    return product.inStock;
+  }
+
+  /// Выбрать цвет, сохранив размер, если такой есть.
+  ///
+  /// Человек смотрит красную 46-го, переключает на зелёный и ждёт зелёную
+  /// 46-го, а не «первую попавшуюся зелёную».
+  void _pickColor(int? colorId) {
+    final variants = _product?.variants ?? const <ProductVariant>[];
+    final currentSize = _variant?.dimensionId;
+
+    final sameSize = variants.where(
+      (variant) => variant.colorId == colorId && variant.dimensionId == currentSize,
+    );
+
+    final fallback = variants.where((variant) => variant.colorId == colorId);
+
+    final picked = sameSize.isNotEmpty
+        ? sameSize.first
+        : (fallback.isNotEmpty ? fallback.first : null);
+
+    if (picked == null) return;
+
+    setState(() {
+      _variantId = picked.id;
+      _quantity = 1;
+    });
+  }
+
+  /// Выбрать размер в пределах выбранного цвета.
+  void _pickSize(int? dimensionId) {
+    final variants = _product?.variants ?? const <ProductVariant>[];
+    final currentColor = _variant?.colorId;
+
+    final exact = variants.where(
+      (variant) =>
+          variant.dimensionId == dimensionId && variant.colorId == currentColor,
+    );
+
+    final any = variants.where((variant) => variant.dimensionId == dimensionId);
+
+    final picked = exact.isNotEmpty
+        ? exact.first
+        : (any.isNotEmpty ? any.first : null);
+
+    if (picked == null) return;
+
+    setState(() {
+      _variantId = picked.id;
+      _quantity = 1;
     });
   }
 
@@ -56,7 +161,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     setState(() => _isAdding = true);
 
-    final result = await CartService.add(product.id, quantity: _quantity);
+    // В корзину уходит номер ВАРИАНТА, если он выбран: остаток и цена лежат
+    // на нём, и заказ модели означал бы заказ неизвестно чего.
+    final result = await CartService.add(_orderId, quantity: _quantity);
 
     if (!mounted) return;
 
@@ -138,9 +245,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildBody(ProductItem product) {
-    final images = product.images.isNotEmpty
-        ? product.images
-        : (product.image != null ? [product.image!] : <String>[]);
+    // Картинки ВЫБРАННОГО варианта, если продавец их загрузил: красная куртка
+    // должна выглядеть красной. Нет своих — показываем картинки модели.
+    final variant = _variant;
+
+    final variantImages = variant == null
+        ? const <String>[]
+        : (variant.images.isNotEmpty
+            ? variant.images
+            : (variant.image != null ? [variant.image!] : const <String>[]));
+
+    final images = variantImages.isNotEmpty
+        ? variantImages
+        : (product.images.isNotEmpty
+            ? product.images
+            : (product.image != null ? [product.image!] : <String>[]));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(25, 8, 25, 24),
@@ -148,7 +267,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         if (images.isNotEmpty) _buildGallery(images),
         const SizedBox(height: 16),
         Text(
-          product.priceLabel,
+          // Цена ВЫБРАННОГО варианта: у 46-го и 54-го она бывает разной, и
+          // показывать цену модели значит соврать о том, сколько человек
+          // заплатит.
+          _variant?.priceLabel ?? product.priceLabel,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 26,
@@ -160,6 +282,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           product.name,
           style: const TextStyle(color: Colors.white, fontSize: 17),
         ),
+
+        if (product.hasVariants) ...[
+          const SizedBox(height: 14),
+          _buildVariants(product),
+        ],
+
         const SizedBox(height: 12),
         _buildStock(product),
         if (product.shop != null) ...[
@@ -357,11 +485,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   }
 
   Widget _buildStock(ProductItem product) {
-    if (!product.inStock) {
+    // Остаток берём у выбранного варианта: у красной 46-го он свой, и остаток
+    // модели здесь ничего не значит.
+    if (!_canBuy) {
       return _card(
-        child: const Text(
-          'Нет в наличии',
-          style: TextStyle(color: textMuted, fontSize: 15),
+        child: Text(
+          product.hasVariants && _variant != null
+              ? 'Этого варианта сейчас нет'
+              : 'Нет в наличии',
+          style: const TextStyle(color: textMuted, fontSize: 15),
         ),
       );
     }
@@ -370,7 +502,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       child: Row(
         children: [
           Text(
-            'В наличии: ${product.stockQuantity} шт.',
+            'В наличии: $_availableStock шт.',
             style: const TextStyle(color: Colors.white, fontSize: 15),
           ),
           const Spacer(),
@@ -378,6 +510,156 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         ],
       ),
     );
+  }
+
+  /// Выбор цвета и размера.
+  ///
+  /// Цвета квадратиками, размеры кнопками — так их показывают везде, где
+  /// человек уже покупал одежду, и объяснять ничего не приходится.
+  ///
+  /// Показываем ВСЕ цвета и размеры модели, а не только те, что есть в
+  /// наличии: покупатель должен видеть, что 46-й бывает, просто кончился.
+  /// Недоступное гасим и перечёркиваем.
+  Widget _buildVariants(ProductItem product) {
+    final colors = <int, ProductVariant>{};
+    final sizes = <int, ProductVariant>{};
+
+    for (final variant in product.variants) {
+      final colorId = variant.colorId;
+      final sizeId = variant.dimensionId;
+
+      if (colorId != null) colors.putIfAbsent(colorId, () => variant);
+      if (sizeId != null) sizes.putIfAbsent(sizeId, () => variant);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (colors.isNotEmpty) ...[
+          Text(
+            _variant?.colorName == null
+                ? 'Цвет'
+                : 'Цвет: ${_variant!.colorName}',
+            style: const TextStyle(color: textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: colors.entries
+                .map((entry) => _colorChip(entry.key, entry.value))
+                .toList(),
+          ),
+        ],
+
+        if (sizes.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          Text(
+            _variant?.dimensionName == null
+                ? 'Размер'
+                : 'Размер: ${_variant!.dimensionName}',
+            style: const TextStyle(color: textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: sizes.entries
+                .map((entry) => _sizeChip(product, entry.key, entry.value))
+                .toList(),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _colorChip(int colorId, ProductVariant sample) {
+    final selected = _variant?.colorId == colorId;
+    final color = _hex(sample.colorCode);
+
+    // Есть ли у этого цвета хоть один вариант в наличии. Если нет — цвет
+    // гасим: нажать можно, но человек сразу видит, что брать нечего.
+    final available = (_product?.variants ?? const <ProductVariant>[]).any(
+      (variant) =>
+          variant.colorId == colorId && variant.isAvailable && variant.inStock,
+    );
+
+    return GestureDetector(
+      onTap: () => _pickColor(colorId),
+      child: Opacity(
+        opacity: available ? 1 : 0.4,
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: color ?? secondaryBackground,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? activeIconColor : Colors.white24,
+              width: selected ? 3 : 1,
+            ),
+          ),
+          child: color == null
+              ? const Icon(Icons.palette_outlined, color: textMuted, size: 18)
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _sizeChip(ProductItem product, int sizeId, ProductVariant sample) {
+    final selected = _variant?.dimensionId == sizeId;
+    final currentColor = _variant?.colorId;
+
+    // Доступен ли этот размер В ВЫБРАННОМ ЦВЕТЕ. Именно так человек и
+    // рассуждает: «зелёная есть, а зелёной 46-го нет».
+    final available = product.variants.any(
+      (variant) =>
+          variant.dimensionId == sizeId &&
+          (currentColor == null || variant.colorId == currentColor) &&
+          variant.isAvailable &&
+          variant.inStock,
+    );
+
+    return GestureDetector(
+      onTap: () => _pickSize(sizeId),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? activeIconColor : formBackground,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: selected ? activeIconColor : Colors.white24,
+          ),
+        ),
+        child: Text(
+          sample.dimensionName ?? '—',
+          style: TextStyle(
+            color: selected
+                ? Colors.white
+                : (available ? Colors.white : textMuted),
+            fontSize: 14,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+
+            // Перечёркнутый размер это «бывает, но сейчас нет». Спрятать его
+            // значит заставить человека гадать, шьют ли такой вообще.
+            decoration: available ? null : TextDecoration.lineThrough,
+            decorationColor: textMuted,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// «#43A047» в цвет.
+  Color? _hex(String? code) {
+    final hex = (code ?? '').replaceFirst('#', '').trim();
+
+    if (hex.length != 6) return null;
+
+    final value = int.tryParse(hex, radix: 16);
+
+    return value == null ? null : Color(0xFF000000 | value);
   }
 
   /// Счётчик ограничен остатком: предлагать взять больше, чем есть, значит
@@ -399,7 +681,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
         ),
-        _stepButton(Icons.add, _quantity < product.stockQuantity, () {
+        _stepButton(Icons.add, _quantity < _availableStock, () {
           setState(() => _quantity++);
         }),
       ],
@@ -464,7 +746,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       return _buildOfflineNotice(product);
     }
 
-    final canBuy = product.inStock;
+    final canBuy = _canBuy;
 
     return SafeArea(
       child: Padding(
@@ -480,7 +762,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
             onPressed: canBuy && !_isAdding ? _addToCart : null,
             child: Text(
-              canBuy ? 'Добавить в корзину' : 'Нет в наличии',
+              canBuy
+                  ? 'Добавить в корзину'
+                  : (product.hasVariants
+                      ? 'Этого варианта нет'
+                      : 'Нет в наличии'),
               style: TextStyle(
                 color: canBuy ? Colors.white : textMuted,
                 fontSize: 16,
