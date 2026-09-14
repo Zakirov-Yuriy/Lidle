@@ -109,6 +109,56 @@ class ProductPositionAttribute {
   }
 }
 
+/// Кластер: группа позиций глазами экрана кластеров (14.09.2026).
+///
+/// Та же сущность, что `ProductGroup`, но собранная по всему разделу, а не по
+/// одной витрине: у продавца в разделе бывает несколько витрин, по одной на
+/// бренд, и экран кластеров показывает их группы вместе. Поэтому у кластера
+/// есть `brandName` — два кластера «Куртки» из разных витрин иначе не
+/// отличить.
+class ProductCluster {
+  const ProductCluster({
+    required this.id,
+    required this.name,
+    required this.publicationId,
+    this.image,
+    this.brandName,
+    this.productsCount = 0,
+    this.products = const [],
+  });
+
+  final int id;
+  final String name;
+  final int publicationId;
+  final String? image;
+  final String? brandName;
+  final int productsCount;
+  final List<ProductPosition> products;
+
+  factory ProductCluster.fromJson(Map<String, dynamic> data) {
+    final products = data['products'];
+
+    return ProductCluster(
+      id: _int(data['id']) ?? 0,
+      name: '${data['name'] ?? ''}',
+      publicationId: _int(data['publication_id']) ?? 0,
+      image: data['image']?.toString().isNotEmpty == true
+          ? data['image'].toString()
+          : null,
+      brandName: data['brand_name']?.toString().isNotEmpty == true
+          ? data['brand_name'].toString()
+          : null,
+      productsCount: _int(data['products_count']) ?? 0,
+      products: products is List
+          ? products
+                .whereType<Map<String, dynamic>>()
+                .map(ProductPosition.fromJson)
+                .toList()
+          : const [],
+    );
+  }
+}
+
 /// Позиция: тот же товар, что лежит на витрине.
 ///
 /// Здесь то, что показывает карточка позиции в кабинете и что нужно, чтобы

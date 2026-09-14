@@ -231,6 +231,47 @@ class ProductsCabinetApi {
         .toList();
   }
 
+  /// Кластеры продавца в разделе (14.09.2026).
+  ///
+  /// Кластер это группа позиций — «Куртки зима», «Куртки осень-весна».
+  /// Отдельная ручка, потому что здесь нужны группы ВСЕХ витрин продавца в
+  /// этом разделе, а публикация отдаёт только свои: у человека в одном
+  /// разделе бывает несколько витрин, по одной на бренд.
+  static Future<List<ProductCluster>> clusters(int categoryId) async {
+    final response = await ApiService.getWithQuery(
+      '/me/product-publications/clusters',
+      {'category_id': categoryId},
+    );
+
+    final data = response['data'];
+
+    if (data is! List) return const [];
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(ProductCluster.fromJson)
+        .toList();
+  }
+
+  /// Перенести позиции в другой кластер.
+  ///
+  /// Можно одну, можно несколько, можно весь кластер разом: сервер принимает
+  /// список. Вместе с группой позиция меняет и витрину, которой принадлежит
+  /// кластер.
+  static Future<void> moveToCluster({
+    required int groupId,
+    required List<int> productIds,
+  }) async {
+    final response = await ApiService.post(
+      '/me/product-publications/clusters/move',
+      {'group_id': groupId, 'product_ids': productIds},
+    );
+
+    if (response['success'] != true) {
+      throw Exception('${response['message'] ?? 'Не получилось перенести'}');
+    }
+  }
+
   /// Завести позицию. Это обычный товар: `/me/products`.
   static Future<int> createPosition({
     required int publicationId,

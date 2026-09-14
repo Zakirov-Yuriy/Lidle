@@ -403,7 +403,14 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       if (existing != null) {
         await ProductsCabinetApi.updatePosition(
           existing.id,
-          groupId: widget.group.id,
+
+          // Кластер при правке НЕ шлём. Позицию могли только что перенести в
+          // другой кластер на экране кластеров, и отправив сюда группу, с
+          // которой открыли форму, мы вернули бы её назад. Кластером
+          // распоряжается экран кластеров, форма правит поля товара.
+          //
+          // При заведении новой позиции группа шлётся: там её ещё нет.
+          groupId: null,
           position: int.tryParse(_position.text.trim()),
           name: _name.text.trim(),
           description: _description.text.trim(),
@@ -855,8 +862,15 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               color: formBackground,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Text('Перейти',
-                style: TextStyle(color: textMuted, fontSize: 15)),
+            child: Text(
+              // Показываем, В КАКОМ кластере позиция лежит сейчас. Слово
+              // «Перейти» ничего не сообщало: человек открывал экран, чтобы
+              // узнать то, что можно было написать здесь.
+              widget.group.name.isEmpty ? 'Перейти' : widget.group.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: textPrimary, fontSize: 15),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -865,9 +879,17 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ProductClustersScreen(
+                // Кластеры показываются по РАЗДЕЛУ, а не по витрине: у
+                // продавца в разделе бывает несколько витрин, и переносить
+                // позицию он хочет между любыми своими группами.
+                categoryId: widget.publication.categoryId,
                 positionName: _name.text.trim().isEmpty
                     ? 'Позиция'
                     : _name.text.trim(),
+
+                // Позицию, из карточки которой пришли, экран подсветит и
+                // отметит сразу: за переносом именно её сюда и идут.
+                highlightProductId: widget.existing?.id,
               ),
             ),
           ),
