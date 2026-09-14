@@ -513,7 +513,6 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
       if (productId > 0) {
         await _syncSizes(
           productId: productId,
-          existing: existing,
           price: price,
           quantity: int.parse(_quantity.text.trim()),
         );
@@ -554,57 +553,30 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
 
   /// Привести размеры товара к тому, что отмечено в форме.
   ///
-  /// Отмеченный размер, которого нет, — заводим. Снятый — удаляем. Остальные
-  /// не трогаем: у них уже свой остаток, и пересоздание обнулило бы его.
+  /// ОДНИМ запросом, а не по размеру на запрос: ограничитель сервера пускает
+  /// пять действий в минуту, и девять размеров обрывали сохранение на
+  /// середине с «429 Too Many Requests». Поймали 14.09.2026.
   ///
-  /// Цвет варианту ставим тот же, что у товара: подпись в корзине собирается
-  /// из цвета и размера, и вариант без цвета читался бы просто как «S».
-  ///
-  /// Отдельные запросы, а не один общий: ручки заведения и удаления товара
-  /// уже есть, а размеров у вещи пять-шесть, не пятьсот.
+  /// Сервер сам решает, что завести и что убрать: мы присылаем полный список
+  /// отмеченного. У размеров, которые остаются, свой остаток — их не трогают.
   Future<void> _syncSizes({
     required int productId,
-    required ProductPosition? existing,
     required num price,
     required int quantity,
   }) async {
-    final had = <int, int>{};
+    final kept = await ProductsCabinetApi.syncSizes(
+      productId,
+      sizes: _sizes.toList(),
+      colorId: _color?.id,
+      price: price,
+      stockQuantity: quantity,
+    );
 
-    for (final variant in existing?.variants ?? const <ProductPosition>[]) {
-      final sizeId = variant.dimension?.id;
-
-      if (sizeId != null) had[sizeId] = variant.id;
-    }
-
-    // Заводим недостающие.
-    for (final sizeId in _sizes) {
-      if (had.containsKey(sizeId)) continue;
-
-      await ProductsCabinetApi.createVariant(
-        parentId: productId,
-        categoryId: widget.publication.categoryId,
-        name: _name.text.trim(),
-        price: price,
-        stockQuantity: quantity,
-        colorId: _color?.id,
-        dimensionId: sizeId,
-      );
-    }
-
-    // Убираем снятые. Ошибку не поднимаем: заказанный размер сервер удалять
-    // откажется, и валить из-за этого всё сохранение неправильно.
-    for (final entry in had.entries) {
-      if (_sizes.contains(entry.key)) continue;
-
-      try {
-        await ProductsCabinetApi.deletePosition(entry.value);
-      } catch (e) {
-        log.e('Размер не удалился: $e');
-
-        if (mounted) {
-          _say('Размер не удалился: возможно, его уже заказывали.');
-        }
-      }
+    // Заказанный размер сервер не убирает: на него ссылается заказ
+    // покупателя. Говорим об этом прямо, иначе человек решит, что снятие не
+    // сработало.
+    if (kept.isNotEmpty && mounted) {
+      _say('Размеры, которые уже заказывали, остались: их нельзя убрать.');
     }
   }
 

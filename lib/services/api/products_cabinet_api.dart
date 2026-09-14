@@ -316,6 +316,41 @@ class ProductsCabinetApi {
     return ProductPosition.fromJson(data);
   }
 
+  /// Размеры товара ОДНИМ запросом.
+  ///
+  /// Присылаем полный список: чего нет — сервер заведёт, снятое уберёт,
+  /// остальное не тронет. По одному размеру нельзя: ограничитель пускает пять
+  /// действий в минуту, а размеров у вещи бывает девять, и сохранение
+  /// обрывалось на середине с «429 Too Many Requests» (14.09.2026).
+  ///
+  /// Возвращает номера размеров, которые сервер НЕ убрал, потому что их уже
+  /// заказывали: о них надо сказать человеку, а не молчать.
+  static Future<List<int>> syncSizes(
+    int productId, {
+    required List<int> sizes,
+    int? colorId,
+    num? price,
+    int? stockQuantity,
+  }) async {
+    final response = await ApiService.post('/me/products/$productId/variants', {
+      'sizes': sizes,
+      if (colorId != null) 'color_id': colorId,
+      if (price != null) 'price': price,
+      if (stockQuantity != null) 'stock_quantity': stockQuantity,
+    });
+
+    if (response['success'] != true) {
+      throw Exception('${response['message'] ?? 'Не получилось сохранить размеры'}');
+    }
+
+    final data = response['data'];
+    final kept = data is Map ? data['kept_ordered'] : null;
+
+    if (kept is! List) return const [];
+
+    return kept.map((item) => item is int ? item : int.tryParse('$item')).whereType<int>().toList();
+  }
+
   /// Завести вариант модели: цвет плюс размер.
   ///
   /// Это тот же товар, что и позиция, только с родителем. Раздел, витрину и
