@@ -17,9 +17,16 @@ import 'package:lidle/widgets/components/header.dart';
 /// Работает и без входа в аккаунт. Гостю имя, телефон и почта обязательны:
 /// без них его нечем найти и некуда прислать код.
 class CheckoutScreen extends StatefulWidget {
-  const CheckoutScreen({super.key, required this.cart});
+  const CheckoutScreen({super.key, required this.cart, this.productIds});
 
   final CartSnapshot cart;
+
+  /// Номера отмеченных в корзине позиций (14.09.2026).
+  ///
+  /// Пусто — оформляется вся корзина, как было раньше. Список — только эти
+  /// позиции, остальное останется лежать. `cart` при этом уже обрезан до
+  /// выбранного, чтобы состав и сумма на экране совпадали с заказом.
+  final List<int>? productIds;
 
   @override
   State<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -116,6 +123,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       contactPhone: _phoneController.text.trim(),
       contactEmail: _emailController.text.trim(),
       comment: _commentController.text.trim(),
+      productIds: widget.productIds,
       paymentAcknowledged: _paymentAcknowledged,
     );
 

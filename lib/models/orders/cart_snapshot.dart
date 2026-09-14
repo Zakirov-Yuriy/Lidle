@@ -95,6 +95,77 @@ class CartSnapshot {
 
   bool get isEmpty => shops.isEmpty;
 
+  /// Корзина из отмеченных позиций (14.09.2026).
+  ///
+  /// Нужна экрану оформления: он показывает состав и сумму, и если человек
+  /// выбрал галочками две позиции из пяти, показывать ему сумму всей корзины
+  /// значит соврать о том, сколько он сейчас заплатит.
+  ///
+  /// Суммы пересчитываем ЗДЕСЬ, хотя обычно их считает сервер. Причина:
+  /// выбор живёт на экране и до оформления серверу не известен, а спрашивать
+  /// корзину заново на каждую галочку значит ждать сеть при каждом нажатии.
+  /// Итог заказа всё равно посчитает сервер, здесь мы показываем ожидание.
+  ///
+  /// Недоступные позиции в подсчёт не идут: их нельзя купить, и в сумме их
+  /// нет и у сервера.
+  CartSnapshot onlyProducts(Set<int> productIds) {
+    if (productIds.isEmpty) return CartSnapshot.empty();
+
+    final groups = <CartShopGroup>[];
+    var items = 0;
+    var available = 0;
+    var unavailable = 0;
+    var sum = 0.0;
+
+    for (final shop in shops) {
+      final lines =
+          shop.items.where((line) => productIds.contains(line.productId)).toList();
+
+      if (lines.isEmpty) continue;
+
+      var shopSum = 0.0;
+
+      for (final line in lines) {
+        items++;
+
+        if (line.isAvailable) {
+          available++;
+          shopSum += line.sum;
+        } else {
+          unavailable++;
+        }
+      }
+
+      sum += shopSum;
+
+      groups.add(
+        CartShopGroup(
+          shopId: shop.shopId,
+          shopName: shop.shopName,
+          address: shop.address,
+          phone: shop.phone,
+          shopIsActive: shop.shopIsActive,
+          cookingTimeMinutes: shop.cookingTimeMinutes,
+          paymentMethods: shop.paymentMethods,
+          items: lines,
+          total: shopSum,
+        ),
+      );
+    }
+
+    return CartSnapshot(
+      shops: groups,
+      itemsCount: items,
+      availableItemsCount: available,
+      unavailableItemsCount: unavailable,
+      total: sum,
+      canCheckout: available > 0,
+      cartToken: cartToken,
+      contacts: contacts,
+      payment: payment,
+    );
+  }
+
   /// Есть ли позиции, которые нельзя купить прямо сейчас.
   ///
   /// Они остаются в списке намеренно: молча выкинуть их значит заставить

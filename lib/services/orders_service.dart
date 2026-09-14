@@ -21,6 +21,12 @@ class OrdersService {
     String? contactEmail,
     String? comment,
     List<int>? shopIds,
+
+    /// Номера товаров, отмеченных галочками в корзине (14.09.2026).
+    ///
+    /// Пусто — заказывается вся корзина. Список — только отмеченное,
+    /// остальное остаётся лежать.
+    List<int>? productIds,
     bool paymentAcknowledged = false,
   }) async {
     final body = <String, dynamic>{};
@@ -42,6 +48,9 @@ class OrdersService {
     }
     if (comment != null && comment.isNotEmpty) body['comment'] = comment;
     if (shopIds != null && shopIds.isNotEmpty) body['shop_ids'] = shopIds;
+    if (productIds != null && productIds.isNotEmpty) {
+      body['product_ids'] = productIds;
+    }
 
     try {
       final response = await ApiService.post('/orders', body);

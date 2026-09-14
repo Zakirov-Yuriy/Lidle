@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/pages/products/checkout_screen.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -23,6 +24,17 @@ class _CartScreenState extends State<CartScreen> {
   bool _isLoading = true;
   bool _isBusy = false;
 
+  /// Режим выбора: слева от картинок появились галочки (14.09.2026).
+  ///
+  /// Включается долгим нажатием на позицию — так же, как выбор сообщений в
+  /// мессенджерах, и человеку не надо ничему учиться. Второй вход в режим —
+  /// «Оформить заказ» без единой галочки: тогда мы не оформляем, а сначала
+  /// показываем галочки и просим отметить.
+  bool _picking = false;
+
+  /// Номера отмеченных товаров.
+  final Set<int> _picked = <int>{};
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +51,73 @@ class _CartScreenState extends State<CartScreen> {
     setState(() {
       _cart = result.cart ?? CartSnapshot.empty();
       _isLoading = false;
+
+      // Из выбора убираем то, чего в корзине больше нет: позицию могли
+      // удалить или купить, а её номер остался бы отмеченным и ушёл в
+      // следующий заказ.
+      _picked.removeWhere((id) => !_productIds().contains(id));
+
+      if (_picked.isEmpty) _picking = false;
+    });
+  }
+
+  /// Номера всех позиций корзины.
+  Set<int> _productIds() {
+    final cart = _cart;
+
+    if (cart == null) return <int>{};
+
+    return cart.shops
+        .expand((shop) => shop.items)
+        .map((line) => line.productId)
+        .toSet();
+  }
+
+  /// Номера позиций, которые можно купить прямо сейчас.
+  ///
+  /// «Выбрать все» отмечает именно их: недоступную позицию оформить нельзя, и
+  /// галочка на ней означала бы обещание, которого мы не сдержим.
+  Set<int> _availableProductIds() {
+    final cart = _cart;
+
+    if (cart == null) return <int>{};
+
+    return cart.shops
+        .expand((shop) => shop.items)
+        .where((line) => line.isAvailable)
+        .map((line) => line.productId)
+        .toSet();
+  }
+
+  void _toggle(int productId) {
+    setState(() {
+      if (!_picked.remove(productId)) _picked.add(productId);
+    });
+  }
+
+  /// Долгое нажатие: включить выбор и сразу отметить эту позицию.
+  void _startPicking(int productId, bool isAvailable) {
+    if (!isAvailable) return;
+
+    setState(() {
+      _picking = true;
+      _picked.add(productId);
+    });
+  }
+
+  void _toggleAll() {
+    setState(() {
+      final all = _availableProductIds();
+
+      // Отмечено всё — снимаем всё. Так одна кнопка работает в обе стороны,
+      // и не нужна вторая, «Снять выделение».
+      if (_picked.length >= all.length) {
+        _picked.clear();
+      } else {
+        _picked
+          ..clear()
+          ..addAll(all);
+      }
     });
   }
 
@@ -160,8 +239,56 @@ class _CartScreenState extends State<CartScreen> {
             style: TextStyle(color: textSecondary, fontSize: 13),
           ),
         const SizedBox(height: 12),
+        _buildPickBar(cart),
         ...cart.shops.map(_buildShopGroup),
       ],
+    );
+  }
+
+  /// Строка «Выбрать все» над первой точкой.
+  ///
+  /// Показывается только в режиме выбора: пока человек ничего не отмечал,
+  /// корзина заказывается целиком, и строка предлагала бы сделать то, что и
+  /// так сделано.
+  Widget _buildPickBar(CartSnapshot cart) {
+    if (!_picking) return const SizedBox.shrink();
+
+    final all = _availableProductIds();
+    final allPicked = all.isNotEmpty && _picked.length >= all.length;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          CustomCheckbox(
+            value: allPicked,
+            onChanged: (_) => _toggleAll(),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _toggleAll,
+            child: Text(
+              allPicked ? 'Снять выбор' : 'Выбрать все',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => setState(() {
+              _picking = false;
+              _picked.clear();
+            }),
+            child: const Text(
+              'Отменить',
+              style: TextStyle(color: textMuted, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -227,11 +354,36 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildLine(CartLine line) {
-    return Padding(
+    return GestureDetector(
+      // Долгое нажатие по всей строке, а не по картинке: попасть в картинку
+      // пальцем труднее, а намерение одно и то же.
+      onLongPress: () => _startPicking(line.productId, line.isAvailable),
+
+      // В режиме выбора обычное нажатие тоже отмечает: тыкать строго в
+      // квадратик 22 на 22 неудобно.
+      onTap: _picking && line.isAvailable
+          ? () => _toggle(line.productId)
+          : null,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_picking) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 17),
+              child: CustomCheckbox(
+                value: _picked.contains(line.productId),
+                // Недоступную позицию отметить нельзя: её всё равно не
+                // оформить, и галочка обещала бы несбыточное.
+                onChanged: line.isAvailable
+                    ? (_) => _toggle(line.productId)
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: SizedBox(
@@ -306,6 +458,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -362,7 +515,11 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildBottomBar(CartSnapshot cart) {
+  Widget _buildBottomBar(CartSnapshot full) {
+    // Пока выбор не включён, показываем корзину целиком: человек ничего не
+    // отмечал, значит берёт всё.
+    final cart = _picking ? full.onlyProducts(_picked) : full;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(25, 8, 25, 12),
@@ -389,7 +546,17 @@ class _CartScreenState extends State<CartScreen> {
             // Объясняем расхождение цифр словами, а не оставляем человека
             // гадать. Числа приходят с сервера готовыми: считать их на
             // клиенте значит однажды разойтись с сайтом.
-            if (cart.unavailableItemsCount > 0) ...[
+            if (_picking) ...[
+              const SizedBox(height: 4),
+              Text(
+                _picked.isEmpty
+                    ? 'Отметьте галочками то, что берёте сейчас. Остальное '
+                        'останется в корзине.'
+                    : 'В заказ пойдёт ${_positions(cart.availableItemsCount)}. '
+                        'Остальное останется в корзине.',
+                style: const TextStyle(color: textMuted, fontSize: 12),
+              ),
+            ] else if (cart.unavailableItemsCount > 0) ...[
               const SizedBox(height: 4),
               Text(
                 cart.canCheckout
@@ -417,11 +584,17 @@ class _CartScreenState extends State<CartScreen> {
                 // Кнопку гасим, когда оформлять нечего. Раньше она была живой
                 // и вела на экран оформления с нулевой суммой, где заказ
                 // всё равно отклонял сервер.
-                onPressed: _isBusy || !cart.canCheckout ? null : _openCheckout,
+                //
+                // В режиме выбора без единой галочки кнопку НЕ гасим: она
+                // должна ответить словами «отметьте, что берёте», а не молча
+                // не нажиматься. Погашенная кнопка ничего не объясняет.
+                onPressed: _isBusy || !full.canCheckout ? null : _openCheckout,
                 child: Text(
-                  cart.canCheckout ? 'Оформить заказ' : 'Нечего оформлять',
+                  _checkoutLabel(full, cart),
                   style: TextStyle(
-                    color: cart.canCheckout ? Colors.white : textMuted,
+                    color: _isBusy || !full.canCheckout
+                        ? textMuted
+                        : Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -434,10 +607,67 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  /// Что написать на кнопке.
+  String _checkoutLabel(CartSnapshot full, CartSnapshot selected) {
+    if (_picking) {
+      return _picked.isEmpty
+          ? 'Выберите товары'
+          : 'Оформить ${_positions(selected.availableItemsCount)}';
+    }
+
+    return full.canCheckout ? 'Оформить заказ' : 'Нечего оформлять';
+  }
+
   Future<void> _openCheckout() async {
+    final cart = _cart;
+
+    if (cart == null) return;
+
+    // Нажали «Оформить заказ», ничего не отмечая. Это НЕ значит «беру всё»:
+    // требование заказчика от 14.09.2026 — сначала показать галочки и ждать
+    // выбора. Заказ всей корзины делается кнопкой «Выбрать все», и это одно
+    // нажатие, зато человек видит, за что платит.
+    if (!_picking) {
+      setState(() => _picking = true);
+
+      SnackBarHelper.showWarning(
+        context,
+        'Отметьте товары, которые берёте сейчас. '
+        'Можно выбрать все одной кнопкой сверху.',
+      );
+
+      return;
+    }
+
+    if (_picked.isEmpty) {
+      SnackBarHelper.showWarning(context, 'Отметьте хотя бы один товар');
+
+      return;
+    }
+
+    final selected = _picking ? cart.onlyProducts(_picked) : cart;
+
+    if (!selected.canCheckout) {
+      SnackBarHelper.showWarning(
+        context,
+        'Из отмеченного сейчас купить нечего',
+      );
+
+      return;
+    }
+
     await Navigator.push<bool>(
       context,
-      MaterialPageRoute(builder: (_) => CheckoutScreen(cart: _cart!)),
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          cart: selected,
+
+          // Серверу шлём номера ТОЛЬКО когда человек выбирал сам. Пустой
+          // список и отсутствующий для сервера разные вещи: первый означает
+          // «ничего не беру».
+          productIds: _picking ? _picked.toList() : null,
+        ),
+      ),
     );
 
     if (!mounted) return;
