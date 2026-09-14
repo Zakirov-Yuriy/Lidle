@@ -126,6 +126,7 @@ class ProductPosition {
     this.groupId,
     this.brandId,
     this.stockQuantity = 0,
+    this.isPublished = true,
     this.attributes = const [],
     this.color,
   });
@@ -145,6 +146,13 @@ class ProductPosition {
   final int? groupId;
   final int? brandId;
   final int stockQuantity;
+
+  /// Видит ли позицию покупатель.
+  ///
+  /// Позиция заводится неопубликованной и ждёт кнопки «Опубликовать»
+  /// (14.09.2026). По умолчанию true: старые сборки сервера признака не
+  /// присылают, и красить там нечего.
+  final bool isPublished;
 
   /// Характеристики раздела, заполненные при заведении.
   final List<ProductPositionAttribute> attributes;
@@ -171,6 +179,12 @@ class ProductPosition {
       groupId: _int(data['group_id']),
       brandId: _int(data['brand_id']),
       stockQuantity: _int(data['stock_quantity']) ?? 0,
+
+      // Признака нет — считаем опубликованной: так ведут себя товары,
+      // заведённые до 14.09.2026, и подсвечивать их незачем.
+      isPublished: data['is_published'] == null
+          ? true
+          : data['is_published'] == true,
 
       // Характеристики приезжают только с полной публикацией: в списке
       // товаров сервер их не считает.

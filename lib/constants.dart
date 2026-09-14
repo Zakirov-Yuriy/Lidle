@@ -19,6 +19,16 @@ const Color textSecondary = Color(0xFF9BA5B0);
 const Color textMuted = Color(0xFF6B7684);
 const Color accentColor = Color(0xFF00B7FF);
 
+/// «Сохранено, но не опубликовано» (14.09.2026).
+///
+/// Один цвет на все три места, где об этом говорится: полоса на сводке,
+/// полоса на экране позиций и подсветка самой позиции. Разные оттенки жёлтого
+/// в трёх местах читались бы как три разных состояния.
+const Color draftAccent = Color(0xFFE0B33C);
+const Color draftBackground = Color(0xFF3A2E14);
+const Color draftBorder = Color(0xFF7A5C1E);
+const Color draftText = Color(0xFFE8D6A8);
+
 // ============================================================
 //  Размеры и отступы
 // ============================================================

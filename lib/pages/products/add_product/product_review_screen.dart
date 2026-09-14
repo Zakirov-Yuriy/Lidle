@@ -1513,14 +1513,14 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF3A2E14),
+        color: draftBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF7A5C1E)),
+        border: Border.all(color: draftBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, color: Color(0xFFE0B33C), size: 18),
+          const Icon(Icons.info_outline, color: draftAccent, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1530,7 +1530,7 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   : 'Товары сохранены, но ещё не опубликованы. Покупатели их '
                         'не видят. Нажмите «Опубликовать» внизу.',
               style: const TextStyle(
-                color: Color(0xFFE8D6A8),
+                color: draftText,
                 fontSize: 13,
                 height: 1.35,
               ),
@@ -1621,9 +1621,16 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: picking && _picked.contains(position.id)
-                            ? textPrimary
-                            : textSecondary,
+                        // Неопубликованная позиция названа жёлтым, тем же
+                        // цветом, что и полоса наверху: полоса говорит
+                        // «что-то не опубликовано», а список отвечает «вот
+                        // это». Иначе в витрине из двадцати позиций человек
+                        // ищет новую перебором.
+                        color: !position.isPublished
+                            ? draftAccent
+                            : picking && _picked.contains(position.id)
+                                ? textPrimary
+                                : textSecondary,
                         fontSize: 14,
                       ),
                     ),
@@ -1631,7 +1638,10 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                   const SizedBox(width: 12),
                   Text(
                     '${position.stockQuantity} шт',
-                    style: const TextStyle(color: textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: position.isPublished ? textSecondary : draftAccent,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),

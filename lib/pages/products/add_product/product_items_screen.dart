@@ -543,14 +543,14 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF3A2E14),
+        color: draftBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF7A5C1E)),
+        border: Border.all(color: draftBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.info_outline, color: Color(0xFFE0B33C), size: 18),
+          const Icon(Icons.info_outline, color: draftAccent, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -564,7 +564,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                   : 'Товары ещё не опубликованы. Покупатели их не видят: '
                         'вернитесь назад и нажмите «Опубликовать».',
               style: const TextStyle(
-                color: Color(0xFFE8D6A8),
+                color: draftText,
                 fontSize: 13,
                 height: 1.35,
               ),
@@ -760,6 +760,16 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                 decoration: BoxDecoration(
                   color: formBackground,
                   borderRadius: BorderRadius.circular(8),
+
+                  // Жёлтая рамка = позиция не опубликована.
+                  //
+                  // Полоса наверху говорит, что что-то ждёт публикации, а
+                  // рамка отвечает, что именно: в витрине из двадцати позиций
+                  // новую иначе ищут перебором. Опубликованные позиции рамки
+                  // не получают вовсе, чтобы отличие бросалось в глаза.
+                  border: position.isPublished
+                      ? null
+                      : Border.all(color: draftAccent, width: 3),
                   image: position.image == null
                       ? null
                       : DecorationImage(
@@ -802,7 +812,13 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                   position.name,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: textPrimary, fontSize: 14),
+                  style: TextStyle(
+                    // Название тем же жёлтым, что и рамка: на сводке позиция
+                    // отмечена именно так, и человек должен узнавать одно и
+                    // то же состояние на обоих экранах.
+                    color: position.isPublished ? textPrimary : draftAccent,
+                    fontSize: 14,
+                  ),
                 ),
               ),
               GestureDetector(
