@@ -409,8 +409,18 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   bool _isRealField(Attribute field) {
     const service = {'N', 'N1', 'L', 'L1', 'M', 'M1'};
 
-    return !service.contains(field.style) &&
-        !service.contains(field.styleSingle);
+    if (service.contains(field.style) || service.contains(field.styleSingle)) {
+      return false;
+    }
+
+    // Цвет и размер из характеристик раздела в форме НЕ показываем
+    // (14.09.2026): у товара для этого есть свои поля — «Цвет» и «Выберите
+    // размер», — и они не описание, а то, что реально лежит на складе.
+    // Два поля про одно и то же человек заполняет по-разному, и потом их
+    // значения расходятся.
+    final title = field.title.toLowerCase();
+
+    return !title.contains('цвет') && !title.contains('размер');
   }
 
   /// Сохранить.

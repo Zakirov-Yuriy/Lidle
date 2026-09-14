@@ -18,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/utils/color_names.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_delivery.dart';
 import 'package:lidle/models/products/product_staff.dart';
@@ -1502,6 +1503,39 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
     );
   }
 
+  /// Цвет позиции квадратиком. Пусто, если цвет не указан или незнаком.
+  Color? _swatch(ProductPosition position) {
+    final code = (position.color?.code ?? '').replaceFirst('#', '').trim();
+
+    if (code.length == 6) {
+      final value = int.tryParse(code, radix: 16);
+
+      if (value != null) return Color(0xFF000000 | value);
+    }
+
+    return colorByName(position.color?.name);
+  }
+
+  /// «Чёрный · S, M, L» — чем эта строка отличается от соседней.
+  String? _positionDetails(ProductPosition position) {
+    final sizes = <String>[];
+
+    for (final variant in position.variants) {
+      final size = variant.dimension?.name;
+
+      if (size != null && size.isNotEmpty && !sizes.contains(size)) {
+        sizes.add(size);
+      }
+    }
+
+    final parts = <String>[
+      if (position.color?.name != null) position.color!.name,
+      if (sizes.isNotEmpty) sizes.join(', '),
+    ];
+
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   /// Полоса «ещё не опубликовано».
   ///
   /// Та же, что на экране позиций: человек ходит между этими двумя экранами
@@ -1615,24 +1649,62 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  Expanded(
-                    child: Text(
-                      position.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        // Неопубликованная позиция названа жёлтым, тем же
-                        // цветом, что и полоса наверху: полоса говорит
-                        // «что-то не опубликовано», а список отвечает «вот
-                        // это». Иначе в витрине из двадцати позиций человек
-                        // ищет новую перебором.
-                        color: !position.isPublished
-                            ? draftAccent
-                            : picking && _picked.contains(position.id)
-                                ? textPrimary
-                                : textSecondary,
-                        fontSize: 14,
+                  // Квадратик цвета ПЕРЕД названием (14.09.2026).
+                  //
+                  // В кластере лежат несколько курток одной модели разных
+                  // цветов, и все они называются одинаково. Без цвета строки
+                  // неразличимы, и удалить нужную нельзя: человек отмечает
+                  // наугад. Нашла Аня 14.09.2026.
+                  if (_swatch(position) != null) ...[
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: _swatch(position),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.white24),
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          position.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            // Неопубликованная позиция названа жёлтым, тем же
+                            // цветом, что и полоса наверху: полоса говорит
+                            // «что-то не опубликовано», а список отвечает «вот
+                            // это». Иначе в витрине из двадцати позиций человек
+                            // ищет новую перебором.
+                            color: !position.isPublished
+                                ? draftAccent
+                                : picking && _picked.contains(position.id)
+                                    ? textPrimary
+                                    : textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+
+                        // Цвет словом и размеры второй строкой: у одинаковых
+                        // названий это единственное, чем строки отличаются.
+                        if (_positionDetails(position) != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _positionDetails(position)!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   const SizedBox(width: 12),

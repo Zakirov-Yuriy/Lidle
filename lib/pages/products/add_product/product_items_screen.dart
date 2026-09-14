@@ -899,36 +899,48 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
       }
     }
 
+    // Цвет и размеры РАЗНЫМИ строками: в узкой колонке сетки они склеивались
+    // в кашу, и длинный перечень размеров переносился прямо посреди
+    // квадратика цвета.
     return Padding(
       padding: const EdgeInsets.only(top: 4),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            if (swatch != null) ...[
-              const TextSpan(
-                text: 'Цвет: ',
-                style: TextStyle(color: textSecondary, fontSize: 13),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (swatch != null)
+            Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(
+                    text: 'Цвет: ',
+                    style: TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: colorSwatch(swatch, size: 16),
+                  ),
+                ],
               ),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: colorSwatch(swatch, size: 16),
+            ),
+          if (sizes.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: swatch != null ? 2 : 0),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Размеры: ',
+                      style: TextStyle(color: textSecondary, fontSize: 13),
+                    ),
+                    TextSpan(
+                      text: sizes.join(', '),
+                      style: const TextStyle(color: textPrimary, fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
-            ],
-            if (sizes.isNotEmpty) ...[
-              const TextSpan(
-                text: 'Размеры: ',
-                style: TextStyle(color: textSecondary, fontSize: 13),
-              ),
-              TextSpan(
-                text: sizes.join(', '),
-                style: const TextStyle(color: textPrimary, fontSize: 13),
-              ),
-            ],
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }
