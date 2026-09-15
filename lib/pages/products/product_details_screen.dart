@@ -662,15 +662,33 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     }
 
     return _card(
-      child: Row(
-        children: [
-          Text(
-            'В наличии: $_availableStock шт.',
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          ),
-          const Spacer(),
-          _stepper(product),
-        ],
+      // Счётчик здесь — это «сколько положить». Как только товар в корзине,
+      // количеством распоряжается счётчик внизу, у зелёной кнопки
+      // (15.09.2026). Два счётчика на одном экране, отвечающие за одно и то
+      // же число, — это вопрос «а какой из них настоящий», и задать его
+      // некому.
+      child: ValueListenableBuilder<Map<int, int>>(
+        valueListenable: CartService.quantities,
+        builder: (context, quantities, _) {
+          final inCart = quantities[_orderId] ?? 0;
+
+          return Row(
+            children: [
+              Text(
+                'В наличии: $_availableStock шт.',
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+              ),
+              const Spacer(),
+              if (inCart == 0)
+                _stepper(product)
+              else
+                Text(
+                  'В корзине: $inCart шт.',
+                  style: const TextStyle(color: inCartGreen, fontSize: 15),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -944,32 +962,187 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(25, 8, 25, 12),
-        child: SizedBox(
-          height: 50,
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: canBuy ? activeIconColor : secondaryBackground,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+
+        // Количество берём из ОБЩЕГО состояния корзины, а не из своего поля:
+        // товар могли положить или убрать на другом экране, и собственная
+        // память карточки разошлась бы с правдой.
+        child: ValueListenableBuilder<Map<int, int>>(
+          valueListenable: CartService.quantities,
+          builder: (context, quantities, _) {
+            final inCart = canBuy ? (quantities[_orderId] ?? 0) : 0;
+
+            return SizedBox(
+              height: 50,
+              child: inCart == 0
+                  ? _buildAddButton(product, canBuy)
+                  : _buildInCartRow(inCart),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Кнопка «В корзину», пока товара в корзине нет.
+  Widget _buildAddButton(ProductItem product, bool canBuy) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: canBuy ? activeIconColor : secondaryBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      onPressed: canBuy && !_isAdding ? _addToCart : null,
+      child: Text(
+        // «В корзину», а не «Добавить в корзину» (15.09.2026, просьба
+        // заказчика): короче и совпадает с надписью на карточке в ленте.
+        canBuy
+            ? 'В корзину'
+            : (product.hasVariants ? 'Этого варианта нет' : 'Нет в наличии'),
+        style: TextStyle(
+          color: canBuy ? Colors.white : textMuted,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+
+  /// Товар уже в корзине: зелёная кнопка и счётчик справа (15.09.2026).
+  ///
+  /// Зелёный цвет здесь несёт смысл, а не украшает: он отличает «уже лежит» от
+  /// «положить», и человек видит состояние, не читая надпись. Второе нажатие
+  /// по зелёной кнопке ведёт В КОРЗИНУ, а не кладёт второй раз — так устроены
+  /// маркетплейсы, к которым покупатель привык.
+  Widget _buildInCartRow(int inCart) {
+    return Row(
+      children: [
+        Expanded(
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: inCartGreen,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            onPressed: canBuy && !_isAdding ? _addToCart : null,
-            child: Text(
-              canBuy
-                  ? 'Добавить в корзину'
-                  : (product.hasVariants
-                      ? 'Этого варианта нет'
-                      : 'Нет в наличии'),
-              style: TextStyle(
-                color: canBuy ? Colors.white : textMuted,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              onPressed: _isAdding ? null : _openCart,
+              child: const Text(
+                'В корзине',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
         ),
+        const SizedBox(width: 10),
+        _buildCartStepper(inCart),
+      ],
+    );
+  }
+
+  /// Минус, количество, плюс — правее зелёной кнопки.
+  ///
+  /// Меняет количество СРАЗУ в корзине, а не «сколько положу, когда нажму»:
+  /// товар уже лежит там, и второе число рядом с первым человек читать не
+  /// обязан.
+  Widget _buildCartStepper(int inCart) {
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _cartStep(Icons.remove, () => _setCartQuantity(inCart - 1)),
+          SizedBox(
+            width: 34,
+            child: Center(
+              child: Text(
+                '$inCart',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          _cartStep(
+            Icons.add,
+            // Больше остатка набрать не даём: отказ придёт только при
+            // оформлении, а погасший плюс говорит о том же сразу.
+            inCart < _availableStock
+                ? () => _setCartQuantity(inCart + 1)
+                : null,
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _cartStep(IconData icon, VoidCallback? onTap) {
+    final disabled = onTap == null || _isAdding;
+
+    return GestureDetector(
+      onTap: disabled ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 42,
+        height: 50,
+        child: Icon(
+          icon,
+          size: 20,
+          color: disabled ? textMuted : Colors.white,
+        ),
+      ),
+    );
+  }
+
+  /// Изменить количество уже лежащего в корзине товара.
+  ///
+  /// Ноль удаляет позицию: минус до единицы и упор в неё заставляют искать
+  /// отдельную кнопку удаления, которой на этом экране нет.
+  Future<void> _setCartQuantity(int quantity) async {
+    if (_isAdding) return;
+
+    setState(() => _isAdding = true);
+
+    final result = quantity <= 0
+        ? await CartService.remove(_orderId)
+        : await CartService.setQuantity(_orderId, quantity);
+
+    if (!mounted) return;
+
+    setState(() => _isAdding = false);
+
+    if (!result.isOk) SnackBarHelper.showError(context, result.error!);
+  }
+
+  /// Открыть корзину, отметив в ней ЭТОТ товар.
+  ///
+  /// Отметка обязательна (15.09.2026): человек пришёл в корзину из карточки
+  /// конкретной вещи, и заставлять его искать её галочку среди прочих значит
+  /// потерять покупку на ровном месте.
+  Future<void> _openCart() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CartScreen(preselectedProductIds: {_orderId}),
+      ),
+    );
+
+    if (!mounted) return;
+
+    // Возвращаемся — перечитываем корзину: в ней могли поменять количество
+    // или оформить заказ, и кнопка внизу обязана это показать.
+    await CartService.sync();
   }
 
   Widget _card({required Widget child}) {

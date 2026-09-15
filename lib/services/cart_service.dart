@@ -3,6 +3,7 @@ import 'package:lidle/core/logger.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 
 /// Корзина покупателя.
 ///
@@ -52,6 +53,17 @@ class CartService {
     for (final shop in cart.shops) {
       for (final line in shop.items) {
         map[line.productId] = line.quantity;
+
+        // Заодно запоминаем сердечко (15.09.2026): корзина может быть первым
+        // экраном, который человек открыл после запуска, и без этого сердечки
+        // в ней были бы пустыми при полном избранном.
+        //
+        // Запоминаем ТОЛЬКО зажжённые. Старый сервер признака не присылает
+        // вовсе, и «не в избранном» от него погасило бы сердечки, приехавшие
+        // с витрины.
+        if (line.isWishlisted) {
+          ProductFavoritesService.remember(line.modelId, true, line.wishlistId);
+        }
       }
     }
 

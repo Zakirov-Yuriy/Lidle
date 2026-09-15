@@ -292,7 +292,22 @@ class CartShopGroup {
 
 class CartLine {
   final int productId;
+
+  /// Номер МОДЕЛИ (15.09.2026).
+  ///
+  /// В корзине лежит вариант — красная 46-го, — а сердечко ставится на вещь
+  /// целиком, как и отзывы. Сохраняли бы вариант, в избранном оказалось бы
+  /// пять одинаковых курток разного размера.
+  ///
+  /// У старого сервера поля нет: тогда это тот же номер, что и у позиции.
+  final int modelId;
+
   final String name;
+
+  /// «красный, 46» — какой именно вариант лежит в корзине. Пусто у товара без
+  /// вариантов.
+  final String variantLabel;
+
   final String? image;
   final String price;
   final int quantity;
@@ -304,6 +319,10 @@ class CartLine {
   /// Почему купить нельзя. Текст приходит с сервера готовым к показу.
   final String? unavailableReason;
 
+  /// Сердечко: лежит ли МОДЕЛЬ в избранном и под каким номером записи.
+  final bool isWishlisted;
+  final int? wishlistId;
+
   const CartLine({
     required this.productId,
     required this.name,
@@ -312,14 +331,22 @@ class CartLine {
     required this.sum,
     required this.stockQuantity,
     required this.isAvailable,
+    int? modelId,
+    this.variantLabel = '',
     this.image,
     this.unavailableReason,
-  });
+    this.isWishlisted = false,
+    this.wishlistId,
+  }) : modelId = modelId ?? productId;
 
   factory CartLine.fromJson(Map<String, dynamic> data) {
+    final productId = CartSnapshot._int(data['product_id']) ?? 0;
+
     return CartLine(
-      productId: CartSnapshot._int(data['product_id']) ?? 0,
+      productId: productId,
+      modelId: CartSnapshot._int(data['model_id']) ?? productId,
       name: '${data['name'] ?? ''}',
+      variantLabel: '${data['variant_label'] ?? ''}'.trim(),
       image: data['image']?.toString(),
       price: '${data['price'] ?? '0'}',
       quantity: CartSnapshot._int(data['quantity']) ?? 1,
@@ -327,6 +354,8 @@ class CartLine {
       stockQuantity: CartSnapshot._int(data['stock_quantity']) ?? 0,
       isAvailable: data['is_available'] != false,
       unavailableReason: data['unavailable_reason']?.toString(),
+      isWishlisted: data['is_wishlisted'] == true,
+      wishlistId: CartSnapshot._int(data['wishlist_id']),
     );
   }
 }

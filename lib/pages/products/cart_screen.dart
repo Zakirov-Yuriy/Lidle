@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/pages/products/checkout_screen.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -13,7 +14,14 @@ import 'package:lidle/widgets/components/header.dart';
 /// заказами: у каждого свой код получения и своя выдача. Человек должен
 /// увидеть это до оформления, а не после.
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key});
+  const CartScreen({super.key, this.preselectedProductIds});
+
+  /// Что отметить галочкой сразу при открытии (15.09.2026).
+  ///
+  /// Приходит с карточки товара: человек нажал зелёную «В корзине» и попал
+  /// сюда ради ЭТОЙ вещи. Искать её галочку среди десятка других — лишний
+  /// шаг там, где намерение уже высказано.
+  final Set<int>? preselectedProductIds;
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -24,16 +32,17 @@ class _CartScreenState extends State<CartScreen> {
   bool _isLoading = true;
   bool _isBusy = false;
 
-  /// Режим выбора: слева от картинок появились галочки (14.09.2026).
-  ///
-  /// Включается долгим нажатием на позицию — так же, как выбор сообщений в
-  /// мессенджерах, и человеку не надо ничему учиться. Второй вход в режим —
-  /// «Оформить заказ» без единой галочки: тогда мы не оформляем, а сначала
-  /// показываем галочки и просим отметить.
-  bool _picking = false;
-
   /// Номера отмеченных товаров.
+  ///
+  /// Галочки видны ВСЕГДА (15.09.2026). До этого они появлялись по долгому
+  /// нажатию, и о таком способе человек не догадывался: он видел корзину без
+  /// единой галочки и не понимал, чем отличается «оформить» от «оформить
+  /// выбранное». Теперь выбор виден сразу, прямо на снимках товаров.
   final Set<int> _picked = <int>{};
+
+  /// Начальную отметку ставим один раз. Иначе каждое перечитывание корзины
+  /// возвращало бы галочку, которую человек только что снял.
+  bool _seeded = false;
 
   @override
   void initState() {
@@ -52,12 +61,19 @@ class _CartScreenState extends State<CartScreen> {
       _cart = result.cart ?? CartSnapshot.empty();
       _isLoading = false;
 
+      if (!_seeded) {
+        _seeded = true;
+
+        final wanted = widget.preselectedProductIds ?? const <int>{};
+        final available = _availableProductIds();
+
+        _picked.addAll(wanted.where(available.contains));
+      }
+
       // Из выбора убираем то, чего в корзине больше нет: позицию могли
       // удалить или купить, а её номер остался бы отмеченным и ушёл в
       // следующий заказ.
       _picked.removeWhere((id) => !_productIds().contains(id));
-
-      if (_picked.isEmpty) _picking = false;
     });
   }
 
@@ -92,16 +108,6 @@ class _CartScreenState extends State<CartScreen> {
   void _toggle(int productId) {
     setState(() {
       if (!_picked.remove(productId)) _picked.add(productId);
-    });
-  }
-
-  /// Долгое нажатие: включить выбор и сразу отметить эту позицию.
-  void _startPicking(int productId, bool isAvailable) {
-    if (!isAvailable) return;
-
-    setState(() {
-      _picking = true;
-      _picked.add(productId);
     });
   }
 
@@ -246,13 +252,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   /// Строка «Выбрать все» над первой точкой.
-  ///
-  /// Показывается только в режиме выбора: пока человек ничего не отмечал,
-  /// корзина заказывается целиком, и строка предлагала бы сделать то, что и
-  /// так сделано.
   Widget _buildPickBar(CartSnapshot cart) {
-    if (!_picking) return const SizedBox.shrink();
-
     final all = _availableProductIds();
     final allPicked = all.isNotEmpty && _picked.length >= all.length;
 
@@ -277,15 +277,9 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: () => setState(() {
-              _picking = false;
-              _picked.clear();
-            }),
-            child: const Text(
-              'Отменить',
-              style: TextStyle(color: textMuted, fontSize: 14),
-            ),
+          Text(
+            _picked.isEmpty ? 'Ничего не выбрано' : 'Выбрано: ${_picked.length}',
+            style: const TextStyle(color: textMuted, fontSize: 13),
           ),
         ],
       ),
@@ -353,118 +347,189 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  /// Позиция корзины (переделана 15.09.2026).
+  ///
+  /// Снимок слева, галочка — В УГЛУ снимка, а не отдельным столбиком перед
+  /// ним: столбик забирал ширину у названия и уезжал от товара тем дальше,
+  /// чем длиннее строка. В углу картинки галочка всегда рядом с тем, что
+  /// отмечает.
+  ///
+  /// Снизу одна строка действий: сердечко, удаление и счётчик. Раньше
+  /// удаление стояло справа от счётчика и читалось как «минус до нуля», то
+  /// есть как часть счётчика. Теперь удаление слева, рядом с сердечком: оба
+  /// про судьбу позиции, а не про её количество.
   Widget _buildLine(CartLine line) {
-    return GestureDetector(
-      // Долгое нажатие по всей строке, а не по картинке: попасть в картинку
-      // пальцем труднее, а намерение одно и то же.
-      onLongPress: () => _startPicking(line.productId, line.isAvailable),
+    final picked = _picked.contains(line.productId);
 
-      // В режиме выбора обычное нажатие тоже отмечает: тыкать строго в
-      // квадратик 22 на 22 неудобно.
-      onTap: _picking && line.isAvailable
-          ? () => _toggle(line.productId)
-          : null,
+    return GestureDetector(
+      // Нажатие по всей карточке отмечает: целиться строго в квадратик 24 на
+      // 24 пальцем неудобно.
+      onTap: line.isAvailable ? () => _toggle(line.productId) : null,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_picking) ...[
-            Padding(
-              padding: const EdgeInsets.only(top: 17),
-              child: CustomCheckbox(
-                value: _picked.contains(line.productId),
-                // Недоступную позицию отметить нельзя: её всё равно не
-                // оформить, и галочка обещала бы несбыточное.
-                onChanged: line.isAvailable
-                    ? (_) => _toggle(line.productId)
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: line.image == null || line.image!.isEmpty
-                  ? Container(
-                      color: secondaryBackground,
-                      child: const Icon(Icons.image_outlined,
-                          color: textMuted, size: 20),
-                    )
-                  : Image.network(
-                      line.image!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => Container(
-                        color: secondaryBackground,
-                        child: const Icon(Icons.image_not_supported_outlined,
-                            color: textMuted, size: 20),
-                      ),
-                    ),
-            ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(10),
+
+          // Выбранную позицию обводим: галочка маленькая, а решение важное, и
+          // человек должен видеть выбор, скользя глазами по списку.
+          border: Border.all(
+            color: picked ? activeIconColor : Colors.transparent,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  line.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: line.isAvailable ? Colors.white : textMuted,
-                    fontSize: 14,
+                _buildPhoto(line, picked),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Сумму недоступной позиции гасим и перечёркиваем.
+                      //
+                      // Так было: она рисовалась ровно так же, как у
+                      // доступной, то есть белым и жирным. Человек видел
+                      // «1 290 ₽» у товара и «0 ₽» в итоге и считал, что
+                      // корзина не умеет складывать. Перечёркнутая цена сразу
+                      // говорит, что эти деньги в счёт не идут.
+                      Text(
+                        _money(line.sum),
+                        style: TextStyle(
+                          color: line.isAvailable ? Colors.white : textMuted,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          decoration: line.isAvailable
+                              ? TextDecoration.none
+                              : TextDecoration.lineThrough,
+                          decorationColor: textMuted,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        line.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: line.isAvailable ? Colors.white : textMuted,
+                          fontSize: 14,
+                          height: 1.2,
+                        ),
+                      ),
+
+                      // «красный, 46»: какой именно вариант лежит в корзине.
+                      // Две строки «Куртка Nika» по 4900 без подписи выглядят
+                      // как задвоение, и человек удаляет нужную.
+                      if (line.variantLabel.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          line.variantLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+
+                      // Причина приходит готовой с сервера: «товара сегодня
+                      // нет», «осталось только 2 шт.». Не переписываем её
+                      // своими словами, они будут менее точными.
+                      if (!line.isAvailable &&
+                          line.unavailableReason != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          line.unavailableReason!,
+                          style: const TextStyle(
+                            color: Color(0xFFE0A63C),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                // Сумму недоступной позиции гасим и перечёркиваем.
-                //
-                // Так было: она рисовалась ровно так же, как у доступной, то
-                // есть белым и жирным. Человек видел «1 290 ₽» у товара и
-                // «0 ₽» в итоге и считал, что корзина не умеет складывать.
-                // Перечёркнутая цена сразу говорит, что эти деньги в счёт не
-                // идут.
-                Text(
-                  _money(line.sum),
-                  style: TextStyle(
-                    color: line.isAvailable ? Colors.white : textMuted,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    decoration: line.isAvailable
-                        ? TextDecoration.none
-                        : TextDecoration.lineThrough,
-                    decorationColor: textMuted,
-                  ),
-                ),
-                // Причину приходит готовой с сервера: «товара сегодня нет»,
-                // «осталось только 2 шт.». Не переписываем её своими словами,
-                // они будут менее точными.
-                if (!line.isAvailable && line.unavailableReason != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    line.unavailableReason!,
-                    style: const TextStyle(
-                        color: Color(0xFFE0A63C), fontSize: 12),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                _buildStepper(line),
               ],
             ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 10),
+            _buildLineActions(line),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStepper(CartLine line) {
+  /// Снимок товара с галочкой в углу.
+  Widget _buildPhoto(CartLine line, bool picked) {
+    return SizedBox(
+      width: 84,
+      height: 84,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Opacity(
+                opacity: line.isAvailable ? 1 : 0.45,
+                child: line.image == null || line.image!.isEmpty
+                    ? Container(
+                        color: formBackground,
+                        alignment: Alignment.center,
+                        child: const Icon(Icons.image_outlined,
+                            color: textMuted, size: 24),
+                      )
+                    : Image.network(
+                        line.image!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (c, e, s) => Container(
+                          color: formBackground,
+                          alignment: Alignment.center,
+                          child: const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: textMuted,
+                              size: 24),
+                        ),
+                      ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 4,
+            top: 4,
+            child: _PhotoCheckbox(
+              value: picked,
+              // Недоступную позицию отметить нельзя: её всё равно не
+              // оформить, и галочка обещала бы несбыточное.
+              onTap: line.isAvailable ? () => _toggle(line.productId) : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Сердечко, удаление и счётчик.
+  Widget _buildLineActions(CartLine line) {
     return Row(
       children: [
+        // Сердечко (15.09.2026): передумал брать сейчас — сохрани, чтобы не
+        // искать заново. Без него единственный выход из корзины — удаление, и
+        // товар теряется совсем.
+        _CartFavoriteButton(modelId: line.modelId),
+        const SizedBox(width: 14),
+        GestureDetector(
+          onTap: () => _apply(() => CartService.remove(line.productId)),
+          behavior: HitTestBehavior.opaque,
+          child: const Icon(Icons.delete_outline, color: textMuted, size: 22),
+        ),
+        const Spacer(),
         _stepButton(
           Icons.remove,
           () => _apply(
@@ -491,11 +556,6 @@ class _CartScreenState extends State<CartScreen> {
                   )
               : null,
         ),
-        const Spacer(),
-        GestureDetector(
-          onTap: () => _apply(() => CartService.remove(line.productId)),
-          child: const Icon(Icons.delete_outline, color: textMuted, size: 20),
-        ),
       ],
     );
   }
@@ -504,10 +564,10 @@ class _CartScreenState extends State<CartScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 28,
-        height: 28,
+        width: 30,
+        height: 30,
         decoration: BoxDecoration(
-          color: secondaryBackground,
+          color: formBackground,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(icon, color: onTap == null ? textMuted : Colors.white, size: 16),
@@ -516,9 +576,9 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildBottomBar(CartSnapshot full) {
-    // Пока выбор не включён, показываем корзину целиком: человек ничего не
-    // отмечал, значит берёт всё.
-    final cart = _picking ? full.onlyProducts(_picked) : full;
+    // Считаем ТОЛЬКО отмеченное: галочки видны всегда, и итог обязан
+    // отвечать именно им.
+    final cart = full.onlyProducts(_picked);
 
     return SafeArea(
       child: Padding(
@@ -546,29 +606,15 @@ class _CartScreenState extends State<CartScreen> {
             // Объясняем расхождение цифр словами, а не оставляем человека
             // гадать. Числа приходят с сервера готовыми: считать их на
             // клиенте значит однажды разойтись с сайтом.
-            if (_picking) ...[
-              const SizedBox(height: 4),
-              Text(
-                _picked.isEmpty
-                    ? 'Отметьте галочками то, что берёте сейчас. Остальное '
-                        'останется в корзине.'
-                    : 'В заказ пойдёт ${_positions(cart.availableItemsCount)}. '
-                        'Остальное останется в корзине.',
-                style: const TextStyle(color: textMuted, fontSize: 12),
-              ),
-            ] else if (cart.unavailableItemsCount > 0) ...[
-              const SizedBox(height: 4),
-              Text(
-                cart.canCheckout
-                    ? 'В заказ пойдёт ${_positions(cart.availableItemsCount)} '
-                        'из ${cart.itemsCount}. Остальное сейчас купить нельзя, '
-                        'в сумму оно не входит.'
-                    : 'Сейчас купить нечего: всё, что лежит в корзине, '
-                        'недоступно. Позиции оставили, чтобы вы видели, что '
-                        'именно отвалилось.',
-                style: const TextStyle(color: textMuted, fontSize: 12),
-              ),
-            ],
+            const SizedBox(height: 4),
+            Text(
+              _picked.isEmpty
+                  ? 'Отметьте галочками то, что берёте сейчас. Остальное '
+                      'останется в корзине.'
+                  : 'В заказ пойдёт ${_positions(cart.availableItemsCount)}. '
+                      'Остальное останется в корзине.',
+              style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
             const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
@@ -609,13 +655,11 @@ class _CartScreenState extends State<CartScreen> {
 
   /// Что написать на кнопке.
   String _checkoutLabel(CartSnapshot full, CartSnapshot selected) {
-    if (_picking) {
-      return _picked.isEmpty
-          ? 'Выберите товары'
-          : 'Оформить ${_positions(selected.availableItemsCount)}';
-    }
+    if (!full.canCheckout) return 'Нечего оформлять';
 
-    return full.canCheckout ? 'Оформить заказ' : 'Нечего оформлять';
+    return _picked.isEmpty
+        ? 'Выберите товары'
+        : 'Оформить ${_positions(selected.availableItemsCount)}';
   }
 
   Future<void> _openCheckout() async {
@@ -623,13 +667,11 @@ class _CartScreenState extends State<CartScreen> {
 
     if (cart == null) return;
 
-    // Нажали «Оформить заказ», ничего не отмечая. Это НЕ значит «беру всё»:
-    // требование заказчика от 14.09.2026 — сначала показать галочки и ждать
-    // выбора. Заказ всей корзины делается кнопкой «Выбрать все», и это одно
-    // нажатие, зато человек видит, за что платит.
-    if (!_picking) {
-      setState(() => _picking = true);
-
+    // Ничего не отмечено — не оформляем. Требование заказчика от 14.09.2026:
+    // корзина не заказывается целиком сама собой, человек отмечает то, что
+    // берёт сейчас. Заказ всей корзины делается кнопкой «Выбрать все», это
+    // одно нажатие, зато человек видит, за что платит.
+    if (_picked.isEmpty) {
       SnackBarHelper.showWarning(
         context,
         'Отметьте товары, которые берёте сейчас. '
@@ -639,13 +681,7 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
-    if (_picked.isEmpty) {
-      SnackBarHelper.showWarning(context, 'Отметьте хотя бы один товар');
-
-      return;
-    }
-
-    final selected = _picking ? cart.onlyProducts(_picked) : cart;
+    final selected = cart.onlyProducts(_picked);
 
     if (!selected.canCheckout) {
       SnackBarHelper.showWarning(
@@ -662,10 +698,10 @@ class _CartScreenState extends State<CartScreen> {
         builder: (_) => CheckoutScreen(
           cart: selected,
 
-          // Серверу шлём номера ТОЛЬКО когда человек выбирал сам. Пустой
-          // список и отсутствующий для сервера разные вещи: первый означает
-          // «ничего не беру».
-          productIds: _picking ? _picked.toList() : null,
+          // Серверу шлём номера отмеченного. Сюда мы попадаем только с
+          // непустым выбором: пустой список и отсутствующий для сервера
+          // разные вещи, первый означает «ничего не беру».
+          productIds: _picked.toList(),
         ),
       ),
     );
@@ -712,5 +748,83 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     return '${buffer.toString()} ₽';
+  }
+}
+
+/// Галочка на углу снимка (15.09.2026).
+///
+/// Своя, а не общий `CustomCheckbox`: тот рисует пустой контур со светлой
+/// рамкой и на светлой фотографии пропадает целиком. Здесь у невыбранного
+/// состояния есть тёмная подложка, чтобы галочка была видна на любом снимке.
+class _PhotoCheckbox extends StatelessWidget {
+  const _PhotoCheckbox({required this.value, required this.onTap});
+
+  final bool value;
+
+  /// Пусто у позиции, которую нельзя купить: отмечать нечего.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: value
+              ? activeIconColor
+              : Colors.black.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: value ? activeIconColor : Colors.white70,
+            width: 1.5,
+          ),
+        ),
+        child: value
+            ? const Icon(Icons.check, color: Colors.white, size: 16)
+            : null,
+      ),
+    );
+  }
+}
+
+/// Сердечко на позиции корзины (15.09.2026).
+///
+/// Живёт на МОДЕЛИ, а не на варианте: в корзине лежит красная 46-го, а в
+/// избранном человек ждёт увидеть куртку. Состояние общее с витриной
+/// (`ProductFavoritesService`), поэтому сердечко, зажжённое здесь, горит и на
+/// главной.
+class _CartFavoriteButton extends StatelessWidget {
+  const _CartFavoriteButton({required this.modelId});
+
+  final int modelId;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Map<int, int?>>(
+      valueListenable: ProductFavoritesService.items,
+      builder: (context, favorites, _) {
+        final isFavorite = favorites.containsKey(modelId);
+
+        return GestureDetector(
+          onTap: () async {
+            final error = await ProductFavoritesService.toggle(modelId);
+
+            if (error != null && context.mounted) {
+              SnackBarHelper.showError(context, error);
+            }
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Icon(
+            isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: isFavorite ? Colors.red : textMuted,
+            size: 22,
+          ),
+        );
+      },
+    );
   }
 }
