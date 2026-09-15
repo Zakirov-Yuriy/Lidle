@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../hive_service.dart';
 import '../../models/home_models.dart';
 import '../../services/favorites_service.dart';
+import '../../services/product_favorites_service.dart';
 import '../../services/wishlist_service.dart';
 
 part 'wishlist_event.dart';
@@ -363,6 +364,13 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       final wishlistEntryId = item['id'];
       if (wishable is! Map<String, dynamic>) continue;
 
+      // Товары в этот набор не кладём (15.09.2026). Здесь собираются номера
+      // ОБЪЯВЛЕНИЙ, и по ним потом зажигаются сердечки на их карточках.
+      // Номер товара 20 и номер объявления 20 существуют оба, поэтому товар,
+      // попавший сюда, зажёг бы сердечко на чужом объявлении. Избранное
+      // товаров живёт отдельно, в `ProductFavoritesService`.
+      if ('${wishable['kind'] ?? ''}' == 'product') continue;
+
       // Номер объявления сервер отдаёт числом, но принимаем и строку:
       // так разбор не сломается, если формат ответа однажды изменится.
       final rawId = wishable['id'];
@@ -398,15 +406,60 @@ class WishlistBloc extends Bloc<WishlistEvent, WishlistState> {
       final id = _asString(wishable['id']);
       if (id == null || id.isEmpty) continue;
 
+      // Товар или объявление (15.09.2026). Признак приходит с сервера: до
+      // него всё избранное рисовалось карточкой объявления, и у товара
+      // показывались адрес с датой подачи вместо оценки и корзины, а
+      // сердечко снималось по номеру, который у товара означает другую вещь.
+      final isProduct = '${wishable['kind'] ?? ''}' == 'product';
+
+      final productId = isProduct
+          ? (wishable['id'] is int
+              ? wishable['id'] as int
+              : int.tryParse('${wishable['id']}'))
+          : null;
+
+      final wishlistId = wishable['wishlist_id'] is int
+          ? wishable['wishlist_id'] as int
+          : int.tryParse('${wishable['wishlist_id'] ?? ''}');
+
+      // Сердечко товара живёт в своём состоянии: номера товаров и объявлений
+      // совпадают, и общий список зажигал бы его не на той карточке.
+      if (productId != null) {
+        ProductFavoritesService.remember(productId, true, wishlistId);
+      }
+
       listings.add(Listing(
-        id:        id,
+        // Номер составной, как в ленте главной: номера товаров и объявлений
+        // совпадают, и без приставки товар считался бы уже показанным
+        // объявлением.
+        id:        isProduct ? 'product:$id' : id,
+        productId: productId,
+        isProduct: isProduct,
         slug:      _asString(wishable['slug']),
         imagePath: _asString(wishable['thumbnail'])  ?? '',
         images:    const [],
         title:     _asString(wishable['name'])       ?? '',
         price:     _asString(wishable['price'])      ?? '',
         location:  _asString(wishable['address'])    ?? '',
-        date:      _asString(wishable['created_at']) ?? '',
+
+        // У товара своя дата появления на витрине, у объявления — дата
+        // подачи. Поле `date` приходит только у товара.
+        date: _asString(wishable['date']) ??
+            _asString(wishable['created_at']) ??
+            '',
+
+        isFavorited: true,
+        wishlistId:  wishlistId,
+
+        canOrder: wishable['can_order'] == true,
+        inStock:  wishable['in_stock'] != false,
+
+        rating: wishable['rating'] == null
+            ? null
+            : double.tryParse('${wishable['rating']}'),
+        reviewsCount: wishable['reviews_count'] is int
+            ? wishable['reviews_count'] as int
+            : int.tryParse('${wishable['reviews_count'] ?? 0}') ?? 0,
       ));
     }
 
