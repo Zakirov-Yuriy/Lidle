@@ -363,19 +363,12 @@ class _FavoriteButton extends StatelessWidget {
             }
           },
           behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              // Подложка: на светлой фотографии белое сердце теряется.
-              color: Colors.black.withValues(alpha: 0.35),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : Colors.white,
-              size: 19,
-            ),
+          // Без подложки и того же размера, что на карточке главной
+          // (15.09.2026): серый кружок вокруг сердца выбивался из вида
+          // карточки.
+          child: Icon(
+            isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: isFavorite ? Colors.red : textPrimary,
           ),
         );
       },

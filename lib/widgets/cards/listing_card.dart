@@ -202,46 +202,66 @@ class _ListingCardState extends State<ListingCard> {
               SizedBox(
                 width: double.infinity,
                 height: imageHeight,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(5 * scale),
-                  child: widget.listing.imagePath.isEmpty
-                      ? Container(
-                          color: const Color(0xFF374B5C),
-                          child: Icon(
-                            Icons.image_not_supported,
-                            color: textMuted,
-                            size: 50 * scale,
-                          ),
-                        )
-                      : widget.listing.imagePath.startsWith('http')
-                      ? CachedNetworkImage(
-                          imageUrl: widget.listing.imagePath,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) =>
-                              Container(color: const Color(0xFF374B5C)),
-                          errorWidget: (context, url, error) => Container(
-                            color: const Color(0xFF374B5C),
-                            child: Icon(
-                              Icons.image,
-                              color: textMuted,
-                              size: 50 * scale,
-                            ),
-                          ),
-                        )
-                      : Image.asset(
-                          widget.listing.imagePath,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: const Color(0xFF374B5C),
-                              child: Icon(
-                                Icons.image,
-                                color: textMuted,
-                                size: 50 * scale,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5 * scale),
+                        child: widget.listing.imagePath.isEmpty
+                            ? Container(
+                                color: const Color(0xFF374B5C),
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: textMuted,
+                                  size: 50 * scale,
+                                ),
+                              )
+                            : widget.listing.imagePath.startsWith('http')
+                            ? CachedNetworkImage(
+                                imageUrl: widget.listing.imagePath,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) =>
+                                    Container(color: const Color(0xFF374B5C)),
+                                errorWidget: (context, url, error) => Container(
+                                  color: const Color(0xFF374B5C),
+                                  child: Icon(
+                                    Icons.image,
+                                    color: textMuted,
+                                    size: 50 * scale,
+                                  ),
+                                ),
+                              )
+                            : Image.asset(
+                                widget.listing.imagePath,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: const Color(0xFF374B5C),
+                                    child: Icon(
+                                      Icons.image,
+                                      color: textMuted,
+                                      size: 50 * scale,
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
+                      ),
+                    ),
+
+                    // Сердечко объявления: сверху справа, как у товара.
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: GestureDetector(
+                        onTap: _toggleFavorite,
+                        behavior: HitTestBehavior.opaque,
+                        child: Icon(
+                          _isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: _isFavorite ? Colors.red : textPrimary,
                         ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -254,6 +274,11 @@ class _ListingCardState extends State<ListingCard> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Сердечко переехало на фотографию (15.09.2026):
+                        // теперь оно стоит там же, где у товара, сверху
+                        // справа. Раньше оно жило в строке заголовка и
+                        // отъедало у названия место, а на соседней карточке
+                        // товара было в другом углу.
                         Expanded(
                           child: Text(
                             widget.listing.title,
@@ -264,16 +289,6 @@ class _ListingCardState extends State<ListingCard> {
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        SizedBox(width: 4 * scale),
-                        GestureDetector(
-                          onTap: _toggleFavorite,
-                          child: Icon(
-                            _isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: _isFavorite ? Colors.red : textPrimary,
                           ),
                         ),
                       ],
@@ -529,20 +544,12 @@ class _ListingCardState extends State<ListingCard> {
             }
           },
           behavior: HitTestBehavior.opaque,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              // Подложка под иконкой: на светлой фотографии белое сердце
-              // иначе не видно вовсе.
-              color: Colors.black.withValues(alpha: 0.35),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: isFavorite ? Colors.red : Colors.white,
-              size: 19,
-            ),
+          // Без подложки и того же размера, что у объявления (15.09.2026):
+          // серый кружок вокруг сердца выбивался из вида карточки, а два
+          // разных сердца в одной ленте читались как две разные кнопки.
+          child: Icon(
+            isFavorite ? Icons.favorite : Icons.favorite_border,
+            color: isFavorite ? Colors.red : textPrimary,
           ),
         );
       },
