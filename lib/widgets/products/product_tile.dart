@@ -97,7 +97,20 @@ class ProductTile extends StatelessWidget {
                   // читается как плохая оценка, хотя оценок просто нет.
                   const SizedBox(height: 4),
                   if (product.rating == null || product.reviewsCount == 0)
-                    const Icon(Icons.star_border, color: Color(0xFFFFB800), size: 14)
+                    Row(
+                      children: [
+                        const Icon(Icons.star_border, color: Color(0xFFFFB800), size: 14),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Будь первым!',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: textMuted, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    )
                   else
                     Row(
                       children: [

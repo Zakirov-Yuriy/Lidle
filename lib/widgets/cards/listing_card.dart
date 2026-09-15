@@ -429,7 +429,10 @@ class _ListingCardState extends State<ListingCard> {
               SizedBox(height: 2 * scale),
 
               Text(
-                '${widget.listing.price} ₽',
+                // Тем же форматом, что у объявления: «5 400 ₽», а не
+                // «5400.0 ₽». Цена товара приходит числом, и её строковый вид
+                // показывал хвост с нулём (15.09.2026).
+                _formatPriceWithRuble(widget.listing.price),
                 style: TextStyle(
                   color: textPrimary,
                   fontSize: 16 * scale,
@@ -586,10 +589,23 @@ class _ListingCardState extends State<ListingCard> {
     final count = widget.listing.reviewsCount;
 
     if (count == 0 || widget.listing.rating == null) {
-      return Icon(
-        Icons.star_border,
-        color: const Color(0xFFFFB800),
-        size: 14 * scale,
+      return Row(
+        children: [
+          Icon(
+            Icons.star_border,
+            color: const Color(0xFFFFB800),
+            size: 14 * scale,
+          ),
+          SizedBox(width: 4 * scale),
+          Expanded(
+            child: Text(
+              'Будь первым!',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: textMuted, fontSize: 12 * scale),
+            ),
+          ),
+        ],
       );
     }
 

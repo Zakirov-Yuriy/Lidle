@@ -375,9 +375,14 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               // Без отзывов — одна пустая звезда, без числа и без призывов
               // (15.09.2026). «0,0» читается как плохая оценка, а «будьте
               // первым» человек видит как просьбу, о которой не просил.
-              if (product.rating == null || product.reviewsCount == 0)
-                const Icon(Icons.star_border, color: Color(0xFFF5B301), size: 18)
-              else ...[
+              if (product.rating == null || product.reviewsCount == 0) ...[
+                const Icon(Icons.star_border, color: Color(0xFFF5B301), size: 18),
+                const SizedBox(width: 6),
+                const Text(
+                  'Будь первым!',
+                  style: TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ] else ...[
                 const Icon(Icons.star, color: Color(0xFFF5B301), size: 18),
                 const SizedBox(width: 4),
                 Text(
