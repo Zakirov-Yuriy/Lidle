@@ -30,6 +30,23 @@ class ProductItem {
   final double? rating;
   final int reviewsCount;
 
+  /// Может ли ЭТОТ человек оставить отзыв (15.09.2026).
+  ///
+  /// Решает сервер: отзыв оставляет только тот, кто купил товар и забрал
+  /// заказ. Повторять это правило в приложении значит однажды показать
+  /// кнопку, которая ответит отказом.
+  final bool canReview;
+
+  /// Почему отзыв нельзя оставить. Текст готовый, с сервера.
+  final String? reviewNotAllowed;
+
+  /// Свой отзыв, если человек его уже писал: диалог открывается заполненным,
+  /// а кнопка подписана «Изменить отзыв».
+  final ProductReview? myReview;
+
+  /// Отзывы, которые видит покупатель: опубликованные, с оценкой 4 и выше.
+  final List<ProductReview> reviews;
+
   /// Когда товар появился на витрине, строкой «дд.мм.гггг» (15.09.2026).
   ///
   /// Приходит готовой с сервера, как у объявления: считается она по дате
@@ -91,6 +108,10 @@ class ProductItem {
     this.orderNotice,
     this.variants = const [],
     this.date = '',
+    this.canReview = false,
+    this.reviewNotAllowed,
+    this.myReview,
+    this.reviews = const [],
   });
 
   factory ProductItem.fromJson(Map<String, dynamic> data) {
@@ -113,6 +134,21 @@ class ProductItem {
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
       date: '${data['date'] ?? ''}'.trim(),
+      canReview: data['can_review'] == true,
+      reviewNotAllowed: () {
+        final text = '${data['review_not_allowed'] ?? ''}'.trim();
+
+        return text.isEmpty ? null : text;
+      }(),
+      myReview: data['my_review'] is Map<String, dynamic>
+          ? ProductReview.fromJson(data['my_review'] as Map<String, dynamic>)
+          : null,
+      reviews: data['reviews'] is List
+          ? (data['reviews'] as List)
+                .whereType<Map<String, dynamic>>()
+                .map(ProductReview.fromJson)
+                .toList()
+          : const [],
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
       canOrder: data['can_order'] != false,
       orderNotice: () {
@@ -384,5 +420,76 @@ class ProductVariant {
     }
 
     return '$buffer ₽';
+  }
+}
+
+/// Отзыв о товаре (15.09.2026).
+///
+/// Разбирает ДВА вида ответа сразу, и это не лень. Карточка товара отдаёт
+/// отзывы полями 2023 года (`reaction`, `text`, `like`), а новая ручка
+/// отзывов — общим для площадки словарём (`rating`, `comment`, `likes`),
+/// тем же, каким приходят отзывы на объявления и на компании. Пока живы оба,
+/// клиент должен понимать оба, иначе список в карточке и список на экране
+/// отзывов разойдутся.
+class ProductReview {
+  final int id;
+
+  /// Оценка от одной до пяти звёзд.
+  final int rating;
+
+  final String comment;
+  final List<String> images;
+
+  final String author;
+
+  /// Свой отзыв можно исправить или убрать: кнопку показываем только автору.
+  final bool isMine;
+
+  final int likes;
+  final int dislikes;
+
+  /// Когда отзыв оставлен, строкой с сервера.
+  final String date;
+
+  const ProductReview({
+    required this.id,
+    required this.rating,
+    this.comment = '',
+    this.images = const [],
+    this.author = '',
+    this.isMine = false,
+    this.likes = 0,
+    this.dislikes = 0,
+    this.date = '',
+  });
+
+  factory ProductReview.fromJson(Map<String, dynamic> data) {
+    final images = data['images'];
+
+    return ProductReview(
+      id: ProductItem._int(data['id']) ?? 0,
+      rating: ProductItem._int(data['rating'] ?? data['reaction']) ?? 0,
+      comment: '${data['comment'] ?? data['text'] ?? ''}'.trim(),
+      images: images is List
+          ? images.map((e) => '$e').where((e) => e.isNotEmpty).toList()
+          : const [],
+      author: '${data['author'] ?? ''}'.trim(),
+      isMine: data['is_mine'] == true,
+      likes: ProductItem._int(data['likes'] ?? data['like']) ?? 0,
+      dislikes: ProductItem._int(data['dislikes'] ?? data['dislike']) ?? 0,
+      date: '${data['date'] ?? data['created_at'] ?? ''}'.trim(),
+    );
+  }
+
+  /// Дата коротко, «15.09.2026». Сервер отдаёт её машинным видом, а человеку
+  /// в списке нужен день, а не момент с часовым поясом.
+  String get shortDate {
+    final parsed = DateTime.tryParse(date);
+
+    if (parsed == null) return date;
+
+    String two(int value) => value.toString().padLeft(2, '0');
+
+    return '${two(parsed.day)}.${two(parsed.month)}.${parsed.year}';
   }
 }

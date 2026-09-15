@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/services/orders_service.dart';
@@ -427,6 +428,27 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   /// Продавец ведёт заказ по пути «принял, собрал, выдал», покупатель может
   /// только отменить, пока заказ жив.
   List<Widget> _actionsFor(OrderModel order) {
+    // Выданный заказ покупателя это единственное место, где можно оставить
+    // отзыв (15.09.2026). Живым он уже не считается, поэтому проверка на
+    // отзывы стоит ВЫШЕ выхода по `isAlive`: иначе кнопки не было бы никогда.
+    if (!_incoming && order.status == 'completed') {
+      final reviewable = order.items
+          .where((line) => line.productId != null)
+          .toList();
+
+      if (reviewable.isEmpty) return const [];
+
+      return [
+        for (final line in reviewable)
+          _action(
+            reviewable.length == 1
+                ? 'Оставить отзыв'
+                : 'Отзыв: ${line.name}',
+            () => _openReview(line),
+          ),
+      ];
+    }
+
     if (!order.isAlive) return const [];
 
     final actions = <Widget>[];
@@ -450,6 +472,23 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     return actions;
   }
 
+  /// Открыть окно отзыва на позицию выданного заказа.
+  ///
+  /// Возвращаем `OrderActionResult`, чтобы кнопка отзыва жила рядом с
+  /// «Принять» и «Отменить» и не заводила второй вид кнопок ради одного
+  /// действия.
+  Future<OrderActionResult> _openReview(OrderLine line) async {
+    final saved = await showProductReviewDialog(
+      context: context,
+      productId: line.productId!,
+      title: line.name,
+    );
+
+    // Сообщение о сохранении показывает сам диалог: второе поверх него
+    // человек прочитать не успеет.
+    return OrderActionResult(isOk: saved == true, message: '');
+  }
+
   Widget _action(
     String label,
     Future<OrderActionResult> Function() run, {
@@ -461,10 +500,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
         if (!mounted) return;
 
-        if (result.isOk) {
-          SnackBarHelper.showSuccess(context, result.message);
-        } else {
-          SnackBarHelper.showError(context, result.message);
+        // Пустое сообщение означает, что действие уже сказало о себе само:
+        // так ведёт себя отзыв, у которого есть своё окно со своим ответом.
+        // Показать поверх него пустую плашку значит мигнуть человеку в лицо.
+        if (result.message.isNotEmpty) {
+          if (result.isOk) {
+            SnackBarHelper.showSuccess(context, result.message);
+          } else {
+            SnackBarHelper.showError(context, result.message);
+          }
         }
 
         _load();

@@ -134,6 +134,71 @@ class ProductsService {
     }
   }
 
+  /// Оставить или переписать отзыв о товаре (15.09.2026).
+  ///
+  /// Возвращает `null`, если всё хорошо, иначе текст ошибки с сервера — он
+  /// написан для показа человеку («Отзыв можно оставить после того, как
+  /// заберёте заказ с этим товаром»), и придумывать свой значит сказать менее
+  /// точно.
+  static Future<String?> submitReview(
+    int productId, {
+    required int rating,
+    String? comment,
+  }) async {
+    try {
+      final response = await ApiService.post('/products/$productId/reviews', {
+        'reaction': rating,
+        if (comment != null && comment.trim().isNotEmpty)
+          'text': comment.trim(),
+      });
+
+      if (response['success'] == true) return null;
+
+      return '${response['message'] ?? 'Не получилось сохранить отзыв'}';
+    } catch (e) {
+      log.d('Отзыв о товаре $productId не сохранился: $e');
+
+      return 'Не получилось сохранить отзыв. Проверьте связь.';
+    }
+  }
+
+  /// Удалить свой отзыв.
+  static Future<String?> deleteReview(int reviewId) async {
+    try {
+      final response = await ApiService.delete('/product-reviews/$reviewId');
+
+      if (response['success'] == true) return null;
+
+      return '${response['message'] ?? 'Не получилось удалить отзыв'}';
+    } catch (e) {
+      log.d('Отзыв $reviewId не удалился: $e');
+
+      return 'Не получилось удалить отзыв. Проверьте связь.';
+    }
+  }
+
+  /// Отзывы товара отдельной страницей: в карточке их десять, остальные здесь.
+  static Future<List<ProductReview>> reviews(int productId, {int page = 1}) async {
+    try {
+      final response = await ApiService.get(
+        '/products/$productId/reviews?page=$page',
+      );
+
+      final data = response['data'];
+
+      if (data is! List) return const [];
+
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(ProductReview.fromJson)
+          .toList();
+    } catch (e) {
+      log.d('Отзывы товара $productId не загрузились: $e');
+
+      return const [];
+    }
+  }
+
   static String _queryString(Map<String, String> query) {
     return query.entries
         .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')

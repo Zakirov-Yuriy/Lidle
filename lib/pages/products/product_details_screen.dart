@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/services/cart_service.dart';
@@ -336,8 +337,166 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
         ],
+
+        // Отзывы покупателей (15.09.2026). Последним блоком: человек читает
+        // их, когда уже посмотрел цену, размеры и описание.
+        const SizedBox(height: 12),
+        _buildReviews(product),
       ],
     );
+  }
+
+  /// Отзывы о товаре: оценка, кнопка и список.
+  ///
+  /// Оценка и число отзывов приходят с сервера посчитанными по одному
+  /// правилу для витрины и карточки: опубликованные, четыре звезды и выше.
+  /// Считать их здесь значило бы однажды показать в карточке одно число, а на
+  /// главной другое.
+  Widget _buildReviews(ProductItem product) {
+    final reviews = product.reviews;
+    final mine = product.myReview;
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Отзывы',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              if (product.rating != null && product.reviewsCount > 0) ...[
+                const Icon(Icons.star, color: Color(0xFFF5B301), size: 18),
+                const SizedBox(width: 4),
+                Text(
+                  product.rating!.toStringAsFixed(1).replaceAll('.', ','),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _ratingsLabel(product.reviewsCount),
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ],
+            ],
+          ),
+
+          if (reviews.isEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Отзывов пока нет. Будьте первым, кто расскажет о товаре.',
+              style: TextStyle(color: textSecondary, fontSize: 13),
+            ),
+          ],
+
+          for (final review in reviews) ...[
+            const SizedBox(height: 12),
+            _reviewTile(review),
+          ],
+
+          const SizedBox(height: 12),
+
+          // Кнопка есть только у того, кто может ей воспользоваться: право
+          // решает сервер, а отказ он объясняет словами.
+          if (product.canReview)
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: () => _openReviewDialog(product),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: activeIconColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text(
+                  mine == null ? 'Оставить отзыв' : 'Изменить отзыв',
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                ),
+              ),
+            )
+          else if (product.reviewNotAllowed != null)
+            Text(
+              product.reviewNotAllowed!,
+              style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reviewTile(ProductReview review) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (var i = 1; i <= 5; i++)
+              Icon(
+                i <= review.rating ? Icons.star : Icons.star_border,
+                color: const Color(0xFFF5B301),
+                size: 15,
+              ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                review.author.isEmpty ? 'Покупатель' : review.author,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ),
+            Text(
+              review.shortDate,
+              style: const TextStyle(color: textMuted, fontSize: 12),
+            ),
+          ],
+        ),
+        if (review.comment.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            review.comment,
+            style: const TextStyle(color: textSecondary, fontSize: 13),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _openReviewDialog(ProductItem product) async {
+    final saved = await showProductReviewDialog(
+      context: context,
+      productId: product.id,
+      title: product.name,
+      existing: product.myReview,
+    );
+
+    // Перечитываем карточку целиком: после отзыва меняется не только список,
+    // но и оценка, и подпись кнопки.
+    if (saved == true && mounted) await _load();
+  }
+
+  /// «10 903 оценки» и «1 оценка»: число и слово должны сходиться.
+  String _ratingsLabel(int count) {
+    final last = count % 10;
+    final lastTwo = count % 100;
+
+    if (lastTwo >= 11 && lastTwo <= 14) return '$count оценок';
+    if (last == 1) return '$count оценка';
+    if (last >= 2 && last <= 4) return '$count оценки';
+
+    return '$count оценок';
   }
 
   /// Характеристики товара.

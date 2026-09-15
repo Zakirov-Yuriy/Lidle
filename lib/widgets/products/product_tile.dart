@@ -89,6 +89,37 @@ class ProductTile extends StatelessWidget {
                       style: const TextStyle(color: textMuted, fontSize: 12),
                     ),
                   ],
+                  // Оценка товара (15.09.2026): звезда, значение и число
+                  // оценок, как на карточке главной. Показываем только когда
+                  // отзывы есть: «0,0 · 0 оценок» отпугивает сильнее, чем
+                  // отсутствие строки.
+                  if (product.rating != null && product.reviewsCount > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Color(0xFFFFB800), size: 14),
+                        const SizedBox(width: 3),
+                        Text(
+                          product.rating!.toStringAsFixed(1).replaceAll('.', ','),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            '· ${product.reviewsCount}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: textMuted, fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+
                   // Дата появления на витрине (15.09.2026): такая же подпись,
                   // как на карточке главной, чтобы товар в разделе и товар в
                   // ленте читались одинаково.
