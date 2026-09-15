@@ -28,6 +28,11 @@ class OrdersService {
     /// остальное остаётся лежать.
     List<int>? productIds,
     bool paymentAcknowledged = false,
+
+    /// Чем покупатель платит, по способу на точку: номер точки — ключ
+    /// способа (15.09.2026). Точек в заказе бывает несколько, и принимают
+    /// они разное, поэтому выбор именно по точкам, а не один на весь заказ.
+    Map<int, String>? paymentMethods,
   }) async {
     final body = <String, dynamic>{};
 
@@ -50,6 +55,14 @@ class OrdersService {
     if (shopIds != null && shopIds.isNotEmpty) body['shop_ids'] = shopIds;
     if (productIds != null && productIds.isNotEmpty) {
       body['product_ids'] = productIds;
+    }
+
+    // Ключи отправляем строками: номер точки в JSON-объекте всё равно станет
+    // строкой, и лучше сделать это здесь, чем полагаться на кодировщик.
+    if (paymentMethods != null && paymentMethods.isNotEmpty) {
+      body['payment_methods'] = paymentMethods.map(
+        (shopId, method) => MapEntry('$shopId', method),
+      );
     }
 
     try {

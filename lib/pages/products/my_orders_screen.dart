@@ -312,6 +312,29 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               ),
             ],
           ),
+          // Чем платят (15.09.2026). Продавцу это нужно не меньше, чем
+          // покупателю: по этой строке он понимает, ждать наличные у прилавка
+          // или проверять поступление на счёт.
+          if ((order.paymentMethodTitle ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text('Оплата',
+                    style: TextStyle(color: textSecondary, fontSize: 13)),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    order.paymentOnPickup
+                        ? '${order.paymentMethodTitle} при получении'
+                        : order.paymentMethodTitle!,
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
           // Код показываем, только пока заказ живой: у выданного и отменённого
           // он уже ничего не открывает, а на экране только мешает.
           if (order.isAlive && order.pickupCode != null) ...[

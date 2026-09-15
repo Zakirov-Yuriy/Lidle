@@ -56,9 +56,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// подтверждает.
   bool _paymentAcknowledged = false;
 
+  /// Чем человек платит в каждой точке: номер точки — ключ способа.
+  ///
+  /// По способу на точку, а не один на заказ: товары разных точек станут
+  /// разными заказами, и принимают эти точки разное. Заранее подставляем
+  /// первый способ из списка, чтобы человек не упирался в обязательный выбор
+  /// там, где выбирать не из чего.
+  final Map<int, String> _paymentMethods = {};
+
   @override
   void initState() {
     super.initState();
+
+    for (final group in widget.cart.shops) {
+      if (group.paymentMethods.isNotEmpty) {
+        _paymentMethods[group.shopId] = group.paymentMethods.first.key;
+      }
+    }
 
     final token = HiveService.getUserData('token');
     _isGuest = token == null || '$token'.isEmpty;
@@ -125,6 +139,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       comment: _commentController.text.trim(),
       productIds: widget.productIds,
       paymentAcknowledged: _paymentAcknowledged,
+      paymentMethods: _paymentMethods,
     );
 
     if (!mounted) return;
@@ -203,7 +218,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         _buildContacts(),
         const SizedBox(height: 12),
         _buildShops(),
-        if (_needsAcknowledgement) ...[
+        if (_needsAcknowledgement || _allCash) ...[
           const SizedBox(height: 12),
           _buildPaymentNotice(),
         ],
@@ -211,11 +226,55 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  /// Требует ли сервер подтверждение оплаты.
+  /// Требует ли оформление подтверждения перевода.
   ///
-  /// Старый сервер этого блока не присылает. Тогда галочки нет и оформление
-  /// работает как раньше: ломать заказ из-за отсутствующего поля нельзя.
-  bool get _needsAcknowledgement => widget.cart.payment.required;
+  /// Решает выбранный способ оплаты, а не экран (15.09.2026). Галочка
+  /// появилась под перевод денег продавцу вперёд; при расчёте наличными на
+  /// месте переводить нечего, и подтверждать тоже.
+  ///
+  /// Если способов у точки нет вовсе, это старый сервер: тогда работаем как
+  /// раньше и смотрим на его общий признак.
+  bool get _needsAcknowledgement {
+    var sawMethods = false;
+
+    for (final group in widget.cart.shops) {
+      if (group.paymentMethods.isEmpty) continue;
+
+      sawMethods = true;
+
+      final chosen = _methodFor(group);
+
+      if (chosen == null || chosen.needsAcknowledgement) return true;
+    }
+
+    return sawMethods ? false : widget.cart.payment.required;
+  }
+
+  /// Выбранный способ оплаты точки.
+  CartPaymentMethod? _methodFor(CartShopGroup group) {
+    final key = _paymentMethods[group.shopId];
+
+    for (final method in group.paymentMethods) {
+      if (method.key == key) return method;
+    }
+
+    return null;
+  }
+
+  /// Выбраны ли везде наличные: тогда вместо галочки показываем одну строку.
+  bool get _allCash {
+    var sawMethods = false;
+
+    for (final group in widget.cart.shops) {
+      if (group.paymentMethods.isEmpty) continue;
+
+      sawMethods = true;
+
+      if (_methodFor(group)?.isCash != true) return false;
+    }
+
+    return sawMethods;
+  }
 
   /// Предупреждение об оплате и галочка.
   ///
@@ -223,6 +282,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// видел, кому и сколько платит.
   Widget _buildPaymentNotice() {
     final payment = widget.cart.payment;
+
+    // Наличные: предупреждать не о чем и подтверждать нечего. Вместо
+    // предупреждения про перевод человек читает одну строку про расчёт на
+    // месте (15.09.2026).
+    if (!_needsAcknowledgement) {
+      return _card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Оплата',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              payment.cashNotice.isNotEmpty
+                  ? payment.cashNotice
+                  : 'Заказ вы оплачиваете в точке, когда забираете его.',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+          ],
+        ),
+      );
+    }
 
     return _card(
       child: Column(
@@ -273,34 +360,87 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  /// Реквизиты точки: куда именно уходят деньги.
+  /// Выбор способа оплаты для точки (15.09.2026).
   ///
-  /// Показываются рядом с её товарами, а не общим списком: точек в заказе
-  /// может быть несколько, и счета у них разные.
-  Widget _buildPaymentMethods(List<CartPaymentMethod> methods) {
+  /// Стоит рядом с её товарами, а не общим блоком: точек в заказе может быть
+  /// несколько, и принимают они разное. Реквизиты показываются только у
+  /// выбранного способа: четыре счёта подряд человек не читает, а тот, по
+  /// которому он собрался платить, должен быть на виду.
+  Widget _buildPaymentChooser(CartShopGroup group) {
+    final methods = group.paymentMethods;
+
+    if (methods.isEmpty) return const SizedBox.shrink();
+
+    final chosen = _paymentMethods[group.shopId];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
-        const Text(
-          'Оплата продавцу',
-          style: TextStyle(color: textSecondary, fontSize: 12),
+        const SizedBox(height: 10),
+        Text(
+          widget.cart.payment.title,
+          style: const TextStyle(color: textSecondary, fontSize: 12),
         ),
         for (final method in methods) ...[
-          const SizedBox(height: 4),
-          Text(
-            method.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: methods.length == 1
+                ? null
+                : () => setState(
+                    () => _paymentMethods[group.shopId] = method.key,
+                  ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Radio<String>(
+                  value: method.key,
+                  groupValue: chosen,
+                  activeColor: activeIconColor,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (value) => setState(
+                    () => _paymentMethods[group.shopId] = value ?? method.key,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        method.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (method.hint.isNotEmpty)
+                        Text(
+                          method.hint,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+
+                      // Реквизиты только у выбранного: платить человек будет
+                      // по ним, а чужие счета рядом только мешают.
+                      if (method.key == chosen)
+                        for (final field in method.fields)
+                          Text(
+                            '${field.label}: ${field.value}',
+                            style: const TextStyle(
+                              color: textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-          for (final entry in method.fields.entries)
-            Text(
-              '${CartPaymentMethod.fieldTitle(entry.key)}: ${entry.value}',
-              style: const TextStyle(color: textSecondary, fontSize: 12),
-            ),
         ],
       ],
     );
@@ -451,8 +591,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                   ),
-              if (group.paymentMethods.isNotEmpty)
-                _buildPaymentMethods(group.paymentMethods),
+              _buildPaymentChooser(group),
             ],
           ),
         );

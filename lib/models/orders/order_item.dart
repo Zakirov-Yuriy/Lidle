@@ -32,6 +32,16 @@ class OrderModel {
   final ShopBrief? shop;
   final List<OrderLine> items;
 
+  /// Чем платят по заказу: «Наличные», «Системы быстрых платежей» и так
+  /// далее. Название приходит копией из заказа, а не из справочника: пункт
+  /// могли переименовать, а заказ должен остаться таким, каким его оформляли
+  /// (15.09.2026). Пусто у заказов, оформленных до выбора способа.
+  final String? paymentMethodTitle;
+
+  /// Расчёт на месте при получении. Продавцу это главное: ждать наличные у
+  /// прилавка или проверять поступление.
+  final bool paymentOnPickup;
+
   final DateTime? createdAt;
   final DateTime? acceptedAt;
   final DateTime? readyAt;
@@ -52,6 +62,8 @@ class OrderModel {
     this.comment,
     this.cancelReason,
     this.shop,
+    this.paymentMethodTitle,
+    this.paymentOnPickup = false,
     this.createdAt,
     this.acceptedAt,
     this.readyAt,
@@ -75,6 +87,11 @@ class OrderModel {
       comment: data['comment']?.toString(),
       cancelReason: data['cancel_reason']?.toString(),
       shop: ShopBrief.tryParse(data['shop']),
+      paymentMethodTitle: data['payment'] is Map
+          ? data['payment']['method_title']?.toString()
+          : null,
+      paymentOnPickup:
+          data['payment'] is Map && data['payment']['on_pickup'] == true,
       items: items is List
           ? items.whereType<Map<String, dynamic>>().map(OrderLine.fromJson).toList()
           : const [],
