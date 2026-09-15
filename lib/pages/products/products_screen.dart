@@ -239,48 +239,11 @@ class _ProductsScreenState extends State<ProductsScreen> {
               ],
             ),
           ),
-          const Spacer(),
-          GestureDetector(
-            onTap: _openCart,
-
-            // Счётчик берём из общего состояния корзины, а не из своего поля.
-            //
-            // Так было: число обновлялось только после явного обращения к
-            // корзине. С 14.09.2026 количество меняется прямо в плитке товара
-            // (минус и плюс), и своё поле отставало бы от того, что человек
-            // видит на той же странице.
-            child: ValueListenableBuilder<int>(
-              valueListenable: CartService.itemsCount,
-              builder: (context, count, _) => Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  const Icon(Icons.shopping_cart_outlined,
-                      color: Colors.white, size: 26),
-                  if (count > 0)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: activeIconColor,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '$count',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+          // Корзины в шапке больше нет (15.09.2026, просьба заказчика).
+          //
+          // Она дублировала корзину нижнего меню, которое на этом экране
+          // появилось 14.09.2026: две одинаковые иконки на одном экране, и
+          // обе ведут в одно место. Счётчик и переход целиком переехали вниз.
         ],
       ),
     );
@@ -575,12 +538,4 @@ class _ProductsScreenState extends State<ProductsScreen> {
     if (mounted) _refreshCartCount();
   }
 
-  Future<void> _openCart() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const CartScreen()),
-    );
-
-    if (mounted) _refreshCartCount();
-  }
 }
