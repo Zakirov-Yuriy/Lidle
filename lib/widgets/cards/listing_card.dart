@@ -215,44 +215,7 @@ class _ListingCardState extends State<ListingCard> {
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(5 * scale),
-                        child: widget.listing.imagePath.isEmpty
-                            ? Container(
-                                color: const Color(0xFF374B5C),
-                                child: Icon(
-                                  Icons.image_not_supported,
-                                  color: textMuted,
-                                  size: 50 * scale,
-                                ),
-                              )
-                            : widget.listing.imagePath.startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: widget.listing.imagePath,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) =>
-                                    Container(color: const Color(0xFF374B5C)),
-                                errorWidget: (context, url, error) => Container(
-                                  color: const Color(0xFF374B5C),
-                                  child: Icon(
-                                    Icons.image,
-                                    color: textMuted,
-                                    size: 50 * scale,
-                                  ),
-                                ),
-                              )
-                            : Image.asset(
-                                widget.listing.imagePath,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: const Color(0xFF374B5C),
-                                    child: Icon(
-                                      Icons.image,
-                                      color: textMuted,
-                                      size: 50 * scale,
-                                    ),
-                                  );
-                                },
-                              ),
+                        child: _advertGallery(scale),
                       ),
                     ),
 
@@ -273,7 +236,16 @@ class _ListingCardState extends State<ListingCard> {
                 ),
               ),
 
-              SizedBox(height: 18),
+              // Точки ПОД картинкой, а не поверх неё (15.09.2026): на снимке
+              // они спорят с самим снимком и теряются на светлом.
+              if (_productImages.length > 1) ...[
+                SizedBox(height: 4 * scale),
+                _productDots(),
+                SizedBox(height: 4 * scale),
+              ] else
+                SizedBox(height: 8 * scale),
+
+              SizedBox(height: 10),
 
               Expanded(
                 child: Column(
@@ -413,17 +385,6 @@ class _ListingCardState extends State<ListingCard> {
                       ),
                     ),
 
-                    // Точки под фотографиями. Показываем только когда листать
-                    // есть что: одинокая точка под единственным снимком
-                    // выглядит как недогруженная карточка.
-                    if (_productImages.length > 1)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 8,
-                        child: _productDots(),
-                      ),
-
                     if (widget.listing.canOrder)
                       Positioned(
                         right: 6,
@@ -451,7 +412,17 @@ class _ListingCardState extends State<ListingCard> {
               // Отступ под картинкой держит место для свешенной кнопки
               // корзины: она выходит за край снимка на четырнадцать точек, и
               // без запаса легла бы прямо на название.
-              SizedBox(height: 18 * scale),
+              //
+              // Здесь же точки листалки: под картинкой, а не поверх неё. На
+              // снимке они спорят с самим снимком и теряются на светлом.
+              // Показываем их только когда листать есть что: одинокая точка
+              // под единственным снимком выглядит как недогруженная карточка.
+              if (_productImages.length > 1) ...[
+                SizedBox(height: 3 * scale),
+                _productDots(),
+                SizedBox(height: 3 * scale),
+              ] else
+                SizedBox(height: 10 * scale),
 
               // Сначала НАЗВАНИЕ, потом цена (15.09.2026, просьба заказчика).
               //
@@ -526,7 +497,11 @@ class _ListingCardState extends State<ListingCard> {
     );
   }
 
-  /// Фотографии товара для листалки.
+  /// Фотографии карточки для листалки.
+  ///
+  /// Одинаково для товара и для объявления (15.09.2026): у объявления набор
+  /// приезжает уменьшенными копиями в `thumbnails`, у товара — в `images`, а
+  /// на карточке они ведут себя одинаково, потому что лежат в одной ленте.
   ///
   /// Пусто у старого сервера, который набор не присылает: тогда показываем
   /// одну, ту, что приехала в `imagePath`.
@@ -538,6 +513,52 @@ class _ListingCardState extends State<ListingCard> {
     return widget.listing.imagePath.isEmpty
         ? const []
         : [widget.listing.imagePath];
+  }
+
+  /// Фотографии объявления, которые листаются пальцем (15.09.2026).
+  ///
+  /// Отдельно от товарной: у объявления картинка грузится через кэш и умеет
+  /// быть локальным файлом из ассетов, а у товара всегда приходит ссылкой.
+  Widget _advertGallery(double scale) {
+    final images = _productImages;
+
+    if (images.isEmpty) {
+      return Container(
+        color: const Color(0xFF374B5C),
+        child: Icon(Icons.image_not_supported, color: textMuted, size: 50 * scale),
+      );
+    }
+
+    if (images.length == 1) return _advertImage(images.first, scale);
+
+    return PageView.builder(
+      itemCount: images.length,
+      onPageChanged: (index) => setState(() => _imagePage = index),
+      itemBuilder: (context, index) => _advertImage(images[index], scale),
+    );
+  }
+
+  Widget _advertImage(String path, double scale) {
+    if (path.startsWith('http')) {
+      return CachedNetworkImage(
+        imageUrl: path,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => Container(color: const Color(0xFF374B5C)),
+        errorWidget: (context, url, error) => Container(
+          color: const Color(0xFF374B5C),
+          child: Icon(Icons.image, color: textMuted, size: 50 * scale),
+        ),
+      );
+    }
+
+    return Image.asset(
+      path,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Container(
+        color: const Color(0xFF374B5C),
+        child: Icon(Icons.image, color: textMuted, size: 50 * scale),
+      ),
+    );
   }
 
   /// Фотографии товара, которые листаются пальцем (15.09.2026).
@@ -592,9 +613,10 @@ class _ListingCardState extends State<ListingCard> {
             shape: BoxShape.circle,
             // Непоказанные точки приглушены, а не спрятаны: человек должен
             // видеть, сколько всего снимков, а не только где он сейчас.
-            color: isCurrent
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.45),
+            //
+            // Цвета под фон карточки, а не под снимок: точки переехали из-под
+            // картинки наружу (15.09.2026).
+            color: isCurrent ? textPrimary : textMuted,
           ),
         );
       }),
