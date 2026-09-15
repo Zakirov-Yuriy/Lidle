@@ -67,6 +67,14 @@ class _ListingCardState extends State<ListingCard> {
   /// Кнопка «В корзину» нажата и ответ ещё не пришёл.
   bool _isAdding = false;
 
+  /// Какая фотография товара сейчас видна в карточке (15.09.2026).
+  ///
+  /// Карточка в ленте листается пальцем, не заходя в товар. Номер держим
+  /// здесь, а не в контроллере страницы: контроллер на каждую карточку это
+  /// лишний объект на десятки карточек в списке, а всё, что нам нужно, —
+  /// подсветить нужную точку внизу.
+  int _imagePage = 0;
+
   @override
   void initState() {
     super.initState();
@@ -401,29 +409,20 @@ class _ListingCardState extends State<ListingCard> {
                     Positioned.fill(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: widget.listing.imagePath.isEmpty
-                            ? Container(
-                                color: formBackground,
-                                child: const Icon(
-                                  Icons.photo_outlined,
-                                  color: textMuted,
-                                  size: 28,
-                                ),
-                              )
-                            : Image.network(
-                                widget.listing.imagePath,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: formBackground,
-                                  child: const Icon(
-                                    Icons.photo_outlined,
-                                    color: textMuted,
-                                    size: 28,
-                                  ),
-                                ),
-                              ),
+                        child: _productGallery(),
                       ),
                     ),
+
+                    // Точки под фотографиями. Показываем только когда листать
+                    // есть что: одинокая точка под единственным снимком
+                    // выглядит как недогруженная карточка.
+                    if (_productImages.length > 1)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 8,
+                        child: _productDots(),
+                      ),
 
                     if (widget.listing.canOrder)
                       Positioned(
@@ -524,6 +523,81 @@ class _ListingCardState extends State<ListingCard> {
           ),
         );
       },
+    );
+  }
+
+  /// Фотографии товара для листалки.
+  ///
+  /// Пусто у старого сервера, который набор не присылает: тогда показываем
+  /// одну, ту, что приехала в `imagePath`.
+  List<String> get _productImages {
+    final images = widget.listing.images.where((e) => e.isNotEmpty).toList();
+
+    if (images.isNotEmpty) return images;
+
+    return widget.listing.imagePath.isEmpty
+        ? const []
+        : [widget.listing.imagePath];
+  }
+
+  /// Фотографии товара, которые листаются пальцем (15.09.2026).
+  ///
+  /// `PageView` заводим ТОЛЬКО когда снимков больше одного. Он перехватывает
+  /// горизонтальные жесты, и ставить его под единственную картинку значит
+  /// без нужды мешать листанию самой ленты.
+  Widget _productGallery() {
+    final images = _productImages;
+
+    if (images.isEmpty) {
+      return Container(
+        color: formBackground,
+        child: const Icon(Icons.photo_outlined, color: textMuted, size: 28),
+      );
+    }
+
+    if (images.length == 1) return _productImage(images.first);
+
+    return PageView.builder(
+      itemCount: images.length,
+      onPageChanged: (index) => setState(() => _imagePage = index),
+      itemBuilder: (context, index) => _productImage(images[index]),
+    );
+  }
+
+  Widget _productImage(String url) {
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        color: formBackground,
+        child: const Icon(Icons.photo_outlined, color: textMuted, size: 28),
+      ),
+    );
+  }
+
+  /// Точки под фотографиями: какая по счёту сейчас видна.
+  Widget _productDots() {
+    final count = _productImages.length;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (index) {
+        final isCurrent = index == _imagePage;
+
+        return Container(
+          width: isCurrent ? 6 : 5,
+          height: isCurrent ? 6 : 5,
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            // Непоказанные точки приглушены, а не спрятаны: человек должен
+            // видеть, сколько всего снимков, а не только где он сейчас.
+            color: isCurrent
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.45),
+          ),
+        );
+      }),
     );
   }
 

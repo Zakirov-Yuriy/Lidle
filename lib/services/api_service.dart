@@ -890,6 +890,15 @@ class ApiService {
           : int.tryParse('${item['id']}'),
       isProduct: true,
       imagePath: '${item['image'] ?? ''}',
+
+      // Весь набор фотографий: карточка в ленте листается пальцем
+      // (15.09.2026). Пусто у старого сервера — тогда показывается одна.
+      images: item['images'] is List
+          ? (item['images'] as List)
+                .map((e) => '$e')
+                .where((e) => e.isNotEmpty)
+                .toList()
+          : const [],
       title: '${item['name'] ?? ''}',
 
       // Цена товара приходит строкой («10.00»), у объявления числом.
