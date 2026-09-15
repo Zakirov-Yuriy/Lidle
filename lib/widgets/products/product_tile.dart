@@ -66,7 +66,10 @@ class ProductTile extends StatelessWidget {
                   // смотрит, сколько она стоит.
                   Text(
                     product.name,
-                    maxLines: 2,
+
+                    // Одна строка: иначе длинное название отнимает высоту у
+                    // картинки, и плитки в ряду разъезжаются (15.09.2026).
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,

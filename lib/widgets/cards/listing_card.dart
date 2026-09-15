@@ -421,7 +421,13 @@ class _ListingCardState extends State<ListingCard> {
               // наперёд.
               Text(
                 widget.listing.title,
-                maxLines: 2,
+
+                // Ровно ОДНА строка, как у объявления (15.09.2026). Длинное
+                // название раньше занимало две, подпись росла, и картинка на
+                // эту же высоту сжималась: в одном ряду карточки оказывались
+                // с разными по размеру фотографиями. Обрезать название
+                // многоточием честнее, чем портить фотографию товара.
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(color: textPrimary, fontSize: 14 * scale),
               ),
