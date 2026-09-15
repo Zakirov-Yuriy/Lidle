@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
@@ -28,6 +31,15 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
   int _quantity = 1;
   int _currentImage = 0;
+
+  /// Подсвеченная оценка, пока открыт диалог отзыва (15.09.2026). Ровно как
+  /// на карточке объявления: звезда остаётся закрашенной, чтобы человек видел,
+  /// что именно он нажал.
+  int _selectedStars = 0;
+
+  /// Раскрыт ли текст-подсказка в блоке «Поделиться». Свёрнут по умолчанию:
+  /// иконки и кнопка видны всегда, а объяснение нужно один раз.
+  bool _shareExpanded = false;
 
   /// Выбранный вариант: цвет плюс размер (14.09.2026).
   ///
@@ -350,6 +362,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           _buildSellerButton(product.shop!),
         ],
 
+        // Поделиться товаром (15.09.2026). Порядок как на карточке
+        // объявления: после продавца, перед отзывами.
+        const SizedBox(height: 12),
+        _buildShareCard(product),
+
         // Отзывы покупателей (15.09.2026). Последним блоком: человек читает
         // их, когда уже посмотрел цену, размеры и описание.
         const SizedBox(height: 12),
@@ -358,12 +375,23 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  /// Отзывы о товаре: оценка, кнопка и список.
+  /// Отзывы о товаре: оценка, звёзды и список.
   ///
   /// Оценка и число отзывов приходят с сервера посчитанными по одному
   /// правилу для витрины и карточки: опубликованные, четыре звезды и выше.
   /// Считать их здесь значило бы однажды показать в карточке одно число, а на
   /// главной другое.
+  ///
+  /// Отзыв оставляется ЗВЁЗДАМИ (15.09.2026), как на карточке объявления: пять
+  /// звёзд, нажатие на любую открывает диалог с этой оценкой. Так было:
+  /// кнопка «Оставить отзыв» показывалась только тому, кому она разрешена, а
+  /// остальные видели блок, который выглядел как сломанный — заголовок,
+  /// пустая звезда и строка мелким шрифтом.
+  ///
+  /// Звёзды видны и нажимаются у ВСЕХ, включая тех, кому отзыв не положен:
+  /// правило «отзыв оставляет только тот, кто купил» никуда не делось, но
+  /// объяснять его надо в ответ на действие, а не заранее и мелко. Отказ
+  /// приходит словами с сервера, своих не выдумываем.
   Widget _buildReviews(ProductItem product) {
     final reviews = product.reviews;
     final mine = product.myReview;
@@ -414,42 +442,77 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
           ),
 
+          const SizedBox(height: 14),
+          Text(
+            mine == null ? 'Оставить отзыв' : 'Изменить отзыв',
+            style: const TextStyle(
+              color: textPrimary,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+
+          // Звёзды тем же размером и цветом, что на карточке объявления:
+          // человек уже пользовался ими там, и вторые, устроенные по-своему,
+          // заставили бы его разбираться заново.
+          //
+          // Подсвечены по своему прежнему отзыву, если он есть: человек
+          // должен видеть, что именно он тогда поставил.
+          Row(
+            children: List.generate(
+              5,
+              (index) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => _onReviewStarTap(product, index + 1),
+                child: Icon(
+                  Icons.star,
+                  color: index < (_selectedStars == 0
+                          ? (mine?.rating ?? 0)
+                          : _selectedStars)
+                      ? Colors.amber
+                      : Colors.grey,
+                  size: 32,
+                ),
+              ),
+            ),
+          ),
+
           for (final review in reviews) ...[
             const SizedBox(height: 12),
             _reviewTile(review),
           ],
-
-          if (product.canReview || product.reviewNotAllowed != null)
-            const SizedBox(height: 12),
-
-          // Кнопка есть только у того, кто может ей воспользоваться: право
-          // решает сервер, а отказ он объясняет словами.
-          if (product.canReview)
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: () => _openReviewDialog(product),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: activeIconColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  mine == null ? 'Оставить отзыв' : 'Изменить отзыв',
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                ),
-              ),
-            )
-          else if (product.reviewNotAllowed != null)
-            Text(
-              product.reviewNotAllowed!,
-              style: const TextStyle(color: textMuted, fontSize: 12),
-            ),
         ],
       ),
     );
+  }
+
+  /// Нажатие по звезде.
+  ///
+  /// Отказ объясняем ЗДЕСЬ и словами сервера: правило «отзыв оставляет только
+  /// тот, кто купил» живёт на сервере, и переписывать его текст в приложении
+  /// значит однажды сказать человеку не то, за что его на самом деле не
+  /// пустили.
+  Future<void> _onReviewStarTap(ProductItem product, int rating) async {
+    if (!product.canReview) {
+      SnackBarHelper.showWarning(
+        context,
+        product.reviewNotAllowed ??
+            'Отзыв можно оставить после того, как заберёте заказ с этим товаром',
+      );
+
+      return;
+    }
+
+    setState(() => _selectedStars = rating);
+
+    await _openReviewDialog(product, rating: rating);
+
+    if (!mounted) return;
+
+    // Своя подсветка нужна только пока открыт диалог: после сохранения
+    // карточка перечитана, и звёзды загорятся по настоящему отзыву.
+    setState(() => _selectedStars = 0);
   }
 
   Widget _reviewTile(ProductReview review) {
@@ -490,12 +553,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     );
   }
 
-  Future<void> _openReviewDialog(ProductItem product) async {
+  Future<void> _openReviewDialog(ProductItem product, {int rating = 0}) async {
     final saved = await showProductReviewDialog(
       context: context,
       productId: product.id,
       title: product.name,
       existing: product.myReview,
+      initialRating: rating,
     );
 
     // Перечитываем карточку целиком: после отзыва меняется не только список,
@@ -922,6 +986,120 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(icon, color: enabled ? Colors.white : textMuted, size: 18),
+      ),
+    );
+  }
+
+  /// Ссылка на товар на сайте.
+  ///
+  /// Вид тот же, что у объявления (`/advertisements/{id}-{слаг}`), только
+  /// раздел свой. ВНИМАНИЕ: адрес страницы товара на сайте нигде не записан,
+  /// он выведен по образцу объявления — если сайт откроет товары по другому
+  /// пути, править надо ЗДЕСЬ, одно место на весь экран.
+  ///
+  /// Слаг приходит с сервера. Нет слага — обходимся номером: ссылка с одним
+  /// номером рабочая, просто некрасивая.
+  String _productUrl(ProductItem product) {
+    final base = '${AppConfig().websiteUrl}/products';
+    final slug = product.slug ?? '';
+
+    return slug.isEmpty ? '$base/${product.id}' : '$base/${product.id}-$slug';
+  }
+
+  /// «Поделиться товаром» (15.09.2026).
+  ///
+  /// Тот же блок, что на карточке объявления: заголовок с шевроном, ряд
+  /// иконок соцсетей и кнопка системного окна «Поделиться». Иконки видны
+  /// всегда, свёрнут только поясняющий текст.
+  ///
+  /// Кнопки с QR-кодом здесь нет: экран с кодом написан под объявление и
+  /// принимает его номер. Товарам такой же нужен отдельно, и делать вид, что
+  /// он уже есть, значит показать кнопку, которая откроет чужую страницу.
+  Widget _buildShareCard(ProductItem product) {
+    final url = _productUrl(product);
+
+    final text = '${product.name}\n'
+        'Цена: ${product.priceLabel}\n\n'
+        'Присоединяйся к LIDLE!\n'
+        '$url';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _shareExpanded = !_shareExpanded),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+              child: Row(
+                children: [
+                  const Text(
+                    'Поделиться товаром',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _shareExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: ShareIconsRow(url: url, text: product.name),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: SizedBox(
+              width: double.infinity,
+              height: 47,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: activeIconColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () => Share.share(text),
+                icon: const Icon(Icons.share, color: Colors.white, size: 18),
+                label: const Text(
+                  'Поделиться ссылкой',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (_shareExpanded)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 0, 14, 14),
+              child: Text(
+                'Отправьте ссылку друзьям или в соцсети удобным для вас способом',
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 14,
+                  height: 1.35,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
