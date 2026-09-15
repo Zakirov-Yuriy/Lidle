@@ -18,7 +18,11 @@ import 'package:lidle/widgets/components/header.dart';
 /// заказами: у каждого свой код получения и своя выдача. Человек должен
 /// увидеть это до оформления, а не после.
 class CartScreen extends StatefulWidget {
-  const CartScreen({super.key, this.preselectedProductIds});
+  const CartScreen({
+    super.key,
+    this.preselectedProductIds,
+    this.selectAllOnOpen = false,
+  });
 
   /// Что отметить галочкой сразу при открытии (15.09.2026).
   ///
@@ -26,6 +30,19 @@ class CartScreen extends StatefulWidget {
   /// сюда ради ЭТОЙ вещи. Искать её галочку среди десятка других — лишний
   /// шаг там, где намерение уже высказано.
   final Set<int>? preselectedProductIds;
+
+  /// Отметить ВСЁ доступное при открытии (15.09.2026).
+  ///
+  /// Так корзина открывается из нижнего меню витрины: человек шёл не за
+  /// конкретной вещью, а «посмотреть корзину», и там его ждёт готовый к
+  /// оформлению список. Снять лишнее одним нажатием проще, чем отметить всё
+  /// по одному.
+  ///
+  /// НЕ везде: с карточки товара отмечается только тот товар, ради которого
+  /// человек пришёл, а по умолчанию корзина открывается вовсе без отметок —
+  /// требование заказчика от 14.09.2026, чтобы заказ не оформлялся целиком
+  /// сам собой.
+  final bool selectAllOnOpen;
 
   @override
   State<CartScreen> createState() => _CartScreenState();
@@ -68,10 +85,15 @@ class _CartScreenState extends State<CartScreen> {
       if (!_seeded) {
         _seeded = true;
 
-        final wanted = widget.preselectedProductIds ?? const <int>{};
         final available = _availableProductIds();
 
-        _picked.addAll(wanted.where(available.contains));
+        if (widget.selectAllOnOpen) {
+          _picked.addAll(available);
+        } else {
+          final wanted = widget.preselectedProductIds ?? const <int>{};
+
+          _picked.addAll(wanted.where(available.contains));
+        }
       }
 
       // Из выбора убираем то, чего в корзине больше нет: позицию могли

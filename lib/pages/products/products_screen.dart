@@ -204,7 +204,13 @@ class _ProductsScreenState extends State<ProductsScreen> {
         onCartTap: () async {
           await Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const CartScreen()),
+            MaterialPageRoute(
+              // Отсюда корзина открывается со ВСЕМ отмеченным (15.09.2026):
+              // человек шёл не за конкретной вещью, а «посмотреть корзину», и
+              // получает готовый к оформлению список. Снять лишнее одним
+              // нажатием проще, чем отметить всё по одному.
+              builder: (_) => const CartScreen(selectAllOnOpen: true),
+            ),
           );
 
           if (!mounted) return;
