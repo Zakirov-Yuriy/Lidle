@@ -1015,6 +1015,10 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   /// по зелёной кнопке ведёт В КОРЗИНУ, а не кладёт второй раз — так устроены
   /// маркетплейсы, к которым покупатель привык.
   Widget _buildInCartRow(int inCart) {
+    // Кнопка и счётчик ровно пополам (15.09.2026, просьба заказчика). Оба
+    // `Expanded`, а не кнопка на весь остаток и счётчик по содержимому: при
+    // втором варианте ширина счётчика прыгала от числа — «1» и «10» дают
+    // разную ширину, — и кнопка каждый раз меняла размер.
     return Row(
       children: [
         Expanded(
@@ -1030,6 +1034,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               onPressed: _isAdding ? null : _openCart,
               child: const Text(
                 'В корзине',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -1040,7 +1046,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
         ),
         const SizedBox(width: 10),
-        _buildCartStepper(inCart),
+        Expanded(child: _buildCartStepper(inCart)),
       ],
     );
   }
@@ -1058,11 +1064,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           _cartStep(Icons.remove, () => _setCartQuantity(inCart - 1)),
-          SizedBox(
-            width: 34,
+          Expanded(
             child: Center(
               child: Text(
                 '$inCart',

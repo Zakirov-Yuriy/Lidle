@@ -1,3 +1,7 @@
+// `PathOperation` нужен вырезу под галочку. Явно, а не надеясь на реэкспорт
+// из material: вырез перестал бы собираться от смены версии Flutter.
+import 'dart:ui' show PathOperation;
+
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
@@ -465,7 +469,13 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  /// Снимок товара с галочкой в углу.
+  /// Снимок товара с галочкой в ВЫРЕЗАННОМ углу (15.09.2026).
+  ///
+  /// Галочка не лежит поверх фотографии, а стоит в вырезе: у снимка срезан
+  /// левый верхний угол ровно под неё. Поверх снимка галочка всегда спорила
+  /// бы с тем, что под ней нарисовано, — на светлом кадре пропадала, на
+  /// тёмном закрывала товар. В вырезе она стоит на фоне карточки и читается
+  /// одинаково на любой фотографии.
   Widget _buildPhoto(CartLine line, bool picked) {
     return SizedBox(
       width: 84,
@@ -474,8 +484,8 @@ class _CartScreenState extends State<CartScreen> {
         clipBehavior: Clip.none,
         children: [
           Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+            child: ClipPath(
+              clipper: const _NotchedPhotoClipper(radius: 8, notch: 30),
               child: Opacity(
                 opacity: line.isAvailable ? 1 : 0.45,
                 child: line.image == null || line.image!.isEmpty
@@ -500,9 +510,10 @@ class _CartScreenState extends State<CartScreen> {
               ),
             ),
           ),
+          // Ровно в вырезе: вырез 30, галочка 24, по 3 с каждой стороны.
           Positioned(
-            left: 4,
-            top: 4,
+            left: 3,
+            top: 3,
             child: _PhotoCheckbox(
               value: picked,
               // Недоступную позицию отметить нельзя: её всё равно не
@@ -751,11 +762,52 @@ class _CartScreenState extends State<CartScreen> {
   }
 }
 
-/// Галочка на углу снимка (15.09.2026).
+/// Вырез под галочку в левом верхнем углу снимка (15.09.2026).
 ///
-/// Своя, а не общий `CustomCheckbox`: тот рисует пустой контур со светлой
-/// рамкой и на светлой фотографии пропадает целиком. Здесь у невыбранного
-/// состояния есть тёмная подложка, чтобы галочка была видна на любом снимке.
+/// Скруглённый прямоугольник, из которого вычтен скруглённый квадрат в углу.
+/// Вычитание, а не рисование поверх: поверх пришлось бы класть плашку цвета
+/// карточки, и она рассыпалась бы при любой смене фона, а вырез есть форма
+/// самой картинки.
+class _NotchedPhotoClipper extends CustomClipper<Path> {
+  const _NotchedPhotoClipper({required this.radius, required this.notch});
+
+  /// Скругление углов снимка.
+  final double radius;
+
+  /// Сторона выреза.
+  final double notch;
+
+  @override
+  Path getClip(Size size) {
+    final body = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
+      );
+
+    // Квадрат выреза выведен ЗА края снимка на скругление: наружные его углы
+    // не видны, а внутренний, единственный видимый, получается скруглённым —
+    // иначе вырез выглядел бы вырубленным ножницами.
+    final cut = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTRB(-radius, -radius, notch, notch),
+          Radius.circular(radius),
+        ),
+      );
+
+    return Path.combine(PathOperation.difference, body, cut);
+  }
+
+  @override
+  bool shouldReclip(covariant _NotchedPhotoClipper old) =>
+      old.radius != radius || old.notch != notch;
+}
+
+/// Галочка в вырезе снимка (15.09.2026).
+///
+/// Своя, а не общий `CustomCheckbox`: тому нужен размер под вырез и галочка
+/// внутри, а не залитый квадратик. Стоит она на фоне карточки, а не на
+/// фотографии, поэтому подложка ей не нужна — нужна только рамка.
 class _PhotoCheckbox extends StatelessWidget {
   const _PhotoCheckbox({required this.value, required this.onTap});
 
@@ -774,12 +826,10 @@ class _PhotoCheckbox extends StatelessWidget {
         width: 24,
         height: 24,
         decoration: BoxDecoration(
-          color: value
-              ? activeIconColor
-              : Colors.black.withValues(alpha: 0.45),
+          color: value ? activeIconColor : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: value ? activeIconColor : Colors.white70,
+            color: value ? activeIconColor : Colors.white54,
             width: 1.5,
           ),
         ),
