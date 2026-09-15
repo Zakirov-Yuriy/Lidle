@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 
 /// Карточка товара в витрине.
@@ -48,12 +49,27 @@ class ProductTile extends StatelessWidget {
             // подпись занимает столько, сколько ей нужно, а картинка забирает
             // всё, что осталось.
             Expanded(
-              child: Opacity(
-                opacity: available ? 1 : 0.45,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: _image(),
-                ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Opacity(
+                    opacity: available ? 1 : 0.45,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: _image(),
+                    ),
+                  ),
+
+                  // Сердечко (15.09.2026): такое же, как на карточке главной,
+                  // и на том же общем состоянии, чтобы в ленте и в разделе
+                  // один товар выглядел одинаково.
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: _FavoriteButton(productId: product.id),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -312,6 +328,57 @@ class _CartControlState extends State<_CartControl> {
           color: disabled ? Colors.white38 : Colors.white,
         ),
       ),
+    );
+  }
+}
+
+/// Сердечко на плитке товара (15.09.2026).
+///
+/// Отдельным виджетом, а не куском вёрстки: плитка не имеет состояния, а
+/// сердечку нужно перерисовываться на чужие действия — тот же товар могли
+/// сохранить в ленте главной.
+class _FavoriteButton extends StatelessWidget {
+  const _FavoriteButton({required this.productId});
+
+  final int productId;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Map<int, int?>>(
+      valueListenable: ProductFavoritesService.items,
+      builder: (context, favorites, _) {
+        final isFavorite = favorites.containsKey(productId);
+
+        return GestureDetector(
+          onTap: () async {
+            final error = await ProductFavoritesService.toggle(productId);
+
+            if (error != null && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(error),
+                  backgroundColor: secondaryBackground,
+                ),
+              );
+            }
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              // Подложка: на светлой фотографии белое сердце теряется.
+              color: Colors.black.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.red : Colors.white,
+              size: 19,
+            ),
+          ),
+        );
+      },
     );
   }
 }

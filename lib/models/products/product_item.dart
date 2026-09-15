@@ -47,6 +47,12 @@ class ProductItem {
   /// Отзывы, которые видит покупатель: опубликованные, с оценкой 4 и выше.
   final List<ProductReview> reviews;
 
+  /// Сохранён ли товар в избранном у ЭТОГО человека (15.09.2026).
+  final bool isWishlisted;
+
+  /// Номер записи избранного: по нему сердечко снимается одним запросом.
+  final int? wishlistId;
+
   /// Когда товар появился на витрине, строкой «дд.мм.гггг» (15.09.2026).
   ///
   /// Приходит готовой с сервера, как у объявления: считается она по дате
@@ -108,6 +114,8 @@ class ProductItem {
     this.orderNotice,
     this.variants = const [],
     this.date = '',
+    this.isWishlisted = false,
+    this.wishlistId,
     this.canReview = false,
     this.reviewNotAllowed,
     this.myReview,
@@ -134,6 +142,8 @@ class ProductItem {
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
       date: '${data['date'] ?? ''}'.trim(),
+      isWishlisted: data['is_wishlisted'] == true,
+      wishlistId: _int(data['wishlist_id']),
       canReview: data['can_review'] == true,
       reviewNotAllowed: () {
         final text = '${data['review_not_allowed'] ?? ''}'.trim();

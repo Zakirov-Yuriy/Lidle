@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 
 // ============================================================
@@ -157,8 +158,12 @@ class _ListingCardState extends State<ListingCard> {
   @override
   Widget build(BuildContext context) {
     // Карточка ТОВАРА. Отдельной веткой, а не флажками внутри общей вёрстки:
-    // у товара нет адреса, даты и сердечка, зато есть кнопка «В корзину», и
+    // у товара нет адреса, зато есть кнопка «В корзину» и своя оценка, и
     // сшивать это в один макет значит получить карточку из одних условий.
+    //
+    // Сердечко с 15.09.2026 есть и у товара, но работает оно на своём
+    // состоянии: номера товаров и объявлений совпадают, и общее хранилище
+    // зажигало бы его не на той карточке.
     if (widget.listing.isProduct) {
       return _buildProductCard(context);
     }
@@ -407,6 +412,15 @@ class _ListingCardState extends State<ListingCard> {
                         bottom: 6,
                         child: _cartButton(),
                       ),
+
+                    // Сердечко у товара (15.09.2026). Сверху справа, чтобы не
+                    // спорить с корзиной снизу. Состояние общее на всё
+                    // приложение: тот же товар виден и в ленте, и в разделе.
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: _productFavoriteButton(),
+                    ),
                   ],
                 ),
               ),
@@ -480,6 +494,55 @@ class _ListingCardState extends State<ListingCard> {
               // и без него карточки слипаются низом.
               SizedBox(height: 10 * scale),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Сердечко товара поверх картинки (15.09.2026).
+  ///
+  /// Работает на своём состоянии (`ProductFavoritesService`), а не на общем
+  /// избранном объявлений: номера товаров и объявлений совпадают, и одно
+  /// хранилище на двоих зажигало бы сердечко не на той карточке.
+  Widget _productFavoriteButton() {
+    final productId = widget.listing.productId;
+
+    if (productId == null) return const SizedBox.shrink();
+
+    return ValueListenableBuilder<Map<int, int?>>(
+      valueListenable: ProductFavoritesService.items,
+      builder: (context, favorites, _) {
+        final isFavorite = favorites.containsKey(productId);
+
+        return GestureDetector(
+          onTap: () async {
+            final error = await ProductFavoritesService.toggle(productId);
+
+            if (error != null && context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(error),
+                  backgroundColor: secondaryBackground,
+                ),
+              );
+            }
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              // Подложка под иконкой: на светлой фотографии белое сердце
+              // иначе не видно вовсе.
+              color: Colors.black.withValues(alpha: 0.35),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? Colors.red : Colors.white,
+              size: 19,
+            ),
           ),
         );
       },

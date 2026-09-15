@@ -1,6 +1,7 @@
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 
 /// Витрина товаров: список, разделы, карточка.
 ///
@@ -50,7 +51,11 @@ class ProductsService {
     try {
       final response = await ApiService.get(path);
 
-      return ProductsPage.fromJson(response);
+      final page = ProductsPage.fromJson(response);
+
+      _rememberFavorites(page.items);
+
+      return page;
     } catch (e) {
       log.e('Не удалось загрузить товары: $e');
 
@@ -118,15 +123,21 @@ class ProductsService {
 
       // Карточка исторически приходит коллекцией из одного элемента, как и у
       // объявлений. Разбираем оба вида, чтобы не сломаться при выравнивании.
+      ProductItem? product;
+
       if (data is List && data.isNotEmpty && data.first is Map<String, dynamic>) {
-        return ProductItem.fromJson(data.first as Map<String, dynamic>);
+        product = ProductItem.fromJson(data.first as Map<String, dynamic>);
+      } else if (data is Map<String, dynamic>) {
+        product = ProductItem.fromJson(data);
       }
 
-      if (data is Map<String, dynamic>) {
-        return ProductItem.fromJson(data);
+      // Сердечко живёт в общем состоянии: тот же товар виден и в ленте, и в
+      // разделе, и собственная память карточки разошлась бы с правдой.
+      if (product != null) {
+        _rememberFavorites([product]);
       }
 
-      return null;
+      return product;
     } catch (e) {
       log.d('Не удалось загрузить товар $productId: $e');
 
@@ -196,6 +207,21 @@ class ProductsService {
       log.d('Отзывы товара $productId не загрузились: $e');
 
       return const [];
+    }
+  }
+
+  /// Перенести сердечки из ответа в общее состояние.
+  ///
+  /// Признак приходит с каждой карточкой, а показывают его разные экраны, и
+  /// держать его в каждом списке отдельно значит однажды увидеть в ленте
+  /// одно, а в разделе другое.
+  static void _rememberFavorites(List<ProductItem> items) {
+    for (final item in items) {
+      ProductFavoritesService.remember(
+        item.id,
+        item.isWishlisted,
+        item.wishlistId,
+      );
     }
   }
 

@@ -9,6 +9,7 @@ import 'package:lidle/models/home_models.dart' show Listing;
 import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/models/create_advert_model.dart';
 import 'package:lidle/hive_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/core/network/http_client.dart';
@@ -868,6 +869,20 @@ class ApiService {
   static Listing _productListing(Map<String, dynamic> item) {
     final price = item['price'];
 
+    final productId = item['id'] is int
+        ? item['id'] as int
+        : int.tryParse('${item['id']}');
+
+    if (productId != null) {
+      ProductFavoritesService.remember(
+        productId,
+        item['is_wishlisted'] == true,
+        item['wishlist_id'] is int
+            ? item['wishlist_id'] as int
+            : int.tryParse('${item['wishlist_id'] ?? ''}'),
+      );
+    }
+
     return Listing(
       id: 'product:${item['id']}',
       productId: item['id'] is int
@@ -884,6 +899,15 @@ class ApiService {
           ? price.toString()
           : '${num.tryParse('$price')?.toString() ?? price ?? ''}',
       location: '${(item['shop'] is Map ? item['shop']['name'] : '') ?? ''}',
+
+      // Избранное товара (15.09.2026). Признак и номер записи приходят с
+      // карточкой; храним их в своём состоянии, потому что номера товаров и
+      // объявлений совпадают, и общее хранилище зажигало бы сердечко не на
+      // той карточке. Подробности — в ProductFavoritesService.
+      isFavorited: item['is_wishlisted'] == true,
+      wishlistId: item['wishlist_id'] is int
+          ? item['wishlist_id'] as int
+          : int.tryParse('${item['wishlist_id'] ?? ''}'),
 
       // Дата появления товара на витрине (15.09.2026). Приходит готовой
       // строкой «дд.мм.гггг», как у объявления: в ленте они стоят
