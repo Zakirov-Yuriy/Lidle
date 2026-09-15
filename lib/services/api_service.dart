@@ -884,7 +884,12 @@ class ApiService {
           ? price.toString()
           : '${num.tryParse('$price')?.toString() ?? price ?? ''}',
       location: '${(item['shop'] is Map ? item['shop']['name'] : '') ?? ''}',
-      date: '',
+
+      // Дата появления товара на витрине (15.09.2026). Приходит готовой
+      // строкой «дд.мм.гггг», как у объявления: в ленте они стоят
+      // вперемешку, и два разных формата даты человек читает как ошибку.
+      // Старый сервер поля не присылает — тогда подписи просто нет.
+      date: '${item['date'] ?? ''}',
       canOrder: item['can_order'] == true,
       inStock: item['in_stock'] != false,
 

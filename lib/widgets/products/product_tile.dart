@@ -89,6 +89,17 @@ class ProductTile extends StatelessWidget {
                       style: const TextStyle(color: textMuted, fontSize: 12),
                     ),
                   ],
+                  // Дата появления на витрине (15.09.2026): такая же подпись,
+                  // как на карточке главной, чтобы товар в разделе и товар в
+                  // ленте читались одинаково.
+                  if (product.date.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      product.date,
+                      style: const TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                  ],
+
                   const SizedBox(height: 8),
                   if (!available)
                     const Text(

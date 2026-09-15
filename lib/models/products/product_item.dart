@@ -30,6 +30,13 @@ class ProductItem {
   final double? rating;
   final int reviewsCount;
 
+  /// Когда товар появился на витрине, строкой «дд.мм.гггг» (15.09.2026).
+  ///
+  /// Приходит готовой с сервера, как у объявления: считается она по дате
+  /// публикации витрины и дате самого товара, и повторять этот расчёт на
+  /// клиенте значит однажды разойтись с лентой. Пусто у старого сервера.
+  final String date;
+
   /// Время приготовления, для еды. Пустое у обычных товаров.
   final int? cookingTimeMinutes;
 
@@ -83,6 +90,7 @@ class ProductItem {
     this.canOrder = true,
     this.orderNotice,
     this.variants = const [],
+    this.date = '',
   });
 
   factory ProductItem.fromJson(Map<String, dynamic> data) {
@@ -104,6 +112,7 @@ class ProductItem {
       shop: ShopBrief.tryParse(data['shop']),
       rating: _double(data['rating']),
       reviewsCount: _int(data['reviews_count']) ?? 0,
+      date: '${data['date'] ?? ''}'.trim(),
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
       canOrder: data['can_order'] != false,
       orderNotice: () {

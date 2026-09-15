@@ -313,6 +313,19 @@ class _ListingCardState extends State<ListingCard> {
     );
   }
 
+  /// Дата появления на витрине, готовая к показу.
+  ///
+  /// Пусто, если сервер её не прислал: в списке лежит и старая сборка ответа,
+  /// и там вместо даты стоит заглушка «Unknown Date». Показать её человеку
+  /// хуже, чем не показать ничего.
+  String get _publishedOn {
+    final date = widget.listing.date.trim();
+
+    if (date.isEmpty || date == 'Unknown Date') return '';
+
+    return date;
+  }
+
   /// Карточка товара: картинка, цена, название, магазин и «В корзину».
   ///
   /// Кнопки нет, когда у раздела не заведён атрибут оплаты (`can_order`):
@@ -436,6 +449,18 @@ class _ListingCardState extends State<ListingCard> {
                     style: TextStyle(color: textMuted, fontSize: 12 * scale),
                   ),
                 ),
+
+              // Дата появления на витрине (15.09.2026). Последней строкой и
+              // мелким шрифтом: человек смотрит на неё, только когда уже
+              // выбрал глазами карточку и решает, свежее предложение или
+              // лежит с весны.
+              if (_publishedOn.isNotEmpty) ...[
+                SizedBox(height: 3 * scale),
+                Text(
+                  _publishedOn,
+                  style: TextStyle(color: textMuted, fontSize: 12 * scale),
+                ),
+              ],
 
               // Отступ до следующего ряда сетки: у сетки главной он нулевой,
               // и без него карточки слипаются низом.
