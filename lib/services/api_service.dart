@@ -989,6 +989,51 @@ class ApiService {
     }
   }
 
+  /// Товары ПРОДАВЦА для его страницы (15.09.2026).
+  ///
+  /// Зачем отдельным запросом. Страница продавца ходит в ручку ОБЪЯВЛЕНИЙ
+  /// (`/users/{id}/adverts`), а товары лежат в своей таблице и в её выдачу не
+  /// попадают. Из-за этого продавец с полной витриной выглядел человеком без
+  /// единого товара.
+  ///
+  /// Спрашиваем по номеру ЧЕЛОВЕКА, а не точки: точек у продавца может быть
+  /// несколько, и собирать их список на клиенте значит знать о его хозяйстве
+  /// больше, чем покупателю нужно. Сервер сам разбирается, какие точки его.
+  ///
+  /// Ошибку не поднимаем: товары это добавка к объявлениям, и если ручка
+  /// недоступна, страница должна открыться прежним образом, а не пустым
+  /// экраном с ошибкой.
+  static Future<List<Listing>> getSellerProducts({
+    required String userId,
+    int page = 1,
+    int perPage = 60,
+    String? token,
+  }) async {
+    final id = int.tryParse(userId.trim());
+
+    if (id == null) return const [];
+
+    try {
+      final response = await get(
+        '/products?user_id=$id&page=$page&per_page=$perPage',
+        token: token,
+      );
+
+      final raw = response['data'];
+
+      if (raw is! List) return const [];
+
+      return raw
+          .whereType<Map<String, dynamic>>()
+          .map(_productListing)
+          .toList();
+    } catch (e) {
+      log.d('Товары продавца не загрузились: $e');
+
+      return const [];
+    }
+  }
+
   static Future<AdvertsResponse> getAdverts({
     int? categoryId,
     int? catalogId,

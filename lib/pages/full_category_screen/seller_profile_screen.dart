@@ -84,6 +84,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = false;
   String? _error;
 
+  /// Товары продавца (15.09.2026).
+  ///
+  /// Отдельным полем и отдельным запросом: объявления приезжают из ручки
+  /// объявлений, товары лежат в своей таблице и в её выдачу не попадают.
+  /// До этого дня продавец с полной витриной выглядел здесь человеком без
+  /// единого товара.
+  ///
+  /// Готовыми `Listing`, а не словарями: разбор товара в карточку ленты уже
+  /// написан один раз в `ApiService`, и повторять его здесь значит завести
+  /// второе место, где товар превращается в карточку.
+  List<Listing> _sellerProducts = const [];
+
   // ── Данные профиля продавца (GET /v1/users/{id}) ──────────────────────
   bool _profileLoading = false;
   String? _companyName; // название компании продавца (GET /companies/{id})
@@ -145,7 +157,25 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   void initState() {
     super.initState();
     _loadSellerListings();
+    _loadSellerProducts();
     _loadSellerProfile();
+  }
+
+  /// Товары продавца. Молча: если ручка недоступна, страница открывается
+  /// прежним образом, с одними объявлениями.
+  Future<void> _loadSellerProducts() async {
+    final userId = widget.userId;
+
+    if (userId == null || userId.isEmpty) return;
+
+    final products = await ApiService.getSellerProducts(
+      userId: userId,
+      token: TokenService.currentToken,
+    );
+
+    if (!mounted) return;
+
+    setState(() => _sellerProducts = products);
   }
 
   /// Безопасное приведение к int (для wishlist_id, приходящего как num).
@@ -719,6 +749,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               _SellerProfileScreenState.invalidateCache(widget.userId!);
               _SellerProfileScreenState.invalidateInfoCache(widget.userId!);
               _loadSellerListings(forceRefresh: true);
+              _loadSellerProducts();
               _loadSellerProfile(forceRefresh: true);
             }
           });
@@ -753,6 +784,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             }
             await Future.wait([
               _loadSellerListings(forceRefresh: true),
+              _loadSellerProducts(),
               _loadSellerProfile(forceRefresh: true),
             ]);
           },
@@ -1672,9 +1704,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildListingsTitle() {
-    return const Text(
-      "Объявления продавца",
-      style: TextStyle(
+    // Заголовок называет то, что под ним лежит (15.09.2026). У продавца с
+    // витриной здесь стоят и объявления, и товары, и подпись «Объявления
+    // продавца» над товарами читалась бы как ошибка.
+    return Text(
+      _sellerProducts.isEmpty
+          ? 'Объявления продавца'
+          : 'Объявления и товары продавца',
+      style: const TextStyle(
         color: textPrimary,
         fontSize: 17,
         fontWeight: FontWeight.w600,
@@ -1722,8 +1759,20 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       );
     }
 
-    // Если нет объявлений
-    if (_sellerListings.isEmpty) {
+    // Объявления и товары в ОДНОЙ сетке (15.09.2026).
+    //
+    // Не двумя списками с заголовками: для покупателя это одна витрина одного
+    // продавца, и делить её по тому, в какой таблице вещь лежит у нас, значит
+    // объяснять человеку устройство базы.
+    //
+    // Товары идут первыми: их продавец завёл осознанно через кабинет, тогда
+    // как объявления часто приезжают пачкой из фида.
+    final items = <Listing>[
+      ..._sellerProducts,
+      ..._sellerListings.map(Listing.fromJson),
+    ];
+
+    if (items.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
@@ -1741,9 +1790,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       );
     }
 
-    // Отображаем сетку объявлений
     return GridView.builder(
-      itemCount: _sellerListings.length,
+      itemCount: items.length,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1752,8 +1800,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         crossAxisSpacing: 8,
         childAspectRatio: 0.70,
       ),
-      itemBuilder: (_, i) =>
-          ListingCard(listing: Listing.fromJson(_sellerListings[i])),
+      itemBuilder: (_, i) => ListingCard(listing: items[i]),
     );
   }
 

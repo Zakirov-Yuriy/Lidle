@@ -279,12 +279,23 @@ class ShopBrief {
   final String? phone;
   final bool isActive;
 
+  /// Владелец точки (15.09.2026).
+  ///
+  /// По нему открывается страница продавца со всеми его объявлениями и
+  /// товарами. Считает его сервер: у новых точек владелец проставлен прямо, у
+  /// старых достаётся через компанию, и повторять этот разбор на клиенте
+  /// значит однажды разойтись с сервером в том, чей это товар.
+  ///
+  /// Пусто у старого сервера — тогда кнопки продавца просто нет.
+  final int? userId;
+
   const ShopBrief({
     required this.id,
     required this.name,
     this.address,
     this.phone,
     this.isActive = true,
+    this.userId,
   });
 
   static ShopBrief? tryParse(dynamic raw) {
@@ -299,6 +310,7 @@ class ShopBrief {
       address: raw['address']?.toString(),
       phone: raw['phone']?.toString(),
       isActive: raw['is_active'] != false,
+      userId: ProductItem._int(raw['user_id']),
     );
   }
 }

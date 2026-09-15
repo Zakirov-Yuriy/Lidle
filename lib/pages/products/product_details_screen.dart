@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/services/products_service.dart';
@@ -336,6 +337,17 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               ],
             ),
           ),
+        ],
+
+        // Кнопка на страницу продавца (15.09.2026). Сразу после описания:
+        // человек уже понял, что это за вещь, и следующий его вопрос —
+        // «а что ещё есть у этого продавца».
+        //
+        // Ведёт на ту же страницу, что кнопка с карточки объявления, и там
+        // теперь лежат и объявления, и товары.
+        if (product.shop?.userId != null) ...[
+          const SizedBox(height: 12),
+          _buildSellerButton(product.shop!),
         ],
 
         // Отзывы покупателей (15.09.2026). Последним блоком: человек читает
@@ -910,6 +922,49 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(icon, color: enabled ? Colors.white : textMuted, size: 18),
+      ),
+    );
+  }
+
+  /// «Все объявления и товары продавца» (15.09.2026).
+  ///
+  /// Вид и поведение те же, что у такой же кнопки на карточке объявления:
+  /// человек уже видел её там, и вторая, устроенная по-своему, заставила бы
+  /// его разбираться заново.
+  ///
+  /// Имя продавца берём у точки, а не у профиля: профиль приедет на самой
+  /// странице продавца, а пока её ещё нет, название точки — самое честное,
+  /// что мы можем написать. Аватарку не передаём вовсе: карточка товара её не
+  /// знает, а страница продавца сама показывает заглушку и грузит настоящую.
+  Widget _buildSellerButton(ShopBrief shop) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SellerProfileScreen(
+            sellerName: shop.name,
+            sellerAvatar:
+                const AssetImage('assets/profile_dashboard/default-photo.svg'),
+            userId: '${shop.userId}',
+          ),
+        ),
+      ),
+      child: Container(
+        height: 47,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: activeIconColor),
+        ),
+        child: const Center(
+          child: Text(
+            'Все объявления и товары продавца',
+            style: TextStyle(
+              color: activeIconColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
       ),
     );
   }
