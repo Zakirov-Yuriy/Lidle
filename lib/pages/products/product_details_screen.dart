@@ -1100,10 +1100,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       child: SizedBox(
         width: 42,
         height: 50,
+        // Минус и плюс синим, число белым (15.09.2026, просьба заказчика).
+        // Цвет тот же, что у всех остальных действий в приложении: так видно,
+        // что нажимается именно знак, а число рядом просто показание.
         child: Icon(
           icon,
           size: 20,
-          color: disabled ? textMuted : Colors.white,
+          color: disabled ? textMuted : activeIconColor,
         ),
       ),
     );
