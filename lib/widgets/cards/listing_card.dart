@@ -393,6 +393,10 @@ class _ListingCardState extends State<ListingCard> {
               // как на знакомых маркетплейсах: иконка поверх картинки.
               Expanded(
                 child: Stack(
+                  // Кнопка корзины СВЕШИВАЕТСЯ за нижний край картинки
+                  // (15.09.2026, как на знакомых маркетплейсах). Без этого
+                  // разрешения она обрезалась бы по краю снимка.
+                  clipBehavior: Clip.none,
                   children: [
                     Positioned.fill(
                       child: ClipRRect(
@@ -424,7 +428,12 @@ class _ListingCardState extends State<ListingCard> {
                     if (widget.listing.canOrder)
                       Positioned(
                         right: 6,
-                        bottom: 6,
+
+                        // Ниже края картинки: кнопка наполовину лежит на
+                        // снимке, наполовину в отступе под ним. Отступ под
+                        // картинкой увеличен ровно на столько, чтобы она не
+                        // наехала на название.
+                        bottom: -14,
                         child: _cartButton(),
                       ),
 
@@ -440,7 +449,10 @@ class _ListingCardState extends State<ListingCard> {
                 ),
               ),
 
-              SizedBox(height: 6 * scale),
+              // Отступ под картинкой держит место для свешенной кнопки
+              // корзины: она выходит за край снимка на четырнадцать точек, и
+              // без запаса легла бы прямо на название.
+              SizedBox(height: 18 * scale),
 
               // Сначала НАЗВАНИЕ, потом цена (15.09.2026, просьба заказчика).
               //
