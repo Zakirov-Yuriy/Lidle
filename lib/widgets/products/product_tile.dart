@@ -61,15 +61,9 @@ class ProductTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.priceLabel,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  // Сначала НАЗВАНИЕ, потом цена (15.09.2026, просьба
+                  // заказчика). Человек сначала узнаёт вещь и только потом
+                  // смотрит, сколько она стоит.
                   Text(
                     product.name,
                     maxLines: 2,
@@ -78,6 +72,15 @@ class ProductTile extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 14,
                       height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    product.priceLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   if (product.shop != null) ...[
@@ -89,12 +92,13 @@ class ProductTile extends StatelessWidget {
                       style: const TextStyle(color: textMuted, fontSize: 12),
                     ),
                   ],
-                  // Оценка товара (15.09.2026): звезда, значение и число
-                  // оценок, как на карточке главной. Показываем только когда
-                  // отзывы есть: «0,0 · 0 оценок» отпугивает сильнее, чем
-                  // отсутствие строки.
-                  if (product.rating != null && product.reviewsCount > 0) ...[
-                    const SizedBox(height: 4),
+                  // Оценка товара (15.09.2026), как на карточке главной.
+                  // Без отзывов — одна пустая звезда и ничего больше: «0,0»
+                  // читается как плохая оценка, хотя оценок просто нет.
+                  const SizedBox(height: 4),
+                  if (product.rating == null || product.reviewsCount == 0)
+                    const Icon(Icons.star_border, color: Color(0xFFFFB800), size: 14)
+                  else
                     Row(
                       children: [
                         const Icon(Icons.star, color: Color(0xFFFFB800), size: 14),
@@ -118,7 +122,6 @@ class ProductTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ],
 
                   // Дата появления на витрине (15.09.2026): такая же подпись,
                   // как на карточке главной, чтобы товар в разделе и товар в

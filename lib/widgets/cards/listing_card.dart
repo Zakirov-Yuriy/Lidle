@@ -413,6 +413,21 @@ class _ListingCardState extends State<ListingCard> {
 
               SizedBox(height: 6 * scale),
 
+              // Сначала НАЗВАНИЕ, потом цена (15.09.2026, просьба заказчика).
+              //
+              // Так было наоборот. В ленте, где карточки идут сеткой по две,
+              // человек сначала узнаёт вещь и только потом смотрит, сколько
+              // она стоит; цена первой заставляет его читать карточку задом
+              // наперёд.
+              Text(
+                widget.listing.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: textPrimary, fontSize: 14 * scale),
+              ),
+
+              SizedBox(height: 2 * scale),
+
               Text(
                 '${widget.listing.price} ₽',
                 style: TextStyle(
@@ -422,26 +437,16 @@ class _ListingCardState extends State<ListingCard> {
                 ),
               ),
 
-              SizedBox(height: 2 * scale),
-
-              Text(
-                widget.listing.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: textPrimary, fontSize: 14 * scale),
-              ),
-
               // Название точки убрано 14.09.2026: покупателю на витрине оно
               // ничего не решает, а место занимало. Продавец виден в карточке
               // товара, куда человек и идёт за подробностями.
 
-              if (widget.listing.rating != null &&
-                  widget.listing.reviewsCount > 0) ...[
-                SizedBox(height: 3 * scale),
-                _ratingRow(scale),
-              ] else if (!widget.listing.canOrder)
-                // Товар без корзины: говорим об этом прямо, иначе человек
-                // ищет кнопку и думает, что приложение сломалось.
+              SizedBox(height: 3 * scale),
+              _ratingRow(scale),
+
+              // Товар без корзины: говорим об этом прямо, иначе человек ищет
+              // кнопку и думает, что приложение сломалось.
+              if (!widget.listing.canOrder)
                 Padding(
                   padding: EdgeInsets.only(top: 3 * scale),
                   child: Text(
@@ -570,9 +575,23 @@ class _ListingCardState extends State<ListingCard> {
   }
 
   /// Оценка товара: звезда, значение и число оценок.
+  ///
+  /// Без отзывов показываем ОДНУ пустую звезду и ничего больше (15.09.2026).
+  /// Так было: строка не рисовалась вовсе, и карточки с отзывами и без них
+  /// разъезжались по высоте. Ноль писать тоже нельзя: «0,0» читается как
+  /// плохая оценка, хотя оценок просто нет, а «будьте первым» в ленте из
+  /// двадцати карточек превращается в двадцать одинаковых просьб.
   Widget _ratingRow(double scale) {
     final rating = widget.listing.rating ?? 0;
     final count = widget.listing.reviewsCount;
+
+    if (count == 0 || widget.listing.rating == null) {
+      return Icon(
+        Icons.star_border,
+        color: const Color(0xFFFFB800),
+        size: 14 * scale,
+      );
+    }
 
     return Row(
       children: [

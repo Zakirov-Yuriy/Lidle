@@ -371,7 +371,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 ),
               ),
               const Spacer(),
-              if (product.rating != null && product.reviewsCount > 0) ...[
+
+              // Без отзывов — одна пустая звезда, без числа и без призывов
+              // (15.09.2026). «0,0» читается как плохая оценка, а «будьте
+              // первым» человек видит как просьбу, о которой не просил.
+              if (product.rating == null || product.reviewsCount == 0)
+                const Icon(Icons.star_border, color: Color(0xFFF5B301), size: 18)
+              else ...[
                 const Icon(Icons.star, color: Color(0xFFF5B301), size: 18),
                 const SizedBox(width: 4),
                 Text(
@@ -391,20 +397,13 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ],
           ),
 
-          if (reviews.isEmpty) ...[
-            const SizedBox(height: 8),
-            const Text(
-              'Отзывов пока нет. Будьте первым, кто расскажет о товаре.',
-              style: TextStyle(color: textSecondary, fontSize: 13),
-            ),
-          ],
-
           for (final review in reviews) ...[
             const SizedBox(height: 12),
             _reviewTile(review),
           ],
 
-          const SizedBox(height: 12),
+          if (product.canReview || product.reviewNotAllowed != null)
+            const SizedBox(height: 12),
 
           // Кнопка есть только у того, кто может ей воспользоваться: право
           // решает сервер, а отказ он объясняет словами.
