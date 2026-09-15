@@ -7,6 +7,7 @@ import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
+import 'package:lidle/pages/products/product_reviews_screen.dart';
 import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/services/products_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -400,49 +401,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Text(
-                'Отзывы',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-
-              // Без отзывов — одна пустая звезда, без числа и без призывов
-              // (15.09.2026). «0,0» читается как плохая оценка, а «будьте
-              // первым» человек видит как просьбу, о которой не просил.
-              if (product.rating == null || product.reviewsCount == 0) ...[
-                const Icon(Icons.star_border, color: Color(0xFFF5B301), size: 18),
-                const SizedBox(width: 6),
-                const Text(
-                  'Будь первым!',
-                  style: TextStyle(color: textSecondary, fontSize: 13),
-                ),
-              ] else ...[
-                const Icon(Icons.star, color: Color(0xFFF5B301), size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  product.rating!.toStringAsFixed(1).replaceAll('.', ','),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _ratingsLabel(product.reviewsCount),
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
-                ),
-              ],
-            ],
-          ),
-
-          const SizedBox(height: 14),
+          // Заголовок ОДИН (15.09.2026, просьба заказчика). Раньше их было
+          // два подряд: «Отзывы» со сводкой оценки и под ним «Оставить отзыв».
+          // Слово «отзыв» дважды в одном блоке читается как недоделка, а
+          // оценка товара и так стоит на его карточке в ленте и на экране
+          // всех отзывов.
           Text(
             mine == null ? 'Оставить отзыв' : 'Изменить отзыв',
             style: const TextStyle(
@@ -478,11 +441,51 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
 
+          // Синяя ссылка «Все отзывы», как у объявления: в карточке лежат
+          // последние десять, остальные на своём экране. Показываем всегда,
+          // даже когда отзывов нет: там же объяснено, откуда они берутся, и
+          // человеку не надо гадать, почему пусто.
+          const SizedBox(height: 2),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _openAllReviews(product),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                'Все отзывы',
+                style: TextStyle(
+                  color: activeIconColor,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+
           for (final review in reviews) ...[
             const SizedBox(height: 12),
             _reviewTile(review),
           ],
         ],
+      ),
+    );
+  }
+
+  /// Экран со всеми отзывами товара.
+  ///
+  /// Оценку и число отзывов передаём готовыми: их посчитал сервер по всем
+  /// отзывам сразу, а считать среднее по первой странице значит показать на
+  /// двух экранах разные числа для одного товара.
+  Future<void> _openAllReviews(ProductItem product) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductReviewsScreen(
+          productId: product.id,
+          productName: product.name,
+          rating: product.rating,
+          reviewsCount: product.reviewsCount,
+        ),
       ),
     );
   }
@@ -565,18 +568,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     // Перечитываем карточку целиком: после отзыва меняется не только список,
     // но и оценка, и подпись кнопки.
     if (saved == true && mounted) await _load();
-  }
-
-  /// «10 903 оценки» и «1 оценка»: число и слово должны сходиться.
-  String _ratingsLabel(int count) {
-    final last = count % 10;
-    final lastTwo = count % 100;
-
-    if (lastTwo >= 11 && lastTwo <= 14) return '$count оценок';
-    if (last == 1) return '$count оценка';
-    if (last >= 2 && last <= 4) return '$count оценки';
-
-    return '$count оценок';
   }
 
   /// Характеристики товара.
