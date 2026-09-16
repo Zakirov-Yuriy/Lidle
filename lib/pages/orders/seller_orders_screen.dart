@@ -690,44 +690,21 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
     final last = order.items.where((item) => item.isPending).length == 1
         && order.items.where((item) => item.status == 'accepted').isEmpty;
 
-    final confirmed = await showDialog<bool>(
+    // Диалог возвращает причину: пустая строка это «отклонить без причины»,
+    // null это отмена. Причину видит покупатель, и без неё отказ выглядит
+    // молчаливым: товар исчез, объяснений нет.
+    final reason = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: formBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text(
-          'Отклонить товар',
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-        content: Text(
-          last
-              ? 'Это последний товар в заказе. Если отклонить его, заказ '
-                  'отменится целиком, товар вернётся в продажу, покупатель '
-                  'получит уведомление.'
-              : 'Товар вернётся в продажу и уйдёт из суммы заказа. Остальное '
-                  'останется в работе, покупатель получит уведомление. '
-                  'Отменить отказ будет нельзя.',
-          style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена', style: TextStyle(color: textMuted)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Отклонить',
-              style: TextStyle(color: Color(0xFFE5484D)),
-            ),
-          ),
-        ],
-      ),
+      builder: (_) => _RejectDialog(last: last),
     );
 
-    if (confirmed != true || !mounted) return;
+    if (reason == null || !mounted) return;
 
-    final result = await OrdersService.rejectItem(order.id, line.id);
+    final result = await OrdersService.rejectItem(
+      order.id,
+      line.id,
+      reason: reason.isEmpty ? null : reason,
+    );
 
     if (!mounted) return;
 
@@ -747,5 +724,99 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
     String two(int n) => n.toString().padLeft(2, '0');
 
     return '${two(value.day)}.${two(value.month)}.${value.year}';
+  }
+}
+
+/// Диалог отказа от позиции с полем причины.
+///
+/// Отдельным виджетом, а не куском в `showDialog`, ровно по той же причине,
+/// по которой мы чинили экран смены почты: контроллер поля должен принадлежать
+/// состоянию самого диалога и умирать вместе с ним. Контроллер, заведённый
+/// снаружи, переживает закрытие и однажды роняет экран.
+class _RejectDialog extends StatefulWidget {
+  /// Это последняя ждущая позиция: отказ отменит весь заказ.
+  final bool last;
+
+  const _RejectDialog({required this.last});
+
+  @override
+  State<_RejectDialog> createState() => _RejectDialogState();
+}
+
+class _RejectDialogState extends State<_RejectDialog> {
+  final TextEditingController _reason = TextEditingController();
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: formBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: const Text(
+        'Отклонить товар',
+        style: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.last
+                ? 'Это последний товар в заказе. Если отклонить его, заказ '
+                    'отменится целиком, товар вернётся в продажу, покупатель '
+                    'получит уведомление.'
+                : 'Товар вернётся в продажу и уйдёт из суммы заказа. Остальное '
+                    'останется в работе, покупатель получит уведомление. '
+                    'Отменить отказ будет нельзя.',
+            style: const TextStyle(
+              color: textSecondary,
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _reason,
+            maxLength: 500,
+            maxLines: 2,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: const InputDecoration(
+              hintText: 'Причина, например «нет на складе»',
+              hintStyle: TextStyle(color: textMuted, fontSize: 14),
+              counterText: '',
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: activeIconColor),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Причину увидит покупатель. Можно оставить пустой.',
+            style: TextStyle(color: textMuted, fontSize: 12),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена', style: TextStyle(color: textMuted)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_reason.text.trim()),
+          child: const Text(
+            'Отклонить',
+            style: TextStyle(color: Color(0xFFE5484D)),
+          ),
+        ),
+      ],
+    );
   }
 }
