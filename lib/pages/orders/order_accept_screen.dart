@@ -127,10 +127,10 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                       const SizedBox(height: 10),
                       const Divider(color: Colors.white12, height: 1),
                       const SizedBox(height: 10),
-                      _line('Товары:', '${_order.total} ₽'),
+                      _line('Товары:', _rub(_order.total)),
                       if (_order.isCourier) ...[
-                        _line('Доставка:', '${_order.deliveryPrice} ₽'),
-                        _line('К оплате:', '${_withDelivery()} ₽'),
+                        _line('Доставка:', _rub(_order.deliveryPrice)),
+                        _line('К оплате:', _rub(_withDelivery())),
                       ],
                     ]),
                     const SizedBox(height: 12),
@@ -338,7 +338,12 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(line.name, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                Text(
+                  line.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
                 if ((line.sku ?? '').isNotEmpty)
                   Text(
                     'Артикул: ${line.sku}',
@@ -351,8 +356,9 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
-            '${line.sum} ₽',
+            _rub(line.sum),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
@@ -375,6 +381,31 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
     return sum == sum.roundToDouble()
         ? sum.toStringAsFixed(0)
         : sum.toStringAsFixed(2);
+  }
+
+  /// Деньги одним видом: «5 000 ₽», а не «5000.0 ₽». Сервер присылает числа
+  /// как есть, и в интерфейс они попадали сырыми. Копейки показываем только
+  /// когда они есть.
+  String _rub(Object? value) {
+    final number = value is num
+        ? value.toDouble()
+        : double.tryParse('${value ?? ''}') ?? 0;
+
+    final whole = number.truncate().abs();
+    final kopeks = ((number.abs() - whole) * 100).round();
+
+    final digits = whole.toString();
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+
+    final sign = number < 0 ? '-' : '';
+    final tail = kopeks == 0 ? '' : ',${kopeks.toString().padLeft(2, '0')}';
+
+    return '$sign$buffer$tail ₽';
   }
 
   Widget _line(String label, String value) {

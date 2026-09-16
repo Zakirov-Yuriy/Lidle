@@ -379,7 +379,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           // Цену доставки показываем только там, где она есть. У самовывоза
           // это всегда ноль, и строка «Цена доставки: 0.00 ₽» ничего не
           // сообщает, зато добавляет в карточку ещё одно число.
-          if (order.isCourier) _line('Цена доставки:', '${order.deliveryPrice} ₽'),
+          if (order.isCourier) _line('Цена доставки:', _rub(order.deliveryPrice)),
           _line('Оплата:', order.paymentMethodTitle ?? '—'),
           const SizedBox(height: 10),
           _item(line),
@@ -454,17 +454,17 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
       if ((order.cancelReason ?? '').isNotEmpty)
         _line('Причина отказа:', order.cancelReason!),
       const SizedBox(height: 10),
-      _money('Сумма товара', '${line.sum} ₽', big: true),
+      _money('Сумма товара', _rub(line.sum), big: true),
       if (many) ...[
         const SizedBox(height: 6),
         _money(
           'Весь заказ, ${_goods(order.items.length)}',
-          '${order.total} ₽',
+          _rub(order.total),
         ),
       ],
       if (order.isCourier) ...[
         const SizedBox(height: 6),
-        _money('С доставкой', '${_withDelivery(order)} ₽'),
+        _money('С доставкой', _rub(_withDelivery(order))),
       ],
       if (order.isAlive && (order.pickupCode ?? '').isNotEmpty) ...[
         const SizedBox(height: 10),
@@ -514,8 +514,13 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Название в две строки с многоточием. Без ограничения оно
+                // упиралось в цену справа и слипалось с ней: «Куртки осень,
+                // Красный, Рост 86 см5000.0 ₽».
                 Text(
                   line.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
                 if ((line.sku ?? '').isNotEmpty)
@@ -530,8 +535,9 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
               ],
             ),
           ),
+          const SizedBox(width: 8),
           Text(
-            '${line.sum} ₽',
+            _rub(line.sum),
             style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
@@ -541,6 +547,35 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         ],
       ),
     );
+  }
+
+  /// Деньги одним видом во всей карточке: «5 000 ₽», а не «5000.0 ₽».
+  ///
+  /// Сервер присылает числа как есть, и в интерфейс они попадали сырыми:
+  /// у товара «5000.0», у доставки «800.00». Копейки показываем только когда
+  /// они не нулевые, иначе в списке рябит от нулей.
+  String _rub(Object? value) {
+    final number = value is num
+        ? value.toDouble()
+        : double.tryParse('${value ?? ''}') ?? 0;
+
+    final whole = number.truncate().abs();
+    final kopeks = ((number.abs() - whole) * 100).round();
+
+    final digits = whole.toString();
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+
+    final sign = number < 0 ? '-' : '';
+    final tail = kopeks == 0
+        ? ''
+        : ',${kopeks.toString().padLeft(2, '0')}';
+
+    return '$sign$buffer$tail ₽';
   }
 
   /// Строка с деньгами. Главная в карточке одна: сумма этого товара.
