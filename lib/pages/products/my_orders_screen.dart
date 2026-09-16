@@ -324,6 +324,42 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               ),
             ],
           ),
+          // Как получают заказ (16.09.2026). У самовывоза строку не рисуем:
+          // это исходный способ, и сообщать о нём нечего.
+          if (order.isCourier) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Text('Доставка',
+                    style: TextStyle(color: textSecondary, fontSize: 13)),
+                const Spacer(),
+                Flexible(
+                  child: Text(
+                    '${order.deliveryTitle ?? 'Курьер'}, ${order.deliveryPrice} ₽',
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+            if ((order.deliveryAddress ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  order.deliveryAddress!,
+                  style: const TextStyle(color: textMuted, fontSize: 12),
+                ),
+              ),
+            if ((order.courierName ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  'Курьер: ${order.courierName}',
+                  style: const TextStyle(color: textMuted, fontSize: 12),
+                ),
+              ),
+          ],
+
           // Чем платят (15.09.2026). Продавцу это нужно не меньше, чем
           // покупателю: по этой строке он понимает, ждать наличные у прилавка
           // или проверять поступление на счёт.

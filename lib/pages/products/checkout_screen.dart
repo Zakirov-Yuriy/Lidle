@@ -64,6 +64,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   /// там, где выбирать не из чего.
   final Map<int, String> _paymentMethods = {};
 
+  /// Как человек получает заказ в каждой точке (16.09.2026).
+  ///
+  /// По точке, как и оплата: точки могут быть разные, и возит не каждая.
+  /// Пусто значит самовывоз, это исходный способ.
+  final Map<int, CartDeliveryOption?> _delivery = {};
+
+  /// Адрес и комментарий для курьера, по точке. Спрашиваются только при
+  /// выборе курьера: у самовывоза адрес не нужен.
+  final Map<int, TextEditingController> _addresses = {};
+  final Map<int, TextEditingController> _addressComments = {};
+
   @override
   void initState() {
     super.initState();
@@ -102,6 +113,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _commentController.dispose();
+
+    for (final controller in _addresses.values) {
+      controller.dispose();
+    }
+
+    for (final controller in _addressComments.values) {
+      controller.dispose();
+    }
+
     super.dispose();
   }
 
@@ -118,6 +138,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           context,
           'Без регистрации нужны имя, телефон и почта: по почте придёт код получения',
         );
+        return;
+      }
+    }
+
+    // Курьер без адреса не оформляется: везти некуда. Сервер это тоже
+    // проверяет, но упереться в отказ после нажатия «Оформить» неприятно,
+    // когда сказать об этом можно сразу.
+    for (final group in widget.cart.shops) {
+      final choice = _delivery[group.shopId];
+
+      if (choice == null || !choice.isCourier) continue;
+
+      if ((_addresses[group.shopId]?.text.trim() ?? '').isEmpty) {
+        SnackBarHelper.showWarning(
+          context,
+          'Укажите адрес, куда везти заказ из точки «${group.shopName}»',
+        );
+
         return;
       }
     }
@@ -140,6 +178,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       productIds: widget.productIds,
       paymentAcknowledged: _paymentAcknowledged,
       paymentMethods: _paymentMethods,
+      deliveries: _deliveryChoices(),
     );
 
     if (!mounted) return;
@@ -356,6 +395,126 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Что отправляем серверу про получение.
+  ///
+  /// Цену доставки НЕ отправляем вовсе: её подставит сервер по номеру
+  /// способа. Присланной он не верит, и правильно делает.
+  Map<int, OrderDeliveryChoice> _deliveryChoices() {
+    final result = <int, OrderDeliveryChoice>{};
+
+    for (final group in widget.cart.shops) {
+      final choice = _delivery[group.shopId];
+
+      if (choice == null || !choice.isCourier) {
+        result[group.shopId] = const OrderDeliveryChoice.pickup();
+
+        continue;
+      }
+
+      result[group.shopId] = OrderDeliveryChoice.courier(
+        optionId: choice.id,
+        address: _addresses[group.shopId]?.text.trim(),
+        comment: _addressComments[group.shopId]?.text.trim(),
+      );
+    }
+
+    return result;
+  }
+
+  /// Выбор способа получения для точки (16.09.2026).
+  ///
+  /// Стоит рядом с её товарами по той же причине, что и оплата: точек в
+  /// заказе бывает несколько, и возит не каждая. Самовывоз есть всегда и
+  /// стоит ноль, поэтому если ничего другого нет, блок не показываем вовсе.
+  Widget _buildDeliveryChooser(CartShopGroup group) {
+    final options = group.deliveryOptions;
+
+    if (options.length < 2) return const SizedBox.shrink();
+
+    final chosen = _delivery[group.shopId];
+    final chosenId = chosen?.id;
+
+    final address = _addresses.putIfAbsent(
+      group.shopId,
+      TextEditingController.new,
+    );
+
+    final comment = _addressComments.putIfAbsent(
+      group.shopId,
+      TextEditingController.new,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 10),
+        const Text(
+          'Как получить',
+          style: TextStyle(color: textSecondary, fontSize: 12),
+        ),
+        for (final option in options) ...[
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: () => setState(
+              () => _delivery[group.shopId] = option.isCourier ? option : null,
+            ),
+            child: Row(
+              children: [
+                Radio<int?>(
+                  value: option.id,
+                  groupValue: chosenId,
+                  activeColor: activeIconColor,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  onChanged: (_) => setState(
+                    () => _delivery[group.shopId] =
+                        option.isCourier ? option : null,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    option.name,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+                Text(
+                  option.price > 0 ? _money(option.price) : 'бесплатно',
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+        if (chosen != null && chosen.isCourier) ...[
+          const SizedBox(height: 8),
+          _addressField(address, 'Адрес: улица, дом, квартира'),
+          const SizedBox(height: 6),
+          _addressField(comment, 'Подъезд, этаж, домофон (необязательно)'),
+        ],
+      ],
+    );
+  }
+
+  Widget _addressField(TextEditingController controller, String hint) {
+    return Container(
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: hint,
+          hintStyle: const TextStyle(color: textMuted, fontSize: 13),
+        ),
       ),
     );
   }
@@ -591,6 +750,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                   ),
+              _buildDeliveryChooser(group),
+
+              // Итог по точке с доставкой. Показываем ТОЛЬКО когда выбран
+              // курьер: у самовывоза строка «доставка 0» это шум.
+              if ((_delivery[group.shopId]?.price ?? 0) > 0) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Товары и доставка',
+                        style: TextStyle(color: textSecondary, fontSize: 13),
+                      ),
+                    ),
+                    Text(
+                      _money(group.total + (_delivery[group.shopId]?.price ?? 0)),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               _buildPaymentChooser(group),
             ],
           ),

@@ -236,6 +236,10 @@ class CartShopGroup {
   /// мимо площадки, и вернуть их мы не сможем.
   final List<CartPaymentMethod> paymentMethods;
 
+  /// Как можно получить заказ из этой точки (16.09.2026): самовывоз всегда
+  /// плюс доставка, которую продавец завёл в публикациях этих товаров.
+  final List<CartDeliveryOption> deliveryOptions;
+
   final List<CartLine> items;
   final double total;
 
@@ -253,6 +257,7 @@ class CartShopGroup {
     this.shopIsActive = true,
     this.cookingTimeMinutes,
     this.paymentMethods = const [],
+    this.deliveryOptions = const [],
   });
 
   factory CartShopGroup.fromJson(Map<String, dynamic> data) {
@@ -286,8 +291,52 @@ class CartShopGroup {
           : const [],
       total: CartSnapshot._double(data['total']) ?? 0,
       cookingTimeMinutes: CartSnapshot._int(data['cooking_time_minutes']),
+      // Старый сервер списка не присылает: тогда остаётся один самовывоз, как
+      // было до появления доставки.
+      deliveryOptions: data['delivery_options'] is List
+          ? (data['delivery_options'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(CartDeliveryOption.fromJson)
+              .toList()
+          : const [],
     );
   }
+}
+
+/// Способ получения заказа.
+///
+/// Цена здесь для показа. При оформлении клиент присылает только номер
+/// способа, а цену подставляет сервер: иначе её можно было бы назначить себе
+/// самому прямо в запросе (16.09.2026).
+class CartDeliveryOption {
+  /// Пусто у самовывоза: он не строка справочника, а исходный способ.
+  final int? id;
+
+  /// `pickup` или `courier`.
+  final String type;
+
+  final String name;
+  final String? description;
+  final double price;
+
+  const CartDeliveryOption({
+    required this.type,
+    required this.name,
+    this.id,
+    this.description,
+    this.price = 0,
+  });
+
+  factory CartDeliveryOption.fromJson(Map<String, dynamic> data) =>
+      CartDeliveryOption(
+        id: CartSnapshot._int(data['id']),
+        type: '${data['type'] ?? 'courier'}',
+        name: '${data['name'] ?? ''}',
+        description: data['description']?.toString(),
+        price: CartSnapshot._double(data['price']) ?? 0,
+      );
+
+  bool get isCourier => type == 'courier';
 }
 
 class CartLine {
