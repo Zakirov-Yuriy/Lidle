@@ -425,7 +425,9 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
   }
 
   Future<void> _pickCourier() async {
-    final chosen = await showDialog<CourierBrief>(
+    // Диалог возвращает либо курьера, либо строку `clear`: «снять курьера».
+    // Отдельный тип ради одного пункта заводить не стали.
+    final chosen = await showDialog<Object>(
       context: context,
       builder: (dialogContext) => SimpleDialog(
         backgroundColor: formBackground,
@@ -457,6 +459,17 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                 ],
               ),
             ),
+          // Курьер мог заболеть, а заказ передумали везти. Снять назначение
+          // сервер умел с самого начала, а в приложении это было нечем
+          // сделать: список предлагал только заменить одного другим.
+          if (_order.courierStaffId != null)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(dialogContext).pop('clear'),
+              child: const Text(
+                'Снять курьера',
+                style: TextStyle(color: Color(0xFFE5484D), fontSize: 15),
+              ),
+            ),
           SimpleDialogOption(
             onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Отмена', style: TextStyle(color: textMuted)),
@@ -469,7 +482,10 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
 
     setState(() => _busy = true);
 
-    final result = await OrdersService.assignCourier(_order.id, chosen.id);
+    final result = await OrdersService.assignCourier(
+      _order.id,
+      chosen is CourierBrief ? chosen.id : null,
+    );
 
     if (!mounted) return;
 
