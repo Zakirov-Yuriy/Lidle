@@ -375,7 +375,11 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           const SizedBox(height: 10),
           _line('Заказчик:', order.contactName ?? '—'),
           _line('Доставка:', order.deliveryTitle ?? 'Самовывоз'),
-          _line('Цена доставки:', '${order.deliveryPrice} ₽'),
+
+          // Цену доставки показываем только там, где она есть. У самовывоза
+          // это всегда ноль, и строка «Цена доставки: 0.00 ₽» ничего не
+          // сообщает, зато добавляет в карточку ещё одно число.
+          if (order.isCourier) _line('Цена доставки:', '${order.deliveryPrice} ₽'),
           _line('Оплата:', order.paymentMethodTitle ?? '—'),
           const SizedBox(height: 10),
           _item(line),
@@ -391,7 +395,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
               line.statusTitle,
               style: const TextStyle(color: Color(0xFF3BA55D), fontSize: 13),
             ),
-          if (expanded) ..._details(order),
+          if (expanded) ..._details(order, line),
 
           // Решение по ЭТОМУ товару. Пока заказ живой и по товару ещё не
           // решали.
@@ -427,7 +431,15 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
   }
 
   /// Раскрытая часть карточки: то, что нужно при сборке и выдаче.
-  List<Widget> _details(OrderModel order) {
+  ///
+  /// Деньги здесь показываются по ЭТОМУ товару, а не по всему заказу. Карточка
+  /// одна на позицию, и «Итого» от всего заказа под одним товаром читалось как
+  /// его цена: под ветровкой за 9118 стояло 11118, потому что во втором
+  /// товаре того же заказа лежало ещё 2000. Итог по заказу остался, но только
+  /// когда товаров действительно несколько, и подписан числом товаров.
+  List<Widget> _details(OrderModel order, OrderLine line) {
+    final many = order.items.length > 1;
+
     return [
       const SizedBox(height: 10),
       const Divider(color: Colors.white12, height: 1),
@@ -442,20 +454,18 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
       if ((order.cancelReason ?? '').isNotEmpty)
         _line('Причина отказа:', order.cancelReason!),
       const SizedBox(height: 10),
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text('Итого', style: TextStyle(color: textSecondary, fontSize: 14)),
-          Text(
-            '${order.total} ₽',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+      _money('Сумма товара', '${line.sum} ₽', big: true),
+      if (many) ...[
+        const SizedBox(height: 6),
+        _money(
+          'Весь заказ, ${_goods(order.items.length)}',
+          '${order.total} ₽',
+        ),
+      ],
+      if (order.isCourier) ...[
+        const SizedBox(height: 6),
+        _money('С доставкой', '${_withDelivery(order)} ₽'),
+      ],
       if (order.isAlive && (order.pickupCode ?? '').isNotEmpty) ...[
         const SizedBox(height: 10),
         Row(
@@ -531,6 +541,52 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         ],
       ),
     );
+  }
+
+  /// Строка с деньгами. Главная в карточке одна: сумма этого товара.
+  Widget _money(String label, String value, {bool big = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: textSecondary, fontSize: 14),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: big ? Colors.white : textSecondary,
+            fontSize: big ? 16 : 14,
+            fontWeight: big ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// «2 товара», «5 товаров». Без этого пришлось бы писать «товар(ов)».
+  String _goods(int count) {
+    final last = count % 10;
+    final hundred = count % 100;
+
+    if (hundred >= 11 && hundred <= 14) return '$count товаров';
+    if (last == 1) return '$count товар';
+    if (last >= 2 && last <= 4) return '$count товара';
+
+    return '$count товаров';
+  }
+
+  /// Сумма заказа вместе с доставкой. Доставка в `total` не входит намеренно:
+  /// товар могут снять с заказа, и тогда сумма товаров меняется, а везти всё
+  /// равно надо. Складываем только для показа.
+  String _withDelivery(OrderModel order) {
+    final total = double.tryParse(order.total) ?? 0;
+    final delivery = double.tryParse(order.deliveryPrice) ?? 0;
+    final sum = total + delivery;
+
+    return sum == sum.roundToDouble()
+        ? sum.toStringAsFixed(0)
+        : sum.toStringAsFixed(2);
   }
 
   Widget _line(String label, String value) {

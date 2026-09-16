@@ -118,6 +118,20 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                       ),
                       const SizedBox(height: 10),
                       ..._order.items.map(_item),
+
+                      // Деньги по заказу целиком: этот экран про весь заказ, в
+                      // отличие от списка, где карточка на каждый товар.
+                      // Доставка отдельной строкой: она не входит в сумму
+                      // товаров, потому что товар могут снять с заказа, а
+                      // везти всё равно надо.
+                      const SizedBox(height: 10),
+                      const Divider(color: Colors.white12, height: 1),
+                      const SizedBox(height: 10),
+                      _line('Товары:', '${_order.total} ₽'),
+                      if (_order.isCourier) ...[
+                        _line('Доставка:', '${_order.deliveryPrice} ₽'),
+                        _line('К оплате:', '${_withDelivery()} ₽'),
+                      ],
                     ]),
                     const SizedBox(height: 12),
                     _block(children: [
@@ -125,7 +139,6 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                       _line('Номер:', _order.contactPhone ?? '—'),
                       const SizedBox(height: 8),
                       _line('Доставка:', _order.deliveryTitle ?? 'Самовывоз'),
-                      _line('Цена доставки:', '${_order.deliveryPrice} ₽'),
                       if (_order.isCourier)
                         _line('Адрес:', _order.deliveryAddress ?? '—'),
                       if (_order.isCourier &&
@@ -349,6 +362,19 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
         ],
       ),
     );
+  }
+
+  /// Сумма заказа вместе с доставкой. В `total` доставка не входит намеренно:
+  /// товар могут снять с заказа, и сумма товаров изменится, а везти всё равно
+  /// надо. Складываем только для показа.
+  String _withDelivery() {
+    final total = double.tryParse(_order.total) ?? 0;
+    final delivery = double.tryParse(_order.deliveryPrice) ?? 0;
+    final sum = total + delivery;
+
+    return sum == sum.roundToDouble()
+        ? sum.toStringAsFixed(0)
+        : sum.toStringAsFixed(2);
   }
 
   Widget _line(String label, String value) {
