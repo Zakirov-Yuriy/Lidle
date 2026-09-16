@@ -798,6 +798,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  /// Сколько сейчас набежало доставки по всем точкам.
+  ///
+  /// Сумма корзины про доставку не знает и знать не должна: доставку выбирают
+  /// здесь, на этом экране, и до оформления сервер о выборе не в курсе. Но
+  /// человек внизу видит одно число и платит именно его, поэтому доставку
+  /// туда надо добавить. Без этого выходило прямо противоречие: у точки
+  /// «Товары и доставка 5 800», а внизу «К оплате 5 000».
+  ///
+  /// Подпись «в точке» при доставке тоже уходит: курьеру платят у двери, а не
+  /// в точке.
+  double _deliveryTotal() {
+    var sum = 0.0;
+
+    for (final shop in widget.cart.shops) {
+      sum += _delivery[shop.shopId]?.price ?? 0;
+    }
+
+    return sum;
+  }
+
   Widget _buildBottomBar() {
     return SafeArea(
       child: Padding(
@@ -807,11 +827,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             Row(
               children: [
-                const Text('К оплате в точке',
-                    style: TextStyle(color: textSecondary, fontSize: 15)),
+                Text(
+                  _deliveryTotal() > 0 ? 'К оплате' : 'К оплате в точке',
+                  style: const TextStyle(color: textSecondary, fontSize: 15),
+                ),
                 const Spacer(),
                 Text(
-                  _money(widget.cart.total),
+                  _money(widget.cart.total + _deliveryTotal()),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 20,
