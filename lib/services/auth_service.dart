@@ -128,6 +128,96 @@ class AuthService {
     return await ApiService.post('/auth/social', body, skipTokenRefresh: true);
   }
 
+  /// Нужна ли этому человеку настоящая почта (16.09.2026).
+  ///
+  /// ВК не всегда отдаёт почту, и тогда аккаунт заводится со служебным
+  /// адресом вида `vk_123@social.lidle.io`. Человек уже внутри приложения, но
+  /// письма ему не дойдут, покупателю такой адрес не покажешь, и объявление
+  /// он опубликовать не сможет.
+  ///
+  /// Признак приходит и в ответе соцвхода, и в профиле: вход бывает один раз,
+  /// а приложение перезапускают каждый день, и без второго источника человек,
+  /// закрывший экран, больше никогда бы его не увидел.
+  static bool needsEmail = false;
+
+  /// Шаг 1: человек указал почту, сервер шлёт на неё код.
+  static Future<Map<String, dynamic>> claimSocialEmail({
+    required String email,
+  }) async {
+    return await ApiService.post('/auth/social/claim-email', {
+      'email': email.trim(),
+    });
+  }
+
+  /// Шаг 2: человек ввёл код.
+  ///
+  /// Сервер на этом шаге может не просто поставить почту, а ОБЪЕДИНИТЬ
+  /// аккаунты: если такая почта уже есть у кого-то, соцвход переезжает на тот
+  /// аккаунт, а пустой новый удаляется. Тогда в ответе приезжают новые токены,
+  /// и их надо сохранить, иначе человек останется с токеном удалённого
+  /// аккаунта.
+  static Future<Map<String, dynamic>> confirmSocialEmail({
+    required String email,
+    required String code,
+  }) async {
+    final response = await ApiService.post('/auth/social/confirm-email', {
+      'email': email.trim(),
+      'code': code.trim(),
+    });
+
+    if (response['success'] == true) {
+      await _saveMergedTokens(response);
+
+      needsEmail = false;
+    }
+
+    return response;
+  }
+
+  /// Сохранить токены, приехавшие после объединения аккаунтов.
+  ///
+  /// Обычный вход сохраняет токены в блоке авторизации, но сюда человек
+  /// попадает уже вошедшим, минуя его. Пишем те же ключи, что и там: разойдись
+  /// они, приложение после объединения осталось бы с токеном удалённого
+  /// аккаунта и вылетело бы при первом же запросе.
+  static Future<void> _saveMergedTokens(Map<String, dynamic> response) async {
+    final token = response['access_token'] ?? response['data']?['access_token'];
+
+    if (token == null) return;
+
+    await UserService.saveLocal('token', token);
+
+    final refresh =
+        response['refresh_token'] ?? response['data']?['refresh_token'];
+
+    if (refresh != null) {
+      await UserService.saveLocal('refresh_token', refresh);
+    }
+
+    final expiresIn =
+        ((response['expires_in'] ?? response['data']?['expires_in']) as num?)
+            ?.toInt() ??
+        900;
+
+    await UserService.saveLocal(
+      'token_expires_at',
+      DateTime.now().add(Duration(seconds: expiresIn)).millisecondsSinceEpoch,
+    );
+
+    final refreshExpiresIn =
+        ((response['refresh_expires_in'] ??
+                response['data']?['refresh_expires_in']) as num?)
+            ?.toInt() ??
+        1209600;
+
+    await UserService.saveLocal(
+      'refresh_token_expires_at',
+      DateTime.now()
+          .add(Duration(seconds: refreshExpiresIn))
+          .millisecondsSinceEpoch,
+    );
+  }
+
   /// Забыли пароль.
   /// Отправляет запрос на сброс пароля по email.
   static Future<Map<String, dynamic>> forgotPassword({

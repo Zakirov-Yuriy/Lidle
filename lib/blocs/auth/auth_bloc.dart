@@ -162,6 +162,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       final token = await _saveAuthResponse(response);
       if (token != null) {
+        // ВК не всегда отдаёт почту, и тогда сервер заводит служебный адрес
+        // вида vk_123@social.lidle.io (16.09.2026). Признак приходил и раньше,
+        // но приложение его не читало, и человек оставался без почты: письма
+        // не доходят, объявление не публикуется. Запоминаем, чтобы сразу после
+        // входа показать экран с просьбой указать настоящую почту.
+        AuthService.needsEmail = response['needs_email'] == true;
+
         emit(AuthAuthenticated(token: token));
       } else {
         final serverMessage =

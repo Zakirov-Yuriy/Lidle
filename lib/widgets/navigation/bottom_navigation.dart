@@ -14,6 +14,7 @@ import 'package:lidle/pages/add_listing/category_selection_screen.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_screen.dart';
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_contact_data_screen.dart';
+import 'package:lidle/pages/auth/social_email_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -289,6 +290,21 @@ class BottomNavigation extends StatelessWidget {
       );
       if (shouldFill != true) return;
       if (!context.mounted) return;
+
+      // Нет настоящей почты — ведём на её досбор, а не в контакты компании
+      // (16.09.2026). Человек вошёл через соцсеть, ВК почту не отдал, и сервер
+      // выдал служебный адрес. Заполнять карточку компании бесполезно, пока
+      // нет самой почты: сервер всё равно откажет.
+      final needsEmail = missing.any((m) =>
+          m is Map && m['field']?.toString() == 'user.email_confirm');
+
+      if (needsEmail) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SocialEmailScreen()),
+        );
+
+        return;
+      }
 
       // По префиксу поля решаем, на какой экран вести. Сейчас гейтинг завязан
       // только на контакты компании (company.*), поэтому обычно ведём на экран

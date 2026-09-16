@@ -52,6 +52,8 @@ import 'constants.dart';
 import 'package:lidle/app/routes.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:lidle/services/push_service.dart';
+import 'package:lidle/services/auth_service.dart';
+import 'package:lidle/pages/auth/social_email_screen.dart';
 import 'dart:async';                                              // ← добавить
   
 
@@ -414,6 +416,26 @@ class LidleApp extends StatelessWidget {
             );
 
             log.d('🌙 Запущена фоновая задача проверки сообщений');
+
+            // 📧 Соцвход без почты (16.09.2026). ВК отдаёт её не всегда, и
+            // тогда у человека служебный адрес vk_123@social.lidle.io: письма
+            // не дойдут, объявление не опубликуется. Просим настоящую почту
+            // сразу после входа, пока человек помнит, что он только что вошёл.
+            //
+            // Следующим кадром, а не прямо здесь: мы внутри обработчика
+            // состояния, и навигация из него спорит с переходом, который
+            // делает сам экран входа.
+            if (AuthService.needsEmail) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!AuthService.needsEmail) return;
+
+                navigatorKey.currentState?.push(
+                  MaterialPageRoute(
+                    builder: (_) => const SocialEmailScreen(),
+                  ),
+                );
+              });
+            }
           } else if (state is AuthLoggedOut || state is AuthTokenExpired) {
             // Пользователь вышел или токен истёк — останавливаем таймер
             sl<TokenService>().dispose();
