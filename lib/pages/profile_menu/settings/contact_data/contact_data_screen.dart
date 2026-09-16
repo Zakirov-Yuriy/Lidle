@@ -9,6 +9,7 @@ import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton load
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+import 'package:lidle/widgets/forms/required_fields.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -60,7 +61,8 @@ class ContactDataScreen extends StatefulWidget {
   State<ContactDataScreen> createState() => _ContactDataScreenState();
 }
 
-class _ContactDataScreenState extends State<ContactDataScreen> {
+class _ContactDataScreenState extends State<ContactDataScreen>
+    with RequiredFieldsMixin {
   late TextEditingController _nameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
@@ -124,6 +126,14 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
     _whatsappController = TextEditingController();
     _maxController = TextEditingController();
     _aboutController = TextEditingController();
+
+    // Подсветка обязательных полей гаснет сама, как только поле заполнено
+    // (16.09.2026).
+    watchRequired(_nameController, 'name');
+    watchRequired(_lastNameController, 'last_name');
+    watchRequired(_emailController, 'email');
+    watchRequired(_phone1Controller, 'phone1');
+
     // Загружаем регионы при инициализации
     _loadRegions();
   }
@@ -651,6 +661,58 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   }
 
   Future<void> _saveContactData() async {
+    // Сначала обязательные поля (16.09.2026).
+    //
+    // Экран длинный, и пустое поле где-то вверху человеку не видно: он жал
+    // «Сохранить» и не понимал, почему данные не сохраняются. Теперь пустые
+    // поля обводятся красным, а экран сам прокручивается к самому верхнему
+    // из них.
+    final missing = await findMissingRequired([
+      RequiredField(
+        name: 'name',
+        label: 'Название компании',
+        filled: _nameController.text.trim().isNotEmpty,
+      ),
+      RequiredField(
+        name: 'last_name',
+        label: 'Фамилия',
+        filled: _lastNameController.text.trim().isNotEmpty,
+      ),
+      RequiredField(
+        name: 'region',
+        label: 'Ваша область',
+        filled: _selectedRegionId != null,
+      ),
+      RequiredField(
+        name: 'city',
+        label: 'Ваш город',
+        filled: _selectedCityId != null,
+      ),
+      RequiredField(
+        name: 'email',
+        label: 'Электронная почта',
+        filled: _emailController.text.trim().isNotEmpty,
+      ),
+      RequiredField(
+        name: 'phone1',
+        label: 'Номер телефона 1',
+        filled: _phone1Controller.text.trim().isNotEmpty,
+      ),
+    ]);
+
+    if (!mounted) return;
+
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(requiredMessage(missing)),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
     // 🚫 Запрет ссылок в поле «Описание компании» (в т.ч. если ссылка пришла
     // из старых данных: форматтер не ловит программную подстановку текста).
     if (_hasLink(_aboutController.text)) {
@@ -1279,17 +1341,37 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                         inputFormatters: [_NoLinksInputFormatter()],
                       ),
 
-                      _label('Название компании'),
-                      _field(_nameController, 'Введите название компании'),
+                      _label('Название компании', required: true),
+                      requiredBox(
+                        name: 'name',
+                        filled: _nameController.text.trim().isNotEmpty,
+                        child: _field(
+                            _nameController, 'Введите название компании'),
+                      ),
 
-                      _label('Фамилия', note: '(Скрыта от пользователей)'),
-                      _field(_lastNameController, 'Введите фамилию'),
+                      _label('Фамилия',
+                          note: '(Скрыта от пользователей)', required: true),
+                      requiredBox(
+                        name: 'last_name',
+                        filled: _lastNameController.text.trim().isNotEmpty,
+                        child: _field(_lastNameController, 'Введите фамилию'),
+                      ),
 
-                      _label('Ваша область'),
-                      _buildRegionDropdown(),
+                      _label('Ваша область', required: true),
+                      requiredBox(
+                        name: 'region',
+                        filled: _selectedRegionId != null,
+                        message: 'Выберите область',
+                        child: _buildRegionDropdown(),
+                      ),
 
-                      _label('Ваш город'),
-                      _buildCityDropdown(),
+                      _label('Ваш город', required: true),
+                      requiredBox(
+                        name: 'city',
+                        filled: _selectedCityId != null,
+                        message: 'Выберите город',
+                        child: _buildCityDropdown(),
+                      ),
 
                       _label('Улица', note: '(Виден в вашем магазине)'),
                       _buildStreetDropdown(),
@@ -1297,11 +1379,21 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
                       _label('Номер дома', note: '(Ваш физический адрес компании)'),
                       _buildBuildingDropdown(),
 
-                      _label('Электронная почта', note: '(Скрыта от пользователей)'),
-                      _field(_emailController, 'Введите вашу почту'),
+                      _label('Электронная почта',
+                          note: '(Скрыта от пользователей)', required: true),
+                      requiredBox(
+                        name: 'email',
+                        filled: _emailController.text.trim().isNotEmpty,
+                        child: _field(_emailController, 'Введите вашу почту'),
+                      ),
 
-                      _label('Номер телефона 1'),
-                      _field(_phone1Controller, 'Введите номер телефона'),
+                      _label('Номер телефона 1', required: true),
+                      requiredBox(
+                        name: 'phone1',
+                        filled: _phone1Controller.text.trim().isNotEmpty,
+                        child:
+                            _field(_phone1Controller, 'Введите номер телефона'),
+                      ),
 
                       _label('Номер телефона 2'),
                       _field(_phone2Controller, 'Введите'),
@@ -1358,7 +1450,9 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
   // HELPERS
   // ─────────────────────────────────────────────
 
-  Widget _label(String text, {String? note}) {
+  /// Подпись поля. `required: true` ставит красную звёздочку: видно заранее,
+  /// без чего форма не сохранится (16.09.2026).
+  Widget _label(String text, {String? note, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(25, 14, 25, 6),
       child: Text.rich(
@@ -1369,18 +1463,22 @@ class _ContactDataScreenState extends State<ContactDataScreen> {
             fontSize: 16,
             fontWeight: FontWeight.w400,
           ),
-          children: note == null
-              ? null
-              : [
-                  TextSpan(
-                    text: '  $note',
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
+          children: [
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: Color(0xFFE5484D), fontSize: 16),
+              ),
+            if (note != null)
+              TextSpan(
+                text: '  $note',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+          ],
         ),
       ),
     );

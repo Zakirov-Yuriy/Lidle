@@ -46,6 +46,7 @@ import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_sche
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+import 'package:lidle/widgets/forms/required_fields.dart';
 import 'package:lidle/services/company_contact_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -86,7 +87,8 @@ class CompanyContactDataScreen extends StatefulWidget {
       _CompanyContactDataScreenState();
 }
 
-class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
+class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
+    with RequiredFieldsMixin {
   late TextEditingController _nameController;
   late TextEditingController _aboutController;
   late TextEditingController _emailController;
@@ -237,6 +239,14 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
         setState(() => _aboutLength = _aboutController.text.length);
       }
     });
+
+    // Подсветка обязательных полей гаснет сама, как только поле заполнено
+    // (16.09.2026).
+    watchRequired(_aboutController, 'about');
+    watchRequired(_nameController, 'name');
+    watchRequired(_emailController, 'email');
+    watchRequired(_phone1Controller, 'phone1');
+
     _loadRegions();
 
     // 💾 Кеширование как на экране пользователя (contact_data):
@@ -684,6 +694,58 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
   }
 
   Future<void> _saveCompanyData() async {
+    // Сначала обязательные поля (16.09.2026).
+    //
+    // Ровно этот набор проверяет сервер, когда решает, можно ли публиковать
+    // объявление. Раньше пустое поле просто молчало, и человек жал «Сохранить»,
+    // не понимая, чего от него хотят. Теперь пустые поля обводятся красным, а
+    // экран прокручивается к самому верхнему из них.
+    final missing = await findMissingRequired([
+      RequiredField(
+        name: 'about',
+        label: 'Описание компании',
+        filled: _aboutController.text.trim().isNotEmpty,
+      ),
+      RequiredField(
+        name: 'name',
+        label: 'Название компании',
+        filled: _nameController.text.trim().isNotEmpty,
+      ),
+      RequiredField(
+        name: 'region',
+        label: 'Ваша область',
+        filled: _selectedRegionId != null,
+      ),
+      RequiredField(
+        name: 'city',
+        label: 'Ваш город',
+        filled: _selectedCityId != null,
+      ),
+      RequiredField(
+        name: 'email',
+        label: 'Электронная почта',
+        filled: _emailController.text.trim().isNotEmpty,
+      ),
+      RequiredField(
+        name: 'phone1',
+        label: 'Номер телефона 1',
+        filled: _phone1Controller.text.trim().isNotEmpty,
+      ),
+    ]);
+
+    if (!mounted) return;
+
+    if (missing.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(requiredMessage(missing)),
+          backgroundColor: Colors.red,
+        ),
+      );
+
+      return;
+    }
+
     if (_hasLink(_aboutController.text)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1121,7 +1183,9 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
     );
   }
 
-  Widget _label(String text, {String? note}) {
+  /// Подпись поля. `required: true` ставит красную звёздочку: видно заранее,
+  /// без чего объявление не опубликуется (16.09.2026).
+  Widget _label(String text, {String? note, bool required = false}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(25, 14, 25, 6),
       child: Text.rich(
@@ -1132,18 +1196,22 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
             fontSize: 16,
             fontWeight: FontWeight.w400,
           ),
-          children: note == null
-              ? null
-              : [
-                  TextSpan(
-                    text: '  $note',
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
+          children: [
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(color: Color(0xFFE5484D), fontSize: 16),
+              ),
+            if (note != null)
+              TextSpan(
+                text: '  $note',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -2305,11 +2373,19 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 // с того, что человек увидит на витрине.
                 _imagesBlock(),
 
-                _label('Описание компании'),
-                _aboutField(),
+                _label('Описание компании', required: true),
+                requiredBox(
+                  name: 'about',
+                  filled: _aboutController.text.trim().isNotEmpty,
+                  child: _aboutField(),
+                ),
 
-                _label('Название компании'),
-                _field(_nameController, 'Введите название компании'),
+                _label('Название компании', required: true),
+                requiredBox(
+                  name: 'name',
+                  filled: _nameController.text.trim().isNotEmpty,
+                  child: _field(_nameController, 'Введите название компании'),
+                ),
 
                 _label('Направление работы'),
                 _pickerRow(
@@ -2328,11 +2404,21 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 _label('Ваша страна'),
                 _pickerRow(_country, 'Выбрать', () => _notReady('Страна')),
 
-                _label('Ваша область'),
-                _buildRegionDropdown(),
+                _label('Ваша область', required: true),
+                requiredBox(
+                  name: 'region',
+                  filled: _selectedRegionId != null,
+                  message: 'Выберите область',
+                  child: _buildRegionDropdown(),
+                ),
 
-                _label('Ваш город'),
-                _buildCityDropdown(),
+                _label('Ваш город', required: true),
+                requiredBox(
+                  name: 'city',
+                  filled: _selectedCityId != null,
+                  message: 'Выберите город',
+                  child: _buildCityDropdown(),
+                ),
 
                 _label('Улица', note: '(Виден в вашем магазине)'),
                 _buildStreetDropdown(),
@@ -2340,11 +2426,20 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen> {
                 _label('Номер дома', note: '(Физический адрес компании)'),
                 _buildBuildingDropdown(),
 
-                _label('Электронная почта', note: '(Скрыта от пользователей)'),
-                _field(_emailController, 'Введите почту компании'),
+                _label('Электронная почта',
+                    note: '(Скрыта от пользователей)', required: true),
+                requiredBox(
+                  name: 'email',
+                  filled: _emailController.text.trim().isNotEmpty,
+                  child: _field(_emailController, 'Введите почту компании'),
+                ),
 
-                _label('Номер телефона 1'),
-                _field(_phone1Controller, 'Введите номер телефона'),
+                _label('Номер телефона 1', required: true),
+                requiredBox(
+                  name: 'phone1',
+                  filled: _phone1Controller.text.trim().isNotEmpty,
+                  child: _field(_phone1Controller, 'Введите номер телефона'),
+                ),
 
                 _label('Номер телефона 2'),
                 _field(_phone2Controller, 'Введите'),
