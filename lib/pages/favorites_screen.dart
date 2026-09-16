@@ -266,29 +266,38 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(
-                            context,
-                          ).pushReplacementNamed(HomePage.routeName);
-                        }
+                      if (Navigator.of(context).canPop()) {
+                        Navigator.of(context).pop();
+                      } else {
+                        Navigator.of(
+                          context,
+                        ).pushReplacementNamed(HomePage.routeName);
+                      }
                       },
-                      child: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: textPrimary,
-                        size: 18,
+                      // Нажатие на всю строку, а не только на стрелку: попасть пальцем
+                      // в иконку шириной 16 точек трудно, а заголовок рядом читается
+                      // как часть той же кнопки «назад».
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: textPrimary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Мое избранное',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Мое избранное',
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    )
                     const Spacer(),
                     _buildFilterDropdown(
                       label: _selectedSortOptions.isEmpty

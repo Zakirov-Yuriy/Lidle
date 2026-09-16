@@ -61,21 +61,30 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(
-                        Icons.arrow_back_ios,
-                        color: Colors.white,
-                        size: 16,
+                      // Нажатие на всю строку, а не только на стрелку: попасть пальцем
+                      // в иконку шириной 16 точек трудно, а заголовок рядом читается
+                      // как часть той же кнопки «назад».
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.arrow_back_ios,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Принять заявку',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Принять заявку',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    )
                     const Spacer(),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),

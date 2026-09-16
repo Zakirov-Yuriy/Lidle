@@ -465,17 +465,27 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios,
-                        color: textPrimary, size: 18),
-                  ),
-                  Text(
-                    _isEditing ? 'Изменить позицию' : 'Добавить позицию',
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
+                    // Нажатие на всю строку, а не только на стрелку: попасть пальцем
+                    // в иконку шириной 16 точек трудно, а заголовок рядом читается
+                    // как часть той же кнопки «назад».
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.arrow_back_ios,
+                          color: textPrimary, size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isEditing ? 'Изменить позицию' : 'Добавить позицию',
+                          style: const TextStyle(
+                            color: textPrimary,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+                  )
                   const Spacer(),
                   GestureDetector(
                     onTap: () => Navigator.pop(context),

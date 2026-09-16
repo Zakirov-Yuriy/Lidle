@@ -110,20 +110,30 @@ class _RealEstateApartmentsScreenState
                   children: [
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(
-                        Icons.arrow_back_ios,
-                        color: activeIconColor,
-                        size: 16,
+                      // Нажатие на всю строку, а не только на стрелку: попасть пальцем
+                      // в иконку шириной 16 точек трудно, а заголовок рядом читается
+                      // как часть той же кнопки «назад».
+                      behavior: HitTestBehavior.opaque,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.arrow_back_ios,
+                            color: activeIconColor,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Назад',
+                            style: TextStyle(
+                              color: activeIconColor,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const Text(
-                      'Назад',
-                      style: TextStyle(
-                        color: activeIconColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    )
                     const Spacer(),
                     TextButton(
                       onPressed: () {
