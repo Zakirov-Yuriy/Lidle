@@ -9,13 +9,24 @@ import 'package:lidle/widgets/components/header.dart';
 
 /// Мои покупки и заказы в моих точках.
 ///
-/// Два списка на одном экране, вкладками: это одна и та же сущность с двух
-/// сторон, и разводить их по разным экранам значит заставлять продавца,
-/// который сам что-то покупал, помнить, где что лежит.
+/// С 16.09.2026 у продавца есть отдельный экран заказов ко мне, с вкладками
+/// по состояниям и назначением курьера (`SellerOrdersScreen`). Этот экран
+/// открывается из кабинета как «Покупки», и тогда вкладок на нём нет: пункт
+/// называется покупками, значит и показывать должен только покупки.
+///
+/// Обе вкладки остаются для перехода по пушу: уведомление о новом заказе
+/// по-прежнему ведёт сюда, и терять этот путь незачем.
 class MyOrdersScreen extends StatefulWidget {
-  const MyOrdersScreen({super.key, this.startWithIncoming = false});
+  const MyOrdersScreen({
+    super.key,
+    this.startWithIncoming = false,
+    this.onlyMine = false,
+  });
 
   final bool startWithIncoming;
+
+  /// Только мои покупки, без переключателя сторон.
+  final bool onlyMine;
 
   @override
   State<MyOrdersScreen> createState() => _MyOrdersScreenState();
@@ -36,7 +47,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   @override
   void initState() {
     super.initState();
-    _incoming = widget.startWithIncoming;
+    _incoming = widget.onlyMine ? false : widget.startWithIncoming;
 
     final token = HiveService.getUserData('token');
     _isGuest = token == null || '$token'.isEmpty;
@@ -93,7 +104,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               ),
             ),
             if (!_isGuest) ...[
-              _buildTabs(),
+              if (!widget.onlyMine) _buildTabs(),
               _buildScopeRow(),
             ],
             Expanded(

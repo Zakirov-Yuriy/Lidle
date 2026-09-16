@@ -33,6 +33,11 @@ class OrdersService {
     /// способа (15.09.2026). Точек в заказе бывает несколько, и принимают
     /// они разное, поэтому выбор именно по точкам, а не один на весь заказ.
     Map<int, String>? paymentMethods,
+
+    /// Как получать заказ, по каждой точке (16.09.2026). Цену доставки сюда
+    /// НЕ кладём: её подставляет сервер по номеру способа, и присланной он не
+    /// верит. Иначе цену доставки можно было бы назначить себе самому.
+    Map<int, OrderDeliveryChoice>? deliveries,
   }) async {
     final body = <String, dynamic>{};
 
@@ -62,6 +67,12 @@ class OrdersService {
     if (paymentMethods != null && paymentMethods.isNotEmpty) {
       body['payment_methods'] = paymentMethods.map(
         (shopId, method) => MapEntry('$shopId', method),
+      );
+    }
+
+    if (deliveries != null && deliveries.isNotEmpty) {
+      body['deliveries'] = deliveries.map(
+        (shopId, choice) => MapEntry('$shopId', choice.toJson()),
       );
     }
 
@@ -100,8 +111,64 @@ class OrdersService {
       _list('/me/orders', status: status, all: all);
 
   /// Заказы в моих точках, для продавца.
-  static Future<List<OrderModel>> incoming({String? status, bool all = false}) =>
-      _list('/me/orders/incoming', status: status, all: all);
+  ///
+  /// `tab` это вкладка экрана продавца: `new`, `in_work`, `done`, `rejected`.
+  /// Вкладка важнее отбора по одному статусу: на «Исполняемых» лежат сразу
+  /// два статуса, а на «Отклонённых» отмены обеих сторон (16.09.2026).
+  static Future<List<OrderModel>> incoming({
+    String? status,
+    bool all = false,
+    String? tab,
+    int? year,
+    int? month,
+  }) => _list(
+    '/me/orders/incoming',
+    status: status,
+    all: all,
+    tab: tab,
+    year: year,
+    month: month,
+  );
+
+  /// Сколько заказов на каждой вкладке. Отдельным запросом: числа нужны сразу
+  /// на всех вкладках, а список приходит по одной.
+  static Future<OrderCounts> counts() async {
+    try {
+      final response = await ApiService.get('/me/orders/counts');
+      final data = response['data'];
+
+      if (data is Map<String, dynamic>) return OrderCounts.fromJson(data);
+
+      return const OrderCounts();
+    } catch (e) {
+      log.d('Не удалось загрузить счётчики заказов: $e');
+
+      return const OrderCounts();
+    }
+  }
+
+  /// Курьеры продавца: сотрудники его публикаций с должностью курьера.
+  static Future<List<CourierBrief>> couriers() async {
+    try {
+      final response = await ApiService.get('/me/couriers');
+      final data = response['data'];
+
+      if (data is! List) return const [];
+
+      return data
+          .whereType<Map<String, dynamic>>()
+          .map(CourierBrief.fromJson)
+          .toList();
+    } catch (e) {
+      log.d('Не удалось загрузить курьеров: $e');
+
+      return const [];
+    }
+  }
+
+  /// Назначить курьера на заказ. Пустой номер снимает назначение.
+  static Future<OrderActionResult> assignCourier(int orderId, int? staffId) =>
+      _action('/me/orders/$orderId/courier', {'staff_id': staffId});
 
   static Future<OrderModel?> details(int orderId) async {
     try {
@@ -141,11 +208,17 @@ class OrdersService {
     String path, {
     String? status,
     bool all = false,
+    String? tab,
+    int? year,
+    int? month,
   }) async {
     final query = <String>[];
 
     if (status != null && status.isNotEmpty) query.add('status=$status');
     if (all) query.add('scope=all');
+    if (tab != null && tab.isNotEmpty) query.add('tab=$tab');
+    if (year != null) query.add('year=$year');
+    if (month != null) query.add('month=$month');
 
     final url = query.isEmpty ? path : '$path?${query.join('&')}';
 
@@ -228,4 +301,88 @@ class OrderActionResult {
     required this.message,
     this.order,
   });
+}
+
+
+/// Выбор способа получения по одной точке (16.09.2026).
+///
+/// Цены здесь нет намеренно: её подставляет сервер по номеру способа.
+class OrderDeliveryChoice {
+  final String type;
+  final int? optionId;
+  final String? address;
+  final String? comment;
+
+  const OrderDeliveryChoice.pickup()
+      : type = 'pickup',
+        optionId = null,
+        address = null,
+        comment = null;
+
+  const OrderDeliveryChoice.courier({
+    required this.optionId,
+    required this.address,
+    this.comment,
+  }) : type = 'courier';
+
+  bool get isCourier => type == 'courier';
+
+  Map<String, dynamic> toJson() => {
+        'type': type,
+        if (optionId != null) 'option_id': optionId,
+        if (address != null && address!.isNotEmpty) 'address': address,
+        if (comment != null && comment!.isNotEmpty) 'comment': comment,
+      };
+}
+
+/// Числа на вкладках экрана заказов продавца.
+class OrderCounts {
+  final int newOrders;
+  final int inWork;
+  final int done;
+  final int rejected;
+
+  const OrderCounts({
+    this.newOrders = 0,
+    this.inWork = 0,
+    this.done = 0,
+    this.rejected = 0,
+  });
+
+  factory OrderCounts.fromJson(Map<String, dynamic> data) => OrderCounts(
+        newOrders: _num(data['new']),
+        inWork: _num(data['in_work']),
+        done: _num(data['done']),
+        rejected: _num(data['rejected']),
+      );
+
+  static int _num(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+}
+
+/// Курьер продавца. Учётной записи у него нет: это сотрудник из справочника,
+/// в приложение он не входит.
+class CourierBrief {
+  final int id;
+  final String name;
+  final String? position;
+  final String? image;
+
+  const CourierBrief({
+    required this.id,
+    required this.name,
+    this.position,
+    this.image,
+  });
+
+  factory CourierBrief.fromJson(Map<String, dynamic> data) => CourierBrief(
+        id: OrderCounts._num(data['id']),
+        name: '${data['name'] ?? ''}',
+        position: data['position']?.toString(),
+        image: data['image']?.toString(),
+      );
 }

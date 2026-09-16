@@ -42,6 +42,26 @@ class OrderModel {
   /// прилавка или проверять поступление.
   final bool paymentOnPickup;
 
+  /// Как человек получает заказ: `pickup` или `courier` (16.09.2026).
+  final String deliveryType;
+
+  /// Название способа копией: «Самовывоз», «Курьером по городу».
+  final String? deliveryTitle;
+
+  /// Цена доставки. Отдельно от суммы товаров: по сумме товаров считается
+  /// выручка, и подмешивать в неё доставку значит испортить обе цифры.
+  final String deliveryPrice;
+
+  /// Куда везти. Пусто у самовывоза.
+  final String? deliveryAddress;
+
+  /// Подъезд, этаж, домофон.
+  final String? deliveryComment;
+
+  /// Кто везёт. Пусто, пока продавец не назначил курьера.
+  final int? courierStaffId;
+  final String? courierName;
+
   final DateTime? createdAt;
   final DateTime? acceptedAt;
   final DateTime? readyAt;
@@ -64,6 +84,13 @@ class OrderModel {
     this.shop,
     this.paymentMethodTitle,
     this.paymentOnPickup = false,
+    this.deliveryType = 'pickup',
+    this.deliveryTitle,
+    this.deliveryPrice = '0',
+    this.deliveryAddress,
+    this.deliveryComment,
+    this.courierStaffId,
+    this.courierName,
     this.createdAt,
     this.acceptedAt,
     this.readyAt,
@@ -95,6 +122,25 @@ class OrderModel {
       items: items is List
           ? items.whereType<Map<String, dynamic>>().map(OrderLine.fromJson).toList()
           : const [],
+      deliveryType: data['delivery'] is Map
+          ? '${data['delivery']['type'] ?? 'pickup'}'
+          : 'pickup',
+      deliveryTitle: data['delivery'] is Map
+          ? data['delivery']['title']?.toString()
+          : null,
+      deliveryPrice: data['delivery'] is Map
+          ? '${data['delivery']['price'] ?? '0'}'
+          : '0',
+      deliveryAddress: data['delivery'] is Map
+          ? data['delivery']['address']?.toString()
+          : null,
+      deliveryComment: data['delivery'] is Map
+          ? data['delivery']['comment']?.toString()
+          : null,
+      courierStaffId:
+          data['courier'] is Map ? _int(data['courier']['staff_id']) : null,
+      courierName:
+          data['courier'] is Map ? data['courier']['name']?.toString() : null,
       createdAt: _date(data['created_at']),
       acceptedAt: _date(data['accepted_at']),
       readyAt: _date(data['ready_at']),
@@ -108,6 +154,12 @@ class OrderModel {
 
   bool get isCancelled =>
       status == 'cancelled_by_buyer' || status == 'cancelled_by_seller';
+
+  /// Заказ везёт курьер, а не забирают в точке.
+  bool get isCourier => deliveryType == 'courier';
+
+  /// Курьера ещё не назначили. Продавцу это главный вопрос по такому заказу.
+  bool get needsCourier => isCourier && (courierName ?? '').isEmpty;
 
   static int? _int(dynamic value) {
     if (value is int) return value;

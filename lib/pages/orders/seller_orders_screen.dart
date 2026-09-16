@@ -1,0 +1,599 @@
+// ============================================================
+// "Экран: Заказы ко мне (продавец)"
+// ============================================================
+//
+// Заказы на товары, которые покупатели сделали у этого продавца. Раньше
+// попасть сюда можно было только по пушу или через «Мои покупки», а пункт в
+// кабинете был закомментирован, потому что вёл в никуда (16.09.2026).
+//
+// Вкладки названы как на макете заказчика: Новые, Исполняемые, Выполняемые,
+// Отклонённые. За ними стоят статусы сервера: исполняемые это принятые и
+// готовые к выдаче, отклонённые это отмены обеих сторон.
+//
+// Бронирование объявлений сюда не попадает: это другая ветка и другой экран
+// («Заявки ко мне»).
+
+import 'package:flutter/material.dart';
+import 'package:lidle/constants.dart';
+import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/orders/order_accept_screen.dart';
+import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
+import 'package:lidle/widgets/components/header.dart';
+
+class SellerOrdersScreen extends StatefulWidget {
+  static const routeName = '/seller-orders';
+
+  const SellerOrdersScreen({super.key});
+
+  @override
+  State<SellerOrdersScreen> createState() => _SellerOrdersScreenState();
+}
+
+/// Вкладка экрана: ключ для сервера и подпись для человека.
+class _Tab {
+  final String key;
+  final String title;
+
+  /// Показывать ли фильтр по году и месяцу. Нужен там, где заказы копятся.
+  final bool withPeriod;
+
+  const _Tab(this.key, this.title, {this.withPeriod = false});
+}
+
+class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
+  static const List<_Tab> _tabs = [
+    _Tab('new', 'Новые'),
+    _Tab('in_work', 'Исполняемые'),
+    _Tab('done', 'Выполняемые', withPeriod: true),
+    _Tab('rejected', 'Отклонённые', withPeriod: true),
+  ];
+
+  int _tabIndex = 0;
+
+  List<OrderModel> _orders = const [];
+  OrderCounts _counts = const OrderCounts();
+
+  bool _isLoading = true;
+
+  /// Раскрытые карточки. Раскрытие показывает телефон, адрес и код заказа.
+  final Set<int> _expanded = {};
+
+  int? _year;
+  int? _month;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  _Tab get _tab => _tabs[_tabIndex];
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+
+    // Числа на вкладках и список тянем параллельно: числа нужны сразу на всех
+    // вкладках, а список только на текущей.
+    final results = await Future.wait([
+      OrdersService.incoming(
+        tab: _tab.key,
+        all: true,
+        year: _tab.withPeriod ? _year : null,
+        month: _tab.withPeriod ? _month : null,
+      ),
+      OrdersService.counts(),
+    ]);
+
+    if (!mounted) return;
+
+    setState(() {
+      _orders = results[0] as List<OrderModel>;
+      _counts = results[1] as OrderCounts;
+      _isLoading = false;
+    });
+  }
+
+  int _countFor(String key) => switch (key) {
+        'new' => _counts.newOrders,
+        'in_work' => _counts.inWork,
+        'done' => _counts.done,
+        'rejected' => _counts.rejected,
+        _ => 0,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: primaryBackground,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Header(),
+            _backRow(),
+            _tabsRow(),
+            if (_tab.withPeriod) _periodRow(),
+            Expanded(child: _body()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _backRow() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 8),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Заказы',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tabsRow() {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 25),
+        itemCount: _tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 18),
+        itemBuilder: (context, index) {
+          final tab = _tabs[index];
+          final selected = index == _tabIndex;
+          final count = _countFor(tab.key);
+
+          return GestureDetector(
+            onTap: selected
+                ? null
+                : () {
+                    setState(() {
+                      _tabIndex = index;
+                      _expanded.clear();
+                    });
+
+                    _load();
+                  },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  count > 0 ? '${tab.title} $count' : tab.title,
+                  style: TextStyle(
+                    color: selected ? activeIconColor : textMuted,
+                    fontSize: 15,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: 2,
+                  width: 60,
+                  color: selected ? activeIconColor : Colors.transparent,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Год и месяц. Без них человек листает всю историю разом.
+  Widget _periodRow() {
+    final now = DateTime.now();
+    final years = [now.year - 1, now.year];
+
+    const months = [
+      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь',
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(25, 8, 25, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _chip('Все', _year == null, () {
+                setState(() {
+                  _year = null;
+                  _month = null;
+                });
+                _load();
+              }),
+              const SizedBox(width: 16),
+              ...years.map((year) => Padding(
+                    padding: const EdgeInsets.only(right: 16),
+                    child: _chip('$year', _year == year, () {
+                      setState(() => _year = year);
+                      _load();
+                    }),
+                  )),
+            ],
+          ),
+          if (_year != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 28,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: months.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 14),
+                itemBuilder: (context, index) => _chip(
+                  months[index],
+                  _month == index + 1,
+                  () {
+                    setState(() => _month = _month == index + 1 ? null : index + 1);
+                    _load();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool selected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: selected ? activeIconColor : textMuted,
+          fontSize: 14,
+          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
+    );
+  }
+
+  Widget _body() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: activeIconColor));
+    }
+
+    if (_orders.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Text(
+            switch (_tab.key) {
+              'new' => 'Новых заказов нет.',
+              'in_work' => 'В работе сейчас ничего нет.',
+              'done' => 'Выполненных заказов за этот период нет.',
+              _ => 'Отклонённых заказов за этот период нет.',
+            },
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: textMuted, fontSize: 15),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: activeIconColor,
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(25, 12, 25, 24),
+        children: _orders.map(_card).toList(),
+      ),
+    );
+  }
+
+  Widget _card(OrderModel order) {
+    final expanded = _expanded.contains(order.id);
+
+    // Цвет заголовка говорит о состоянии: отклонённый красным, выполненный
+    // зелёным, остальные обычным. Это с макета, и это единственное место, где
+    // состояние видно без чтения.
+    final titleColor = order.isCancelled
+        ? const Color(0xFFE5484D)
+        : order.status == 'completed'
+            ? const Color(0xFF3BA55D)
+            : Colors.white;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Заказ №${order.number}',
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                _date(order.createdAt),
+                style: const TextStyle(color: textSecondary, fontSize: 14),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => setState(() {
+                  expanded ? _expanded.remove(order.id) : _expanded.add(order.id);
+                }),
+                child: Icon(
+                  expanded ? Icons.keyboard_arrow_down : Icons.arrow_back_ios,
+                  color: Colors.white,
+                  size: expanded ? 22 : 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _line('Заказчик:', order.contactName ?? '—'),
+          _line('Доставка:', order.deliveryTitle ?? 'Самовывоз'),
+          _line('Цена доставки:', '${order.deliveryPrice} ₽'),
+          _line('Оплата:', order.paymentMethodTitle ?? '—'),
+          const SizedBox(height: 10),
+          ...order.items.map(_item),
+          if (expanded) ..._details(order),
+          if (order.status == 'new') ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _button(
+                    'Отклонить',
+                    const Color(0xFFE5484D),
+                    () => _reject(order),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _button(
+                    'Принять',
+                    activeIconColor,
+                    () => _openAccept(order),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (order.status != 'new' && !order.isCancelled) ...[
+            const SizedBox(height: 14),
+            _button('Открыть заказ', activeIconColor, () => _openAccept(order)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// Раскрытая часть карточки: то, что нужно при сборке и выдаче.
+  List<Widget> _details(OrderModel order) {
+    return [
+      const SizedBox(height: 10),
+      const Divider(color: Colors.white12, height: 1),
+      const SizedBox(height: 10),
+      _line('Телефон:', order.contactPhone ?? '—'),
+      if (order.isCourier) _line('Адрес:', order.deliveryAddress ?? '—'),
+      if (order.isCourier && (order.deliveryComment ?? '').isNotEmpty)
+        _line('Комментарий:', order.deliveryComment!),
+      if (order.isCourier)
+        _line('Курьер:', order.courierName ?? 'не назначен'),
+      if ((order.comment ?? '').isNotEmpty) _line('От покупателя:', order.comment!),
+      if ((order.cancelReason ?? '').isNotEmpty)
+        _line('Причина отказа:', order.cancelReason!),
+      const SizedBox(height: 10),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Итого', style: TextStyle(color: textSecondary, fontSize: 14)),
+          Text(
+            '${order.total} ₽',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+      if (order.isAlive && (order.pickupCode ?? '').isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Код заказа',
+              style: TextStyle(color: textSecondary, fontSize: 14),
+            ),
+            Text(
+              order.pickupCode!,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 3,
+              ),
+            ),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  Widget _item(OrderLine line) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: line.image == null
+                ? Container(width: 64, height: 64, color: secondaryBackground)
+                : Image.network(
+                    line.image!,
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        Container(width: 64, height: 64, color: secondaryBackground),
+                  ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  line.name,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+                if ((line.sku ?? '').isNotEmpty)
+                  Text(
+                    'Артикул: ${line.sku}',
+                    style: const TextStyle(color: textMuted, fontSize: 12),
+                  ),
+                Text(
+                  '${line.quantity} шт',
+                  style: const TextStyle(color: textSecondary, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${line.sum} ₽',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _line(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: textSecondary, fontSize: 14)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _button(String label, Color color, VoidCallback onTap) {
+    return SizedBox(
+      height: 44,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: color),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(label, style: TextStyle(color: color, fontSize: 15)),
+      ),
+    );
+  }
+
+  Future<void> _openAccept(OrderModel order) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => OrderAcceptScreen(order: order)),
+    );
+
+    if (changed == true) _load();
+  }
+
+  /// Отказ от заказа.
+  ///
+  /// На макете это окно называется «Удаление заказа», но удаления здесь нет и
+  /// быть не должно: заказ уходит в «Отклонённые», товар возвращается на
+  /// остаток, покупатель получает уведомление. Поэтому и текст про отказ, а
+  /// не про удаление (16.09.2026).
+  Future<void> _reject(OrderModel order) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: formBackground,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text(
+          'Отклонить заказ',
+          style: TextStyle(color: Colors.white, fontSize: 18),
+        ),
+        content: const Text(
+          'Покупатель получит уведомление, товар вернётся на остаток. Отменить '
+          'отказ будет нельзя.',
+          style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отмена', style: TextStyle(color: textMuted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text(
+              'Отклонить',
+              style: TextStyle(color: Color(0xFFE5484D)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final result = await OrdersService.cancel(order.id);
+
+    if (!mounted) return;
+
+    if (result.isOk) {
+      SnackBarHelper.showSuccess(context, 'Заказ отклонён');
+      _load();
+
+      return;
+    }
+
+    SnackBarHelper.showError(context, result.message);
+  }
+
+  String _date(DateTime? value) {
+    if (value == null) return '';
+
+    String two(int n) => n.toString().padLeft(2, '0');
+
+    return '${two(value.day)}.${two(value.month)}.${value.year}';
+  }
+}

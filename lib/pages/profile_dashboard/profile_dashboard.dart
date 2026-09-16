@@ -43,6 +43,9 @@ import 'package:lidle/core/cache/cache_service.dart';
 import 'package:lidle/core/cache/cache_keys.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/pages/profile_dashboard/financial_support_dialog.dart';
+import 'package:lidle/pages/orders/seller_orders_screen.dart';
+import 'package:lidle/pages/products/my_orders_screen.dart';
+import 'package:lidle/services/orders_service.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -85,6 +88,10 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   // ignore: unused_field
   int _inactiveListingsCount = 0;
   int _priceOffersCount = 0;
+
+  /// Новые заказы на товары: те, по которым продавец ещё не решил, принять
+  /// или отклонить (16.09.2026).
+  int _newOrdersCount = 0;
 
   /// Счётчики броней в меню. Живые предстоящие: отменённая вчера бронь в
   /// меню не нужна, она там только пугает числом.
@@ -142,6 +149,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadReviewsCount();
     // 📅 Счётчики броней
     _loadBookingCounts();
+    // 🧾 Новые заказы на товары
+    _loadOrdersCount();
     // 🏪 Подтягиваем актуальное название компании (магазина) с сервера
     _loadCompanyName();
   }
@@ -205,6 +214,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       _loadListingsCounts(useCache: true);
       _loadPriceOffersCount(useCache: true);
       _loadBookingCounts();
+      _loadOrdersCount();
     }
   }
 
@@ -220,6 +230,20 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     if (!mounted) return;
 
     setState(() => _bookingCounts = counts);
+  }
+
+  /// Сколько новых заказов ждут решения.
+  ///
+  /// Без кэша, по той же причине, что и брони: число маленькое, запрос
+  /// лёгкий, а устаревший счётчик хуже отсутствующего.
+  Future<void> _loadOrdersCount() async {
+    if (TokenService.currentToken == null) return;
+
+    final counts = await OrdersService.counts();
+
+    if (!mounted) return;
+
+    setState(() => _newOrdersCount = counts.newOrders);
   }
 
   /// Показывает диалоговое окно финансовой поддержки
@@ -722,20 +746,50 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                     color: Color(0xFF474747),
                                     height: 8,
                                   ),
-                                  // Пункт «Заказы» скрыт до появления раздела
-                                  // заказов — кнопка вела в никуда (onTap пустой).
-                                  // Вернуть: раскомментировать блок ниже.
-                                  // _MenuItem(
-                                  //   title: 'Заказы',
-                                  //   count: 0,
-                                  //   trailingChevron: true,
-                                  //   isHighlight: true,
-                                  //   onTap: () {},
-                                  // ),
-                                  // const Divider(
-                                  //   color: Color(0xFF474747),
-                                  //   height: 8,
-                                  // ),
+                                  // Заказы на товары, которые сделали у меня
+                                  // (16.09.2026). Раньше пункт был скрыт,
+                                  // потому что вёл в никуда: раздела не
+                                  // существовало, и попасть в заказы можно
+                                  // было только по пушу.
+                                  //
+                                  // Число в кружке это НОВЫЕ заказы, а не все:
+                                  // «принять или отклонить» ждёт именно их.
+                                  _MenuItem(
+                                    title: 'Заказы',
+                                    count: _newOrdersCount,
+                                    trailingChevron: true,
+                                    isHighlight: _newOrdersCount > 0,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const SellerOrdersScreen(),
+                                      ),
+                                    ),
+                                  ),
+                                  const Divider(
+                                    color: Color(0xFF474747),
+                                    height: 8,
+                                  ),
+
+                                  // Мои покупки: то, что я заказал сам. Это
+                                  // ДРУГОЙ список, и держать его на одном
+                                  // экране с заказами ко мне нельзя: путать
+                                  // «я купил» и «у меня купили» дороже, чем
+                                  // завести два пункта.
+                                  _MenuItem(
+                                    title: 'Покупки',
+                                    count: 0,
+                                    trailingChevron: true,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const MyOrdersScreen(onlyMine: true),
+                                      ),
+                                    ),
+                                  ),
+                                  const Divider(
+                                    color: Color(0xFF474747),
+                                    height: 8,
+                                  ),
                                   
                                   
                                   const SizedBox(height: 12),
