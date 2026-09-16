@@ -195,6 +195,19 @@ double? _double(dynamic value) {
 }
 
 class OrderLine {
+  /// Номер позиции в заказе (16.09.2026). Нужен, чтобы принять или отклонить
+  /// именно этот товар: продавец решает по каждому отдельно.
+  final int id;
+
+  /// `pending`, `accepted`, `rejected`.
+  final String status;
+
+  /// Подпись состояния приходит готовой с сервера.
+  final String statusTitle;
+
+  /// Почему отклонили. Пишет продавец, видит покупатель.
+  final String? rejectReason;
+
   final int? productId;
   final String name;
   final String? sku;
@@ -208,6 +221,10 @@ class OrderLine {
   final double sum;
 
   const OrderLine({
+    this.id = 0,
+    this.status = 'pending',
+    this.statusTitle = '',
+    this.rejectReason,
     required this.name,
     required this.price,
     required this.quantity,
@@ -219,6 +236,10 @@ class OrderLine {
 
   factory OrderLine.fromJson(Map<String, dynamic> data) {
     return OrderLine(
+      id: OrderModel._int(data['id']) ?? 0,
+      status: '${data['status'] ?? 'pending'}',
+      statusTitle: '${data['status_title'] ?? ''}',
+      rejectReason: data['reject_reason']?.toString(),
       productId: OrderModel._int(data['product_id']),
       name: '${data['name'] ?? ''}',
       sku: data['sku']?.toString(),
@@ -228,4 +249,10 @@ class OrderLine {
       sum: _double(data['sum']) ?? 0,
     );
   }
+
+  /// По этой позиции продавец ещё не решил.
+  bool get isPending => status == 'pending';
+
+  /// Товар снят с заказа и вернулся в продажу.
+  bool get isRejected => status == 'rejected';
 }

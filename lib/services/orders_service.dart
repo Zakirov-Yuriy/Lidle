@@ -166,6 +166,24 @@ class OrdersService {
     }
   }
 
+  /// Принять ОДИН товар из заказа (16.09.2026).
+  ///
+  /// Продавец решает по каждому отдельно: одного товара может не оказаться, а
+  /// остальное он соберёт.
+  static Future<OrderActionResult> acceptItem(int orderId, int itemId) =>
+      _action('/me/orders/$orderId/items/$itemId/accept', {});
+
+  /// Отклонить ОДИН товар. Он вернётся в продажу и уйдёт из суммы заказа.
+  /// Когда отклонили всё, заказ отменяется целиком.
+  static Future<OrderActionResult> rejectItem(
+    int orderId,
+    int itemId, {
+    String? reason,
+  }) =>
+      _action('/me/orders/$orderId/items/$itemId/reject', {
+        if (reason != null && reason.isNotEmpty) 'reason': reason,
+      });
+
   /// Назначить курьера на заказ. Пустой номер снимает назначение.
   static Future<OrderActionResult> assignCourier(int orderId, int? staffId) =>
       _action('/me/orders/$orderId/courier', {'staff_id': staffId});

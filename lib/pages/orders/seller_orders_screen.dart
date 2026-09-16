@@ -288,17 +288,31 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
       );
     }
 
+    // Карточка на КАЖДЫЙ товар, а не на заказ (16.09.2026).
+    //
+    // Заказ собирается из корзины, и в нём легко оказывается два-три товара
+    // одной точки. Одной кнопкой на весь заказ продавец либо обещал то, чего
+    // у него нет, либо отказывал вместе с тем, что есть. Номер заказа и код
+    // получения при этом общие: забирают всё за один поход.
+    final cards = <Widget>[];
+
+    for (final order in _orders) {
+      for (final line in order.items) {
+        cards.add(_card(order, line));
+      }
+    }
+
     return RefreshIndicator(
       color: activeIconColor,
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(25, 12, 25, 24),
-        children: _orders.map(_card).toList(),
+        children: cards,
       ),
     );
   }
 
-  Widget _card(OrderModel order) {
+  Widget _card(OrderModel order, OrderLine line) {
     final expanded = _expanded.contains(order.id);
 
     // Цвет заголовка говорит о состоянии: отклонённый красным, выполненный
@@ -355,9 +369,24 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           _line('Цена доставки:', '${order.deliveryPrice} ₽'),
           _line('Оплата:', order.paymentMethodTitle ?? '—'),
           const SizedBox(height: 10),
-          ...order.items.map(_item),
+          _item(line),
+          if (line.isRejected)
+            Text(
+              line.rejectReason == null || line.rejectReason!.isEmpty
+                  ? 'Товар отклонён и вернулся в продажу'
+                  : 'Отклонён: ${line.rejectReason}',
+              style: const TextStyle(color: Color(0xFFE5484D), fontSize: 13),
+            )
+          else if (!line.isPending)
+            Text(
+              line.statusTitle,
+              style: const TextStyle(color: Color(0xFF3BA55D), fontSize: 13),
+            ),
           if (expanded) ..._details(order),
-          if (order.status == 'new') ...[
+
+          // Решение по ЭТОМУ товару. Пока заказ живой и по товару ещё не
+          // решали.
+          if (order.isAlive && line.isPending) ...[
             const SizedBox(height: 14),
             Row(
               children: [
@@ -365,7 +394,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                   child: _button(
                     'Отклонить',
                     const Color(0xFFE5484D),
-                    () => _reject(order),
+                    () => _rejectItem(order, line),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -373,13 +402,13 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                   child: _button(
                     'Принять',
                     activeIconColor,
-                    () => _openAccept(order),
+                    () => _acceptItem(order, line),
                   ),
                 ),
               ],
             ),
           ],
-          if (order.status != 'new' && !order.isCancelled) ...[
+          if (order.isAlive && !line.isPending) ...[
             const SizedBox(height: 14),
             _button('Открыть заказ', activeIconColor, () => _openAccept(order)),
           ],
@@ -536,26 +565,49 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
     if (changed == true) _load();
   }
 
-  /// Отказ от заказа.
+  Future<void> _acceptItem(OrderModel order, OrderLine line) async {
+    final result = await OrdersService.acceptItem(order.id, line.id);
+
+    if (!mounted) return;
+
+    if (result.isOk) {
+      SnackBarHelper.showSuccess(context, result.message);
+      _load();
+
+      return;
+    }
+
+    SnackBarHelper.showError(context, result.message);
+  }
+
+  /// Отказ от ОДНОГО товара.
   ///
-  /// На макете это окно называется «Удаление заказа», но удаления здесь нет и
-  /// быть не должно: заказ уходит в «Отклонённые», товар возвращается на
-  /// остаток, покупатель получает уведомление. Поэтому и текст про отказ, а
-  /// не про удаление (16.09.2026).
-  Future<void> _reject(OrderModel order) async {
+  /// На макете окно называется «Удаление заказа», но удаления здесь нет и
+  /// быть не должно: товар возвращается в продажу и уходит из суммы заказа, а
+  /// остальное продавец собирает. Заказ целиком отменяется только тогда,
+  /// когда отклонили всё (16.09.2026).
+  Future<void> _rejectItem(OrderModel order, OrderLine line) async {
+    final last = order.items.where((item) => item.isPending).length == 1
+        && order.items.where((item) => item.status == 'accepted').isEmpty;
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: formBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text(
-          'Отклонить заказ',
+          'Отклонить товар',
           style: TextStyle(color: Colors.white, fontSize: 18),
         ),
-        content: const Text(
-          'Покупатель получит уведомление, товар вернётся на остаток. Отменить '
-          'отказ будет нельзя.',
-          style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+        content: Text(
+          last
+              ? 'Это последний товар в заказе. Если отклонить его, заказ '
+                  'отменится целиком, товар вернётся в продажу, покупатель '
+                  'получит уведомление.'
+              : 'Товар вернётся в продажу и уйдёт из суммы заказа. Остальное '
+                  'останется в работе, покупатель получит уведомление. '
+                  'Отменить отказ будет нельзя.',
+          style: const TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
         ),
         actions: [
           TextButton(
@@ -575,12 +627,12 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
 
     if (confirmed != true || !mounted) return;
 
-    final result = await OrdersService.cancel(order.id);
+    final result = await OrdersService.rejectItem(order.id, line.id);
 
     if (!mounted) return;
 
     if (result.isOk) {
-      SnackBarHelper.showSuccess(context, 'Заказ отклонён');
+      SnackBarHelper.showSuccess(context, result.message);
       _load();
 
       return;
