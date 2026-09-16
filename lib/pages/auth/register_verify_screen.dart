@@ -139,20 +139,16 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
   // спрашиваем как доказательство, что аккаунт свой: иначе любой, знающий
   // чужой неподтверждённый адрес, увёл бы регистрацию на свою почту.
   Future<void> _openChangeEmail() async {
-    final emailCtrl = TextEditingController(text: _email);
-    final passwordCtrl = TextEditingController();
-
+    // Поля ввода живут ВНУТРИ окна и там же убираются (16.09.2026).
+    //
+    // Так было: я заводил их здесь и убирал сразу после закрытия окна. Но
+    // окно закрывается с анимацией, и пока она идёт, поля ещё нарисованы и
+    // обращаются к уже убранному хранилищу текста. Приложение вставало и
+    // вылетало ровно в момент успеха, хотя почта на сервере уже менялась.
     final changed = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => _ChangeEmailDialog(
-        currentEmail: _email,
-        emailCtrl: emailCtrl,
-        passwordCtrl: passwordCtrl,
-      ),
+      builder: (dialogContext) => _ChangeEmailDialog(currentEmail: _email),
     );
-
-    emailCtrl.dispose();
-    passwordCtrl.dispose();
 
     if (changed == null || !mounted) return;
 
@@ -462,27 +458,38 @@ class _CooldownText extends StatelessWidget {
 // Возвращает новый адрес, если сервер его принял, и null, если человек
 // передумал.
 class _ChangeEmailDialog extends StatefulWidget {
-  const _ChangeEmailDialog({
-    required this.currentEmail,
-    required this.emailCtrl,
-    required this.passwordCtrl,
-  });
+  const _ChangeEmailDialog({required this.currentEmail});
 
   final String currentEmail;
-  final TextEditingController emailCtrl;
-  final TextEditingController passwordCtrl;
 
   @override
   State<_ChangeEmailDialog> createState() => _ChangeEmailDialogState();
 }
 
 class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
+  /// Поля ввода принадлежат ОКНУ и убираются вместе с ним.
+  ///
+  /// Держать их снаружи и убирать сразу после закрытия нельзя: окно закрывается
+  /// с анимацией, и всё это время поля ещё нарисованы. Обращение к убранному
+  /// хранилищу текста роняло приложение в момент успеха (16.09.2026).
+  late final TextEditingController _emailCtrl =
+      TextEditingController(text: widget.currentEmail);
+
+  final TextEditingController _passwordCtrl = TextEditingController();
+
   bool _busy = false;
   String? _error;
 
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _submit() async {
-    final newEmail = widget.emailCtrl.text.trim();
-    final password = widget.passwordCtrl.text;
+    final newEmail = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
 
     if (!newEmail.contains('@') || !newEmail.contains('.') || newEmail.length < 6) {
       setState(() => _error = 'Проверьте адрес почты');
@@ -555,9 +562,9 @@ class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
             style: TextStyle(color: textSecondary, fontSize: 13, height: 1.35),
           ),
           const SizedBox(height: 14),
-          _field(widget.emailCtrl, 'Новый адрес почты', TextInputType.emailAddress),
+          _field(_emailCtrl, 'Новый адрес почты', TextInputType.emailAddress),
           const SizedBox(height: 10),
-          _field(widget.passwordCtrl, 'Пароль от аккаунта', TextInputType.text,
+          _field(_passwordCtrl, 'Пароль от аккаунта', TextInputType.text,
               obscure: true),
           if (_error != null) ...[
             const SizedBox(height: 10),
