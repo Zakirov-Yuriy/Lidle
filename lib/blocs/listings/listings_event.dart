@@ -11,7 +11,15 @@ class LoadListingsEvent extends ListingsEvent {
   /// Используется при pull-to-refresh.
   final bool forceRefresh;
 
-  const LoadListingsEvent({this.forceRefresh = false});
+  /// Это наша собственная повторная попытка после неудачи (16.09.2026).
+  ///
+  /// Такая попытка не попадает под десятисекундную защиту от частых
+  /// обновлений: защита придумана против человека, который дёргает экран
+  /// пальцем, а здесь паузу мы и так выдерживаем сами, и она растёт с каждой
+  /// неудачей.
+  final bool isRetry;
+
+  const LoadListingsEvent({this.forceRefresh = false, this.isRetry = false});
 }
 
 /// Событие загрузки категорий.

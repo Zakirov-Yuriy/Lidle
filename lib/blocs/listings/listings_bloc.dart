@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,6 +25,23 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
 
   /// Задержка имитации фильтрации (в миллисекундах).
   static const int _filterDelayMs = 200;
+
+  /// Сколько раз подряд главная не смогла загрузиться (16.09.2026).
+  ///
+  /// Нужен, чтобы не бить по серверу без передышки: каждая следующая попытка
+  /// ждёт дольше предыдущей.
+  int _failedAttempts = 0;
+
+  /// Отложенная повторная попытка загрузки главной.
+  Timer? _retryTimer;
+
+  /// Паузы перед повторными попытками. Дальше последней держим её же.
+  static const List<Duration> _retryDelays = [
+    Duration(seconds: 2),
+    Duration(seconds: 5),
+    Duration(seconds: 15),
+    Duration(seconds: 30),
+  ];
 
   /// Флаг для отслеживания, уже ли загружены данные.
   /// Предотвращает ненужные повторные загрузки.
@@ -187,7 +206,7 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // Это защищает от rate limiting (429) при быстрых обновлениях
     // 🔴 ИСПРАВЛЕНИЕ: Не применяем debounce если кеш был инвалидирован (он пуст)
     // Это необходимо чтобы после изменения профиля объявления перезагрузились
-    if (event.forceRefresh && _lastRefreshTime != null) {
+    if (event.forceRefresh && !event.isRetry && _lastRefreshTime != null) {
       // Проверяем: есть ли кеш? Если нет (был инвалидирован), не применяем debounce
       final hasCache = AppCacheService().get<Map>(CacheKeys.listingsData) != null;
       
@@ -347,6 +366,10 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
       );
 
       _isInitialLoadComplete = true;
+
+      // Загрузилось: счётчик неудач и отложенная попытка больше не нужны.
+      _failedAttempts = 0;
+      _retryTimer?.cancel();
     } catch (e, stackTrace) {
       // 🔥 ТАЙМЕР: Зафиксируем время загрузки перед ошибкой
       LoadingTimerService().stopLoadingTimer(
@@ -367,11 +390,65 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
         stackTrace: stackTrace,
       );
       
-      // Показываем пользователю понятное сообщение или общую ошибку
-      emit(ListingsError(message: 'Unable to load listings'));
+      // Красный экран с ошибкой человеку не показываем (16.09.2026).
+      //
+      // Главная падала у многих, и человек упирался в «Ошибка загрузки
+      // категорий» с кнопкой «Повторить», хотя у приложения в этот момент
+      // лежали сохранённые данные с прошлого раза. Теперь по порядку:
+      // показываем сохранённое, если оно есть, и в любом случае сами
+      // повторяем попытку, с нарастающей паузой.
+      _failedAttempts++;
+
+      ListingsLoaded? cached;
+
+      try {
+        cached = restoreCachedData();
+      } catch (_) {
+        // Хранилище может быть ещё не готово. Тогда просто нечего показать.
+        cached = null;
+      }
+
+      if (cached != null && cached.listings.isNotEmpty) {
+        log.d('🟡 Главная не обновилась, показываем сохранённое с прошлого раза');
+
+        emit(cached);
+
+        _isInitialLoadComplete = true;
+      } else {
+        emit(ListingsError(message: 'Unable to load listings'));
+      }
+
+      _scheduleRetry();
     } finally {
       _isLoadingListings = false;
     }
+  }
+
+  /// Назначить повторную попытку загрузки главной.
+  ///
+  /// Человека ни о чём не спрашиваем: связь пропадает и возвращается сама, и
+  /// кнопка «Повторить» здесь лишь перекладывает на него нашу работу.
+  void _scheduleRetry() {
+    _retryTimer?.cancel();
+
+    final delay = _failedAttempts <= _retryDelays.length
+        ? _retryDelays[_failedAttempts - 1]
+        : _retryDelays.last;
+
+    log.d('🔁 Повторим загрузку главной через ${delay.inSeconds} с');
+
+    _retryTimer = Timer(delay, () {
+      if (isClosed) return;
+
+      add(const LoadListingsEvent(forceRefresh: true, isRetry: true));
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _retryTimer?.cancel();
+
+    return super.close();
   }
 
   /// Обработчик события поиска объявлений.

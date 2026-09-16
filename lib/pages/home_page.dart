@@ -1,3 +1,4 @@
+import 'dart:async';
 // ============================================================
 // "Виджет: Главная страница приложения"
 // ============================================================
@@ -522,48 +523,46 @@ class _HomePageState extends State<HomePage>
       );
     }
 
+    // Не загрузилось — показываем ТО ЖЕ, что при загрузке (16.09.2026).
+    //
+    // Красный восклицательный знак с кнопкой «Повторить» человек видел чаще,
+    // чем саму главную. Он всё равно ничего не чинит этой кнопкой: связь
+    // возвращается сама, а приложение теперь повторяет попытку само, с
+    // нарастающей паузой. Поэтому здесь скелетоны и одна спокойная строка
+    // внизу, без красного.
     if (state is ListingsError) {
       return Column(
         children: [
-          const SizedBox(height: 50),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+            child: Row(
               children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.redAccent,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Ошибка загрузки категорий',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(children: getCategoriesTitleSpans()),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  state.message,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () =>
-                      context.read<ListingsBloc>().add(LoadListingsEvent()),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF8B5CF6),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Повторить'),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 50),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: SizedBox(
+              height: 85,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  return const CategoryCardSkeleton();
+                },
+              ),
+            ),
+          ),
+          const _WaitingForConnection(),
+          const SizedBox(height: 12),
         ],
       );
     }
@@ -881,6 +880,8 @@ class _HomePageState extends State<HomePage>
       );
     }
 
+    // Не загрузилось — скелетоны вместо красной ошибки (16.09.2026),
+    // объяснение выше, в блоке категорий.
     if (state is ListingsError) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,46 +898,32 @@ class _HomePageState extends State<HomePage>
             ),
           ),
           const SizedBox(height: 10),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 50),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    color: Colors.redAccent,
-                    size: 48,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Ошибка загрузки объявлений',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.message,
-                    style: const TextStyle(color: Colors.grey, fontSize: 14),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () =>
-                        context.read<ListingsBloc>().add(LoadListingsEvent()),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF8B5CF6),
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Повторить'),
-                  ),
-                ],
-              ),
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final itemWidth = (constraints.maxWidth - 24 - 9) / 2;
+              double tileHeight = 330;
+              if (itemWidth < 160) tileHeight = 315;
+              if (itemWidth < 140) tileHeight = 300;
+
+              return GridView.builder(
+                padding: const EdgeInsets.only(left: 12, right: 12),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 9,
+                  mainAxisSpacing: 0,
+                  mainAxisExtent: tileHeight,
+                ),
+                itemCount: 4,
+                itemBuilder: (context, index) {
+                  return const ListingCardSkeleton();
+                },
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+              );
+            },
           ),
+          const _WaitingForConnection(),
+          const SizedBox(height: 110),
         ],
       );
     }
@@ -1061,6 +1048,70 @@ class _HomePageState extends State<HomePage>
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Спокойная строка «связи нет, сами повторим» под скелетонами главной.
+///
+/// Появляется не сразу: короткий провал связи лечится повторной попыткой за
+/// пару секунд, и сообщать о нём человеку незачем. Если через три секунды
+/// главная всё ещё пуста, честно говорим, что ждём связь, и продолжаем
+/// пробовать сами. Кнопки «Повторить» здесь намеренно нет: она перекладывает
+/// на человека работу, которую приложение делает само.
+class _WaitingForConnection extends StatefulWidget {
+  const _WaitingForConnection();
+
+  @override
+  State<_WaitingForConnection> createState() => _WaitingForConnectionState();
+}
+
+class _WaitingForConnectionState extends State<_WaitingForConnection> {
+  bool _visible = false;
+
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _timer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: _visible ? 1 : 0,
+      duration: const Duration(milliseconds: 250),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white38),
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              'Обновляем ленту, связь слабая',
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+          ],
+        ),
       ),
     );
   }
