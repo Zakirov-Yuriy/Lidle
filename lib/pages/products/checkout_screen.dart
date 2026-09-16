@@ -606,19 +606,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildPickupNotice() {
+    // Есть ли у какой-нибудь точки доставка. Пока доставки не существовало,
+    // этот блок говорил «Доставки пока нет», и это было правдой. Теперь
+    // продавец может её завести, и текст про её отсутствие оказывался прямо
+    // над выбором способа получения.
+    final hasDelivery =
+        widget.cart.shops.any((shop) => shop.deliveryOptions.length >= 2);
+
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Самовывоз по коду',
-            style: TextStyle(
+          Text(
+            hasDelivery ? 'Как вы получите заказ' : 'Самовывоз по коду',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 6),
+          if (hasDelivery)
+            const Text(
+              'У точки есть доставка. Способ получения выбирается ниже, '
+              'у каждой точки свой. При самовывозе вы получите код, назовёте '
+              'его в точке и заберёте заказ.',
+              style: TextStyle(color: textSecondary, fontSize: 13),
+            )
+          else
           // Про оплату здесь намеренно ни слова.
           //
           // Так было: тут стояло «оплата на месте», а ниже, в блоке «Оплата»,
