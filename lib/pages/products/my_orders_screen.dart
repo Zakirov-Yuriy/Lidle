@@ -203,23 +203,30 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   Widget _tab(String label, bool isSelected, VoidCallback onTap) {
     return GestureDetector(
       onTap: isSelected ? null : onTap,
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? Colors.white : textMuted,
-              fontSize: 17,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+      behavior: HitTestBehavior.opaque,
+      // Подчёркивание по ширине надписи, а не фиксированное: названия вкладок
+      // разной длины, и полоска в 90 точек у одной вылезала за текст, у другой
+      // не доходила до конца.
+      child: IntrinsicWidth(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : textMuted,
+                fontSize: 17,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            height: 2,
-            width: 90,
-            color: isSelected ? activeIconColor : Colors.transparent,
-          ),
-        ],
+            const SizedBox(height: 4),
+            Container(
+              height: 2,
+              color: isSelected ? activeIconColor : Colors.transparent,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -168,24 +168,33 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
 
                     _load();
                   },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  count > 0 ? '${tab.title} $count' : tab.title,
-                  style: TextStyle(
-                    color: selected ? activeIconColor : textMuted,
-                    fontSize: 15,
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            behavior: HitTestBehavior.opaque,
+            // IntrinsicWidth задаёт колонке ширину самого широкого ребёнка, то
+            // есть ширину текста вкладки. Подчёркивание растягивается на всю
+            // эту ширину и меняется вместе с надписью: «Новые 6» шире, чем
+            // «Новые», «Исполняемые» шире их обоих. Фиксированной ширины тут
+            // быть не может, названия вкладок разной длины.
+            child: IntrinsicWidth(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    count > 0 ? '${tab.title} $count' : tab.title,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: selected ? activeIconColor : textMuted,
+                      fontSize: 15,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: 2,
-                  width: 60,
-                  color: selected ? activeIconColor : Colors.transparent,
-                ),
-              ],
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 2,
+                    color: selected ? activeIconColor : Colors.transparent,
+                  ),
+                ],
+              ),
             ),
           );
         },
