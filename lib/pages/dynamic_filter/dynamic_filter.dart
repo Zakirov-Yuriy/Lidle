@@ -127,6 +127,14 @@ class DynamicFilter extends StatefulWidget {
   final String? defaultBuilding; // Номер дома по умолчанию (адрес компании)
   final int? defaultBuildingId; // ID дома по умолчанию
 
+  /// Объявление о недвижимости.
+  ///
+  /// Для недвижимости улица и номер дома НЕ подставляются из адреса компании
+  /// (16.09.2026): область и город у неё из раза в раз одни и те же, а дом
+  /// каждый раз новый, и подставленный адрес офиса приходилось стирать перед
+  /// каждой подачей. Область и город подставляются как обычно.
+  final bool isRealEstate;
+
   /// Открыт с экрана модерации фидовых объявлений. В этом режиме кнопка
   /// «Обновить» просто сохраняет правки и возвращает на экран модерации
   /// (объявление помечается отредактированным), а не ведёт на экран тарифа/
@@ -146,6 +154,7 @@ class DynamicFilter extends StatefulWidget {
     this.defaultStreetId,
     this.defaultBuilding,
     this.defaultBuildingId,
+    this.isRealEstate = false,
     this.fromModeration = false,
   });
 
@@ -473,7 +482,11 @@ class _DynamicFilterState extends State<DynamicFilter>
       }
       
       // 3.5️⃣ Улица и номер дома по умолчанию (адрес компании).
-      if (widget.defaultStreet != null &&
+      //
+      // Для недвижимости пропускаем: дом в объявлении каждый раз свой, и
+      // адрес офиса человеку пришлось бы стирать вручную (16.09.2026).
+      if (!widget.isRealEstate &&
+          widget.defaultStreet != null &&
           widget.defaultStreet!.isNotEmpty &&
           widget.defaultStreetId != null) {
         setState(() {

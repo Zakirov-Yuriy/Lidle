@@ -241,13 +241,11 @@ class _RealEstateApartmentsScreenState
             final defaultRegionId = regionIdStr.isNotEmpty ? int.tryParse(regionIdStr) : null;
             final defaultCityId = cityIdStr.isNotEmpty ? int.tryParse(cityIdStr) : null;
 
-            // ✅ Улица и номер дома компании
-            final defaultStreet = UserService.getLocal('companyStreet') as String? ?? '';
-            final defaultBuilding = UserService.getLocal('companyBuilding') as String? ?? '';
-            final streetIdStr = UserService.getLocal('companyStreetId') as String? ?? '';
-            final buildingIdStr = UserService.getLocal('companyBuildingId') as String? ?? '';
-            final defaultStreetId = streetIdStr.isNotEmpty ? int.tryParse(streetIdStr) : null;
-            final defaultBuildingId = buildingIdStr.isNotEmpty ? int.tryParse(buildingIdStr) : null;
+            // Улицу и номер дома компании НЕ подставляем (16.09.2026).
+            //
+            // Это экран недвижимости: город у компании из раза в раз один и
+            // тот же, а дом каждый раз новый. Подставленный адрес офиса
+            // человек стирал перед каждой подачей.
 
             Navigator.push(
               context,
@@ -259,10 +257,7 @@ class _RealEstateApartmentsScreenState
                   defaultRegionId: defaultRegionId,
                   defaultCityId: defaultCityId,
                   defaultPhone2: defaultPhone2.isNotEmpty ? defaultPhone2 : null,
-                  defaultStreet: defaultStreet.isNotEmpty ? defaultStreet : null,
-                  defaultStreetId: defaultStreetId,
-                  defaultBuilding: defaultBuilding.isNotEmpty ? defaultBuilding : null,
-                  defaultBuildingId: defaultBuildingId,
+                  isRealEstate: true,
                 ),
               ),
             );

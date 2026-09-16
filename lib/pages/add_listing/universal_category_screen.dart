@@ -10,6 +10,7 @@ import 'package:lidle/services/user_service.dart';
 import 'package:lidle/pages/dynamic_filter/dynamic_filter.dart';
 import 'package:lidle/pages/products/add_product/product_publication_screen.dart';
 import 'package:lidle/services/product_catalogs.dart';
+import 'package:lidle/services/real_estate_catalogs.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
 import 'package:lidle/blocs/connectivity/connectivity_state.dart';
 import 'package:lidle/blocs/connectivity/connectivity_event.dart';
@@ -86,6 +87,22 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
     return ProductCatalogs.contains(category.catalogId);
   }
 
+  /// Недвижимость ли это.
+  ///
+  /// Решает, подставлять ли в форму улицу и дом из адреса компании: для
+  /// недвижимости они остаются пустыми (16.09.2026). Сначала смотрим на
+  /// название каталога, которое экран уже знает, потом на список каталогов с
+  /// сервера. Ошибка запроса означает «нет»: форма поведёт себя как раньше.
+  Future<bool> _isRealEstateCategory(Category category) async {
+    if (RealEstateCatalogs.looksLikeRealEstate(widget.catalogName)) return true;
+
+    final known = RealEstateCatalogs.knows(category.catalogId);
+
+    if (known != null) return known;
+
+    return RealEstateCatalogs.contains(category.catalogId);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +110,10 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
     // Прогреваем список товарных каталогов, пока человек выбирает: к
     // нажатию он уже будет на руках, и ждать не придётся.
     ProductCatalogs.ids();
+
+    // Тем же порядком прогреваем список каталогов недвижимости.
+    RealEstateCatalogs.ids();
+
     _loadCategories();
   }
 
@@ -333,6 +354,13 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                               ),
                             );
                           } else if (category.isEndpoint) {
+                            // Недвижимость ли это: от этого зависит, подставлять
+                            // ли улицу и дом из адреса компании (16.09.2026).
+                            final isRealEstate =
+                                await _isRealEstateCategory(category);
+
+                            if (!context.mounted) return;
+
                             // Если это конечная точка, открываем динамический фильтр
                             // log.d();
                             Navigator.push(
@@ -351,11 +379,24 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                                   final defaultRegionId = regionIdStr.isNotEmpty ? int.tryParse(regionIdStr) : null;
                                   final defaultCityId = cityIdStr.isNotEmpty ? int.tryParse(cityIdStr) : null;
 
-                                  // ✅ Улица и номер дома компании
-                                  final defaultStreet = UserService.getLocal('companyStreet') as String? ?? '';
-                                  final defaultBuilding = UserService.getLocal('companyBuilding') as String? ?? '';
-                                  final streetIdStr = UserService.getLocal('companyStreetId') as String? ?? '';
-                                  final buildingIdStr = UserService.getLocal('companyBuildingId') as String? ?? '';
+                                  // ✅ Улица и номер дома компании.
+                                  //
+                                  // Для недвижимости их не подставляем: город
+                                  // у компании один, а дом в каждом объявлении
+                                  // свой, и адрес офиса приходилось стирать
+                                  // вручную перед каждой подачей.
+                                  final defaultStreet = isRealEstate
+                                      ? ''
+                                      : UserService.getLocal('companyStreet') as String? ?? '';
+                                  final defaultBuilding = isRealEstate
+                                      ? ''
+                                      : UserService.getLocal('companyBuilding') as String? ?? '';
+                                  final streetIdStr = isRealEstate
+                                      ? ''
+                                      : UserService.getLocal('companyStreetId') as String? ?? '';
+                                  final buildingIdStr = isRealEstate
+                                      ? ''
+                                      : UserService.getLocal('companyBuildingId') as String? ?? '';
                                   final defaultStreetId = streetIdStr.isNotEmpty ? int.tryParse(streetIdStr) : null;
                                   final defaultBuildingId = buildingIdStr.isNotEmpty ? int.tryParse(buildingIdStr) : null;
 
@@ -370,6 +411,7 @@ class _UniversalCategoryScreenState extends State<UniversalCategoryScreen> {
                                     defaultStreetId: defaultStreetId,
                                     defaultBuilding: defaultBuilding.isNotEmpty ? defaultBuilding : null,
                                     defaultBuildingId: defaultBuildingId,
+                                    isRealEstate: isRealEstate,
                                   );
                                 },
                               ),
