@@ -11,7 +11,8 @@
 //
 // ─────────────────────────────────────────────────────────────
 // ПОЛЯ МАКЕТА 11.09.2026 (изображения, направление работы, график,
-// страна, ссылки, языки уведомлений, валюта расчёта).
+// ссылки, языки уведомлений, валюта расчёта). Поле «Ваша страна» убрано
+// 16.09.2026: оно ни к чему не было подключено.
 //
 // Они добавлены на экран, но НИКУДА НЕ СОХРАНЯЮТСЯ: логику каждого из них
 // ещё не назвали, ручек на сервере под них нет. Значение живёт в состоянии
@@ -180,10 +181,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
 
     return parts.isEmpty ? null : parts.join(' · ');
   }
-
-  /// Страна. Отдельно от области: область у нас из адресного справочника, а
-  /// страна на макете стоит выше и, судя по всему, задаётся сама.
-  String? _country;
 
   /// Ссылки компании: сайт, соцсети, Telegram и MAX одним списком.
   ///
@@ -1546,12 +1543,6 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     AppCacheService().invalidate(CacheKeys.sellerInfoKey(ownId.toString()));
   }
 
-  void _notReady(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Поле «$title» ещё не подключено')),
-    );
-  }
-
   /// Фотография компании.
   ///
   /// Пока снимка нет — плитка «Добавить изображение» с пояснением прямо на
@@ -2401,9 +2392,9 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
 
                 _divider(),
 
-                _label('Ваша страна'),
-                _pickerRow(_country, 'Выбрать', () => _notReady('Страна')),
-
+                // Поле «Ваша страна» убрано 16.09.2026: оно ни к чему не было
+                // подключено и только занимало место. Адрес компании начинается
+                // с области.
                 _label('Ваша область', required: true),
                 requiredBox(
                   name: 'region',
