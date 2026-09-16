@@ -147,6 +147,14 @@ class CartSnapshot {
           shopIsActive: shop.shopIsActive,
           cookingTimeMinutes: shop.cookingTimeMinutes,
           paymentMethods: shop.paymentMethods,
+
+          // Способы получения переносим как есть. Их легко потерять: здесь
+          // группа собирается заново, и всё, что не перечислено явно,
+          // подставляется пустым. Именно так выбор доставки и пропадал с
+          // экрана оформления, хотя сервер его присылал: экран получает не
+          // корзину целиком, а отобранные галочками позиции.
+          deliveryOptions: shop.deliveryOptions,
+
           items: lines,
           total: shopSum,
         ),
