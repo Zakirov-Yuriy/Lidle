@@ -685,38 +685,98 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
   }
 
   Future<void> _reject() async {
-    final confirmed = await showDialog<bool>(
+    // Диалог возвращает причину: пустая строка это «без причины», null это
+    // отмена. Причина уходит покупателю, и без неё отказ выглядит молчаливым.
+    final reason = await showDialog<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: formBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text(
-          'Отклонить заказ',
-          style: TextStyle(color: Colors.white, fontSize: 18),
-        ),
-        content: const Text(
-          'Покупатель получит уведомление, товар вернётся на остаток. Отменить '
-          'отказ будет нельзя.',
-          style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Отмена', style: TextStyle(color: textMuted)),
+      builder: (_) => const _CancelDialog(),
+    );
+
+    if (reason == null || !mounted) return;
+
+    await _action(
+      (id) => OrdersService.cancel(id, reason: reason.isEmpty ? null : reason),
+    );
+  }
+}
+
+/// Диалог отказа от ЗАКАЗА целиком с полем причины.
+///
+/// Отдельным виджетом, чтобы контроллер поля принадлежал состоянию диалога и
+/// умирал вместе с ним: контроллер, заведённый снаружи, переживает закрытие и
+/// однажды роняет экран.
+class _CancelDialog extends StatefulWidget {
+  const _CancelDialog();
+
+  @override
+  State<_CancelDialog> createState() => _CancelDialogState();
+}
+
+class _CancelDialogState extends State<_CancelDialog> {
+  final TextEditingController _reason = TextEditingController();
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: formBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: const Text(
+        'Отклонить заказ',
+        style: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Отказ от всего заказа. Покупатель получит уведомление, товары '
+            'вернутся на остаток. Отменить отказ будет нельзя.',
+            style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
           ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text(
-              'Отклонить',
-              style: TextStyle(color: Color(0xFFE5484D)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _reason,
+            maxLength: 500,
+            maxLines: 2,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: const InputDecoration(
+              hintText: 'Причина, например «закрылись на учёт»',
+              hintStyle: TextStyle(color: textMuted, fontSize: 14),
+              counterText: '',
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: activeIconColor),
+              ),
             ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Причину увидит покупатель. Можно оставить пустой.',
+            style: TextStyle(color: textMuted, fontSize: 12),
           ),
         ],
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Отмена', style: TextStyle(color: textMuted)),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_reason.text.trim()),
+          child: const Text(
+            'Отклонить',
+            style: TextStyle(color: Color(0xFFE5484D)),
+          ),
+        ),
+      ],
     );
-
-    if (confirmed != true || !mounted) return;
-
-    await _action((id) => OrdersService.cancel(id));
   }
 }
