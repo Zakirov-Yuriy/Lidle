@@ -390,6 +390,16 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                   : 'Отклонён: ${line.rejectReason}',
               style: const TextStyle(color: Color(0xFFE5484D), fontSize: 13),
             )
+          // Заказ отменён целиком. Зелёное «Принят» под товаром здесь врёт:
+          // товар когда-то приняли, но собирать его уже никто не будет.
+          // Показываем судьбу заказа, а не позиции, и причину отмены.
+          else if (order.isCancelled)
+            Text(
+              (order.cancelReason ?? '').isEmpty
+                  ? 'Заказ отменён, товар вернулся в продажу'
+                  : 'Заказ отменён: ${order.cancelReason}',
+              style: const TextStyle(color: Color(0xFFE5484D), fontSize: 13),
+            )
           else if (!line.isPending)
             Text(
               line.statusTitle,
