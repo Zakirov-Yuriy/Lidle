@@ -148,7 +148,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     context.read<AuthBloc>().add(
       RegisterEvent(
         name: (formData['name'] as String?)?.trim() ?? '',
-        lastName: (formData['lastName'] as String?)?.trim() ?? '',
+
+        // Поля фамилии в форме больше нет, шлём пусто: сервер её теперь не
+        // требует, а человек вписывает фамилию на экране контактных данных.
+        lastName: '',
         email: (formData['email'] as String?)?.trim() ?? '',
         phone: unformattedPhone,
         password: (formData['password'] as String?)?.trim() ?? '',
@@ -293,17 +296,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ],
                     ),
-                    _buildTextField(
-                      'lastName',
-                      'Ваша фамилия',
-                      'Введите',
-                      validators: [
-                        FormBuilderValidators.required(
-                          errorText: 'Пожалуйста, введите вашу фамилию',
-                        ),
-                      ],
-                    subtitle: ' (скрыта от пользователей)',
-                    ),
+                    // Фамилии в форме регистрации НЕТ (16.09.2026, решение
+                    // заказчика). Человек вписывает её позже, на экране
+                    // контактных данных. Чем короче форма входа в продукт, тем
+                    // больше людей до конца её доходит, а фамилия нужна только
+                    // к моменту публикации объявления, где её и спрашивают.
                     _buildTextField(
                       'email',
                       'Электронная почта',

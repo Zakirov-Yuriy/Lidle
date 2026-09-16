@@ -23,6 +23,32 @@ class AuthService {
     );
   }
 
+  /// Исправить почту НЕПОДТВЕРЖДЁННОГО аккаунта (16.09.2026).
+  ///
+  /// Человек ошибся в своём адресе при регистрации: письмо ушло в никуда,
+  /// войти он не может (вход требует подтверждённой почты), а поменять адрес
+  /// было нечем. Раньше единственным выходом была регистрация заново, и в базе
+  /// оставался мёртвый аккаунт.
+  ///
+  /// Пароль обязателен: без него любой, знающий чужой неподтверждённый адрес,
+  /// увёл бы регистрацию на свою почту. Человек набирал его на предыдущем
+  /// экране пару минут назад.
+  static Future<Map<String, dynamic>> changePendingEmail({
+    required String email,
+    required String password,
+    required String newEmail,
+  }) async {
+    return await ApiService.post(
+      '/auth/change-email',
+      {
+        'email': email.trim(),
+        'password': password,
+        'new_email': newEmail.trim(),
+      },
+      skipTokenRefresh: true,
+    );
+  }
+
   /// Регистрация нового пользователя.
   /// Отправляет данные пользователя на сервер для создания аккаунта.
   ///
@@ -37,12 +63,19 @@ class AuthService {
   }) async {
     final body = {
       'name': name,
-      'last_name': lastName,
       'email': email,
       'phone': phone,
       'password': password,
       'password_confirmation': passwordConfirmation,
     };
+
+    // Фамилию шлём, только если она есть (16.09.2026). В форме регистрации
+    // поля больше нет, человек вписывает фамилию на экране контактных данных.
+    // Пустая строка не прошла бы проверку сервера (минимум две буквы), поэтому
+    // не отправляем ключ вовсе.
+    if (lastName.trim().isNotEmpty) {
+      body['last_name'] = lastName.trim();
+    }
 
     // skipTokenRefresh: true — auth-эндпоинт, 401 = неверные данные, не обновлять токен
     return await ApiService.post(

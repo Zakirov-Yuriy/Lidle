@@ -7,6 +7,7 @@ import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_state.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
+import 'package:lidle/services/auth_service.dart';
 import 'sign_in_screen.dart';
 import '../home_page.dart';
 
@@ -123,6 +124,43 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
     }
 
     context.read<AuthBloc>().add(VerifyEmailEvent(email: _email, code: code));
+  }
+
+  // ============================================================
+  // "Исправление адреса почты" (16.09.2026)
+  // ============================================================
+  //
+  // Раньше ссылка просто закрывала экран, и человек оказывался на входе, где
+  // сделать ничего не мог: войти нельзя, пока почта не подтверждена, а письмо
+  // ушло на адрес с опечаткой. Приходилось регистрироваться заново, и в базе
+  // оставался мёртвый аккаунт.
+  //
+  // Теперь адрес меняется у ТОГО ЖЕ аккаунта, без второй регистрации. Пароль
+  // спрашиваем как доказательство, что аккаунт свой: иначе любой, знающий
+  // чужой неподтверждённый адрес, увёл бы регистрацию на свою почту.
+  Future<void> _openChangeEmail() async {
+    final emailCtrl = TextEditingController(text: _email);
+    final passwordCtrl = TextEditingController();
+
+    final changed = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => _ChangeEmailDialog(
+        currentEmail: _email,
+        emailCtrl: emailCtrl,
+        passwordCtrl: passwordCtrl,
+      ),
+    );
+
+    emailCtrl.dispose();
+    passwordCtrl.dispose();
+
+    if (changed == null || !mounted) return;
+
+    setState(() => _email = changed);
+
+    _startResendTimer();
+
+    SnackBarHelper.showSuccess(context, 'Код отправлен на $changed');
   }
 
   // ============================================================
@@ -249,12 +287,12 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                       ),
                       const SizedBox(height: 2),
                       GestureDetector(
-                        onTap: () => Navigator.maybePop(context),
+                        onTap: _openChangeEmail,
                         behavior: HitTestBehavior.opaque,
                         child: const Padding(
                           padding: EdgeInsets.symmetric(vertical: 6),
                           child: Text(
-                            'Адрес с ошибкой? Вернуться и указать другой',
+                            'Адрес с ошибкой? Исправить',
                             style: TextStyle(
                               color: activeIconColor,
                               fontSize: 14,
@@ -408,6 +446,171 @@ class _CooldownText extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================
+// "Диалог исправления адреса почты" (16.09.2026)
+// ============================================================
+//
+// Два поля: новый адрес и пароль от аккаунта. Пароль нужен как доказательство,
+// что аккаунт свой; человек набирал его на предыдущем экране пару минут назад.
+//
+// Возвращает новый адрес, если сервер его принял, и null, если человек
+// передумал.
+class _ChangeEmailDialog extends StatefulWidget {
+  const _ChangeEmailDialog({
+    required this.currentEmail,
+    required this.emailCtrl,
+    required this.passwordCtrl,
+  });
+
+  final String currentEmail;
+  final TextEditingController emailCtrl;
+  final TextEditingController passwordCtrl;
+
+  @override
+  State<_ChangeEmailDialog> createState() => _ChangeEmailDialogState();
+}
+
+class _ChangeEmailDialogState extends State<_ChangeEmailDialog> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _submit() async {
+    final newEmail = widget.emailCtrl.text.trim();
+    final password = widget.passwordCtrl.text;
+
+    if (!newEmail.contains('@') || !newEmail.contains('.') || newEmail.length < 6) {
+      setState(() => _error = 'Проверьте адрес почты');
+
+      return;
+    }
+
+    if (newEmail.toLowerCase() == widget.currentEmail.toLowerCase()) {
+      setState(() => _error = 'Это тот же самый адрес');
+
+      return;
+    }
+
+    if (password.isEmpty) {
+      setState(() => _error = 'Введите пароль от аккаунта');
+
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      final response = await AuthService.changePendingEmail(
+        email: widget.currentEmail,
+        password: password,
+        newEmail: newEmail,
+      );
+
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        Navigator.of(context).pop(newEmail);
+
+        return;
+      }
+
+      setState(() {
+        _busy = false;
+        _error = '${response['message'] ?? 'Не получилось изменить адрес'}';
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _busy = false;
+        _error = 'Не получилось связаться с сервером';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: formBackground,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      title: const Text(
+        'Исправить адрес',
+        style: TextStyle(color: Colors.white, fontSize: 18),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Укажите правильный адрес. Код придёт на него, а прежний перестанет '
+            'действовать. Новый аккаунт при этом не заводится.',
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.35),
+          ),
+          const SizedBox(height: 14),
+          _field(widget.emailCtrl, 'Новый адрес почты', TextInputType.emailAddress),
+          const SizedBox(height: 10),
+          _field(widget.passwordCtrl, 'Пароль от аккаунта', TextInputType.text,
+              obscure: true),
+          if (_error != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _error!,
+              style: const TextStyle(color: Color(0xFFE0A63C), fontSize: 13),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('Отмена', style: TextStyle(color: textMuted)),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: activeIconColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: _busy ? null : _submit,
+          child: const Text(
+            'Сохранить и выслать код',
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _field(
+    TextEditingController controller,
+    String hint,
+    TextInputType keyboard, {
+    bool obscure = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: TextField(
+        controller: controller,
+        keyboardType: keyboard,
+        obscureText: obscure,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: textMuted, fontSize: 14),
+          border: InputBorder.none,
         ),
       ),
     );
