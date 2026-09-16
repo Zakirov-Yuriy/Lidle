@@ -221,13 +221,50 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
 
                     const SizedBox(height: 10),
                     const Text(
-                      'Введите код с письма на электронной почте или смс на телефоне',
+                      'Введите код из письма',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 15,
                         height: 1.3,
                       ),
                     ),
+
+                    // АДРЕС НА ЭКРАНЕ (16.09.2026).
+                    //
+                    // Раньше человек видел только «код отправлен» и не знал,
+                    // КУДА. Опечатку в собственном адресе увидеть было негде,
+                    // и выглядело это как «письма не приходят». Ровно так
+                    // 15.09.2026 потерялся аккаунт с адресом, где в mail.ru
+                    // затесалась лишняя буква: человек ждал письмо, которое
+                    // ушло в никуда, и завёл второй аккаунт.
+                    if (_email.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Отправили на $_email',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      GestureDetector(
+                        onTap: () => Navigator.maybePop(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 6),
+                          child: Text(
+                            'Адрес с ошибкой? Вернуться и указать другой',
+                            style: TextStyle(
+                              color: activeIconColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 9),
 
                     _CodeField(
@@ -264,9 +301,14 @@ class _RegisterVerifyScreenState extends State<RegisterVerifyScreen> {
                       ),
                     ),
                     const SizedBox(height: 17),
+
+                    // Про смс здесь не пишем (16.09.2026): код приходит
+                    // только письмом, и обещание смс заставляло человека ждать
+                    // сообщения, которого не будет.
                     const Text(
-                      'На вашу почту или номер телефона был отправлен код',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      'Письмо может идти до минуты. Если его нет, проверьте '
+                      'папку «Спам».',
+                      style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
                     ),
                   ],
                 ),
