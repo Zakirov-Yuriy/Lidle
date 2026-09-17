@@ -1368,9 +1368,29 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Вы можете оставить жалобу на товар в случае нарушения правил',
-            style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+          // «правил» выделено синим, как в макете. Пока это только выделение:
+          // экрана с правилами в приложении нет, и вести с него некуда.
+          // Когда правила появятся, здесь добавится переход, и текст менять не
+          // придётся.
+          const Text.rich(
+            TextSpan(
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 14,
+                height: 1.35,
+              ),
+              children: [
+                TextSpan(
+                  text: 'Вы можете оставить жалобу на товар в случае '
+                      'нарушения ',
+                ),
+                TextSpan(
+                  text: 'правил',
+                  style: TextStyle(color: activeIconColor),
+                ),
+                TextSpan(text: '.'),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
           GestureDetector(
