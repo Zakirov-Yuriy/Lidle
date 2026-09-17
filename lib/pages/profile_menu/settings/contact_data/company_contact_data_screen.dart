@@ -848,6 +848,7 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
         }
       } catch (e) {
         log.d('❌ Ошибка сохранения описания компании: $e');
+        errors.add('Описание: не удалось сохранить');
       }
 
       // Email: скаляр company_contacts + коллекция (для витрины компании).
