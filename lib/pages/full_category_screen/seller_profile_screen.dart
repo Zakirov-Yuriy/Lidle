@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:lidle/widgets/skeletons/listing_card_skeleton.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
@@ -106,6 +108,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   int _listingsRequest = 0;
   int _productsRequest = 0;
 
+  /// Идёт ли запрос товаров.
+  ///
+  /// Объявления и товары приезжают разными ручками, и объявления часто уже
+  /// лежат в памяти. Без этого признака витрина показывала сначала одни
+  /// объявления, а через миг перестраивалась целиком: товары встают первыми,
+  /// и вся сетка прыгала. Поэтому ждём оба списка и до тех пор показываем
+  /// скелет.
+  bool _productsLoading = false;
+
   /// Развёрнута ли карточка владельца (аватар, информация, оценка, кнопки).
   ///
   /// Только для своего магазина и только на время этого захода: владелец
@@ -192,6 +203,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     if (_isOwnProfile) {
       _selectedIndex = 6;
     }
+    _isLoading = true;
+    _productsLoading = widget.userId != null && widget.userId!.isNotEmpty;
+
     _loadSellerListings();
     _loadSellerProducts();
     _loadSellerProfile();
@@ -202,10 +216,20 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Future<void> _loadSellerProducts() async {
     final userId = widget.userId;
 
-    if (userId == null || userId.isEmpty) return;
+    if (userId == null || userId.isEmpty) {
+      if (mounted && _productsLoading) {
+        setState(() => _productsLoading = false);
+      }
+
+      return;
+    }
 
     final requestId = ++_productsRequest;
     final query = _searchQuery;
+
+    if (mounted && !_productsLoading) {
+      setState(() => _productsLoading = true);
+    }
 
     final products = await ApiService.getSellerProducts(
       userId: userId,
@@ -216,7 +240,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     // Пока ходили за ответом, спросить могли уже другое.
     if (!mounted || requestId != _productsRequest) return;
 
-    setState(() => _sellerProducts = products);
+    setState(() {
+      _sellerProducts = products;
+      _productsLoading = false;
+    });
   }
 
   /// Безопасное приведение к int (для wishlist_id, приходящего как num).
@@ -823,6 +850,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _sellerListings = [];
         _sellerProducts = const [];
         _isLoading = true;
+        _productsLoading = true;
         _error = null;
       });
 
@@ -843,6 +871,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       _sellerListings = [];
       _sellerProducts = const [];
       _isLoading = true;
+      _productsLoading = true;
       _error = null;
     });
 
@@ -1926,6 +1955,24 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   Widget _buildListingsTitle() {
+    // Пока списки едут, вместо заголовка стоит полоска: текст зависит от того,
+    // есть ли у продавца товары, и написанный раньше времени он менялся бы на
+    // глазах.
+    if (_isLoading || _productsLoading) {
+      return Shimmer.fromColors(
+        baseColor: const Color(0xFF374B5C),
+        highlightColor: const Color(0xFF4A5C6A),
+        child: Container(
+          width: 220,
+          height: 18,
+          decoration: BoxDecoration(
+            color: const Color(0xFF4A5C6A),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      );
+    }
+
     // Заголовок называет то, что под ним лежит (15.09.2026). У продавца с
     // витриной здесь стоят и объявления, и товары, и подпись «Объявления
     // продавца» над товарами читалась бы как ошибка.
@@ -1941,24 +1988,32 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
+  /// Сетка-заглушка на время загрузки.
+  ///
+  /// Кружок посреди пустого места сдвигал всё, что под ним, и экран прыгал на
+  /// каждый поиск. Скелет занимает столько же места, сколько займут карточки,
+  /// поэтому высота страницы не меняется.
+  Widget _buildListingsSkeleton() {
+    return GridView.builder(
+      itemCount: 4,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 15,
+        crossAxisSpacing: 8,
+        childAspectRatio: 0.70,
+      ),
+      itemBuilder: (_, __) => const ListingCardSkeleton(),
+    );
+  }
+
   Widget _buildListingsGrid() {
-    // Если идёт загрузка
-    if (_isLoading) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40),
-          child: Column(
-            children: const [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text(
-                'Загрузка объявлений...',
-                style: TextStyle(color: textSecondary),
-              ),
-            ],
-          ),
-        ),
-      );
+    // Ждём оба списка сразу: объявления и товары приезжают разными ручками, и
+    // показать сначала одни объявления значит перестроить всю сетку через миг,
+    // когда приедут товары. Они встают первыми, и прыгает вся страница.
+    if (_isLoading || _productsLoading) {
+      return _buildListingsSkeleton();
     }
 
     // Если была ошибка
