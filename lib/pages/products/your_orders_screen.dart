@@ -16,7 +16,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
-import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/pages/products/your_order_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -222,40 +221,19 @@ class _YourOrdersScreenState extends State<YourOrdersScreen> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      // Нажатие открывает КАРТОЧКУ ТОВАРА в виде «из заказа»: что куплено, у
-      // кого, похожие предложения (решение заказчика 17.09.2026). К коду
-      // получения ведёт отдельная кнопка на самой карточке, иначе из полного
-      // списка заказов к нему было бы не попасть вовсе.
-      //
-      // Позиция без номера товара такой карточки не имеет: товар могли
-      // удалить с витрины. Тогда открываем сам заказ, а не пустой экран.
+      // Нажатие открывает «Ваш заказ»: код получения, отказ и вопросы. А уже
+      // оттуда, по самому товару, открывается карточка товара. Порядок
+      // важен: из списка заказов человек идёт к своему заказу, а не к витрине
+      // (уточнение заказчика 17.09.2026).
       onTap: () async {
-        if (line.productId == null) {
-          final changed = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (_) => YourOrderScreen(order: order, line: line),
-            ),
-          );
-
-          if (changed == true && mounted) _load();
-
-          return;
-        }
-
-        await Navigator.of(context).push(
+        final changed = await Navigator.of(context).push<bool>(
           MaterialPageRoute(
-            builder: (_) => ProductDetailsScreen(
-              productId: line.productId!,
-              fromOrder: true,
-              order: order,
-              orderLine: line,
-            ),
+            builder: (_) => YourOrderScreen(order: order, line: line),
           ),
         );
 
-        // Оттуда можно уйти в заказ и отказаться от него: перечитываем список
-        // без условий, один запрос дешевле отменённого заказа в списке.
-        if (mounted) _load();
+        // Там могли отказаться от заказа: перечитываем список.
+        if (changed == true && mounted) _load();
       },
       child: Container(
         padding: const EdgeInsets.all(12),

@@ -5,9 +5,7 @@ import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
-import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
-import 'package:lidle/pages/products/your_order_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/products/product_reviews_screen.dart';
 import 'package:lidle/services/api_service.dart';
@@ -27,19 +25,9 @@ class ProductDetailsScreen extends StatefulWidget {
     super.key,
     required this.productId,
     this.fromOrder = false,
-    this.order,
-    this.orderLine,
   });
 
   final int productId;
-
-  /// Заказ, из которого пришли, и его позиция.
-  ///
-  /// Нужны ради кнопки «Ваш заказ»: из полного списка заказов человек
-  /// попадает сюда, и без этой кнопки к коду получения было бы не вернуться.
-  /// Пусто, когда карточку открыли не из заказа.
-  final OrderModel? order;
-  final OrderLine? orderLine;
 
   /// Карточка открыта из заказа (17.09.2026).
   ///
@@ -763,10 +751,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         if (images.isNotEmpty) _buildGallery(images),
         const SizedBox(height: 12),
         _orderHeadCard(product),
-        if (widget.order != null) ...[
-          const SizedBox(height: 12),
-          _yourOrderButton(),
-        ],
         if (images.length > 1) ...[
           const SizedBox(height: 12),
           _thumbsRow(images),
@@ -844,38 +828,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           const SizedBox(height: 4),
           _stars(product.rating, size: 24),
         ],
-      ),
-    );
-  }
-
-  /// «Ваш заказ»: код получения, отказ и вопросы.
-  ///
-  /// Из полного списка заказов человек попадает на карточку товара, и без
-  /// этой кнопки к своему коду он бы оттуда не вернулся.
-  Widget _yourOrderButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => YourOrderScreen(
-              order: widget.order!,
-              line: widget.orderLine,
-            ),
-          ),
-        ),
-        style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 13),
-          side: const BorderSide(color: activeIconColor),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-        child: const Text(
-          'Ваш заказ',
-          style: TextStyle(color: activeIconColor, fontSize: 15),
-        ),
       ),
     );
   }
@@ -1474,14 +1426,25 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 250,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: _similar.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (_, index) => _similarCard(_similar[index]),
+        // Сеткой по два в ряд, а не каруселью (правка заказчика 17.09.2026):
+        // в карусели видно две карточки и надо догадаться, что её листают, а
+        // сеткой человек листает экран, как везде.
+        //
+        // Своей прокрутки у сетки нет: она часть общего списка экрана, и
+        // вложенная прокрутка внутри прокрутки означала бы две полосы,
+        // которые перехватывают палец друг у друга.
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemCount: _similar.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 14,
+            childAspectRatio: 0.62,
           ),
+          itemBuilder: (_, index) => _similarCard(_similar[index]),
         ),
       ],
     );
@@ -1502,18 +1465,18 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           ),
         ),
       ),
-      child: SizedBox(
-        width: 165,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
+      // Размеры задаёт сетка. Картинка занимает ВСЁ оставшееся место, а
+      // подписи стоят снизу: у товара с длинным названием иначе поехала бы
+      // разметка, а так сжимается картинка.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: SizedBox(
-                    width: 165,
-                    height: 165,
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
                     child: image == null
                         ? Container(
                             color: secondaryBackground,
@@ -1544,34 +1507,34 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              item.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-            ),
-            if ((item.shop?.name ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  item.shop!.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
-                ),
-              ),
-            const SizedBox(height: 4),
-            Text(
-              item.priceLabel,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            item.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+          if ((item.shop?.name ?? '').isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                item.shop!.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: textSecondary, fontSize: 13),
               ),
             ),
-          ],
-        ),
+          const SizedBox(height: 4),
+          Text(
+            item.priceLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

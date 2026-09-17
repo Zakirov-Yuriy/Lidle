@@ -18,6 +18,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/order_details_screen.dart';
 import 'package:lidle/pages/products/order_questions_screen.dart';
+import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/services/image_saver.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -328,7 +329,35 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
     );
   }
 
+  /// Купленный товар.
+  ///
+  /// Нажимается вся карточка целиком, а не картинка или название по
+  /// отдельности: человек целится в товар, а не в его часть. Открывается
+  /// карточка товара в виде «из заказа» (17.09.2026).
+  ///
+  /// У позиции без номера товара карточки нет: товар могли снять с витрины.
+  /// Тогда карточка просто не нажимается, и это честнее, чем открыть пустой
+  /// экран с крутилкой.
   Widget _itemCard(OrderLine item) {
+    final productId = item.productId;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: productId == null
+          ? null
+          : () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ProductDetailsScreen(
+                    productId: productId,
+                    fromOrder: true,
+                  ),
+                ),
+              ),
+      child: _itemCardBody(item),
+    );
+  }
+
+  Widget _itemCardBody(OrderLine item) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
