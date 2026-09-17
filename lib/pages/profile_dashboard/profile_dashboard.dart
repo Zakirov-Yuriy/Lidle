@@ -452,14 +452,20 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       // Картинка слева во всю высоту карточки, текст справа отдельной
       // колонкой: при мелкой картинке строка с часами работы не помещалась
       // рядом и вылезала под неё (правка заказчика 17.09.2026).
+      // Ширина по содержимому, а не заданная числом (17.09.2026): при
+      // одинаковой ширине у коротких подписей справа оставалась пустая
+      // половина карточки. Дальше самой длинной строки остаётся 30 точек, как
+      // просил заказчик, и потолок на случай длинного названия способа
+      // доставки, чтобы карточка не растянулась на весь экран.
       child: Container(
-        width: 280,
+        constraints: const BoxConstraints(maxWidth: 320),
         decoration: BoxDecoration(
           color: secondaryBackground,
           borderRadius: BorderRadius.circular(10),
         ),
         clipBehavior: Clip.antiAlias,
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Размер картинки задан макетом: 72 на 64, отступ слева 10,
@@ -495,12 +501,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                 ),
               ),
             ),
-            Expanded(
+            Flexible(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
+                padding: const EdgeInsets.fromLTRB(10, 9, 30, 9),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       order.deliveryType == 'courier'
