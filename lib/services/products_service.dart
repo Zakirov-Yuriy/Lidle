@@ -145,6 +145,39 @@ class ProductsService {
     }
   }
 
+  /// Похожие предложения к товару (17.09.2026).
+  ///
+  /// Подбирает сервер: тот же раздел, любые продавцы, сам товар исключён,
+  /// сортировка по близости цены. Правило живёт на сервере, а не здесь:
+  /// повторять его в приложении и на сайте значит однажды показать разные
+  /// подборки для одного товара.
+  static Future<List<ProductItem>> similar(int productId, {int limit = 10}) async {
+    try {
+      final response = await ApiService.get(
+        '/products/$productId/similar?limit=$limit',
+      );
+
+      final data = response['data'];
+
+      if (data is! List) return const [];
+
+      final items = data
+          .whereType<Map<String, dynamic>>()
+          .map(ProductItem.fromJson)
+          .toList();
+
+      // Сердечки тех же товаров живут в общем состоянии: подборка стоит рядом
+      // с лентой, и своя память у неё разошлась бы с правдой.
+      _rememberFavorites(items);
+
+      return items;
+    } catch (e) {
+      log.d('Похожие товары не загрузились ($productId): $e');
+
+      return const [];
+    }
+  }
+
   /// Оставить или переписать отзыв о товаре (15.09.2026).
   ///
   /// Возвращает `null`, если всё хорошо, иначе текст ошибки с сервера — он

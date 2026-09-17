@@ -5,19 +5,52 @@ import 'package:lidle/core/config/app_config.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/models/products/product_item.dart';
+import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/pages/products/your_order_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/products/product_reviews_screen.dart';
+import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/services/products_service.dart';
+import 'package:lidle/services/token_service.dart';
+import 'package:lidle/models/message_model.dart';
+import 'package:lidle/pages/messages/chat_page.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/report_product_dialog.dart';
 
 /// Карточка товара.
 class ProductDetailsScreen extends StatefulWidget {
-  const ProductDetailsScreen({super.key, required this.productId});
+  const ProductDetailsScreen({
+    super.key,
+    required this.productId,
+    this.fromOrder = false,
+    this.order,
+    this.orderLine,
+  });
 
   final int productId;
+
+  /// Заказ, из которого пришли, и его позиция.
+  ///
+  /// Нужны ради кнопки «Ваш заказ»: из полного списка заказов человек
+  /// попадает сюда, и без этой кнопки к коду получения было бы не вернуться.
+  /// Пусто, когда карточку открыли не из заказа.
+  final OrderModel? order;
+  final OrderLine? orderLine;
+
+  /// Карточка открыта из заказа (17.09.2026).
+  ///
+  /// Тогда экран собирается иначе: сверху дата и артикул, характеристики и
+  /// описание свёрнуты, ниже магазин с подпиской, жалоба и похожие
+  /// предложения, а внизу «В избранное» рядом с корзиной.
+  ///
+  /// Каталожный вид этим флагом НЕ меняется. Так решил заказчик: из каталога
+  /// человек выбирает товар и ему нужны размеры, остаток и корзина, а из
+  /// своего заказа он приходит посмотреть, что именно он купил, и у кого.
+  final bool fromOrder;
 
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
@@ -48,6 +81,33 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
   /// его номер уходит в корзину: остаток и цена лежат на варианте, а не на
   /// модели.
   int? _variantId;
+
+  /// Похожие предложения и их загрузка. Нужны только в виде «из заказа»,
+  /// поэтому и грузятся только там: лишний запрос в каталоге не нужен.
+  List<ProductItem> _similar = const [];
+  bool _similarLoading = false;
+
+  /// Раскрыты ли характеристики и описание целиком. Свёрнуты по умолчанию:
+  /// у товара бывает два десятка характеристик, и до магазина с ними
+  /// пришлось бы листать полэкрана.
+  bool _attributesExpanded = false;
+  bool _descriptionExpanded = false;
+
+  /// Идёт подписка или отписка от продавца.
+  bool _subscribing = false;
+
+  /// Точка с обновлённой подпиской. Пусто, пока человек не нажимал
+  /// «Подписаться»: тогда показываем то, что пришло с сервера.
+  ShopBrief? _shopOverride;
+
+  /// Точка товара с учётом только что изменённой подписки.
+  ShopBrief? _shopOf(ProductItem? product) => _shopOverride ?? product?.shop;
+
+  /// Сколько характеристик видно в свёрнутом виде.
+  static const int _shortAttributes = 5;
+
+  /// Сколько строк описания видно в свёрнутом виде.
+  static const int _shortDescriptionLines = 6;
 
   @override
   void initState() {
@@ -83,6 +143,23 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
         _variantId = first.id;
       }
+    });
+
+    if (widget.fromOrder && product != null) _loadSimilar();
+  }
+
+  /// Похожие предложения. Подбирает сервер: тот же раздел, любые продавцы,
+  /// сортировка по близости цены.
+  Future<void> _loadSimilar() async {
+    setState(() => _similarLoading = true);
+
+    final items = await ProductsService.similar(widget.productId);
+
+    if (!mounted) return;
+
+    setState(() {
+      _similar = items;
+      _similarLoading = false;
     });
   }
 
@@ -275,6 +352,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         : (product.images.isNotEmpty
             ? product.images
             : (product.image != null ? [product.image!] : <String>[]));
+
+    if (widget.fromOrder) return _buildOrderBody(product, images);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(25, 8, 25, 24),
@@ -664,6 +743,835 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  //  Вид «из заказа» (17.09.2026)
+  // ══════════════════════════════════════════════════════════════════
+  //
+  // Тот же товар и тот же экран, но собранный под другой вопрос. В каталоге
+  // человек выбирает и ему нужны размеры, остаток и корзина. Из своего заказа
+  // он приходит посмотреть, ЧТО он купил и У КОГО, поэтому наверху дата и
+  // артикул, а ниже продавец, жалоба и похожие предложения.
+
+  Widget _buildOrderBody(ProductItem product, List<String> images) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      children: [
+        if (images.isNotEmpty) _buildGallery(images),
+        const SizedBox(height: 12),
+        _orderHeadCard(product),
+        if (widget.order != null) ...[
+          const SizedBox(height: 12),
+          _yourOrderButton(),
+        ],
+        if (images.length > 1) ...[
+          const SizedBox(height: 12),
+          _thumbsRow(images),
+        ],
+        if (product.attributes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _orderAttributes(product),
+        ],
+        if ((product.description ?? '').trim().isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _orderDescription(product),
+        ],
+        if (_shopOf(product) != null) ...[
+          const SizedBox(height: 12),
+          _orderShopCard(_shopOf(product)!),
+        ],
+        const SizedBox(height: 12),
+        _complaintCard(product),
+        const SizedBox(height: 16),
+        _similarBlock(),
+      ],
+    );
+  }
+
+  /// Дата, артикул, название, цена и оценка звёздами.
+  Widget _orderHeadCard(ProductItem product) {
+    final date = product.date.trim();
+    final sku = (product.sku ?? '').trim();
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (date.isNotEmpty || sku.isNotEmpty)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    date,
+                    style: const TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+                ),
+                if (sku.isNotEmpty)
+                  Text(
+                    '№ $sku',
+                    style: const TextStyle(color: textSecondary, fontSize: 13),
+                  ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          Text(
+            product.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            // Цена ВЫБРАННОГО варианта, как и в каталоге: у 46-го и 54-го она
+            // бывает разной.
+            _variant?.priceLabel ?? product.priceLabel,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Оценка',
+            style: TextStyle(color: textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 4),
+          _stars(product.rating, size: 24),
+        ],
+      ),
+    );
+  }
+
+  /// «Ваш заказ»: код получения, отказ и вопросы.
+  ///
+  /// Из полного списка заказов человек попадает на карточку товара, и без
+  /// этой кнопки к своему коду он бы оттуда не вернулся.
+  Widget _yourOrderButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => YourOrderScreen(
+              order: widget.order!,
+              line: widget.orderLine,
+            ),
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          side: const BorderSide(color: activeIconColor),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: const Text(
+          'Ваш заказ',
+          style: TextStyle(color: activeIconColor, fontSize: 15),
+        ),
+      ),
+    );
+  }
+
+  /// Звёзды по оценке. Пустая оценка это не ноль, а «ещё никто не оценил»,
+  /// поэтому звёзды тогда серые, а не закрашенные наполовину.
+  Widget _stars(double? rating, {double size = 16}) {
+    final value = rating ?? 0;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final filled = value >= index + 0.5;
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 3),
+          child: Icon(
+            filled ? Icons.star : Icons.star_border,
+            color: filled ? const Color(0xFFFFB800) : textMuted,
+            size: size,
+          ),
+        );
+      }),
+    );
+  }
+
+  /// Ряд миниатюр под галереей. Нажатие листает саму галерею, а не открывает
+  /// картинку отдельно: человек ждёт, что большая картинка сменится.
+  Widget _thumbsRow(List<String> images) {
+    return _card(
+      child: SizedBox(
+        height: 74,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: images.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 10),
+          itemBuilder: (_, index) {
+            final isCurrent = index == _currentImage;
+
+            return GestureDetector(
+              onTap: () {
+                _pageController.animateToPage(
+                  index,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                );
+              },
+              child: Container(
+                width: 74,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isCurrent ? activeIconColor : Colors.transparent,
+                    width: 1.6,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: Image.network(
+                    images[index],
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: primaryBackground,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: textMuted,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Характеристики, свёрнутые до пяти строк.
+  Widget _orderAttributes(ProductItem product) {
+    final all = product.attributes;
+    final visible = _attributesExpanded || all.length <= _shortAttributes
+        ? all
+        : all.take(_shortAttributes).toList();
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Характеристики',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...visible.map(
+            (attribute) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      attribute.title,
+                      style: const TextStyle(color: textSecondary, fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      attribute.value,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (all.length > _shortAttributes)
+            _expandLink(
+              _attributesExpanded ? 'Свернуть' : 'Все характеристики',
+              _attributesExpanded,
+              () => setState(() => _attributesExpanded = !_attributesExpanded),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Описание, свёрнутое до нескольких строк.
+  Widget _orderDescription(ProductItem product) {
+    final text = product.description!.trim();
+
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Описание',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            maxLines: _descriptionExpanded ? null : _shortDescriptionLines,
+            overflow: _descriptionExpanded
+                ? TextOverflow.visible
+                : TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              height: 1.45,
+            ),
+          ),
+          _expandLink(
+            _descriptionExpanded ? 'Свернуть' : 'Все описание',
+            _descriptionExpanded,
+            () => setState(() => _descriptionExpanded = !_descriptionExpanded),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _expandLink(String title, bool expanded, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(color: activeIconColor, fontSize: 14),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              expanded ? Icons.expand_less : Icons.expand_more,
+              color: activeIconColor,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Магазин: логотип, название, год, оценка, подписка и две кнопки.
+  Widget _orderShopCard(ShopBrief shop) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Магазин',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _shopLogo(shop),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      shop.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if ((shop.since ?? '').isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'На Лидле с ${shop.since}г',
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'Оценка: ',
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const Icon(
+                            Icons.star,
+                            color: Color(0xFFFFB800),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 3),
+                          Text(
+                            // Пусто, а не ноль: «нет оценок» и «оценка ноль»
+                            // это разные вещи, и продавцу без отзывов нельзя
+                            // рисовать худшую оценку.
+                            shop.rating == null
+                                ? 'нет оценок'
+                                : shop.rating!.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _subscribeButton(shop),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _writeSeller(shop),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    side: const BorderSide(color: Colors.white54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Написать продавцу',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _openSeller(shop),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    side: const BorderSide(color: activeIconColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Все товары',
+                        style: TextStyle(color: activeIconColor, fontSize: 14),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: activeIconColor,
+                        size: 12,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _shopLogo(ShopBrief shop) {
+    final image = (shop.image ?? '').trim();
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: SizedBox(
+        width: 56,
+        height: 56,
+        child: image.isEmpty
+            ? _shopLogoFallback(shop)
+            : Image.network(
+                image,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _shopLogoFallback(shop),
+              ),
+      ),
+    );
+  }
+
+  /// Заглушка логотипа: первая буква названия. Чужую картинку сюда ставить
+  /// нельзя, а пустой серый круг ничего не говорит.
+  Widget _shopLogoFallback(ShopBrief shop) {
+    final name = shop.name.trim();
+    final letter = name.isEmpty ? '?' : name.substring(0, 1).toUpperCase();
+
+    return Container(
+      color: primaryBackground,
+      alignment: Alignment.center,
+      child: Text(
+        letter,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _subscribeButton(ShopBrief shop) {
+    if (shop.userId == null) return const SizedBox.shrink();
+
+    if (_subscribing) {
+      return const Padding(
+        padding: EdgeInsets.only(left: 8, top: 4),
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => _toggleSubscription(shop),
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8, top: 2),
+        child: Text(
+          shop.isWishlisted ? 'Вы подписаны' : 'Подписаться',
+          style: TextStyle(
+            color: shop.isWishlisted ? textSecondary : activeIconColor,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Подписка на продавца.
+  ///
+  /// Отдельной ручки подписки в проекте нет: подписка это запись избранного с
+  /// типом «пользователь», ровно та же, что на странице продавца. Поэтому и
+  /// здесь те же два запроса, а не свой способ.
+  Future<void> _toggleSubscription(ShopBrief shop) async {
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showWarning(
+        context,
+        'Войдите в профиль, чтобы подписаться на магазин',
+      );
+
+      return;
+    }
+
+    setState(() => _subscribing = true);
+
+    try {
+      if (shop.isWishlisted && shop.wishlistId != null) {
+        await ApiService.delete('/me/wishlist/destroy/${shop.wishlistId}');
+
+        _applySubscription(isWishlisted: false, wishlistId: null);
+      } else {
+        final response = await ApiService.post(
+          '/me/wishlist/add',
+          {'user_id': shop.userId},
+        );
+
+        final id = response['wishlist_id'] ??
+            (response['data'] is Map ? response['data']['wishlist_id'] : null);
+
+        _applySubscription(
+          isWishlisted: true,
+          wishlistId: id is int ? id : int.tryParse('$id'),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Не получилось. Попробуйте ещё раз');
+      }
+    } finally {
+      if (mounted) setState(() => _subscribing = false);
+    }
+  }
+
+  void _applySubscription({required bool isWishlisted, int? wishlistId}) {
+    final shop = _shopOf(_product);
+
+    if (shop == null || !mounted) return;
+
+    // Меняем только точку, а не весь товар: подписка не меняет ни цены, ни
+    // остатка, и пересобирать ради неё модель из тридцати полей незачем.
+    setState(() {
+      _shopOverride = shop.copyWithSubscription(
+        isWishlisted: isWishlisted,
+        wishlistId: wishlistId,
+      );
+    });
+  }
+
+  /// Чат с продавцом, без привязки к товару. Тот же способ, что на странице
+  /// продавца: переписка одна, и заводить вторую под товар значит разнести
+  /// разговор по двум местам.
+  void _writeSeller(ShopBrief shop) {
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) {
+      SnackBarHelper.showWarning(
+        context,
+        'Войдите в профиль, чтобы написать продавцу',
+      );
+
+      return;
+    }
+
+    if (shop.userId == null) {
+      SnackBarHelper.showWarning(context, 'Продавец недоступен');
+
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatPage(
+          message: Message(
+            senderName: shop.name,
+            senderAvatar: shop.image,
+            lastMessageTime: 'сейчас',
+            unreadCount: 0,
+            isInternal: true,
+            isCompany: false,
+            userId: '${shop.userId}',
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openSeller(ShopBrief shop) {
+    if (shop.userId == null) {
+      SnackBarHelper.showWarning(context, 'Продавец недоступен');
+
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SellerProfileScreen(
+          sellerName: shop.name,
+          sellerAvatar:
+              const AssetImage('assets/profile_dashboard/default-photo.svg'),
+          sellerAvatarUrl: shop.image,
+          userId: '${shop.userId}',
+        ),
+      ),
+    );
+  }
+
+  Widget _complaintCard(ProductItem product) {
+    return _card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Оставить жалобу на товар',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Вы можете оставить жалобу на товар в случае нарушения правил',
+            style: TextStyle(color: textSecondary, fontSize: 14, height: 1.35),
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => showDialog<bool>(
+              context: context,
+              builder: (_) => ReportProductDialog(productId: product.id),
+            ),
+            behavior: HitTestBehavior.opaque,
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Пожаловаться',
+                  style: TextStyle(color: Color(0xFFE05B5B), fontSize: 15),
+                ),
+                SizedBox(width: 4),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Color(0xFFE05B5B),
+                  size: 12,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Похожие предложения.
+  ///
+  /// Пустой блок не рисуем вовсе: заголовок над пустым местом выглядит как
+  /// не загрузившийся экран.
+  Widget _similarBlock() {
+    if (_similarLoading && _similar.isEmpty) {
+      return const SizedBox(
+        height: 60,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    if (_similar.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Похожие предложения',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 250,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _similar.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, index) => _similarCard(_similar[index]),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _similarCard(ProductItem item) {
+    final image = item.image ?? (item.images.isEmpty ? null : item.images.first);
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          // Открываем в ТОМ ЖЕ виде: человек листает похожие одно за другим, и
+          // менять вид на полпути значит менять правила игры на ходу.
+          builder: (_) => ProductDetailsScreen(
+            productId: item.id,
+            fromOrder: true,
+          ),
+        ),
+      ),
+      child: SizedBox(
+        width: 165,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 165,
+                    height: 165,
+                    child: image == null
+                        ? Container(
+                            color: secondaryBackground,
+                            child: const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: textMuted,
+                              size: 28,
+                            ),
+                          )
+                        : Image.network(
+                            image,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              color: secondaryBackground,
+                              child: const Icon(
+                                Icons.image_not_supported_outlined,
+                                color: textMuted,
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: _SimilarFavorite(productId: item.id),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              item.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+            if ((item.shop?.name ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  item.shop!.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              item.priceLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1195,15 +2103,79 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
           builder: (context, quantities, _) {
             final inCart = canBuy ? (quantities[_orderId] ?? 0) : 0;
 
+            final cart = inCart == 0
+                ? _buildAddButton(product, canBuy)
+                : _buildInCartRow(inCart);
+
+            // Из заказа рядом с корзиной стоит «В избранное»: человек смотрит
+            // на уже купленную вещь, и чаще хочет отложить её на потом, чем
+            // купить второй раз прямо сейчас.
+            if (!widget.fromOrder) {
+              return SizedBox(height: 50, child: cart);
+            }
+
             return SizedBox(
               height: 50,
-              child: inCart == 0
-                  ? _buildAddButton(product, canBuy)
-                  : _buildInCartRow(inCart),
+              child: Row(
+                children: [
+                  Expanded(child: _favoriteButton(product)),
+                  const SizedBox(width: 10),
+                  Expanded(child: cart),
+                ],
+              ),
             );
           },
         ),
       ),
+    );
+  }
+
+  /// «В избранное» рядом с корзиной, в виде «из заказа».
+  ///
+  /// Состояние берём из общей памяти избранного, а не из своего поля: тот же
+  /// товар виден и в ленте, и в похожих предложениях, и собственная память
+  /// карточки разошлась бы с правдой.
+  Widget _favoriteButton(ProductItem product) {
+    return ValueListenableBuilder<Map<int, int?>>(
+      valueListenable: ProductFavoritesService.items,
+      builder: (context, _, __) {
+        final isFavorite = ProductFavoritesService.isFavorite(product.id);
+
+        return OutlinedButton(
+          onPressed: () async {
+            final error = await ProductFavoritesService.toggle(product.id);
+
+            if (error != null && mounted) {
+              SnackBarHelper.showError(context, error);
+            }
+          },
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: Colors.white54),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: isFavorite ? const Color(0xFFE05B5B) : Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  isFavorite ? 'В избранном' : 'В избранное',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1384,6 +2356,49 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: child,
+    );
+  }
+}
+
+/// Сердечко на карточке похожего предложения.
+///
+/// Своим виджетом, а не полем экрана: состояние избранного общее на всё
+/// приложение, и перерисовывать ради одного сердечка весь экран незачем.
+class _SimilarFavorite extends StatelessWidget {
+  final int productId;
+
+  const _SimilarFavorite({required this.productId});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Map<int, int?>>(
+      valueListenable: ProductFavoritesService.items,
+      builder: (context, _, __) {
+        final isFavorite = ProductFavoritesService.isFavorite(productId);
+
+        return GestureDetector(
+          onTap: () async {
+            final error = await ProductFavoritesService.toggle(productId);
+
+            if (error != null && context.mounted) {
+              SnackBarHelper.showError(context, error);
+            }
+          },
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.all(5),
+            decoration: const BoxDecoration(
+              color: Color(0xCC1E2831),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: isFavorite ? const Color(0xFFE05B5B) : Colors.white,
+              size: 18,
+            ),
+          ),
+        );
+      },
     );
   }
 }

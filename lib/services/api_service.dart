@@ -2831,6 +2831,37 @@ class ApiService {
     }
   }
 
+  /// 📢 Жалоба на товар (17.09.2026).
+  /// Эндпоинт: POST /products/{id}/report, тело { report_id }.
+  ///
+  /// Повторяет жалобу на объявление и требует входа по той же причине:
+  /// анонимная жалоба это кнопка для травли конкурента, а не повод
+  /// разобраться. Сервер вторую такую же жалобу не создаёт, поэтому повторное
+  /// нажатие безопасно.
+  static Future<Map<String, dynamic>> reportProduct({
+    required int productId,
+    required int reportId,
+    String? message,
+    String? token,
+  }) async {
+    final effectiveToken =
+        token ?? (HiveService.getUserData('token') as String?);
+
+    if (effectiveToken == null) {
+      throw Exception('Требуется авторизация');
+    }
+
+    return post(
+      '/products/$productId/report',
+      {
+        'report_id': reportId,
+        if (message != null && message.trim().isNotEmpty)
+          'message': message.trim(),
+      },
+      token: effectiveToken,
+    );
+  }
+
   /// Универсальная загрузка причин жалоб с сервера.
   /// GET /content/reports?type={type}. Возвращает список [{id, title}].
   /// [type] — 'adverts' | 'users' | 'advert_review' | 'company_review' и т.п.

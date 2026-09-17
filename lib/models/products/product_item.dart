@@ -296,6 +296,28 @@ class ShopBrief {
   /// Пусто у старого сервера — тогда кнопки продавца просто нет.
   final int? userId;
 
+  /// Логотип магазина (17.09.2026): картинка компании, а если её нет, аватар
+  /// продавца. Пусто, если нет ни того, ни другого: заглушку рисует экран.
+  final String? image;
+
+  /// Год прихода продавца на Лидле, строкой: «2024». Только год, точная дата
+  /// регистрации это личные данные продавца.
+  final String? since;
+
+  /// Оценка продавца и число публичных отзывов о нём.
+  ///
+  /// Считаются по тем же отзывам, что показывает страница продавца, поэтому
+  /// карточка товара и страница продавца не расходятся в числах.
+  final double? rating;
+  final int reviewsCount;
+
+  /// Подписан ли ЭТОТ человек на продавца. Подписка это запись избранного с
+  /// типом «пользователь», та же, что на странице продавца.
+  final bool isWishlisted;
+
+  /// Номер записи избранного: по нему подписка снимается одним запросом.
+  final int? wishlistId;
+
   const ShopBrief({
     required this.id,
     required this.name,
@@ -304,7 +326,44 @@ class ShopBrief {
     this.isActive = true,
     this.userId,
     this.schedule = const {},
+    this.image,
+    this.since,
+    this.rating,
+    this.reviewsCount = 0,
+    this.isWishlisted = false,
+    this.wishlistId,
   });
+
+  /// Оценка строкой для подписи: «4.5» или пусто, если отзывов нет.
+  String get ratingLabel => rating == null ? '' : rating!.toStringAsFixed(1);
+
+  /// Строка или ничего. Пустую строку сервер присылает наравне с `null`, и
+  /// отличать их на экране незачем: и то и другое значит «нечего показать».
+  static String? _clean(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+
+    return text.isEmpty || text == 'null' ? null : text;
+  }
+
+  /// Копия с другим состоянием подписки: экран меняет её, не перезагружая
+  /// карточку целиком.
+  ShopBrief copyWithSubscription({required bool isWishlisted, int? wishlistId}) {
+    return ShopBrief(
+      id: id,
+      name: name,
+      address: address,
+      phone: phone,
+      isActive: isActive,
+      userId: userId,
+      schedule: schedule,
+      image: image,
+      since: since,
+      rating: rating,
+      reviewsCount: reviewsCount,
+      isWishlisted: isWishlisted,
+      wishlistId: wishlistId,
+    );
+  }
 
   static ShopBrief? tryParse(dynamic raw) {
     if (raw is! Map) return null;
@@ -326,6 +385,12 @@ class ShopBrief {
               ),
             )
           : const {},
+      image: _clean(raw['image']),
+      since: _clean(raw['since']),
+      rating: ProductItem._double(raw['rating']),
+      reviewsCount: ProductItem._int(raw['reviews_count']) ?? 0,
+      isWishlisted: raw['is_wishlisted'] == true,
+      wishlistId: ProductItem._int(raw['wishlist_id']),
     );
   }
 
