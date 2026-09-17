@@ -1094,7 +1094,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         borderRadius: BorderRadius.circular(10),
         onTap: () => setState(() => _ownerCardExpanded = !_ownerCardExpanded),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          // Сверху вдвое меньше, чем снизу: это и есть внешний отступ шапки,
+          // строка «Назад» стояла от неё далеко.
+          padding: const EdgeInsets.only(top: 3, bottom: 6),
           child: Row(
             children: [
               Expanded(
@@ -1156,7 +1158,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           // нажатия осталась прежней по высоте и уходит влево, а не вправо.
           padding: EdgeInsets.zero,
           alignment: Alignment.centerRight,
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          // Высота кнопки урезана вдвое по запасу над значком: строка шапки
+          // становится ниже, и пустое место под ней уменьшается.
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 32),
           icon: SvgPicture.asset(
             'assets/home_page/share_outlined.svg',
             width: 23,
