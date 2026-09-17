@@ -10,6 +10,9 @@ import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/store_menu_service.dart';
+import 'package:lidle/models/products/store_filters.dart';
+import 'package:lidle/services/store_filters_service.dart';
+import 'package:lidle/pages/full_category_screen/store_filter_sheet.dart';
 import 'package:lidle/widgets/navigation/open_my_store.dart';
 import 'package:lidle/widgets/navigation/nav_metrics.dart';
 import 'package:lidle/models/home_models.dart';
@@ -98,6 +101,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   String _searchQuery = '';
+
+  /// Фильтр витрины (17.09.2026).
+  ///
+  /// Состав панели приходит с сервера и относится к ЭТОМУ продавцу: его точки,
+  /// его разделы, его бренды. Держим его здесь, чтобы повторное открытие
+  /// панели не ходило за тем же ответом.
+  StoreFilterOptions? _filterOptions;
+  StoreFilterSelection _filter = const StoreFilterSelection();
+  bool _filterLoading = false;
 
   /// Номера последних запросов витрины (17.09.2026).
   ///
@@ -269,6 +281,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       userId: userId,
       token: TokenService.currentToken,
       search: query,
+      filterQuery: _filter.toProductsQuery(),
     );
 
     // Пока ходили за ответом, спросить могли уже другое.
@@ -770,6 +783,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'sort': ['new'],
         'page': 1,
         if (query.isNotEmpty) 'search': query,
+        ..._filter.toAdvertsBody(),
       };
 
       final firstResponse = await ApiService.getWithBody(
@@ -792,6 +806,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             'sort': ['new'],
             'page': page,
             if (query.isNotEmpty) 'search': query,
+            ..._filter.toAdvertsBody(),
           };
           final pageResponse = await ApiService.getWithBody(
             '/users/$userId/adverts',
@@ -808,7 +823,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       if (data.isEmpty) {
         if (!mounted || requestId != _listingsRequest) return;
 
-        if (query.isEmpty) {
+        if (query.isEmpty && _filter.isEmpty) {
           _fullListings = const [];
         }
 
@@ -869,7 +884,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
       // Полную витрину держим под рукой: по крестику она нужна сразу, без
       // повторной загрузки.
-      if (query.isEmpty) {
+      if (query.isEmpty && _filter.isEmpty) {
         _fullListings = listings;
       }
 
@@ -1058,7 +1073,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       SizedBox(
                         height: _isOwnProfile && !_ownerCardExpanded ? 6 : 25,
                       ),
-                      _buildSearchField(),
+                      _buildSearchRow(),
                       const SizedBox(height: 14),
                       Row(children: [_buildListingsTitle()]),
                       const SizedBox(height: 16),
@@ -1995,6 +2010,168 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   ///
   /// Стоит над заголовком витрины, а не в шапке экрана: ищет он только у этого
   /// продавца, и в шапке его путали бы с поиском по всему приложению.
+  /// Открыть панель фильтра.
+  ///
+  /// Состав спрашиваем один раз за заход: он относится к этому продавцу и за
+  /// минуту не меняется. Пока состав едет, показываем кружок прямо на значке,
+  /// чтобы нажатие не выглядело пустым.
+  Future<void> _openFilter() async {
+    final userId = widget.userId;
+
+    if (userId == null || userId.isEmpty) return;
+
+    if (_filterOptions == null) {
+      setState(() => _filterLoading = true);
+
+      final options = await StoreFiltersService.load(
+        userId: userId,
+        categoryId: _filter.categoryId,
+        token: TokenService.currentToken,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _filterLoading = false;
+        _filterOptions = options;
+      });
+
+      if (options == null || options.isEmpty) {
+        SnackBarHelper.showWarning(
+          context,
+          'У этого продавца пока нечего фильтровать',
+        );
+
+        return;
+      }
+    }
+
+    final options = _filterOptions;
+
+    if (options == null || !mounted) return;
+
+    final result = await showModalBottomSheet<StoreFilterSelection>(
+      context: context,
+      backgroundColor: primaryBackground,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
+      ),
+      builder: (_) => StoreFilterSheet(
+        options: options,
+        selection: _filter,
+        onCategoryChanged: (categoryId) async {
+          final fresh = await StoreFiltersService.load(
+            userId: userId,
+            categoryId: categoryId,
+            token: TokenService.currentToken,
+          );
+
+          if (fresh != null && mounted) {
+            // Запоминаем: панель могут закрыть и открыть заново, и второй раз
+            // ходить за тем же ответом не за чем.
+            _filterOptions = fresh;
+          }
+
+          return fresh;
+        },
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _filter = result;
+      _sellerListings = [];
+      _sellerProducts = const [];
+      _isLoading = true;
+      _productsLoading = true;
+      _error = null;
+    });
+
+    _loadSellerListings(forceRefresh: true);
+    _loadSellerProducts();
+  }
+
+  /// Поиск и кнопка фильтра в одной строке.
+  Widget _buildSearchRow() {
+    return Row(
+      children: [
+        Expanded(child: _buildSearchField()),
+        const SizedBox(width: 8),
+        _buildFilterButton(),
+      ],
+    );
+  }
+
+  Widget _buildFilterButton() {
+    final count = _filter.count;
+
+    return Material(
+      color: secondaryBackground,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: _filterLoading ? null : _openFilter,
+        child: Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          child: _filterLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    SvgPicture.asset(
+                      settingsIconAsset,
+                      height: 24,
+                      width: 24,
+                      colorFilter: const ColorFilter.mode(
+                        Colors.white,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    // Число выбранных условий: иначе человек, закрывший панель,
+                    // не поймёт, почему витрина короче обычного.
+                    if (count > 0)
+                      Positioned(
+                        top: -6,
+                        right: -8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: activeIconColor,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          constraints: const BoxConstraints(minWidth: 16),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchField() {
     return TextField(
       controller: _searchController,

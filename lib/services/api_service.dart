@@ -1009,6 +1009,7 @@ class ApiService {
     int perPage = 60,
     String? token,
     String? search,
+    String filterQuery = '',
   }) async {
     final id = int.tryParse(userId.trim());
 
@@ -1022,8 +1023,10 @@ class ApiService {
       final searchPart =
           query.length >= 2 ? '&search=${Uri.encodeQueryComponent(query)}' : '';
 
+      // Фильтр витрины: точки, раздел, бренды, цена, характеристики, оценка и
+      // доставка. Строку собирает сам фильтр, здесь только подставляем.
       final response = await get(
-        '/products?user_id=$id&page=$page&per_page=$perPage$searchPart',
+        '/products?user_id=$id&page=$page&per_page=$perPage$searchPart$filterQuery',
         token: token,
       );
 
