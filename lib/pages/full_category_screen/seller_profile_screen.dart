@@ -925,9 +925,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 color: activeIconColor,
                 size: 16,
               ),
-              const SizedBox(
-                width: 4,
-              ), // Небольшой отступ между иконкой и текстом
+              const SizedBox(width: 0), // Отступ между иконкой и текстом убран
               const Text(
                 'Назад',
                 style: TextStyle(
@@ -942,6 +940,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         const Spacer(),
 
         IconButton(
+          // Свои отступы у кнопки убраны: она тянула строку по высоте на
+          // лишние 16 точек, и шапка висела далеко от содержимого.
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          splashRadius: 20,
           icon: SvgPicture.asset(
             'assets/home_page/share_outlined.svg',
             width: 23,
