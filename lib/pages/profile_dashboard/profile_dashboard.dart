@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -76,6 +77,91 @@ String _getPluralForm(int count) {
   } else {
     return 'товаров';
   }
+}
+
+/// Картинка штрих-кода в полоске покупок.
+///
+/// Сначала пробуем файл из ассетов. Если он не читается (не попал в сборку,
+/// не то имя, не поддержанный формат), рисуем полоски сами: пустое место на
+/// видном блоке выглядит как поломка, а человеку здесь важна подсказка
+/// «покажи это продавцу», а не конкретная картинка.
+///
+/// Рисунок декоративный и не сканируется. Настоящий код получения человек
+/// видит на экране своего заказа, и именно его называет продавцу.
+class _BarcodeThumb extends StatelessWidget {
+  const _BarcodeThumb();
+
+  static const String _asset = 'assets/shtrihcod/image 43.svg';
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _exists(),
+      builder: (context, snapshot) {
+        if (snapshot.data == true) {
+          return SvgPicture.asset(
+            _asset,
+            fit: BoxFit.contain,
+            placeholderBuilder: (_) => const _BarcodePainted(),
+          );
+        }
+
+        return const _BarcodePainted();
+      },
+    );
+  }
+
+  static Future<bool> _exists() async {
+    try {
+      await rootBundle.load(_asset);
+
+      return true;
+    } catch (e) {
+      log.d('Штрих-код из ассетов не прочитался: $e');
+
+      return false;
+    }
+  }
+}
+
+/// Нарисованные полоски: запасной вариант картинки.
+class _BarcodePainted extends StatelessWidget {
+  const _BarcodePainted();
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(painter: _BarcodePainter(), size: Size.infinite);
+  }
+}
+
+class _BarcodePainter extends CustomPainter {
+  /// Ширины полос: набор постоянный, чтобы картинка не мелькала при каждой
+  /// перерисовке.
+  static const List<double> _bars = [
+    3, 1, 2, 1, 1, 3, 1, 2, 2, 1, 1, 1, 3, 1, 2, 1, 1, 2, 1, 3, 1, 1, 2, 1,
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    final total = _bars.fold<double>(0, (sum, width) => sum + width);
+    final unit = size.width / (total * 2);
+
+    var x = 0.0;
+
+    for (var i = 0; i < _bars.length; i++) {
+      final width = _bars[i] * unit * 2;
+
+      if (i.isEven) {
+        canvas.drawRect(Rect.fromLTWH(x, 0, width, size.height), paint);
+      }
+
+      x += width;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 /// Одна карточка карусели: товар внутри заказа.
@@ -307,19 +393,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
           // Картинка лежит прямо на тёмном фоне полоски, без белой подложки:
           // штрих-код в макете нарисован белым, и на белой плашке его не было
           // видно вовсе (17.09.2026).
-          SizedBox(
-            width: 64,
-            height: 40,
-            child: SvgPicture.asset(
-              'assets/shtrihcod/image 43.svg',
-              fit: BoxFit.contain,
-              placeholderBuilder: (_) => const Icon(
-                Icons.qr_code_2,
-                color: Colors.white,
-                size: 26,
-              ),
-            ),
-          ),
+          const SizedBox(width: 64, height: 40, child: _BarcodeThumb()),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
@@ -438,13 +512,10 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      line.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: textSecondary, fontSize: 12),
-                    ),
+                    // Название товара из карточки убрано (17.09.2026): в
+                    // макете его нет, а четвёртой строкой оно не помещалось по
+                    // высоте. Что именно куплено, человек видит на экране
+                    // заказа, куда карточка и ведёт.
                     if (hours != null) ...[
                       const SizedBox(height: 2),
                       Text(
