@@ -431,11 +431,6 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                 style: TextStyle(color: textSecondary, fontSize: 13),
               ),
             ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: textSecondary,
-              size: 14,
-            ),
           ],
         ),
       ),
