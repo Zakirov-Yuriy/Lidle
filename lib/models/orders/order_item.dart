@@ -38,6 +38,19 @@ class OrderModel {
   /// (15.09.2026). Пусто у заказов, оформленных до выбора способа.
   final String? paymentMethodTitle;
 
+  /// Ключ способа оплаты: `cash`, `card`, `sbp`, `bank_transfer` (17.09.2026).
+  ///
+  /// Нужен экрану подробностей: там способы показаны списком, и отмечать
+  /// выбранный надо по ключу, а не сравнением названий. Название продавец
+  /// может однажды переименовать, ключ остаётся.
+  final String? paymentMethod;
+
+  /// Какие способы точка принимала на момент заказа.
+  ///
+  /// Снимок с заказа, а не нынешние настройки точки: в подробностях человек
+  /// смотрит на то, из чего он выбирал тогда.
+  final List<String> paymentTypes;
+
   /// Расчёт на месте при получении. Продавцу это главное: ждать наличные у
   /// прилавка или проверять поступление.
   final bool paymentOnPickup;
@@ -83,6 +96,8 @@ class OrderModel {
     this.cancelReason,
     this.shop,
     this.paymentMethodTitle,
+    this.paymentMethod,
+    this.paymentTypes = const [],
     this.paymentOnPickup = false,
     this.deliveryType = 'pickup',
     this.deliveryTitle,
@@ -117,6 +132,15 @@ class OrderModel {
       paymentMethodTitle: data['payment'] is Map
           ? data['payment']['method_title']?.toString()
           : null,
+      paymentMethod: data['payment'] is Map
+          ? data['payment']['method']?.toString()
+          : null,
+      paymentTypes: data['payment'] is Map && data['payment']['types'] is List
+          ? (data['payment']['types'] as List)
+              .map((type) => '$type'.trim())
+              .where((type) => type.isNotEmpty)
+              .toList()
+          : const [],
       paymentOnPickup:
           data['payment'] is Map && data['payment']['on_pickup'] == true,
       items: items is List

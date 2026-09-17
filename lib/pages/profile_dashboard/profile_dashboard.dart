@@ -444,11 +444,19 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
     return InkWell(
       borderRadius: BorderRadius.circular(10),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => YourOrderScreen(order: order, line: line),
-        ),
-      ),
+      // Экран заказа возвращает `true`, когда заказ там отменили. Тогда
+      // перечитываем покупки: отменённый заказ из карусели уходит, а оставить
+      // его до следующего открытия кабинета значило бы показывать человеку
+      // заказ, от которого он только что отказался (17.09.2026).
+      onTap: () async {
+        final changed = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => YourOrderScreen(order: order, line: line),
+          ),
+        );
+
+        if (changed == true && mounted) _loadActivePurchases();
+      },
       // Картинка слева во всю высоту карточки, текст справа отдельной
       // колонкой: при мелкой картинке строка с часами работы не помещалась
       // рядом и вылезала под неё (правка заказчика 17.09.2026).

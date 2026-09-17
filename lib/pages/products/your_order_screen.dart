@@ -16,6 +16,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -24,8 +25,16 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/products/order_details_screen.dart';
+import 'package:lidle/pages/products/order_questions_screen.dart';
+import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/cancel_order_dialog.dart';
+import 'package:lidle/widgets/navigation/bottom_navigation.dart';
+import 'package:lidle/blocs/navigation/navigation_bloc.dart';
+import 'package:lidle/blocs/navigation/navigation_state.dart';
+import 'package:lidle/blocs/navigation/navigation_event.dart';
 
 class YourOrderScreen extends StatefulWidget {
   static const String routeName = '/your-order';
@@ -48,7 +57,16 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
 
   bool _saving = false;
 
-  OrderModel get order => widget.order;
+  /// Идёт отмена. Пока идёт, кнопка «Отказаться» не нажимается: второе
+  /// нажатие ушло бы вторым запросом, а заказ отменяется один раз.
+  bool _cancelling = false;
+
+  /// Заказ после отмены. Показываем его, не перезагружая экран: сервер
+  /// возвращает изменённый заказ в ответе, и второй запрос за тем же самым
+  /// был бы лишним.
+  OrderModel? _cancelled;
+
+  OrderModel get order => _cancelled ?? widget.order;
   OrderLine? get line => widget.line;
 
   bool get _isPickup => order.deliveryType != 'courier';
@@ -148,43 +166,116 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
     await file.copy('${documents.path}/$name');
   }
 
+  /// Спросить и отменить.
+  ///
+  /// Отказ необратим, поэтому подтверждение словом, а не «да/нет»: см.
+  /// [CancelOrderDialog].
+  void _askCancel() {
+    showDialog<void>(
+      context: context,
+      builder: (_) => CancelOrderDialog(onConfirm: _cancel),
+    );
+  }
+
+  Future<void> _cancel() async {
+    if (_cancelling) return;
+
+    setState(() => _cancelling = true);
+
+    final result = await OrdersService.cancel(order.id);
+
+    if (!mounted) return;
+
+    setState(() {
+      _cancelling = false;
+
+      if (result.isOk && result.order != null) _cancelled = result.order;
+    });
+
+    if (result.isOk) {
+      SnackBarHelper.showSuccess(
+        context,
+        result.message.isEmpty ? 'Заказ отменён' : result.message,
+      );
+
+      // Кабинет обновит карусель покупок: отменённый заказ из неё уходит.
+      Navigator.of(context).pop(true);
+
+      return;
+    }
+
+    SnackBarHelper.showError(
+      context,
+      result.message.isEmpty ? 'Не удалось отменить заказ' : result.message,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final current = line ?? (order.items.isEmpty ? null : order.items.first);
 
-    return Scaffold(
-      backgroundColor: primaryBackground,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8.0, left: 8),
-                child: Header(),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _titleRow(context),
-                    const SizedBox(height: 6),
-                    RepaintBoundary(key: _codeKey, child: _codeCard(context)),
-                    const SizedBox(height: 10),
-                    _downloadButton(),
-                    const SizedBox(height: 16),
-                    if (current != null) _itemCard(current),
-                    const SizedBox(height: 12),
-                    _deliveryCard(),
-                    const SizedBox(height: 12),
-                    _detailsCard(context),
-                    const SizedBox(height: 24),
-                  ],
+    return BlocListener<NavigationBloc, NavigationState>(
+      listener: (context, state) {
+        if (state is NavigationToProfile ||
+            state is NavigationToHome ||
+            state is NavigationToFavorites ||
+            state is NavigationToAddListing ||
+            state is NavigationToMyPurchases ||
+            state is NavigationToMessages ||
+            state is NavigationToSignIn) {
+          context.read<NavigationBloc>().executeNavigation(context);
+        }
+      },
+      child: Scaffold(
+        extendBody: true,
+        backgroundColor: primaryBackground,
+        body: SafeArea(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8.0, left: 8),
+                  child: Header(),
                 ),
-              ),
-            ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _titleRow(context),
+                      const SizedBox(height: 6),
+                      RepaintBoundary(key: _codeKey, child: _codeCard(context)),
+                      const SizedBox(height: 10),
+                      _downloadButton(),
+                      const SizedBox(height: 16),
+                      if (current != null) _itemCard(current),
+                      const SizedBox(height: 12),
+                      _deliveryCard(),
+                      const SizedBox(height: 12),
+                      _detailsRow(context),
+                      const SizedBox(height: 12),
+                      _actionButtons(context),
+                      // Место под нижнее меню: экран под ним продолжается, и
+                      // без запаса последняя кнопка пряталась бы за иконками.
+                      const SizedBox(height: 110),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
+        bottomNavigationBar: BottomNavigation(
+          onItemSelected: (index) {
+            if (index == 3) {
+              context.read<NavigationBloc>().add(NavigateToMyPurchasesEvent());
+            } else {
+              context
+                  .read<NavigationBloc>()
+                  .add(SelectNavigationIndexEvent(index));
+            }
+          },
         ),
       ),
     );
@@ -493,80 +584,120 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
     );
   }
 
-  /// Подробности заказа: то, что человеку нужно изредка, поэтому спрятано под
-  /// раскрытие, а не занимает экран.
-  Widget _detailsCard(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: Container(
-        decoration: BoxDecoration(
-          color: secondaryBackground,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          iconColor: textSecondary,
-          collapsedIconColor: textSecondary,
-          title: const Text(
-            'Подробности заказа',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          children: [
-            _detailRow('Номер заказа', order.number),
-            if (order.createdAt != null)
-              _detailRow('Оформлен', _date(order.createdAt!)),
-            for (final item in order.items)
-              _detailRow(
-                '${item.name} × ${item.quantity}',
-                '${item.sum.toStringAsFixed(0)} ₽',
+  /// Строка «Подробности заказа»: подпись и стрелка отдельными полями.
+  ///
+  /// Раньше подробности раскрывались здесь же гармошкой, но в раскрытом виде
+  /// они занимали весь экран и отодвигали код получения, ради которого экран и
+  /// открывают. Теперь это отдельный экран, а здесь остаётся строка. Стрелка
+  /// вынесена в своё поле по макету; нажимаются оба поля одинаково, потому что
+  /// человек целится в строку, а не в стрелку.
+  Widget _detailsRow(BuildContext context) {
+    void open() {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => OrderDetailsScreen(order: order)),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: open,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                color: secondaryBackground,
+                borderRadius: BorderRadius.circular(10),
               ),
-            if (!_isPickup && order.deliveryPrice.isNotEmpty)
-              _detailRow('Доставка', '${order.deliveryPrice} ₽'),
-            _detailRow('Итого', '${order.total} ₽'),
-            if ((order.paymentMethodTitle ?? '').isNotEmpty)
-              _detailRow('Оплата', order.paymentMethodTitle!),
-            if ((order.contactPhone ?? '').isNotEmpty)
-              _detailRow('Телефон', order.contactPhone!),
-            if ((order.comment ?? '').isNotEmpty)
-              _detailRow('Комментарий', order.comment!),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(color: textSecondary, fontSize: 13),
+              child: const Text(
+                'Подробности заказа',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
+        const SizedBox(width: 8),
+        InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: open,
+          child: Container(
+            width: 52,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: secondaryBackground,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.arrow_forward_ios,
+              color: textSecondary,
+              size: 16,
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  static String _date(DateTime value) {
-    String two(int number) => number.toString().padLeft(2, '0');
+  /// «Отказаться» и «Задать вопрос».
+  ///
+  /// Отказ показываем только у живого заказа: отменить выданный или уже
+  /// отменённый нельзя, и кнопка, которая всегда отвечает отказом сервера,
+  /// хуже её отсутствия.
+  Widget _actionButtons(BuildContext context) {
+    final canCancel = order.isAlive;
 
-    return '${two(value.day)}.${two(value.month)}.${value.year}';
+    final question = OutlinedButton(
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => OrderQuestionsScreen(order: order)),
+      ),
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        side: const BorderSide(color: activeIconColor),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: const Text(
+        'Задать вопрос',
+        style: TextStyle(color: activeIconColor, fontSize: 15),
+      ),
+    );
+
+    if (!canCancel) {
+      return SizedBox(width: double.infinity, child: question);
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: _cancelling ? null : _askCancel,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              side: const BorderSide(color: Color(0xFFE05B5B)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: _cancelling
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text(
+                    'Отказаться',
+                    style: TextStyle(color: Color(0xFFE05B5B), fontSize: 15),
+                  ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: question),
+      ],
+    );
   }
 
   static Color _statusColor(String status) {
