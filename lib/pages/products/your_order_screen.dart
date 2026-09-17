@@ -10,23 +10,15 @@
 // промолчал бы, и оба решили бы, что сломалось приложение. Поэтому код показан
 // крупно и читаемо, а картинка появится, когда появится сам штрих-код.
 
-import 'dart:io';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-
 import 'package:lidle/constants.dart';
-import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/order_details_screen.dart';
 import 'package:lidle/pages/products/order_questions_screen.dart';
+import 'package:lidle/services/image_saver.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -81,89 +73,29 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
 
     setState(() => _saving = true);
 
-    try {
-      PermissionStatus status;
+    final result = await ImageSaver.saveBoundary(
+      _codeKey,
+      'LIDLE_code_${order.number}.png',
+    );
 
-      if (Platform.isAndroid) {
-        final info = await DeviceInfoPlugin().androidInfo;
+    if (!mounted) return;
 
-        status = info.version.sdkInt >= 33
-            ? await Permission.photos.request()
-            : await Permission.storage.request();
-      } else if (Platform.isIOS) {
-        status = await Permission.photos.request();
-      } else {
-        status = PermissionStatus.granted;
-      }
+    setState(() => _saving = false);
 
-      if (!status.isGranted) {
-        if (mounted) {
-          SnackBarHelper.showWarning(
-            context,
-            'Нужно разрешение на сохранение файлов',
-          );
-        }
-
-        return;
-      }
-
-      final boundary = _codeKey.currentContext?.findRenderObject()
-          as RenderRepaintBoundary?;
-
-      if (boundary == null) return;
-
-      final image = await boundary.toImage(pixelRatio: 3.0);
-      final data = await image.toByteData(format: ui.ImageByteFormat.png);
-
-      if (data == null) return;
-
-      final bytes = data.buffer.asUint8List();
-      final name = 'LIDLE_code_${order.number}.png';
-
-      final temp = await getTemporaryDirectory();
-      final file = File('${temp.path}/$name');
-      await file.writeAsBytes(bytes);
-
-      await _saveToGallery(file, name);
-
-      if (await file.exists()) await file.delete();
-
-      if (mounted) {
+    switch (result) {
+      case ImageSaveResult.saved:
         SnackBarHelper.showSuccess(context, 'Код сохранён в галерею');
-      }
-    } catch (e) {
-      log.d('Код не сохранился: $e');
-
-      if (mounted) {
+        break;
+      case ImageSaveResult.noPermission:
+        SnackBarHelper.showWarning(
+          context,
+          'Нужно разрешение на сохранение файлов',
+        );
+        break;
+      case ImageSaveResult.failed:
         SnackBarHelper.showError(context, 'Не удалось сохранить код');
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
+        break;
     }
-  }
-
-  /// Куда класть файл. Путь тот же, что у сохранения QR продавца: два разных
-  /// места означали бы два разных ответа на вопрос «куда сохранилось».
-  Future<void> _saveToGallery(File file, String name) async {
-    if (Platform.isAndroid) {
-      try {
-        final directory = Directory('/storage/emulated/0/DCIM/Camera');
-
-        if (!await directory.exists()) {
-          await directory.create(recursive: true);
-        }
-
-        await file.copy('${directory.path}/$name');
-
-        return;
-      } catch (e) {
-        log.d('DCIM недоступен, кладём в папку приложения: $e');
-      }
-    }
-
-    final documents = await getApplicationDocumentsDirectory();
-
-    await file.copy('${documents.path}/$name');
   }
 
   /// Спросить и отменить.

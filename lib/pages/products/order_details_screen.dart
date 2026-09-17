@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/products/order_receipt_screen.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
@@ -81,6 +82,8 @@ class OrderDetailsScreen extends StatelessWidget {
                       _paymentCard(),
                       const SizedBox(height: 10),
                       _sumCard(),
+                      const SizedBox(height: 16),
+                      _receiptButton(context),
                       const SizedBox(height: 110),
                     ],
                   ),
@@ -482,6 +485,33 @@ class OrderDetailsScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// «Ваш чек».
+  ///
+  /// Открывает товарный чек по этому заказу, его можно сохранить на телефон.
+  /// Кассовым он не является: кассу печатает продавец, см.
+  /// [OrderReceiptScreen].
+  Widget _receiptButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => OrderReceiptScreen(order: order)),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          side: const BorderSide(color: activeIconColor),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: const Text(
+          'Ваш чек',
+          style: TextStyle(color: activeIconColor, fontSize: 15),
+        ),
+      ),
     );
   }
 
