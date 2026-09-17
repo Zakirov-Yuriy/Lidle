@@ -597,7 +597,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                         _QuickCard(
                                           iconPath:
                                               'assets/profile_dashboard/eva_star-fill.svg',
-                                          title: 'Отзывы о ваших товарах',
+                                          title: 'Отзывы о товарах',
                                           subtitle:
                                               '$_reviewsCount ${_getReviewsPluralForm(_reviewsCount)}',
                                           onTap: () => Navigator.of(
