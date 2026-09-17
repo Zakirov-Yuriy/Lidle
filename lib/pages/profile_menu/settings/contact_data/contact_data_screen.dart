@@ -902,6 +902,11 @@ class _ContactDataScreenState extends State<ContactDataScreen>
 
       // Адрес: шлём выбранный город, бэк выведет подрегион и область.
       // Улицу и дом (необязательные) передаём, только если они выбраны.
+      //
+      // Неудачу показываем человеку (17.09.2026): раньше она уходила только в
+      // лог, экран писал «Сохранено», а область с городом оставались пустыми.
+      final addressErrors = <String>[];
+
       if (_selectedCityId != null) {
         try {
           final resp = await UserService.updateAddress(
@@ -912,6 +917,9 @@ class _ContactDataScreenState extends State<ContactDataScreen>
           );
           if (resp['success'] == false) {
             log.d('⚠️ Адрес не сохранён: ${resp['message']}');
+            addressErrors.add(
+              'Адрес: ${resp['message']?.toString() ?? 'не удалось сохранить'}',
+            );
           } else {
             log.d(
               '✅ Адрес сохранён (city_id=$_selectedCityId, '
@@ -920,6 +928,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
           }
         } catch (e) {
           log.d('❌ Ошибка сохранения адреса: $e');
+          addressErrors.add('Адрес: не удалось сохранить, попробуйте ещё раз');
         }
       }
 
@@ -1064,6 +1073,7 @@ class _ContactDataScreenState extends State<ContactDataScreen>
         // терялась, и человек не понимал, почему имя не сохранилось.
         final saveErrors = <String>[
           if (nameError != null) nameError,
+          ...addressErrors,
           ...messengerErrors,
         ];
 

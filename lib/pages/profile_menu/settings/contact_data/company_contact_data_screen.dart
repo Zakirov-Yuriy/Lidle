@@ -560,6 +560,29 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     }
   }
 
+  /// Чего ещё не хватает для публикации объявления, по мнению сервера.
+  ///
+  /// Возвращает подписи незаполненных полей. Пустой список значит, что плюс
+  /// откроет создание объявления, а не плашку.
+  Future<List<String>> _missingForPublish(String token) async {
+    try {
+      final resp = await ApiService.get('/me/adverts/can-create', token: token);
+
+      if (resp['can_create'] == true) return const [];
+
+      return ((resp['missing'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((m) => '${m['label'] ?? m['field'] ?? ''}'.trim())
+          .where((label) => label.isNotEmpty)
+          .toList();
+    } catch (e) {
+      // Проверка не ответила: молчим, это подсказка, а не препятствие.
+      log.d('Проверка перед публикацией не ответила: $e');
+
+      return const [];
+    }
+  }
+
   /// Сохранить/обновить одиночный контакт (телефон/почта/мессенджер) компании.
   /// Возвращает текст ошибки или null при успехе.
   Future<String?> _saveSingle({
@@ -884,6 +907,12 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
       }
 
       // Адрес: шлём выбранный город, бэк выведет подрегион и область.
+      //
+      // Неудачу здесь больше не проглатываем (17.09.2026). Раньше ошибка
+      // уходила только в лог, экран писал «Сохранено», а область с городом не
+      // сохранялись. Публикация объявления продолжала требовать их заполнить,
+      // и человек ходил по кругу: заполнил, сохранил, снова «Заполните данные
+      // компании».
       if (_selectedCityId != null) {
         try {
           final resp = await CompanyContactService.changeAddress(
@@ -893,10 +922,13 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
             token: token,
           );
           if (resp['success'] == false) {
-            log.d('⚠️ Адрес компании не сохранён: ${resp['message']}');
+            errors.add(
+              'Адрес: ${resp['message']?.toString() ?? 'не удалось сохранить'}',
+            );
           }
         } catch (e) {
           log.d('❌ Ошибка сохранения адреса компании: $e');
+          errors.add('Адрес: не удалось сохранить, попробуйте ещё раз');
         }
       }
 
@@ -923,12 +955,36 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
       }
 
       if (errors.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Контактные данные компании сохранены'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        // Спрашиваем сервер, хватает ли данных для публикации (17.09.2026).
+        //
+        // Экран знает свои поля, но решает не он: проверка перед созданием
+        // объявления смотрит и на карточку компании, и на списки контактов.
+        // Пока мы её не спрашивали, человек видел «Сохранено», жал плюс и
+        // получал ту же плашку «Заполните данные компании», не понимая, чего
+        // от него хотят.
+        final stillMissing = await _missingForPublish(token);
+
+        if (!mounted) return;
+
+        if (stillMissing.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Контактные данные компании сохранены'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Сохранено, но для публикации объявления не хватает: '
+                '${stillMissing.join(', ')}',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
