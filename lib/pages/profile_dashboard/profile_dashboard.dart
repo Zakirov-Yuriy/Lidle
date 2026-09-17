@@ -81,32 +81,43 @@ String _getPluralForm(int count) {
 
 /// Картинка штрих-кода в полоске покупок.
 ///
-/// Сначала пробуем файл из ассетов. Если он не читается (не попал в сборку,
-/// не то имя, не поддержанный формат), рисуем полоски сами: пустое место на
-/// видном блоке выглядит как поломка, а человеку здесь важна подсказка
-/// «покажи это продавцу», а не конкретная картинка.
+/// Берём PNG, а не SVG (17.09.2026). Файл из макета это обёртка: внутри него
+/// растровая картинка, вставленная шаблоном заливки, и такие SVG наша
+/// библиотека не рисует вовсе, отсюда и пустое место на экране. Картинку из
+/// него вынули и положили рядом обычным PNG.
+///
+/// Если и PNG не читается, рисуем полоски сами: пустота на видном блоке
+/// выглядит как поломка, а человеку здесь важна подсказка «покажите это
+/// продавцу», а не конкретный файл.
 ///
 /// Рисунок декоративный и не сканируется. Настоящий код получения человек
-/// видит на экране своего заказа, и именно его называет продавцу.
+/// видит на экране своего заказа и называет его продавцу.
 class _BarcodeThumb extends StatelessWidget {
   const _BarcodeThumb();
 
-  static const String _asset = 'assets/shtrihcod/image 43.svg';
+  static const String _asset = 'assets/shtrihcod/barcode.png';
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
       future: _exists(),
       builder: (context, snapshot) {
-        if (snapshot.data == true) {
-          return SvgPicture.asset(
+        if (snapshot.data != true) return const _BarcodePainted();
+
+        // Белая подложка: полоски на картинке чёрные, и без неё на тёмном
+        // фоне они сливались бы с полоской.
+        return Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Image.asset(
             _asset,
             fit: BoxFit.contain,
-            placeholderBuilder: (_) => const _BarcodePainted(),
-          );
-        }
-
-        return const _BarcodePainted();
+            errorBuilder: (_, __, ___) => const _BarcodePainted(),
+          ),
+        );
       },
     );
   }
