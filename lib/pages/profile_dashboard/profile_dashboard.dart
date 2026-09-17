@@ -313,9 +313,20 @@ class _ProfileDashboardState extends State<ProfileDashboard>
               color: Colors.white,
               borderRadius: BorderRadius.circular(6),
             ),
+            // Чёрным принудительно: картинка нарисована под тёмный макет и на
+            // белой плашке была белым по белому, то есть не видна вовсе.
             child: SvgPicture.asset(
               'assets/shtrihcod/image 43.svg',
               fit: BoxFit.contain,
+              colorFilter: const ColorFilter.mode(
+                Colors.black,
+                BlendMode.srcIn,
+              ),
+              placeholderBuilder: (_) => const Icon(
+                Icons.qr_code_2,
+                color: Colors.black,
+                size: 26,
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -334,13 +345,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   Widget _buildPurchasesCarousel() {
     if (_purchasesLoading && _activePurchases.isEmpty) {
       return const SizedBox(
-        height: 96,
+        height: 104,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
 
     return SizedBox(
-      height: 96,
+      height: 104,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _activePurchases.length,
@@ -362,85 +373,89 @@ class _ProfileDashboardState extends State<ProfileDashboard>
           builder: (_) => YourOrderScreen(order: order, line: line),
         ),
       ),
+      // Картинка слева во всю высоту карточки, текст справа отдельной
+      // колонкой: при мелкой картинке строка с часами работы не помещалась
+      // рядом и вылезала под неё (правка заказчика 17.09.2026).
       child: Container(
-        width: 250,
-        padding: const EdgeInsets.all(10),
+        width: 280,
         decoration: BoxDecoration(
           color: secondaryBackground,
           borderRadius: BorderRadius.circular(10),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: SizedBox(
-                width: 54,
-                height: 54,
-                child: (line.image ?? '').isEmpty
-                    ? Container(
+            SizedBox(
+              width: 92,
+              child: (line.image ?? '').isEmpty
+                  ? Container(
+                      color: primaryBackground,
+                      child: const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: textMuted,
+                        size: 22,
+                      ),
+                    )
+                  : Image.network(
+                      line.image!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
                         color: primaryBackground,
                         child: const Icon(
                           Icons.image_not_supported_outlined,
                           color: textMuted,
-                          size: 20,
-                        ),
-                      )
-                    : Image.network(
-                        line.image!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: primaryBackground,
-                          child: const Icon(
-                            Icons.image_not_supported_outlined,
-                            color: textMuted,
-                            size: 20,
-                          ),
+                          size: 22,
                         ),
                       ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    order.deliveryType == 'courier'
-                        ? (order.deliveryTitle ?? 'Доставка')
-                        : 'Самовывоз',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    order.statusTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: order.status == 'ready'
-                          ? const Color(0xFF4CD964)
-                          : const Color(0xFFFFB800),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    line.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: textSecondary, fontSize: 12),
-                  ),
-                  if (hours != null)
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     Text(
-                      hours,
+                      order.deliveryType == 'courier'
+                          ? (order.deliveryTitle ?? 'Доставка')
+                          : 'Самовывоз',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: textMuted, fontSize: 11),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
-                ],
+                    const SizedBox(height: 3),
+                    Text(
+                      order.statusTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: order.status == 'ready'
+                            ? const Color(0xFF4CD964)
+                            : const Color(0xFFFFB800),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      line.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: textSecondary, fontSize: 12),
+                    ),
+                    if (hours != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        hours,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: textMuted, fontSize: 11),
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ],
