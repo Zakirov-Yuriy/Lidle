@@ -571,7 +571,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                             return _QuickCard(
                                               iconPath:
                                                   'assets/profile_dashboard/heart-rounded.svg',
-                                              title: 'Избранное',
+                                              title: 'Избранные товары',
                                               subtitle:
                                                   '$favoritedCount ${_getPluralForm(favoritedCount)}',
                                               onTap: () => Navigator.of(
@@ -597,7 +597,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                         _QuickCard(
                                           iconPath:
                                               'assets/profile_dashboard/eva_star-fill.svg',
-                                          title: 'Отзывы',
+                                          title: 'Отзывы о ваших товарах',
                                           subtitle:
                                               '$_reviewsCount ${_getReviewsPluralForm(_reviewsCount)}',
                                           onTap: () => Navigator.of(
@@ -1091,16 +1091,31 @@ class _QuickCard extends StatelessWidget {
             ),
           ),
 
+          // Заголовок карточки.
+          //
+          // Названия стали длиннее («Отзывы о ваших товарах» вместо «Отзывы»),
+          // а карточка занимает половину экрана и имеет жёсткую высоту. Одна
+          // строка без запаса на узком телефоне вылезала бы за край полосатой
+          // ошибкой, поэтому текст ужимается ровно настолько, насколько не
+          // помещается: на обычном экране он остаётся 16-м кеглем.
           Padding(
-            padding: const EdgeInsets.only(left: 10.0),
+            padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: Row(
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
                 ),
               ],
