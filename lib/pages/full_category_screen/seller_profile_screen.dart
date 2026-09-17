@@ -117,6 +117,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// скелет.
   bool _productsLoading = false;
 
+  /// Снимок ПОЛНОЙ витрины (без поиска).
+  ///
+  /// Человек ищет «куртки», потом жмёт крестик и ждёт увидеть ровно то, что
+  /// уже видел минуту назад. Заново грузить незачем: список лежит здесь же,
+  /// показываем его сразу, а свежий тихо подъезжает следом и заменяет его,
+  /// когда придёт.
+  List<Map<String, dynamic>>? _fullListings;
+  List<Listing>? _fullProducts;
+
   /// Развёрнута ли карточка владельца (аватар, информация, оценка, кнопки).
   ///
   /// Только для своего магазина и только на время этого захода: владелец
@@ -125,6 +134,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   List<Map<String, dynamic>> _sellerListings = [];
   bool _isLoading = false;
   String? _error;
+
+  /// Ключ памяти для товаров продавца: при повторном заходе на экран они
+  /// показываются сразу, а не после скелета.
+  static String _productsCacheKey(String userId) => 'seller_products_$userId';
 
   /// Товары продавца (15.09.2026).
   ///
@@ -213,7 +226,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   /// Товары продавца. Молча: если ручка недоступна, страница открывается
   /// прежним образом, с одними объявлениями.
-  Future<void> _loadSellerProducts() async {
+  /// [silent] = true — обновление в фоне: скелет не показываем, на экране
+  /// остаётся то, что уже видит человек.
+  Future<void> _loadSellerProducts({bool silent = false}) async {
     final userId = widget.userId;
 
     if (userId == null || userId.isEmpty) {
@@ -227,7 +242,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     final requestId = ++_productsRequest;
     final query = _searchQuery;
 
-    if (mounted && !_productsLoading) {
+    var quiet = silent;
+
+    // Товары с прошлого захода: показываем сразу, запрос всё равно уходит и
+    // заменит их, когда придёт.
+    if (query.isEmpty && _sellerProducts.isEmpty) {
+      final cached =
+          AppCacheService().get<List<Listing>>(_productsCacheKey(userId));
+
+      if (cached != null) {
+        _fullProducts = cached;
+        quiet = true;
+
+        setState(() {
+          _sellerProducts = cached;
+          _productsLoading = false;
+        });
+      }
+    }
+
+    if (!quiet && mounted && !_productsLoading) {
       setState(() => _productsLoading = true);
     }
 
@@ -239,6 +273,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     // Пока ходили за ответом, спросить могли уже другое.
     if (!mounted || requestId != _productsRequest) return;
+
+    // Полную витрину запоминаем: по крестику она понадобится сразу, а при
+    // следующем заходе на экран покажется без скелета.
+    if (query.isEmpty) {
+      _fullProducts = products;
+
+      AppCacheService().set<List<Listing>>(
+        _productsCacheKey(userId),
+        products,
+        ttl: _cacheTtl,
+      );
+    }
 
     setState(() {
       _sellerProducts = products;
@@ -659,7 +705,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// Загружает объявления продавца из API по userId.
   /// При повторном открытии экрана возвращает данные из кэша мгновенно.
   /// [forceRefresh] = true — игнорирует кэш и запрашивает заново (pull-to-refresh).
-  Future<void> _loadSellerListings({bool forceRefresh = false}) async {
+  /// [silent] = true — обновление в фоне: скелет не показываем, на экране
+  /// остаётся то, что уже видит человек.
+  Future<void> _loadSellerListings({
+    bool forceRefresh = false,
+    bool silent = false,
+  }) async {
     // Если нет userId, не загружаем
     if (widget.userId == null || widget.userId!.isEmpty) {
       setState(() {
@@ -683,6 +734,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         CacheKeys.sellerProfileKey(userId),
       );
       if (cachedList != null) {
+        _fullListings = cachedList;
+
         setState(() {
           _sellerListings = cachedList;
           _isLoading = false;
@@ -694,10 +747,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     log.d('✅ SellerProfileScreen: загрузка с API');
     log.d('   userId: $userId');
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       // ✅ Неавторизованный пользователь может просмотреть объявления продавца
@@ -752,6 +807,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
       if (data.isEmpty) {
         if (!mounted || requestId != _listingsRequest) return;
+
+        if (query.isEmpty) {
+          _fullListings = const [];
+        }
 
         setState(() {
           _sellerListings = [];
@@ -808,12 +867,26 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
       if (!mounted || requestId != _listingsRequest) return;
 
+      // Полную витрину держим под рукой: по крестику она нужна сразу, без
+      // повторной загрузки.
+      if (query.isEmpty) {
+        _fullListings = listings;
+      }
+
       setState(() {
         _sellerListings = listings;
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted || requestId != _listingsRequest) return;
+
+      // Фоновое обновление молчит: на экране уже есть витрина, и менять её на
+      // сообщение об ошибке из-за неудачного тихого запроса нельзя.
+      if (silent) {
+        log.d('Фоновое обновление витрины не удалось: $e');
+
+        return;
+      }
 
       setState(() {
         _error = 'Ошибка при загрузке объявлений: ${e.toString()}';
@@ -866,19 +939,22 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     if (_searchQuery.isEmpty) return;
 
+    // Витрину, которую человек уже видел до поиска, показываем сразу: она
+    // лежит в памяти экрана, и гонять его через скелет ради того же самого
+    // списка незачем. Свежий приедет следом и заменит её молча.
+    final known = _fullListings != null || _fullProducts != null;
+
     setState(() {
       _searchQuery = '';
-      _sellerListings = [];
-      _sellerProducts = const [];
-      _isLoading = true;
-      _productsLoading = true;
+      _sellerListings = _fullListings ?? [];
+      _sellerProducts = _fullProducts ?? const [];
+      _isLoading = !known;
+      _productsLoading = !known;
       _error = null;
     });
 
-    // Спрашиваем заново, а не берём из памяти: там могла остаться витрина,
-    // записанная до поиска, и человек на миг увидел бы её вместо своей.
-    _loadSellerListings(forceRefresh: true);
-    _loadSellerProducts();
+    _loadSellerListings(forceRefresh: true, silent: known);
+    _loadSellerProducts(silent: known);
   }
 
   @override
