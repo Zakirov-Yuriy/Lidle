@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -509,7 +511,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                 padding: EdgeInsets.only(
                                   left: 21,
                                   right: 21,
-                                  top: 15,
+                                  top: 12,
                                   bottom: bottomNavHeight +
                                       MediaQuery.of(context).padding.bottom +
                                       10,
@@ -547,7 +549,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                           ? profileState.username
                                           : 'Name',
                                     ),
-                                    const SizedBox(height: 10),
+                                    const SizedBox(height: 8),
 
                                     // 3 быстрых карточки
                                     Row(
@@ -606,7 +608,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                         ),
                                       ],
                                     ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(height: 8),
 
                                   /*
                                   // Раздел «Ваши покупки»
@@ -792,7 +794,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   ),
                                   
                                   
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 10),
                                   // Поддержка и ФИНАНСЫ — две карточки в ряд.
                                   // Блок «Финансовая поддержка владельца ЛИДЛЕ»
                                   // скрыт (см. _FinancialSupportCard ниже),
@@ -821,7 +823,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                     ),
                                   ),
 
-                                  const SizedBox(height: 12),
+                                  const SizedBox(height: 10),
 
                                   // Карточка «Ваш магазин» с кнопкой «Поделиться»
                                   Builder(
@@ -1186,7 +1188,7 @@ class _MenuItem extends StatelessWidget {
       borderRadius: BorderRadius.circular(5),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
           children: [
             Expanded(
@@ -1477,63 +1479,57 @@ class _StoreShareCard extends StatelessWidget {
           border: Border.all(color: const Color(0xFF474747)),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           child: Row(
-            // Кнопка «Поделиться» центрируется по вертикали относительно
-            // всего блока (аватар + заголовок + подпись)
+            // Аватарка и кнопка «Поделиться» стоят по центру по вертикали
+            // относительно обеих строк текста.
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Левый блок: строка (аватар + заголовок) и подпись под ней
+              // Аватарка магазина слева от текста: раньше она стояла внутри
+              // строки с заголовком, из-за чего заголовок начинался правее
+              // подписи и блок выглядел ступенькой.
+              ClipOval(
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: _avatar(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Заголовок и подпись одной колонкой: оба текста начинаются
+              // с одной вертикали.
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Первая строка: иконка/аватар + заголовок «Ваш магазин ...»
-                    Row(
-                      children: [
-                        ClipOval(
-                          child: SizedBox(
-                            width: 32,
-                            height: 32,
-                            child: companyImage != null
-                                ? buildProfileImage(
-                                    companyImage,
-                                    width: 32,
-                                    height: 32,
-                                    fit: BoxFit.cover,
-                                  )
-                                : SvgPicture.asset(
-                                    'assets/profile_dashboard/default-photo.svg',
-                                    width: 32,
-                                    height: 32,
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    // Подпись — под строкой с иконкой и заголовком
-                    const Text(
-                      'Делитесь вашей ссылкой в своих соц сетях и с покупателями',
-                      maxLines: 2,
+                    Text(
+                      title,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: textSecondary,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w400,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    // Подпись всегда в одну строку. Если она не помещается по
+                    // ширине, шрифт уменьшается ровно настолько, насколько
+                    // нужно: перенос на вторую строку растягивал карточку, а
+                    // обрезка многоточием прятала конец фразы.
+                    const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Делитесь вашей ссылкой в своих соц сетях и с покупателями',
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w400,
+                        ),
                       ),
                     ),
                   ],
@@ -1561,6 +1557,57 @@ class _StoreShareCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Значок магазина: снимок компании либо заглушка из ассетов.
+  ///
+  /// Общий `buildProfileImage` рисует на месте неудачи серый квадрат с иконкой
+  /// ошибки. Для этой карточки так не годится: магазин без фотографии это
+  /// обычное дело, а не поломка, и человек видел серый прямоугольник вместо
+  /// понятного значка. Здесь на любой неудаче показываем заглушку: пусто,
+  /// битая ссылка, пропавший файл, неизвестный путь.
+  Widget _avatar() {
+    const double size = 32;
+
+    final placeholder = SvgPicture.asset(
+      'assets/profile_dashboard/default-photo.svg',
+      width: size,
+      height: size,
+    );
+
+    final path = companyImage?.trim() ?? '';
+
+    if (path.isEmpty) {
+      return placeholder;
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Image.network(
+        path,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+        // Пока снимок грузится, на его месте стоит заглушка, а не пустота:
+        // карточка не дёргается по высоте.
+        loadingBuilder: (context, child, progress) =>
+            progress == null ? child : placeholder,
+      );
+    }
+
+    final file = File(path);
+
+    if (!file.existsSync()) {
+      return placeholder;
+    }
+
+    return Image.file(
+      file,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => placeholder,
     );
   }
 }
