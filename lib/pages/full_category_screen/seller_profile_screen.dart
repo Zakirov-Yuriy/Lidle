@@ -97,6 +97,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Timer? _searchDebounce;
   String _searchQuery = '';
 
+  /// Номера последних запросов витрины (17.09.2026).
+  ///
+  /// Ответы приходят не в том порядке, в каком уходили: человек успевает
+  /// стереть слово раньше, чем вернётся выдача по нему. Без этих номеров
+  /// поздний ответ ложится поверх правильного, и на витрине на миг оказывается
+  /// не то, что человек сейчас спрашивает.
+  int _listingsRequest = 0;
+  int _productsRequest = 0;
+
   /// Развёрнута ли карточка владельца (аватар, информация, оценка, кнопки).
   ///
   /// Только для своего магазина и только на время этого захода: владелец
@@ -195,13 +204,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     if (userId == null || userId.isEmpty) return;
 
+    final requestId = ++_productsRequest;
+    final query = _searchQuery;
+
     final products = await ApiService.getSellerProducts(
       userId: userId,
       token: TokenService.currentToken,
-      search: _searchQuery,
+      search: query,
     );
 
-    if (!mounted) return;
+    // Пока ходили за ответом, спросить могли уже другое.
+    if (!mounted || requestId != _productsRequest) return;
 
     setState(() => _sellerProducts = products);
   }
@@ -630,10 +643,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     }
 
     final userId = widget.userId!;
+    final requestId = ++_listingsRequest;
+
+    // Слово запоминаем на момент отправки: к приходу ответа в поле может
+    // стоять уже другое, и тогда этот ответ не нужен вовсе.
+    final query = _searchQuery;
 
     // Кэш только для полной витрины: результат поиска в него не кладём и из
     // него не берём, иначе следующий запрос отдал бы прошлую выдачу.
-    if (!forceRefresh && _searchQuery.isEmpty) {
+    if (!forceRefresh && query.isEmpty) {
       final cachedList = AppCacheService().get<List<Map<String, dynamic>>>(
         CacheKeys.sellerProfileKey(userId),
       );
@@ -669,7 +687,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final firstPageBody = <String, dynamic>{
         'sort': ['new'],
         'page': 1,
-        if (_searchQuery.isNotEmpty) 'search': _searchQuery,
+        if (query.isNotEmpty) 'search': query,
       };
 
       final firstResponse = await ApiService.getWithBody(
@@ -691,7 +709,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           final pageBody = <String, dynamic>{
             'sort': ['new'],
             'page': page,
-            if (_searchQuery.isNotEmpty) 'search': _searchQuery,
+            if (query.isNotEmpty) 'search': query,
           };
           final pageResponse = await ApiService.getWithBody(
             '/users/$userId/adverts',
@@ -706,6 +724,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final data = allData;
 
       if (data.isEmpty) {
+        if (!mounted || requestId != _listingsRequest) return;
+
         setState(() {
           _sellerListings = [];
           _isLoading = false;
@@ -751,7 +771,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       // 💾 Сохраняем в AppCacheService (TTL 5 мин) — следующее открытие экрана
       // отдаст данные мгновенно без обращения к API. Выдачу поиска не
       // запоминаем: это ответ на одно слово, а не витрина продавца.
-      if (_searchQuery.isEmpty) {
+      if (query.isEmpty) {
         AppCacheService().set<List<Map<String, dynamic>>>(
           CacheKeys.sellerProfileKey(userId),
           listings,
@@ -759,11 +779,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         );
       }
 
+      if (!mounted || requestId != _listingsRequest) return;
+
       setState(() {
         _sellerListings = listings;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted || requestId != _listingsRequest) return;
+
       setState(() {
         _error = 'Ошибка при загрузке объявлений: ${e.toString()}';
         _isLoading = false;
@@ -792,7 +816,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
       if (normalized == _searchQuery) return;
 
-      setState(() => _searchQuery = normalized);
+      // Старую выдачу убираем сразу: иначе между запросами на витрине
+      // остаётся ответ на прошлое слово.
+      setState(() {
+        _searchQuery = normalized;
+        _sellerListings = [];
+        _sellerProducts = const [];
+        _isLoading = true;
+        _error = null;
+      });
 
       _loadSellerListings(forceRefresh: true);
       _loadSellerProducts();
@@ -806,9 +838,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     if (_searchQuery.isEmpty) return;
 
-    setState(() => _searchQuery = '');
+    setState(() {
+      _searchQuery = '';
+      _sellerListings = [];
+      _sellerProducts = const [];
+      _isLoading = true;
+      _error = null;
+    });
 
-    _loadSellerListings();
+    // Спрашиваем заново, а не берём из памяти: там могла остаться витрина,
+    // записанная до поиска, и человек на миг увидел бы её вместо своей.
+    _loadSellerListings(forceRefresh: true);
     _loadSellerProducts();
   }
 
@@ -1994,7 +2034,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         crossAxisSpacing: 8,
         childAspectRatio: 0.70,
       ),
-      itemBuilder: (_, i) => ListingCard(listing: items[i]),
+      // Ключ на карточку: без него при смене выдачи Flutter переиспользует
+      // готовые карточки и на миг показывает в них прошлое содержимое.
+      itemBuilder: (_, i) => ListingCard(
+        key: ValueKey(
+          '${items[i].isProduct ? 'product' : 'advert'}_${items[i].id}',
+        ),
+        listing: items[i],
+      ),
     );
   }
 
