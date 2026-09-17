@@ -90,6 +90,18 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
   List<ProductColor> _colors = const [];
   List<ProductDimension> _dimensions = const [];
 
+  // Нужны ли этому разделу цвет и размеры (17.09.2026).
+  //
+  // Решает не приложение, а администратор: он заводит разделу характеристики
+  // «Цвет» и «Размер», а сервер присылает готовый ответ. До этого поля
+  // рисовались всем подряд, и продавец, заводящий блюдо в разделе «Доставка
+  // ресторана», видел «Цвет» и «Выберите размер» (нашёл Саша 17.09.2026).
+  //
+  // По умолчанию true: старый сервер признака не присылает, и спрятать поля
+  // у всех значило бы сломать одежду ради еды.
+  bool _hasColors = true;
+  bool _hasSizes = true;
+
   ProductColor? _color;
   final Set<int> _sizes = <int>{};
 
@@ -156,9 +168,11 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
     final brands = _loadBrands();
 
     try {
-      final fields = await ProductsCabinetApi.positionFields(
+      final form = await ProductsCabinetApi.positionFields(
         widget.publication.categoryId,
       );
+
+      final fields = form.fields;
 
       _brands = await brands;
 
@@ -179,6 +193,8 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
 
       setState(() {
         _fields = fields.where(_isRealField).toList();
+        _hasColors = form.hasColors;
+        _hasSizes = form.hasSizes;
         _brand = _knownBrand(_brand);
         _isLoading = false;
 
@@ -726,33 +742,40 @@ class _ProductPositionScreenState extends State<ProductPositionScreen> {
               // Цвет и размеры — такими же плашками, как остальные поля
               // формы, и с тем же диалогом выбора. Свои квадратики и кнопки
               // выглядели чужеродно рядом с «Тип одежды» и «Бренд».
-              const SizedBox(height: 20),
-              LabeledDropdown(
-                label: 'Цвет',
-                hint: _color?.name ?? 'Выбрать',
+              // Показываем, только если раздел их предполагает: у блюда нет
+              // ни цвета, ни размера, и пустые поля в форме человек читает
+              // как «я что-то не заполнил».
+              if (_hasColors) ...[
+                const SizedBox(height: 20),
+                LabeledDropdown(
+                  label: 'Цвет',
+                  hint: _color?.name ?? 'Выбрать',
 
-                // Без слова «Изменить»: длинный перечень размеров упирался в
-                // него и обрывался многоточием раньше времени, а стрелка и
-                // так говорит, что поле открывается.
-                icon: const Icon(Icons.keyboard_arrow_down,
-                    color: textMuted, size: 20),
-                onTap: _colors.isEmpty ? null : _pickColor,
-              ),
+                  // Без слова «Изменить»: длинный перечень размеров упирался
+                  // в него и обрывался многоточием раньше времени, а стрелка
+                  // и так говорит, что поле открывается.
+                  icon: const Icon(Icons.keyboard_arrow_down,
+                      color: textMuted, size: 20),
+                  onTap: _colors.isEmpty ? null : _pickColor,
+                ),
+              ],
 
-              const SizedBox(height: 20),
-              LabeledDropdown(
-                label: 'Выберите размер',
-                hint: _sizesHint(),
-                icon: const Icon(Icons.keyboard_arrow_down,
-                    color: textMuted, size: 20),
-                onTap: _dimensions.isEmpty ? null : _pickSizes,
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Можно отметить сразу несколько: у каждого размера свой '
-                'остаток, и покупатель выбирает размер в карточке.',
-                style: TextStyle(color: textMuted, fontSize: 13, height: 1.35),
-              ),
+              if (_hasSizes) ...[
+                const SizedBox(height: 20),
+                LabeledDropdown(
+                  label: 'Выберите размер',
+                  hint: _sizesHint(),
+                  icon: const Icon(Icons.keyboard_arrow_down,
+                      color: textMuted, size: 20),
+                  onTap: _dimensions.isEmpty ? null : _pickSizes,
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Можно отметить сразу несколько: у каждого размера свой '
+                  'остаток, и покупатель выбирает размер в карточке.',
+                  style: TextStyle(color: textMuted, fontSize: 13, height: 1.35),
+                ),
+              ],
 
               const SizedBox(height: 20),
               _text('Описание позиции', _description,

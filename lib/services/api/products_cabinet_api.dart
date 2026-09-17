@@ -16,6 +16,25 @@ import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/services/api_service.dart';
 
+/// Что показывать в форме позиции: поля раздела и нужны ли цвет с размерами.
+///
+/// Цвет и размеры это не характеристики, а собственные поля товара: из них
+/// делаются варианты со своим остатком. Нужны они разделу или нет, решает
+/// администратор, заводя разделу характеристики «Цвет» и «Размер», а сервер
+/// присылает готовый ответ (17.09.2026). До этого форма показывала их всем
+/// подряд, и продавец блюда видел «Цвет» и «Выберите размер».
+class PositionForm {
+  final List<Attribute> fields;
+  final bool hasColors;
+  final bool hasSizes;
+
+  const PositionForm({
+    required this.fields,
+    required this.hasColors,
+    required this.hasSizes,
+  });
+}
+
 class ProductsCabinetApi {
   // ── Публикация ────────────────────────────────────────────────────
 
@@ -181,15 +200,28 @@ class ProductsCabinetApi {
   /// Ручка та же по смыслу, что у объявлений, и модель `Attribute` та же —
   /// поэтому форма позиции рисуется теми же виджетами, что форма подачи
   /// объявления, и выглядит для человека одинаково.
-  static Future<List<Attribute>> positionFields(int categoryId) async {
+  static Future<PositionForm> positionFields(int categoryId) async {
     final response = await ApiService.getWithQuery(
       '/me/products/attributes',
       {'category_id': categoryId},
     );
 
     final data = response['data'];
+    final meta = response['meta'];
 
-    if (data is! List) return const [];
+    // Старый сервер `meta` не присылает. Тогда показываем цвет и размеры, как
+    // показывали раньше: спрятать их у всех из-за отсутствующего поля значило
+    // бы сломать одежду ради еды.
+    final hasColors = meta is Map ? meta['has_colors'] != false : true;
+    final hasSizes = meta is Map ? meta['has_sizes'] != false : true;
+
+    if (data is! List) {
+      return PositionForm(
+        fields: const [],
+        hasColors: hasColors,
+        hasSizes: hasSizes,
+      );
+    }
 
     final fields = <Attribute>[];
 
@@ -205,7 +237,11 @@ class ProductsCabinetApi {
       }
     }
 
-    return fields;
+    return PositionForm(
+      fields: fields,
+      hasColors: hasColors,
+      hasSizes: hasSizes,
+    );
   }
 
   /// Должности раздела для карточки сотрудника (14.09.2026).
