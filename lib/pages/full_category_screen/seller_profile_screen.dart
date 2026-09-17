@@ -811,7 +811,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 20.0, left: 8),
+                  // Отступ под логотипом уменьшен: строка «Назад» висела от
+                  // него слишком далеко (17.09.2026).
+                  padding: const EdgeInsets.only(bottom: 8.0, left: 8),
                   child: const Header(),
                 ),
                 Padding(
