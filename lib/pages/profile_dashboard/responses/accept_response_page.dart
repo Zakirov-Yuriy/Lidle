@@ -84,7 +84,7 @@ class _AcceptResponsePageState extends State<AcceptResponsePage> {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),

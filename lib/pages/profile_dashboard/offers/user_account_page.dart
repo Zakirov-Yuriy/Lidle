@@ -85,7 +85,7 @@ class UserAccountPage extends StatelessWidget {
                                 ),
                               ],
                             ),
-                          )
+                          ),
                           const Spacer(),
                           TextButton(
                             onPressed: () {

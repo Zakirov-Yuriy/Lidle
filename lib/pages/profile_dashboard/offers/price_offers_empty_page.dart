@@ -599,7 +599,7 @@ class _PriceOffersEmptyPageState extends State<PriceOffersEmptyPage>
                                     ),
                                   ],
                                 ),
-                              )
+                              ),
                               const Spacer(),
                               TextButton(
                                 onPressed: () {

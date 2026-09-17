@@ -207,13 +207,19 @@ class _ProductClustersScreenState extends State<ProductClustersScreen> {
             child: const Icon(Icons.arrow_back_ios, color: textPrimary, size: 18),
           ),
           const SizedBox(width: 4),
-          const Expanded(
-            child: Text(
-              'Кластеры',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+          // Заголовок возвращает назад так же, как стрелка: попасть пальцем в
+          // иконку трудно, а нажимают обычно по слову.
+          Expanded(
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              behavior: HitTestBehavior.opaque,
+              child: const Text(
+                'Кластеры',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

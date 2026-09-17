@@ -64,7 +64,7 @@ class InviteFriendsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                  )
+                  ),
                   const Spacer(),
                   TextButton(
                     onPressed: () {

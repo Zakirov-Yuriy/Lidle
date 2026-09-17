@@ -334,7 +334,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                     ),
                   ],
                 ),
-              )
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: () => Navigator.pop(context),

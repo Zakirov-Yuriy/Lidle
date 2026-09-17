@@ -72,7 +72,7 @@ class DiscountsAndPromotionsPage extends StatelessWidget {
                               ),
                             ],
                           ),
-                        )
+                        ),
                         const Spacer(),
                         TextButton(
                           onPressed: () {

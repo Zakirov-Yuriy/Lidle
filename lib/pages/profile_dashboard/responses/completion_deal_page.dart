@@ -97,7 +97,7 @@ class _CompletionDealPageState extends State<CompletionDealPage> {
                             ),
                           ],
                         ),
-                      )
+                      ),
                       const Spacer(),
                       GestureDetector(
                         onTap: () => Navigator.pop(context),

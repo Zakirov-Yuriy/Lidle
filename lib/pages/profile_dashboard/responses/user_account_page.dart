@@ -76,7 +76,7 @@ class _UserAccountPageState extends State<UserAccountPage> {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),

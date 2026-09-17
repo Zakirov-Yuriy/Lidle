@@ -200,13 +200,19 @@ class _ProductVariantsScreenState extends State<ProductVariantsScreen> {
             child: const Icon(Icons.arrow_back_ios, color: textPrimary, size: 18),
           ),
           const SizedBox(width: 4),
-          const Expanded(
-            child: Text(
-              'Варианты',
-              style: TextStyle(
-                color: textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+          // Заголовок возвращает назад тем же путём, что и стрелка, вместе с
+          // признаком `_changed`: иначе список на прошлом экране не обновится.
+          Expanded(
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context, _changed),
+              behavior: HitTestBehavior.opaque,
+              child: const Text(
+                'Варианты',
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

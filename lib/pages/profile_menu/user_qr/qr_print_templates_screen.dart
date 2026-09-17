@@ -48,13 +48,23 @@ class QrPrintTemplatesScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Печатные формы для qr-кода',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
+                  // Заголовок тоже возвращает назад. Он растягивается на всю
+                  // оставшуюся ширину, поэтому обернуть его вместе со стрелкой
+                  // в одну кнопку нельзя: `Expanded` живёт только прямо в
+                  // строке. Вместо этого вешаем то же действие на сам
+                  // заголовок, а `opaque` ловит нажатие и на пустом месте
+                  // справа от текста.
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: const Text(
+                        'Печатные формы для qr-кода',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ),

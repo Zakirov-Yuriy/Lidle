@@ -50,7 +50,7 @@ class PublicationSuccessScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),

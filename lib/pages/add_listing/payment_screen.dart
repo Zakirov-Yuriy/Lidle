@@ -59,7 +59,7 @@ class PaymentScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(),

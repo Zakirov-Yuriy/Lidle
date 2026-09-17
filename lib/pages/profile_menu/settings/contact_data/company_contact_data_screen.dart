@@ -90,6 +90,23 @@ class CompanyContactDataScreen extends StatefulWidget {
 
 class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     with RequiredFieldsMixin {
+  /// Обновление экрана, который уже закрыли, просто ничего не делает.
+  ///
+  /// Экран тянет данные с сервера и обновляется по мере ответов. Пока назад
+  /// возвращала только маленькая стрелка, уйти раньше ответа получалось редко.
+  /// Теперь назад возвращает и заголовок, уходить стали быстрее, и ответ
+  /// приходил уже в закрытый экран: Flutter ругался «setState() called after
+  /// dispose()».
+  ///
+  /// Проверку ставим в одном месте, а не перед каждым вызовом: вызовов здесь
+  /// больше десятка, и однажды кто-нибудь добавит новый без проверки.
+  @override
+  void setState(VoidCallback fn) {
+    if (!mounted) return;
+
+    super.setState(fn);
+  }
+
   late TextEditingController _nameController;
   late TextEditingController _aboutController;
   late TextEditingController _emailController;
@@ -2297,15 +2314,22 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: const Text(
-                          'Контактные данные компании',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
+                      // Заголовок возвращает назад так же, как стрелка.
+                      // Нажатие на нём самом, а не на всей строке: справа
+                      // стоит кнопка «Назад», и общая кнопка накрыла бы её.
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: const Text(
+                            'Контактные данные компании',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ),

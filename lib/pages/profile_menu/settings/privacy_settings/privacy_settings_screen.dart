@@ -93,7 +93,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                   const Spacer(),
                   TextButton(
                     onPressed: () => Navigator.pop(context),

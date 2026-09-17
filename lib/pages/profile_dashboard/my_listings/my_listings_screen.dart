@@ -1170,7 +1170,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> {
                                 ),
                               ],
                             ),
-                          )
+                          ),
                           const Spacer(),
                           GestureDetector(
                             onTap: _showSortDialog,

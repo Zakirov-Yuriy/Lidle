@@ -106,7 +106,7 @@ class IncomingPriceOfferPage extends StatelessWidget {
                               ),
                             ],
                           ),
-                        )
+                        ),
                         const Spacer(),
                         TextButton(
                           onPressed: () {

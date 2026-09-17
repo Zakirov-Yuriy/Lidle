@@ -133,7 +133,7 @@ class _RealEstateApartmentsScreenState
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     TextButton(
                       onPressed: () {

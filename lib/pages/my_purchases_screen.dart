@@ -225,7 +225,7 @@ class _MyPurchasesScreenState extends State<MyPurchasesScreen> {
                                 ),
                               ],
                             ),
-                          )
+                          ),
                           const Spacer(),
                           IconButton(
                             icon: const Icon(

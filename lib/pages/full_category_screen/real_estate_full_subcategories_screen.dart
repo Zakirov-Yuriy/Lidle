@@ -122,7 +122,7 @@ class _RealEstateFullSubcategoriesScreenState
                             ),
                           ],
                         ),
-                      )
+                      ),
                       const Spacer(),
                       TextButton(
                         onPressed: () {

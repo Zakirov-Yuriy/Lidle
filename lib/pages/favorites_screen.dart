@@ -297,7 +297,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     _buildFilterDropdown(
                       label: _selectedSortOptions.isEmpty

@@ -187,7 +187,7 @@ class _PriceAcceptedPageState extends State<PriceAcceptedPage> {
                                 ),
                               ],
                             ),
-                          )
+                          ),
                           const Spacer(),
                           TextButton(
                             onPressed: () {

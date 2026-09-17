@@ -63,6 +63,23 @@ class ContactDataScreen extends StatefulWidget {
 
 class _ContactDataScreenState extends State<ContactDataScreen>
     with RequiredFieldsMixin {
+  /// Обновление экрана, который уже закрыли, просто ничего не делает.
+  ///
+  /// Экран тянет данные с сервера и обновляется по мере ответов. Пока назад
+  /// возвращала только маленькая стрелка, уйти раньше ответа получалось редко.
+  /// Теперь назад возвращает и заголовок, уходить стали быстрее, и ответ
+  /// приходил уже в закрытый экран: Flutter ругался «setState() called after
+  /// dispose()».
+  ///
+  /// Проверку ставим в одном месте, а не перед каждым вызовом: вызовов здесь
+  /// больше десятка, и однажды кто-нибудь добавит новый без проверки.
+  @override
+  void setState(VoidCallback fn) {
+    if (!mounted) return;
+
+    super.setState(fn);
+  }
+
   late TextEditingController _nameController;
   late TextEditingController _lastNameController;
   late TextEditingController _emailController;
@@ -1261,15 +1278,23 @@ class _ContactDataScreenState extends State<ContactDataScreen>
                           // если текст помещается — размер 18, если нет —
                           // FittedBox(scaleDown) автоматически уменьшает.
                           Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: const Text(
-                                'Контактные данные пользователя',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500,
+                            // Заголовок возвращает назад так же, как стрелка.
+                            // Нажатие вешаем на него самого, а не на всю
+                            // строку: рядом стоит кнопка «Назад», и общая
+                            // кнопка накрыла бы её.
+                            child: GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              behavior: HitTestBehavior.opaque,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: const Text(
+                                  'Контактные данные пользователя',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ),

@@ -376,7 +376,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                     ),
                   ],
                 ),
-              )
+              ),
               const Spacer(),
               GestureDetector(
                 onTap: () => Navigator.pop(context),

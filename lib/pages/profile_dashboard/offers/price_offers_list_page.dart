@@ -539,7 +539,7 @@ class _PriceOffersListPageState extends State<PriceOffersListPage> {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     // GestureDetector(
                     //   onTap: () {

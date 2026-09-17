@@ -75,7 +75,7 @@ class _FindByPhoneScreenState extends State<FindByPhoneScreen> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                   const Spacer(),
                   TextButton(
                     onPressed: () {

@@ -116,7 +116,7 @@ class _IndoorAdvertisingScreenState extends State<IndoorAdvertisingScreen> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),

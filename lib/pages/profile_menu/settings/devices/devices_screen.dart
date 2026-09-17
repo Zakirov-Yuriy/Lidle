@@ -108,7 +108,7 @@ class _DevicesScreenState extends State<DevicesScreen> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                  
                 ],
               ),

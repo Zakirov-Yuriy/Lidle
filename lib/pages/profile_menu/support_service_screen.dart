@@ -62,7 +62,7 @@ class SupportServiceScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                  )
+                  ),
                   const Spacer(),
                   TextButton(
                     onPressed: () {

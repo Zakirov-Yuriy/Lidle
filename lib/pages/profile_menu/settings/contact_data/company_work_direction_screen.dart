@@ -188,13 +188,21 @@ class _CompanyWorkDirectionScreenState
                           color: Colors.white, size: 16),
                     ),
                     const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Выбор категории',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
+                    // Заголовок закрывает экран так же, как стрелка. Обернуть
+                    // их в одну кнопку нельзя: заголовок растягивается через
+                    // `Expanded`, а справа стоит «Сохранить», и общая кнопка
+                    // накрыла бы и его.
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _close,
+                        behavior: HitTestBehavior.opaque,
+                        child: const Text(
+                          'Выбор категории',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ),

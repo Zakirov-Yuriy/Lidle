@@ -562,7 +562,7 @@ class _ResponsesEmptyPageState extends State<ResponsesEmptyPage> {
                           ),
                         ],
                       ),
-                    )
+                    ),
                     const Spacer(),
                     GestureDetector(
                       onTap: _showSortDialog,

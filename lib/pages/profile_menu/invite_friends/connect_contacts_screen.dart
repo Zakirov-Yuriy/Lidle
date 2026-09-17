@@ -177,7 +177,7 @@ class _ConnectContactsScreenState extends State<ConnectContactsScreen> {
                         ),
                       ],
                     ),
-                  )
+                  ),
                   const Spacer(),
                   TextButton(
                     onPressed: () {

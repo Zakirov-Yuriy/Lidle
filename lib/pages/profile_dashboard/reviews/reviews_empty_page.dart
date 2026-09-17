@@ -252,7 +252,7 @@ class _ReviewsEmptyPageState extends State<ReviewsEmptyPage> {
                               ),
                             ],
                           ),
-                        )
+                        ),
                         const Spacer(),
                         GestureDetector(
                           child:

@@ -166,7 +166,7 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
                               ),
                             ],
                           ),
-                        )
+                        ),
                         const Spacer(),
                         
                       ],
