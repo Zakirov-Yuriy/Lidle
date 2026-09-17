@@ -845,7 +845,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         _buildCallWriteButtons(),
                       ],
 
-                      const SizedBox(height: 25),
+                      // Со свёрнутой карточкой владельца между кнопкой и
+                      // витриной оставался отступ от развёрнутого вида, и
+                      // строки висели далеко друг от друга.
+                      SizedBox(
+                        height: _isOwnProfile && !_ownerCardExpanded ? 6 : 25,
+                      ),
                       Row(children: [_buildListingsTitle()]),
                       const SizedBox(height: 16),
 
@@ -874,38 +879,34 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// По умолчанию карточка свёрнута: продавец заходит сюда смотреть витрину,
   /// а не своё описание.
   Widget _buildOwnerCardToggle() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4, bottom: 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () =>
-              setState(() => _ownerCardExpanded = !_ownerCardExpanded),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _ownerCardExpanded
-                        ? 'Скрыть данные магазина'
-                        : 'Показать данные магазина',
-                    style: const TextStyle(
-                      color: textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => setState(() => _ownerCardExpanded = !_ownerCardExpanded),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _ownerCardExpanded
+                      ? 'Скрыть данные магазина'
+                      : 'Показать данные магазина',
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                Icon(
-                  _ownerCardExpanded
-                      ? Icons.keyboard_arrow_up
-                      : Icons.keyboard_arrow_down,
-                  color: textSecondary,
-                ),
-              ],
-            ),
+              ),
+              Icon(
+                _ownerCardExpanded
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                color: textSecondary,
+              ),
+            ],
           ),
         ),
       ),
