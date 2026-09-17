@@ -48,6 +48,15 @@ class NavigationToMyPurchases extends NavigationState {
   const NavigationToMyPurchases() : super(3);
 }
 
+/// Состояние навигации к корзине.
+///
+/// Тот же пункт меню, что и «Мои покупки», поэтому индекс тоже 3: подсветка
+/// в нижней панели должна стоять на корзине. Гостю открывается корзина, а не
+/// список заказов (17.09.2026).
+class NavigationToCart extends NavigationState {
+  const NavigationToCart() : super(3);
+}
+
 /// Состояние навигации к сообщениям.
 class NavigationToMessages extends NavigationState {
   const NavigationToMessages() : super(4);

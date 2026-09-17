@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/auth/register_screen.dart';
+import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 /// Экран после оформления: коды получения.
@@ -51,6 +53,7 @@ class OrderPlacedScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   ...orders.map(_buildOrder),
+                  _buildRegisterOffer(context),
                 ],
               ),
             ),
@@ -85,6 +88,76 @@ class OrderPlacedScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Мягкое предложение завести учётную запись. Только гостю (17.09.2026).
+  ///
+  /// Момент выбран намеренно: человек только что купил, и польза от учётной
+  /// записи для него уже не абстрактная, а понятная — видеть свои заказы и не
+  /// вводить контакты заново. До покупки то же предложение читается как
+  /// препятствие, поэтому на оформлении мы ничего не просим.
+  ///
+  /// Это предложение, а не преграда: кнопка одна, отказаться можно просто
+  /// нажав «Готово». Всплывающего окна тут быть не должно — человек в этот
+  /// момент запоминает код получения.
+  Widget _buildRegisterOffer(BuildContext context) {
+    final token = TokenService.currentToken;
+
+    if (token != null && token.isNotEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Сохранить заказ за собой',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Заведите учётную запись, и этот заказ появится в разделе '
+            '«Покупки». Там же видно, принял ли его продавец, и не нужно '
+            'каждый раз вводить имя, телефон и почту.',
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 44,
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () =>
+                  Navigator.pushNamed(context, RegisterScreen.routeName),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: activeIconColor),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Зарегистрироваться',
+                style: TextStyle(color: activeIconColor, fontSize: 15),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Код получения уже отправлен на вашу почту, так что заказ не '
+            'потеряется в любом случае.',
+            style: TextStyle(color: textMuted, fontSize: 12, height: 1.3),
+          ),
+        ],
       ),
     );
   }

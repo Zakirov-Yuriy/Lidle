@@ -9,6 +9,7 @@ import '../../pages/favorites_screen.dart';
 import '../../pages/add_listing/add_listing_screen.dart';
 import '../../pages/add_listing/category_selection_screen.dart';
 import '../../pages/my_purchases_screen.dart'; // Import MyPurchasesScreen
+import '../../pages/products/cart_screen.dart';
 import '../../pages/messages/messages_page.dart'; // Import MessagesPage
 
 /// Bloc для управления состоянием навигации.
@@ -154,10 +155,24 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       case 3:
         // 🛒 Товары доступны ВСЕМ: покупка без регистрации предусмотрена
         // вёрсткой и подтверждена заказчиком. Витрина и корзина за входом
-        // быть не могут, иначе гостевой заказ невозможен. Список своих
-        // заказов внутри раздела спрашивает вход сам.
-        emit(const NavigationToMyPurchases());
-        _navigateToMyPurchases();
+        // быть не могут, иначе гостевой заказ невозможен.
+        //
+        // Но ведём в разные места (17.09.2026, просьба заказчика).
+        //
+        // Гостя — сразу в корзину. «Мои покупки» ему показывать нечего:
+        // заказы гостя к учётной записи не привязаны, и он видел пустой
+        // экран там, где ждал свои товары.
+        //
+        // Вошедшего — в «Мои покупки», как было: у него там история
+        // заказов, и это для него главное. До корзины он доходит значком
+        // сверху.
+        if (isAuthenticated) {
+          emit(const NavigationToMyPurchases());
+          _navigateToMyPurchases();
+        } else {
+          emit(const NavigationToCart());
+          _navigateToCart();
+        }
         break;
       case 2:
       case 4:
@@ -228,6 +243,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
     // Навигация будет выполнена в UI через BlocListener
   }
 
+  /// Приватный метод для навигации к корзине.
+  void _navigateToCart() {
+    // Навигация будет выполнена в UI через BlocListener
+  }
+
   /// Приватный метод для навигации к сообщениям.
   void _navigateToMessages() {
     // Навигация будет выполнена в UI через BlocListener
@@ -248,6 +268,8 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
       _executeCategorySelectionNavigation(context);
     } else if (state is NavigationToMyPurchases) {
       _executeMyPurchasesNavigation(context); // Handle MyPurchases navigation
+    } else if (state is NavigationToCart) {
+      _executeCartNavigation(context);
     } else if (state is NavigationToMessages) {
       _executeMessagesNavigation(context);
     // NavigationToSignIn удалён - переход на sign_in_screen убран
@@ -300,6 +322,19 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   /// Выполняет навигацию к Моим покупкам.
   void _executeMyPurchasesNavigation(BuildContext context) {
     Navigator.of(context).pushNamed(MyPurchasesScreen.routeName);
+  }
+
+  /// Выполняет навигацию к корзине.
+  ///
+  /// Открываем тот же экран, что и значок корзины на витрине, и с тем же
+  /// поведением: все позиции отмечены сразу, чтобы человек мог оформить
+  /// заказ одним нажатием.
+  void _executeCartNavigation(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CartScreen(selectAllOnOpen: true),
+      ),
+    );
   }
 
   /// Выполняет навигацию к сообщениям.
