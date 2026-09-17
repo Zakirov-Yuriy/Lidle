@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
@@ -7,6 +8,7 @@ import 'package:lidle/pages/products/order_placed_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/forms/phone_number_formatter.dart';
 
 /// Оформление заказа.
 ///
@@ -35,6 +37,14 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+
+  /// Телефон пишется так же, как на регистрации: «+7 (925) 449 95 50»
+  /// (17.09.2026). Сплошная строка цифр читалась плохо, и человек не видел,
+  /// сколько ещё осталось ввести.
+  ///
+  /// Фокус нужен, чтобы при первом касании пустого поля появился «+7»: дальше
+  /// человек набирает только свои десять цифр.
+  final _phoneFocus = FocusNode();
   final _emailController = TextEditingController();
   final _commentController = TextEditingController();
 
@@ -101,15 +111,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final contacts = widget.cart.contacts;
 
     _nameController.text = contacts.name ?? '';
-    _phoneController.text = contacts.phone ?? '';
+    _phoneController.text = formatPhoneForDisplay(contacts.phone ?? '');
     _emailController.text = contacts.email ?? '';
 
     _isPrefilled = !contacts.isEmpty;
+
+    _phoneFocus.addListener(_onPhoneFocus);
+  }
+
+  /// Пустое поле при первом касании превращается в «+7».
+  void _onPhoneFocus() {
+    if (!_phoneFocus.hasFocus || _phoneController.text.isNotEmpty) return;
+
+    _phoneController.text = '+7';
+    _phoneController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _phoneController.text.length),
+    );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneFocus.removeListener(_onPhoneFocus);
+    _phoneFocus.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _commentController.dispose();
@@ -128,9 +152,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _submit() async {
     if (_isSending) return;
 
+    // Телефон теперь подставляет «+7» при первом касании поля, и из-за этого
+    // «поле не пустое» больше не значит «номер вписан»: человек мог тронуть
+    // поле и уйти. Поэтому считаем цифры, а не символы.
+    final phoneDigits =
+        _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (phoneDigits.isNotEmpty && phoneDigits.length < 11) {
+      SnackBarHelper.showWarning(
+        context,
+        'Телефон указан не полностью: нужно 10 цифр после +7',
+      );
+      return;
+    }
+
     if (_isGuest) {
       final missing = _nameController.text.trim().isEmpty ||
-          _phoneController.text.trim().isEmpty ||
+          phoneDigits.isEmpty ||
           _emailController.text.trim().isEmpty;
 
       if (missing) {
@@ -172,7 +210,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final result = await OrdersService.place(
       contactName: _nameController.text.trim(),
-      contactPhone: _phoneController.text.trim(),
+      // На сервер уходит номер без скобок и пробелов: они нужны человеку в
+      // поле, а не в базе.
+      contactPhone: cleanPhone(_phoneController.text.trim()),
       contactEmail: _emailController.text.trim(),
       comment: _commentController.text.trim(),
       productIds: widget.productIds,
@@ -686,7 +726,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           const SizedBox(height: 12),
           _field(_nameController, 'Имя', TextInputType.name),
           const SizedBox(height: 10),
-          _field(_phoneController, 'Телефон', TextInputType.phone),
+          _field(
+            _phoneController,
+            'Телефон',
+            TextInputType.phone,
+            focusNode: _phoneFocus,
+            formatters: [PhoneNumberFormatter()],
+          ),
           const SizedBox(height: 10),
           _field(_emailController, 'Почта', TextInputType.emailAddress),
           const SizedBox(height: 10),
@@ -877,9 +923,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     String hint,
     TextInputType type, {
     int lines = 1,
+    FocusNode? focusNode,
+    List<TextInputFormatter>? formatters,
   }) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
+      inputFormatters: formatters,
       keyboardType: type,
       maxLines: lines,
       style: const TextStyle(color: Colors.white, fontSize: 15),
