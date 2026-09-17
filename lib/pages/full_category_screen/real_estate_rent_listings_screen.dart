@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/store_menu_service.dart';
+import 'package:lidle/widgets/navigation/open_my_store.dart';
+import 'package:lidle/widgets/navigation/nav_metrics.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
@@ -643,16 +646,27 @@ class _RealEstateRentListingsScreenState
             borderRadius: BorderRadius.circular(37.5),
             boxShadow: const [],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
+          // Весь ряд слушает признак магазина: с появлением седьмого
+          // значка отступы у всех пунктов должны пересчитаться разом,
+          // иначе ряд не поместится по ширине.
+          child: ValueListenableBuilder<bool>(
+            valueListenable: StoreMenuService.hasStore,
+            builder: (context, showStore, _) => Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
               _buildNavItem(homeIconAsset, 0, _selectedIndex),
               _buildNavItem(gridIconAsset, 1, _selectedIndex),
               _buildCenterAdd(2, _selectedIndex),
               _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
               _buildNavItem(messageIconAsset, 4, _selectedIndex),
+              // 🏪 Свой магазин: пункт появляется у продавца, у
+              // которого на витрине уже что-то есть (17.09.2026).
+              // У этого экрана своя копия панели, поэтому пункт
+              // повторён и здесь.
+              if (showStore) _buildNavItem(storeIconAsset, 6, _selectedIndex),
               _buildNavItem(userIconAsset, 5, _selectedIndex),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -671,7 +685,15 @@ class _RealEstateRentListingsScreenState
           _navigateToScreen(index);
         },
         child: Padding(
-          padding: const EdgeInsets.all(13.5),
+          // Отступы сжимаются, когда в ряду появляется седьмой
+          // значок: иначе панель не помещается по ширине.
+          padding: EdgeInsets.symmetric(
+            horizontal: navItemGap(
+              context,
+              showStore: StoreMenuService.hasStore.value,
+            ),
+            vertical: 13.5,
+          ),
           child: Image.asset(
             iconPath,
             width: 28,
@@ -695,7 +717,15 @@ class _RealEstateRentListingsScreenState
           _navigateToScreen(index);
         },
         child: Padding(
-          padding: const EdgeInsets.all(13.5),
+          // Отступы сжимаются, когда в ряду появляется седьмой
+          // значок: иначе панель не помещается по ширине.
+          padding: EdgeInsets.symmetric(
+            horizontal: navItemGap(
+              context,
+              showStore: StoreMenuService.hasStore.value,
+            ),
+            vertical: 13.5,
+          ),
           child: Container(
             width: 28,
             height: 28,
@@ -753,6 +783,12 @@ class _RealEstateRentListingsScreenState
         routeName = ProfileDashboard.routeName;
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
+      case 6:
+        // Свой магазин. Экрану нужны имя, аватарка и id продавца, поэтому
+        // открывается своим маршрутом, а не по имени.
+        openMyStore(context);
+
+        return;
       default:
         return;
     }

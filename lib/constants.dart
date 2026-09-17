@@ -77,4 +77,7 @@ const String plusIconAsset = 'assets/BottomNavigation/plus-circle.png';
 const String shoppingCartIconAsset = 'assets/BottomNavigation/shopping-cart-01.png';
 const String messageIconAsset = 'assets/BottomNavigation/message-circle-01.png';
 const String userIconAsset = 'assets/BottomNavigation/user-01.png';
+// Пункт «Мой магазин» в нижнем меню. Показывается только продавцу, у которого
+// на витрине уже что-то есть (17.09.2026).
+const String storeIconAsset = 'assets/BottomNavigation/store-01.png';
 

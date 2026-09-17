@@ -211,6 +211,11 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
           // Снэкбар показывается в bottom_navigation.dart
         }
         break;
+      case 6:
+        // 🏪 Свой магазин. Экран открывает сама нижняя панель: ей известны имя
+        // и id продавца, а блоку нет. Здесь только запоминаем индекс, иначе
+        // сработал бы общий случай ниже и человека увело бы на главную.
+        break;
       default:
         // Для других - пока на home
         emit(const NavigationToHome());

@@ -17,7 +17,11 @@ import 'package:lidle/pages/profile_menu/settings/contact_data/contact_data_scre
 import 'package:lidle/pages/profile_menu/settings/contact_data/company_contact_data_screen.dart';
 import 'package:lidle/pages/auth/social_email_screen.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/store_menu_service.dart';
 import 'package:lidle/services/token_service.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
+import 'package:lidle/widgets/navigation/open_my_store.dart';
+import 'package:lidle/widgets/navigation/nav_metrics.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/dialogs/fill_contacts_dialog.dart';
 import 'package:lidle/blocs/messages/messages_bloc.dart';
@@ -83,12 +87,24 @@ class BottomNavigation extends StatelessWidget {
               return 4;
             case ProfileDashboard.routeName:
               return 5;
+            case SellerProfileScreen.routeName:
+              return 6;
             default:
               return -1; // На дочерних экранах все иконки белые
           }
         }
 
         final selectedIndex = getSelectedIndex();
+
+        // Пункт «Мой магазин». Гостю он не нужен, у вошедшего спрашиваем один
+        // раз, есть ли на витрине хоть что-то. Ответ из прошлого запуска
+        // поднимается сразу, поэтому пункт не «прыгает» при каждом открытии.
+        if (isAuthenticated) {
+          StoreMenuService.restore();
+          StoreMenuService.ensureChecked();
+        } else {
+          StoreMenuService.reset();
+        }
 
         return SafeArea(
           top: false,
@@ -101,12 +117,23 @@ class BottomNavigation extends StatelessWidget {
                 borderRadius: BorderRadius.circular(37.5),
                 boxShadow: const [],
               ),
-              child: Row(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: StoreMenuService.hasStore,
+                builder: (context, showStore, _) {
+                  // Семь значков в тот же кружок не влезают по ширине, поэтому
+                  // с появлением магазина отступы вокруг каждого уменьшаются.
+                  // Высота панели при этом не меняется.
+                  final double gap =
+                      navItemGap(context, showStore: showStore);
+
+                  return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildNavItem(context, homeIconAsset, 0, selectedIndex, 0),
-                  _buildNavItem(context, heartIconAsset, 1, selectedIndex, 0),
-                  _buildCenterAdd(context, 2, selectedIndex),
+                  _buildNavItem(context, homeIconAsset, 0, selectedIndex, 0,
+                      gap: gap),
+                  _buildNavItem(context, heartIconAsset, 1, selectedIndex, 0,
+                      gap: gap),
+                  _buildCenterAdd(context, 2, selectedIndex, gap: gap),
                   // Корзина. Была скрыта «до появления раздела покупок»:
                   // товаров в приложении не существовало, и вести было некуда.
                   // Раздел появился 03.09.2026 — витрина, корзина, оформление
@@ -128,12 +155,23 @@ class BottomNavigation extends StatelessWidget {
                       3,
                       selectedIndex,
                       count,
+                      gap: gap,
                     ),
                   ),
                   // 💬 Передаем количество непрочитанных для иконки сообщений
-                  _buildNavItem(context, messageIconAsset, 4, selectedIndex, unreadCount),
-                  _buildNavItem(context, userIconAsset, 5, selectedIndex, 0),
+                  _buildNavItem(
+                      context, messageIconAsset, 4, selectedIndex, unreadCount,
+                      gap: gap),
+                  // 🏪 Свой магазин — сразу после сообщений. Пункт есть только
+                  // у продавца, у которого на витрине уже что-то лежит.
+                  if (showStore)
+                    _buildNavItem(context, storeIconAsset, 6, selectedIndex, 0,
+                        gap: gap),
+                  _buildNavItem(context, userIconAsset, 5, selectedIndex, 0,
+                      gap: gap),
                 ],
+                  );
+                },
               ),
             ),
           ),
@@ -149,8 +187,9 @@ class BottomNavigation extends StatelessWidget {
     String iconPath,
     int index,
     int currentSelected,
-    int unreadCount,
-  ) {
+    int unreadCount, {
+    double gap = 13.5,
+  }) {
     final isSelected = currentSelected == index;
 
     return Material(
@@ -176,7 +215,11 @@ class BottomNavigation extends StatelessWidget {
           // вошедшего это было незаметно, оба раза открывались покупки, а у
           // гостя корзина открывалась и тут же скрывалась под покупками.
           // Отсюда и жалоба: «нажимаю корзину, попадаю в покупки».
-          if (index == 3) return;
+          //
+          // Со своим магазином (6) ровно то же самое: панель уже открыла
+          // витрину, а экраны про этот пункт не знают и увели бы человека на
+          // главную.
+          if (index == 3 || index == 6) return;
 
           // Вызываем callback только если навигация была успешна
           if (wasNavigated) {
@@ -186,7 +229,9 @@ class BottomNavigation extends StatelessWidget {
         child: Stack(
           children: [
             Padding(
-              padding: const EdgeInsets.all(13.5),
+              // По вертикали отступ прежний: высота панели не должна меняться
+              // от того, есть у человека магазин или нет.
+              padding: EdgeInsets.symmetric(horizontal: gap, vertical: 13.5),
               child: Image.asset(
                 iconPath,
                 width: 28,
@@ -233,7 +278,12 @@ class BottomNavigation extends StatelessWidget {
     );
   }
 
-  Widget _buildCenterAdd(BuildContext context, int index, int currentSelected) {
+  Widget _buildCenterAdd(
+    BuildContext context,
+    int index,
+    int currentSelected, {
+    double gap = 13.5,
+  }) {
     final isSelected = currentSelected == index;
 
     return Material(
@@ -242,7 +292,7 @@ class BottomNavigation extends StatelessWidget {
         borderRadius: BorderRadius.circular(50),
         onTap: () => _handleAddTap(context, index),
         child: Padding(
-          padding: const EdgeInsets.all(13.5),
+          padding: EdgeInsets.symmetric(horizontal: gap, vertical: 13.5),
           child: Container(
             width: 28,
             height: 28,
@@ -348,7 +398,7 @@ class BottomNavigation extends StatelessWidget {
     // предусмотрена вёрсткой и подтверждена заказчиком, а витрину и корзину
     // за вход не спрячешь — иначе гостевой заказ невозможен в принципе.
     // Личное внутри раздела (список своих заказов) спрашивает вход само.
-    const protectedScreens = {2, 4, 5};
+    const protectedScreens = {2, 4, 5, 6};
     
     if (protectedScreens.contains(index) && !isAuthorized) {
       // Показываем плашку авторизации
@@ -399,6 +449,12 @@ class BottomNavigation extends StatelessWidget {
       case 5:
         routeName = ProfileDashboard.routeName;
         break;
+      case 6:
+        // Свой магазин. Открывается своим маршрутом: экрану нужны имя,
+        // аватарка и id продавца, а по имени маршрута их не передать.
+        openMyStore(context);
+
+        return true;
       default:
         return false;
     }

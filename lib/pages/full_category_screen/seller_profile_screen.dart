@@ -5,6 +5,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/widgets/common/share_icons_row.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/services/store_menu_service.dart';
+import 'package:lidle/widgets/navigation/open_my_store.dart';
+import 'package:lidle/widgets/navigation/nav_metrics.dart';
 import 'package:lidle/models/home_models.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/cards/listing_card.dart';
@@ -81,6 +84,12 @@ class SellerProfileScreen extends StatefulWidget {
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
   int selectedStars = 5;
   int _selectedIndex = 0;
+
+  /// Развёрнута ли карточка владельца (аватар, информация, оценка, кнопки).
+  ///
+  /// Только для своего магазина и только на время этого захода: владелец
+  /// открывает экран ради витрины, поэтому по умолчанию карточка свёрнута.
+  bool _ownerCardExpanded = false;
   List<Map<String, dynamic>> _sellerListings = [];
   bool _isLoading = false;
   String? _error;
@@ -157,6 +166,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   @override
   void initState() {
     super.initState();
+    // На своей витрине подсвечен пункт магазина, а не «Главная»: экран открыт
+    // из нижнего меню именно им.
+    if (_isOwnProfile) {
+      _selectedIndex = 6;
+    }
     _loadSellerListings();
     _loadSellerProducts();
     _loadSellerProfile();
@@ -806,20 +820,30 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                     children: [
                       _buildHeader(),
 
-                      const SizedBox(height: 0),
-                      _buildSellerInfo(),
+                      // Свой магазин можно свернуть до одной витрины.
+                      //
+                      // Владельцу его собственные данные не новость: он видит
+                      // их каждый раз, когда заходит проверить товары, и
+                      // прокручивает мимо. Покупателю наоборот, поэтому для
+                      // чужого магазина ничего не сворачивается.
+                      if (_isOwnProfile) _buildOwnerCardToggle(),
 
-                      const SizedBox(height: 20),
-                      _buildInfoSection(),
+                      if (!_isOwnProfile || _ownerCardExpanded) ...[
+                        const SizedBox(height: 0),
+                        _buildSellerInfo(),
 
-                      const SizedBox(height: 0),
-                      _buildRateSeller(),
+                        const SizedBox(height: 20),
+                        _buildInfoSection(),
 
-                      const SizedBox(height: 12),
-                      _buildShareCompanySection(),
+                        const SizedBox(height: 0),
+                        _buildRateSeller(),
 
-                      const SizedBox(height: 16),
-                      _buildCallWriteButtons(),
+                        const SizedBox(height: 12),
+                        _buildShareCompanySection(),
+
+                        const SizedBox(height: 16),
+                        _buildCallWriteButtons(),
+                      ],
 
                       const SizedBox(height: 25),
                       Row(children: [_buildListingsTitle()]),
@@ -841,6 +865,49 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       ), // SafeArea
     );
         },
+      ),
+    );
+  }
+
+  /// Кнопка «свернуть/развернуть» карточку владельца.
+  ///
+  /// По умолчанию карточка свёрнута: продавец заходит сюда смотреть витрину,
+  /// а не своё описание.
+  Widget _buildOwnerCardToggle() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 4),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: () =>
+              setState(() => _ownerCardExpanded = !_ownerCardExpanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _ownerCardExpanded
+                        ? 'Скрыть данные магазина'
+                        : 'Показать данные магазина',
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _ownerCardExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1908,7 +1975,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(13.5),
+          // Отступы сжимаются, когда в ряду появляется седьмой
+          // значок: иначе панель не помещается по ширине.
+          padding: EdgeInsets.symmetric(
+            horizontal: navItemGap(
+              context,
+              showStore: StoreMenuService.hasStore.value,
+            ),
+            vertical: 13.5,
+          ),
           child: Image.asset(
             iconPath,
             width: 28,
@@ -1935,7 +2010,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(13.5),
+          // Отступы сжимаются, когда в ряду появляется седьмой
+          // значок: иначе панель не помещается по ширине.
+          padding: EdgeInsets.symmetric(
+            horizontal: navItemGap(
+              context,
+              showStore: StoreMenuService.hasStore.value,
+            ),
+            vertical: 13.5,
+          ),
           child: Container(
             width: 28,
             height: 28,
@@ -1963,16 +2046,27 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             color: bottomNavBackground,
             borderRadius: BorderRadius.circular(37.5),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
+          // Весь ряд слушает признак магазина: с появлением седьмого
+          // значка отступы у всех пунктов должны пересчитаться разом,
+          // иначе ряд не поместится по ширине.
+          child: ValueListenableBuilder<bool>(
+            valueListenable: StoreMenuService.hasStore,
+            builder: (context, showStore, _) => Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
               _buildNavItem(homeIconAsset, 0, _selectedIndex),
               _buildNavItem(gridIconAsset, 1, _selectedIndex),
               _buildCenterAdd(2, _selectedIndex),
               _buildNavItem(shoppingCartAsset, 3, _selectedIndex),
               _buildNavItem(messageIconAsset, 4, _selectedIndex),
+              // 🏪 Свой магазин: пункт появляется у продавца, у
+              // которого на витрине уже что-то есть (17.09.2026).
+              // У этого экрана своя копия панели, поэтому пункт
+              // повторён и здесь.
+              if (showStore) _buildNavItem(storeIconAsset, 6, _selectedIndex),
               _buildNavItem(userIconAsset, 5, _selectedIndex),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1983,7 +2077,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// Возвращает [true] если навигация была успешна, [false] если авторизация отклонена.
   bool _navigateToScreen(int index) {
     // Индексы 2, 3, 4, 5 требуют авторизацию
-    final authRequiredIndices = {2, 3, 4, 5};
+    final authRequiredIndices = {2, 3, 4, 5, 6};
 
     if (authRequiredIndices.contains(index)) {
       final token = TokenService.currentToken;
@@ -2037,6 +2131,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         routeName = ProfileDashboard.routeName;
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
+      case 6:
+        // Свой магазин. Экрану нужны имя, аватарка и id продавца, поэтому
+        // открывается своим маршрутом, а не по имени.
+        //
+        // Если человек уже стоит на своей витрине, второй такой же экран
+        // сверху не открываем.
+        if (!_isOwnProfile) {
+          openMyStore(context);
+        }
+
+        return true;
       default:
         return false;
     }

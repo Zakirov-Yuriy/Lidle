@@ -48,6 +48,7 @@ import 'package:lidle/pages/profile_dashboard/financial_support_dialog.dart';
 import 'package:lidle/pages/orders/seller_orders_screen.dart';
 import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/services/store_menu_service.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -331,6 +332,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       }
 
       final totalCount = allAdverts.length;
+
+      // Есть объявления — значит, есть и магазин: пункт в нижнем меню должен
+      // появиться сразу после первой публикации, а не со следующего запуска.
+      if (totalCount > 0) {
+        StoreMenuService.markHasStore();
+      }
 
       // 💾 Сохраняем в AppCacheService (TTL 60с)
       AppCacheService().set<Map<String, dynamic>>(
