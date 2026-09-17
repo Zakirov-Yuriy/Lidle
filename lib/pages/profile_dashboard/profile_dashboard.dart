@@ -289,16 +289,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     }
   }
 
-  /// Полоска с напоминанием: код показывают продавцу.
+  /// Полоска с напоминанием: штрих-код показывают продавцу.
   ///
-  /// Настоящего штрих-кода у нас пока нет, поэтому на полоске стоит код
-  /// ближайшей покупки, а не полосатая картинка: продавец попробовал бы её
-  /// отсканировать и решил бы, что приложение сломалось.
+  /// Код получения тут не пишем: он у каждого заказа свой, а покупок в карусели
+  /// несколько, и одно число под общей подписью выглядело бы как код на всё
+  /// сразу. Сам код человек видит на экране своего заказа.
   Widget _buildPurchasesBanner() {
-    final code = _activePurchases
-        .map((entry) => entry.order.pickupCode ?? '')
-        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -309,37 +305,24 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       child: Row(
         children: [
           Container(
-            width: 56,
+            width: 64,
             height: 40,
             alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Icon(Icons.qr_code_2, color: Colors.black, size: 28),
+            child: SvgPicture.asset(
+              'assets/shtrihcod/image 43.svg',
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Покажите код продавцу для получения товара',
-                  style: TextStyle(color: textSecondary, fontSize: 13),
-                ),
-                if (code.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    code,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 3,
-                    ),
-                  ),
-                ],
-              ],
+          const Expanded(
+            child: Text(
+              'Покажите штрих-код продавцу для получения товара',
+              style: TextStyle(color: textSecondary, fontSize: 13),
             ),
           ),
         ],
