@@ -10,9 +10,12 @@
 // размеров не бывает, только сбивает с толку.
 //
 // Порядок блоков закреплён и повторяет макет заказчика: магазины, тип одежды,
-// цена, бренды, «С принтом», размер, оценка, цвет, доставка. Характеристики,
-// которых в этом списке нет, идут следом обычными кнопками: у продавца техники
-// там окажется «Разрешение экрана», и прятать её было бы неправильно.
+// цена, бренды, «С принтом», размер, оценка, цвет, доставка.
+//
+// Характеристики, которых в этом списке нет, НЕ показываем (правка заказчика от
+// 17.09.2026). Справочник общий на всю площадку, и у продавца с одним телевизором
+// в панель одежды приезжало «Разрешение экрана». Понадобятся другие признаки —
+// добавим их сюда явно, как размер и цвет, а не общим списком.
 //
 // Выбор возвращается экрану целиком и только по кнопке «Принять». Применять на
 // каждое касание значило бы перезапрашивать витрину по десять раз, пока человек
@@ -77,13 +80,10 @@ class _StoreFilterSheetState extends State<StoreFilterSheet> {
     _priceTo =
         (_selection.priceMax ?? _priceCeiling).clamp(0, _priceCeiling).toDouble();
 
-    if (_selection.priceMin != null) {
-      _priceFromController.text = _money(_selection.priceMin!);
-    }
-
-    if (_selection.priceMax != null) {
-      _priceToController.text = _money(_selection.priceMax!);
-    }
+    // Поля всегда показывают то, где стоят ручки: ползунок от края до края
+    // это «от 0 до 1000000», и писать в полях пустоту при этом странно.
+    _priceFromController.text = _money(_priceFrom);
+    _priceToController.text = _money(_priceTo);
   }
 
   @override
@@ -132,8 +132,13 @@ class _StoreFilterSheetState extends State<StoreFilterSheet> {
   }
 
   void _apply() {
-    final from = _parsePrice(_priceFromController.text);
-    final to = _parsePrice(_priceToController.text);
+    var from = _parsePrice(_priceFromController.text);
+    var to = _parsePrice(_priceToController.text);
+
+    // Края не отправляем: ноль слева ничего не отсекает, а потолок справа
+    // отрезал бы товар дороже миллиона, которого человек не исключал.
+    if (from != null && from <= 0) from = null;
+    if (to != null && to >= _priceCeiling) to = null;
 
     Navigator.of(context).pop(
       _selection.copyWith(
@@ -148,11 +153,11 @@ class _StoreFilterSheetState extends State<StoreFilterSheet> {
   void _reset() {
     setState(() {
       _selection = const StoreFilterSelection();
-      _priceFromController.clear();
-      _priceToController.clear();
       _brandSearchController.clear();
       _priceFrom = 0;
       _priceTo = _priceCeiling;
+      _priceFromController.text = _money(_priceFrom);
+      _priceToController.text = _money(_priceTo);
     });
   }
 
@@ -163,38 +168,29 @@ class _StoreFilterSheetState extends State<StoreFilterSheet> {
   // заводить его в справочнике ради порядка блоков это лишняя сущность.
 
   StoreAttribute? _attributeByTitle(List<String> titles) {
+    StoreAttribute? best;
+
     for (final attribute in _options.attributes) {
       final title = attribute.title.toLowerCase();
 
-      for (final wanted in titles) {
-        if (title == wanted) return attribute;
+      if (!titles.contains(title)) continue;
+
+      // Одноимённых характеристик в справочнике бывает несколько: «Цвет» для
+      // техники и «Цвет» для одежды это разные записи с разными значениями.
+      // Берём самую полную: складывать их нельзя, сервер считает значения
+      // разных характеристик по «и», и выбор чёрного сразу из двух списков не
+      // дал бы ни одного товара.
+      if (best == null || attribute.values.length > best.values.length) {
+        best = attribute;
       }
     }
 
-    return null;
+    return best;
   }
 
   StoreAttribute? get _printAttribute => _attributeByTitle(['с принтом']);
   StoreAttribute? get _sizeAttribute => _attributeByTitle(['размер']);
   StoreAttribute? get _colorAttribute => _attributeByTitle(['цвет']);
-
-  /// Характеристики, которым не нашлось своего места в макете.
-  ///
-  /// «Тип одежды» сюда не попадает намеренно: он повторяет блок с разделами,
-  /// который стоит выше, и два одинаковых списка на одном экране это вопрос
-  /// «а чем они отличаются», на который нет ответа.
-  List<StoreAttribute> get _otherAttributes {
-    final taken = <int?>{
-      _printAttribute?.id,
-      _sizeAttribute?.id,
-      _colorAttribute?.id,
-    };
-
-    return _options.attributes
-        .where((a) => !taken.contains(a.id))
-        .where((a) => a.title.toLowerCase() != 'тип одежды')
-        .toList();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -236,8 +232,6 @@ class _StoreFilterSheetState extends State<StoreFilterSheet> {
                     if (size != null) _chipsSection('Размер', size),
                     _ratingSection(),
                     if (color != null) _colorSection(color),
-                    for (final attribute in _otherAttributes)
-                      _chipsSection(attribute.title, attribute),
                     if (_options.delivery.length > 1) _deliverySection(),
                     const SizedBox(height: 8),
                   ],
@@ -473,14 +467,12 @@ class _StoreFilterSheetState extends State<StoreFilterSheet> {
                 _priceFrom = values.start;
                 _priceTo = values.end;
 
-                // Ноль слева и потолок справа означают «без ограничения»:
-                // поле в этом случае оставляем пустым, чтобы не отправлять
-                // на сервер условие, которого человек не ставил.
-                _priceFromController.text =
-                    values.start <= 0 ? '' : _money(values.start.roundToDouble());
-                _priceToController.text = values.end >= _priceCeiling
-                    ? ''
-                    : _money(values.end.roundToDouble());
+                // Края ползунка это «без ограничения», но в полях всё равно
+                // показываем числа: пустое поле рядом с растянутой лентой
+                // читается как поломка. На сервер крайние значения не уходят,
+                // см. _apply.
+                _priceFromController.text = _money(values.start.roundToDouble());
+                _priceToController.text = _money(values.end.roundToDouble());
               });
             },
           ),
