@@ -304,27 +304,18 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       ),
       child: Row(
         children: [
-          Container(
+          // Картинка лежит прямо на тёмном фоне полоски, без белой подложки:
+          // штрих-код в макете нарисован белым, и на белой плашке его не было
+          // видно вовсе (17.09.2026).
+          SizedBox(
             width: 64,
             height: 40,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            // Чёрным принудительно: картинка нарисована под тёмный макет и на
-            // белой плашке была белым по белому, то есть не видна вовсе.
             child: SvgPicture.asset(
               'assets/shtrihcod/image 43.svg',
               fit: BoxFit.contain,
-              colorFilter: const ColorFilter.mode(
-                Colors.black,
-                BlendMode.srcIn,
-              ),
               placeholderBuilder: (_) => const Icon(
                 Icons.qr_code_2,
-                color: Colors.black,
+                color: Colors.white,
                 size: 26,
               ),
             ),
@@ -345,13 +336,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   Widget _buildPurchasesCarousel() {
     if (_purchasesLoading && _activePurchases.isEmpty) {
       return const SizedBox(
-        height: 104,
+        height: 82,
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     }
 
     return SizedBox(
-      height: 104,
+      height: 82,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _activePurchases.length,
@@ -386,33 +377,42 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: 92,
-              child: (line.image ?? '').isEmpty
-                  ? Container(
-                      color: primaryBackground,
-                      child: const Icon(
-                        Icons.image_not_supported_outlined,
-                        color: textMuted,
-                        size: 22,
-                      ),
-                    )
-                  : Image.network(
-                      line.image!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: primaryBackground,
-                        child: const Icon(
-                          Icons.image_not_supported_outlined,
-                          color: textMuted,
-                          size: 22,
+            // Размер картинки задан макетом: 72 на 64, отступ слева 10,
+            // сверху и снизу по 9.
+            Padding(
+              padding: const EdgeInsets.only(left: 10, top: 9, bottom: 9),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  width: 72,
+                  height: 64,
+                  child: (line.image ?? '').isEmpty
+                      ? Container(
+                          color: primaryBackground,
+                          child: const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: textMuted,
+                            size: 22,
+                          ),
+                        )
+                      : Image.network(
+                          line.image!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: primaryBackground,
+                            child: const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: textMuted,
+                              size: 22,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                ),
+              ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -425,7 +425,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       order.statusTitle,
                       maxLines: 1,
@@ -438,7 +438,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       line.name,
                       maxLines: 1,
@@ -446,7 +446,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                       style: const TextStyle(color: textSecondary, fontSize: 12),
                     ),
                     if (hours != null) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 2),
                       Text(
                         hours,
                         maxLines: 1,
