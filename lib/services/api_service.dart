@@ -1008,14 +1008,22 @@ class ApiService {
     int page = 1,
     int perPage = 60,
     String? token,
+    String? search,
   }) async {
     final id = int.tryParse(userId.trim());
 
     if (id == null) return const [];
 
     try {
+      // Поиск по витрине продавца (17.09.2026). Сервер отбирает сам: на
+      // странице лежит только первая сотня товаров, и отбор на клиенте
+      // означал бы «нашлось» по тому, что успело приехать.
+      final query = (search ?? '').trim();
+      final searchPart =
+          query.length >= 2 ? '&search=${Uri.encodeQueryComponent(query)}' : '';
+
       final response = await get(
-        '/products?user_id=$id&page=$page&per_page=$perPage',
+        '/products?user_id=$id&page=$page&per_page=$perPage$searchPart',
         token: token,
       );
 

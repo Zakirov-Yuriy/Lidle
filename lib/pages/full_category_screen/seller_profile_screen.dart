@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
@@ -84,6 +86,16 @@ class SellerProfileScreen extends StatefulWidget {
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
   int selectedStars = 5;
   int _selectedIndex = 0;
+
+  /// Поиск по витрине продавца (17.09.2026).
+  ///
+  /// Отбор делает сервер: на странице продавца лежит только то, что успело
+  /// приехать, и отбирать на клиенте значит отвечать «ничего не найдено» по
+  /// неполному списку. Запрос уходит не на каждую букву, а через паузу после
+  /// последней: иначе слово из шести букв это шесть запросов.
+  final TextEditingController _searchController = TextEditingController();
+  Timer? _searchDebounce;
+  String _searchQuery = '';
 
   /// Развёрнута ли карточка владельца (аватар, информация, оценка, кнопки).
   ///
@@ -186,6 +198,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     final products = await ApiService.getSellerProducts(
       userId: userId,
       token: TokenService.currentToken,
+      search: _searchQuery,
     );
 
     if (!mounted) return;
@@ -618,8 +631,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
     final userId = widget.userId!;
 
-    // Возвращаем кэш, если есть и не требуется обновление (AppCacheService сам проверяет TTL)
-    if (!forceRefresh) {
+    // Кэш только для полной витрины: результат поиска в него не кладём и из
+    // него не берём, иначе следующий запрос отдал бы прошлую выдачу.
+    if (!forceRefresh && _searchQuery.isEmpty) {
       final cachedList = AppCacheService().get<List<Map<String, dynamic>>>(
         CacheKeys.sellerProfileKey(userId),
       );
@@ -652,9 +666,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final allData = <dynamic>[];
 
       // Шаг 1: загружаем первую страницу и читаем meta.last_page
-      final firstPageBody = {
+      final firstPageBody = <String, dynamic>{
         'sort': ['new'],
         'page': 1,
+        if (_searchQuery.isNotEmpty) 'search': _searchQuery,
       };
 
       final firstResponse = await ApiService.getWithBody(
@@ -673,9 +688,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       // Шаг 2: загружаем остальные страницы, если они есть
       if (lastPage > 1) {
         for (int page = 2; page <= lastPage; page++) {
-          final pageBody = {
+          final pageBody = <String, dynamic>{
             'sort': ['new'],
             'page': page,
+            if (_searchQuery.isNotEmpty) 'search': _searchQuery,
           };
           final pageResponse = await ApiService.getWithBody(
             '/users/$userId/adverts',
@@ -733,12 +749,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       log.d('✅ Трансформировано ${listings.length} объявлений');
 
       // 💾 Сохраняем в AppCacheService (TTL 5 мин) — следующее открытие экрана
-      // отдаст данные мгновенно без обращения к API
-      AppCacheService().set<List<Map<String, dynamic>>>(
-        CacheKeys.sellerProfileKey(userId),
-        listings,
-        ttl: _cacheTtl,
-      );
+      // отдаст данные мгновенно без обращения к API. Выдачу поиска не
+      // запоминаем: это ответ на одно слово, а не витрина продавца.
+      if (_searchQuery.isEmpty) {
+        AppCacheService().set<List<Map<String, dynamic>>>(
+          CacheKeys.sellerProfileKey(userId),
+          listings,
+          ttl: _cacheTtl,
+        );
+      }
 
       setState(() {
         _sellerListings = listings;
@@ -750,6 +769,47 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Новый запрос из поля поиска.
+  void _onSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
+      // Экран могли закрыть, пока шла пауза.
+      if (!mounted) return;
+
+      final query = value.trim();
+
+      // Одна буква ничего не значит: сервер такой запрос всё равно отклонит.
+      final normalized = query.length >= 2 ? query : '';
+
+      if (normalized == _searchQuery) return;
+
+      setState(() => _searchQuery = normalized);
+
+      _loadSellerListings(forceRefresh: true);
+      _loadSellerProducts();
+    });
+  }
+
+  /// Крестик в поле поиска: возвращаем всю витрину.
+  void _clearSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+
+    if (_searchQuery.isEmpty) return;
+
+    setState(() => _searchQuery = '');
+
+    _loadSellerListings();
+    _loadSellerProducts();
   }
 
   @override
@@ -853,6 +913,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       SizedBox(
                         height: _isOwnProfile && !_ownerCardExpanded ? 6 : 25,
                       ),
+                      _buildSearchField(),
+                      const SizedBox(height: 14),
                       Row(children: [_buildListingsTitle()]),
                       const SizedBox(height: 16),
 
@@ -944,6 +1006,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         const Spacer(),
 
         IconButton(
+          // Значок прижат к правому краю блока: свои поля кнопки отодвигали
+          // его от края, и он выбивался из общей линии экрана. Площадь
+          // нажатия осталась прежней по высоте и уходит влево, а не вправо.
+          padding: EdgeInsets.zero,
+          alignment: Alignment.centerRight,
+          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
           icon: SvgPicture.asset(
             'assets/home_page/share_outlined.svg',
             width: 23,
@@ -1774,6 +1842,49 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
+  /// Поиск по витрине продавца.
+  ///
+  /// Стоит над заголовком витрины, а не в шапке экрана: ищет он только у этого
+  /// продавца, и в шапке его путали бы с поиском по всему приложению.
+  Widget _buildSearchField() {
+    return TextField(
+      controller: _searchController,
+      onChanged: _onSearchChanged,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (value) {
+        _searchDebounce?.cancel();
+        _onSearchChanged(value);
+      },
+      style: const TextStyle(color: Colors.white, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: 'Поиск по магазину',
+        hintStyle: const TextStyle(color: textSecondary, fontSize: 15),
+        prefixIcon: const Icon(Icons.search, color: textSecondary, size: 20),
+        // Крестик слушает само поле, а не состояние экрана: иначе он появлялся
+        // бы только после паузы, вместе с запросом на сервер.
+        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _searchController,
+          builder: (context, value, _) => value.text.isEmpty
+              ? const SizedBox.shrink()
+              : IconButton(
+                  icon: const Icon(Icons.close, color: textSecondary, size: 20),
+                  onPressed: _clearSearch,
+                  tooltip: 'Очистить',
+                ),
+        ),
+        filled: true,
+        fillColor: secondaryBackground,
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+    );
+  }
+
   Widget _buildListingsTitle() {
     // Заголовок называет то, что под ним лежит (15.09.2026). У продавца с
     // витриной здесь стоят и объявления, и товары, и подпись «Объявления
@@ -1844,16 +1955,28 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     ];
 
     if (items.isEmpty) {
+      // Пустой поиск и пустая витрина это разные вещи: во втором случае
+      // «Объявления отсутствуют» верно, а в первом человек решил бы, что у
+      // продавца вообще ничего нет.
+      final message = _searchQuery.isEmpty
+          ? 'Объявления отсутствуют'
+          : 'По запросу ничего не нашлось';
+
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
-            children: const [
-              Icon(Icons.inbox, color: Colors.grey, size: 48),
-              SizedBox(height: 16),
+            children: [
+              Icon(
+                _searchQuery.isEmpty ? Icons.inbox : Icons.search_off,
+                color: Colors.grey,
+                size: 48,
+              ),
+              const SizedBox(height: 16),
               Text(
-                'Объявления отсутствуют',
-                style: TextStyle(color: textSecondary),
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: textSecondary),
               ),
             ],
           ),
