@@ -49,6 +49,8 @@ import 'package:lidle/pages/orders/seller_orders_screen.dart';
 import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/services/store_menu_service.dart';
+import 'package:lidle/pages/products/your_order_screen.dart';
+import 'package:lidle/models/orders/order_item.dart';
 
 // ============================================================
 // "Вспомогательная функция для правильного склонения слова"
@@ -76,6 +78,18 @@ String _getPluralForm(int count) {
   }
 }
 
+/// Одна карточка карусели: товар внутри заказа.
+///
+/// Держим пару целиком: код получения и способ доставки лежат у заказа, а
+/// название с картинкой у позиции, и разносить их по разным спискам значит
+/// потом сводить их обратно по номерам.
+class _PurchaseEntry {
+  final OrderModel order;
+  final OrderLine line;
+
+  const _PurchaseEntry({required this.order, required this.line});
+}
+
 class ProfileDashboard extends StatefulWidget {
   static const routeName = '/profile-dashboard';
 
@@ -99,6 +113,15 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Счётчики броней в меню. Живые предстоящие: отменённая вчера бронь в
   /// меню не нужна, она там только пугает числом.
   BookingCounts _bookingCounts = const BookingCounts.empty();
+
+  /// Покупки, которые ещё нужно забрать (17.09.2026).
+  ///
+  /// Карточка на КАЖДЫЙ товар, а не на заказ: так просил заказчик, и человеку
+  /// действительно ближе «моя куртка готова», чем «заказ 260917-104 готов».
+  /// Код получения при этом один на заказ, и на экране заказа он один и тот же
+  /// для всех его товаров.
+  List<_PurchaseEntry> _activePurchases = const [];
+  bool _purchasesLoading = false;
 
   /// Сколько отзывов оставили на объявления пользователя — подпись на
   /// быстрой карточке «Отзывы». Берём meta.total из /me/received-reviews.
@@ -154,6 +177,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     _loadBookingCounts();
     // 🧾 Новые заказы на товары
     _loadOrdersCount();
+    // 🛍 Покупки, которые ждут получения
+    _loadActivePurchases();
     // 🏪 Подтягиваем актуальное название компании (магазина) с сервера
     _loadCompanyName();
   }
@@ -219,6 +244,226 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       _loadBookingCounts();
       _loadOrdersCount();
     }
+  }
+
+  /// Покупки, которые ещё не получены.
+  ///
+  /// Берём заказы покупателя и оставляем те, по которым ещё надо прийти:
+  /// новые, принятые и готовые к выдаче. Полученные и отменённые сюда не
+  /// попадают, им место в истории, а не в напоминании.
+  Future<void> _loadActivePurchases() async {
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) return;
+
+    if (mounted) setState(() => _purchasesLoading = true);
+
+    try {
+      final orders = await OrdersService.myOrders(all: true);
+
+      const waiting = {'new', 'accepted', 'ready'};
+
+      final entries = <_PurchaseEntry>[];
+
+      for (final order in orders) {
+        if (!waiting.contains(order.status)) continue;
+
+        for (final line in order.items) {
+          // Отклонённую продавцом позицию забирать не нужно.
+          if (line.status == 'rejected') continue;
+
+          entries.add(_PurchaseEntry(order: order, line: line));
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _activePurchases = entries;
+        _purchasesLoading = false;
+      });
+    } catch (e) {
+      log.d('Покупки к получению не загрузились: $e');
+
+      if (mounted) setState(() => _purchasesLoading = false);
+    }
+  }
+
+  /// Полоска с напоминанием: код показывают продавцу.
+  ///
+  /// Настоящего штрих-кода у нас пока нет, поэтому на полоске стоит код
+  /// ближайшей покупки, а не полосатая картинка: продавец попробовал бы её
+  /// отсканировать и решил бы, что приложение сломалось.
+  Widget _buildPurchasesBanner() {
+    final code = _activePurchases
+        .map((entry) => entry.order.pickupCode ?? '')
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: secondaryBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.qr_code_2, color: Colors.black, size: 28),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Покажите код продавцу для получения товара',
+                  style: TextStyle(color: textSecondary, fontSize: 13),
+                ),
+                if (code.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    code,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 3,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Карусель покупок: по карточке на каждый купленный товар.
+  Widget _buildPurchasesCarousel() {
+    if (_purchasesLoading && _activePurchases.isEmpty) {
+      return const SizedBox(
+        height: 96,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    return SizedBox(
+      height: 96,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _activePurchases.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, index) => _buildPurchaseCard(_activePurchases[index]),
+      ),
+    );
+  }
+
+  Widget _buildPurchaseCard(_PurchaseEntry entry) {
+    final order = entry.order;
+    final line = entry.line;
+    final hours = order.shop?.todayHours;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => YourOrderScreen(order: order, line: line),
+        ),
+      ),
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                width: 54,
+                height: 54,
+                child: (line.image ?? '').isEmpty
+                    ? Container(
+                        color: primaryBackground,
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          color: textMuted,
+                          size: 20,
+                        ),
+                      )
+                    : Image.network(
+                        line.image!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: primaryBackground,
+                          child: const Icon(
+                            Icons.image_not_supported_outlined,
+                            color: textMuted,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    order.deliveryType == 'courier'
+                        ? (order.deliveryTitle ?? 'Доставка')
+                        : 'Самовывоз',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    order.statusTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: order.status == 'ready'
+                          ? const Color(0xFF4CD964)
+                          : const Color(0xFFFFB800),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    line.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: textSecondary, fontSize: 12),
+                  ),
+                  if (hours != null)
+                    Text(
+                      hours,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: textMuted, fontSize: 11),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Счётчики броней для меню.
@@ -664,6 +909,18 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   ),
                                   const SizedBox(height: 24),
                                   */
+
+                                  // Раздел «Ваши покупки»: что куплено и ещё
+                                  // не получено (17.09.2026).
+                                  if (_activePurchases.isNotEmpty ||
+                                      _purchasesLoading) ...[
+                                    const _SectionTitle('Ваши покупки'),
+                                    const SizedBox(height: 10),
+                                    _buildPurchasesBanner(),
+                                    const SizedBox(height: 10),
+                                    _buildPurchasesCarousel(),
+                                    const SizedBox(height: 16),
+                                  ],
 
                                   // Раздел «Ваши объявления»
                                   const _SectionTitle('Ваши объявления'),

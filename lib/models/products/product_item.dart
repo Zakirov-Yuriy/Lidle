@@ -279,6 +279,13 @@ class ShopBrief {
   final String? phone;
   final bool isActive;
 
+  /// График работы точки: `{"mon-fri": "09:00-18:00"}` (17.09.2026).
+  ///
+  /// Свободная форма: ключ это день или диапазон дней, значение часы. Разбирать
+  /// его жёстко нельзя, продавец пишет как ему удобно, поэтому показываем
+  /// строками как есть, а «сегодня» вычисляем, только когда ключ понятен.
+  final Map<String, String> schedule;
+
   /// Владелец точки (15.09.2026).
   ///
   /// По нему открывается страница продавца со всеми его объявлениями и
@@ -296,6 +303,7 @@ class ShopBrief {
     this.phone,
     this.isActive = true,
     this.userId,
+    this.schedule = const {},
   });
 
   static ShopBrief? tryParse(dynamic raw) {
@@ -311,7 +319,65 @@ class ShopBrief {
       phone: raw['phone']?.toString(),
       isActive: raw['is_active'] != false,
       userId: ProductItem._int(raw['user_id']),
+      schedule: raw['schedule'] is Map
+          ? Map<String, String>.fromEntries(
+              (raw['schedule'] as Map).entries.map(
+                (e) => MapEntry('${e.key}', '${e.value ?? ''}'.trim()),
+              ),
+            )
+          : const {},
     );
+  }
+
+  /// Часы работы одной строкой для показа рядом со способом получения.
+  ///
+  /// Пытаемся найти сегодняшний день: ключи бывают `mon`, `пн`, `mon-fri`.
+  /// Не разобрали — показываем первую строку графика как есть: это лучше, чем
+  /// молчать, а гадать за продавца мы не вправе.
+  String? get todayHours {
+    if (schedule.isEmpty) return null;
+
+    const names = <String, int>{
+      'mon': 1, 'пн': 1,
+      'tue': 2, 'вт': 2,
+      'wed': 3, 'ср': 3,
+      'thu': 4, 'чт': 4,
+      'fri': 5, 'пт': 5,
+      'sat': 6, 'сб': 6,
+      'sun': 7, 'вс': 7,
+    };
+
+    final today = DateTime.now().weekday;
+
+    for (final entry in schedule.entries) {
+      final key = entry.key.toLowerCase().replaceAll(' ', '');
+
+      if (entry.value.isEmpty) continue;
+
+      final parts = key.split('-');
+
+      if (parts.length == 2) {
+        final from = names[parts[0]];
+        final to = names[parts[1]];
+
+        if (from != null && to != null && today >= from && today <= to) {
+          return 'Сегодня ${entry.value}';
+        }
+
+        continue;
+      }
+
+      if (names[key] == today) return 'Сегодня ${entry.value}';
+    }
+
+    final first = schedule.entries.firstWhere(
+      (e) => e.value.isNotEmpty,
+      orElse: () => const MapEntry('', ''),
+    );
+
+    if (first.value.isEmpty) return null;
+
+    return '${first.key} ${first.value}'.trim();
   }
 }
 
