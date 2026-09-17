@@ -10,15 +10,24 @@
 // промолчал бы, и оба решили бы, что сломалось приложение. Поэтому код показан
 // крупно и читаемо, а картинка появится, когда появится сам штрих-код.
 
+import 'dart:io';
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 import 'package:lidle/constants.dart';
+import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 
-class YourOrderScreen extends StatelessWidget {
+class YourOrderScreen extends StatefulWidget {
   static const String routeName = '/your-order';
 
   final OrderModel order;
@@ -29,7 +38,115 @@ class YourOrderScreen extends StatelessWidget {
 
   const YourOrderScreen({super.key, required this.order, this.line});
 
+  @override
+  State<YourOrderScreen> createState() => _YourOrderScreenState();
+}
+
+class _YourOrderScreenState extends State<YourOrderScreen> {
+  /// Снимок карточки с кодом: по кнопке «Скачать код» сохраняем именно её.
+  final GlobalKey _codeKey = GlobalKey();
+
+  bool _saving = false;
+
+  OrderModel get order => widget.order;
+  OrderLine? get line => widget.line;
+
   bool get _isPickup => order.deliveryType != 'courier';
+
+  /// Сохранить карточку с кодом в галерею.
+  ///
+  /// Настоящего штрих-кода у нас пока нет, поэтому сохраняем то, что человек и
+  /// показывает продавцу: карточку с кодом. Снимок делаем с самого экрана, а
+  /// не рисуем второй раз: так сохранится ровно то, что человек видит.
+  Future<void> _saveCode() async {
+    if (_saving) return;
+
+    setState(() => _saving = true);
+
+    try {
+      PermissionStatus status;
+
+      if (Platform.isAndroid) {
+        final info = await DeviceInfoPlugin().androidInfo;
+
+        status = info.version.sdkInt >= 33
+            ? await Permission.photos.request()
+            : await Permission.storage.request();
+      } else if (Platform.isIOS) {
+        status = await Permission.photos.request();
+      } else {
+        status = PermissionStatus.granted;
+      }
+
+      if (!status.isGranted) {
+        if (mounted) {
+          SnackBarHelper.showWarning(
+            context,
+            'Нужно разрешение на сохранение файлов',
+          );
+        }
+
+        return;
+      }
+
+      final boundary = _codeKey.currentContext?.findRenderObject()
+          as RenderRepaintBoundary?;
+
+      if (boundary == null) return;
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+
+      if (data == null) return;
+
+      final bytes = data.buffer.asUint8List();
+      final name = 'LIDLE_code_${order.number}.png';
+
+      final temp = await getTemporaryDirectory();
+      final file = File('${temp.path}/$name');
+      await file.writeAsBytes(bytes);
+
+      await _saveToGallery(file, name);
+
+      if (await file.exists()) await file.delete();
+
+      if (mounted) {
+        SnackBarHelper.showSuccess(context, 'Код сохранён в галерею');
+      }
+    } catch (e) {
+      log.d('Код не сохранился: $e');
+
+      if (mounted) {
+        SnackBarHelper.showError(context, 'Не удалось сохранить код');
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Куда класть файл. Путь тот же, что у сохранения QR продавца: два разных
+  /// места означали бы два разных ответа на вопрос «куда сохранилось».
+  Future<void> _saveToGallery(File file, String name) async {
+    if (Platform.isAndroid) {
+      try {
+        final directory = Directory('/storage/emulated/0/DCIM/Camera');
+
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        await file.copy('${directory.path}/$name');
+
+        return;
+      } catch (e) {
+        log.d('DCIM недоступен, кладём в папку приложения: $e');
+      }
+    }
+
+    final documents = await getApplicationDocumentsDirectory();
+
+    await file.copy('${documents.path}/$name');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,9 +169,11 @@ class YourOrderScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _titleRow(context),
-                    const SizedBox(height: 12),
-                    _codeCard(context),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 6),
+                    RepaintBoundary(key: _codeKey, child: _codeCard(context)),
+                    const SizedBox(height: 10),
+                    _downloadButton(),
+                    const SizedBox(height: 16),
                     if (current != null) _itemCard(current),
                     const SizedBox(height: 12),
                     _deliveryCard(),
@@ -148,6 +267,40 @@ class YourOrderScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Кнопка «Скачать код».
+  ///
+  /// В макете она называется «Скачать штрих-код», но штрих-кода у нас пока нет,
+  /// и обещать в подписи то, чего не сохранится, нельзя.
+  Widget _downloadButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: _saving ? null : _saveCode,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 13),
+          side: const BorderSide(color: activeIconColor),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        child: _saving
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Text(
+                'Скачать код',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
@@ -278,23 +431,38 @@ class YourOrderScreen extends StatelessWidget {
               if (hours != null)
                 Text(
                   hours,
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
                 ),
             ],
           ),
           const SizedBox(height: 8),
           if (_isPickup) ...[
+            // Подпись серая, название магазина белое, адрес снова серый: белым
+            // выделено то, что человек ищет глазами на месте.
             if ((shop?.name ?? '').isNotEmpty)
-              Text(
-                'Магазин: «${shop!.name}»',
-                style: const TextStyle(color: textSecondary, fontSize: 14),
+              Text.rich(
+                TextSpan(
+                  children: [
+                    const TextSpan(
+                      text: 'Магазина: ',
+                      style: TextStyle(color: textSecondary, fontSize: 15),
+                    ),
+                    TextSpan(
+                      text: '«${shop!.name}»',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             if ((shop?.address ?? '').isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   shop!.address!,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
                 ),
               ),
           ] else ...[
