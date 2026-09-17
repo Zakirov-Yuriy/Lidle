@@ -168,6 +168,16 @@ class BottomNavigation extends StatelessWidget {
           }
 
           final wasNavigated = _navigateToScreen(context, index);
+
+          // Корзину панель уводит сама и callback не зовёт (17.09.2026).
+          //
+          // Экраны в своих `onItemSelected` для этого пункта шлют событие
+          // «Мои покупки», и оно ложилось ПОВЕРХ уже открытого экрана. У
+          // вошедшего это было незаметно, оба раза открывались покупки, а у
+          // гостя корзина открывалась и тут же скрывалась под покупками.
+          // Отсюда и жалоба: «нажимаю корзину, попадаю в покупки».
+          if (index == 3) return;
+
           // Вызываем callback только если навигация была успешна
           if (wasNavigated) {
             onItemSelected?.call(index);

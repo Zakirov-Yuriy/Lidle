@@ -108,10 +108,23 @@ class NavigationBloc extends Bloc<NavigationEvent, NavigationState> {
   }
 
   /// Обработчик события навигации к Моим покупкам.
+  ///
+  /// Гостя уводим в корзину (17.09.2026). Событие шлют полтора десятка
+  /// экранов из своих нижних панелей, и проверять вход в каждом значило бы
+  /// однажды забыть про один. Правило живёт здесь, в одном месте.
   void _onNavigateToMyPurchases(
     NavigateToMyPurchasesEvent event,
     Emitter<NavigationState> emit,
   ) {
+    final token = TokenService.currentToken;
+
+    if (token == null || token.isEmpty) {
+      emit(const NavigationToCart());
+      _navigateToCart();
+
+      return;
+    }
+
     emit(const NavigationToMyPurchases());
     _navigateToMyPurchases();
   }

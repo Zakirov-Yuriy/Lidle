@@ -13,6 +13,7 @@ import 'package:lidle/pages/full_category_screen/mini_property_filtered_details_
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/add_listing/add_listing_screen.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/profile_dashboard/profile_dashboard.dart';
 import 'package:lidle/pages/full_category_screen/full_category_screen.dart';
@@ -784,6 +785,20 @@ class _RealEstateFilteredScreen extends State<RealEstateFilteredScreen> {
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
       case 3:
+        // Гостю — корзина, вошедшему — покупки (17.09.2026). У этого экрана
+        // своя копия нижней панели, поэтому правило повторено и здесь.
+        final token = TokenService.currentToken;
+
+        if (token == null || token.isEmpty) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const CartScreen(selectAllOnOpen: true),
+            ),
+          );
+
+          break;
+        }
+
         routeName = MyPurchasesScreen.routeName;
         Navigator.of(context).pushReplacementNamed(routeName);
         break;
