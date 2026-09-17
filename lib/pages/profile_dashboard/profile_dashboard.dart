@@ -51,6 +51,7 @@ import 'package:lidle/pages/products/my_orders_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/services/store_menu_service.dart';
 import 'package:lidle/pages/products/your_order_screen.dart';
+import 'package:lidle/pages/products/your_orders_screen.dart';
 import 'package:lidle/models/orders/order_item.dart';
 
 // ============================================================
@@ -391,28 +392,52 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Код получения тут не пишем: он у каждого заказа свой, а покупок в карусели
   /// несколько, и одно число под общей подписью выглядело бы как код на всё
   /// сразу. Сам код человек видит на экране своего заказа.
+  ///
+  /// Полоска нажимается и открывает «Ваши заказы» (17.09.2026): в карусели
+  /// рядом лежат только живые покупки, а за прошлыми человеку нужен полный
+  /// список.
   Widget _buildPurchasesBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: secondaryBackground,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          // Картинка лежит прямо на тёмном фоне полоски, без белой подложки:
-          // штрих-код в макете нарисован белым, и на белой плашке его не было
-          // видно вовсе (17.09.2026).
-          const SizedBox(width: 64, height: 40, child: _BarcodeThumb()),
-          const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Покажите штрих-код продавцу для получения товара',
-              style: TextStyle(color: textSecondary, fontSize: 13),
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const YourOrdersScreen()),
+        );
+
+        // Перечитываем карусель без условий: оттуда можно уйти в заказ и
+        // отказаться от него, и признак об этом пришлось бы протаскивать
+        // через два экрана. Один лишний запрос при возврате дешевле, чем
+        // покупка, от которой человек только что отказался, но которая всё
+        // ещё висит в кабинете.
+        if (mounted) _loadActivePurchases();
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            // Картинка лежит прямо на тёмном фоне полоски, без белой
+            // подложки: штрих-код в макете нарисован белым, и на белой плашке
+            // его не было видно вовсе (17.09.2026).
+            const SizedBox(width: 64, height: 40, child: _BarcodeThumb()),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Покажите штрих-код продавцу для получения товара',
+                style: TextStyle(color: textSecondary, fontSize: 13),
+              ),
             ),
-          ),
-        ],
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: textSecondary,
+              size: 14,
+            ),
+          ],
+        ),
       ),
     );
   }
