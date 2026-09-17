@@ -53,12 +53,20 @@ class StoreAttribute {
   final int id;
   final String title;
   final bool isRange;
+
+  /// Можно ли отметить несколько значений сразу.
+  ///
+  /// У «Размера» и «С принтом» сервер говорит «нет», и панель это соблюдает:
+  /// «да» и «нет» разом бессмысленны.
+  final bool isMultiple;
+
   final List<StoreAttributeValue> values;
 
   const StoreAttribute({
     required this.id,
     required this.title,
     required this.isRange,
+    required this.isMultiple,
     required this.values,
   });
 
@@ -69,6 +77,7 @@ class StoreAttribute {
       id: int.tryParse('${json['id']}') ?? 0,
       title: '${json['title'] ?? ''}'.trim(),
       isRange: json['is_range'] == true,
+      isMultiple: json['is_multiple'] == true,
       values: raw
           .whereType<Map<String, dynamic>>()
           .map(StoreAttributeValue.fromJson)

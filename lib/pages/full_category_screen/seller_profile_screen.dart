@@ -1073,7 +1073,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                       SizedBox(
                         height: _isOwnProfile && !_ownerCardExpanded ? 6 : 25,
                       ),
-                      _buildSearchRow(),
+                      _buildSearchField(),
                       const SizedBox(height: 14),
                       Row(children: [_buildListingsTitle()]),
                       const SizedBox(height: 16),
@@ -2096,78 +2096,66 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _loadSellerProducts();
   }
 
-  /// Поиск и кнопка фильтра в одной строке.
-  Widget _buildSearchRow() {
-    return Row(
-      children: [
-        Expanded(child: _buildSearchField()),
-        const SizedBox(width: 8),
-        _buildFilterButton(),
-      ],
-    );
-  }
-
+  /// Значок фильтра внутри поля поиска, у правого края.
+  ///
+  /// Отдельной кнопкой рядом с полем он выбивался из строки: поиск и фильтр это
+  /// одно действие «найти в этом магазине», и разносить их незачем.
   Widget _buildFilterButton() {
     final count = _filter.count;
 
-    return Material(
-      color: secondaryBackground,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: _filterLoading ? null : _openFilter,
-        child: Container(
-          width: 46,
-          height: 46,
-          alignment: Alignment.center,
-          child: _filterLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    SvgPicture.asset(
-                      settingsIconAsset,
-                      height: 24,
-                      width: 24,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
-                      ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: _filterLoading ? null : _openFilter,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: _filterLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  SvgPicture.asset(
+                    settingsIconAsset,
+                    height: 22,
+                    width: 22,
+                    colorFilter: ColorFilter.mode(
+                      count > 0 ? activeIconColor : Colors.white,
+                      BlendMode.srcIn,
                     ),
-                    // Число выбранных условий: иначе человек, закрывший панель,
-                    // не поймёт, почему витрина короче обычного.
-                    if (count > 0)
-                      Positioned(
-                        top: -6,
-                        right: -8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: activeIconColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          constraints: const BoxConstraints(minWidth: 16),
-                          alignment: Alignment.center,
-                          child: Text(
-                            '$count',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  ),
+                  // Число выбранных условий: иначе человек, закрывший панель,
+                  // не поймёт, почему витрина короче обычного.
+                  if (count > 0)
+                    Positioned(
+                      top: -8,
+                      right: -10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: activeIconColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$count',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                  ],
-                ),
-        ),
+                    ),
+                ],
+              ),
       ),
     );
   }
@@ -2186,17 +2174,36 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         hintText: 'Поиск по магазину',
         hintStyle: const TextStyle(color: textSecondary, fontSize: 15),
         prefixIcon: const Icon(Icons.search, color: textSecondary, size: 20),
+        // Справа в поле два действия: очистить набранное и открыть фильтр.
+        //
         // Крестик слушает само поле, а не состояние экрана: иначе он появлялся
         // бы только после паузы, вместе с запросом на сервер.
-        suffixIcon: ValueListenableBuilder<TextEditingValue>(
-          valueListenable: _searchController,
-          builder: (context, value, _) => value.text.isEmpty
-              ? const SizedBox.shrink()
-              : IconButton(
-                  icon: const Icon(Icons.close, color: textSecondary, size: 20),
-                  onPressed: _clearSearch,
-                  tooltip: 'Очистить',
-                ),
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(right: 10, left: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _searchController,
+                builder: (context, value, _) => value.text.isEmpty
+                    ? const SizedBox.shrink()
+                    : GestureDetector(
+                        onTap: _clearSearch,
+                        behavior: HitTestBehavior.opaque,
+                        child: const Padding(
+                          padding: EdgeInsets.only(right: 10),
+                          child: Icon(
+                            Icons.close,
+                            color: textSecondary,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+              ),
+              _buildFilterButton(),
+            ],
+          ),
         ),
         filled: true,
         fillColor: secondaryBackground,
