@@ -45,12 +45,20 @@ class QrScannerScreen extends StatelessWidget {
                             color: Colors.white),
                         onPressed: () => Navigator.pop(context),
                       ),
-                      const Text(
-                        'Сканировать QR-код',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                      // Заголовок возвращает назад так же, как стрелка. Тут
+                      // стрелка это `IconButton` со своей областью нажатия, и
+                      // переносить её внутрь общей кнопки незачем: достаточно
+                      // повесить то же действие на заголовок.
+                      GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        behavior: HitTestBehavior.opaque,
+                        child: const Text(
+                          'Сканировать QR-код',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
                     ],

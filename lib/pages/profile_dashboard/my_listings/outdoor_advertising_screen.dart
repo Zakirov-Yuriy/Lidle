@@ -92,21 +92,30 @@ class _OutdoorAdvertisingScreenState extends State<OutdoorAdvertisingScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 25),
                     child: Row(
                       children: [
+                        // Стрелка и заголовок это одна кнопка: попасть пальцем
+                        // в иконку шириной 16 точек трудно, а нажимают по
+                        // слову.
                         GestureDetector(
                           onTap: () => Navigator.of(context).pop(),
-                          child: const Icon(
-                            Icons.arrow_back_ios,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                        // const SizedBox(width: 8),
-                        const Text(
-                          'Наружная реклама',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
+                          behavior: HitTestBehavior.opaque,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Icon(
+                                Icons.arrow_back_ios,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'Наружная реклама',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const Spacer(),

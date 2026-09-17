@@ -57,8 +57,15 @@ class SupportScreen extends StatelessWidget {
                             size: 16,
                           ),
                         ),
-                        Text.rich(
-                          TextSpan(children: getSupportTitleSpans()),
+                        // Заголовок возвращает назад так же, как стрелка.
+                        // Нажатие на нём самом, а не на всей строке: справа
+                        // стоит кнопка «Назад».
+                        GestureDetector(
+                          onTap: () => Navigator.pop(context),
+                          behavior: HitTestBehavior.opaque,
+                          child: Text.rich(
+                            TextSpan(children: getSupportTitleSpans()),
+                          ),
                         ),
                         const Spacer(),
                         TextButton(

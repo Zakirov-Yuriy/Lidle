@@ -22,6 +22,7 @@ import 'package:lidle/pages/profile_menu/settings/settings_screen.dart';
 import 'package:lidle/pages/profile_menu/support_service_screen.dart';
 import 'package:lidle/core/cache/screen_cache_manager.dart';
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 
 class ProfileMenuScreen extends StatefulWidget {
   static const routeName = '/profile-menu';
@@ -100,19 +101,42 @@ class _ProfileMenuScreenState extends State<ProfileMenuScreen> {
     }
   }
 
+  /// «Возможности ЛИДЛ» — наша группа во ВКонтакте.
+  ///
+  /// Пробуем по очереди: приложение ВКонтакте, потом браузер. Раньше был
+  /// только первый путь, и если приложения ВК на телефоне нет, нажатие не
+  /// делало ровным счётом ничего: ошибка уходила в журнал, а человек оставался
+  /// смотреть на экран и думать, что кнопка сломана.
+  ///
+  /// Если не вышло ни так, ни так, говорим словами и показываем адрес: пусть
+  /// человек хотя бы знает, куда идти.
   Future<void> _openLidleVkGroup() async {
-    const url = 'https://vk.com/club237395109';
+    final url = Uri.parse('https://vk.com/club237395109');
+
+    // Внешнее приложение, то есть сам ВКонтакте, если он установлен.
+    if (await _launch(url, LaunchMode.externalApplication)) return;
+
+    // Браузер. Отдельной попыткой, а не запасным режимом внутри первой:
+    // некоторые телефоны на первый режим отвечают отказом сразу, не пробуя
+    // ничего открыть.
+    if (await _launch(url, LaunchMode.platformDefault)) return;
+
+    if (!mounted) return;
+
+    SnackBarHelper.showError(
+      context,
+      'Не удалось открыть нашу группу ВКонтакте. Откройте её вручную: '
+      'vk.com/club237395109',
+    );
+  }
+
+  Future<bool> _launch(Uri url, LaunchMode mode) async {
     try {
-      if (await canLaunchUrl(Uri.parse(url))) {
-        await launchUrl(
-          Uri.parse(url),
-          mode: LaunchMode.externalApplication,
-        );
-      } else {
-        log.w('Could not launch $url');
-      }
+      return await launchUrl(url, mode: mode);
     } catch (e) {
-      log.e('Error launching URL: $e');
+      log.w('Не открылась ссылка $url в режиме $mode: $e');
+
+      return false;
     }
   }
 

@@ -84,11 +84,17 @@ class FullRealEstateCommercialPropertyScreen extends StatelessWidget {
                       ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Text(
-                      'Назад',
-                      style: TextStyle(
-                        color: Colors.lightBlueAccent,
-                        fontSize: 16,
+                    // Слово «Назад» рядом со стрелкой тоже возвращает назад:
+                    // раньше нажималась только сама стрелка.
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     const Spacer(),

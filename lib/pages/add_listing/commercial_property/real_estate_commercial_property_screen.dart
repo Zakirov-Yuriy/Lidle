@@ -85,11 +85,18 @@ class RealEstateCommercialPropertyScreen extends StatelessWidget {
                       icon: const Icon(Icons.arrow_back_ios, color: Colors.lightBlueAccent, size: 18),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    const Text(
-                      'Назад',
-                      style: TextStyle(
-                        color: Colors.lightBlueAccent,
-                        fontSize: 16,
+                    // Слово «Назад» рядом со стрелкой тоже возвращает назад.
+                    // До этого нажималась только сама стрелка, и надпись
+                    // выглядела кнопкой, ничего не делая.
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      behavior: HitTestBehavior.opaque,
+                      child: const Text(
+                        'Назад',
+                        style: TextStyle(
+                          color: Colors.lightBlueAccent,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                     const Spacer(),

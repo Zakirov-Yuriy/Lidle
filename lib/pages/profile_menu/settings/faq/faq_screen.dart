@@ -143,24 +143,31 @@ class _FaqScreenState extends State<FaqScreen> {
                       size: 16,
                     ),
                   ),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Вопросы о ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
+                  // Заголовок возвращает назад так же, как стрелка. Он собран
+                  // из кусочков с разным начертанием, поэтому нажатие вешаем
+                  // на него целиком.
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    behavior: HitTestBehavior.opaque,
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          const TextSpan(
+                            text: 'Вопросы о ',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        TextSpan(
-                          children: getAppTitleSpans(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
+                          TextSpan(
+                            children: getAppTitleSpans(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
