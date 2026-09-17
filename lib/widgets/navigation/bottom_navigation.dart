@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
+import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/messages/messages_page.dart';
 import 'package:lidle/pages/home_page.dart';
 import 'package:lidle/pages/favorites_screen.dart';
@@ -360,6 +361,26 @@ class BottomNavigation extends StatelessWidget {
         routeName = CategorySelectionScreen.routeName;
         break;
       case 3:
+        // Гостю — сразу корзина, вошедшему — его покупки (17.09.2026).
+        //
+        // На экране покупок гостю показывать нечего: заказы без учётной записи
+        // к ней и не привязаны, и человек видел пустоту там, где ждал свои
+        // товары. Корзина же у него как раз есть, она работает без входа.
+        //
+        // Корзина открывается своим маршрутом, а не именованным: у экрана
+        // корзины есть параметры, и по имени их не передать. Из-за этого
+        // подсветка в панели на корзине не горит, и это правильно: экран
+        // дочерний, как и остальные, куда мы уходим с панели.
+        if (!isAuthorized) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const CartScreen(selectAllOnOpen: true),
+            ),
+          );
+
+          return true;
+        }
+
         routeName = MyPurchasesScreen.routeName;
         break;
       case 4:
