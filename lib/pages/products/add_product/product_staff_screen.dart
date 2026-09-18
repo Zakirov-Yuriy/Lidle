@@ -47,6 +47,13 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
   /// объекты новые, а выбор человека должен остаться прежним.
   int? _openGroupId;
 
+  /// Раскрыты сотрудники без группы (18.09.2026).
+  ///
+  /// Отдельным значением, а не `null`: `null` здесь означает «групп нет
+  /// вовсе», и различать эти два случая нужно, иначе сотрудник, заведённый
+  /// без группы, пропадает с экрана, как только появилась первая группа.
+  static const int _ungrouped = -1;
+
   bool _isLoading = true;
 
   @override
@@ -67,7 +74,12 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
 
         final ids = fresh.groups.map((group) => group.id).toSet();
 
-        if (_openGroupId == null || !ids.contains(_openGroupId)) {
+        // Выбор «Без группы» держится, пока там кто-то есть: человек ушёл
+        // править сотрудника и вернулся, и экран должен остаться там же.
+        final keepUngrouped =
+            _openGroupId == _ungrouped && fresh.ungrouped.isNotEmpty;
+
+        if (!keepUngrouped && (_openGroupId == null || !ids.contains(_openGroupId))) {
           _openGroupId = fresh.groups.isEmpty ? null : fresh.groups.first.id;
         }
       });
@@ -86,10 +98,22 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
     return null;
   }
 
-  /// Что показывать в содержимом: способы открытой группы, а если групп нет —
-  /// те, что лежат без группы.
-  List<StaffMember> get _visibleMembers =>
-      _openGroup?.members ?? _staff.ungrouped;
+  /// Что показывать в содержимом: сотрудники открытой группы, а если открыта
+  /// плитка «Без группы» или групп нет вовсе — те, что лежат без группы.
+  List<StaffMember> get _visibleMembers {
+    if (_openGroupId == _ungrouped) return _staff.ungrouped;
+
+    return _openGroup?.members ?? _staff.ungrouped;
+  }
+
+  /// Заголовок над карточками: человек должен понимать, что именно он видит.
+  String get _contentTitle {
+    final group = _openGroup;
+
+    if (group != null) return 'Содержимое группы: ${group.name}';
+
+    return _staff.groups.isEmpty ? 'Сотрудники' : 'Сотрудники без группы';
+  }
 
   // ── Группы ──────────────────────────────────────────────────────
 
@@ -182,7 +206,10 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
           publicationId: widget.publication.id,
           categoryId: widget.publication.categoryId,
           groups: _staff.groups,
-          groupId: _openGroupId,
+
+          // Из плитки «Без группы» заводим тоже без группы, а не в первую
+          // попавшуюся: человек смотрит именно на тех, кто вне групп.
+          groupId: _openGroupId == _ungrouped ? null : _openGroupId,
         ),
       ),
     );
@@ -413,7 +440,10 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          group?.name ?? 'Группы пока нет',
+                          group?.name ??
+                              (_openGroupId == _ungrouped
+                                  ? 'Без группы'
+                                  : 'Группы пока нет'),
                           style: TextStyle(
                             color: group == null ? textMuted : textPrimary,
                             fontSize: 15,
@@ -433,9 +463,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
 
               const SizedBox(height: 20),
               Text(
-                group == null
-                    ? 'Сотрудники'
-                    : 'Содержимое группы: ${group.name}',
+                _contentTitle,
                 style: const TextStyle(
                   color: textPrimary,
                   fontSize: 16,
@@ -488,15 +516,26 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
       );
 
   /// Лента групп с обложками и плиткой «плюс».
+  ///
+  /// Если кто-то заведён без группы, перед «плюсом» стоит плитка «Без
+  /// группы» (18.09.2026). До неё такие сотрудники были видны, только пока
+  /// групп не было ни одной: первая же группа закрывала их собой, хотя
+  /// счётчик на форме публикации продолжал их считать.
   Widget _groupsStrip() {
+    final hasLoose = _staff.ungrouped.isNotEmpty;
+    final looseIndex = hasLoose ? _staff.groups.length : -1;
+    final plusIndex = _staff.groups.length + (hasLoose ? 1 : 0);
+
     return SizedBox(
       height: 116,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _staff.groups.length + 1,
+        itemCount: plusIndex + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          if (index == _staff.groups.length) {
+          if (index == looseIndex) return _looseTile();
+
+          if (index == plusIndex) {
             return SizedBox(
               width: 116,
               child: Column(
@@ -588,6 +627,50 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// Плитка «Без группы»: те, кого завели, не выбрав группу.
+  ///
+  /// Обложки у неё нет и быть не может, поэтому значок людей, а не пустая
+  /// рамка: пустая читалась бы как группа без картинки.
+  Widget _looseTile() {
+    final isOpen = _openGroupId == _ungrouped;
+
+    return GestureDetector(
+      onTap: () => setState(() => _openGroupId = _ungrouped),
+      child: SizedBox(
+        width: 116,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: double.infinity,
+              height: 88,
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isOpen ? activeIconColor : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: const Icon(Icons.people_outline,
+                  color: textMuted, size: 24),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Без группы: ${_staff.ungrouped.length}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isOpen ? textPrimary : textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
