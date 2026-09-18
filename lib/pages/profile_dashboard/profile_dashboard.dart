@@ -219,6 +219,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
   /// Код получения при этом один на заказ, и на экране заказа он один и тот же
   /// для всех его товаров.
   List<_PurchaseEntry> _activePurchases = const [];
+
+  /// Сколько покупок человек ещё не получил (18.09.2026).
+  ///
+  /// Считаем ЗАКАЗЫ, а не товары в них: заказ из трёх вещей это одна поездка
+  /// в точку, и тройка в счётчике обещала бы три.
+  int _activePurchasesCount = 0;
   bool _purchasesLoading = false;
 
   /// Сколько отзывов оставили на объявления пользователя — подпись на
@@ -362,6 +368,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       const waiting = {'new', 'accepted', 'ready'};
 
       final entries = <_PurchaseEntry>[];
+      final waitingOrders = <int>{};
 
       for (final order in orders) {
         if (!waiting.contains(order.status)) continue;
@@ -371,6 +378,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
           if (line.status == 'rejected') continue;
 
           entries.add(_PurchaseEntry(order: order, line: line));
+          waitingOrders.add(order.id);
         }
       }
 
@@ -378,6 +386,9 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       setState(() {
         _activePurchases = entries;
+
+        // Для счётчика в строке «Покупки» считаем заказы, а не товары в них.
+        _activePurchasesCount = waitingOrders.length;
         _purchasesLoading = false;
       });
     } catch (e) {
@@ -689,40 +700,26 @@ class _ProfileDashboardState extends State<ProfileDashboard>
 
       if (mounted) setState(() => _isLoadingListings = true);
 
-      // Статусы: 1=Active, 2=Inactive, 3=Moderation, 8=Archived
-      final statuses = [1, 2, 3, 8];
-      var allAdverts = <dynamic>[];
+      // Считаем ТОЛЬКО активные объявления (18.09.2026).
+      //
+      // Раньше счётчик складывал четыре статуса: активные, неактивные, на
+      // модерации и архив, и показывал 201 там, где у человека на витрине
+      // висит заметно меньше. Счётчик в кабинете отвечает на вопрос «сколько
+      // сейчас работает», а не «сколько я завёл за всё время».
+      //
+      // Заодно ушёл обход всех страниц всех статусов: число берём из `meta`
+      // первой страницы, сами объявления для счётчика не нужны. Раньше
+      // кабинет выкачивал по человеку весь его архив ради одной цифры.
+      const activeStatus = 1;
 
-      for (final statusId in statuses) {
-        var pageNum = 1;
-        var hasMorePages = true;
+      final response = await MyAdvertsService.getMyAdverts(
+        token: token,
+        page: 1,
+        statusId: activeStatus,
+      );
 
-        while (hasMorePages) {
-          try {
-            final response = await MyAdvertsService.getMyAdverts(
-              token: token,
-              page: pageNum,
-              statusId: statusId,
-            );
-
-            allAdverts.addAll(response.data);
-
-            final currentPage = response.page ?? 1;
-            final lastPage = response.lastPage ?? 1;
-
-            if (currentPage >= lastPage) {
-              hasMorePages = false;
-            } else {
-              pageNum++;
-            }
-          } catch (e) {
-            hasMorePages = false;
-            break;
-          }
-        }
-      }
-
-      final totalCount = allAdverts.length;
+      final totalCount =
+          response.meta?.total ?? response.total ?? response.data.length;
 
       // Есть объявления — значит, есть и магазин: пункт в нижнем меню должен
       // появиться сразу после первой публикации, а не со следующего запуска.
@@ -1186,8 +1183,13 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   // «я купил» и «у меня купили» дороже, чем
                                   // завести два пункта.
                                   _MenuItem(
+                                    // Сколько покупок ещё не получено
+                                    // (18.09.2026). Полученные не считаем:
+                                    // счётчик отвечает на вопрос «за чем мне
+                                    // ещё идти», а не «сколько я купил».
                                     title: 'Покупки',
-                                    count: 0,
+                                    count: _activePurchasesCount,
+                                    isHighlight: _activePurchasesCount > 0,
                                     trailingChevron: true,
                                     onTap: () => Navigator.of(context).push(
                                       MaterialPageRoute(
