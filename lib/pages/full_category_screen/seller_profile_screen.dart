@@ -1160,20 +1160,24 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         const SizedBox(height: 6),
                         _buildShareCompanySection(),
 
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 2),
                         _buildCallWriteButtons(),
                       ],
 
                       // Со свёрнутой карточкой владельца между кнопкой и
                       // витриной оставался отступ от развёрнутого вида, и
                       // строки висели далеко друг от друга.
+                      // Вдвое меньше, чем было (правка заказчика 18.09.2026):
+                      // между кнопками, поиском и заголовком витрины стояли
+                      // отступы в два-три раза больше, чем между самими
+                      // блоками карточки.
                       SizedBox(
-                        height: _isOwnProfile && !_ownerCardExpanded ? 6 : 25,
+                        height: _isOwnProfile && !_ownerCardExpanded ? 6 : 12,
                       ),
                       _buildSearchField(),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 7),
                       Row(children: [_buildListingsTitle()]),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
 
                       _buildListingsGrid(),
 
@@ -1862,10 +1866,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     return Container(
       width: double.infinity,
 
-      // Ужато 18.09.2026: между заголовком, звёздами и «Все отзывы» было по
-      // полтора десятка точек, и блок из трёх строк занимал треть экрана.
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-      margin: const EdgeInsets.only(bottom: 6),
+      // Ужато 18.09.2026 дважды: между заголовком, звёздами и «Все отзывы»
+      // было по полтора десятка точек, и блок из трёх строк занимал треть
+      // экрана. Теперь отступы держат текст, а не наоборот.
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+      margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(5),
@@ -2044,7 +2049,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     // появляется текст-подсказка. Иконки видны всегда.
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(10),
@@ -2058,7 +2063,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             borderRadius: BorderRadius.circular(10),
             child: Padding(
               // Ужато 18.09.2026, как у остальных секций.
-              padding: const EdgeInsets.fromLTRB(18, 10, 14, 6),
+              padding: const EdgeInsets.fromLTRB(18, 8, 14, 4),
               child: Row(
                 children: [
                   const Text(
@@ -2082,13 +2087,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ),
           // Иконки шаринга — видны всегда (и свёрнуто, и раскрыто).
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 6),
             child: _buildShareIconsRow(),
           ),
           // Кнопка «Поделиться» — открывает экран с QR и информацией о
           // продавце (аналог экрана QR объявления).
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
             child: SizedBox(
               width: double.infinity,
               height: 44,
