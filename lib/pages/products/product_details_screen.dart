@@ -10,6 +10,7 @@ import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/products/product_reviews_screen.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/widgets/dialogs/cart_folder_dialogs.dart';
 import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/services/products_service.dart';
 import 'package:lidle/services/token_service.dart';
@@ -243,11 +244,19 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
 
     // В корзину уходит номер ВАРИАНТА, если он выбран: остаток и цена лежат
     // на нём, и заказ модели означал бы заказ неизвестно чего.
-    final result = await CartService.add(_orderId, quantity: _quantity);
+    final result = await addToCartWithFolder(
+      context,
+      _orderId,
+      quantity: _quantity,
+    );
 
     if (!mounted) return;
 
     setState(() => _isAdding = false);
+
+    // Человек закрыл окно выбора папки: ничего не произошло, и сообщать
+    // ему не о чем.
+    if (result == null) return;
 
     if (!result.isOk) {
       SnackBarHelper.showError(context, result.error!);

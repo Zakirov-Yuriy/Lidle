@@ -6,6 +6,7 @@ import 'package:lidle/models/products/product_item.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/widgets/dialogs/cart_folder_dialogs.dart';
 import 'package:lidle/services/products_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -159,9 +160,10 @@ class _ProductsScreenState extends State<ProductsScreen> {
   }
 
   Future<void> _addToCart(ProductItem product) async {
-    final result = await CartService.add(product.id);
+    // Спрашиваем папку, если у человека их несколько (18.09.2026).
+    final result = await addToCartWithFolder(context, product.id);
 
-    if (!mounted) return;
+    if (!mounted || result == null) return;
 
     if (!result.isOk) {
       SnackBarHelper.showError(context, result.error!);

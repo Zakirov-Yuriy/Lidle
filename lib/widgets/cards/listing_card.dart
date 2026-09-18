@@ -12,6 +12,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lidle/blocs/wishlist/wishlist_bloc.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/cart_service.dart';
+import 'package:lidle/widgets/dialogs/cart_folder_dialogs.dart';
 import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
 
@@ -149,11 +150,13 @@ class _ListingCardState extends State<ListingCard> {
 
     setState(() => _isAdding = true);
 
-    final result = await CartService.add(productId);
+    final result = await addToCartWithFolder(context, productId);
 
     if (!mounted) return;
 
     setState(() => _isAdding = false);
+
+    if (result == null) return;
 
     if (!result.isOk) {
       ScaffoldMessenger.of(context).showSnackBar(

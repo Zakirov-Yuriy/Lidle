@@ -49,6 +49,12 @@ class CartSnapshot {
   /// в одном.
   final CartPaymentNotice payment;
 
+  /// Папки корзины (18.09.2026). Первая всегда основная.
+  ///
+  /// Старый сервер их не присылает — тогда список пуст, и экран показывает
+  /// корзину так же, как показывал до появления папок.
+  final List<CartFolderInfo> folders;
+
   const CartSnapshot({
     required this.shops,
     required this.itemsCount,
@@ -59,6 +65,7 @@ class CartSnapshot {
     this.cartToken,
     this.contacts = const CartContacts(),
     this.payment = const CartPaymentNotice(),
+    this.folders = const [],
   });
 
   factory CartSnapshot.empty() =>
@@ -90,6 +97,12 @@ class CartSnapshot {
       cartToken: data['cart_token']?.toString(),
       contacts: CartContacts.fromJson(data['contacts']),
       payment: CartPaymentNotice.fromJson(data['payment']),
+      folders: data['folders'] is List
+          ? (data['folders'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map(CartFolderInfo.fromJson)
+              .toList()
+          : const [],
     );
   }
 
@@ -380,6 +393,9 @@ class CartLine {
   final bool isWishlisted;
   final int? wishlistId;
 
+  /// В какой папке корзины лежит позиция (18.09.2026). Пусто — в основной.
+  final int? folderId;
+
   const CartLine({
     required this.productId,
     required this.name,
@@ -394,6 +410,7 @@ class CartLine {
     this.unavailableReason,
     this.isWishlisted = false,
     this.wishlistId,
+    this.folderId,
   }) : modelId = modelId ?? productId;
 
   factory CartLine.fromJson(Map<String, dynamic> data) {
@@ -413,8 +430,42 @@ class CartLine {
       unavailableReason: data['unavailable_reason']?.toString(),
       isWishlisted: data['is_wishlisted'] == true,
       wishlistId: CartSnapshot._int(data['wishlist_id']),
+      folderId: CartSnapshot._int(data['folder_id']),
     );
   }
+}
+
+/// Папка корзины (18.09.2026).
+///
+/// Полка, на которую человек откладывает вещи: «к первому сентября», «для
+/// дома». Первой всегда приходит основная, у неё нет номера: на сервере она
+/// не запись, а отсутствие папки у позиции.
+class CartFolderInfo {
+  const CartFolderInfo({
+    required this.id,
+    required this.name,
+    this.isMain = false,
+    this.itemsCount = 0,
+  });
+
+  /// Пусто — основная папка.
+  final int? id;
+
+  final String name;
+  final bool isMain;
+
+  /// Сколько ВЕЩЕЙ в папке, а не штук: в карусели человек спрашивает «сколько
+  /// там лежит», а не «сколько единиц товара».
+  final int itemsCount;
+
+  bool get isEmpty => itemsCount == 0;
+
+  factory CartFolderInfo.fromJson(Map<String, dynamic> data) => CartFolderInfo(
+        id: CartSnapshot._int(data['id']),
+        name: '${data['name'] ?? ''}',
+        isMain: data['is_main'] == true || data['id'] == null,
+        itemsCount: CartSnapshot._int(data['items_count']) ?? 0,
+      );
 }
 
 /// Способ оплаты, который принимает точка.

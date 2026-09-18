@@ -35,6 +35,22 @@ class CartService {
   /// Сколько всего позиций в корзине. Для значка на нижнем меню.
   static final ValueNotifier<int> itemsCount = ValueNotifier<int>(0);
 
+  /// Папки корзины (18.09.2026).
+  ///
+  /// Держим здесь по той же причине, что и состав: диалог выбора папки
+  /// открывается с карточки товара, и спрашивать корзину ради одного списка
+  /// значит заставить человека ждать сеть, чтобы увидеть две строки. Список
+  /// обновляется на КАЖДЫЙ ответ корзины, а она приходит целиком на любое
+  /// действие.
+  static final ValueNotifier<List<CartFolderInfo>> folders =
+      ValueNotifier<List<CartFolderInfo>>(const []);
+
+  /// Есть ли из чего выбирать, кроме основной папки.
+  ///
+  /// Диалог выбора показываем только тогда (решение заказчика 18.09.2026):
+  /// окно с единственным пунктом это лишнее нажатие на пустом месте.
+  static bool get hasFolders => folders.value.length > 1;
+
   /// Сколько штук этого товара лежит в корзине. Ноль — не лежит.
   static int quantityOf(int productId) => quantities.value[productId] ?? 0;
 
@@ -69,6 +85,10 @@ class CartService {
 
     quantities.value = map;
     itemsCount.value = cart.itemsCount;
+
+    // Папки запоминаем только когда сервер их прислал: старый сервер поля не
+    // знает, и пустой список от него стёр бы папки, приехавшие минуту назад.
+    if (cart.folders.isNotEmpty) folders.value = cart.folders;
   }
 
   /// Ответ на любое действие с корзиной: она всегда приходит целиком.
@@ -77,10 +97,19 @@ class CartService {
   /// ответом и гадать, что изменилось.
   static Future<CartResult> show() => _call(() => ApiService.get('/cart'));
 
-  static Future<CartResult> add(int productId, {int quantity = 1}) => _call(
+  static Future<CartResult> add(
+    int productId, {
+    int quantity = 1,
+    int? folderId,
+  }) =>
+      _call(
         () => ApiService.post('/cart/items', {
           'product_id': productId,
           'quantity': quantity,
+
+          // Папку шлём, только когда человек её выбрал: пустое значение
+          // означает основную, и присылать его незачем.
+          if (folderId != null) 'folder_id': folderId,
         }),
       );
 
@@ -95,6 +124,41 @@ class CartService {
       _call(() => ApiService.delete('/cart/items/$productId'));
 
   static Future<CartResult> clear() => _call(() => ApiService.delete('/cart'));
+
+  // ── Папки (18.09.2026) ──────────────────────────────────────────────
+
+  /// Убрать отмеченные позиции одним запросом.
+  ///
+  /// Не десять вызовов `remove` подряд: десять запросов из приложения это
+  /// десять шансов оборваться на середине и оставить полуудалённую корзину.
+  static Future<CartResult> removeMany(Set<int> productIds) => _call(
+        () => ApiService.delete(
+          '/cart/items',
+          body: {'product_ids': productIds.toList()},
+        ),
+      );
+
+  /// Переложить позиции в папку. `folderId: null` — в основную.
+  static Future<CartResult> moveToFolder(
+    Set<int> productIds, {
+    required int? folderId,
+  }) =>
+      _call(
+        () => ApiService.post('/cart/items/move', {
+          'product_ids': productIds.toList(),
+          'folder_id': folderId,
+        }),
+      );
+
+  static Future<CartResult> createFolder(String name) =>
+      _call(() => ApiService.post('/cart/folders', {'name': name}));
+
+  static Future<CartResult> renameFolder(int folderId, String name) =>
+      _call(() => ApiService.put('/cart/folders/$folderId', {'name': name}));
+
+  /// Убрать папку. Товары из неё сервер вернёт в основную, а не удалит.
+  static Future<CartResult> deleteFolder(int folderId) =>
+      _call(() => ApiService.delete('/cart/folders/$folderId'));
 
   /// Достать токен гостевой корзины из хранилища при старте приложения.
   ///

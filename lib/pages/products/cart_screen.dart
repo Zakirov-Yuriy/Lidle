@@ -11,6 +11,7 @@ import 'package:lidle/services/product_favorites_service.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/cart_folder_dialogs.dart';
 
 /// Корзина.
 ///
@@ -64,6 +65,16 @@ class _CartScreenState extends State<CartScreen> {
   /// Начальную отметку ставим один раз. Иначе каждое перечитывание корзины
   /// возвращало бы галочку, которую человек только что снял.
   bool _seeded = false;
+
+  /// Какие папки человек раскрыл или свернул руками (18.09.2026).
+  ///
+  /// По умолчанию пустая папка свёрнута, а непустая раскрыта: пустая полка
+  /// занимает пол-экрана и ничего не сообщает. Здесь лежат только те папки,
+  /// решение по которым человек принял сам, и оно важнее умолчания.
+  final Map<int?, bool> _expanded = <int?, bool>{};
+
+  /// Какая плитка подсвечена в карусели. Пусто — основная.
+  int? _activeFolderId;
 
   @override
   void initState() {
@@ -227,7 +238,7 @@ class _CartScreenState extends State<CartScreen> {
           const Spacer(),
           if (_cart != null && !_cart!.isEmpty)
             GestureDetector(
-              onTap: () => _apply(CartService.clear),
+              onTap: _clearCart,
               child: const Text(
                 'Очистить',
                 style: TextStyle(color: textMuted, fontSize: 14),
@@ -271,9 +282,283 @@ class _CartScreenState extends State<CartScreen> {
             style: TextStyle(color: textSecondary, fontSize: 13),
           ),
         const SizedBox(height: 12),
+
+        // Папки (18.09.2026). Карусель полок, ниже сами полки с товарами.
+        _buildFoldersStrip(cart),
+        const SizedBox(height: 14),
         _buildPickBar(cart),
-        ...cart.shops.map(_buildShopGroup),
+        ..._foldersOf(cart).map((folder) => _buildFolderBlock(cart, folder)),
       ],
+    );
+  }
+
+  // ── Папки (18.09.2026) ──────────────────────────────────────────────
+
+  /// Папки корзины. Старый сервер их не присылает — тогда одна основная.
+  List<CartFolderInfo> _foldersOf(CartSnapshot cart) {
+    if (cart.folders.isNotEmpty) return cart.folders;
+
+    return [
+      CartFolderInfo(
+        id: null,
+        name: 'Основная папка',
+        isMain: true,
+        itemsCount: _productIds().length,
+      ),
+    ];
+  }
+
+  /// Позиции папки вместе с названием точки, из которой они приехали.
+  ///
+  /// Название точки нужно в строке товара: корзина теперь разложена по
+  /// папкам, а не по магазинам, и человек должен видеть, у кого он это берёт.
+  /// Разными заказами товары разных точек от этого быть не перестали.
+  List<_FolderLine> _linesOf(CartSnapshot cart, int? folderId) {
+    final out = <_FolderLine>[];
+
+    for (final shop in cart.shops) {
+      for (final line in shop.items) {
+        if (line.folderId == folderId) {
+          out.add(_FolderLine(line: line, shopName: shop.shopName));
+        }
+      }
+    }
+
+    return out;
+  }
+
+  bool _isExpanded(CartFolderInfo folder, int count) =>
+      _expanded[folder.id] ?? count > 0;
+
+  /// Карусель папок: плитки и «плюс» в конце.
+  Widget _buildFoldersStrip(CartSnapshot cart) {
+    final folders = _foldersOf(cart);
+
+    return SizedBox(
+      height: 112,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: folders.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          if (index == folders.length) return _buildAddFolderTile();
+
+          return _buildFolderTile(cart, folders[index]);
+        },
+      ),
+    );
+  }
+
+  Widget _buildFolderTile(CartSnapshot cart, CartFolderInfo folder) {
+    final isActive = folder.id == _activeFolderId;
+    final count = _linesOf(cart, folder.id).length;
+
+    return GestureDetector(
+      // Нажатие раскрывает эту полку и подсвечивает плитку: человек нажал на
+      // папку, чтобы увидеть, что в ней.
+      onTap: () => setState(() {
+        _activeFolderId = folder.id;
+        _expanded[folder.id] = !_isExpanded(folder, count);
+      }),
+
+      // Удаление долгим нажатием, как у групп товаров в кабинете. Основную
+      // папку удалить нельзя: она не запись, а «всё остальное».
+      onLongPress: folder.isMain ? null : () => _deleteFolder(folder),
+      child: SizedBox(
+        width: 116,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 84,
+                  decoration: BoxDecoration(
+                    color: formBackground,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isActive ? activeIconColor : Colors.transparent,
+                      width: 2,
+                    ),
+                  ),
+                  child: const Icon(Icons.image_not_supported_outlined,
+                      color: textMuted, size: 22),
+                ),
+                if (!folder.isMain)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: GestureDetector(
+                      onTap: () => _renameFolder(folder),
+                      behavior: HitTestBehavior.opaque,
+                      child: const Icon(Icons.edit_outlined,
+                          color: activeIconColor, size: 18),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              folder.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isActive ? Colors.white : textSecondary,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddFolderTile() {
+    return SizedBox(
+      width: 116,
+      child: GestureDetector(
+        onTap: _createFolder,
+        child: Container(
+          height: 84,
+          decoration: BoxDecoration(
+            color: formBackground,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.add_circle_outline,
+              color: textSecondary, size: 24),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _createFolder() async {
+    final name = await showCreateFolderDialog(context);
+
+    if (name == null || !mounted) return;
+
+    await _apply(() => CartService.createFolder(name));
+  }
+
+  Future<void> _renameFolder(CartFolderInfo folder) async {
+    final id = folder.id;
+
+    if (id == null) return;
+
+    final name = await showCreateFolderDialog(
+      context,
+      title: 'Переименовать папку',
+      notice: 'Название увидите только вы',
+      initial: folder.name,
+    );
+
+    if (name == null || !mounted) return;
+
+    await _apply(() => CartService.renameFolder(id, name));
+  }
+
+  Future<void> _deleteFolder(CartFolderInfo folder) async {
+    final id = folder.id;
+
+    if (id == null) return;
+
+    final ok = await showCartConfirmDialog(
+      context,
+      title: 'Удалить папку',
+      notice: 'если вы хотите удалить папку «${folder.name}»',
+      hint: 'Товары из неё вернутся в основную папку, а не удалятся.',
+    );
+
+    if (!ok || !mounted) return;
+
+    await _apply(() => CartService.deleteFolder(id));
+  }
+
+  /// Блок папки: заголовок с галочкой и шевроном, внутри товары.
+  Widget _buildFolderBlock(CartSnapshot cart, CartFolderInfo folder) {
+    final lines = _linesOf(cart, folder.id);
+    final expanded = _isExpanded(folder, lines.length);
+
+    final available = lines
+        .where((row) => row.line.isAvailable)
+        .map((row) => row.line.productId)
+        .toSet();
+
+    final allPicked =
+        available.isNotEmpty && available.every(_picked.contains);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CustomCheckbox(
+                value: allPicked,
+                onChanged: available.isEmpty
+                    ? null
+                    : (_) => setState(() {
+                          if (allPicked) {
+                            _picked.removeAll(available);
+                          } else {
+                            _picked.addAll(available);
+                          }
+                        }),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _activeFolderId = folder.id;
+                    _expanded[folder.id] = !expanded;
+                  }),
+                  behavior: HitTestBehavior.opaque,
+                  child: Text(
+                    folder.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() {
+                  _expanded[folder.id] = !expanded;
+                }),
+                behavior: HitTestBehavior.opaque,
+                child: Icon(
+                  expanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+            ],
+          ),
+          if (expanded) ...[
+            const SizedBox(height: 10),
+            if (lines.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 26),
+                child: Center(
+                  child: Text(
+                    'Папка пуста',
+                    style: TextStyle(color: textMuted, fontSize: 14),
+                  ),
+                ),
+              )
+            else
+              ...lines.map((row) => _buildLine(row.line, shopName: row.shopName)),
+          ],
+        ],
+      ),
     );
   }
 
@@ -303,75 +588,112 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           const Spacer(),
-          Text(
-            _picked.isEmpty ? 'Ничего не выбрано' : 'Выбрано: ${_picked.length}',
-            style: const TextStyle(color: textMuted, fontSize: 13),
+
+          // Перенос и удаление отмеченного (18.09.2026). Ровно там же, где
+          // человек ставил галочки: выбрал несколько вещей — и сразу решил,
+          // что с ними делать.
+          GestureDetector(
+            onTap: () => _moveLines({..._picked}, null),
+            behavior: HitTestBehavior.opaque,
+            child: const Text(
+              'В папку',
+              style: TextStyle(color: activeIconColor, fontSize: 14),
+            ),
+          ),
+          const SizedBox(width: 16),
+          GestureDetector(
+            onTap: _removePicked,
+            behavior: HitTestBehavior.opaque,
+            child: const Text(
+              'Удалить',
+              style: TextStyle(color: Color(0xFFE05B5B), fontSize: 14),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildShopGroup(CartShopGroup group) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: formBackground,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  group.shopName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              Text(
-                _money(group.total),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          if (group.address != null && group.address!.isNotEmpty) ...[
-            const SizedBox(height: 2),
-            Text(
-              group.address!,
-              style: const TextStyle(color: textMuted, fontSize: 13),
-            ),
-          ],
-          if (!group.shopIsActive) ...[
-            const SizedBox(height: 6),
-            const Text(
-              'Точка временно не принимает заказы.',
-              style: TextStyle(color: Color(0xFFE0A63C), fontSize: 13),
-            ),
-          ],
-          if (group.cookingTimeMinutes != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Готовят примерно ${group.cookingTimeMinutes} мин',
-              style: const TextStyle(color: textSecondary, fontSize: 13),
-            ),
-          ],
-          const SizedBox(height: 10),
-          ...group.items.map(_buildLine),
-        ],
-      ),
+  /// Убрать одну позицию, спросив подтверждение (18.09.2026).
+  Future<void> _removeLine(CartLine line) async {
+    final ok = await showCartConfirmDialog(
+      context,
+      title: 'Удаление товара',
+      notice: 'если вы хотите удалить товар из корзины',
+    );
+
+    if (!ok || !mounted) return;
+
+    await _apply(() => CartService.remove(line.productId));
+  }
+
+  /// Убрать отмеченные позиции.
+  Future<void> _removePicked() async {
+    if (_picked.isEmpty) {
+      SnackBarHelper.showWarning(
+        context,
+        'Отметьте галочками то, что хотите убрать.',
+      );
+
+      return;
+    }
+
+    final ok = await showCartConfirmDialog(
+      context,
+      title: 'Удаление товара',
+      notice: 'если вы хотите удалить товары из корзины',
+    );
+
+    if (!ok || !mounted) return;
+
+    final ids = {..._picked};
+
+    await _apply(() => CartService.removeMany(ids));
+
+    if (mounted) setState(() => _picked.removeAll(ids));
+  }
+
+  /// Очистить корзину целиком.
+  Future<void> _clearCart() async {
+    final ok = await showCartConfirmDialog(
+      context,
+      title: 'Очистить корзину',
+      notice: 'если вы хотите очистить корзину',
+    );
+
+    if (!ok || !mounted) return;
+
+    await _apply(CartService.clear);
+
+    if (mounted) setState(_picked.clear);
+  }
+
+  /// Переложить позиции в другую папку.
+  Future<void> _moveLines(Set<int> productIds, int? currentFolderId) async {
+    if (productIds.isEmpty) {
+      SnackBarHelper.showWarning(
+        context,
+        'Отметьте галочками то, что переносите.',
+      );
+
+      return;
+    }
+
+    final folder = await showFolderPicker(
+      context,
+      selectedId: currentFolderId,
+    );
+
+    if (folder == null || !mounted) return;
+
+    await _apply(
+      () => CartService.moveToFolder(productIds, folderId: folder.id),
     );
   }
+
+  // Блок точки продаж убран 18.09.2026: корзина теперь разложена по папкам
+  // человека, а не по магазинам. Название точки переехало в строку товара —
+  // разными заказами товары разных точек от этого быть не перестали.
 
   /// Позиция корзины (переделана 15.09.2026).
   ///
@@ -384,7 +706,7 @@ class _CartScreenState extends State<CartScreen> {
   /// удаление стояло справа от счётчика и читалось как «минус до нуля», то
   /// есть как часть счётчика. Теперь удаление слева, рядом с сердечком: оба
   /// про судьбу позиции, а не про её количество.
-  Widget _buildLine(CartLine line) {
+  Widget _buildLine(CartLine line, {String? shopName}) {
     final picked = _picked.contains(line.productId);
 
     return GestureDetector(
@@ -447,6 +769,23 @@ class _CartScreenState extends State<CartScreen> {
                           height: 1.2,
                         ),
                       ),
+
+                      // Название точки (18.09.2026). Корзина разложена по
+                      // папкам, а не по магазинам, но товары разных точек
+                      // по-прежнему станут разными заказами, и человек
+                      // должен видеть, у кого он берёт эту вещь.
+                      if ((shopName ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          shopName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
 
                       // «красный, 46»: какой именно вариант лежит в корзине.
                       // Две строки «Куртка Nika» по 4900 без подписи выглядят
@@ -558,9 +897,20 @@ class _CartScreenState extends State<CartScreen> {
         _CartFavoriteButton(modelId: line.modelId),
         const SizedBox(width: 14),
         GestureDetector(
-          onTap: () => _apply(() => CartService.remove(line.productId)),
+          onTap: () => _removeLine(line),
           behavior: HitTestBehavior.opaque,
-          child: const Icon(Icons.delete_outline, color: textMuted, size: 22),
+          child: const Icon(Icons.delete_outline,
+              color: Color(0xFFE05B5B), size: 22),
+        ),
+        const SizedBox(width: 14),
+
+        // Переложить вещь на другую полку (18.09.2026). Рядом с удалением:
+        // оба про судьбу позиции, а не про её количество.
+        GestureDetector(
+          onTap: () => _moveLines({line.productId}, line.folderId),
+          behavior: HitTestBehavior.opaque,
+          child: const Icon(Icons.drive_file_move_outline,
+              color: activeIconColor, size: 22),
         ),
         const Spacer(),
         _stepButton(
@@ -619,6 +969,11 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Разбивка по папкам (18.09.2026). Человек отложил вещи на
+            // разные полки, и перед оплатой честно показать, сколько стоит
+            // взятое с каждой, а не одно общее число.
+            ..._buildFolderTotals(full),
+
             Row(
               children: [
                 const Text(
@@ -684,6 +1039,68 @@ class _CartScreenState extends State<CartScreen> {
         ),
       ),
     );
+  }
+
+  /// Строки «папка — сумма отмеченного в ней».
+  ///
+  /// Папки без единой отмеченной вещи не показываем: в итоге их нет, и нули
+  /// под кнопкой оплаты только отвлекают.
+  List<Widget> _buildFolderTotals(CartSnapshot cart) {
+    final rows = <Widget>[];
+
+    for (final folder in _foldersOf(cart)) {
+      var sum = 0.0;
+
+      for (final row in _linesOf(cart, folder.id)) {
+        if (!row.line.isAvailable) continue;
+        if (!_picked.contains(row.line.productId)) continue;
+
+        sum += row.line.sum;
+      }
+
+      if (sum <= 0) continue;
+
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  folder.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+              ),
+              Text(
+                _money(sum),
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Одна папка — разбивать нечего: строка повторила бы итог слово в слово.
+    if (rows.length < 2) return const [];
+
+    return [
+      const Padding(
+        padding: EdgeInsets.only(bottom: 6),
+        child: Text(
+          'Ваша корзина',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      ...rows,
+      const SizedBox(height: 6),
+    ];
   }
 
   /// Что написать на кнопке.
@@ -899,4 +1316,15 @@ class _CartFavoriteButton extends StatelessWidget {
       },
     );
   }
+}
+
+/// Позиция корзины вместе с названием точки, из которой она приехала.
+///
+/// Отдельным типом, а не парой: пара из строки и товара в коде экрана
+/// читается как «что здесь первое», и один раз их обязательно перепутают.
+class _FolderLine {
+  const _FolderLine({required this.line, required this.shopName});
+
+  final CartLine line;
+  final String shopName;
 }
