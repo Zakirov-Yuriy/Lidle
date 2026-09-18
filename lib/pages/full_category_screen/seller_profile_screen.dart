@@ -1148,16 +1148,19 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         const SizedBox(height: 0),
                         _buildSellerInfo(),
 
-                        const SizedBox(height: 20),
+                        // Блоки прижаты друг к другу (правка заказчика
+                        // 18.09.2026): на экране было больше воздуха, чем
+                        // содержимого, и витрина продавца начиналась почти за
+                        // краем экрана.
+                        const SizedBox(height: 12),
                         _buildInfoSection(),
 
-                        const SizedBox(height: 0),
                         _buildRateSeller(),
 
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 6),
                         _buildShareCompanySection(),
 
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 6),
                         _buildCallWriteButtons(),
                       ],
 
@@ -1540,7 +1543,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }) {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(10),
@@ -1553,7 +1556,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             onTap: showFillHint ? onFillTap : onToggle,
             borderRadius: BorderRadius.circular(10),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              // Отступы шапки ужаты (правка заказчика 18.09.2026): свёрнутая
+              // секция это одна строка, а занимала она высоту с кнопку.
+              padding: const EdgeInsets.fromLTRB(18, 10, 14, 10),
               child: Row(
                 children: [
                   // Необязательная иконка слева от заголовка секции.
@@ -1605,7 +1610,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           // Раскрытие доступно только для заполненных секций.
           if (expanded && !showFillHint)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+              padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
               child: SizedBox(width: double.infinity, child: child),
             ),
         ],
@@ -1856,7 +1861,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   Widget _buildRateSeller() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+
+      // Ужато 18.09.2026: между заголовком, звёздами и «Все отзывы» было по
+      // полтора десятка точек, и блок из трёх строк занимал треть экрана.
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(5),
@@ -1913,6 +1922,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           // ),
           // const SizedBox(height: 6),
 
+          const SizedBox(height: 2),
           Row(
             children: List.generate(
               5,
@@ -1923,14 +1933,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 child: Icon(
                   Icons.star,
                   color: index < selectedStars ? Colors.amber : Colors.grey,
-                  size: 32,
+                  size: 28,
                 ),
               ),
             ),
           ),
           // Ссылка «Все отзывы» → экран со списком отзывов компании (продавца).
           if (_companyIdForReviews != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 2),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
@@ -2034,7 +2044,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     // появляется текст-подсказка. Иконки видны всегда.
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 6),
       decoration: BoxDecoration(
         color: secondaryBackground,
         borderRadius: BorderRadius.circular(10),
@@ -2047,7 +2057,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             onTap: () => setState(() => _shareExpanded = !_shareExpanded),
             borderRadius: BorderRadius.circular(10),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              // Ужато 18.09.2026, как у остальных секций.
+              padding: const EdgeInsets.fromLTRB(18, 10, 14, 6),
               child: Row(
                 children: [
                   const Text(
@@ -2071,16 +2082,16 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           ),
           // Иконки шаринга — видны всегда (и свёрнуто, и раскрыто).
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 8),
             child: _buildShareIconsRow(),
           ),
           // Кнопка «Поделиться» — открывает экран с QR и информацией о
           // продавце (аналог экрана QR объявления).
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 10),
             child: SizedBox(
               width: double.infinity,
-              height: 47,
+              height: 44,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: activeIconColor,
