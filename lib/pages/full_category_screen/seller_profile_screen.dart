@@ -169,6 +169,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   String? _description; // поле description (профильное about)
   String? _addressText; // собранная строка регион/город
   String? _registrationDate; // дата регистрации (created_at, формат дд.мм.гггг)
+
+  /// Средний чек продавца (18.09.2026).
+  ///
+  /// Считает сервер по ВЫДАННЫМ заказам: обещанное и полученное это разные
+  /// вещи, а средний чек должен говорить о втором. Пусто — выданных заказов
+  /// ещё не было, и тогда строки на экране нет вовсе: «Средний чек: 0 ₽»
+  /// читается как «тут всё даром», а не как «продаж пока не было».
+  String? _averageBill;
   bool _isWishlisted = false; // подписан ли текущий пользователь
   int? _wishlistId; // id записи избранного (для отписки)
   bool _subscribing = false; // идёт запрос подписки/отписки
@@ -310,6 +318,28 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   }
 
   /// Безопасное приведение к int (для wishlist_id, приходящего как num).
+  /// Сумма так, как её читают: «1 200 ₽». Пусто — сервер не прислал числа
+  /// или прислал ноль, и показывать тут нечего.
+  ///
+  /// Разряды разделяем пробелами: «12000» без них приходится пересчитывать
+  /// глазами, а строка нужна для беглого взгляда.
+  String? _money(dynamic value) {
+    final number = value is num ? value : num.tryParse('${value ?? ''}');
+
+    if (number == null || number <= 0) return null;
+
+    final digits = number.round().toString();
+    final buffer = StringBuffer();
+
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(' ');
+
+      buffer.write(digits[i]);
+    }
+
+    return '$buffer ₽';
+  }
+
   int? _asInt(dynamic v) {
     if (v is int) return v;
     if (v is num) return v.toInt();
@@ -398,6 +428,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _description = m['description'] as String?;
     _addressText = m['addressText'] as String?;
     _registrationDate = m['registrationDate'] as String?;
+    _averageBill = m['averageBill'] as String?;
     _isWishlisted = m['isWishlisted'] == true;
     _wishlistId = _asInt(m['wishlistId']);
     _phones = List<String>.from((m['phones'] as List?) ?? const []);
@@ -444,6 +475,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'description': _description,
         'addressText': _addressText,
         'registrationDate': _registrationDate,
+        'averageBill': _averageBill,
         'isWishlisted': _isWishlisted,
         'wishlistId': _wishlistId,
         'phones': _phones,
@@ -504,6 +536,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       final companyName = (nameRaw is String && nameRaw.trim().isNotEmpty)
           ? nameRaw.trim()
           : null;
+
+      final bill = _money(companyData['average_bill']);
 
       final aboutRaw = companyData['about'];
       final desc = (aboutRaw is String && aboutRaw.trim().isNotEmpty)
@@ -575,6 +609,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _description = desc;
         _addressText = addr;
         _registrationDate = registrationDate;
+        _averageBill = bill;
         _isWishlisted = isWishlisted;
         _wishlistId = wishlistId;
         _phones = phones;
@@ -1341,6 +1376,20 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                   ),
                   const SizedBox(height: 4),
                   _buildRegistrationRow(),
+
+                  // Средний чек (18.09.2026). Стоит рядом с оценкой: и то и
+                  // другое отвечает на один вопрос, чего ждать от продавца.
+                  if (_averageBill != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Средний чек: ${_averageBill!}',
+                      style: const TextStyle(
+                        color: textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 6),
                   const Text(
                     "Проверенный продавец",

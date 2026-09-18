@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_receipt_screen.dart';
 import 'package:lidle/services/orders_service.dart';
@@ -94,7 +95,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                       const SizedBox(height: 10),
                       _deliveryCard(),
                       const SizedBox(height: 10),
-                      _shopCard(),
+                      _shopCard(context),
                       if (!_isPickup) ...[
                         const SizedBox(height: 10),
                         _courierCard(context),
@@ -234,40 +235,80 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     );
   }
 
-  Widget _shopCard() {
+  /// Магазин заказа. Нажатие открывает страницу продавца (18.09.2026).
+  ///
+  /// Страница знает ЧЕЛОВЕКА, а не точку, поэтому нужен её владелец. Старый
+  /// сервер его в заказе не присылает, и тогда блок не нажимается: лучше так,
+  /// чем пустой экран после нажатия.
+  Widget _shopCard(BuildContext context) {
     final shop = order.shop;
 
     if (shop == null) return const SizedBox.shrink();
 
+    final userId = shop.userId;
+
+    void open() {
+      if (userId == null) return;
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SellerProfileScreen(
+            sellerName: shop.name,
+            sellerAvatar:
+                const AssetImage('assets/profile_dashboard/default-photo.svg'),
+            sellerAvatarUrl: shop.image,
+            userId: '$userId',
+          ),
+        ),
+      );
+    }
+
     return _card(
       title: 'Магазин',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (shop.name.isNotEmpty)
-            Text.rich(
-              TextSpan(
+      child: GestureDetector(
+        onTap: userId == null ? null : open,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (shop.name.isNotEmpty)
+              Row(
                 children: [
-                  const TextSpan(
-                    text: 'Магазина: ',
-                    style: TextStyle(color: textSecondary, fontSize: 15),
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          const TextSpan(
+                            text: 'Магазина: ',
+                            style: TextStyle(color: textSecondary, fontSize: 15),
+                          ),
+                          TextSpan(
+                            text: '«${shop.name}»',
+                            style:
+                                const TextStyle(color: Colors.white, fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  TextSpan(
-                    text: '«${shop.name}»',
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
-                  ),
+                  if (userId != null)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 2),
+                      child: Icon(Icons.chevron_right,
+                          color: activeIconColor, size: 18),
+                    ),
                 ],
               ),
-            ),
-          if ((shop.address ?? '').isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                shop.address!,
-                style: const TextStyle(color: textSecondary, fontSize: 14),
+            if ((shop.address ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  shop.address!,
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

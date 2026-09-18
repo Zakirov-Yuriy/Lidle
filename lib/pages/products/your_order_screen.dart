@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_details_screen.dart';
 import 'package:lidle/pages/products/order_questions_screen.dart';
@@ -467,6 +468,33 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
     );
   }
 
+  /// Есть ли куда переходить по блоку магазина.
+  ///
+  /// Страница продавца знает ЧЕЛОВЕКА, а не точку, поэтому нужен владелец.
+  /// Старый сервер его в заказе не присылает, и тогда блок просто не
+  /// нажимается: лучше так, чем пустой экран после нажатия.
+  bool get _canOpenShop => order.shop?.userId != null;
+
+  /// Открыть магазин заказа: та же страница продавца, что из карточки товара.
+  void _openShop() {
+    final shop = order.shop;
+    final userId = shop?.userId;
+
+    if (shop == null || userId == null) return;
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SellerProfileScreen(
+          sellerName: shop.name,
+          sellerAvatar:
+              const AssetImage('assets/profile_dashboard/default-photo.svg'),
+          sellerAvatarUrl: shop.image,
+          userId: '$userId',
+        ),
+      ),
+    );
+  }
+
   Widget _deliveryCard() {
     final shop = order.shop;
     final hours = shop?.todayHours;
@@ -502,40 +530,66 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
           ),
           const SizedBox(height: 8),
           if (_isPickup) ...[
-            // Подпись серая, название магазина белое, адрес снова серый: белым
-            // выделено то, что человек ищет глазами на месте.
-            if ((shop?.name ?? '').isNotEmpty)
-              Text.rich(
-                TextSpan(
-                  children: [
-                    const TextSpan(
-                      text: 'Магазина: ',
-                      style: TextStyle(color: textSecondary, fontSize: 15),
+            // Самовывоз: магазин здесь и есть место получения, поэтому весь
+            // блок ведёт на страницу продавца (правка заказчика 18.09.2026).
+            GestureDetector(
+              onTap: _canOpenShop ? _openShop : null,
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Подпись серая, название магазина белое, адрес снова серый:
+                  // белым выделено то, что человек ищет глазами на месте.
+                  if ((shop?.name ?? '').isNotEmpty)
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                const TextSpan(
+                                  text: 'Магазина: ',
+                                  style: TextStyle(
+                                      color: textSecondary, fontSize: 15),
+                                ),
+                                TextSpan(
+                                  text: '«${shop!.name}»',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (_canOpenShop)
+                          const Padding(
+                            padding: EdgeInsets.only(left: 2),
+                            child: Icon(Icons.chevron_right,
+                                color: activeIconColor, size: 18),
+                          ),
+                      ],
                     ),
-                    TextSpan(
-                      text: '«${shop!.name}»',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
+                  if ((shop?.address ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        shop!.address!,
+                        style: const TextStyle(
+                            color: textSecondary, fontSize: 14),
                       ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            if ((shop?.address ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  shop!.address!,
-                  style: const TextStyle(color: textSecondary, fontSize: 14),
-                ),
-              ),
+            ),
           ] else ...[
             // Курьерская доставка (18.09.2026): кто везёт, откуда забирает и
             // куда привезёт. Порядок с макета: сначала человек, потом места.
             _courierRow(),
             _placeBlock(
               title: 'Место забора',
+              onTap: _canOpenShop ? _openShop : null,
               lines: [
                 if ((shop?.name ?? '') .isNotEmpty)
                   _PlaceLine('Магазина: «${shop!.name}»', white: false),
@@ -736,21 +790,44 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
   /// Карты в макете есть, но картографии в приложении нет вовсе, ни одного
   /// пакета. Ставить картинку вместо карты нельзя: человек будет её тянуть и
   /// решит, что приложение зависло.
-  Widget _placeBlock({required String title, required List<_PlaceLine> lines}) {
+  Widget _placeBlock({
+    required String title,
+    required List<_PlaceLine> lines,
+    VoidCallback? onTap,
+  }) {
     if (lines.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Column(
+      child: GestureDetector(
+        onTap: onTap,
+
+        // Прозрачные места блока тоже нажимаются: человек целится в блок, а
+        // не в буквы.
+        behavior: HitTestBehavior.opaque,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+
+              // Стрелка только там, где есть куда перейти: без неё блок
+              // выглядит одинаково и когда он нажимается, и когда нет.
+              if (onTap != null)
+                const Padding(
+                  padding: EdgeInsets.only(left: 2),
+                  child: Icon(Icons.chevron_right,
+                      color: activeIconColor, size: 18),
+                ),
+            ],
           ),
           const SizedBox(height: 4),
           for (final line in lines)
@@ -765,6 +842,7 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
               ),
             ),
         ],
+        ),
       ),
     );
   }
