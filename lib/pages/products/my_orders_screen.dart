@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/dialogs/product_review_dialog.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/products/your_order_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -264,6 +265,36 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   }
 
   Widget _buildOrder(OrderModel order) {
+    // Карточка своей покупки открывает «Ваш заказ» (18.09.2026).
+    //
+    // Раньше она никуда не вела, и после выдачи заказ становился недоступен
+    // совсем: из карусели живых покупок он уходит, а здесь открыть его было
+    // нечем. Вместе с ним терялась и оценка курьера, которую можно поставить
+    // как раз только после получения. Нашли на тесте доставки.
+    //
+    // Заказы ко мне не трогаем: продавец ведёт их своим экраном принятия, и
+    // покупательский вид ему там не нужен.
+    if (!_incoming) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => YourOrderScreen(order: order)),
+          );
+
+          // Там могли отказаться от заказа или оценить курьера: перечитываем
+          // список, чтобы он не расходился с тем, что человек только что
+          // сделал.
+          if (mounted) _load();
+        },
+        child: _orderCardBody(order),
+      );
+    }
+
+    return _orderCardBody(order);
+  }
+
+  Widget _orderCardBody(OrderModel order) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
