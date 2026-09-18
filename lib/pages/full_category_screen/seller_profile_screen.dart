@@ -89,7 +89,12 @@ class SellerProfileScreen extends StatefulWidget {
 }
 
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
-  int selectedStars = 5;
+  /// Сколько звёзд горит в блоке «Оставить оценку продавцу».
+  ///
+  /// Ноль, а не пять (18.09.2026): это МОЯ оценка, и пока я её не поставил,
+  /// гореть нечему. Раньше здесь всегда светились пять звёзд, и человек,
+  /// ничего не оценивавший, видел свою несуществующую пятёрку.
+  int selectedStars = 0;
   int _selectedIndex = 0;
 
   /// Поиск по витрине продавца (17.09.2026).
@@ -177,6 +182,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// ещё не было, и тогда строки на экране нет вовсе: «Средний чек: 0 ₽»
   /// читается как «тут всё даром», а не как «продаж пока не было».
   String? _averageBill;
+
+  /// Оценка продавца и число публичных отзывов (18.09.2026).
+  ///
+  /// До этого дня рядом с датой регистрации стояла зашитая в код пятёрка: она
+  /// не менялась ни у кого и ничего не значила. Считает оценку сервер, по тем
+  /// же отзывам, что показывает список «Все отзывы», иначе строка и список
+  /// разошлись бы в числах.
+  double? _sellerRating;
+  int _sellerReviewsCount = 0;
   bool _isWishlisted = false; // подписан ли текущий пользователь
   int? _wishlistId; // id записи избранного (для отписки)
   bool _subscribing = false; // идёт запрос подписки/отписки
@@ -429,6 +443,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _addressText = m['addressText'] as String?;
     _registrationDate = m['registrationDate'] as String?;
     _averageBill = m['averageBill'] as String?;
+    _sellerRating = (m['sellerRating'] as num?)?.toDouble();
+    _sellerReviewsCount = _asInt(m['sellerReviewsCount']) ?? 0;
+    selectedStars = _asInt(m['myRating']) ?? 0;
     _isWishlisted = m['isWishlisted'] == true;
     _wishlistId = _asInt(m['wishlistId']);
     _phones = List<String>.from((m['phones'] as List?) ?? const []);
@@ -476,6 +493,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'addressText': _addressText,
         'registrationDate': _registrationDate,
         'averageBill': _averageBill,
+        'sellerRating': _sellerRating,
+        'sellerReviewsCount': _sellerReviewsCount,
+        'myRating': selectedStars,
         'isWishlisted': _isWishlisted,
         'wishlistId': _wishlistId,
         'phones': _phones,
@@ -538,6 +558,19 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           : null;
 
       final bill = _money(companyData['average_bill']);
+
+      // Оценка продавца и число отзывов (18.09.2026). Считает сервер.
+      final ratingRaw = companyData['rating'];
+      final rating = ratingRaw is num
+          ? ratingRaw.toDouble()
+          : double.tryParse('${ratingRaw ?? ''}');
+      final reviewsCount = _asInt(companyData['reviews_count']) ?? 0;
+
+      // Моя собственная оценка этому продавцу: ею зажигаются звёзды в блоке
+      // «Оставить оценку». Нет отзыва — ноль, и ни одна звезда не горит.
+      final mine = companyData['my_review'];
+      final myRating =
+          mine is Map ? (_asInt(mine['rating']) ?? 0) : 0;
 
       final aboutRaw = companyData['about'];
       final desc = (aboutRaw is String && aboutRaw.trim().isNotEmpty)
@@ -610,6 +643,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _addressText = addr;
         _registrationDate = registrationDate;
         _averageBill = bill;
+        _sellerRating = rating;
+        _sellerReviewsCount = reviewsCount;
+        selectedStars = myRating;
         _isWishlisted = isWishlisted;
         _wishlistId = wishlistId;
         _phones = phones;
@@ -1251,9 +1287,18 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     const double fs = 13; // размер остального текста
     final date = _registrationDate ?? widget.sellerRegistrationDate ?? '';
 
-    // Фиксированный «хвост»: «Оценка: ⭐ 5» + отступ.
-    const ratingText = 'Оценка: ';
-    const ratingValue = ' 5';
+    // «Хвост» строки: «Оценка: ⭐ 4.8 (12)» или «Оценок пока нет».
+    //
+    // Число приходит с сервера (18.09.2026). Раньше здесь стояла зашитая
+    // пятёрка, одинаковая у всех: строка выглядела как оценка, а оценкой не
+    // была. Пока отзывов нет, честнее сказать об этом словами, чем показать
+    // ноль звёзд, который читается как «плохой продавец».
+    final hasRating = _sellerReviewsCount > 0 && _sellerRating != null;
+
+    final ratingText = hasRating ? 'Оценка: ' : 'Оценок пока нет';
+    final ratingValue = hasRating
+        ? ' ${_sellerRating!.toStringAsFixed(1)} ($_sellerReviewsCount)'
+        : '';
     const double starSize = 16;
     const double gap = 10;
 
@@ -1282,17 +1327,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Доступная ширина = вся ширина строки минус фиксированный «хвост».
-        final tailWidth = _measureSpanWidth(const [
+        final tailWidth = _measureSpanWidth([
               TextSpan(
                 text: ratingText,
-                style: TextStyle(color: textSecondary, fontSize: fs),
+                style: const TextStyle(color: textSecondary, fontSize: fs),
               ),
               TextSpan(
                 text: ratingValue,
-                style: TextStyle(color: textPrimary, fontSize: fs),
+                style: const TextStyle(color: textPrimary, fontSize: fs),
               ),
             ]) +
-            starSize +
+            (hasRating ? starSize : 0) +
             gap +
             2; // небольшой запас
         final available = constraints.maxWidth - tailWidth;
@@ -1329,15 +1374,17 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
               ),
             ),
             const SizedBox(width: gap),
-            const Text(
+            Text(
               ratingText,
-              style: TextStyle(color: textSecondary, fontSize: fs),
+              style: const TextStyle(color: textSecondary, fontSize: fs),
             ),
-            const Icon(Icons.star, color: Colors.amber, size: starSize),
-            const Text(
-              ratingValue,
-              style: TextStyle(color: textPrimary, fontSize: fs),
-            ),
+            if (hasRating) ...[
+              const Icon(Icons.star, color: Colors.amber, size: starSize),
+              Text(
+                ratingValue,
+                style: const TextStyle(color: textPrimary, fontSize: fs),
+              ),
+            ],
           ],
         );
       },
@@ -1794,10 +1841,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
-                  "Оставить оценку продавцу",
-                  style: TextStyle(
+                  selectedStars > 0
+                      ? "Изменить оценку продавцу"
+                      : "Оставить оценку продавцу",
+                  style: const TextStyle(
                     color: textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -1931,6 +1980,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
 
     if (!mounted || sent != true) return;
+
+    // Перечитываем профиль: оценка продавца теперь другая, и строка вверху
+    // должна показать новое среднее, а не то, с которым экран открыли
+    // (18.09.2026).
+    _loadSellerProfile();
 
     // Открываем список отзывов, чтобы пользователь сразу увидел свой отзыв.
     Navigator.push(
