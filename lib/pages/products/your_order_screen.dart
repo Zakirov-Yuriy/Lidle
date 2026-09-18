@@ -590,51 +590,67 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          InkWell(
-            onTap: () => _openCourier(),
-            child: Row(
-              children: [
-                _courierAvatar(man?.image, name),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if ((man?.position ?? '').isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            man!.position!,
+          // Шапка курьера собрана так же, как на его экране (правка заказчика
+          // 18.09.2026): фото слева, а справа от него одним столбцом имя,
+          // должность и рейтинг. Один и тот же человек должен выглядеть
+          // одинаково в обоих местах.
+          //
+          // Имя с должностью открывают экран курьера, а звёзды остаются
+          // отдельной кнопкой, поэтому нажатие на них не ведёт на экран.
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                onTap: () => _openCourier(),
+                child: _courierAvatar(man?.image, name),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () => _openCourier(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
                             style: const TextStyle(
-                              color: textSecondary,
-                              fontSize: 13,
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
+                          if ((man?.position ?? '').isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                man!.position!,
+                                style: const TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: courierRatingRow(
+                        context,
+                        order: order,
+                        onChanged: _reloadOrder,
+                        size: 22,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          // Рейтинг курьера над кнопками, как на его экране (правка
-          // заказчика 18.09.2026). Звёзды и показывают оценку, и открывают
-          // её: нажал на третью, диалог откроется с тремя.
-          const SizedBox(height: 10),
-          courierRatingRow(
-            context,
-            order: order,
-            onChanged: _reloadOrder,
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -693,17 +709,17 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
             letter.toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
             ),
           ),
         );
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(32),
       child: SizedBox(
-        width: 48,
-        height: 48,
+        width: 64,
+        height: 64,
         child: (image ?? '').isEmpty
             ? fallback()
             : Image.network(

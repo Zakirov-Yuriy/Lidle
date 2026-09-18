@@ -310,25 +310,25 @@ Widget courierRatingRow(
     if (saved == true) await onChanged();
   }
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
+  // Подпись, оценка и звёзды стоят одной строкой (правка заказчика
+  // 18.09.2026). Wrap, а не Row: на узком экране или при крупных звёздах
+  // строка перенесётся, а не упрётся в край с жёлтой полосой переполнения.
+  return Wrap(
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: 8,
+    runSpacing: 4,
     children: [
-      Row(
-        children: [
-          const Text(
-            'Рейтинг',
-            style: TextStyle(color: textSecondary, fontSize: 13),
-          ),
-          const SizedBox(width: 8),
-          if ((courier?.reviewsCount ?? 0) > 0)
-            Text(
-              value.toStringAsFixed(1),
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-            ),
-        ],
+      const Text(
+        'Рейтинг',
+        style: TextStyle(color: textSecondary, fontSize: 13),
       ),
-      const SizedBox(height: 2),
+      if ((courier?.reviewsCount ?? 0) > 0)
+        Text(
+          value.toStringAsFixed(1),
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
       Row(
+        mainAxisSize: MainAxisSize.min,
         children: List.generate(5, (index) {
           final stars = index + 1;
 
