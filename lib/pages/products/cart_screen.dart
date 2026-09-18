@@ -201,7 +201,10 @@ class _CartScreenState extends State<CartScreen> {
                   ? const Center(
                       child: CircularProgressIndicator(color: activeIconColor),
                     )
-                  : (cart == null || cart.isEmpty)
+                  // Пустой считаем корзину без товаров И без папок: если
+                  // человек завёл полку, а вещи с неё разобрал, он должен
+                  // видеть свою полку, а не «Корзина пуста».
+                  : (cart == null || (cart.isEmpty && cart.folders.isEmpty))
                       ? _buildEmpty()
                       : _buildList(cart),
             ),
@@ -283,30 +286,29 @@ class _CartScreenState extends State<CartScreen> {
           ),
         const SizedBox(height: 12),
 
-        // Папки (18.09.2026). Карусель полок, ниже сами полки с товарами.
+        // Папки (18.09.2026). Карусель полок, под ней товары без папки
+        // обычным списком, ниже сами полки.
         _buildFoldersStrip(cart),
         const SizedBox(height: 14),
         _buildPickBar(cart),
-        ..._foldersOf(cart).map((folder) => _buildFolderBlock(cart, folder)),
+        ..._buildLooseLines(cart),
+        ...cart.folders.map((folder) => _buildFolderBlock(cart, folder)),
       ],
     );
   }
 
-  // ── Папки (18.09.2026) ──────────────────────────────────────────────
-
-  /// Папки корзины. Старый сервер их не присылает — тогда одна основная.
-  List<CartFolderInfo> _foldersOf(CartSnapshot cart) {
-    if (cart.folders.isNotEmpty) return cart.folders;
-
-    return [
-      CartFolderInfo(
-        id: null,
-        name: 'Основная папка',
-        isMain: true,
-        itemsCount: _productIds().length,
-      ),
-    ];
+  /// Товары, не разложенные по папкам.
+  ///
+  /// Показываем их просто списком, без заголовка и без своей полки (правка
+  /// заказчика 18.09.2026): «основной папки» не существует, и придумывать ей
+  /// название значит показать человеку полку, которую он не заводил.
+  List<Widget> _buildLooseLines(CartSnapshot cart) {
+    return _linesOf(cart, null)
+        .map((row) => _buildLine(row.line, shopName: row.shopName))
+        .toList();
   }
+
+  // ── Папки (18.09.2026) ──────────────────────────────────────────────
 
   /// Позиции папки вместе с названием точки, из которой они приехали.
   ///
@@ -331,11 +333,14 @@ class _CartScreenState extends State<CartScreen> {
       _expanded[folder.id] ?? count > 0;
 
   /// Карусель папок: плитки и «плюс» в конце.
+  ///
+  /// Пока папок нет, в ней стоит один «плюс»: место, где их заводят, должно
+  /// быть видно и тому, кто про папки ещё не знает.
   Widget _buildFoldersStrip(CartSnapshot cart) {
-    final folders = _foldersOf(cart);
+    final folders = cart.folders;
 
     return SizedBox(
-      height: 112,
+      height: 116,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: folders.length + 1,
@@ -361,9 +366,8 @@ class _CartScreenState extends State<CartScreen> {
         _expanded[folder.id] = !_isExpanded(folder, count);
       }),
 
-      // Удаление долгим нажатием, как у групп товаров в кабинете. Основную
-      // папку удалить нельзя: она не запись, а «всё остальное».
-      onLongPress: folder.isMain ? null : () => _deleteFolder(folder),
+      // Удаление долгим нажатием, как у групп товаров в кабинете.
+      onLongPress: () => _deleteFolder(folder),
       child: SizedBox(
         width: 116,
         child: Column(
@@ -385,27 +389,31 @@ class _CartScreenState extends State<CartScreen> {
                   child: const Icon(Icons.image_not_supported_outlined,
                       color: textMuted, size: 22),
                 ),
-                if (!folder.isMain)
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: GestureDetector(
-                      onTap: () => _renameFolder(folder),
-                      behavior: HitTestBehavior.opaque,
-                      child: const Icon(Icons.edit_outlined,
-                          color: activeIconColor, size: 18),
-                    ),
+                Positioned(
+                  right: 6,
+                  top: 6,
+                  child: GestureDetector(
+                    onTap: () => _renameFolder(folder),
+                    behavior: HitTestBehavior.opaque,
+                    child: const Icon(Icons.edit_outlined,
+                        color: activeIconColor, size: 18),
                   ),
+                ),
               ],
             ),
             const SizedBox(height: 4),
+
+            // Две строки и мелкий шрифт: «Купить к 1 сентября» в одну строку
+            // на плитке шириной 116 точек не помещается никак, а обрезать
+            // название папки, которое человек сам придумал, нельзя.
             Text(
               folder.name,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: isActive ? Colors.white : textSecondary,
-                fontSize: 12,
+                fontSize: 11,
+                height: 1.15,
               ),
             ),
           ],
@@ -1048,7 +1056,12 @@ class _CartScreenState extends State<CartScreen> {
   List<Widget> _buildFolderTotals(CartSnapshot cart) {
     final rows = <Widget>[];
 
-    for (final folder in _foldersOf(cart)) {
+    final parts = <CartFolderInfo>[
+      const CartFolderInfo(id: null, name: 'Без папки', isMain: true),
+      ...cart.folders,
+    ];
+
+    for (final folder in parts) {
       var sum = 0.0;
 
       for (final row in _linesOf(cart, folder.id)) {
@@ -1083,7 +1096,7 @@ class _CartScreenState extends State<CartScreen> {
       );
     }
 
-    // Одна папка — разбивать нечего: строка повторила бы итог слово в слово.
+    // Одна строка — разбивать нечего: она повторила бы итог слово в слово.
     if (rows.length < 2) return const [];
 
     return [

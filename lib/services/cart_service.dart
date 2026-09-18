@@ -45,11 +45,12 @@ class CartService {
   static final ValueNotifier<List<CartFolderInfo>> folders =
       ValueNotifier<List<CartFolderInfo>>(const []);
 
-  /// Есть ли из чего выбирать, кроме основной папки.
+  /// Завёл ли человек хоть одну папку.
   ///
   /// Диалог выбора показываем только тогда (решение заказчика 18.09.2026):
-  /// окно с единственным пунктом это лишнее нажатие на пустом месте.
-  static bool get hasFolders => folders.value.length > 1;
+  /// пока полок нет, выбирать не из чего, и окно было бы лишним нажатием на
+  /// пустом месте.
+  static bool get hasFolders => folders.value.isNotEmpty;
 
   /// Сколько штук этого товара лежит в корзине. Ноль — не лежит.
   static int quantityOf(int productId) => quantities.value[productId] ?? 0;
@@ -86,9 +87,9 @@ class CartService {
     quantities.value = map;
     itemsCount.value = cart.itemsCount;
 
-    // Папки запоминаем только когда сервер их прислал: старый сервер поля не
-    // знает, и пустой список от него стёр бы папки, приехавшие минуту назад.
-    if (cart.folders.isNotEmpty) folders.value = cart.folders;
+    // Папки берём из ответа как есть, включая пустой список: человек мог
+    // удалить последнюю папку, и она обязана исчезнуть из диалогов.
+    folders.value = cart.folders;
   }
 
   /// Ответ на любое действие с корзиной: она всегда приходит целиком.
@@ -138,7 +139,8 @@ class CartService {
         ),
       );
 
-  /// Переложить позиции в папку. `folderId: null` — в основную.
+  /// Переложить позиции в папку. `folderId: null` — вынуть из папки в общий
+  /// список корзины.
   static Future<CartResult> moveToFolder(
     Set<int> productIds, {
     required int? folderId,
