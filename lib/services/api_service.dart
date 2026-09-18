@@ -2862,6 +2862,36 @@ class ApiService {
     );
   }
 
+  /// 📢 Жалоба на курьера по своему заказу (18.09.2026).
+  /// Эндпоинт: POST /me/orders/{id}/courier/report, тело { report_id }.
+  ///
+  /// Жалоба привязана к ЗАКАЗУ, а не к человеку: «опоздал» и «привёз не то»
+  /// разбираются по конкретной доставке. Жаловаться может только покупатель
+  /// этого заказа, это проверяет сервер.
+  static Future<Map<String, dynamic>> reportCourier({
+    required int orderId,
+    required int reportId,
+    String? message,
+    String? token,
+  }) async {
+    final effectiveToken =
+        token ?? (HiveService.getUserData('token') as String?);
+
+    if (effectiveToken == null) {
+      throw Exception('Требуется авторизация');
+    }
+
+    return post(
+      '/me/orders/$orderId/courier/report',
+      {
+        'report_id': reportId,
+        if (message != null && message.trim().isNotEmpty)
+          'message': message.trim(),
+      },
+      token: effectiveToken,
+    );
+  }
+
   /// Универсальная загрузка причин жалоб с сервера.
   /// GET /content/reports?type={type}. Возвращает список [{id, title}].
   /// [type] — 'adverts' | 'users' | 'advert_review' | 'company_review' и т.п.

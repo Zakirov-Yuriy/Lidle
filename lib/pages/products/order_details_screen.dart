@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_receipt_screen.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -72,6 +73,10 @@ class OrderDetailsScreen extends StatelessWidget {
                       _deliveryCard(),
                       const SizedBox(height: 10),
                       _shopCard(),
+                      if (!_isPickup) ...[
+                        const SizedBox(height: 10),
+                        _courierCard(context),
+                      ],
                       const SizedBox(height: 10),
                       _receiveCard(),
                       const SizedBox(height: 10),
@@ -218,6 +223,101 @@ class OrderDetailsScreen extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  /// Кто везёт (18.09.2026). Нажатие открывает экран курьера с его
+  /// контактами: телефон и мессенджеры, переписки с ним в приложении нет.
+  Widget _courierCard(BuildContext context) {
+    final man = order.courier;
+    final name = (man?.name.isNotEmpty ?? false)
+        ? man!.name
+        : (order.courierName ?? '');
+
+    if (name.isEmpty) {
+      return _card(
+        title: 'Курьер',
+        child: const Text(
+          'Курьер пока не назначен',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+      );
+    }
+
+    return _card(
+      title: 'Курьер',
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => OrderCourierScreen(order: order)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: (man?.image ?? '').isEmpty
+                    ? _courierFallback(name)
+                    : Image.network(
+                        man!.image!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _courierFallback(name),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if ((man?.position ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        man!.position!,
+                        style: const TextStyle(
+                          color: textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: textSecondary,
+              size: 14,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _courierFallback(String name) {
+    final letter = name.trim().isEmpty ? '?' : name.trim().substring(0, 1);
+
+    return Container(
+      color: primaryBackground,
+      alignment: Alignment.center,
+      child: Text(
+        letter.toUpperCase(),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

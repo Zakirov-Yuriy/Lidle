@@ -16,6 +16,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_details_screen.dart';
 import 'package:lidle/pages/products/order_questions_screen.dart';
 import 'package:lidle/pages/products/product_details_screen.dart';
@@ -518,28 +519,214 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
                 ),
               ),
           ] else ...[
-            if ((order.deliveryAddress ?? '').isNotEmpty)
-              Text(
-                'Куда: ${order.deliveryAddress}',
-                style: const TextStyle(color: Colors.white, fontSize: 14),
-              ),
-            if ((order.deliveryComment ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  order.deliveryComment!,
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
-                ),
-              ),
-            if ((order.courierName ?? '').isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Курьер: ${order.courierName}',
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
-                ),
-              ),
+            // Курьерская доставка (18.09.2026): кто везёт, откуда забирает и
+            // куда привезёт. Порядок с макета: сначала человек, потом места.
+            _courierRow(),
+            _placeBlock(
+              title: 'Место забора',
+              lines: [
+                if ((shop?.name ?? '') .isNotEmpty)
+                  _PlaceLine('Магазина: «${shop!.name}»', white: false),
+                if ((shop?.address ?? '').isNotEmpty)
+                  _PlaceLine(shop!.address!, white: true),
+              ],
+            ),
+            _placeBlock(
+              title: 'Место доставки',
+              lines: [
+                if ((order.deliveryAddress ?? '').isNotEmpty)
+                  _PlaceLine('Ваш адрес: ${order.deliveryAddress}', white: true),
+
+                // Подъезд, этаж и домофон человек пишет одной строкой при
+                // оформлении: отдельных полей у заказа нет, и разбирать эту
+                // строку на части значит гадать.
+                if ((order.deliveryComment ?? '').isNotEmpty)
+                  _PlaceLine(order.deliveryComment!, white: false),
+              ],
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// Кто везёт: фото, имя, должность и две кнопки.
+  ///
+  /// «Написать» открывает экран курьера с его телефоном и мессенджерами, а не
+  /// переписку: учётной записи у курьера нет, он в приложение не входит, и
+  /// чата с ним быть не может (решение заказчика 18.09.2026).
+  Widget _courierRow() {
+    final man = order.courier;
+    final name = (man?.name.isNotEmpty ?? false)
+        ? man!.name
+        : (order.courierName ?? '');
+
+    // Курьера ещё не назначили: обещать человеку кнопки, которые ведут в
+    // пустоту, нельзя.
+    if (name.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 12),
+        child: Text(
+          'Курьер пока не назначен',
+          style: TextStyle(color: textSecondary, fontSize: 14),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: () => _openCourier(),
+            child: Row(
+              children: [
+                _courierAvatar(man?.image, name),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if ((man?.position ?? '').isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            man!.position!,
+                            style: const TextStyle(
+                              color: textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => showCourierComplaint(context, order),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    side: const BorderSide(color: Color(0xFFE05B5B)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Пожаловаться',
+                    style: TextStyle(color: Color(0xFFE05B5B), fontSize: 14),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _openCourier,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    side: const BorderSide(color: activeIconColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Написать',
+                    style: TextStyle(color: activeIconColor, fontSize: 14),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openCourier() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => OrderCourierScreen(order: order)),
+    );
+  }
+
+  Widget _courierAvatar(String? image, String name) {
+    final letter = name.trim().isEmpty ? '?' : name.trim().substring(0, 1);
+
+    Widget fallback() => Container(
+          color: primaryBackground,
+          alignment: Alignment.center,
+          child: Text(
+            letter.toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: (image ?? '').isEmpty
+            ? fallback()
+            : Image.network(
+                image!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => fallback(),
+              ),
+      ),
+    );
+  }
+
+  /// «Место забора» и «Место доставки»: заголовок и строки под ним.
+  ///
+  /// Карты в макете есть, но картографии в приложении нет вовсе, ни одного
+  /// пакета. Ставить картинку вместо карты нельзя: человек будет её тянуть и
+  /// решит, что приложение зависло.
+  Widget _placeBlock({required String title, required List<_PlaceLine> lines}) {
+    if (lines.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (final line in lines)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                line.text,
+                style: TextStyle(
+                  color: line.white ? Colors.white : textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -674,4 +861,15 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
         return const Color(0xFFFFB800);
     }
   }
+}
+
+/// Строка в блоках «Место забора» и «Место доставки».
+///
+/// Белым выделено то, что человек ищет глазами: адрес. Подпись и уточнения
+/// серые, иначе белым становится весь блок и выделение перестаёт работать.
+class _PlaceLine {
+  final String text;
+  final bool white;
+
+  const _PlaceLine(this.text, {required this.white});
 }

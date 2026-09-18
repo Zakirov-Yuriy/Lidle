@@ -75,6 +75,13 @@ class OrderModel {
   final int? courierStaffId;
   final String? courierName;
 
+  /// Курьер целиком: фото, должность и контакты (18.09.2026).
+  ///
+  /// Пусто у самовывоза и пока курьера не назначили. Контакты приходят из
+  /// карточки сотрудника, а не копией в заказ: телефон человек меняет, и
+  /// звонить надо по нынешнему.
+  final OrderCourier? courier;
+
   final DateTime? createdAt;
   final DateTime? acceptedAt;
   final DateTime? readyAt;
@@ -106,6 +113,7 @@ class OrderModel {
     this.deliveryComment,
     this.courierStaffId,
     this.courierName,
+    this.courier,
     this.createdAt,
     this.acceptedAt,
     this.readyAt,
@@ -165,6 +173,9 @@ class OrderModel {
           data['courier'] is Map ? _int(data['courier']['staff_id']) : null,
       courierName:
           data['courier'] is Map ? data['courier']['name']?.toString() : null,
+      courier: data['courier'] is Map
+          ? OrderCourier.fromJson(Map<String, dynamic>.from(data['courier']))
+          : null,
       createdAt: _date(data['created_at']),
       acceptedAt: _date(data['accepted_at']),
       readyAt: _date(data['ready_at']),
@@ -279,4 +290,70 @@ class OrderLine {
 
   /// Товар снят с заказа и вернулся в продажу.
   bool get isRejected => status == 'rejected';
+}
+
+/// Курьер заказа (18.09.2026).
+///
+/// Это сотрудник продавца, а не пользователь приложения: учётной записи у него
+/// нет, войти он не может, и переписки с ним тоже нет. Поэтому связь с ним это
+/// телефон и мессенджеры, которые продавец завёл в его карточке.
+///
+/// Пустые поля здесь обычное дело: продавец заполняет карточку по мере того,
+/// как договаривается с человеком, а сотрудника могли и вовсе удалить. Экран
+/// показывает то, что есть, и не рисует пустых строк.
+class OrderCourier {
+  final int? staffId;
+  final String name;
+
+  /// Должность строкой, как её написал продавец: «Пеший курьер», «На авто».
+  final String? position;
+
+  final String? image;
+  final String? phone;
+  final String? phoneExtra;
+  final String? telegram;
+  final String? whatsapp;
+  final String? vk;
+  final String? city;
+
+  const OrderCourier({
+    this.staffId,
+    this.name = '',
+    this.position,
+    this.image,
+    this.phone,
+    this.phoneExtra,
+    this.telegram,
+    this.whatsapp,
+    this.vk,
+    this.city,
+  });
+
+  factory OrderCourier.fromJson(Map<String, dynamic> data) {
+    return OrderCourier(
+      staffId: OrderModel._int(data['staff_id']),
+      name: '${data['name'] ?? ''}'.trim(),
+      position: _text(data['position']),
+      image: _text(data['image']),
+      phone: _text(data['phone']),
+      phoneExtra: _text(data['phone_extra']),
+      telegram: _text(data['telegram']),
+      whatsapp: _text(data['whatsapp']),
+      vk: _text(data['vk']),
+      city: _text(data['city']),
+    );
+  }
+
+  /// Телефоны, которые есть, без пустых мест.
+  List<String> get phones => [
+        if ((phone ?? '').isNotEmpty) phone!,
+        if ((phoneExtra ?? '').isNotEmpty) phoneExtra!,
+      ];
+
+  /// Есть ли чем связаться. Когда нечем, экран курьера открывать незачем.
+  bool get hasContacts =>
+      phones.isNotEmpty ||
+      (telegram ?? '').isNotEmpty ||
+      (whatsapp ?? '').isNotEmpty ||
+      (vk ?? '').isNotEmpty;
 }
