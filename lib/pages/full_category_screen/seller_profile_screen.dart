@@ -113,6 +113,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// его разделы, его бренды. Держим его здесь, чтобы повторное открытие
   /// панели не ходило за тем же ответом.
   StoreFilterOptions? _filterOptions;
+
+  /// Разделы продавца для ленты под поиском (18.09.2026).
+  ///
+  /// Берём из того же ответа, что и панель фильтров: сервер уже считает,
+  /// в каких разделах у ЭТОГО продавца что-то лежит. Второй источник тех же
+  /// разделов однажды разошёлся бы с фильтром.
+  bool _categoriesLoading = false;
   StoreFilterSelection _filter = const StoreFilterSelection();
   bool _filterLoading = false;
 
@@ -271,6 +278,112 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _loadSellerListings();
     _loadSellerProducts();
     _loadSellerProfile();
+    _loadStoreCategories();
+  }
+
+  /// Разделы витрины для ленты под поиском (18.09.2026).
+  ///
+  /// Тот же ответ, что у панели фильтров, поэтому и запоминаем его в
+  /// `_filterOptions`: панель, открытая потом, второй раз за ним не пойдёт.
+  Future<void> _loadStoreCategories() async {
+    final userId = widget.userId;
+
+    if (userId == null || userId.isEmpty) return;
+    if (_filterOptions != null || _categoriesLoading) return;
+
+    setState(() => _categoriesLoading = true);
+
+    final options = await StoreFiltersService.load(
+      userId: userId,
+      token: TokenService.currentToken,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _categoriesLoading = false;
+      if (options != null) _filterOptions = options;
+    });
+  }
+
+  /// Выбрать раздел витрины лентой под поиском.
+  ///
+  /// Меняем ровно одно условие фильтра, остальные оставляем: человек мог
+  /// отобрать бренд или цену панелью, и лента разделов не должна это стирать.
+  void _pickStoreCategory(int? categoryId) {
+    if (_filter.categoryId == categoryId) return;
+
+    setState(() {
+      _filter = categoryId == null
+          ? _filter.copyWith(clearCategory: true)
+          : _filter.copyWith(categoryId: categoryId);
+
+      _sellerListings = [];
+      _sellerProducts = const [];
+      _isLoading = true;
+      _productsLoading = true;
+      _error = null;
+    });
+
+    _loadSellerListings(forceRefresh: true);
+    _loadSellerProducts();
+  }
+
+  /// Лента разделов продавца: «Все» и то, в чём у него действительно есть
+  /// товары или объявления.
+  ///
+  /// Устроена и выглядит как лента разделов на витрине товаров: это одно и то
+  /// же действие, и двум одинаковым лентам незачем вести себя по-разному.
+  Widget _buildStoreCategories() {
+    final categories = _filterOptions?.categories ?? const [];
+
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children: [
+          _storeCategoryChip(null, 'Все'),
+          ...categories.map((c) => _storeCategoryChip(c.id, c.name)),
+        ],
+      ),
+    );
+  }
+
+  Widget _storeCategoryChip(int? categoryId, String label) {
+    final isSelected = _filter.categoryId == categoryId;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: () => _pickStoreCategory(categoryId),
+        child: Center(
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isSelected ? activeIconColor : formBackground,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : textSecondary,
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+
+                // Высота строки ровно в кегль: у Roboto над буквами остаётся
+                // воздух, из-за которого текст кажется поднятым.
+                height: 1.0,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   /// Товары продавца. Молча: если ручка недоступна, страница открывается
@@ -1175,6 +1288,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         height: _isOwnProfile && !_ownerCardExpanded ? 6 : 12,
                       ),
                       _buildSearchField(),
+
+                      // Лента разделов продавца (18.09.2026): «Все» и то, в
+                      // чём у него есть товары.
+                      _buildStoreCategories(),
+
                       const SizedBox(height: 7),
                       Row(children: [_buildListingsTitle()]),
                       const SizedBox(height: 8),
