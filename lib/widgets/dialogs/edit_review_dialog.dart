@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/products_service.dart';
 
 /// Показать диалог редактирования отзыва.
 /// Возвращает true, если изменения сохранены.
@@ -16,6 +17,7 @@ Future<bool?> showEditReviewDialog({
   required int initialRating,
   String? initialComment,
   int? companyId,
+  int? productReviewId,
 }) {
   return showDialog<bool>(
     context: context,
@@ -24,6 +26,7 @@ Future<bool?> showEditReviewDialog({
       initialRating: initialRating,
       initialComment: initialComment,
       companyId: companyId,
+      productReviewId: productReviewId,
     ),
   );
 }
@@ -37,12 +40,17 @@ class EditReviewDialog extends StatefulWidget {
   /// null — отзыв на объявление.
   final int? companyId;
 
+  /// Задан — правим отзыв О ТОВАРЕ (18.09.2026): у него своя ручка
+  /// `/v1/product-reviews/{id}`, и оценка там зовётся `reaction`.
+  final int? productReviewId;
+
   const EditReviewDialog({
     super.key,
     required this.reviewId,
     required this.initialRating,
     this.initialComment,
     this.companyId,
+    this.productReviewId,
   });
 
   @override
@@ -77,7 +85,15 @@ class _EditReviewDialogState extends State<EditReviewDialog> {
     });
 
     final companyId = widget.companyId;
-    final result = companyId != null
+    final productReviewId = widget.productReviewId;
+
+    final result = productReviewId != null
+        ? await ProductsService.updateReview(
+            productReviewId,
+            rating: _rating,
+            comment: _controller.text,
+          )
+        : companyId != null
         ? await ApiService.updateCompanyReview(
             companyId: companyId,
             reviewId: widget.reviewId,

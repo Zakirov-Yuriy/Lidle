@@ -968,7 +968,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                             return _QuickCard(
                                               iconPath:
                                                   'assets/profile_dashboard/heart-rounded.svg',
-                                              title: 'Избранные товары',
+                                              title: 'Избранные',
                                               subtitle:
                                                   '$favoritedCount ${_getPluralForm(favoritedCount)}',
                                               onTap: () => Navigator.of(
@@ -994,7 +994,7 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                         _QuickCard(
                                           iconPath:
                                               'assets/profile_dashboard/eva_star-fill.svg',
-                                          title: 'Отзывы о товарах',
+                                          title: 'Отзывы',
                                           subtitle:
                                               '$_reviewsCount ${_getReviewsPluralForm(_reviewsCount)}',
                                           onTap: () => Navigator.of(
@@ -1531,11 +1531,11 @@ class _QuickCard extends StatelessWidget {
 
           // Заголовок карточки.
           //
-          // Названия стали длиннее («Отзывы о товарах» вместо «Отзывы»), а
-          // карточка занимает половину экрана. Одна строка без запаса на
-          // узком телефоне вылезала бы за край полосатой ошибкой, поэтому
-          // текст ужимается ровно настолько, насколько не помещается: на
-          // обычном экране он остаётся 16-м кеглем.
+          // Названия вернулись к коротким («Избранные», «Отзывы») по просьбе
+          // заказчика 18.09.2026, но ужимание текста оставлено: длинное
+          // название на узком телефоне вылезало за край полосатой ошибкой, и
+          // ловить это повторно незачем. На обычном экране текст остаётся
+          // 16-м кеглем.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: Row(

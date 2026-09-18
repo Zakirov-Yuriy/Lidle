@@ -58,9 +58,17 @@ class ReviewModel {
   /// или на компанию по самой вкладке.
   final bool isCompanyReview;
 
+  /// Отзыв о ТОВАРЕ (18.09.2026). Удаляется и правится своими ручками
+  /// (`/v1/product-reviews/{id}`), поэтому тип надо знать так же, как у
+  /// отзывов о компании.
+  final bool isProductReview;
+
   /// Id компании — нужен для удаления и правки отзыва о компании
   /// (путь /v1/companies/{companyId}/reviews/{id}). null для отзыва на объявление.
   final int? companyId;
+
+  /// Номер товара — на случай, если по отзыву надо будет открыть карточку.
+  final int? productId;
 
   const ReviewModel({
     required this.id,
@@ -73,7 +81,9 @@ class ReviewModel {
     this.reply,
     this.replyDate,
     this.isCompanyReview = false,
+    this.isProductReview = false,
     this.companyId,
+    this.productId,
   });
 
   /// Есть ли ответ на отзыв.
@@ -102,6 +112,9 @@ class ReviewModel {
     final isCompany =
         type == 'company' || (type == null && kind == ReviewKind.company);
 
+    // Отзывы о товарах приезжают в «Мои отзывы» с 18.09.2026 с type=product.
+    final isProduct = type == 'product';
+
     return ReviewModel(
       id: _int(json['id']) ?? 0,
       kind: kind,
@@ -113,7 +126,9 @@ class ReviewModel {
       reply: _str(json['reply']),
       replyDate: _str(json['reply_date']),
       isCompanyReview: isCompany,
+      isProductReview: isProduct,
       companyId: _int(json['company_id']),
+      productId: _int(json['product_id']),
     );
   }
 
@@ -160,6 +175,8 @@ class ReviewModel {
       reply: reply ?? this.reply,
       replyDate: replyDate ?? this.replyDate,
       isCompanyReview: isCompanyReview,
+      isProductReview: isProductReview,
+      productId: productId,
       companyId: companyId,
     );
   }

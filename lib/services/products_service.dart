@@ -206,6 +206,32 @@ class ProductsService {
     }
   }
 
+  /// Изменить свой отзыв о товаре (18.09.2026).
+  ///
+  /// Оценка у товара зовётся `reaction`, а не `rating`: так называется
+  /// колонка, и так её ждёт сервер. Возвращает `null` при успехе и текст
+  /// ошибки иначе, как и остальные методы здесь.
+  static Future<String?> updateReview(
+    int reviewId, {
+    required int rating,
+    String? comment,
+  }) async {
+    try {
+      final response = await ApiService.put('/product-reviews/$reviewId', {
+        'reaction': rating,
+        if (comment != null) 'text': comment.trim(),
+      });
+
+      if (response['success'] == true) return null;
+
+      return '${response['message'] ?? 'Не получилось изменить отзыв'}';
+    } catch (e) {
+      log.d('Отзыв $reviewId не изменился: $e');
+
+      return 'Не получилось изменить отзыв. Проверьте связь.';
+    }
+  }
+
   /// Удалить свой отзыв.
   static Future<String?> deleteReview(int reviewId) async {
     try {

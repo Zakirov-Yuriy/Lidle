@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/review_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/products_service.dart';
 import 'package:lidle/services/user_service.dart';
 import 'package:lidle/widgets/common/user_avatar.dart';
 import 'package:lidle/widgets/dialogs/edit_review_dialog.dart';
@@ -70,14 +71,22 @@ class _ReviewCardState extends State<ReviewCard> {
     );
     if (confirmed != true) return;
 
-    // Отзыв о компании удаляется своим эндпоинтом (с company_id в пути).
+    // У каждого вида отзыва своя ручка удаления: у компании с company_id в
+    // пути, у товара своя, у объявления общая.
     final companyId = widget.review.companyId;
-    final ok = widget.review.isCompanyReview && companyId != null
-        ? await ApiService.deleteCompanyReview(
-            companyId: companyId,
-            reviewId: widget.review.id,
-          )
-        : await ApiService.deleteAdvertReview(reviewId: widget.review.id);
+
+    final bool ok;
+
+    if (widget.review.isProductReview) {
+      ok = await ProductsService.deleteReview(widget.review.id) == null;
+    } else if (widget.review.isCompanyReview && companyId != null) {
+      ok = await ApiService.deleteCompanyReview(
+        companyId: companyId,
+        reviewId: widget.review.id,
+      );
+    } else {
+      ok = await ApiService.deleteAdvertReview(reviewId: widget.review.id);
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -121,8 +130,11 @@ class _ReviewCardState extends State<ReviewCard> {
       reviewId: widget.review.id,
       initialRating: widget.review.rating.round(),
       initialComment: widget.review.text,
-      // Для отзыва о компании диалог уйдёт на свой эндпоинт.
+      // Для отзыва о компании диалог уйдёт на свой эндпоинт, для отзыва о
+      // товаре — на свой (18.09.2026).
       companyId: widget.review.isCompanyReview ? widget.review.companyId : null,
+      productReviewId:
+          widget.review.isProductReview ? widget.review.id : null,
     );
     if (saved != true || !mounted) return;
 
