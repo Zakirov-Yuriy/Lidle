@@ -1461,16 +1461,38 @@ class _QuickCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Color(0xFF474747)),
       ),
+      // Содержимое по центру по высоте, отступы сверху и снизу самые
+      // маленькие (18.09.2026). Высота карточки задана числом, и с прежними
+      // отступами текст жался к верхнему краю, а под ним оставалось пустое
+      // поле в треть карточки.
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 13.0, left: 10.0, bottom: 2),
+            padding: const EdgeInsets.only(top: 2.0, left: 10.0, right: 10.0),
             child: Row(
               children: [
                 SvgPicture.asset(iconPath, height: 24, color: Colors.white70),
+                const SizedBox(width: 8),
+
+                // Число справа от иконки, а не отдельной строкой внизу
+                // (18.09.2026): строка из одного короткого «12 товаров»
+                // занимала целый ярус карточки.
+                Expanded(
+                  child: Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: textSecondary,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
+          const SizedBox(height: 4),
 
           // Заголовок карточки.
           //
@@ -1498,17 +1520,6 @@ class _QuickCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 10.0),
-            child: Row(
-              children: [
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: textSecondary, fontSize: 10),
                 ),
               ],
             ),
