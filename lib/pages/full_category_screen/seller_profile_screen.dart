@@ -183,6 +183,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   /// читается как «тут всё даром», а не как «продаж пока не было».
   String? _averageBill;
 
+  /// Логотип КОМПАНИИ продавца (18.09.2026).
+  ///
+  /// Экран открывают из разных мест, и снаружи ему передавали то логотип
+  /// точки, то аватар самого человека: в магазине показывалось лицо
+  /// продавца вместо вывески. Теперь картинку берём из профиля компании, а
+  /// то, что передали снаружи, остаётся запасным вариантом на время
+  /// загрузки.
+  String? _companyImage;
+
   /// Оценка продавца и число публичных отзывов (18.09.2026).
   ///
   /// До этого дня рядом с датой регистрации стояла зашитая в код пятёрка: она
@@ -443,6 +452,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     _addressText = m['addressText'] as String?;
     _registrationDate = m['registrationDate'] as String?;
     _averageBill = m['averageBill'] as String?;
+    _companyImage = m['companyImage'] as String?;
     _sellerRating = (m['sellerRating'] as num?)?.toDouble();
     _sellerReviewsCount = _asInt(m['sellerReviewsCount']) ?? 0;
     selectedStars = _asInt(m['myRating']) ?? 0;
@@ -493,6 +503,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         'addressText': _addressText,
         'registrationDate': _registrationDate,
         'averageBill': _averageBill,
+        'companyImage': _companyImage,
         'sellerRating': _sellerRating,
         'sellerReviewsCount': _sellerReviewsCount,
         'myRating': selectedStars,
@@ -558,6 +569,11 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           : null;
 
       final bill = _money(companyData['average_bill']);
+
+      final imageRaw = companyData['image'];
+      final companyImage = (imageRaw is String && imageRaw.trim().isNotEmpty)
+          ? imageRaw.trim()
+          : null;
 
       // Оценка продавца и число отзывов (18.09.2026). Считает сервер.
       final ratingRaw = companyData['rating'];
@@ -643,6 +659,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
         _addressText = addr;
         _registrationDate = registrationDate;
         _averageBill = bill;
+        _companyImage = companyImage;
         _sellerRating = rating;
         _sellerReviewsCount = reviewsCount;
         selectedStars = myRating;
@@ -1396,7 +1413,9 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
       children: [
         Row(
           children: [
-            _buildSellerAvatar(widget.sellerAvatarUrl),
+            // Логотип компании важнее того, что передали снаружи: в магазине
+            // должна быть вывеска, а не лицо продавца.
+            _buildSellerAvatar(_companyImage ?? widget.sellerAvatarUrl),
             const SizedBox(width: 16),
             // Expanded — чтобы блок имени/даты был ограничен по ширине
             // и корректно работал адаптив (иначе строка уходит за экран).

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/common/user_avatar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/user_service.dart';
@@ -587,10 +589,15 @@ class _ReviewCardItem extends StatelessWidget {
     );
   }
 
+  /// Заглушка аватара — общая по проекту (18.09.2026).
+  ///
+  /// Раньше здесь был серый значок человека, а на остальных экранах рисунок
+  /// из `default-photo.svg`. Одно и то же «фотографии нет» выглядело
+  /// по-разному в двух соседних местах.
   Widget _avatarPlaceholder() {
     return Container(
       color: formBackground,
-      child: const Icon(Icons.person, color: textSecondary, size: 28),
+      child: SvgPicture.asset(kDefaultAvatarAsset, fit: BoxFit.cover),
     );
   }
 }

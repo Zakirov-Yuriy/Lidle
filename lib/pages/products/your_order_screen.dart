@@ -11,10 +11,12 @@
 // крупно и читаемо, а картинка появится, когда появится сам штрих-код.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/common/user_avatar.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/products/order_courier_screen.dart';
@@ -754,19 +756,12 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
   }
 
   Widget _courierAvatar(String? image, String name) {
-    final letter = name.trim().isEmpty ? '?' : name.trim().substring(0, 1);
-
+    // Заглушка общая по проекту (18.09.2026): «фотографии нет» должно
+    // выглядеть одинаково везде.
     Widget fallback() => Container(
           color: primaryBackground,
           alignment: Alignment.center,
-          child: Text(
-            letter.toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+          child: SvgPicture.asset(kDefaultAvatarAsset, fit: BoxFit.cover),
         );
 
     return ClipRRect(

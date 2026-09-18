@@ -18,11 +18,13 @@
 // доставку, а пока её не было, оценивать нечего.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:lidle/constants.dart';
+import 'package:lidle/widgets/common/user_avatar.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/services/orders_service.dart';
@@ -363,18 +365,16 @@ class _OrderCourierScreenState extends State<OrderCourierScreen> {
     );
   }
 
+  /// Заглушка вместо фотографии курьера (18.09.2026).
+  ///
+  /// Тот же рисунок, что и у пользователя без аватара: «фотографии нет»
+  /// должно выглядеть одинаково по всему приложению, иначе человек думает,
+  /// что это разные состояния.
   Widget _avatarFallback(String letter) {
     return Container(
       color: primaryBackground,
       alignment: Alignment.center,
-      child: Text(
-        letter.toUpperCase(),
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
+      child: SvgPicture.asset(kDefaultAvatarAsset, fit: BoxFit.cover),
     );
   }
 
