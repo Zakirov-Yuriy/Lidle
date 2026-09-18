@@ -387,16 +387,20 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     }
   }
 
-  /// Полоска с напоминанием: штрих-код показывают продавцу.
+  /// Карточка со штрих-кодом: всегда первая в карусели (18.09.2026).
   ///
-  /// Код получения тут не пишем: он у каждого заказа свой, а покупок в карусели
-  /// несколько, и одно число под общей подписью выглядело бы как код на всё
-  /// сразу. Сам код человек видит на экране своего заказа.
+  /// Раньше это была широкая полоска над каруселью во весь экран. Она занимала
+  /// целый ярус ради одной подписи, поэтому переехала в саму карусель и стала
+  /// такой же карточкой, как покупки. Первой и всегда: это напоминание, с чем
+  /// идти к продавцу, и оно нужно и когда покупка одна, и когда их пять.
   ///
-  /// Полоска нажимается и открывает «Ваши заказы» (17.09.2026): в карусели
-  /// рядом лежат только живые покупки, а за прошлыми человеку нужен полный
-  /// список.
-  Widget _buildPurchasesBanner() {
+  /// Код получения тут не пишем: он у каждого заказа свой, а покупок в
+  /// карусели несколько, и одно число под общей подписью выглядело бы как код
+  /// на всё сразу. Сам код человек видит на экране своего заказа.
+  ///
+  /// Нажатие открывает «Ваши заказы»: в карусели лежат только живые покупки, а
+  /// за прошлыми человеку нужен полный список.
+  Widget _buildBarcodeCard() {
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: () async {
@@ -411,24 +415,43 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         // ещё висит в кабинете.
         if (mounted) _loadActivePurchases();
       },
+      // Размеры и отступы те же, что у карточки покупки: карточки стоят в
+      // одном ряду, и любое расхождение читалось бы как случайность.
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        constraints: const BoxConstraints(maxWidth: 320),
         decoration: BoxDecoration(
           color: secondaryBackground,
           borderRadius: BorderRadius.circular(10),
         ),
+        clipBehavior: Clip.antiAlias,
         child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Картинка лежит прямо на тёмном фоне полоски, без белой
-            // подложки: штрих-код в макете нарисован белым, и на белой плашке
-            // его не было видно вовсе (17.09.2026).
-            const SizedBox(width: 64, height: 40, child: _BarcodeThumb()),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Покажите штрих-код продавцу для получения товара',
-                style: TextStyle(color: textSecondary, fontSize: 13),
+            const Padding(
+              padding: EdgeInsets.only(left: 10, top: 9, bottom: 9),
+              child: SizedBox(width: 72, height: 64, child: _BarcodeThumb()),
+            ),
+            const Flexible(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(10, 9, 30, 9),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Покажите штрих-код продавцу для получения товара',
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: textSecondary,
+                        fontSize: 13,
+                        height: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -437,7 +460,8 @@ class _ProfileDashboardState extends State<ProfileDashboard>
     );
   }
 
-  /// Карусель покупок: по карточке на каждый купленный товар.
+  /// Карусель покупок: карточка со штрих-кодом и дальше по карточке на каждый
+  /// купленный товар.
   Widget _buildPurchasesCarousel() {
     if (_purchasesLoading && _activePurchases.isEmpty) {
       return const SizedBox(
@@ -450,9 +474,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
       height: 82,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: _activePurchases.length,
+        // На одну больше, чем покупок: нулевая это карточка со штрих-кодом.
+        itemCount: _activePurchases.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, index) => _buildPurchaseCard(_activePurchases[index]),
+        itemBuilder: (_, index) => index == 0
+            ? _buildBarcodeCard()
+            : _buildPurchaseCard(_activePurchases[index - 1]),
       ),
     );
   }
@@ -1030,8 +1057,6 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   if (_activePurchases.isNotEmpty ||
                                       _purchasesLoading) ...[
                                     const _SectionTitle('Ваши покупки'),
-                                    const SizedBox(height: 10),
-                                    _buildPurchasesBanner(),
                                     const SizedBox(height: 10),
                                     _buildPurchasesCarousel(),
                                     const SizedBox(height: 16),
