@@ -264,7 +264,14 @@ class UserService {
       // log.d('🖼️ UserService: Удаляем аватарку...');
 
       // API требует отправку как multipart с delete_image=true
-      final headers = {'X-App-Client': 'mobile'};
+      // `Accept` и `X-Requested-With` обязательны: без них прод отвечает
+      // пустым 404 (18.09.2026). Content-Type не ставим, его собирает сам
+      // MultipartRequest вместе с границей частей.
+      final headers = {
+        'X-App-Client': 'mobile',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
       if (token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
       }

@@ -37,6 +37,11 @@ class HttpClient {
             // Это дает серверу больше времени на восстановление между попытками
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
+
+    // Обязателен: без него прод отвечает пустым 404 на любой ручке /v1
+    // (18.09.2026, подробности в `ApiService.defaultHeaders`).
+    'X-Requested-With': 'XMLHttpRequest',
+
     // Заголовки согласно официальной документации API Lidle
     'X-App-Client': 'mobile',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',

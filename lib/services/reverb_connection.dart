@@ -248,6 +248,10 @@ class ReverbConnection {
         headers: {
           'Authorization': 'Bearer $token',
           'Accept': 'application/json',
+          // Единственная ручка под /v1 без strict, но заголовок ставим
+          // везде одинаково: иначе при любой правке маршрутов авторизация
+          // канала отвалится пустым 404 (18.09.2026).
+          'X-Requested-With': 'XMLHttpRequest',
         },
         body: {'socket_id': socketId, 'channel_name': channelName},
       );

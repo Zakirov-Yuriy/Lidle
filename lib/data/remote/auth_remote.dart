@@ -18,6 +18,12 @@ class AuthRemote {
   static String get _baseUrl => AppConfig().apiBaseUrl;
   static const Map<String, String> _defaultHeaders = {
     'Accept': 'application/json',
+
+    // Обязателен: без него прод отвечает пустым 404 на любой ручке /v1
+    // (18.09.2026, подробности в `ApiService.defaultHeaders`). Здесь это
+    // особенно больно: без обновления токена человека выкидывает из аккаунта.
+    'X-Requested-With': 'XMLHttpRequest',
+
     'X-App-Client': 'mobile',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'Content-Type': 'application/json',

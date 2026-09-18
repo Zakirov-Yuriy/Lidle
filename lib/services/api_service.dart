@@ -86,6 +86,26 @@ class ApiService {
 
   static const Map<String, String> defaultHeaders = {
     'Accept': 'application/json',
+
+    // ОБЯЗАТЕЛЬНЫЙ заголовок, без него прод отвечает ПУСТЫМ 404 на любой
+    // ручке /v1 (18.09.2026).
+    //
+    // На сервере все /v1 закрыты middleware `strict`: он требует
+    // `X-Requested-With: XMLHttpRequest` и `Accept: application/json`, а
+    // иначе отдаёт 404 с пустым телом — намеренно, чтобы посторонний не
+    // отличил закрытую ручку от несуществующей.
+    //
+    // На деве этого не видно: при `APP_DEBUG=true` middleware пропускает
+    // всё подряд. Поэтому приложение годами работало без заголовка и
+    // сломалось ровно в тот день, когда его собрали на прод: каталоги,
+    // объявления и корзина разом получили «Сервер вернул не JSON (404),
+    // тело пустое».
+    //
+    // Заголовок нужен В КАЖДОМ месте, где заголовки собираются руками, а не
+    // только здесь. Отладку на проде обратно НЕ включаем: это была утечка
+    // текстов ошибок наружу, а не настройка.
+    'X-Requested-With': 'XMLHttpRequest',
+
     // Заголовки согласно официальной документации API Lidle
     'X-App-Client': 'mobile',
     'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -2031,7 +2051,13 @@ class ApiService {
     String? token,
   }) async {
     try {
-      final headers = {'X-App-Client': 'mobile', 'Accept': 'application/json'};
+      // `X-Requested-With` обязателен и здесь: без него прод отвечает пустым
+      // 404 на любой ручке /v1 (18.09.2026, см. defaultHeaders выше).
+      final headers = {
+        'X-App-Client': 'mobile',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
 
       // Токен читаем из хранилища, если его не передали: вызывающему коду
       // незачем знать, где он лежит, а забытый токен здесь означал бы 401 на
@@ -2116,6 +2142,8 @@ class ApiService {
       // запрос, который сервер разобрать не сможет.
       request.headers.addAll({
         'Accept': 'application/json',
+        // Без него прод отвечает пустым 404 (18.09.2026).
+        'X-Requested-With': 'XMLHttpRequest',
         'X-App-Client': 'mobile',
         if (token != null) 'Authorization': 'Bearer $token',
       });

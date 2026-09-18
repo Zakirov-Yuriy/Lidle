@@ -41,6 +41,8 @@ class AddressService {
 
       final headers = <String, String>{
         'Accept': 'application/json',
+        // Обязателен: без него прод отвечает пустым 404 (18.09.2026).
+        'X-Requested-With': 'XMLHttpRequest',
         'X-App-Client': 'mobile',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
       };
