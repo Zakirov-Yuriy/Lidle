@@ -185,6 +185,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   // Единая секция «Информация» (Описание + Расположение + Контакты).
   // По умолчанию свёрнута.
   bool _infoExpanded = false;
+
+  /// Раскрыт ли подблок жалобы внутри «Информации» (18.09.2026). Свёрнут по
+  /// умолчанию: жалоба нужна редко, а место занимала бы всегда.
+  bool _complaintExpanded = false;
   // Блок «Поделиться компанией» по умолчанию свёрнут (как остальные секции).
   bool _shareExpanded = false;
 
@@ -1080,9 +1084,8 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
                       _buildListingsGrid(),
 
-                      const SizedBox(height: 36),
-                      _buildComplaintBlock(),
-
+                      // Карточка жалобы отсюда убрана 18.09.2026: она
+                      // переехала внутрь секции «Информация», под контакты.
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -1524,6 +1527,14 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
           _buildInfoSubHeader('Контакты'),
           const SizedBox(height: 6),
           _buildContactsContent(),
+
+          // Жалоба на продавца в самом низу, под контактами (18.09.2026).
+          // Чужому продавцу, а не себе: на своей странице жаловаться не на
+          // кого.
+          if (!_isOwnProfile) ...[
+            const SizedBox(height: 16),
+            _buildComplaintBlock(),
+          ],
         ],
       ),
     );
@@ -2364,60 +2375,88 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
     );
   }
 
+  /// Жалоба на продавца: подблок внутри секции «Информация» (18.09.2026).
+  ///
+  /// Раньше это была отдельная карточка в самом низу страницы, под витриной.
+  /// Заказчик перенёс её сюда, под контакты, и попросил сворачивать: жалоба
+  /// нужна редко, а место занимала всегда.
+  ///
+  /// Свой заголовок со стрелкой, как у соседних подблоков, но нажимается вся
+  /// строка: человек целится в надпись, а не в стрелку.
   Widget _buildComplaintBlock() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(top: 25, left: 22, bottom: 12, right: 10),
-      decoration: BoxDecoration(
-        color: secondaryBackground,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Оставить жалобу на продавца",
-            style: TextStyle(color: textPrimary, fontSize: 16),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () =>
+              setState(() => _complaintExpanded = !_complaintExpanded),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Оставить жалобу на продавца',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Icon(
+                  _complaintExpanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
+                  color: textSecondary,
+                ),
+              ],
+            ),
           ),
+        ),
+        if (_complaintExpanded) ...[
           const SizedBox(height: 6),
           Text.rich(
             TextSpan(
               text:
-                  "Вы можете оставить жалобу на продавца в случае нарушения им ",
+                  'Вы можете оставить жалобу на продавца в случае нарушения им ',
               style: const TextStyle(color: textSecondary, fontSize: 15),
-              children: [
+              children: const [
                 TextSpan(
-                  text: "правил",
-                  style: const TextStyle(color: Colors.blue, fontSize: 15),
+                  text: 'правил',
+                  style: TextStyle(color: Colors.blue, fontSize: 15),
                 ),
                 TextSpan(
-                  text: ".",
-                  style: const TextStyle(color: textSecondary, fontSize: 15),
+                  text: '.',
+                  style: TextStyle(color: textSecondary, fontSize: 15),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 7),
-
           GestureDetector(
             onTap: () {
               final token = TokenService.currentToken;
+
               if (token == null || token.isEmpty) {
-                // ❌ Неавторизованный пользователь не может оставить жалобу
+                // Неавторизованный пользователь не может оставить жалобу.
                 SnackBarHelper.showAuthRequired(
                   context,
                   'Войдите в свой профиль или создайте новый, чтобы продолжить',
                 );
+
                 return;
               }
 
-              // ✅ Авторизованный пользователь может оставить жалобу на продавца
-              final userId = widget.userId != null ? int.tryParse(widget.userId!) : null;
+              final userId =
+                  widget.userId != null ? int.tryParse(widget.userId!) : null;
+
               if (userId == null) {
                 SnackBarHelper.showError(
                   context,
                   'Ошибка: ID продавца не найден',
                 );
+
                 return;
               }
 
@@ -2431,15 +2470,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                 },
               );
             },
-            child: Row(
+            child: const Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const Text(
-                  "Пожаловаться",
+                Text(
+                  'Пожаловаться',
                   style: TextStyle(color: Colors.red, fontSize: 16),
                 ),
-                const SizedBox(width: 3),
-                const Icon(
+                SizedBox(width: 3),
+                Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: Colors.red,
                   size: 16,
@@ -2448,7 +2487,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 
