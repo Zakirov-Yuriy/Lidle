@@ -13,8 +13,9 @@
 // как договаривается с человеком. Пустых строк не рисуем, показываем только
 // то, что есть.
 //
-// Рейтинга курьера на экране нет, хотя в макете он есть: ставить оценку
-// курьеру в проекте некому и негде. Появится вместе с оценками доставки.
+// Рейтинг курьера здесь же (18.09.2026): звёзды показывают оценку и служат
+// кнопкой. Оценить можно только после получения заказа, потому что оценивают
+// доставку, а пока её не было, оценивать нечего.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,6 +25,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/widgets/dialogs/courier_review_dialog.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/report_courier_dialog.dart';
@@ -32,14 +35,31 @@ import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 
-class OrderCourierScreen extends StatelessWidget {
+class OrderCourierScreen extends StatefulWidget {
   static const String routeName = '/order-courier';
 
   final OrderModel order;
 
   const OrderCourierScreen({super.key, required this.order});
 
+  @override
+  State<OrderCourierScreen> createState() => _OrderCourierScreenState();
+}
+
+class _OrderCourierScreenState extends State<OrderCourierScreen> {
+  /// Заказ, перечитанный после оценки: рейтинг считает сервер, и увидеть свою
+  /// звезду человек должен сразу.
+  OrderModel? _fresh;
+
+  OrderModel get order => _fresh ?? widget.order;
+
   OrderCourier? get courier => order.courier;
+
+  Future<void> _reload() async {
+    final fresh = await OrdersService.details(order.id);
+
+    if (fresh != null && mounted) setState(() => _fresh = fresh);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +197,19 @@ class OrderCourierScreen extends StatelessWidget {
                           ),
                         ),
                       ),
+
+                    // Рейтинг со звёздами (18.09.2026). Звёзды и показывают
+                    // оценку, и служат кнопкой: нажал на третью — диалог
+                    // откроется с тремя.
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: courierRatingRow(
+                        context,
+                        order: order,
+                        onChanged: _reload,
+                        size: 22,
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -316,6 +316,25 @@ class OrderCourier {
   final String? vk;
   final String? city;
 
+  /// Рейтинг курьера и число оценок (18.09.2026).
+  ///
+  /// Считается по всем оценкам этого сотрудника, а не только по высоким:
+  /// оценивают работу человека, и прятать тройки значило бы показывать не то,
+  /// что есть. Пусто, пока его никто не оценивал.
+  final double? rating;
+  final int reviewsCount;
+
+  /// Может ли ЭТОТ человек оценить курьера. Решает сервер: оценивает
+  /// покупатель и только после получения заказа.
+  final bool canReview;
+
+  /// Почему оценить нельзя. Текст готовый, с сервера.
+  final String? reviewNotAllowed;
+
+  /// Своя прежняя оценка: диалог открывается заполненным.
+  final int? myRating;
+  final String? myReviewText;
+
   const OrderCourier({
     this.staffId,
     this.name = '',
@@ -327,6 +346,12 @@ class OrderCourier {
     this.whatsapp,
     this.vk,
     this.city,
+    this.rating,
+    this.reviewsCount = 0,
+    this.canReview = false,
+    this.reviewNotAllowed,
+    this.myRating,
+    this.myReviewText,
   });
 
   factory OrderCourier.fromJson(Map<String, dynamic> data) {
@@ -341,6 +366,16 @@ class OrderCourier {
       whatsapp: _text(data['whatsapp']),
       vk: _text(data['vk']),
       city: _text(data['city']),
+      rating: _double(data['rating']),
+      reviewsCount: OrderModel._int(data['reviews_count']) ?? 0,
+      canReview: data['can_review'] == true,
+      reviewNotAllowed: _text(data['review_not_allowed']),
+      myRating: data['my_review'] is Map
+          ? OrderModel._int(data['my_review']['rating'])
+          : null,
+      myReviewText: data['my_review'] is Map
+          ? _text(data['my_review']['text'])
+          : null,
     );
   }
 

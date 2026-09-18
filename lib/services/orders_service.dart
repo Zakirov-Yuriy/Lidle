@@ -216,6 +216,38 @@ class OrdersService {
         if (pickupCode != null && pickupCode.isNotEmpty) 'pickup_code': pickupCode,
       });
 
+  /// Оценить курьера по своему заказу (18.09.2026).
+  ///
+  /// Оценивает покупатель и только после получения заказа: оценивают
+  /// доставку, а пока её не было, оценивать нечего. Проверяет это сервер, а
+  /// экран прячет кнопку по признаку `can_review`.
+  ///
+  /// Возвращает `null` при успехе, иначе текст ошибки с сервера: он объясняет
+  /// причину точнее, чем общее «не получилось».
+  static Future<String?> reviewCourier(
+    int orderId, {
+    required int rating,
+    String? text,
+  }) async {
+    try {
+      final response = await ApiService.post(
+        '/me/orders/$orderId/courier/review',
+        {
+          'rating': rating,
+          if (text != null && text.trim().isNotEmpty) 'text': text.trim(),
+        },
+      );
+
+      if (response['success'] == true) return null;
+
+      return '${response['message'] ?? 'Не получилось сохранить оценку'}';
+    } catch (e) {
+      log.d('Оценка курьера не сохранилась: $e');
+
+      return 'Не получилось связаться с сервером';
+    }
+  }
+
   /// Отменить. Товар вернётся на остаток: заказ его занимал.
   static Future<OrderActionResult> cancel(int orderId, {String? reason}) =>
       _action('/me/orders/$orderId/cancel', {

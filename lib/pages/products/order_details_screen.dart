@@ -21,6 +21,8 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/products/order_courier_screen.dart';
 import 'package:lidle/pages/products/order_receipt_screen.dart';
+import 'package:lidle/services/orders_service.dart';
+import 'package:lidle/widgets/dialogs/courier_review_dialog.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
@@ -28,14 +30,34 @@ import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
 import 'package:lidle/blocs/navigation/navigation_event.dart';
 
-class OrderDetailsScreen extends StatelessWidget {
+class OrderDetailsScreen extends StatefulWidget {
   static const String routeName = '/order-details';
 
   final OrderModel order;
 
   const OrderDetailsScreen({super.key, required this.order});
 
+  @override
+  State<OrderDetailsScreen> createState() => _OrderDetailsScreenState();
+}
+
+class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
+  /// Заказ, перечитанный с сервера после оценки курьера (18.09.2026).
+  ///
+  /// Экран стал с состоянием ради одной вещи: поставив звёзды, человек должен
+  /// увидеть их тут же, а рейтинг считает сервер. Пока оценки не было,
+  /// показываем то, с чем экран открыли.
+  OrderModel? _fresh;
+
+  OrderModel get order => _fresh ?? widget.order;
+
   bool get _isPickup => order.deliveryType != 'courier';
+
+  Future<void> _reload() async {
+    final fresh = await OrdersService.details(order.id);
+
+    if (fresh != null && mounted) setState(() => _fresh = fresh);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +98,8 @@ class OrderDetailsScreen extends StatelessWidget {
                       if (!_isPickup) ...[
                         const SizedBox(height: 10),
                         _courierCard(context),
+                        const SizedBox(height: 10),
+                        _deliveryAddressCard(),
                       ],
                       const SizedBox(height: 10),
                       _receiveCard(),
@@ -173,24 +197,45 @@ class OrderDetailsScreen extends StatelessWidget {
     );
   }
 
+  /// Адрес доставки отдельной карточкой (18.09.2026).
+  ///
+  /// Только у курьерского заказа и рядом с магазином, а не вместо него: при
+  /// доставке человеку важны оба адреса, откуда везут и куда.
+  Widget _deliveryAddressCard() {
+    final address = (order.deliveryAddress ?? '').trim();
+    final comment = (order.deliveryComment ?? '').trim();
+
+    if (address.isEmpty && comment.isEmpty) return const SizedBox.shrink();
+
+    return _card(
+      title: 'Адрес доставки',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (address.isNotEmpty)
+            Text(
+              'Ваш адрес: $address',
+              style: const TextStyle(color: Colors.white, fontSize: 15),
+            ),
+
+          // Подъезд, этаж и домофон человек пишет одной строкой при
+          // оформлении: отдельных полей у заказа нет, и разбирать эту строку
+          // на части значит гадать.
+          if (comment.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                comment,
+                style: const TextStyle(color: textSecondary, fontSize: 14),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _shopCard() {
     final shop = order.shop;
-
-    // У заказа с курьером точка тоже есть, но человеку важен его адрес, а не
-    // адрес склада, поэтому показываем то, куда поедет курьер.
-    if (!_isPickup) {
-      final address = (order.deliveryAddress ?? '').trim();
-
-      if (address.isEmpty) return const SizedBox.shrink();
-
-      return _card(
-        title: 'Адрес доставки',
-        child: Text(
-          address,
-          style: const TextStyle(color: Colors.white, fontSize: 15),
-        ),
-      );
-    }
 
     if (shop == null) return const SizedBox.shrink();
 
@@ -291,6 +336,18 @@ class OrderDetailsScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  // Рейтинг со звёздами (18.09.2026). Нажатие открывает
+                  // оценку, если заказ уже получен: оценивают доставку, а
+                  // пока её не было, оценивать нечего.
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: courierRatingRow(
+                      context,
+                      order: order,
+                      onChanged: _reload,
+                    ),
+                  ),
                 ],
               ),
             ),
