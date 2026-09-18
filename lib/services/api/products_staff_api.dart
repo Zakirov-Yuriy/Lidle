@@ -122,6 +122,10 @@ class ProductsStaffApi {
     String? description,
     StaffContacts? contacts,
     int? groupId,
+
+    // Группа, как зарплата и график: `null` значит «вынуть из группы», а не
+    // «не менял», и различает это признак.
+    bool touchGroup = false,
   }) async {
     await ApiService.put(
       '/me/product-publications/staff/$memberId',
@@ -144,7 +148,7 @@ class ProductsStaffApi {
         // всегда.
         if (contacts != null) ...contacts.toJson(),
 
-        if (groupId != null) 'group_id': groupId,
+        if (touchGroup || groupId != null) 'group_id': groupId,
       },
     );
   }

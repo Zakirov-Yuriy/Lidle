@@ -368,6 +368,10 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           description: _description.text.trim(),
           contacts: contacts,
           groupId: _groupId,
+
+          // «Без группы» в этом списке выбирают осознанно, и это выбор, а не
+          // отсутствие ответа: форма показывает строку группы всегда.
+          touchGroup: true,
         );
       } else {
         final created = await ProductsStaffApi.createMember(
