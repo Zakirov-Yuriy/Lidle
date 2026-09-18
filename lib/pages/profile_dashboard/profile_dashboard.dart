@@ -1453,23 +1453,25 @@ class _QuickCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Высота по содержимому, а не числом (18.09.2026).
+    //
+    // Раньше карточка была ровно 96 точек, и после переноса числа наверх под
+    // текстом оставалось пустое поле в треть карточки. Заказчик попросил
+    // сделать блоки максимально узкими, поэтому высоту задаёт содержимое, а
+    // отступы сверху и снизу оставлены самые маленькие.
     final card = Container(
-      height: 96,
       width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(
         color: primaryBackground,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Color(0xFF474747)),
       ),
-      // Содержимое по центру по высоте, отступы сверху и снизу самые
-      // маленькие (18.09.2026). Высота карточки задана числом, и с прежними
-      // отступами текст жался к верхнему краю, а под ним оставалось пустое
-      // поле в треть карточки.
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.only(top: 2.0, left: 10.0, right: 10.0),
+            padding: const EdgeInsets.only(left: 10.0, right: 10.0),
             child: Row(
               children: [
                 SvgPicture.asset(iconPath, height: 24, color: Colors.white70),
@@ -1483,9 +1485,11 @@ class _QuickCard extends StatelessWidget {
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
+                    // Двенадцатый кегль вместо десятого: рядом с иконкой
+                    // мелкая подпись читалась хуже, чем отдельной строкой.
                     style: const TextStyle(
                       color: textSecondary,
-                      fontSize: 10,
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -1496,11 +1500,11 @@ class _QuickCard extends StatelessWidget {
 
           // Заголовок карточки.
           //
-          // Названия стали длиннее («Отзывы о ваших товарах» вместо «Отзывы»),
-          // а карточка занимает половину экрана и имеет жёсткую высоту. Одна
-          // строка без запаса на узком телефоне вылезала бы за край полосатой
-          // ошибкой, поэтому текст ужимается ровно настолько, насколько не
-          // помещается: на обычном экране он остаётся 16-м кеглем.
+          // Названия стали длиннее («Отзывы о товарах» вместо «Отзывы»), а
+          // карточка занимает половину экрана. Одна строка без запаса на
+          // узком телефоне вылезала бы за край полосатой ошибкой, поэтому
+          // текст ужимается ровно настолько, насколько не помещается: на
+          // обычном экране он остаётся 16-м кеглем.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: Row(
