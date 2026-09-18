@@ -25,6 +25,7 @@ import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/cancel_order_dialog.dart';
+import 'package:lidle/widgets/dialogs/courier_review_dialog.dart';
 import 'package:lidle/widgets/navigation/bottom_navigation.dart';
 import 'package:lidle/blocs/navigation/navigation_bloc.dart';
 import 'package:lidle/blocs/navigation/navigation_state.dart';
@@ -60,7 +61,18 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
   /// был бы лишним.
   OrderModel? _cancelled;
 
-  OrderModel get order => _cancelled ?? widget.order;
+  /// Заказ, перечитанный после оценки курьера (18.09.2026): рейтинг считает
+  /// сервер, и свою звезду человек должен увидеть сразу.
+  OrderModel? _fresh;
+
+  OrderModel get order => _cancelled ?? _fresh ?? widget.order;
+
+  Future<void> _reloadOrder() async {
+    final fresh = await OrdersService.details(order.id);
+
+    if (fresh != null && mounted) setState(() => _fresh = fresh);
+  }
+
   OrderLine? get line => widget.line;
 
   bool get _isPickup => order.deliveryType != 'courier';
@@ -612,6 +624,15 @@ class _YourOrderScreenState extends State<YourOrderScreen> {
                 ),
               ],
             ),
+          ),
+          // Рейтинг курьера над кнопками, как на его экране (правка
+          // заказчика 18.09.2026). Звёзды и показывают оценку, и открывают
+          // её: нажал на третью, диалог откроется с тремя.
+          const SizedBox(height: 10),
+          courierRatingRow(
+            context,
+            order: order,
+            onChanged: _reloadOrder,
           ),
           const SizedBox(height: 12),
           Row(

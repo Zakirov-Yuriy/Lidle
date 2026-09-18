@@ -248,7 +248,11 @@ class _OrderCourierScreenState extends State<OrderCourierScreen> {
             _label('WhatsApp'),
             _contactRow(
               context,
-              text: _handle(man!.whatsapp!),
+              // Номер показываем номером, а не «@+7949…»: собачка уместна у
+              // ника, а у телефона выглядит опечаткой (18.09.2026).
+              text: _digits(man!.whatsapp!).length >= 10
+                  ? man.whatsapp!
+                  : _handle(man.whatsapp!),
               onTap: () => _open(
                 context,
                 // У WhatsApp адрес по номеру: если продавец вписал имя, а не
