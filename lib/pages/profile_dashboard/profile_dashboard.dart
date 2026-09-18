@@ -415,10 +415,14 @@ class _ProfileDashboardState extends State<ProfileDashboard>
         // ещё висит в кабинете.
         if (mounted) _loadActivePurchases();
       },
-      // Размеры и отступы те же, что у карточки покупки: карточки стоят в
+      // Отступы и высота те же, что у карточки покупки: карточки стоят в
       // одном ряду, и любое расхождение читалось бы как случайность.
+      //
+      // Ширина меньше: подпись переносится на три строки, а не на две, и
+      // карточка занимает меньше места, так что следующая за ней покупка
+      // видна лучше (правка заказчика 18.09.2026).
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
+        constraints: const BoxConstraints(maxWidth: 250),
         decoration: BoxDecoration(
           color: secondaryBackground,
           borderRadius: BorderRadius.circular(10),
