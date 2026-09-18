@@ -24,6 +24,7 @@ import 'package:lidle/pages/products/add_product/group_dialog.dart';
 import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/pages/products/add_product/product_position_screen.dart';
 import 'package:lidle/pages/products/add_product/product_review_screen.dart';
+import 'package:lidle/pages/products/add_product/tile_grid.dart';
 import 'package:lidle/services/api/products_cabinet_api.dart';
 import 'package:lidle/utils/color_names.dart';
 import 'package:lidle/widgets/components/header.dart';
@@ -715,24 +716,21 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
   Widget _positionsGrid(ProductGroup? group) {
     final positions = group?.products ?? const <ProductPosition>[];
 
-    return Wrap(
-      spacing: 12,
-      runSpacing: 16,
+    return TileGrid(
       children: [
         ...positions.map(_positionCard),
         // Плитка «Добавить позицию» ровно того же размера и формы, что
         // картинка позиции, и прижата к верху: подписи под карточками разной
         // длины, и плитка в 180 точек торчала из ряда.
-        SizedBox(
-          width: 150,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: _addPosition,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: _addPosition,
+              child: AspectRatio(
+                aspectRatio: 1,
                 child: Container(
                   width: double.infinity,
-                  height: 150,
                   decoration: BoxDecoration(
                     color: formBackground,
                     borderRadius: BorderRadius.circular(8),
@@ -749,48 +747,49 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _positionCard(ProductPosition position) {
-    return SizedBox(
-      width: 150,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           Stack(
             children: [
-              Container(
-                width: double.infinity,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: formBackground,
-                  borderRadius: BorderRadius.circular(8),
+              AspectRatio(
+                aspectRatio: 1,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: formBackground,
+                    borderRadius: BorderRadius.circular(8),
 
-                  // Жёлтая рамка = позиция не опубликована.
-                  //
-                  // Полоса наверху говорит, что что-то ждёт публикации, а
-                  // рамка отвечает, что именно: в витрине из двадцати позиций
-                  // новую иначе ищут перебором. Опубликованные позиции рамки
-                  // не получают вовсе, чтобы отличие бросалось в глаза.
-                  border: position.isPublished
+                    // Жёлтая рамка = позиция не опубликована.
+                    //
+                    // Полоса наверху говорит, что что-то ждёт публикации, а
+                    // рамка отвечает, что именно: в витрине из двадцати
+                    // позиций новую иначе ищут перебором. Опубликованные
+                    // позиции рамки не получают вовсе, чтобы отличие
+                    // бросалось в глаза.
+                    border: position.isPublished
+                        ? null
+                        : Border.all(color: draftAccent, width: 3),
+                    image: position.image == null
+                        ? null
+                        : DecorationImage(
+                            image: NetworkImage(position.image!),
+                            fit: BoxFit.cover,
+                          ),
+                  ),
+                  child: position.image != null
                       ? null
-                      : Border.all(color: draftAccent, width: 3),
-                  image: position.image == null
-                      ? null
-                      : DecorationImage(
-                          image: NetworkImage(position.image!),
-                          fit: BoxFit.cover,
-                        ),
+                      : const Icon(Icons.photo_outlined,
+                          color: textMuted, size: 24),
                 ),
-                child: position.image != null
-                    ? null
-                    : const Icon(Icons.photo_outlined,
-                        color: textMuted, size: 24),
               ),
               Positioned(
                 right: 6,
@@ -870,8 +869,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
           for (final attribute in position.attributes)
             if (!_isVariantAttribute(attribute.title))
               _attributeLine(attribute.title, attribute.value),
-        ],
-      ),
+      ],
     );
   }
 

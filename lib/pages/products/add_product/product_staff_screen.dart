@@ -17,6 +17,7 @@ import 'package:lidle/models/products/product_publication.dart';
 import 'package:lidle/pages/products/add_product/group_dialog.dart';
 import 'package:lidle/pages/products/add_product/product_staff_member_screen.dart';
 import 'package:lidle/pages/products/add_product/product_review_screen.dart';
+import 'package:lidle/pages/products/add_product/tile_grid.dart';
 import 'package:lidle/services/api/products_staff_api.dart';
 import 'package:lidle/widgets/components/header.dart';
 
@@ -676,21 +677,18 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
   }
 
   Widget _membersGrid() {
-    return Wrap(
-      spacing: 12,
-      runSpacing: 16,
+    return TileGrid(
       children: [
         ..._visibleMembers.map(_memberCard),
-        SizedBox(
-          width: 150,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: _addMember,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: _addMember,
+              child: AspectRatio(
+                aspectRatio: 1,
                 child: Container(
                   width: double.infinity,
-                  height: 150,
                   decoration: BoxDecoration(
                     color: formBackground,
                     borderRadius: BorderRadius.circular(8),
@@ -707,40 +705,40 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ],
     );
   }
 
   Widget _memberCard(StaffMember member) {
-    return SizedBox(
-      width: 150,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
           GestureDetector(
             onLongPress: () => _deleteMember(member),
             child: Stack(
               children: [
-                Container(
-                  width: double.infinity,
-                  height: 150,
-                  decoration: BoxDecoration(
-                    color: formBackground,
-                    borderRadius: BorderRadius.circular(8),
-                    image: member.image == null
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: formBackground,
+                      borderRadius: BorderRadius.circular(8),
+                      image: member.image == null
+                          ? null
+                          : DecorationImage(
+                              image: NetworkImage(member.image!),
+                              fit: BoxFit.cover,
+                            ),
+                    ),
+                    child: member.image != null
                         ? null
-                        : DecorationImage(
-                            image: NetworkImage(member.image!),
-                            fit: BoxFit.cover,
-                          ),
+                        : const Icon(Icons.person_outline,
+                            color: textMuted, size: 24),
                   ),
-                  child: member.image != null
-                      ? null
-                      : const Icon(Icons.person_outline,
-                          color: textMuted, size: 24),
                 ),
                 Positioned(
                   right: 6,
@@ -815,8 +813,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
           // Доступов на карточке нет намеренно: числом они мало о чём
           // говорят, а названиями в карточку шириной в полэкрана не влезают.
           // Какие отмечены, видно внутри сотрудника.
-        ],
-      ),
+      ],
     );
   }
 }
