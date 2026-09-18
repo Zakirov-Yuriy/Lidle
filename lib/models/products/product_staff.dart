@@ -480,6 +480,12 @@ class StaffMember {
     this.schedule,
     this.description = '',
     this.image,
+    this.phone,
+    this.phoneExtra,
+    this.telegram,
+    this.whatsapp,
+    this.vk,
+    this.city,
     this.groupId,
     this.order = 0,
   });
@@ -503,6 +509,22 @@ class StaffMember {
 
   final String description;
   final String? image;
+
+  /// Контакты сотрудника (18.09.2026).
+  ///
+  /// Заводит их продавец, и в кабинете они видны только ему. Покупатель видит
+  /// их лишь у того сотрудника, который везёт его заказ: карточка сотрудника
+  /// это памятка продавца, а не общедоступная визитка.
+  final String? phone;
+  final String? phoneExtra;
+  final String? telegram;
+  final String? whatsapp;
+  final String? vk;
+
+  /// Город, в котором человек работает. Свободной строкой: адресного
+  /// справочника у сотрудников нет.
+  final String? city;
+
   final int? groupId;
   final int order;
 
@@ -550,10 +572,57 @@ class StaffMember {
           : null,
       description: '${data['description'] ?? ''}',
       image: data['image']?.toString(),
+      phone: _text(data['phone']),
+      phoneExtra: _text(data['phone_extra']),
+      telegram: _text(data['telegram']),
+      whatsapp: _text(data['whatsapp']),
+      vk: _text(data['vk']),
+      city: _text(data['city']),
       groupId: _int(data['group_id']),
       order: _int(data['order']) ?? 0,
     );
   }
+}
+
+/// Контакты сотрудника так, как они едут на сервер (18.09.2026).
+///
+/// Отдельным классом, а не шестью параметрами у двух методов: поля ходят
+/// только вместе, и разъехаться они должны в одном месте, а не в двух.
+///
+/// Пустое поле уезжает как `null`: продавец стёр телефон — значит телефона
+/// нет, а не пустая строка, которую покупателю потом нарисуют подписью без
+/// значения.
+class StaffContacts {
+  const StaffContacts({
+    this.phone,
+    this.phoneExtra,
+    this.telegram,
+    this.whatsapp,
+    this.vk,
+    this.city,
+  });
+
+  final String? phone;
+  final String? phoneExtra;
+  final String? telegram;
+  final String? whatsapp;
+  final String? vk;
+  final String? city;
+
+  static String? _clean(String? value) {
+    final text = (value ?? '').trim();
+
+    return text.isEmpty ? null : text;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'phone': _clean(phone),
+        'phone_extra': _clean(phoneExtra),
+        'telegram': _clean(telegram),
+        'whatsapp': _clean(whatsapp),
+        'vk': _clean(vk),
+        'city': _clean(city),
+      };
 }
 
 /// Группа сотрудников.
@@ -633,6 +702,16 @@ int? _int(dynamic value) {
   if (value is num) return value.toInt();
 
   return int.tryParse('${value ?? ''}');
+}
+
+/// Строка из ответа сервера: пусто и `null` это одно и то же.
+///
+/// Без этого пустая строка с сервера доезжает до экрана и рисует подпись
+/// «Телеграмм» без значения под ней.
+String? _text(dynamic value) {
+  final text = '${value ?? ''}'.trim();
+
+  return text.isEmpty || text == 'null' ? null : text;
 }
 
 num? _num(dynamic value) {

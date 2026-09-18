@@ -66,6 +66,16 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
   final _salary = TextEditingController();
   final _description = TextEditingController();
 
+  // Контакты сотрудника (18.09.2026). Нужны прежде всего курьеру: покупатель
+  // видит их на экране курьера своего заказа и по ним звонит. До этой правки
+  // вписать их можно было только командой на сервере.
+  final _phone = TextEditingController();
+  final _phoneExtra = TextEditingController();
+  final _telegram = TextEditingController();
+  final _whatsapp = TextEditingController();
+  final _vk = TextEditingController();
+  final _city = TextEditingController();
+
   int? _groupId;
   String? _position;
 
@@ -104,6 +114,13 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
       _account.addAll(existing.accountAccess);
       _schedule = existing.schedule;
 
+      _phone.text = existing.phone ?? '';
+      _phoneExtra.text = existing.phoneExtra ?? '';
+      _telegram.text = existing.telegram ?? '';
+      _whatsapp.text = existing.whatsapp ?? '';
+      _vk.text = existing.vk ?? '';
+      _city.text = existing.city ?? '';
+
       if (existing.number != null) _number.text = '${existing.number}';
 
       final salary = existing.salary;
@@ -122,6 +139,12 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
     _number.dispose();
     _salary.dispose();
     _description.dispose();
+    _phone.dispose();
+    _phoneExtra.dispose();
+    _telegram.dispose();
+    _whatsapp.dispose();
+    _vk.dispose();
+    _city.dispose();
     super.dispose();
   }
 
@@ -314,6 +337,15 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
       _salary.text.trim().replaceAll(' ', '').replaceAll(',', '.'),
     );
 
+    final contacts = StaffContacts(
+      phone: _phone.text,
+      phoneExtra: _phoneExtra.text,
+      telegram: _telegram.text,
+      whatsapp: _whatsapp.text,
+      vk: _vk.text,
+      city: _city.text,
+    );
+
     try {
       final existing = widget.existing;
 
@@ -334,6 +366,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           // Как и зарплата: пустой график означает «снять», а не «не менял».
           touchSchedule: true,
           description: _description.text.trim(),
+          contacts: contacts,
           groupId: _groupId,
         );
       } else {
@@ -347,6 +380,7 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
           accountAccess: _account.toList(),
           schedule: _schedule,
           description: _description.text.trim(),
+          contacts: contacts,
           groupId: _groupId,
         );
 
@@ -537,7 +571,55 @@ class _ProductStaffMemberScreenState extends State<ProductStaffMemberScreen> {
                   const SizedBox(height: 20),
                   _salaryField(),
 
+                  // Контакты (18.09.2026). Стоят после зарплаты и до доступов:
+                  // это всё ещё сведения о человеке, а доступы уже про то, что
+                  // ему разрешено.
+                  //
+                  // Ни одно поле не обязательно: у повара контактов может не
+                  // быть вовсе, а у курьера они нужны, иначе покупателю некуда
+                  // звонить.
+                  const SizedBox(height: 28),
+                  const Text(
+                    'Контакты',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6, bottom: 4),
+                    child: Text(
+                      'Их увидит покупатель, если этот сотрудник везёт его'
+                      ' заказ. В остальных случаях контакты видите только вы.',
+                      style: TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+                  _text('Телефон', _phone,
+                      hint: 'Например, +7 949 123 45 67',
+                      keyboard: TextInputType.phone),
+
                   const SizedBox(height: 20),
+                  _text('Дополнительный телефон', _phoneExtra,
+                      hint: 'Второй номер, если есть',
+                      keyboard: TextInputType.phone),
+
+                  const SizedBox(height: 20),
+                  _text('Телеграмм', _telegram, hint: 'Например, @petrov'),
+
+                  const SizedBox(height: 20),
+                  _text('WhatsApp', _whatsapp,
+                      hint: 'Номер или ссылка', keyboard: TextInputType.phone),
+
+                  const SizedBox(height: 20),
+                  _text('ВКонтакте', _vk, hint: 'Ссылка на страницу'),
+
+                  const SizedBox(height: 20),
+                  _text('Город', _city, hint: 'Например, Мариуполь'),
+
+                  const SizedBox(height: 28),
                   _picker(
                     'Доступы к управлению заведением',
                     _accessLabel(_venue, _access.venue),

@@ -80,6 +80,7 @@ class ProductsStaffApi {
     List<String>? accountAccess,
     StaffSchedule? schedule,
     String? description,
+    StaffContacts? contacts,
     int? groupId,
   }) async {
     final response = await ApiService.post(
@@ -93,6 +94,7 @@ class ProductsStaffApi {
         if (accountAccess != null) 'account_access': accountAccess,
         if (schedule != null) 'schedule': schedule.toJson(),
         if (description != null) 'description': description,
+        if (contacts != null) ...contacts.toJson(),
         if (groupId != null) 'group_id': groupId,
       },
     );
@@ -118,6 +120,7 @@ class ProductsStaffApi {
     StaffSchedule? schedule,
     bool touchSchedule = false,
     String? description,
+    StaffContacts? contacts,
     int? groupId,
   }) async {
     await ApiService.put(
@@ -135,6 +138,12 @@ class ProductsStaffApi {
         if (touchSchedule) 'schedule': schedule?.toJson(),
 
         if (description != null) 'description': description,
+
+        // Контакты присылаем целиком: стёртое поле должно стереться и на
+        // сервере, а «не присылали» здесь не бывает — форма показывает их
+        // всегда.
+        if (contacts != null) ...contacts.toJson(),
+
         if (groupId != null) 'group_id': groupId,
       },
     );
