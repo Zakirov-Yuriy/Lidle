@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/google_play_build.dart';
 import 'package:lidle/services/cart_service.dart';
 import 'package:lidle/pages/my_purchases_screen.dart';
 import 'package:lidle/pages/products/cart_screen.dart';
@@ -147,17 +148,23 @@ class BottomNavigation extends StatelessWidget {
                   // берётся из общего состояния корзины, которое обновляется
                   // на любой ответ сервера, — отдельных запросов меню не
                   // делает.
-                  ValueListenableBuilder<int>(
-                    valueListenable: CartService.itemsCount,
-                    builder: (context, count, _) => _buildNavItem(
-                      context,
-                      shoppingCartIconAsset,
-                      3,
-                      selectedIndex,
-                      count,
-                      gap: gap,
+                  //
+                  // В сборке для Google Play иконки корзины нет
+                  // (20.09.2026, см. `lib/google_play_build.dart`).
+                  // Индекс 3 при этом никому не отдаём: остальные пункты
+                  // ходят по своим номерам и сдвиг сломал бы переходы.
+                  if (!kGooglePlayBuild)
+                    ValueListenableBuilder<int>(
+                      valueListenable: CartService.itemsCount,
+                      builder: (context, count, _) => _buildNavItem(
+                        context,
+                        shoppingCartIconAsset,
+                        3,
+                        selectedIndex,
+                        count,
+                        gap: gap,
+                      ),
                     ),
-                  ),
                   // 💬 Передаем количество непрочитанных для иконки сообщений
                   _buildNavItem(
                       context, messageIconAsset, 4, selectedIndex, unreadCount,

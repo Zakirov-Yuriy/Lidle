@@ -17,6 +17,7 @@
 // прокси к HttpClient из core/network/http_client.dart.
 
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/google_play_build.dart';
 import 'package:lidle/models/catalog_model.dart' as catalog_models;
 import 'package:lidle/services/api_service.dart';
 
@@ -40,7 +41,31 @@ class CatalogApi {
         log.w('   - Полный ответ: $response');
       }
 
-      return catalog_models.CatalogsResponse.fromJson(response);
+      final parsed = catalog_models.CatalogsResponse.fromJson(response);
+
+      // Сборка для Google Play (20.09.2026): показываем не все разделы.
+      //
+      // Фильтр стоит ЗДЕСЬ, а не на экранах, потому что каталоги читаются из
+      // одного места: главный экран (полоса категорий), «Смотреть все» и
+      // выбор раздела при создании объявления берут этот самый ответ. Правка
+      // на трёх экранах разошлась бы после первой же доработки одного из них.
+      //
+      // Сервер отдаёт всё как раньше, режем только на клиенте. Выключатель и
+      // список разрешённых разделов — в `lib/google_play_build.dart`.
+      if (kGooglePlayBuild) {
+        final visible = keepCatalogsForBuild<catalog_models.Catalog>(
+          parsed.data,
+          name: (c) => c.name,
+          slug: (c) => c.slug,
+        );
+
+        log.i('📦 Сборка Google Play: показываем '
+            '${visible.length} из ${parsed.data.length} разделов');
+
+        return catalog_models.CatalogsResponse(data: visible);
+      }
+
+      return parsed;
     } catch (e, stackTrace) {
       log.e(
         '❌ ОШИБКА при загрузке каталогов: $e',

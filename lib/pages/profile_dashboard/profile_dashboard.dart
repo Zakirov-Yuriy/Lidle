@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/config/app_config.dart';
+import 'package:lidle/google_play_build.dart';
 import 'package:lidle/pages/profile_menu/profile_menu_screen.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
 import 'package:lidle/pages/full_category_screen/seller_qr_screen.dart';
@@ -1084,41 +1085,47 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   // «мои» и «ко мне» человек смотрит разными
                                   // глазами, и объединять их в один список
                                   // значит заставлять его фильтровать.
-                                  _MenuItem(
-                                    title: 'Мои брони',
-                                    count: _bookingCounts.mine,
-                                    trailingChevron: true,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const MyBookingsScreen(initialTab: 0),
-                                      ),
-                                    ).then((_) => _loadBookingCounts()),
-                                  ),
-                                  const Divider(
-                                    color: Color(0xFF474747),
-                                    height: 8,
-                                  ),
-                                  _MenuItem(
-                                    title: 'Заявки ко мне',
-                                    count: _bookingCounts.incoming,
-                                    // Подсвечиваем, только когда есть чему
-                                    // ждать ответа: подтверждённые брони
-                                    // действия не требуют.
-                                    isHighlight:
-                                        _bookingCounts.incomingPending > 0,
-                                    trailingChevron: true,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const MyBookingsScreen(initialTab: 1),
-                                      ),
-                                    ).then((_) => _loadBookingCounts()),
-                                  ),
-                                  const Divider(
-                                    color: Color(0xFF474747),
-                                    height: 8,
-                                  ),
+                                  //
+                                  // В сборке для Google Play оба пункта
+                                  // спрятаны (20.09.2026, см.
+                                  // `lib/google_play_build.dart`).
+                                  if (!kGooglePlayBuild) ...[
+                                    _MenuItem(
+                                      title: 'Мои брони',
+                                      count: _bookingCounts.mine,
+                                      trailingChevron: true,
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const MyBookingsScreen(initialTab: 0),
+                                        ),
+                                      ).then((_) => _loadBookingCounts()),
+                                    ),
+                                    const Divider(
+                                      color: Color(0xFF474747),
+                                      height: 8,
+                                    ),
+                                    _MenuItem(
+                                      title: 'Заявки ко мне',
+                                      count: _bookingCounts.incoming,
+                                      // Подсвечиваем, только когда есть чему
+                                      // ждать ответа: подтверждённые брони
+                                      // действия не требуют.
+                                      isHighlight:
+                                          _bookingCounts.incomingPending > 0,
+                                      trailingChevron: true,
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const MyBookingsScreen(initialTab: 1),
+                                        ),
+                                      ).then((_) => _loadBookingCounts()),
+                                    ),
+                                    const Divider(
+                                      color: Color(0xFF474747),
+                                      height: 8,
+                                    ),
+                                  ],
                                   _MenuItem(
                                     title: 'Отклики',
                                     count: 0,
@@ -1161,54 +1168,65 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                   //
                                   // Число в кружке это НОВЫЕ заказы, а не все:
                                   // «принять или отклонить» ждёт именно их.
-                                  _MenuItem(
-                                    title: 'Заказы',
-                                    count: _newOrdersCount,
-                                    trailingChevron: true,
-                                    isHighlight: _newOrdersCount > 0,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const SellerOrdersScreen(),
+                                  //
+                                  // «Заказы» и «Покупки» — товарная часть, и
+                                  // в сборке для Google Play обоих пунктов
+                                  // нет (20.09.2026).
+                                  if (!kGooglePlayBuild) ...[
+                                    _MenuItem(
+                                      title: 'Заказы',
+                                      count: _newOrdersCount,
+                                      trailingChevron: true,
+                                      isHighlight: _newOrdersCount > 0,
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const SellerOrdersScreen(),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const Divider(
-                                    color: Color(0xFF474747),
-                                    height: 8,
-                                  ),
+                                    const Divider(
+                                      color: Color(0xFF474747),
+                                      height: 8,
+                                    ),
 
-                                  // Мои покупки: то, что я заказал сам. Это
-                                  // ДРУГОЙ список, и держать его на одном
-                                  // экране с заказами ко мне нельзя: путать
-                                  // «я купил» и «у меня купили» дороже, чем
-                                  // завести два пункта.
-                                  _MenuItem(
-                                    // Сколько покупок ещё не получено
-                                    // (18.09.2026). Полученные не считаем:
-                                    // счётчик отвечает на вопрос «за чем мне
-                                    // ещё идти», а не «сколько я купил».
-                                    title: 'Покупки',
-                                    count: _activePurchasesCount,
-                                    isHighlight: _activePurchasesCount > 0,
-                                    trailingChevron: true,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            const MyOrdersScreen(onlyMine: true),
+                                    // Мои покупки: то, что я заказал сам. Это
+                                    // ДРУГОЙ список, и держать его на одном
+                                    // экране с заказами ко мне нельзя: путать
+                                    // «я купил» и «у меня купили» дороже, чем
+                                    // завести два пункта.
+                                    _MenuItem(
+                                      // Сколько покупок ещё не получено
+                                      // (18.09.2026). Полученные не считаем:
+                                      // счётчик отвечает на вопрос «за чем мне
+                                      // ещё идти», а не «сколько я купил».
+                                      title: 'Покупки',
+                                      count: _activePurchasesCount,
+                                      isHighlight: _activePurchasesCount > 0,
+                                      trailingChevron: true,
+                                      onTap: () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const MyOrdersScreen(onlyMine: true),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const Divider(
-                                    color: Color(0xFF474747),
-                                    height: 8,
-                                  ),
-                                  
-                                  
+                                    const Divider(
+                                      color: Color(0xFF474747),
+                                      height: 8,
+                                    ),
+                                  ],
+
                                   const SizedBox(height: 10),
                                   // Поддержка и ФИНАНСЫ — две карточки в ряд.
                                   // Блок «Финансовая поддержка владельца ЛИДЛЕ»
                                   // скрыт (см. _FinancialSupportCard ниже),
                                   // вместо него — баланс пользователя.
+                                  //
+                                  // В сборке для Google Play карточки
+                                  // «ФИНАНСЫ» нет, и «Поддержка ЛИДЛЕ»
+                                  // занимает всю ширину: пустая половина
+                                  // ряда выглядела бы как недогруженный
+                                  // экран (20.09.2026).
                                   SizedBox(
                                     height: 48,
                                     child: Row(
@@ -1225,10 +1243,12 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                                     SupportScreen.routeName),
                                           ),
                                         ),
-                                        const SizedBox(width: 10),
-                                        const Expanded(
-                                          child: _FinanceCard(balance: 0),
-                                        ),
+                                        if (!kGooglePlayBuild) ...[
+                                          const SizedBox(width: 10),
+                                          const Expanded(
+                                            child: _FinanceCard(balance: 0),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   ),
