@@ -96,7 +96,11 @@ class ReviewModel {
   bool get canReply => kind != ReviewKind.mine;
 
   /// Можно ли пожаловаться — на чужой отзыв (на свой нельзя, бэк вернёт 422).
-  bool get canReport => kind != ReviewKind.mine;
+  ///
+  /// У отзыва о товаре кнопки нет (21.09.2026): жалоб на отзывы о товарах
+  /// сервер пока не принимает, а кнопка, которая всегда отвечает ошибкой,
+  /// хуже, чем её отсутствие.
+  bool get canReport => kind != ReviewKind.mine && !isProductReview;
 
   /// Разбор ответа API. Формат общий для всех трёх списков:
   /// { id, title, thumbnail, date, comment, rating, reply, reply_date }

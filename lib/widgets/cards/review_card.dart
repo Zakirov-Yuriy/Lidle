@@ -105,6 +105,7 @@ class _ReviewCardState extends State<ReviewCard> {
       reviewId: widget.review.id,
       kind: widget.review.kind,
       initialText: _reply,
+      isProductReview: widget.review.isProductReview,
     );
     if (res == null || !mounted) return;
 

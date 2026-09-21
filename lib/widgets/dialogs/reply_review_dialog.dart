@@ -1,14 +1,17 @@
 // ============================================================
 //  "Диалог ответа на отзыв"
-//  Один диалог на два случая: ответ владельца ОБЪЯВЛЕНИЯ на отзыв
-//  (POST /v1/reviews/{id}/reply) и ответ владельца КОМПАНИИ
-//  (POST /v1/company/reviews/{id}/reply). Куда слать — решает kind.
+//  Один диалог на три случая: ответ владельца ОБЪЯВЛЕНИЯ на отзыв
+//  (POST /v1/reviews/{id}/reply), ответ владельца КОМПАНИИ
+//  (POST /v1/company/reviews/{id}/reply) и ответ ПРОДАВЦА на отзыв о товаре
+//  (POST /v1/product-reviews/{id}/reply, с 21.09.2026). Куда слать, решают
+//  kind и isProductReview.
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/review_model.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/products_service.dart';
 
 /// Показать диалог ответа на отзыв.
 /// Возвращает тело ответа сервера (`{ reply, replied_at, ... }`) при успехе,
@@ -18,6 +21,7 @@ Future<Map<String, dynamic>?> showReplyReviewDialog({
   required int reviewId,
   required ReviewKind kind,
   String? initialText,
+  bool isProductReview = false,
 }) {
   return showDialog<Map<String, dynamic>>(
     context: context,
@@ -25,6 +29,7 @@ Future<Map<String, dynamic>?> showReplyReviewDialog({
       reviewId: reviewId,
       kind: kind,
       initialText: initialText,
+      isProductReview: isProductReview,
     ),
   );
 }
@@ -39,11 +44,15 @@ class ReplyReviewDialog extends StatefulWidget {
   /// Текущий текст ответа (если ответ уже был — перезапишем).
   final String? initialText;
 
+  /// Отзыв о товаре: ответ уходит на ручку товаров (21.09.2026).
+  final bool isProductReview;
+
   const ReplyReviewDialog({
     super.key,
     required this.reviewId,
     required this.kind,
     this.initialText,
+    this.isProductReview = false,
   });
 
   @override
@@ -77,9 +86,15 @@ class _ReplyReviewDialogState extends State<ReplyReviewDialog> {
 
     // Отзыв о компании отвечается своим эндпоинтом (компания определяется
     // по токену), отзыв на объявление — своим.
-    final res = widget.kind == ReviewKind.company
-        ? await ApiService.replyCompanyReview(widget.reviewId, comment: text)
-        : await ApiService.replyAdvertReview(widget.reviewId, comment: text);
+    final Map<String, dynamic>? res;
+
+    if (widget.isProductReview) {
+      res = await ProductsService.replyReview(widget.reviewId, comment: text);
+    } else if (widget.kind == ReviewKind.company) {
+      res = await ApiService.replyCompanyReview(widget.reviewId, comment: text);
+    } else {
+      res = await ApiService.replyAdvertReview(widget.reviewId, comment: text);
+    }
 
     if (!mounted) return;
 

@@ -232,6 +232,32 @@ class ProductsService {
     }
   }
 
+  /// Ответ продавца на отзыв о его товаре (21.09.2026).
+  ///
+  /// Поле `comment`, как у ответа на отзыв объявления: диалог ответа общий.
+  /// Возвращает тело ответа сервера (`reply`, `replied_at`) при успехе и
+  /// `null` иначе, ровно как `ApiService.replyAdvertReview`: диалогу так
+  /// проще, он не различает, чей это отзыв.
+  static Future<Map<String, dynamic>?> replyReview(
+    int reviewId, {
+    required String comment,
+  }) async {
+    try {
+      final response = await ApiService.post(
+        '/product-reviews/$reviewId/reply',
+        {'comment': comment.trim()},
+      );
+
+      if (response['success'] == true) return response;
+
+      return null;
+    } catch (e) {
+      log.d('Ответ на отзыв о товаре $reviewId не сохранился: $e');
+
+      return null;
+    }
+  }
+
   /// Удалить свой отзыв.
   static Future<String?> deleteReview(int reviewId) async {
     try {
