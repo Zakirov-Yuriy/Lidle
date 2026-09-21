@@ -145,6 +145,12 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                     const SizedBox(height: 12),
                     _block(children: [
                       _line('Заказчик:', _order.contactName ?? '—'),
+                      // Покупатель-компания (21.09.2026): название и ИНН
+                      // нужны продавцу для счёта и документов.
+                      if (_order.isCompanyBuyer) ...[
+                        _line('Компания:', _order.companyName ?? '—'),
+                        _line('ИНН:', _order.companyInn ?? '—'),
+                      ],
                       _line('Номер:', _order.contactPhone ?? '—'),
                       const SizedBox(height: 8),
                       _line('Доставка:', _order.deliveryTitle ?? 'Самовывоз'),

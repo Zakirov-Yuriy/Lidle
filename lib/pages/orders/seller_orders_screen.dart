@@ -383,6 +383,12 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           ),
           const SizedBox(height: 10),
           _line('Заказчик:', order.contactName ?? '—'),
+          // Покупатель-компания (21.09.2026): видно сразу, без раскрытия,
+          // продавцу это решает, выставлять ли счёт.
+          if (order.isCompanyBuyer) ...[
+            _line('Компания:', order.companyName ?? '—'),
+            _line('ИНН:', order.companyInn ?? '—'),
+          ],
           _line('Доставка:', order.deliveryTitle ?? 'Самовывоз'),
 
           // Цену доставки показываем только там, где она есть. У самовывоза

@@ -24,6 +24,14 @@ class OrderModel {
   final int? cookingTimeMinutes;
 
   final String? contactName;
+
+  /// Покупатель-компания (21.09.2026): название и ИНН для документов.
+  /// У физлица оба пустые.
+  final String? companyName;
+  final String? companyInn;
+
+  bool get isCompanyBuyer =>
+      (companyName ?? '').isNotEmpty || (companyInn ?? '').isNotEmpty;
   final String? contactPhone;
   final String? contactEmail;
   final String? comment;
@@ -120,6 +128,8 @@ class OrderModel {
     this.pickupCode,
     this.cookingTimeMinutes,
     this.contactName,
+    this.companyName,
+    this.companyInn,
     this.contactPhone,
     this.contactEmail,
     this.comment,
@@ -158,6 +168,12 @@ class OrderModel {
       total: '${data['total'] ?? '0'}',
       cookingTimeMinutes: _int(data['cooking_time_minutes']),
       contactName: data['contact_name']?.toString(),
+      companyName: data['buyer'] is Map && data['buyer']['type'] == 'company'
+          ? data['buyer']['company_name']?.toString()
+          : null,
+      companyInn: data['buyer'] is Map && data['buyer']['type'] == 'company'
+          ? data['buyer']['company_inn']?.toString()
+          : null,
       contactPhone: data['contact_phone']?.toString(),
       contactEmail: data['contact_email']?.toString(),
       comment: data['comment']?.toString(),
