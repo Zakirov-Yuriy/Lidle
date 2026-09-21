@@ -11,6 +11,7 @@ import 'package:lidle/pages/products/order_placed_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/dialogs/thank_you_order_dialog.dart';
 import 'package:lidle/widgets/forms/phone_number_formatter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -436,6 +437,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       return;
     }
+
+    // «Спасибо за заказ» (макет, 21.09.2026): сначала благодарим, потом
+    // ведём на экран с кодом получения, как и раньше. Заказ к этому моменту
+    // уже оформлен, окно ничего не решает, только закрывается.
+    await showThankYouOrderDialog(context);
+
+    if (!mounted) return;
 
     await Navigator.pushReplacement(
       context,
