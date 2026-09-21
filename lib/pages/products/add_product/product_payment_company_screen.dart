@@ -30,6 +30,18 @@
 //   ИНН, КПП, ОГРН — по ним платёж находит получателя;
 //   самозанятый — у него нет ни КПП, ни ОГРН, поэтому эти поля прячутся.
 //
+// Оплата напрямую продавцу (21.09.2026, решение Саши). У СБП и SberPay
+// сверху блок «Как покупатель заплатит»:
+//
+//   ссылка на оплату — её выдаёт банк продавца (Сбер Бизнес, Т-Бизнес и
+//   другие: платёжная ссылка или QR СБП). Покупатель видит кнопку
+//   «Оплатить» и QR-код, деньги уходят продавцу, мы их не видим;
+//   телефон и банк для СБП — перевод по номеру, если ссылки нет.
+//
+// Для СБП и SberPay нужно хотя бы одно из этого: без ссылки и телефона
+// покупателю платить не по чему. Данные организации для них теперь не
+// обязательны.
+//
 // Номера набираются с пробелами, а хранятся цифрами: сервер режет лишнее
 // сам, чтобы «123 445 123» и «123445123» не оказались разными реквизитами.
 
@@ -77,11 +89,19 @@ class _ProductPaymentCompanyScreenState
   late final _corr =
       TextEditingController(text: widget.setting?.corrAccount);
 
+  late final _link = TextEditingController(text: widget.setting?.paymentLink);
+  late final _phone = TextEditingController(text: widget.setting?.phone);
+
   late String? _account = widget.setting?.account;
   late bool _selfEmployed = widget.setting?.selfEmployed ?? false;
 
   /// Нужен ли блок банковских реквизитов. Решает сервер полем `form`.
   bool get _isBank => widget.method.form == 'bank';
+
+  bool get _isSbp => widget.method.key == 'sbp';
+
+  /// Способы, которые платятся по ссылке банка продавца.
+  bool get _hasLink => _isSbp || widget.method.key == 'sberpay';
 
   String get _accountTitle {
     for (final account in widget.accounts) {
@@ -121,7 +141,37 @@ class _ProductPaymentCompanyScreenState
       return value.isEmpty ? null : value;
     }
 
-    if (text(_legal) == null) {
+    // Ссылка только https: по ней покупатель уходит в приложение банка.
+    final link = text(_link);
+
+    if (_hasLink && link != null && !link.toLowerCase().startsWith('https://')) {
+      _say('Ссылка на оплату должна начинаться с https://');
+
+      return;
+    }
+
+    final phoneDigits = _phone.text.replaceAll(RegExp(r'\D'), '');
+
+    if (_isSbp && phoneDigits.isNotEmpty && phoneDigits.length < 10) {
+      _say('Проверьте телефон для СБП');
+
+      return;
+    }
+
+    if (_hasLink && link == null && !(_isSbp && phoneDigits.isNotEmpty)) {
+      _say(
+        _isSbp
+            ? 'Укажите ссылку на оплату или телефон для СБП'
+            : 'Укажите ссылку на оплату',
+      );
+
+      return;
+    }
+
+    // Название организации обязательно для перевода по счёту: без него
+    // платёжное поручение не заполнить. СБП и SberPay платятся по ссылке или
+    // телефону, им название не обязательно.
+    if (!_hasLink && text(_legal) == null) {
       _say('Укажите полное название организации');
 
       return;
@@ -143,7 +193,7 @@ class _ProductPaymentCompanyScreenState
 
         // Банковские реквизиты храним только там, где они спрашиваются:
         // у СБП их нет и взяться им неоткуда.
-        bankName: _isBank ? text(_bank) : null,
+        bankName: _isBank || _isSbp ? text(_bank) : null,
         accountNumber: _isBank ? text(_accountNumber) : null,
         bic: _isBank ? text(_bic) : null,
         corrAccount: _isBank ? text(_corr) : null,
@@ -159,6 +209,8 @@ class _ProductPaymentCompanyScreenState
         kpp: _selfEmployed ? null : text(_kpp),
         ogrn: _selfEmployed ? null : text(_ogrn),
         selfEmployed: _selfEmployed,
+        phone: _isSbp && phoneDigits.isNotEmpty ? phoneDigits : null,
+        paymentLink: _hasLink ? link : null,
       ),
     );
   }
@@ -288,6 +340,38 @@ class _ProductPaymentCompanyScreenState
                       ),
                     ),
                   ),
+
+                  if (_hasLink) ...[
+                    const SizedBox(height: 22),
+                    const Text(
+                      'Как покупатель заплатит',
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _field(
+                      'Ссылка на оплату из вашего банка',
+                      _link,
+                      keyboard: TextInputType.url,
+                      hint: 'Платёжную ссылку или ссылку QR-кода выдаёт ваш '
+                          'банк (Сбер Бизнес, Т-Бизнес и другие). Покупатель '
+                          'увидит кнопку «Оплатить» и QR-код, деньги придут '
+                          'вам напрямую.',
+                    ),
+                    if (_isSbp) ...[
+                      _field(
+                        'Телефон для СБП',
+                        _phone,
+                        keyboard: TextInputType.phone,
+                        hint: 'Если ссылки нет, покупатель переведёт по этому '
+                            'номеру в своём банке.',
+                      ),
+                      _field('Банк получателя', _bank),
+                    ],
+                  ],
 
                   const SizedBox(height: 22),
                   const Text(
@@ -437,6 +521,8 @@ class _ProductPaymentCompanyScreenState
     String label,
     TextEditingController controller, {
     bool digits = false,
+    TextInputType? keyboard,
+    String? hint,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -460,8 +546,8 @@ class _ProductPaymentCompanyScreenState
             ),
             child: TextField(
               controller: controller,
-              keyboardType:
-                  digits ? TextInputType.number : TextInputType.text,
+              keyboardType: keyboard ??
+                  (digits ? TextInputType.number : TextInputType.text),
               style: const TextStyle(color: textPrimary, fontSize: 15),
               decoration: const InputDecoration(
                 border: InputBorder.none,
@@ -470,6 +556,17 @@ class _ProductPaymentCompanyScreenState
               ),
             ),
           ),
+          if (hint != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              hint,
+              style: const TextStyle(
+                color: textMuted,
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ],
         ],
       ),
     );

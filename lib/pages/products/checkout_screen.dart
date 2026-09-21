@@ -605,7 +605,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           onTap: () => setState(() => _paymentMethods[group.shopId] = method.key),
 
           // Реквизиты только у выбранного: платить человек будет по ним.
-          extra: method.key == chosen && method.fields.isNotEmpty
+          // Если у продавца есть ссылка на оплату из его банка, кнопка
+          // «Оплатить» и QR-код появятся после оформления (21.09.2026):
+          // платить за заказ, которого ещё нет, нельзя.
+          extra: method.key == chosen &&
+                  (method.fields.isNotEmpty || method.link != null)
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -615,6 +619,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         style: const TextStyle(
                           color: textSecondary,
                           fontSize: 13,
+                        ),
+                      ),
+                    if (method.link != null)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'После оформления появится кнопка «Оплатить» и '
+                          'QR-код банка продавца.',
+                          style: TextStyle(
+                            color: activeIconColor,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                   ],

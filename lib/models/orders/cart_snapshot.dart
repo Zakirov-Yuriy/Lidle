@@ -536,12 +536,17 @@ class CartPaymentMethod {
   /// не приложение, иначе сайт и приложение однажды решат по-разному.
   final bool needsAcknowledgement;
 
+  /// Ссылка на оплату из банка продавца (21.09.2026): кнопка «Оплатить» и
+  /// QR-код. null — продавец ссылку не дал.
+  final String? link;
+
   const CartPaymentMethod({
     required this.key,
     required this.title,
     this.hint = '',
     this.fields = const [],
     this.needsAcknowledgement = true,
+    this.link,
   });
 
   factory CartPaymentMethod.fromJson(Map<String, dynamic> data) {
@@ -559,6 +564,7 @@ class CartPaymentMethod {
                 .toList()
           : const [],
       needsAcknowledgement: data['needs_acknowledgement'] != false,
+      link: _httpsLink(data['link']),
     );
   }
 
@@ -681,4 +687,12 @@ class CartPaymentNotice {
   }
 
   bool get isEmpty => notice.isEmpty && confirmLabel.isEmpty;
+}
+
+/// Ссылка на оплату, только https. Остальное не показываем: по ней человек
+/// уходит в приложение банка.
+String? _httpsLink(dynamic raw) {
+  final value = '${raw ?? ''}'.trim();
+
+  return value.toLowerCase().startsWith('https://') ? value : null;
 }

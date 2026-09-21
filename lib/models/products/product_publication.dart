@@ -459,6 +459,8 @@ class PaymentSetting {
     this.accountNumber,
     this.bic,
     this.corrAccount,
+    this.phone,
+    this.paymentLink,
   });
 
   /// Куда приходят деньги: `cash` или `bank_account`.
@@ -494,6 +496,15 @@ class PaymentSetting {
   final String? bic;
   final String? corrAccount;
 
+  /// Телефон для СБП (21.09.2026): покупатель переводит по номеру в своём
+  /// банке. Банк получателя лежит в [bankName].
+  final String? phone;
+
+  /// Ссылка на оплату из банка продавца (21.09.2026): Сбер Бизнес,
+  /// Т-Бизнес и другие выдают её продавцу. Покупатель видит кнопку
+  /// «Оплатить» и QR-код, деньги идут продавцу напрямую.
+  final String? paymentLink;
+
   /// Номер карты так, как его показывают везде: «•••• •••• •••• 2345».
   String get maskedCard => last4 == null ? '' : '•••• •••• •••• $last4';
 
@@ -512,6 +523,8 @@ class PaymentSetting {
         if (accountNumber != null) 'account_number': accountNumber,
         if (bic != null) 'bic': bic,
         if (corrAccount != null) 'corr_account': corrAccount,
+        if (phone != null) 'phone': phone,
+        if (paymentLink != null) 'payment_link': paymentLink,
       };
 }
 
@@ -551,6 +564,8 @@ Map<String, PaymentSetting> _settings(dynamic raw) {
       accountNumber: text(value['account_number']),
       bic: text(value['bic']),
       corrAccount: text(value['corr_account']),
+      phone: text(value['phone']),
+      paymentLink: text(value['payment_link']),
     );
   });
 

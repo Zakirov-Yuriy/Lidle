@@ -4,6 +4,7 @@ import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/auth/register_screen.dart';
 import 'package:lidle/services/token_service.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:lidle/widgets/products/payment_link_block.dart';
 
 /// Экран после оформления: коды получения.
 ///
@@ -229,6 +230,21 @@ class OrderPlacedScreen extends StatelessWidget {
               'Готовят примерно ${order.cookingTimeMinutes} мин',
               style: const TextStyle(color: textSecondary, fontSize: 13),
             ),
+          ],
+
+          // Как заплатить продавцу (21.09.2026): реквизиты выбранного
+          // способа и кнопка «Оплатить» с QR-кодом, если продавец дал
+          // ссылку своего банка.
+          if (order.paymentLink != null || order.paymentFields.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              order.paymentMethodTitle == null
+                  ? 'Оплата'
+                  : 'Оплата: ${order.paymentMethodTitle}',
+              style: const TextStyle(color: textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            OrderPaymentDetails(order: order),
           ],
         ],
       ),

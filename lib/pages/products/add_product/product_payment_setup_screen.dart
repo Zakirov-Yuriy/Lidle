@@ -324,6 +324,11 @@ class _ProductPaymentSetupScreenState extends State<ProductPaymentSetupScreen> {
 
         _line('Касса', widget.dictionary.accountTitle(setting.account)),
 
+        // Оплата напрямую продавцу (21.09.2026): ссылка из банка и телефон
+        // для СБП.
+        _line('Ссылка на оплату', setting.paymentLink),
+        _line('Телефон для СБП', setting.phone),
+
         // Кошелёк: подпись берём из справочника, как и на самом экране
         // настройки.
         if (method.form == 'wallet')

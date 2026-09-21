@@ -17,6 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'package:lidle/widgets/products/payment_link_block.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/order_item.dart';
 import 'package:lidle/pages/full_category_screen/seller_profile_screen.dart';
@@ -584,6 +585,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           // Но ряд одинаково серых кружков читается как «всё сломалось»,
           // поэтому объясняем прямо, а не оставляем человека гадать
           // (17.09.2026).
+          // Как заплатить продавцу (21.09.2026): реквизиты выбранного
+          // способа и кнопка «Оплатить» с QR-кодом, если продавец дал ссылку
+          // своего банка. Деньги идут продавцу напрямую.
+          if (order.paymentLink != null || order.paymentFields.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            OrderPaymentDetails(order: order),
+          ],
           if (chosen.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 12),

@@ -59,6 +59,11 @@ class OrderModel {
   /// платят не онлайн.
   final String? paymentStatus;
 
+  /// Реквизиты выбранного способа строками «подпись: значение» и ссылка на
+  /// оплату из банка продавца, копией с момента заказа (21.09.2026).
+  final List<OrderPaymentField> paymentFields;
+  final String? paymentLink;
+
   /// Способ оплаты с исходом онлайн-оплаты, для продавца: собирать заказ
   /// или ждать денег.
   String? get paymentLabel {
@@ -125,6 +130,8 @@ class OrderModel {
     this.paymentTypes = const [],
     this.paymentOnPickup = false,
     this.paymentStatus,
+    this.paymentFields = const [],
+    this.paymentLink,
     this.deliveryType = 'pickup',
     this.deliveryTitle,
     this.deliveryPrice = '0',
@@ -172,6 +179,20 @@ class OrderModel {
           data['payment'] is Map && data['payment']['on_pickup'] == true,
       paymentStatus: data['payment'] is Map
           ? data['payment']['status']?.toString()
+          : null,
+      paymentFields: data['payment'] is Map && data['payment']['fields'] is List
+          ? (data['payment']['fields'] as List)
+              .whereType<Map>()
+              .map((row) => OrderPaymentField(
+                    label: '${row['label'] ?? ''}'.trim(),
+                    value: '${row['value'] ?? ''}'.trim(),
+                  ))
+              .where((field) => field.value.isNotEmpty)
+              .toList()
+          : const [],
+      paymentLink: data['payment'] is Map &&
+              '${data['payment']['link'] ?? ''}'.trim().toLowerCase().startsWith('https://')
+          ? '${data['payment']['link']}'.trim()
           : null,
       items: items is List
           ? items.whereType<Map<String, dynamic>>().map(OrderLine.fromJson).toList()
@@ -413,4 +434,12 @@ class OrderCourier {
       (telegram ?? '').isNotEmpty ||
       (whatsapp ?? '').isNotEmpty ||
       (vk ?? '').isNotEmpty;
+}
+
+/// Строка реквизитов заказа: «Телефон: +7 925 449-95-50».
+class OrderPaymentField {
+  final String label;
+  final String value;
+
+  const OrderPaymentField({required this.label, required this.value});
 }
