@@ -71,15 +71,12 @@
     <!-- usesCleartextTraffic=false: обмен только по https. Раньше стояло
          true, то есть приложению разрешалось ходить и по незашифрованному
          http. Ни один наш адрес этого не требует, а проверка перед
-         публикацией отмечает такое как замечание по безопасности.
-         networkSecurityConfig (22.09.2026): добавляет сертификат Минцифры
-         для страниц 3-D Secure банков в форме оплаты YooKassa. -->
+         публикацией отмечает такое как замечание по безопасности. -->
     <application
         android:label="LIDLE"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="false"
-        android:networkSecurityConfig="@xml/network_security_config">
+        android:usesCleartextTraffic="false">
         
         <activity
             android:name=".MainActivity"

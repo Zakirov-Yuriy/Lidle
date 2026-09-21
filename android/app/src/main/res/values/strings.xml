@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Схема приложения для возврата из приложения Сбера после SberPay
-         (мобильный SDK YooKassa, 22.09.2026). Должна совпадать с
-         kPaymentAppScheme в lib/pages/products/order_payment_flow.dart и с
-         ORDERS_PAYMENT_APP_RETURN_URL на сервере. -->
-    <string name="ym_app_scheme" translatable="false">lidlepay</string>
-</resources>

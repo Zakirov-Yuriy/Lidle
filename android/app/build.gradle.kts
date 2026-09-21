@@ -43,9 +43,7 @@ android {
 
     defaultConfig {
         applicationId = "io.lidle.app"
-        // Не ниже 24: этого требует форма оплаты YooKassa (22.09.2026).
-        // Android 7.0 и новее, телефоны старше этого почти не встречаются.
-        minSdk = maxOf(24, flutter.minSdkVersion)
+        minSdk = flutter.minSdkVersion
         // Тоже числом и по той же причине, см. compileSdk выше.
         targetSdk = 36
         versionCode = flutter.versionCode
