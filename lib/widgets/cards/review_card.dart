@@ -180,9 +180,11 @@ class _ReviewCardState extends State<ReviewCard> {
       context: context,
       builder: (_) => ReviewComplaintDialog(
         reviewId: widget.review.id,
-        target: isCompany
-            ? ReviewComplaintTarget.company
-            : ReviewComplaintTarget.advert,
+        target: widget.review.isProductReview
+            ? ReviewComplaintTarget.product
+            : isCompany
+                ? ReviewComplaintTarget.company
+                : ReviewComplaintTarget.advert,
         companyId: companyId,
       ),
     );

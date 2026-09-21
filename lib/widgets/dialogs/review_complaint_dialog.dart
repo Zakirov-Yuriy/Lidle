@@ -4,16 +4,18 @@
 //  отправка — на соответствующий эндпоинт:
 //   - отзыв объявления: POST /reviews/{id}/report
 //   - отзыв компании:   POST /companies/{companyId}/reviews/{id}/report
+//   - отзыв о товаре:   POST /product-reviews/{id}/report (21.09.2026)
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/services/api_service.dart';
+import 'package:lidle/services/products_service.dart';
 import 'package:lidle/widgets/components/custom_checkbox.dart';
 
-/// На какой отзыв жалуемся: на отзыв к объявлению или на отзыв о компании.
-enum ReviewComplaintTarget { advert, company }
+/// На какой отзыв жалуемся: к объявлению, о компании или о товаре.
+enum ReviewComplaintTarget { advert, company, product }
 
 class ReviewComplaintDialog extends StatefulWidget {
   /// Id отзыва.
@@ -43,9 +45,11 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
   bool _submitting = false;
   String? errorMessage;
 
-  String get _reasonsType => widget.target == ReviewComplaintTarget.company
-      ? 'company_review'
-      : 'advert_review';
+  String get _reasonsType => switch (widget.target) {
+        ReviewComplaintTarget.company => 'company_review',
+        ReviewComplaintTarget.product => 'product_review',
+        ReviewComplaintTarget.advert => 'advert_review',
+      };
 
   @override
   void initState() {
@@ -87,7 +91,13 @@ class _ReviewComplaintDialogState extends State<ReviewComplaintDialog> {
     if (selectedReportId == null || _submitting) return;
     setState(() => _submitting = true);
     try {
-      if (widget.target == ReviewComplaintTarget.company) {
+      if (widget.target == ReviewComplaintTarget.product) {
+        final error = await ProductsService.reportReview(
+          widget.reviewId,
+          reportId: selectedReportId!,
+        );
+        if (error != null) throw Exception(error);
+      } else if (widget.target == ReviewComplaintTarget.company) {
         final companyId = widget.companyId;
         if (companyId == null) {
           throw Exception('Не указана компания');

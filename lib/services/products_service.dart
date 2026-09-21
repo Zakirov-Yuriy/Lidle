@@ -258,6 +258,31 @@ class ProductsService {
     }
   }
 
+  /// Пожаловаться на отзыв о товаре (21.09.2026).
+  ///
+  /// Причина из справочника (`GET /content/reports?type=product_review`).
+  /// `null` при успехе, текст ошибки иначе: сервер отвечает понятными
+  /// словами, если жалоба повторная или отзыв свой.
+  static Future<String?> reportReview(
+    int reviewId, {
+    required int reportId,
+  }) async {
+    try {
+      final response = await ApiService.post(
+        '/product-reviews/$reviewId/report',
+        {'report_id': reportId},
+      );
+
+      if (response['success'] == true) return null;
+
+      return '${response['message'] ?? 'Не получилось отправить жалобу'}';
+    } catch (e) {
+      log.d('Жалоба на отзыв о товаре $reviewId не ушла: $e');
+
+      return 'Не получилось отправить жалобу. Проверьте связь.';
+    }
+  }
+
   /// Удалить свой отзыв.
   static Future<String?> deleteReview(int reviewId) async {
     try {
