@@ -55,6 +55,24 @@ class OrderModel {
   /// прилавка или проверять поступление.
   final bool paymentOnPickup;
 
+  /// Онлайн-оплата (22.09.2026): `pending`, `paid`, `failed` или пусто, если
+  /// платят не онлайн.
+  final String? paymentStatus;
+
+  /// Способ оплаты с исходом онлайн-оплаты, для продавца: собирать заказ
+  /// или ждать денег.
+  String? get paymentLabel {
+    final title = paymentMethodTitle;
+    if (title == null || title.isEmpty) return title;
+
+    return switch (paymentStatus) {
+      'paid' => '$title, оплачено',
+      'pending' => '$title, ждём оплату',
+      'failed' => '$title, не оплачено',
+      _ => title,
+    };
+  }
+
   /// Как человек получает заказ: `pickup` или `courier` (16.09.2026).
   final String deliveryType;
 
@@ -106,6 +124,7 @@ class OrderModel {
     this.paymentMethod,
     this.paymentTypes = const [],
     this.paymentOnPickup = false,
+    this.paymentStatus,
     this.deliveryType = 'pickup',
     this.deliveryTitle,
     this.deliveryPrice = '0',
@@ -151,6 +170,9 @@ class OrderModel {
           : const [],
       paymentOnPickup:
           data['payment'] is Map && data['payment']['on_pickup'] == true,
+      paymentStatus: data['payment'] is Map
+          ? data['payment']['status']?.toString()
+          : null,
       items: items is List
           ? items.whereType<Map<String, dynamic>>().map(OrderLine.fromJson).toList()
           : const [],

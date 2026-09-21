@@ -7,6 +7,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/hive_service.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
 import 'package:lidle/pages/auth/sign_in_screen.dart';
+import 'package:lidle/pages/products/order_payment_flow.dart';
 import 'package:lidle/pages/products/order_placed_screen.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
@@ -438,6 +439,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
+    var orders = result.orders;
+
+    // Онлайн-оплата (22.09.2026). Заказ уже оформлен; теперь страница
+    // YooKassa, а при отказе экран «Заказ не оплачен». Отменили заказ там —
+    // благодарить не за что, возвращаемся в корзину.
+    final payment = result.payment;
+
+    if (payment != null) {
+      final paid = await runOrderPayment(context, payment);
+
+      if (!mounted) return;
+
+      if (paid.outcome == OrderPaymentOutcome.cancelled) {
+        SnackBarHelper.showInfo(context, 'Заказ отменён');
+        Navigator.pop(context, true);
+
+        return;
+      }
+
+      if (paid.outcome == OrderPaymentOutcome.cash && paid.orders.isNotEmpty) {
+        final fresh = {for (final o in paid.orders) o.id: o};
+        orders = [for (final o in orders) fresh[o.id] ?? o];
+      }
+    }
+
     // «Спасибо за заказ» (макет, 21.09.2026): сначала благодарим, потом
     // ведём на экран с кодом получения, как и раньше. Заказ к этому моменту
     // уже оформлен, окно ничего не решает, только закрывается.
@@ -448,7 +474,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     await Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => OrderPlacedScreen(orders: result.orders),
+        builder: (_) => OrderPlacedScreen(orders: orders),
       ),
     );
 

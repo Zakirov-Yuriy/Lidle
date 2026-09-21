@@ -154,7 +154,7 @@ class _OrderAcceptScreenState extends State<OrderAcceptScreen> {
                           (_order.deliveryComment ?? '').isNotEmpty)
                         _line('Комментарий:', _order.deliveryComment!),
                       const SizedBox(height: 8),
-                      _line('Оплата:', _order.paymentMethodTitle ?? '—'),
+                      _line('Оплата:', _order.paymentLabel ?? '—'),
                       if ((_order.comment ?? '').isNotEmpty)
                         _line('От покупателя:', _order.comment!),
                     ]),

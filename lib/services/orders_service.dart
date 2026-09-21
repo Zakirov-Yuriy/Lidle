@@ -1,5 +1,6 @@
 import 'package:lidle/core/logger.dart';
 import 'package:lidle/models/orders/order_item.dart';
+import 'package:lidle/models/orders/order_payment.dart';
 import 'package:lidle/services/api_service.dart';
 
 /// Заказы: оформление и жизнь заказа у обеих сторон.
@@ -115,8 +116,17 @@ class OrdersService {
     String buyerType = 'individual',
     String? companyName,
     String? companyInn,
+
+    /// Онлайн-оплата (22.09.2026): какой способ YooKassa открыть сразу
+    /// (`bank_card`, `sberbank`, `tinkoff_bank`, `sbp`). Пусто — человек
+    /// выбирает на странице оплаты сам.
+    String? paymentChannel,
   }) async {
     final body = <String, dynamic>{};
+
+    if (paymentChannel != null && paymentChannel.isNotEmpty) {
+      body['payment_channel'] = paymentChannel;
+    }
 
     if (emailToken != null && emailToken.isNotEmpty) {
       body['email_token'] = emailToken;
@@ -185,11 +195,111 @@ class OrdersService {
                   .toList()
             : const [],
         message: response['message']?.toString(),
+        payment: response['payment'] is Map<String, dynamic>
+            ? OrderPaymentInfo.fromJson(response['payment'])
+            : null,
       );
     } catch (e) {
       log.d('Ошибка оформления заказа: $e');
 
       return CheckoutResult.failure('Не получилось связаться с сервером');
+    }
+  }
+
+  // ── Онлайн-оплата заказа (22.09.2026) ─────────────────────────────
+
+  /// Чем кончилась оплата. Сервер сам переспрашивает YooKassa, если исход
+  /// ещё не известен. null — не удалось связаться.
+  static Future<OrderPaymentInfo?> paymentStatus(String token) async {
+    try {
+      final response = await ApiService.get('/orders/payments/$token');
+      final data = response['data'];
+
+      return data is Map<String, dynamic>
+          ? OrderPaymentInfo.fromJson(data)
+          : null;
+    } catch (e) {
+      log.d('Ошибка статуса оплаты: $e');
+
+      return null;
+    }
+  }
+
+  /// Заплатить ещё раз: другой картой ([cardId]) или другим способом
+  /// YooKassa ([channel]). Возвращает НОВЫЙ платёж со своей ссылкой.
+  static Future<PaymentActionResult> retryPayment(
+    String token, {
+    String? channel,
+    int? cardId,
+  }) async {
+    try {
+      final response = await ApiService.post('/orders/payments/$token/retry', {
+        if (channel != null) 'channel': channel,
+        if (cardId != null) 'card_id': cardId,
+      });
+
+      final data = response['data'];
+
+      return PaymentActionResult(
+        isOk: response['success'] == true,
+        message: response['message']?.toString(),
+        payment: data is Map<String, dynamic>
+            ? OrderPaymentInfo.fromJson(data)
+            : null,
+      );
+    } catch (e) {
+      return PaymentActionResult(
+        isOk: false,
+        message: _serverText(e) ?? 'Не получилось связаться с сервером',
+      );
+    }
+  }
+
+  /// Перейти на оплату наличными при получении.
+  static Future<PaymentActionResult> payInCash(String token) async {
+    try {
+      final response = await ApiService.post(
+        '/orders/payments/$token/cash',
+        const {},
+      );
+
+      final data = response['data'];
+
+      return PaymentActionResult(
+        isOk: response['success'] == true,
+        message: response['message']?.toString(),
+        orders: data is List
+            ? data
+                  .whereType<Map<String, dynamic>>()
+                  .map(OrderModel.fromJson)
+                  .toList()
+            : const [],
+      );
+    } catch (e) {
+      return PaymentActionResult(
+        isOk: false,
+        message: _serverText(e) ?? 'Не получилось связаться с сервером',
+      );
+    }
+  }
+
+  /// Отменить неоплаченный заказ.
+  static Future<PaymentActionResult> cancelUnpaid(String token) async {
+    try {
+      final response = await ApiService.post(
+        '/orders/payments/$token/cancel',
+        const {},
+      );
+
+      return PaymentActionResult(
+        isOk: response['success'] == true,
+        message: response['message']?.toString(),
+      );
+    } catch (e) {
+      return PaymentActionResult(
+        isOk: false,
+        message: _serverText(e) ?? 'Не получилось связаться с сервером',
+      );
     }
   }
 
@@ -415,18 +525,44 @@ class CheckoutResult {
   final String? message;
   final String? error;
 
+  /// Онлайн-платёж, если хотя бы один заказ оплачивается онлайн.
+  final OrderPaymentInfo? payment;
+
   const CheckoutResult._({
     required this.isOk,
     this.orders = const [],
     this.message,
     this.error,
+    this.payment,
   });
 
-  factory CheckoutResult.success(List<OrderModel> orders, {String? message}) =>
-      CheckoutResult._(isOk: true, orders: orders, message: message);
+  factory CheckoutResult.success(
+    List<OrderModel> orders, {
+    String? message,
+    OrderPaymentInfo? payment,
+  }) => CheckoutResult._(
+    isOk: true,
+    orders: orders,
+    message: message,
+    payment: payment,
+  );
 
   factory CheckoutResult.failure(String error) =>
       CheckoutResult._(isOk: false, error: error);
+}
+
+class PaymentActionResult {
+  final bool isOk;
+  final String? message;
+  final OrderPaymentInfo? payment;
+  final List<OrderModel> orders;
+
+  const PaymentActionResult({
+    required this.isOk,
+    this.message,
+    this.payment,
+    this.orders = const [],
+  });
 }
 
 class OrderActionResult {

@@ -389,7 +389,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
           // это всегда ноль, и строка «Цена доставки: 0.00 ₽» ничего не
           // сообщает, зато добавляет в карточку ещё одно число.
           if (order.isCourier) _line('Цена доставки:', _rub(order.deliveryPrice)),
-          _line('Оплата:', order.paymentMethodTitle ?? '—'),
+          _line('Оплата:', order.paymentLabel ?? '—'),
           const SizedBox(height: 10),
           _item(line),
           if (line.isRejected)
