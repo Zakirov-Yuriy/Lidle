@@ -2,7 +2,17 @@
 //  Онлайн-оплата заказа через YooKassa (22.09.2026)
 // ============================================================
 //
-// Как идёт оплата:
+// Основной путь (22.09.2026, мобильный SDK YooKassa):
+//   1. Сервер завёл платёж, но в YooKassa его ещё не отправлял.
+//   2. Человек вводит карту в форме SDK прямо в приложении (или выбирает
+//      SberPay, СБП). SDK отдаёт одноразовый токен.
+//   3. Сервер создаёт платёж с этим токеном. Карта без 3-D Secure решается
+//      сразу, и отказ банка («Недостаточно средств») приходит в ответе.
+//      Нужен код из СМС — SDK сам открывает страницу банка.
+//   4. Отказ — экран «Заказ не оплачен» с причиной и другими способами.
+//
+// Запасной путь (сервер без ключа SDK, T-Pay): страница оплаты YooKassa во
+// встроенном браузере:
 //   1. Сервер завёл платёж и дал ссылку на страницу YooKassa.
 //   2. Открываем её во встроенном браузере. Человек вводит карту, банк
 //      проверяет, YooKassa возвращает его на адрес с путём `/order-payment`.
@@ -21,6 +31,8 @@ import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:yookassa_payments_flutter/input_data/saved_card_module_input_data.dart';
+import 'package:yookassa_payments_flutter/yookassa_payments_flutter.dart';
 
 /// Чем кончилась оплата для экрана оформления.
 enum OrderPaymentOutcome {
@@ -48,7 +60,12 @@ Future<OrderPaymentFlowResult> runOrderPayment(
   BuildContext context,
   OrderPaymentInfo payment,
 ) async {
-  final result = await payOrderOnce(context, payment);
+  // Сервер завёл платёж под форму SDK: ссылки нет, ждёт токен карты.
+  final result = payment.sdk != null &&
+          payment.isPending &&
+          payment.confirmationUrl == null
+      ? await payOrderWithSdk(context, payment)
+      : await payOrderOnce(context, payment);
 
   if (result.paid) {
     return const OrderPaymentFlowResult(OrderPaymentOutcome.paid);
@@ -66,11 +83,176 @@ Future<OrderPaymentFlowResult> runOrderPayment(
   return choice ?? const OrderPaymentFlowResult(OrderPaymentOutcome.cancelled);
 }
 
-/// Одна попытка: страница оплаты, затем ожидание исхода.
+/// Оплата формой SDK YooKassa.
 ///
-/// Возвращает последнее известное состояние. Если исход так и не пришёл
-/// (человек закрыл страницу, не заплатив), возвращает платёж с причиной
-/// «Оплата не завершена», чтобы экран «Заказ не оплачен» было чем заполнить.
+/// [methods] — какие способы показать в форме; по умолчанию карта, SberPay
+/// и СБП. [card] — заплатить сохранённой картой (SDK спросит только CVC).
+Future<OrderPaymentInfo> payOrderWithSdk(
+  BuildContext context,
+  OrderPaymentInfo payment, {
+  List<PaymentMethod> methods = const [
+    PaymentMethod.bankCard,
+    PaymentMethod.sberbank,
+    PaymentMethod.sbp,
+  ],
+  SavedPaymentCard? card,
+}) async {
+  final sdk = payment.sdk;
+
+  if (sdk == null) return payOrderOnce(context, payment);
+
+  final amount = Amount(value: sdk.amount, currency: Currency.rub);
+  final save = sdk.canSave ? SavePaymentMethod.on : SavePaymentMethod.off;
+
+  TokenizationResult result;
+
+  try {
+    if (card != null && (card.methodId ?? '').isNotEmpty) {
+      result = await YookassaPaymentsFlutter.bankCardRepeat(
+        SavedBankCardModuleInputData(
+          clientApplicationKey: sdk.clientKey,
+          title: sdk.title,
+          subtitle: sdk.subtitle,
+          amount: amount,
+          savePaymentMethod: SavePaymentMethod.off,
+          shopId: sdk.shopId,
+          paymentMethodId: card.methodId!,
+          isSafeDeal: false,
+          customerId: sdk.customerId,
+          lang: 'ru',
+        ),
+      );
+    } else {
+      result = await YookassaPaymentsFlutter.tokenization(
+        TokenizationModuleInputData(
+          clientApplicationKey: sdk.clientKey,
+          title: sdk.title,
+          subtitle: sdk.subtitle,
+          amount: amount,
+          savePaymentMethod: save,
+          shopId: sdk.shopId,
+          tokenizationSettings: TokenizationSettings(
+            PaymentMethodTypes(methods),
+          ),
+          customerId: sdk.customerId,
+          applicationScheme: '$kPaymentAppScheme://',
+          lang: 'ru',
+        ),
+      );
+    }
+  } catch (e) {
+    return payment.withReason(
+      'Не удалось открыть форму оплаты',
+      'Попробуйте ещё раз или выберите другой способ оплаты',
+    );
+  }
+
+  if (result is CanceledTokenizationResult) {
+    return payment.withReason(
+      'Оплата не завершена',
+      'Вы закрыли форму оплаты. Выберите способ и попробуйте ещё раз',
+    );
+  }
+
+  if (result is! SuccessTokenizationResult) {
+    return payment.withReason(
+      'Не удалось открыть форму оплаты',
+      'Попробуйте ещё раз или выберите другой способ оплаты',
+    );
+  }
+
+  final success = result;
+  final method = success.paymentMethodType ?? PaymentMethod.bankCard;
+
+  if (!context.mounted) return payment;
+
+  final charged = await _withSpinner(
+    context,
+    () => OrdersService.chargePayment(
+      payment.token,
+      paymentToken: success.token,
+      methodType: _methodKey(method),
+      save: sdk.canSave && card == null,
+    ),
+  );
+
+  if (charged == null) {
+    return payment.withReason(
+      'Нет связи с сервером',
+      'Проверьте интернет и попробуйте ещё раз',
+    );
+  }
+
+  if (charged.paid || charged.isFailed) return charged;
+
+  // Нужно подтверждение: код из СМС (3-D Secure) или приложение Сбера.
+  final url = charged.confirmationUrl;
+
+  if (url != null) {
+    try {
+      await YookassaPaymentsFlutter.confirmation(
+        url,
+        method,
+        sdk.clientKey,
+        sdk.shopId,
+      );
+    } catch (_) {
+      // Исход всё равно спросим у сервера ниже.
+    }
+  }
+
+  if (!context.mounted) return charged;
+
+  final latest = await _waitForOutcome(context, charged.token);
+
+  if (latest == null) {
+    return charged.withReason(
+      'Нет связи с сервером',
+      'Проверьте интернет и попробуйте ещё раз',
+    );
+  }
+
+  if (latest.isPending) {
+    return latest.withReason(
+      'Оплата не завершена',
+      'Попробуйте ещё раз или выберите другой способ оплаты',
+    );
+  }
+
+  return latest;
+}
+
+/// Схема приложения для возврата из Сбера (strings.xml, `ym_app_scheme`).
+const String kPaymentAppScheme = 'lidlepay';
+
+String _methodKey(PaymentMethod method) => switch (method) {
+  PaymentMethod.bankCard => 'bank_card',
+  PaymentMethod.sberbank => 'sberbank',
+  PaymentMethod.sbp => 'sbp',
+  PaymentMethod.yooMoney => 'yoo_money',
+  _ => 'bank_card',
+};
+
+Future<T> _withSpinner<T>(BuildContext context, Future<T> Function() job) async {
+  showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => const PopScope(
+      canPop: false,
+      child: Center(child: CircularProgressIndicator(color: activeIconColor)),
+    ),
+  );
+
+  try {
+    return await job();
+  } finally {
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
+  }
+}
+
+/// Одна попытка через страницу оплаты YooKassa, затем ожидание исхода.
+///
+/// Запасной путь: сервер без ключа SDK или T-Pay, которого в SDK нет.
 Future<OrderPaymentInfo> payOrderOnce(
   BuildContext context,
   OrderPaymentInfo payment,
@@ -93,29 +275,20 @@ Future<OrderPaymentInfo> payOrderOnce(
   final latest = await _waitForOutcome(context, payment.token);
 
   if (latest == null) {
-    return _unfinished(payment, 'Нет связи с сервером',
-        'Проверьте интернет и попробуйте ещё раз');
+    return payment.withReason(
+      'Нет связи с сервером',
+      'Проверьте интернет и попробуйте ещё раз',
+    );
   }
 
   if (latest.isPending) {
-    return _unfinished(latest, 'Оплата не завершена',
-        'Попробуйте ещё раз или выберите другой способ оплаты');
+    return latest.withReason(
+      'Оплата не завершена',
+      'Попробуйте ещё раз или выберите другой способ оплаты',
+    );
   }
 
   return latest;
-}
-
-OrderPaymentInfo _unfinished(OrderPaymentInfo p, String title, String hint) {
-  return OrderPaymentInfo(
-    token: p.token,
-    status: p.status,
-    paid: false,
-    amount: p.amount,
-    reason: 'unfinished',
-    reasonTitle: title,
-    reasonHint: hint,
-    cards: p.cards,
-  );
 }
 
 /// Спросить исход несколько раз, пока крутится индикатор.

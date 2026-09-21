@@ -122,7 +122,11 @@ class OrdersService {
     /// выбирает на странице оплаты сам.
     String? paymentChannel,
   }) async {
-    final body = <String, dynamic>{};
+    final body = <String, dynamic>{
+      // Приложение умеет платить формой карты SDK YooKassa (22.09.2026):
+      // сервер только заводит платёж, а в YooKassa он уходит с токеном.
+      'payment_sdk': true,
+    };
 
     if (paymentChannel != null && paymentChannel.isNotEmpty) {
       body['payment_channel'] = paymentChannel;
@@ -252,6 +256,33 @@ class OrdersService {
         isOk: false,
         message: _serverText(e) ?? 'Не получилось связаться с сервером',
       );
+    }
+  }
+
+  /// Заплатить токеном из формы SDK YooKassa. Отказ банка приходит в
+  /// ответе сразу: `status = canceled` и причина.
+  static Future<OrderPaymentInfo?> chargePayment(
+    String token, {
+    required String paymentToken,
+    required String methodType,
+    bool save = false,
+  }) async {
+    try {
+      final response = await ApiService.post('/orders/payments/$token/charge', {
+        'payment_token': paymentToken,
+        'method_type': methodType,
+        'save': save,
+      });
+
+      final data = response['data'];
+
+      return data is Map<String, dynamic>
+          ? OrderPaymentInfo.fromJson(data)
+          : null;
+    } catch (e) {
+      log.d('Ошибка оплаты токеном: $e');
+
+      return null;
     }
   }
 

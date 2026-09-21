@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Сетевые настройки (22.09.2026).
+
+     Корневой сертификат Минцифры (Russian Trusted Root CA) нужен форме
+     оплаты YooKassa: часть российских банков подписывает страницы
+     3-D Secure (код из СМС) этим сертификатом, и без него страница банка
+     не открывается. Системные сертификаты оставлены: без строки "system"
+     приложение перестало бы доверять всем остальным сайтам.
+
+     cleartextTrafficPermitted="false": обмен только по https, как и было
+     в usesCleartextTraffic. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/russian_trusted_root_ca" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

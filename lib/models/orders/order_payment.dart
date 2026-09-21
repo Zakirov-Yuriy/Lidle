@@ -22,6 +22,10 @@ class OrderPaymentInfo {
 
   final List<SavedPaymentCard> cards;
 
+  /// Настройки формы оплаты в приложении (мобильный SDK YooKassa). null —
+  /// на сервере SDK не настроен, платим через страницу оплаты.
+  final OrderPaymentSdk? sdk;
+
   const OrderPaymentInfo({
     required this.token,
     required this.status,
@@ -32,6 +36,7 @@ class OrderPaymentInfo {
     this.reasonTitle,
     this.reasonHint,
     this.cards = const [],
+    this.sdk,
   });
 
   bool get isPending => status == 'pending';
@@ -40,6 +45,7 @@ class OrderPaymentInfo {
   factory OrderPaymentInfo.fromJson(Map<String, dynamic> json) {
     final url = json['confirmation_url']?.toString();
     final cards = json['cards'];
+    final sdk = json['sdk'];
 
     return OrderPaymentInfo(
       token: '${json['token'] ?? ''}',
@@ -56,8 +62,57 @@ class OrderPaymentInfo {
                 .map(SavedPaymentCard.fromJson)
                 .toList()
           : const [],
+      sdk: sdk is Map<String, dynamic> ? OrderPaymentSdk.fromJson(sdk) : null,
     );
   }
+
+  /// Тот же платёж с другой причиной для экрана «Заказ не оплачен».
+  OrderPaymentInfo withReason(String title, String hint) => OrderPaymentInfo(
+    token: token,
+    status: status,
+    paid: false,
+    amount: amount,
+    reason: 'unfinished',
+    reasonTitle: title,
+    reasonHint: hint,
+    cards: cards,
+    sdk: sdk,
+  );
+}
+
+/// Что нужно форме оплаты SDK YooKassa. Ключ не секретный: он только
+/// открывает форму и выдаёт одноразовый токен карты.
+class OrderPaymentSdk {
+  final String clientKey;
+  final String shopId;
+  final String title;
+  final String subtitle;
+
+  /// Сумма строкой, как её ждёт SDK: `2350.00`.
+  final String amount;
+  final bool canSave;
+  final String? customerId;
+
+  const OrderPaymentSdk({
+    required this.clientKey,
+    required this.shopId,
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    this.canSave = false,
+    this.customerId,
+  });
+
+  factory OrderPaymentSdk.fromJson(Map<String, dynamic> json) =>
+      OrderPaymentSdk(
+        clientKey: '${json['client_key'] ?? ''}',
+        shopId: '${json['shop_id'] ?? ''}',
+        title: '${json['title'] ?? 'LIDLE'}',
+        subtitle: '${json['subtitle'] ?? ''}',
+        amount: '${json['amount'] ?? '0'}',
+        canSave: json['can_save'] == true,
+        customerId: json['customer_id']?.toString(),
+      );
 }
 
 /// Сохранённая карта. Номера нет, только последние цифры: `**5434 МИР`.
@@ -67,11 +122,16 @@ class SavedPaymentCard {
   final String? last4;
   final String? cardType;
 
+  /// id способа оплаты в YooKassa: по нему SDK платит этой картой, спросив
+  /// только CVC.
+  final String? methodId;
+
   const SavedPaymentCard({
     required this.id,
     required this.title,
     this.last4,
     this.cardType,
+    this.methodId,
   });
 
   factory SavedPaymentCard.fromJson(Map<String, dynamic> json) =>
@@ -80,5 +140,6 @@ class SavedPaymentCard {
         title: '${json['title'] ?? ''}',
         last4: json['last4']?.toString(),
         cardType: json['card_type']?.toString(),
+        methodId: json['method_id']?.toString(),
       );
 }

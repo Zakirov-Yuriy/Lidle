@@ -6,9 +6,10 @@
 // («Недостаточно средств»), ниже выбор, как заплатить иначе:
 //
 //   Наличными      — заказ переводится на оплату при получении;
-//   Оплата картой  — новая карта на странице YooKassa;
-//   Оплата онлайн  — приложение банка (SberPay, T-Pay, СБП) или
-//                    сохранённая карта из «Ваши карты».
+//   Оплата картой  — новая карта в форме SDK YooKassa прямо в приложении;
+//   Оплата онлайн  — SberPay и СБП (форма SDK), T-Pay (страница оплаты,
+//                    в SDK его нет) или сохранённая карта из «Ваши карты»
+//                    (SDK спросит только CVC).
 //
 // Способы на этом экране заданы в приложении, а не приходят с сервера:
 // это выбор «как доплатить за уже оформленный заказ», и он один для всех.
@@ -24,6 +25,8 @@ import 'package:lidle/pages/products/order_payment_flow.dart';
 import 'package:lidle/services/orders_service.dart';
 import 'package:lidle/widgets/components/custom_error_snackbar.dart';
 import 'package:lidle/widgets/components/header.dart';
+import 'package:yookassa_payments_flutter/yookassa_payments_flutter.dart'
+    show PaymentMethod;
 
 const Color _errorRed = Color(0xFFFF3B30);
 
@@ -98,6 +101,30 @@ class _OrderUnpaidScreenState extends State<OrderUnpaidScreen> {
       return;
     }
 
+    // Форма SDK YooKassa (22.09.2026): карта, SberPay, СБП и сохранённые
+    // карты. Отказ банка приходит сразу, и экран просто обновляет причину.
+    // T-Pay в SDK нет, он идёт через страницу оплаты ниже.
+    if (_payment.sdk != null && _channel != 'tinkoff_bank') {
+      final outcome = await payOrderWithSdk(
+        context,
+        _payment,
+        methods: switch ((_method, _channel)) {
+          (_Method.online, 'sberbank') => const [PaymentMethod.sberbank],
+          (_Method.online, 'sbp') => const [PaymentMethod.sbp],
+          _ => const [PaymentMethod.bankCard],
+        },
+        card: _method == _Method.online && _channel == null
+            ? _selectedCard
+            : null,
+      );
+
+      if (!mounted) return;
+
+      _finish(outcome);
+
+      return;
+    }
+
     final retry = await OrdersService.retryPayment(
       _payment.token,
       channel: _method == _Method.card ? 'bank_card' : _channel,
@@ -122,6 +149,18 @@ class _OrderUnpaidScreenState extends State<OrderUnpaidScreen> {
 
     if (!mounted) return;
 
+    _finish(outcome);
+  }
+
+  SavedPaymentCard? get _selectedCard {
+    for (final card in _payment.cards) {
+      if (card.id == _cardId) return card;
+    }
+
+    return null;
+  }
+
+  void _finish(OrderPaymentInfo outcome) {
     if (outcome.paid) {
       Navigator.pop(
         context,
@@ -131,7 +170,8 @@ class _OrderUnpaidScreenState extends State<OrderUnpaidScreen> {
       return;
     }
 
-    // Снова не прошло: показываем новую причину, выбор оставляем.
+    // Снова не прошло: показываем новую причину, выбор оставляем. Токен у
+    // нового платежа свой, поэтому держим именно его.
     setState(() {
       _payment = outcome;
       _busy = false;
@@ -319,7 +359,7 @@ class _OrderUnpaidScreenState extends State<OrderUnpaidScreen> {
           _radioRow(
             method: _Method.card,
             title: 'Оплата картой',
-            hint: 'Банковской картой на странице оплаты',
+            hint: 'Банковской картой',
           ),
           _radioRow(
             method: _Method.online,
