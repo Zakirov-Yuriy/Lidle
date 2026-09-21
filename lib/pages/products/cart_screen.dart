@@ -318,6 +318,12 @@ class _CartScreenState extends State<CartScreen> {
         _buildPickBar(cart),
         ..._buildLooseLines(cart),
         ...cart.folders.map((folder) => _buildFolderBlock(cart, folder)),
+
+        // «Ваша корзина» после всех товаров, как на макете (21.09.2026):
+        // суммы по папкам и скидка. Итог «К оплате» и кнопка остаются
+        // внизу экрана, чтобы оформить можно было, не пролистывая список.
+        const SizedBox(height: 6),
+        _buildSummary(cart),
       ],
     );
   }
@@ -464,20 +470,33 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  /// Плитка «плюс» в конце ленты.
+  ///
+  /// По высоте ровно как картинка у плитки папки (84), а не во всю ленту
+  /// (правка заказчика 21.09.2026). Лента горизонтальная и отдаёт детям
+  /// жёсткую высоту 116, поэтому одного `height: 84` у контейнера мало:
+  /// он растягивался на всю ленту и был заметно выше соседних папок.
+  /// Колонка сверху даёт ему его собственную высоту.
   Widget _buildAddFolderTile() {
     return SizedBox(
       width: 116,
-      child: GestureDetector(
-        onTap: _createFolder,
-        child: Container(
-          height: 84,
-          decoration: BoxDecoration(
-            color: formBackground,
-            borderRadius: BorderRadius.circular(8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: _createFolder,
+            child: Container(
+              width: double.infinity,
+              height: 84,
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.add_circle_outline,
+                  color: textSecondary, size: 24),
+            ),
           ),
-          child: const Icon(Icons.add_circle_outline,
-              color: textSecondary, size: 24),
-        ),
+        ],
       ),
     );
   }
@@ -1008,31 +1027,47 @@ class _CartScreenState extends State<CartScreen> {
               color: activeIconColor, size: 22),
         ),
         const Spacer(),
-        _stepButton(
-          Icons.remove,
-          () => _apply(
-            () => CartService.setQuantity(line.productId, line.quantity - 1),
+
+        // Счётчик в серой рамке, как на макете (21.09.2026): минус, число и
+        // плюс читаются одним элементом, а не тремя отдельными.
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            border: Border.all(color: textMuted),
+            borderRadius: BorderRadius.circular(8),
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Text(
-            '${line.quantity}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _stepButton(
+                Icons.remove,
+                () => _apply(
+                  () => CartService.setQuantity(
+                      line.productId, line.quantity - 1),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Text(
+                  '${line.quantity}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              _stepButton(
+                Icons.add,
+                line.quantity < line.stockQuantity
+                    ? () => _apply(
+                          () => CartService.setQuantity(
+                              line.productId, line.quantity + 1),
+                        )
+                    : null,
+              ),
+            ],
           ),
-        ),
-        _stepButton(
-          Icons.add,
-          line.quantity < line.stockQuantity
-              ? () => _apply(
-                    () => CartService.setQuantity(
-                        line.productId, line.quantity + 1),
-                  )
-              : null,
         ),
       ],
     );
@@ -1064,15 +1099,10 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Разбивка по папкам (18.09.2026). Человек отложил вещи на
-            // разные полки, и перед оплатой честно показать, сколько стоит
-            // взятое с каждой, а не одно общее число.
-            ..._buildFolderTotals(full),
-
             Row(
               children: [
                 const Text(
-                  'Итого',
+                  'К оплате',
                   style: TextStyle(color: textSecondary, fontSize: 15),
                 ),
                 const Spacer(),
@@ -1136,11 +1166,14 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  /// Строки «папка — сумма отмеченного в ней».
+  /// Блок «Ваша корзина» (макет, 21.09.2026).
   ///
-  /// Папки без единой отмеченной вещи не показываем: в итоге их нет, и нули
-  /// под кнопкой оплаты только отвлекают.
-  List<Widget> _buildFolderTotals(CartSnapshot cart) {
+  /// Строка на каждую полку, где что-то отмечено: название и сумма
+  /// отмеченного в ней. Товары вне папок идут строкой «Без папки», как в окне
+  /// выбора папки. Под ними «Скидка»: скидок на площадке пока нет, и строка
+  /// честно показывает ноль, а не прячется, чтобы место на макете не
+  /// выглядело забытым.
+  Widget _buildSummary(CartSnapshot cart) {
     final rows = <Widget>[];
 
     final parts = <CartFolderInfo>[
@@ -1158,52 +1191,74 @@ class _CartScreenState extends State<CartScreen> {
         sum += row.line.sum;
       }
 
+      // Полка без единой отмеченной вещи в оплату не идёт, и её ноль только
+      // отвлекает.
       if (sum <= 0) continue;
 
+      rows.add(_summaryRow(folder.name, _money(sum)));
+    }
+
+    if (rows.isEmpty) {
       rows.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  folder.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
-                ),
-              ),
-              Text(
-                _money(sum),
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
-            ],
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Ничего не отмечено',
+            style: TextStyle(color: textMuted, fontSize: 14),
           ),
         ),
       );
     }
 
-    // Одна строка — разбивать нечего: она повторила бы итог слово в слово.
-    if (rows.length < 2) return const [];
-
-    return [
-      const Padding(
-        padding: EdgeInsets.only(bottom: 6),
-        child: Text(
-          'Ваша корзина',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(10),
       ),
-      ...rows,
-      const SizedBox(height: 6),
-    ];
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Ваша корзина',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...rows,
+          const Divider(color: Color(0xFF2E3A47), height: 12),
+          _summaryRow('Скидка', _money(0)),
+        ],
+      ),
+    );
   }
 
-  /// Что написать на кнопке.
+  Widget _summaryRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: textSecondary, fontSize: 14),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Свежая корзина перед оформлением. `false` значит «не идём дальше».
   ///
   /// Отмеченное, чего в корзине больше нет, снимаем с отметки и говорим об
@@ -1242,7 +1297,7 @@ class _CartScreenState extends State<CartScreen> {
       SnackBarHelper.showWarning(
         context,
         'Корзина изменилась: часть отмеченного больше не в корзине. '
-        'Проверьте состав и нажмите «Оформить» ещё раз.',
+        'Проверьте состав и нажмите «Перейти к оформлению» ещё раз.',
       );
 
       return false;
@@ -1251,12 +1306,15 @@ class _CartScreenState extends State<CartScreen> {
     return true;
   }
 
+  /// Что написать на кнопке.
+  ///
+  /// «Перейти к оформлению», как на макете (21.09.2026). Число позиций с
+  /// кнопки ушло: оно есть строкой над ней («В заказ пойдёт …»). Без галочек
+  /// кнопка всё равно живая и отвечает словами, что отметить.
   String _checkoutLabel(CartSnapshot full, CartSnapshot selected) {
     if (!full.canCheckout) return 'Нечего оформлять';
 
-    return _picked.isEmpty
-        ? 'Выберите товары'
-        : 'Оформить ${_positions(selected.availableItemsCount)}';
+    return 'Перейти к оформлению';
   }
 
   Future<void> _openCheckout() async {
