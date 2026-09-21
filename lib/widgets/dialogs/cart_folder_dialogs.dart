@@ -12,10 +12,10 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
+import 'package:lidle/pages/products/add_product/photo_source_sheet.dart';
 import 'package:lidle/services/cart_service.dart';
 
 /// Положить товар в корзину, спросив папку, если есть из чего выбирать.
@@ -85,7 +85,15 @@ class FolderForm {
     required this.name,
     this.imagePath,
     this.removeImage = false,
+    this.delete = false,
   });
+
+  /// Человек нажал «Удалить папку» в окне правки.
+  const FolderForm.delete()
+      : name = '',
+        imagePath = null,
+        removeImage = false,
+        delete = true;
 
   final String name;
 
@@ -94,6 +102,9 @@ class FolderForm {
 
   /// Человек нажал «Убрать» у прежней обложки.
   final bool removeImage;
+
+  /// Удалить папку целиком (21.09.2026). Подтверждение спрашивает экран.
+  final bool delete;
 }
 
 /// Диалог «Создания папки в корзине». Возвращает заполненное или `null`.
@@ -101,12 +112,18 @@ class FolderForm {
 /// Обложка по желанию (21.09.2026): полка «К 1 сентября» с картинкой рюкзака
 /// находится глазами быстрее, чем по названию. `initialImage` это ссылка на
 /// текущую обложку, когда окно открыто для правки.
+///
+/// `canDelete` добавляет внизу «Удалить папку»: в окне правки это
+/// единственное видимое место, откуда папку можно убрать (21.09.2026). До
+/// этого удаление висело на долгом нажатии по плитке, и найти его было
+/// нельзя.
 Future<FolderForm?> showCreateFolderDialog(
   BuildContext context, {
-  String title = 'Создания папки в корзине',
-  String notice = 'После создания папка появиться в корзине',
+  String title = 'Создание папки в корзине',
+  String notice = 'После создания папка появится в корзине',
   String? initial,
   String? initialImage,
+  bool canDelete = false,
 }) {
   return showDialog<FolderForm>(
     context: context,
@@ -115,6 +132,7 @@ Future<FolderForm?> showCreateFolderDialog(
       notice: notice,
       initial: initial,
       initialImage: initialImage,
+      canDelete: canDelete,
     ),
   );
 }
@@ -371,18 +389,25 @@ class _FolderNameDialog extends StatefulWidget {
     required this.notice,
     this.initial,
     this.initialImage,
+    this.canDelete = false,
   });
 
   final String title;
   final String notice;
   final String? initial;
   final String? initialImage;
+  final bool canDelete;
 
   @override
   State<_FolderNameDialog> createState() => _FolderNameDialogState();
 }
 
 class _FolderNameDialogState extends State<_FolderNameDialog> {
+  // Вид окна повторяет диалог группы в кабинете продавца
+  // (`group_dialog.dart`, правка заказчика 21.09.2026): большой блок
+  // «Добавить изображение», под ним название, внизу «Отмена» и «Готово».
+  // Картинка выбирается тем же листом «Камера / Галерея», что у товаров.
+
   late final TextEditingController _name =
       TextEditingController(text: widget.initial ?? '');
 
@@ -392,30 +417,25 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
   /// Человек убрал прежнюю обложку.
   bool _removed = false;
 
-  bool get _hasCover =>
-      _pickedPath != null ||
-      (!_removed && (widget.initialImage ?? '').isNotEmpty);
+  String? get _savedImage {
+    final url = widget.initialImage;
 
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
+    return (!_removed && url != null && url.isNotEmpty) ? url : null;
   }
 
+  bool get _hasCover => _pickedPath != null || _savedImage != null;
+
+  // Контроллер не освобождаем по той же причине, что в диалоге группы:
+  // окно закрывается с анимацией, и поле живёт ещё несколько кадров. Живой
+  // TextField с мёртвым контроллером подвешивает приложение.
+
   Future<void> _pickCover() async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
+    final picked = await pickProductPhotos(context);
 
-      // Обложка показывается маленькой, тащить на сервер снимок в 12
-      // мегапикселей незачем.
-      maxWidth: 1200,
-      imageQuality: 85,
-    );
-
-    if (file == null || !mounted) return;
+    if (picked.isEmpty || !mounted) return;
 
     setState(() {
-      _pickedPath = file.path;
+      _pickedPath = picked.first;
       _removed = false;
     });
   }
@@ -425,125 +445,199 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
         _removed = true;
       });
 
-  Widget _coverPreview() {
-    const size = 64.0;
+  void _submit() {
+    final name = _name.text.trim();
 
-    Widget image;
+    // Папка без названия неотличима от соседней, поэтому пустое имя просто
+    // не закрывает окно.
+    if (name.isEmpty) return;
 
-    if (_pickedPath != null) {
-      image = Image.file(File(_pickedPath!), fit: BoxFit.cover);
-    } else if (_hasCover) {
-      image = Image.network(
-        widget.initialImage!,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(
-          Icons.folder_outlined,
-          color: textMuted,
-        ),
-      );
-    } else {
-      image = const Icon(Icons.folder_outlined, color: textMuted, size: 28);
-    }
+    Navigator.of(context).pop(FolderForm(
+      name: name,
+      imagePath: _pickedPath,
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        width: size,
-        height: size,
-        color: formBackground,
-        alignment: Alignment.center,
-        child: SizedBox(width: size, height: size, child: image),
-      ),
-    );
-  }
-
-  Widget _link(String text, VoidCallback onTap, {Color color = activeIconColor}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Text(text, style: TextStyle(color: color, fontSize: 14)),
-      ),
-    );
+      // «Убрать» имеет смысл только для обложки, которая уже была: у новой
+      // папки убирать нечего.
+      removeImage: _removed &&
+          _pickedPath == null &&
+          (widget.initialImage ?? '').isNotEmpty,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    return _CartDialogShell(
-      title: widget.title,
-      action: 'Готово',
-      onAction: () {
-        final name = _name.text.trim();
-
-        // Папка без названия неотличима от соседней, поэтому пустое имя
-        // просто не закрывает окно.
-        if (name.isEmpty) return;
-
-        Navigator.of(context).pop(FolderForm(
-          name: name,
-          imagePath: _pickedPath,
-
-          // «Убрать» имеет смысл только для обложки, которая уже была:
-          // у новой папки убирать нечего.
-          removeImage: _removed &&
-              _pickedPath == null &&
-              (widget.initialImage ?? '').isNotEmpty,
-        ));
-      },
-      children: [
-        _Notice(widget.notice),
-        const SizedBox(height: 14),
-        const Text(
-          'Название группы',
-          style: TextStyle(color: Colors.white, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: formBackground,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: TextField(
-            controller: _name,
-            autofocus: true,
-            maxLength: 64,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              counterText: '',
-              hintText: 'Введите',
-              hintStyle: TextStyle(color: textMuted, fontSize: 15),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        const Text(
-          'Обложка (по желанию)',
-          style: TextStyle(color: Colors.white, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
-        Row(
+    return Dialog(
+      backgroundColor: secondaryBackground,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GestureDetector(onTap: _pickCover, child: _coverPreview()),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _link(_hasCover ? 'Заменить картинку' : 'Выбрать картинку',
-                      _pickCover),
-                  if (_hasCover)
-                    _link('Убрать', _removeCover, color: textMuted),
-                ],
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: textPrimary,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Icon(Icons.close, color: textPrimary, size: 20),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _Notice(widget.notice),
+
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Изображение папки',
+                    style: TextStyle(color: textPrimary, fontSize: 15),
+                  ),
+                ),
+                if (_hasCover)
+                  GestureDetector(
+                    onTap: _removeCover,
+                    behavior: HitTestBehavior.opaque,
+                    child: const Text(
+                      'Убрать',
+                      style: TextStyle(color: textSecondary, fontSize: 14),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            _photoBlock(),
+
+            const SizedBox(height: 16),
+            const Text(
+              'Название папки',
+              style: TextStyle(color: textPrimary, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: TextField(
+                controller: _name,
+                autofocus: (widget.initial ?? '').isEmpty,
+                maxLength: 64,
+                style: const TextStyle(color: textPrimary, fontSize: 15),
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  counterText: '',
+                  hintText: 'Например, Купить к 1 сентября',
+                  hintStyle: TextStyle(color: textMuted, fontSize: 15),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                // Удаление слева и красным, подальше от «Готово»: промахнуться
+                // и снести папку вместо сохранения должно быть трудно. Само
+                // удаление всё равно переспросит.
+                if (widget.canDelete)
+                  GestureDetector(
+                    onTap: () =>
+                        Navigator.pop(context, const FolderForm.delete()),
+                    behavior: HitTestBehavior.opaque,
+                    child: const Text(
+                      'Удалить папку',
+                      style: TextStyle(color: Colors.redAccent, fontSize: 15),
+                    ),
+                  ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: const Text(
+                    'Отмена',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 15,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onTap: _submit,
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: activeIconColor),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'Готово',
+                      style: TextStyle(color: activeIconColor, fontSize: 15),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      ],
+      ),
     );
   }
+
+  Widget _photoBlock() {
+    final local = _pickedPath;
+    final saved = _savedImage;
+
+    return GestureDetector(
+      onTap: _pickCover,
+      child: Container(
+        height: 120,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: local != null
+            ? Image.file(File(local), fit: BoxFit.cover)
+            : saved != null
+                ? Image.network(
+                    saved,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _placeholder(),
+                  )
+                : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() => const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.add_circle_outline, color: textSecondary, size: 28),
+          SizedBox(height: 8),
+          Text(
+            'Добавить изображение',
+            style: TextStyle(color: textSecondary, fontSize: 14),
+          ),
+        ],
+      );
 }
 
 class _ConfirmDialog extends StatelessWidget {

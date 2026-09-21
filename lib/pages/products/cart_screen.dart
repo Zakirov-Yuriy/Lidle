@@ -508,9 +508,18 @@ class _CartScreenState extends State<CartScreen> {
       notice: 'Название и обложку увидите только вы',
       initial: folder.name,
       initialImage: folder.image,
+      canDelete: true,
     );
 
     if (form == null || !mounted) return;
+
+    // «Удалить папку» из окна правки (21.09.2026). Подтверждение то же, что
+    // и раньше: товары остаются в корзине, но спросить всё равно надо.
+    if (form.delete) {
+      await _deleteFolder(folder);
+
+      return;
+    }
 
     if (form.name != folder.name) {
       await _apply(() => CartService.renameFolder(id, form.name));
