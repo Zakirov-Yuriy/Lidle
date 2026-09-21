@@ -184,6 +184,11 @@ class CartSnapshot {
       cartToken: cartToken,
       contacts: contacts,
       payment: payment,
+
+      // Папки переносим (21.09.2026): экран оформления раскладывает «Ваши
+      // товары» по папкам, и без их названий все полки превратились бы в
+      // «Без папки».
+      folders: folders,
     );
   }
 

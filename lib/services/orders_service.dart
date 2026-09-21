@@ -8,6 +8,75 @@ import 'package:lidle/services/api_service.dart';
 /// мы их не проводим. Поэтому оформление заканчивается кодом получения, а не
 /// платежом.
 class OrdersService {
+  /// Отправить гостю код подтверждения почты (21.09.2026).
+  ///
+  /// Возвращает, через сколько секунд можно просить новый код: сервер
+  /// отвечает так и тогда, когда письмо не отправлял, потому что прошлое ушло
+  /// меньше минуты назад. Экран просто показывает этот таймер.
+  static Future<GuestCodeResult> sendGuestCode(String email) async {
+    try {
+      final response = await ApiService.post(
+        '/orders/guest-code',
+        {'email': email.trim()},
+      );
+
+      if (response['success'] != true) {
+        return GuestCodeResult.failure(
+          '${response['message'] ?? 'Не получилось отправить код'}',
+        );
+      }
+
+      final wait = response['resend_in'];
+
+      return GuestCodeResult.sent(
+        wait is num ? wait.toInt() : int.tryParse('$wait') ?? 60,
+      );
+    } catch (e) {
+      return GuestCodeResult.failure(
+        _serverText(e) ?? 'Не получилось отправить код. Проверьте почту и связь.',
+      );
+    }
+  }
+
+  /// Проверить код из письма. Верный — токен для оформления.
+  static Future<GuestCodeResult> verifyGuestCode(
+    String email,
+    String code,
+  ) async {
+    try {
+      final response = await ApiService.post(
+        '/orders/guest-code/verify',
+        {'email': email.trim(), 'code': code.trim()},
+      );
+
+      final token = response['token'];
+
+      if (response['success'] == true && token is String && token.isNotEmpty) {
+        return GuestCodeResult.verified(token);
+      }
+
+      return GuestCodeResult.failure(
+        '${response['message'] ?? 'Код не подошёл'}',
+      );
+    } catch (e) {
+      return GuestCodeResult.failure(
+        _serverText(e) ??
+            'Код не подошёл. Проверьте письмо или запросите новый код.',
+      );
+    }
+  }
+
+  /// Текст ошибки сервера из исключения ApiService, если он там есть.
+  static String? _serverText(Object error) {
+    final text = error.toString().replaceFirst('Exception: ', '').trim();
+
+    if (text.isEmpty || text.contains('Exception') || text.length > 200) {
+      return null;
+    }
+
+    return text;
+  }
+
   /// Оформить корзину.
   ///
   /// Работает и без входа. Гостю имя, телефон и почта обязательны: без них его
@@ -38,8 +107,27 @@ class OrdersService {
     /// НЕ кладём: её подставляет сервер по номеру способа, и присланной он не
     /// верит. Иначе цену доставки можно было бы назначить себе самому.
     Map<int, OrderDeliveryChoice>? deliveries,
+
+    /// Токен подтверждённой почты гостя (21.09.2026), из [verifyGuestCode].
+    String? emailToken,
+
+    /// `individual` или `company`; у компании название и ИНН (21.09.2026).
+    String buyerType = 'individual',
+    String? companyName,
+    String? companyInn,
   }) async {
     final body = <String, dynamic>{};
+
+    if (emailToken != null && emailToken.isNotEmpty) {
+      body['email_token'] = emailToken;
+    }
+
+    body['buyer_type'] = buyerType;
+
+    if (buyerType == 'company') {
+      body['company_name'] = companyName ?? '';
+      body['company_inn'] = companyInn ?? '';
+    }
 
     // Подтверждение, что человек понял, кому и куда платит. Сервер требует
     // его обязательно: деньги идут продавцу напрямую, мимо площадки, и
@@ -435,4 +523,25 @@ class CourierBrief {
         position: data['position']?.toString(),
         image: data['image']?.toString(),
       );
+}
+
+/// Итог работы с кодом подтверждения почты гостя (21.09.2026).
+class GuestCodeResult {
+  const GuestCodeResult._({this.resendIn, this.token, this.error});
+
+  const GuestCodeResult.sent(int resendIn) : this._(resendIn: resendIn);
+
+  const GuestCodeResult.verified(String token) : this._(token: token);
+
+  const GuestCodeResult.failure(String error) : this._(error: error);
+
+  /// Через сколько секунд можно просить новый код.
+  final int? resendIn;
+
+  /// Токен подтверждённой почты: уходит в оформление.
+  final String? token;
+
+  final String? error;
+
+  bool get isOk => error == null;
 }
