@@ -9,7 +9,10 @@
 // карточки товара, с плитки в ленте разделов и из самой корзины. Три копии
 // одного окна разошлись бы после первой же правки текста.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/orders/cart_snapshot.dart';
@@ -72,19 +75,46 @@ Future<CartFolderInfo?> showFolderPicker(
   );
 }
 
-/// Диалог «Создания папки в корзине». Возвращает название или `null`.
-Future<String?> showCreateFolderDialog(
+/// Что человек заполнил в окне папки (21.09.2026).
+///
+/// Отдельный тип, а не строка: кроме названия окно теперь знает про
+/// обложку, и у обложки три исхода. Выбрал новую (`imagePath`), убрал
+/// прежнюю (`removeImage`) или не трогал (оба пусты).
+class FolderForm {
+  const FolderForm({
+    required this.name,
+    this.imagePath,
+    this.removeImage = false,
+  });
+
+  final String name;
+
+  /// Путь к выбранной картинке на телефоне или `null`, если новую не брали.
+  final String? imagePath;
+
+  /// Человек нажал «Убрать» у прежней обложки.
+  final bool removeImage;
+}
+
+/// Диалог «Создания папки в корзине». Возвращает заполненное или `null`.
+///
+/// Обложка по желанию (21.09.2026): полка «К 1 сентября» с картинкой рюкзака
+/// находится глазами быстрее, чем по названию. `initialImage` это ссылка на
+/// текущую обложку, когда окно открыто для правки.
+Future<FolderForm?> showCreateFolderDialog(
   BuildContext context, {
   String title = 'Создания папки в корзине',
   String notice = 'После создания папка появиться в корзине',
   String? initial,
+  String? initialImage,
 }) {
-  return showDialog<String>(
+  return showDialog<FolderForm>(
     context: context,
     builder: (_) => _FolderNameDialog(
       title: title,
       notice: notice,
       initial: initial,
+      initialImage: initialImage,
     ),
   );
 }
@@ -340,11 +370,13 @@ class _FolderNameDialog extends StatefulWidget {
     required this.title,
     required this.notice,
     this.initial,
+    this.initialImage,
   });
 
   final String title;
   final String notice;
   final String? initial;
+  final String? initialImage;
 
   @override
   State<_FolderNameDialog> createState() => _FolderNameDialogState();
@@ -354,10 +386,86 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
   late final TextEditingController _name =
       TextEditingController(text: widget.initial ?? '');
 
+  /// Новая картинка с телефона. Пока не выбрана, показываем прежнюю.
+  String? _pickedPath;
+
+  /// Человек убрал прежнюю обложку.
+  bool _removed = false;
+
+  bool get _hasCover =>
+      _pickedPath != null ||
+      (!_removed && (widget.initialImage ?? '').isNotEmpty);
+
   @override
   void dispose() {
     _name.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickCover() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+
+      // Обложка показывается маленькой, тащить на сервер снимок в 12
+      // мегапикселей незачем.
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+
+    if (file == null || !mounted) return;
+
+    setState(() {
+      _pickedPath = file.path;
+      _removed = false;
+    });
+  }
+
+  void _removeCover() => setState(() {
+        _pickedPath = null;
+        _removed = true;
+      });
+
+  Widget _coverPreview() {
+    const size = 64.0;
+
+    Widget image;
+
+    if (_pickedPath != null) {
+      image = Image.file(File(_pickedPath!), fit: BoxFit.cover);
+    } else if (_hasCover) {
+      image = Image.network(
+        widget.initialImage!,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(
+          Icons.folder_outlined,
+          color: textMuted,
+        ),
+      );
+    } else {
+      image = const Icon(Icons.folder_outlined, color: textMuted, size: 28);
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: size,
+        height: size,
+        color: formBackground,
+        alignment: Alignment.center,
+        child: SizedBox(width: size, height: size, child: image),
+      ),
+    );
+  }
+
+  Widget _link(String text, VoidCallback onTap, {Color color = activeIconColor}) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(text, style: TextStyle(color: color, fontSize: 14)),
+      ),
+    );
   }
 
   @override
@@ -372,7 +480,16 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
         // просто не закрывает окно.
         if (name.isEmpty) return;
 
-        Navigator.of(context).pop(name);
+        Navigator.of(context).pop(FolderForm(
+          name: name,
+          imagePath: _pickedPath,
+
+          // «Убрать» имеет смысл только для обложки, которая уже была:
+          // у новой папки убирать нечего.
+          removeImage: _removed &&
+              _pickedPath == null &&
+              (widget.initialImage ?? '').isNotEmpty,
+        ));
       },
       children: [
         _Notice(widget.notice),
@@ -400,6 +517,29 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
               hintStyle: TextStyle(color: textMuted, fontSize: 15),
             ),
           ),
+        ),
+        const SizedBox(height: 14),
+        const Text(
+          'Обложка (по желанию)',
+          style: TextStyle(color: Colors.white, fontSize: 14),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            GestureDetector(onTap: _pickCover, child: _coverPreview()),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _link(_hasCover ? 'Заменить картинку' : 'Выбрать картинку',
+                      _pickCover),
+                  if (_hasCover)
+                    _link('Убрать', _removeCover, color: textMuted),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );

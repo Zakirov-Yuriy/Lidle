@@ -2043,6 +2043,52 @@ class ApiService {
     }
   }
 
+  /// POST формой: поля строками плюс файлы (21.09.2026).
+  ///
+  /// В отличие от `uploadFile`, берёт ОБЩИЕ заголовки, включая токен
+  /// корзины `X-Cart-Token`: без него сервер не узнает корзину гостя, и
+  /// обложка папки ушла бы в никуда. Content-Type из общих заголовков
+  /// убираем: его собирает сам MultipartRequest вместе с границей частей.
+  static Future<Map<String, dynamic>> postForm(
+    String endpoint, {
+    Map<String, String> fields = const {},
+    Map<String, String> files = const {},
+  }) async {
+    try {
+      final headers = _baseHeaders()..remove('Content-Type');
+
+      final token = HiveService.getUserData('token') as String?;
+
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl$endpoint'),
+      );
+
+      request.headers.addAll(headers);
+      request.fields.addAll(fields);
+
+      for (final entry in files.entries) {
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, entry.value),
+        );
+      }
+
+      final streamed = await request.send().timeout(
+        const Duration(seconds: 60),
+      );
+
+      return _handleResponse(await http.Response.fromStream(streamed));
+    } on http.ClientException catch (e) {
+      throw Exception('Ошибка сети: ${e.message}');
+    } on TimeoutException {
+      throw Exception('Превышено время ожидания ответа от сервера');
+    }
+  }
+
   /// Загрузить файл через multipart/form-data
   static Future<Map<String, dynamic>> uploadFile(
     String endpoint, {

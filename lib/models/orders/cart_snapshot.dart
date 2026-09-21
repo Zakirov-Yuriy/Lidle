@@ -449,6 +449,7 @@ class CartFolderInfo {
     required this.name,
     this.isMain = false,
     this.itemsCount = 0,
+    this.image,
   });
 
   /// Пусто — «Без папки», то есть общий список корзины.
@@ -463,6 +464,11 @@ class CartFolderInfo {
   /// там лежит», а не «сколько единиц товара».
   final int itemsCount;
 
+  /// Обложка полной ссылкой (21.09.2026). Пусто — рисуем значок папки.
+  final String? image;
+
+  bool get hasImage => image != null && image!.isNotEmpty;
+
   bool get isEmpty => itemsCount == 0;
 
   factory CartFolderInfo.fromJson(Map<String, dynamic> data) => CartFolderInfo(
@@ -470,6 +476,9 @@ class CartFolderInfo {
         name: '${data['name'] ?? ''}',
         isMain: data['is_main'] == true || data['id'] == null,
         itemsCount: CartSnapshot._int(data['items_count']) ?? 0,
+        image: data['image'] is String && '${data['image']}'.isNotEmpty
+            ? '${data['image']}'
+            : null,
       );
 }
 

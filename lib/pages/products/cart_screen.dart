@@ -252,14 +252,39 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
+  /// Пустая корзина.
+  ///
+  /// С 21.09.2026 здесь есть «Создать папку»: полки заводят и заранее, до
+  /// первой покупки («К 1 сентября», «Подарки»). Раньше создать папку можно
+  /// было только из карусели, а карусель в пустой корзине не показывается.
   Widget _buildEmpty() {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 40),
-        child: Text(
-          'Корзина пуста.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: textMuted, fontSize: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Корзина пуста.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: textMuted, fontSize: 16),
+            ),
+            const SizedBox(height: 18),
+            OutlinedButton.icon(
+              onPressed: _isBusy ? null : _createFolder,
+              icon: const Icon(Icons.create_new_folder_outlined, size: 20),
+              label: const Text('Создать папку'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: activeIconColor,
+                side: const BorderSide(color: activeIconColor),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -386,8 +411,25 @@ class _CartScreenState extends State<CartScreen> {
                       width: 2,
                     ),
                   ),
-                  child: const Icon(Icons.image_not_supported_outlined,
-                      color: textMuted, size: 22),
+                  // Обложка на всю плитку (21.09.2026). Без неё значок
+                  // папки: плитка должна выглядеть полкой, а не сломанной
+                  // картинкой.
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.antiAlias,
+                  child: folder.hasImage
+                      ? Image.network(
+                          folder.image!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: 84,
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.folder_outlined,
+                            color: textMuted,
+                            size: 24,
+                          ),
+                        )
+                      : const Icon(Icons.folder_outlined,
+                          color: textMuted, size: 24),
                 ),
                 Positioned(
                   right: 6,
@@ -441,28 +483,46 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _createFolder() async {
-    final name = await showCreateFolderDialog(context);
+    final form = await showCreateFolderDialog(context);
 
-    if (name == null || !mounted) return;
+    if (form == null || !mounted) return;
 
-    await _apply(() => CartService.createFolder(name));
+    await _apply(
+      () => CartService.createFolder(form.name, imagePath: form.imagePath),
+    );
   }
 
+  /// Правка папки: название и обложка в одном окне (21.09.2026).
+  ///
+  /// Запросов бывает до двух: название уходит своим, картинка своим. Шлём
+  /// только то, что человек действительно поменял, иначе нажатие «Готово»
+  /// без правок гоняло бы на сервер пустую работу.
   Future<void> _renameFolder(CartFolderInfo folder) async {
     final id = folder.id;
 
     if (id == null) return;
 
-    final name = await showCreateFolderDialog(
+    final form = await showCreateFolderDialog(
       context,
-      title: 'Переименовать папку',
-      notice: 'Название увидите только вы',
+      title: 'Изменить папку',
+      notice: 'Название и обложку увидите только вы',
       initial: folder.name,
+      initialImage: folder.image,
     );
 
-    if (name == null || !mounted) return;
+    if (form == null || !mounted) return;
 
-    await _apply(() => CartService.renameFolder(id, name));
+    if (form.name != folder.name) {
+      await _apply(() => CartService.renameFolder(id, form.name));
+    }
+
+    final imagePath = form.imagePath;
+
+    if (imagePath != null && mounted) {
+      await _apply(() => CartService.setFolderImage(id, imagePath));
+    } else if (form.removeImage && mounted) {
+      await _apply(() => CartService.removeFolderImage(id));
+    }
   }
 
   Future<void> _deleteFolder(CartFolderInfo folder) async {
@@ -474,7 +534,7 @@ class _CartScreenState extends State<CartScreen> {
       context,
       title: 'Удалить папку',
       notice: 'если вы хотите удалить папку «${folder.name}»',
-      hint: 'Товары из неё вернутся в основную папку, а не удалятся.',
+      hint: 'Товары из неё останутся в корзине общим списком, а не удалятся.',
     );
 
     if (!ok || !mounted) return;
@@ -520,6 +580,24 @@ class _CartScreenState extends State<CartScreen> {
                         }),
               ),
               const SizedBox(width: 10),
+
+              // Маленькая обложка слева от названия (21.09.2026), если
+              // человек её выбирал. Без обложки место не занимаем.
+              if (folder.hasImage) ...[
+                ClipOval(
+                  child: Image.network(
+                    folder.image!,
+                    width: 28,
+                    height: 28,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(
+                      width: 28,
+                      height: 28,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: GestureDetector(
                   onTap: () => setState(() {
@@ -1117,6 +1195,53 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   /// Что написать на кнопке.
+  /// Свежая корзина перед оформлением. `false` значит «не идём дальше».
+  ///
+  /// Отмеченное, чего в корзине больше нет, снимаем с отметки и говорим об
+  /// этом человеку, а на оформление в этот раз не ведём: пусть сначала
+  /// увидит, что изменилось. Если сервер не ответил, оформляем по тому, что
+  /// на экране: сервер всё равно проверит заказ сам.
+  Future<bool> _refreshBeforeCheckout() async {
+    setState(() => _isBusy = true);
+
+    final result = await CartService.show();
+
+    if (!mounted) return false;
+
+    final fresh = result.isOk ? result.cart : null;
+
+    if (fresh == null) {
+      setState(() => _isBusy = false);
+
+      return true;
+    }
+
+    final present = <int>{
+      for (final shop in fresh.shops)
+        for (final line in shop.items) line.productId,
+    };
+
+    final gone = _picked.where((id) => !present.contains(id)).length;
+
+    setState(() {
+      _isBusy = false;
+      _cart = fresh;
+      _picked.retainWhere(present.contains);
+    });
+
+    if (gone > 0) {
+      SnackBarHelper.showWarning(
+        context,
+        'Корзина изменилась: часть отмеченного больше не в корзине. '
+        'Проверьте состав и нажмите «Оформить» ещё раз.',
+      );
+
+      return false;
+    }
+
+    return true;
+  }
+
   String _checkoutLabel(CartSnapshot full, CartSnapshot selected) {
     if (!full.canCheckout) return 'Нечего оформлять';
 
@@ -1126,6 +1251,16 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _openCheckout() async {
+    if (_cart == null) return;
+
+    // Перед оформлением перечитываем корзину с сервера (21.09.2026).
+    //
+    // Экран корзины мог пролежать открытым полдня, а корзину тем временем
+    // поменяли на другом устройстве или продавец убрал товар с витрины.
+    // Оформление показывало бы то, чего уже нет, и сервер отказал бы на
+    // последнем шаге, когда человек уже заполнил контакты.
+    if (!await _refreshBeforeCheckout()) return;
+
     final cart = _cart;
 
     if (cart == null) return;

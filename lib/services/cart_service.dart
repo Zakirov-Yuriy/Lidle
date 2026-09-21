@@ -152,8 +152,27 @@ class CartService {
         }),
       );
 
-  static Future<CartResult> createFolder(String name) =>
-      _call(() => ApiService.post('/cart/folders', {'name': name}));
+  /// Создать папку. Обложка по желанию (21.09.2026): тогда запрос уходит
+  /// формой, без неё как раньше.
+  static Future<CartResult> createFolder(String name, {String? imagePath}) =>
+      _call(() => imagePath == null
+          ? ApiService.post('/cart/folders', {'name': name})
+          : ApiService.postForm(
+              '/cart/folders',
+              fields: {'name': name},
+              files: {'image': imagePath},
+            ));
+
+  /// Поставить или заменить обложку папки (21.09.2026).
+  static Future<CartResult> setFolderImage(int folderId, String imagePath) =>
+      _call(() => ApiService.postForm(
+            '/cart/folders/$folderId/image',
+            files: {'image': imagePath},
+          ));
+
+  /// Убрать обложку: папка снова рисуется значком.
+  static Future<CartResult> removeFolderImage(int folderId) =>
+      _call(() => ApiService.delete('/cart/folders/$folderId/image'));
 
   static Future<CartResult> renameFolder(int folderId, String name) =>
       _call(() => ApiService.put('/cart/folders/$folderId', {'name': name}));
