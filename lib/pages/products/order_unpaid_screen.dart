@@ -489,7 +489,7 @@ class _OrderUnpaidScreenState extends State<OrderUnpaidScreen> {
                   ),
                 )
               : Text(
-                  _canPay ? _buttonText : 'Выберите банк или карту',
+                  _canPay ? _buttonText : 'Выберите способ оплаты',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
