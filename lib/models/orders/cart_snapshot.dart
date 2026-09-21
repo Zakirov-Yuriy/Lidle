@@ -396,6 +396,15 @@ class CartLine {
   /// В какой папке корзины лежит позиция (18.09.2026). Пусто — в основной.
   final int? folderId;
 
+  /// Размер варианта отдельно, «54» (21.09.2026). В строке корзины по макету
+  /// он стоит текстом после серой подписи «Размер:».
+  final String? size;
+
+  /// Цвет варианта: название и код для квадратика (21.09.2026). Код такой,
+  /// как его завёл администратор, обычно «#2E7D32».
+  final String? colorName;
+  final String? colorCode;
+
   const CartLine({
     required this.productId,
     required this.name,
@@ -411,6 +420,9 @@ class CartLine {
     this.isWishlisted = false,
     this.wishlistId,
     this.folderId,
+    this.size,
+    this.colorName,
+    this.colorCode,
   }) : modelId = modelId ?? productId;
 
   factory CartLine.fromJson(Map<String, dynamic> data) {
@@ -431,7 +443,16 @@ class CartLine {
       isWishlisted: data['is_wishlisted'] == true,
       wishlistId: CartSnapshot._int(data['wishlist_id']),
       folderId: CartSnapshot._int(data['folder_id']),
+      size: _text(data['size']),
+      colorName: data['color'] is Map ? _text(data['color']['name']) : null,
+      colorCode: data['color'] is Map ? _text(data['color']['code']) : null,
     );
+  }
+
+  static String? _text(dynamic value) {
+    final text = value?.toString().trim() ?? '';
+
+    return text.isEmpty ? null : text;
   }
 }
 

@@ -820,8 +820,18 @@ class _CartScreenState extends State<CartScreen> {
   /// удаление стояло справа от счётчика и читалось как «минус до нуля», то
   /// есть как часть счётчика. Теперь удаление слева, рядом с сердечком: оба
   /// про судьбу позиции, а не про её количество.
+  /// Строка товара по макету (21.09.2026).
+  ///
+  /// Сверху: снимок, справа от него название, точка, «Размер» и «Цвет»,
+  /// у правого края столбик значков (удалить, переложить, сердечко). Снизу:
+  /// счётчик под снимком и не шире его, сумма в правом нижнем углу.
+  ///
+  /// Раньше сумма стояла первой строкой над названием, а счётчик и значки
+  /// лежали одной полосой под карточкой. Сумма над названием читалась как
+  /// цена за штуку, и её путали с ценой на витрине.
   Widget _buildLine(CartLine line, {String? shopName}) {
     final picked = _picked.contains(line.productId);
+    final nameColor = line.isAvailable ? Colors.white : textMuted;
 
     return GestureDetector(
       // Нажатие по всей карточке отмечает: целиться строго в квадратик 24 на
@@ -853,33 +863,13 @@ class _CartScreenState extends State<CartScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Сумму недоступной позиции гасим и перечёркиваем.
-                      //
-                      // Так было: она рисовалась ровно так же, как у
-                      // доступной, то есть белым и жирным. Человек видел
-                      // «1 290 ₽» у товара и «0 ₽» в итоге и считал, что
-                      // корзина не умеет складывать. Перечёркнутая цена сразу
-                      // говорит, что эти деньги в счёт не идут.
-                      Text(
-                        _money(line.sum),
-                        style: TextStyle(
-                          color: line.isAvailable ? Colors.white : textMuted,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          decoration: line.isAvailable
-                              ? TextDecoration.none
-                              : TextDecoration.lineThrough,
-                          decorationColor: textMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
                       Text(
                         line.name,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: line.isAvailable ? Colors.white : textMuted,
-                          fontSize: 14,
+                          color: nameColor,
+                          fontSize: 15,
                           height: 1.2,
                         ),
                       ),
@@ -889,9 +879,9 @@ class _CartScreenState extends State<CartScreen> {
                       // по-прежнему станут разными заказами, и человек
                       // должен видеть, у кого он берёт эту вещь.
                       if ((shopName ?? '').isNotEmpty) ...[
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Text(
-                          shopName!,
+                          shopName!.toUpperCase(),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -901,21 +891,7 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                       ],
 
-                      // «красный, 46»: какой именно вариант лежит в корзине.
-                      // Две строки «Куртка Nika» по 4900 без подписи выглядят
-                      // как задвоение, и человек удаляет нужную.
-                      if (line.variantLabel.isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          line.variantLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                      ..._buildVariant(line),
 
                       // Причина приходит готовой с сервера: «товара сегодня
                       // нет», «осталось только 2 шт.». Не переписываем её
@@ -934,12 +910,223 @@ class _CartScreenState extends State<CartScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                _buildLineIcons(line),
               ],
             ),
             const SizedBox(height: 10),
-            _buildLineActions(line),
+            Row(
+              children: [
+                _buildStepper(line),
+                const Spacer(),
+
+                // Сумму недоступной позиции гасим и перечёркиваем: человек
+                // видел «1 290 ₽» у товара и «0 ₽» в итоге и считал, что
+                // корзина не умеет складывать. Перечёркнутая сумма сразу
+                // говорит, что эти деньги в счёт не идут.
+                Text(
+                  _money(line.sum),
+                  style: TextStyle(
+                    color: line.isAvailable ? Colors.white : textMuted,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    decoration: line.isAvailable
+                        ? TextDecoration.none
+                        : TextDecoration.lineThrough,
+                    decorationColor: textMuted,
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// «Размер: 54   Цвет: ■» (макет, 21.09.2026).
+  ///
+  /// Подписи серые, значение размера белое, цвет квадратиком, закрашенным
+  /// этим цветом. Если код цвета не разобрался, пишем название цвета словом:
+  /// пустой квадратик выглядел бы поломкой. Старый сервер без отдельных
+  /// полей: показываем прежнюю строку «зелёный, 54».
+  List<Widget> _buildVariant(CartLine line) {
+    final size = line.size;
+    final color = _parseColor(line.colorCode);
+    final colorName = line.colorName;
+
+    if (size == null && color == null && colorName == null) {
+      if (line.variantLabel.isEmpty) return const [];
+
+      return [
+        const SizedBox(height: 6),
+        Text(
+          line.variantLabel,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: textSecondary, fontSize: 13),
+        ),
+      ];
+    }
+
+    return [
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 16,
+        runSpacing: 4,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (size != null)
+            Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(
+                    text: 'Размер: ',
+                    style: TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                  TextSpan(
+                    text: size,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          if (color != null || colorName != null)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Цвет: ',
+                  style: TextStyle(color: textSecondary, fontSize: 14),
+                ),
+                if (color != null)
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                  )
+                else
+                  Text(
+                    colorName!,
+                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    ];
+  }
+
+  /// Код цвета из админки в цвет: «#2E7D32», «2E7D32», «#fff».
+  Color? _parseColor(String? code) {
+    var hex = (code ?? '').trim().replaceFirst('#', '');
+
+    if (hex.length == 3) {
+      hex = hex.split('').map((c) => '$c$c').join();
+    }
+
+    if (hex.length != 6) return null;
+
+    final value = int.tryParse(hex, radix: 16);
+
+    return value == null ? null : Color(0xFF000000 | value);
+  }
+
+  /// Столбик значков справа (макет, 21.09.2026): удалить, переложить в
+  /// другую папку, сердечко. Значок переноса белый, а не синий: синий
+  /// читался как «уже выбрано».
+  Widget _buildLineIcons(CartLine line) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () => _removeLine(line),
+          behavior: HitTestBehavior.opaque,
+          child: const Padding(
+            padding: EdgeInsets.all(2),
+            child: Icon(Icons.delete_outline,
+                color: Color(0xFFE05B5B), size: 22),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Переложить вещь на другую полку (18.09.2026).
+        GestureDetector(
+          onTap: () => _moveLines({line.productId}, line.folderId),
+          behavior: HitTestBehavior.opaque,
+          child: const Padding(
+            padding: EdgeInsets.all(2),
+            child: Icon(Icons.drive_file_move_outline,
+                color: Colors.white, size: 22),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Сердечко (15.09.2026): передумал брать сейчас — сохрани, чтобы не
+        // искать заново.
+        _CartFavoriteButton(modelId: line.modelId),
+      ],
+    );
+  }
+
+  /// Счётчик под снимком: в серой рамке и не шире снимка (84).
+  Widget _buildStepper(CartLine line) {
+    final canAdd = line.quantity < line.stockQuantity;
+
+    return Container(
+      width: 84,
+      height: 32,
+      decoration: BoxDecoration(
+        border: Border.all(color: textMuted),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          _stepButton(
+            Icons.remove,
+            () => _apply(
+              () => CartService.setQuantity(line.productId, line.quantity - 1),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              '${line.quantity}',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _stepButton(
+            Icons.add,
+            canAdd
+                ? () => _apply(
+                      () => CartService.setQuantity(
+                          line.productId, line.quantity + 1),
+                    )
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stepButton(IconData icon, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 26,
+        height: 30,
+        child: Icon(icon,
+            color: onTap == null ? textMuted : Colors.white, size: 16),
       ),
     );
   }
@@ -997,93 +1184,6 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  /// Сердечко, удаление и счётчик.
-  Widget _buildLineActions(CartLine line) {
-    return Row(
-      children: [
-        // Сердечко (15.09.2026): передумал брать сейчас — сохрани, чтобы не
-        // искать заново. Без него единственный выход из корзины — удаление, и
-        // товар теряется совсем.
-        _CartFavoriteButton(modelId: line.modelId),
-        const SizedBox(width: 14),
-        GestureDetector(
-          onTap: () => _removeLine(line),
-          behavior: HitTestBehavior.opaque,
-          child: const Icon(Icons.delete_outline,
-              color: Color(0xFFE05B5B), size: 22),
-        ),
-        const SizedBox(width: 14),
-
-        // Переложить вещь на другую полку (18.09.2026). Рядом с удалением:
-        // оба про судьбу позиции, а не про её количество.
-        GestureDetector(
-          onTap: () => _moveLines({line.productId}, line.folderId),
-          behavior: HitTestBehavior.opaque,
-          child: const Icon(Icons.drive_file_move_outline,
-              color: activeIconColor, size: 22),
-        ),
-        const Spacer(),
-
-        // Счётчик в серой рамке, как на макете (21.09.2026): минус, число и
-        // плюс читаются одним элементом, а не тремя отдельными.
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            border: Border.all(color: textMuted),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _stepButton(
-                Icons.remove,
-                () => _apply(
-                  () => CartService.setQuantity(
-                      line.productId, line.quantity - 1),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Text(
-                  '${line.quantity}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              _stepButton(
-                Icons.add,
-                line.quantity < line.stockQuantity
-                    ? () => _apply(
-                          () => CartService.setQuantity(
-                              line.productId, line.quantity + 1),
-                        )
-                    : null,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _stepButton(IconData icon, VoidCallback? onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          color: formBackground,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, color: onTap == null ? textMuted : Colors.white, size: 16),
       ),
     );
   }
