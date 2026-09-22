@@ -77,7 +77,7 @@ double _getAreaFromCharacteristics(Map<String, dynamic>? characteristics) {
   
   for (final entry in characteristics.entries) {
     final charData = entry.value;
-    if (charData is Map<String, dynamic>) {
+    if (charData is Map) {
       final title = (charData['title'] as String? ?? '').toLowerCase();
       
       // Ищем характеристику площади
@@ -1232,7 +1232,7 @@ class _MiniPropertyDetailsScreenState extends State<MiniPropertyDetailsScreen> {
     // Проверяем что chars не пусто
     if (chars.isNotEmpty) {
       chars.forEach((key, charData) {
-        if (charData is Map<String, dynamic>) {
+        if (charData is Map) {
           final title = charData['title'] as String? ?? 'Характеристика';
           final value = charData['value'];
           final maxValue = charData['max_value'];

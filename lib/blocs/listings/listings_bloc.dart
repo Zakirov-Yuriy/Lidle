@@ -1199,7 +1199,13 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // Безопасное преобразование characteristics из JSON
     Map<String, dynamic> characteristics = {};
     if (json['characteristics'] != null && json['characteristics'] is Map) {
-      characteristics = Map<String, dynamic>.from(json['characteristics']);
+      // Из кеша (Hive) вложенные значения приходят как Map<dynamic, dynamic>,
+      // и экран объявления их отбрасывал: «Нет данных о характеристиках»
+      // при повторном открытии (22.09.2026). Приводим каждое значение.
+      (json['characteristics'] as Map).forEach((key, value) {
+        characteristics['$key'] =
+            value is Map ? Map<String, dynamic>.from(value) : value;
+      });
     }
 
     return home.Listing(
