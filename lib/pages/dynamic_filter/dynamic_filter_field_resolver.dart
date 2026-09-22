@@ -53,6 +53,14 @@ enum FilterFieldKind {
   /// пускать в общие правила: без значений он попал бы в текстовое поле, и
   /// человек писал бы туда текст, который никуда не сохранится.
   booking,
+
+  /// Блок «Добавить …» (стиль O, 22.09.2026): «Добавить меню», «Добавить
+  /// сотрудника». Значения не хранит, только рисуется.
+  addList,
+
+  /// Блок с переходом (стиль P, 22.09.2026): «Объединить в холдинг»,
+  /// «Таблица распределения». Значения не хранит, только рисуется.
+  linkBlock,
 }
 
 /// План построения UI-поля: тип виджета и атрибут, который нужно
@@ -93,6 +101,16 @@ FilterFieldPlan resolveFilterField(Attribute attr) {
       attr.styleSingle == 'L1' ||
       attr.styleSingle == 'M1') {
     return FilterFieldPlan(FilterFieldKind.booking, attr);
+  }
+
+  // Блоки-оформление (O и P) — тоже до всех общих правил: у P есть значения
+  // (текст ссылки «Что такое …?»), и без этой строки он ушёл бы в выбор
+  // варианта; O без значений ушёл бы в текстовое поле.
+  if (attr.style == 'O' || attr.styleSingle == 'O1') {
+    return FilterFieldPlan(FilterFieldKind.addList, attr);
+  }
+  if (attr.style == 'P' || attr.styleSingle == 'P1') {
+    return FilterFieldPlan(FilterFieldKind.linkBlock, attr);
   }
 
   // Скрытые чекбоксы (is_title_hidden + values):

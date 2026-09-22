@@ -49,6 +49,9 @@ import 'widgets/choice_button.dart';
 import 'widgets/form_primary_button.dart';
 import 'widgets/required_label.dart';
 import 'widgets/booking_field.dart';
+import 'widgets/form_block_fields.dart';
+import 'package:lidle/models/advert_form_config.dart';
+import 'package:lidle/services/api/attributes_api.dart';
 import 'widgets/checkbox_label.dart';
 // Виджеты полей (шаг 3.1 рефакторинга).
 import 'widgets/price_input_field.dart';
@@ -224,6 +227,10 @@ class _DynamicFilterState extends State<DynamicFilter>
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+
+  /// Постоянная часть формы по категории (22.09.2026): есть ли «Цена»,
+  /// подпись первого поля, путь категории. Приходит с атрибутами.
+  AdvertFormConfig _form = AdvertFormConfig.fallback;
   final TextEditingController _contactNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phone1Controller = TextEditingController();
@@ -730,6 +737,7 @@ class _DynamicFilterState extends State<DynamicFilter>
         setState(() {
           _attributes = mutableFilters;
           _isLoading = false;
+          _form = AttributesApi.formFor(categoryId);
 
           // 🔧 CRITICAL FIX: Clean up selected values that don't exist in this category
           // This prevents sending attributes from another category
@@ -2135,9 +2143,14 @@ class _DynamicFilterState extends State<DynamicFilter>
         }
       } else if (value is String) {
         if (attr.values.isEmpty) {
-          // Text field - DO NOT add to attributes.values (API doesn't accept them)
-          if (value.isNotEmpty) {
-            // log.d();
+          // Текстовое поле (стиль H, тип string). Раньше не отправлялось
+          // вовсе («API не принимает»), но сервер строки принимает и
+          // проверяет (AttributesWithCategoryRule, case 'string'). Без этого
+          // обязательное «Название заведения» не проходило бы никогда
+          // (22.09.2026). Числовые поля без вариантов не трогаем: их путь
+          // отдельный.
+          if (attr.dataType == 'string' && value.trim().isNotEmpty) {
+            attributes['values']['$key'] = {'value': value.trim()};
           }
         } else {
           // Single selection - lookup value ID
@@ -2332,7 +2345,8 @@ class _DynamicFilterState extends State<DynamicFilter>
     return CreateAdvertRequest(
       name: _titleController.text,
       description: _descriptionController.text,
-      price: _getCleanNumber(_priceController.text),
+      // Без поля «Цена» (Бронирование) отправляем пусто: сервер запишет 0.
+      price: _form.showPrice ? _getCleanNumber(_priceController.text) : '',
       categoryId: _editAdvertCategoryId ?? widget.categoryId ?? 2,
       regionId:
           mainRegionId ??
@@ -2369,7 +2383,9 @@ class _DynamicFilterState extends State<DynamicFilter>
 
     // Validate required text fields
     if (_titleController.text.isEmpty) {
-      _fieldErrors['title'] = 'Заполните заголовок объявления';
+      _fieldErrors['title'] = _form.isBooking
+          ? 'Заполните название компании'
+          : 'Заполните заголовок объявления';
     } else if (_titleController.text.length < 16) {
       _fieldErrors['title'] = 'Введите не менее 16 символов';
     }
@@ -2380,7 +2396,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       _fieldErrors['description'] = 'Введите не менее 70 символов';
     }
 
-    if (_getCleanNumber(_priceController.text).isEmpty) {
+    if (_form.showPrice && _getCleanNumber(_priceController.text).isEmpty) {
       _fieldErrors['price'] = 'Заполните цену';
     }
 
@@ -2407,7 +2423,10 @@ class _DynamicFilterState extends State<DynamicFilter>
 
     // Validate required attributes from API
     for (final attr in _attributes) {
-      if (attr.isRequired) {
+      // Блоки-оформление (O, P) и бронь (L, M) значений не хранят: требовать
+      // от них заполнения нечего, даже если в админке стоит «обязательно».
+      const noValueStyles = {'L', 'M', 'O', 'P'};
+      if (attr.isRequired && !noValueStyles.contains(attr.style)) {
         final value = _selectedValues[attr.id];
         if (value == null) {
           _fieldErrors['attr_${attr.id}'] = 'Заполните поле "${attr.title}"';
@@ -3383,6 +3402,10 @@ class _DynamicFilterState extends State<DynamicFilter>
         return _buildK1Field(a);
       case FilterFieldKind.booking:
         return _buildBookingField(a);
+      case FilterFieldKind.addList:
+        return AddListBlockField(attribute: a);
+      case FilterFieldKind.linkBlock:
+        return LinkBlockField(attribute: a);
     }
   }
 
@@ -4212,8 +4235,8 @@ class _DynamicFilterState extends State<DynamicFilter>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildTextField(
-          label: 'Заголовок объявления',
-          hint: 'Например, уютная 2-комнатная квартира',
+          label: _form.titleLabel,
+          hint: _form.titleHint,
           fieldKey: 'title',
           controller: _titleController,
           // Свич "ИИ" только для фидовых объявлений, у которых ИИ переписал текст.
@@ -4238,8 +4261,16 @@ class _DynamicFilterState extends State<DynamicFilter>
           label: 'Категория',
           fieldKey: 'category',
           hint: _categoryName.isEmpty ? 'Загрузка...' : _categoryName,
-          subtitle: 'Недвижимость',
+          // Путь категории с сервера («Бронирование / Рестораны и кафе»).
+          // Раньше здесь было вшито «Недвижимость» для любой категории.
+          subtitle: _form.breadcrumbs ?? 'Недвижимость',
           onTap: () {
+            // В «Бронировании» категорию выбирали на предыдущем экране:
+            // возвращаемся туда, а не в подкатегории недвижимости.
+            if (_form.isBooking) {
+              Navigator.maybePop(context);
+              return;
+            }
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -4253,8 +4284,9 @@ class _DynamicFilterState extends State<DynamicFilter>
 
         _buildTextField(
           label: 'Описание',
-          hint:
-              'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
+          hint: _form.isBooking
+              ? 'Чем больше информации вы укажете о вашем заведении или услуге, тем привлекательнее оно будет для клиентов. Без ссылок, телефонов, матерных слов.'
+              : 'Чем больше информации вы укажете о вашей квартире, тем привлекательнее она будет для покупателей. Без ссылок, телефонов, матершинных слов.',
           fieldKey: 'description',
           minLength: 70,
           maxLength: 1200,
@@ -4269,6 +4301,9 @@ class _DynamicFilterState extends State<DynamicFilter>
               : null,
         ),
 
+        // В «Бронировании» поля «Цена» нет (22.09.2026): её заменяют
+        // атрибуты вроде «Средней суммы чека», сервер цену там не требует.
+        if (_form.showPrice) ...[
         const SizedBox(height: 24),
 
         // Поле «Цена» с символом ₽ в отдельной плашке справа.
@@ -4373,6 +4408,7 @@ class _DynamicFilterState extends State<DynamicFilter>
               ),
             ),
           ),
+        ],
       ],
     );
   }

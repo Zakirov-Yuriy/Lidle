@@ -57,6 +57,12 @@ class RangeField extends StatelessWidget {
     final fieldBackground =
         hasError ? const Color(0xFF381a1a) : formBackground;
 
+    // Валюта в «Значение между» (vm_text) — знак рубля плашкой справа, как
+    // у цены, и без «Из» посередине (22.09.2026, «Средняя сумма чека»).
+    const currencies = {'₽', r'$', '€'};
+    final vm = (attribute.vmText ?? '').trim();
+    final currency = currencies.contains(vm) ? vm : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -80,6 +86,9 @@ class RangeField extends StatelessWidget {
                 onChanged: onMinChanged,
               ),
             ),
+            if (currency != null)
+              const SizedBox(width: 10)
+            else
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Center(
@@ -106,6 +115,22 @@ class RangeField extends StatelessWidget {
                 onChanged: onMaxChanged,
               ),
             ),
+            if (currency != null) ...[
+              const SizedBox(width: 10),
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: fieldBackground,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  currency,
+                  style: TextStyle(color: textColor, fontSize: 16),
+                ),
+              ),
+            ],
           ],
         ),
         if (hasError)

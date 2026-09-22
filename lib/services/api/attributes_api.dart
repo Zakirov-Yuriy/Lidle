@@ -10,10 +10,19 @@
 // Логика идентична оригиналу.
 
 import 'package:lidle/core/logger.dart';
+import 'package:lidle/models/advert_form_config.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/services/api_service.dart';
 
 class AttributesApi {
+  /// Блок `form` из последнего ответа `/adverts/create` по категории
+  /// (22.09.2026). Форма подачи читает его сразу после загрузки атрибутов,
+  /// поэтому отдельный запрос не нужен.
+  static final Map<int, AdvertFormConfig> _formByCategory = {};
+
+  static AdvertFormConfig formFor(int categoryId) =>
+      _formByCategory[categoryId] ?? AdvertFormConfig.fallback;
+
   /// Получить атрибуты для формы создания объявления.
   /// GET /v1/adverts/create?category_id=X
   static Future<List<Attribute>> getAdvertCreationAttributes({
@@ -33,11 +42,21 @@ class AttributesApi {
 
       List<dynamic>? attributesJson;
 
+      Map<String, dynamic>? firstItem;
+
       if (dataNode is List && dataNode.isNotEmpty) {
-        final firstItem = dataNode[0] as Map<String, dynamic>?;
-        attributesJson = firstItem?['attributes'] as List<dynamic>?;
+        firstItem = dataNode[0] as Map<String, dynamic>?;
       } else if (dataNode is Map<String, dynamic>) {
-        attributesJson = dataNode['attributes'] as List<dynamic>?;
+        firstItem = dataNode;
+      }
+
+      attributesJson = firstItem?['attributes'] as List<dynamic>?;
+
+      final form = firstItem?['form'];
+      if (form is Map<String, dynamic>) {
+        _formByCategory[categoryId] = AdvertFormConfig.fromJson(form);
+      } else {
+        _formByCategory.remove(categoryId);
       }
 
       if (attributesJson == null || attributesJson.isEmpty) {
