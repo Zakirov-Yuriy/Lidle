@@ -20,6 +20,10 @@ class BookingItem {
   final DateTime? endsAt;
 
   final int? guestsCount;
+
+  /// Где сидят: «Основной зал, столик на 2 места» или «Веранда, весь зал»
+  /// (22.09.2026). Пусто у броней без зала.
+  final String? place;
   final String? comment;
   final String? cancelReason;
 
@@ -41,6 +45,7 @@ class BookingItem {
     required this.startsAt,
     required this.endsAt,
     required this.guestsCount,
+    this.place,
     required this.comment,
     required this.cancelReason,
     required this.role,
@@ -73,6 +78,7 @@ class BookingItem {
       startsAt: parseBookingWallClock(raw['starts_at']),
       endsAt: parseBookingWallClock(raw['ends_at']),
       guestsCount: _asInt(raw['guests_count']),
+      place: _asString(raw['place']),
       comment: _asString(raw['comment']),
       cancelReason: _asString(raw['cancel_reason']),
       role: _asString(raw['role']),

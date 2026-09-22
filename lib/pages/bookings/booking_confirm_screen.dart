@@ -33,6 +33,13 @@ class BookingConfirmScreen extends StatefulWidget {
   /// «Подтверждение брони» (22.09.2026).
   final String title;
 
+  /// Ресторан с залами (22.09.2026): зал, банкет, число гостей (уже выбрано
+  /// в карточке) и подпись «Основной зал, столик».
+  final int? hallId;
+  final bool wholeHall;
+  final int? fixedGuests;
+  final String? place;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -43,6 +50,10 @@ class BookingConfirmScreen extends StatefulWidget {
     required this.endsAtRaw,
     required this.needsConfirmation,
     this.title = 'Подтверждение записи',
+    this.hallId,
+    this.wholeHall = false,
+    this.fixedGuests,
+    this.place,
     this.maxGuests,
   });
 
@@ -105,7 +116,10 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
       advertId: widget.advertId,
       startsAt: widget.startsAtRaw,
       endsAt: widget.endsAtRaw,
-      guestsCount: widget.maxGuests == null ? null : _guests,
+      guestsCount: widget.fixedGuests ??
+          (widget.maxGuests == null ? null : _guests),
+      hallId: widget.hallId,
+      wholeHall: widget.wholeHall,
       comment: _commentController.text,
       contactName: _nameController.text,
       contactPhone: _phoneController.text,
@@ -200,7 +214,7 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                     hint: '+7',
                     keyboardType: TextInputType.phone,
                   ),
-                  if (widget.maxGuests != null) ...[
+                  if (widget.maxGuests != null && widget.fixedGuests == null) ...[
                     const SizedBox(height: 12),
                     _buildGuestsPicker(),
                   ],
@@ -250,6 +264,23 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
             ),
           ),
           const SizedBox(height: 10),
+          if (widget.place != null) ...[
+            Row(
+              children: [
+                const Icon(Icons.table_restaurant, color: activeIconColor, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.fixedGuests == null
+                        ? widget.place!
+                        : '${widget.place!}, гостей: ${widget.fixedGuests}',
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           // Запись на услугу укладывается в один день, и её показываем как
           // «дата, с и до». Жильё занимает несколько суток, и та же подпись
           // выглядела бы как «с 14:00 до 11:00», то есть задом наперёд.

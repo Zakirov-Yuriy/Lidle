@@ -49,6 +49,16 @@ class _BookingSectionState extends State<BookingSection> {
   BookingAvailability? _availability;
   bool _isLoading = true;
 
+  /// Ресторан с залами (22.09.2026): выбранный зал, число гостей и банкет.
+  /// До первого ответа сервера пусто: зал и гостей по умолчанию выбирает он.
+  int? _hallId;
+  int? _guests;
+  bool _wholeHall = false;
+
+  /// Перечитываем время после смены зала, гостей или банкета. Блок при этом
+  /// не прячем, только показываем полоску загрузки.
+  bool _isReloading = false;
+
   BookingDay? _selectedDay;
   BookingSlot? _selectedSlot;
 
@@ -70,18 +80,60 @@ class _BookingSectionState extends State<BookingSection> {
       widget.advertId,
       from: now,
       to: now.add(const Duration(days: _horizonDays)),
+      hallId: _hallId,
+      guests: _guests,
+      wholeHall: _wholeHall,
     );
 
     if (!mounted) return;
 
+    // День, который человек уже выбрал, сохраняем при смене зала или
+    // гостей: он выбирает зал под дату, а не наоборот.
+    final keepDay = _selectedDay;
+
     setState(() {
       _availability = data;
       _isLoading = false;
-      _selectedDay = _firstDayWithFreeSlots(data);
+      _isReloading = false;
+
+      final selection = data?.selection;
+      if (selection != null) {
+        _hallId = selection.hallId;
+        _guests = selection.guests;
+        _wholeHall = selection.wholeHall;
+      }
+
+      _selectedDay = _sameDayIn(data, keepDay) ?? _firstDayWithFreeSlots(data);
       _selectedSlot = null;
       _firstNight = null;
       _lastNight = null;
     });
+  }
+
+  BookingDay? _sameDayIn(BookingAvailability? data, BookingDay? day) {
+    if (data == null || day == null) return null;
+
+    for (final d in data.days) {
+      if (_isSameDate(d.date, day.date) && d.isWorking && d.hasFreeSlots) return d;
+    }
+    return null;
+  }
+
+  /// Сменить зал, гостей или банкет и перечитать свободное время.
+  void _choose({int? hallId, int? guests, bool? wholeHall}) {
+    setState(() {
+      if (hallId != null && hallId != _hallId) {
+        _hallId = hallId;
+        // В новом зале банкет может быть запрещён: сервер сам поправит.
+        _wholeHall = false;
+      }
+      if (guests != null) _guests = guests;
+      if (wholeHall != null) _wholeHall = wholeHall;
+      _selectedSlot = null;
+      _isReloading = true;
+    });
+
+    _load();
   }
 
   BookingDay? _firstDayWithFreeSlots(BookingAvailability? data) {
@@ -100,7 +152,13 @@ class _BookingSectionState extends State<BookingSection> {
     if (_isLoading) return const SizedBox.shrink();
 
     final data = _availability;
-    if (data == null || !data.hasAnythingFree) return const SizedBox.shrink();
+    if (data == null) return const SizedBox.shrink();
+
+    // Ресторан с залами: блок виден всегда, даже если в выбранном зале нет
+    // свободного времени, иначе вместе с ним пропал бы и выбор зала.
+    if (data.hasHalls) return _buildHalls(data);
+
+    if (!data.hasAnythingFree) return const SizedBox.shrink();
 
     return data.mode == BookingMode.daily
         ? _buildDaily(data)
@@ -121,6 +179,184 @@ class _BookingSectionState extends State<BookingSection> {
         const SizedBox(height: 14),
         _buildActionButton(data),
       ],
+    );
+  }
+
+  /// Ресторан с залами (22.09.2026): зал, гости, столик или банкет, потом
+  /// день и время.
+  Widget _buildHalls(BookingAvailability data) {
+    final hall = data.selectedHall!;
+    final guests = _guests ?? 2;
+    final days = data.days.where((d) => d.isWorking && d.hasFreeSlots).toList();
+
+    // Сколько гостей можно выбрать: за столик не больше самого большого
+    // столика, на банкет сколько угодно (разумный предел 500).
+    final maxGuests = _wholeHall ? 500 : (hall.maxTable > 0 ? hall.maxTable : 500);
+    final minGuests = _wholeHall ? hall.banquetMinGuests : 1;
+
+    return _shell(
+      title: data.labels.bookTitle,
+      children: [
+        _label('Зал'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final h in data.halls)
+              _chip(
+                text: h.name,
+                selected: h.id == hall.id,
+                onTap: () => _choose(hallId: h.id),
+              ),
+          ],
+        ),
+        if (hall.hasTables && hall.banquetEnabled) ...[
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _chip(
+                  text: 'Столик',
+                  selected: !_wholeHall,
+                  expand: true,
+                  // За столик не больше мест самого большого столика.
+                  onTap: () => _choose(
+                    wholeHall: false,
+                    guests: guests > hall.maxTable ? hall.maxTable : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _chip(
+                  text: 'Весь зал (банкет)',
+                  selected: _wholeHall,
+                  expand: true,
+                  onTap: () => _choose(wholeHall: true),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(child: _label('Сколько гостей')),
+            _stepButton(
+              Icons.remove,
+              guests > minGuests ? () => _choose(guests: guests - 1) : null,
+            ),
+            SizedBox(
+              width: 44,
+              child: Text(
+                '$guests',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            _stepButton(
+              Icons.add,
+              guests < maxGuests ? () => _choose(guests: guests + 1) : null,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _hallHint(hall, guests),
+          style: const TextStyle(color: textSecondary, fontSize: 13),
+        ),
+        const SizedBox(height: 14),
+        if (_isReloading) ...[
+          const LinearProgressIndicator(minHeight: 2, color: activeIconColor),
+          const SizedBox(height: 12),
+        ],
+        if (days.isEmpty)
+          const Text(
+            'В этом зале на ближайшие дни свободного времени нет. '
+            'Попробуйте другой зал или другое число гостей.',
+            style: TextStyle(color: textSecondary, fontSize: 14),
+          )
+        else ...[
+          _buildDayStrip(days),
+          const SizedBox(height: 14),
+          _buildSlotGrid(),
+          const SizedBox(height: 14),
+          _buildActionButton(data),
+        ],
+      ],
+    );
+  }
+
+  String _hallHint(BookingHall hall, int guests) {
+    if (_wholeHall) {
+      return 'Весь зал на ${hall.banquetHours} ч, от ${hall.banquetMinGuests} гостей. '
+          'Ресторан подтвердит банкет.';
+    }
+
+    final tables = hall.tables
+        .map((t) => 'на ${t.seats}: ${t.count}')
+        .join(', ');
+
+    final more = hall.banquetEnabled && guests >= hall.maxTable
+        ? ' Для большой компании выберите «Весь зал».'
+        : '';
+
+    return 'Столик подберём под число гостей. Столики $tables.$more';
+  }
+
+  Widget _label(String text) => Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+      );
+
+  Widget _chip({
+    required String text,
+    required bool selected,
+    required VoidCallback onTap,
+    bool expand = false,
+  }) {
+    return GestureDetector(
+      onTap: selected ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        alignment: expand ? Alignment.center : null,
+        decoration: BoxDecoration(
+          color: selected ? activeIconColor : secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(
+            color: selected ? Colors.white : textSecondary,
+            fontSize: 14,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _stepButton(IconData icon, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: _isReloading ? null : onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          color: secondaryBackground,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          color: onTap == null ? textMuted : Colors.white,
+          size: 20,
+        ),
+      ),
     );
   }
 
@@ -511,6 +747,12 @@ class _BookingSectionState extends State<BookingSection> {
           needsConfirmation: data.needsConfirmation,
           maxGuests: data.maxGuests,
           title: data.labels.confirmTitle,
+          hallId: data.hasHalls ? _hallId : null,
+          wholeHall: _wholeHall,
+          fixedGuests: data.hasHalls ? _guests : null,
+          place: data.hasHalls
+              ? '${data.selectedHall!.name}, ${_wholeHall ? 'весь зал' : 'столик'}'
+              : null,
         ),
       ),
     );

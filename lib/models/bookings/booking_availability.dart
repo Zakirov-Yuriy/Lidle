@@ -161,8 +161,123 @@ class BookingNight {
   }
 }
 
+/// Столики одного размера в зале: «на 4 места — 3 шт.».
+class BookingTableGroup {
+  final int seats;
+  final int count;
+
+  const BookingTableGroup({required this.seats, required this.count});
+}
+
+/// Зал ресторана, где можно бронировать (22.09.2026).
+///
+/// Приходит в свободном времени объявления полем `halls`, если ресторан
+/// описал столики хотя бы в одном зале или разрешил банкет. Тогда гость
+/// сначала выбирает зал, а свободное время считается по его столикам.
+class BookingHall {
+  final int id;
+  final String name;
+  final List<BookingTableGroup> tables;
+  final int totalSeats;
+
+  /// Самый большой столик: больше гостей за столик не посадить.
+  final int maxTable;
+
+  /// Можно ли забронировать зал целиком (банкет).
+  final bool banquetEnabled;
+  final int banquetMinGuests;
+  final int banquetHours;
+
+  const BookingHall({
+    required this.id,
+    required this.name,
+    required this.tables,
+    required this.totalSeats,
+    required this.maxTable,
+    required this.banquetEnabled,
+    required this.banquetMinGuests,
+    required this.banquetHours,
+  });
+
+  bool get hasTables => tables.isNotEmpty;
+
+  static BookingHall? tryParse(dynamic raw) {
+    if (raw is! Map) return null;
+    final id = _int(raw['id']);
+    if (id == null) return null;
+
+    final tables = <BookingTableGroup>[];
+    if (raw['tables'] is List) {
+      for (final t in raw['tables'] as List) {
+        if (t is! Map) continue;
+        final seats = _int(t['seats']) ?? 0;
+        final count = _int(t['count']) ?? 0;
+        if (seats > 0 && count > 0) {
+          tables.add(BookingTableGroup(seats: seats, count: count));
+        }
+      }
+    }
+
+    final banquet = raw['banquet'] is Map ? raw['banquet'] as Map : const {};
+
+    return BookingHall(
+      id: id,
+      name: '${raw['name'] ?? 'Зал'}',
+      tables: tables,
+      totalSeats: _int(raw['total_seats']) ?? 0,
+      maxTable: _int(raw['max_table']) ?? 0,
+      banquetEnabled: banquet['enabled'] == true,
+      banquetMinGuests: _int(banquet['min_guests']) ?? 1,
+      banquetHours: _int(banquet['hours']) ?? 5,
+    );
+  }
+
+  static int? _int(dynamic v) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
+}
+
+/// Что сервер посчитал для залов: какой зал, сколько гостей, столик или
+/// банкет. Сервер мог поправить выбор (например, поднять число гостей до
+/// минимума банкета), поэтому экран берёт значения отсюда.
+class BookingHallSelection {
+  final int hallId;
+  final int guests;
+  final bool wholeHall;
+  final int durationMinutes;
+
+  const BookingHallSelection({
+    required this.hallId,
+    required this.guests,
+    required this.wholeHall,
+    required this.durationMinutes,
+  });
+
+  static BookingHallSelection? tryParse(dynamic raw) {
+    if (raw is! Map) return null;
+    final hallId = BookingHall._int(raw['hall_id']);
+    if (hallId == null) return null;
+
+    return BookingHallSelection(
+      hallId: hallId,
+      guests: BookingHall._int(raw['guests']) ?? 2,
+      wholeHall: raw['whole_hall'] == true,
+      durationMinutes: BookingHall._int(raw['duration_minutes']) ?? 120,
+    );
+  }
+}
+
 /// Ответ `GET /v1/adverts/{id}/availability` целиком.
 class BookingAvailability {
+  /// Залы ресторана (22.09.2026). Пусто — бронь без залов, как раньше.
+  final List<BookingHall> halls;
+
+  /// Выбор, для которого посчитано время. Есть, только если есть залы.
+  final BookingHallSelection? selection;
+
   /// Тексты под категорию (22.09.2026), см. [BookingLabels].
   final BookingLabels labels;
 
@@ -203,7 +318,19 @@ class BookingAvailability {
     required this.checkInTime,
     required this.checkOutTime,
     this.labels = BookingLabels.standard,
+    this.halls = const [],
+    this.selection,
   });
+
+  bool get hasHalls => halls.isNotEmpty;
+
+  BookingHall? get selectedHall {
+    final id = selection?.hallId;
+    for (final hall in halls) {
+      if (hall.id == id) return hall;
+    }
+    return halls.isEmpty ? null : halls.first;
+  }
 
   factory BookingAvailability.fromJson(Map<String, dynamic> data) {
     final days = <BookingDay>[];
@@ -235,6 +362,12 @@ class BookingAvailability {
       checkInTime: _timeOrNull(data['check_in_time']),
       checkOutTime: _timeOrNull(data['check_out_time']),
       labels: BookingLabels.fromJson(data['labels']),
+      halls: [
+        if (data['halls'] is List)
+          for (final raw in data['halls'] as List)
+            if (BookingHall.tryParse(raw) != null) BookingHall.tryParse(raw)!,
+      ],
+      selection: BookingHallSelection.tryParse(data['selection']),
     );
   }
 

@@ -390,7 +390,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   Widget _buildTimeRow(BookingItem item) {
-    return Row(
+    final row = Row(
       children: [
         const Icon(Icons.event, color: activeIconColor, size: 17),
         const SizedBox(width: 6),
@@ -404,6 +404,32 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         Text(
           '${_time(item.startsAt)} — ${_time(item.endsAt)}',
           style: const TextStyle(color: Colors.white, fontSize: 14),
+        ),
+      ],
+    );
+
+    // Зал ресторана и сколько гостей (22.09.2026).
+    final place = item.place;
+    if (place == null || place.isEmpty) return row;
+
+    final guests = item.guestsCount;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        row,
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            const Icon(Icons.table_restaurant, color: activeIconColor, size: 17),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                guests == null ? place : '$place, гостей: $guests',
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ],
         ),
       ],
     );

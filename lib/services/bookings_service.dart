@@ -78,9 +78,17 @@ class BookingsService {
     int advertId, {
     required DateTime from,
     required DateTime to,
+    int? hallId,
+    int? guests,
+    bool wholeHall = false,
   }) async {
+    // Зал, гости и банкет нужны только ресторану с залами (22.09.2026).
+    // Остальным объявлениям сервер эти параметры просто не читает.
     final endpoint = '/adverts/$advertId/availability'
-        '?from=${_ymd(from)}&to=${_ymd(to)}';
+        '?from=${_ymd(from)}&to=${_ymd(to)}'
+        '${hallId != null ? '&hall=$hallId' : ''}'
+        '${guests != null ? '&guests=$guests' : ''}'
+        '${wholeHall ? '&whole=1' : ''}';
 
     try {
       final response = await ApiService.get(endpoint);
@@ -114,11 +122,18 @@ class BookingsService {
     String? comment,
     String? contactName,
     String? contactPhone,
+    int? hallId,
+    bool wholeHall = false,
   }) async {
     final body = <String, dynamic>{
       'starts_at': startsAt,
       'ends_at': endsAt,
     };
+
+    if (hallId != null) {
+      body['hall_id'] = hallId;
+      body['whole_hall'] = wholeHall;
+    }
 
     if (guestsCount != null) body['guests_count'] = guestsCount;
     if (comment != null && comment.trim().isNotEmpty) {
