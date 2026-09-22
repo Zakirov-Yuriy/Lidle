@@ -3697,6 +3697,7 @@ class _DynamicFilterState extends State<DynamicFilter>
       attribute: attr,
       mode: isDaily ? 'daily' : 'slots',
       initial: _bookingInitial,
+      labels: _form.bookingLabels,
       onChanged: (data) => _bookingSettings = data,
     );
   }

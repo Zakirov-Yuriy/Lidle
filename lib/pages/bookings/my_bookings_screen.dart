@@ -341,7 +341,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 if (advert?.price != null) ...[
                   const SizedBox(height: 2),
                   Text(
-                    advert!.price!,
+                    _formatPrice(advert!.price!),
                     style: const TextStyle(color: textSecondary, fontSize: 13),
                   ),
                 ],
@@ -566,4 +566,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     ];
     return '${date.day} ${months[(date.month - 1).clamp(0, 11)]}';
   }
+}
+
+/// «1500» или «1500.00» → «1 500 ₽», как на карточке объявления (22.09.2026).
+/// Не число, значит показываем как пришло.
+String _formatPrice(String raw) {
+  final whole = raw.trim().split(RegExp(r'[.,]')).first;
+  if (whole.isEmpty || int.tryParse(whole) == null) return raw;
+
+  final digits = <String>[];
+  for (var i = whole.length; i > 0; i -= 3) {
+    digits.insert(0, whole.substring(i - 3 < 0 ? 0 : i - 3, i));
+  }
+
+  return '${digits.join(' ')} ₽';
 }

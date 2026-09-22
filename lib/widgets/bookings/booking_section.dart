@@ -113,7 +113,7 @@ class _BookingSectionState extends State<BookingSection> {
     if (days.isEmpty) return const SizedBox.shrink();
 
     return _shell(
-      title: 'Записаться',
+      title: data.labels.bookTitle,
       children: [
         _buildDayStrip(days),
         const SizedBox(height: 14),
@@ -303,7 +303,7 @@ class _BookingSectionState extends State<BookingSection> {
         child: Text(
           slot == null
               ? 'Выберите время'
-              : 'Записаться на ${_time(slot.startsAt)}',
+              : data.labels.button(_time(slot.startsAt)),
           style: TextStyle(
             color: slot == null ? textSecondary : Colors.white,
             fontSize: 16,
@@ -510,6 +510,7 @@ class _BookingSectionState extends State<BookingSection> {
           endsAtRaw: endsAtRaw,
           needsConfirmation: data.needsConfirmation,
           maxGuests: data.maxGuests,
+          title: data.labels.confirmTitle,
         ),
       ),
     );

@@ -29,6 +29,10 @@ class BookingConfirmScreen extends StatefulWidget {
   final bool needsConfirmation;
   final int? maxGuests;
 
+  /// Заголовок экрана: «Подтверждение записи» или, у ресторана,
+  /// «Подтверждение брони» (22.09.2026).
+  final String title;
+
   const BookingConfirmScreen({
     super.key,
     required this.advertId,
@@ -38,6 +42,7 @@ class BookingConfirmScreen extends StatefulWidget {
     required this.startsAtRaw,
     required this.endsAtRaw,
     required this.needsConfirmation,
+    this.title = 'Подтверждение записи',
     this.maxGuests,
   });
 
@@ -172,9 +177,9 @@ class _BookingConfirmScreenState extends State<BookingConfirmScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 25),
                 children: [
                   // const SizedBox(height: 12),
-                  const Text(
-                    'Подтверждение записи',
-                    style: TextStyle(
+                  Text(
+                    widget.title,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 22,
                       fontWeight: FontWeight.w700,

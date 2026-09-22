@@ -7,6 +7,8 @@
 ///
 /// Если сервер блок не прислал (старый бэкенд), действует [fallback]:
 /// форма рисуется как раньше.
+import 'package:lidle/models/bookings/booking_labels.dart';
+
 class AdvertFormConfig {
   final bool isBooking;
   final bool showPrice;
@@ -16,12 +18,17 @@ class AdvertFormConfig {
   /// Путь родительских категорий: «Бронирование / Рестораны и кафе».
   final String? breadcrumbs;
 
+  /// Тексты блока брони для этой категории («На сколько бронируют» у
+  /// ресторанов). Сервер не прислал, значит обычные.
+  final BookingLabels bookingLabels;
+
   const AdvertFormConfig({
     required this.isBooking,
     required this.showPrice,
     required this.titleLabel,
     required this.titleHint,
     this.breadcrumbs,
+    this.bookingLabels = BookingLabels.standard,
   });
 
   static const AdvertFormConfig fallback = AdvertFormConfig(
@@ -45,6 +52,7 @@ class AdvertFormConfig {
       titleLabel: text('title_label', fallback.titleLabel),
       titleHint: text('title_hint', fallback.titleHint),
       breadcrumbs: crumbs.isEmpty ? null : crumbs,
+      bookingLabels: BookingLabels.fromJson(json['booking_labels']),
     );
   }
 }

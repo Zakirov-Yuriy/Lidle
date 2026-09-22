@@ -3,6 +3,7 @@ import 'package:lidle/constants.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/widgets/components/custom_switch.dart';
 import 'required_label.dart';
+import 'package:lidle/models/bookings/booking_labels.dart';
 
 /// Бронирование в форме подачи объявления (стили L и M).
 ///
@@ -31,6 +32,7 @@ class BookingField extends StatefulWidget {
     required this.mode,
     required this.onChanged,
     this.initial,
+    this.labels = BookingLabels.standard,
   });
 
   final Attribute attribute;
@@ -48,6 +50,10 @@ class BookingField extends StatefulWidget {
 
   /// Что уже настроено у объявления. Приходит при редактировании.
   final Map<String, dynamic>? initial;
+
+  /// Тексты под категорию: у ресторана «На сколько бронируют» вместо
+  /// «Сколько длится приём» (22.09.2026).
+  final BookingLabels labels;
 
   @override
   State<BookingField> createState() => _BookingFieldState();
@@ -186,6 +192,7 @@ class _BookingFieldState extends State<BookingField> {
               ),
             ),
             const SizedBox(width: 12),
+            _onOff(_enabled),
             CustomSwitch(
               value: _enabled,
               onChanged: (value) {
@@ -200,7 +207,7 @@ class _BookingFieldState extends State<BookingField> {
           _enabled
               ? (_isDaily
                     ? 'В объявлении появится календарь свободных ночей и кнопка «Забронировать».'
-                    : 'В объявлении появится календарь свободного времени и кнопка «Записаться».')
+                    : widget.labels.ownerHint)
               : 'Включите, если хотите принимать заявки прямо из объявления.',
           style: const TextStyle(color: textSecondary, fontSize: 13),
         ),
@@ -231,7 +238,7 @@ class _BookingFieldState extends State<BookingField> {
                 child: _modeChip(
                   mode: 'slots',
                   title: 'По часам',
-                  subtitle: 'Приём, просмотр, занятие',
+                  subtitle: widget.labels.slotsSubtitle,
                 ),
               ),
               const SizedBox(width: 8),
@@ -255,6 +262,7 @@ class _BookingFieldState extends State<BookingField> {
                   style: TextStyle(color: Colors.white, fontSize: 15),
                 ),
               ),
+              _onOff(_needsConfirmation),
               CustomSwitch(
                 value: _needsConfirmation,
                 trackColor: primaryBackground,
@@ -290,6 +298,22 @@ class _BookingFieldState extends State<BookingField> {
       ),
     );
   }
+
+  /// Подпись «Вкл» или «Выкл» у переключателя (22.09.2026).
+  ///
+  /// По одному кружку не видно, включён ли переключатель: на тесте «Подтверждать
+  /// вручную» остался включённым, и бронь шла заявкой вместо мгновенной.
+  Widget _onOff(bool value) => Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: Text(
+          value ? 'Вкл' : 'Выкл',
+          style: TextStyle(
+            color: value ? activeIconColor : textSecondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
 
   /// Выбор режима. Два варианта, не переключатель: слово «посуточно» само по
   /// себе ничего не объясняет, а разница между «клиент выбирает час» и «гость
@@ -341,7 +365,7 @@ class _BookingFieldState extends State<BookingField> {
 
   List<Widget> _slotRows() {
     return [
-      _title('Сколько длится приём'),
+      _title(widget.labels.durationTitle),
       const SizedBox(height: 8),
       _chips(
         values: const [30, 60, 90, 120],
@@ -353,7 +377,7 @@ class _BookingFieldState extends State<BookingField> {
         },
       ),
       const SizedBox(height: 14),
-      _title('Перерыв между записями'),
+      _title(widget.labels.bufferTitle),
       const SizedBox(height: 8),
       _chips(
         values: const [0, 10, 15, 30],

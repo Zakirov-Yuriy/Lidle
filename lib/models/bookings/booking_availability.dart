@@ -9,6 +9,8 @@
 /// показывает то, что прислал сервер.
 library;
 
+import 'package:lidle/models/bookings/booking_labels.dart';
+
 /// Режим бронирования: запись на услуги или посуточное жильё.
 enum BookingMode { slots, daily }
 
@@ -161,6 +163,9 @@ class BookingNight {
 
 /// Ответ `GET /v1/adverts/{id}/availability` целиком.
 class BookingAvailability {
+  /// Тексты под категорию (22.09.2026), см. [BookingLabels].
+  final BookingLabels labels;
+
   final BookingMode mode;
   final String timezone;
   final int slotMinutes;
@@ -197,6 +202,7 @@ class BookingAvailability {
     required this.nights,
     required this.checkInTime,
     required this.checkOutTime,
+    this.labels = BookingLabels.standard,
   });
 
   factory BookingAvailability.fromJson(Map<String, dynamic> data) {
@@ -228,6 +234,7 @@ class BookingAvailability {
       nights: nights,
       checkInTime: _timeOrNull(data['check_in_time']),
       checkOutTime: _timeOrNull(data['check_out_time']),
+      labels: BookingLabels.fromJson(data['labels']),
     );
   }
 
