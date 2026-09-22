@@ -218,8 +218,12 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
                 children: [
                   _TitleRow(title: title, onBack: () => Navigator.pop(context)),
                   const SizedBox(height: 10),
-                  _Links(tail: _tail(title)),
-                  const SizedBox(height: 16),
+                  // У сотрудника ссылки «Что такое сотрудника?» и «Заказать
+                  // сотрудника» звучат нелепо, и заказывать его не у кого.
+                  if (!_isStaff) ...[
+                    _Links(tail: _tail(title)),
+                    const SizedBox(height: 16),
+                  ],
                   const Divider(color: _divider, height: 1),
                   const SizedBox(height: 20),
                   BlockFieldsForm(controller: _controller),
