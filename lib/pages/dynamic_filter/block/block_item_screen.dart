@@ -94,6 +94,10 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
 
   bool get _hasFile => _localPath != null || _remoteUrl != null;
 
+  /// Экран сотрудника (22.09.2026): вместо плана фото человека, без PDF и
+  /// без экрана-подтверждения с планом.
+  bool get _isStaff => widget.block.title.toLowerCase().contains('сотрудник');
+
   Future<void> _pickFile() async {
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -102,10 +106,10 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final entry in const [
+            for (final entry in [
               ['gallery', 'Фото из галереи', Icons.photo_library_outlined],
               ['camera', 'Сделать фото', Icons.photo_camera_outlined],
-              ['pdf', 'PDF-файл', Icons.picture_as_pdf_outlined],
+              if (!_isStaff) ['pdf', 'PDF-файл', Icons.picture_as_pdf_outlined],
             ])
               ListTile(
                 leading: Icon(entry[2] as IconData, color: activeIconColor),
@@ -171,7 +175,7 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
     }
 
     // С планом — сначала экран-подтверждение, как на макете.
-    if (_hasFile) {
+    if (_hasFile && !_isStaff) {
       final ok = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -200,7 +204,7 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
   @override
   Widget build(BuildContext context) {
     final title = widget.block.title;
-    final label = _fileLabel(title);
+    final label = _isStaff ? 'Фото сотрудника' : _fileLabel(title);
 
     return Scaffold(
       backgroundColor: primaryBackground,
@@ -275,16 +279,19 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
                               child: const Icon(Icons.add, color: textSecondary, size: 24),
                             ),
                             const SizedBox(height: 10),
-                            const Text('Добавить изображение',
+                            Text(_isStaff ? 'Добавить фото' : 'Добавить изображение',
                                 style: TextStyle(color: textSecondary, fontSize: 15)),
                           ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'PDF или фото плана одного этажа вашего заведения, до 20 МБ. '
-                      'После загрузки объект проходит модерацию и появится у вас в аккаунте.',
+                    Text(
+                      _isStaff
+                          ? 'Фото сотрудника, до 20 МБ. Его видно при выборе официанта '
+                              'и администратора стола.'
+                          : 'PDF или фото плана одного этажа вашего заведения, до 20 МБ. '
+                              'После загрузки объект проходит модерацию и появится у вас в аккаунте.',
                       style: TextStyle(color: textSecondary, fontSize: 12, height: 1.35),
                     ),
                   ],

@@ -27,6 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/scenario.dart';
+import 'package:lidle/pages/dynamic_filter/block/hall_tables_screen.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 const Color _divider = Color(0xFF474747);
@@ -441,8 +442,49 @@ class _ScenarioEditScreenState extends State<ScenarioEditScreen> {
     });
   }
 
+  /// Сотрудники из блока «Добавить сотрудника» (22.09.2026).
+  List<BlockItemDraft> get _staff => [
+        for (final r in widget.rows)
+          if (r.label == 'Сотрудники') ...r.items,
+      ];
+
+  /// Стрелка у зала: «Настройка столов в зале» (22.09.2026). Столы
+  /// записываются в зал, персонал столов в этот сценарий. Зал, у которого
+  /// настроили столы, сразу отмечается в сценарии.
+  Future<void> _openTables(ScenarioRow row, BlockItemDraft hall) async {
+    final result = await Navigator.push<HallTablesResult>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => HallTablesScreen(
+          hall: hall,
+          staff: _staff,
+          tableStaff: _draft.tables[hall] ?? const {},
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      if (result.staff.isEmpty) {
+        _draft.tables.remove(hall);
+      } else {
+        _draft.tables[hall] = result.staff;
+      }
+
+      final list = _draft.selected.putIfAbsent(row.blockId, () => []);
+      if (!list.contains(hall)) list.add(hall);
+    });
+  }
+
   void _show(ScenarioRow row, int index) {
     final item = row.items[index];
+
+    if (row.label == 'Залы') {
+      _openTables(row, item);
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: secondaryBackground,

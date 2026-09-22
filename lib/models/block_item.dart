@@ -1,3 +1,5 @@
+import 'package:lidle/models/hall_table.dart';
+
 /// Один заполненный экран блока «Добавить …» (22.09.2026), например зал
 /// ресторана из «Добавить общий план зала».
 ///
@@ -31,6 +33,9 @@ class BlockItemDraft {
   /// Файл убран при правке.
   bool removeFile;
 
+  /// Столы на плане зала (22.09.2026). У других блоков пусто.
+  List<HallTable> layout;
+
   BlockItemDraft({
     this.serverId,
     Map<String, dynamic>? values,
@@ -40,7 +45,9 @@ class BlockItemDraft {
     List<MapEntry<String, String>>? summary,
     this.dirty = true,
     this.removeFile = false,
-  })  : values = values ?? {'value_selected': <int>[], 'values': <String, dynamic>{}},
+    List<HallTable>? layout,
+  })  : layout = layout ?? [],
+        values = values ?? {'value_selected': <int>[], 'values': <String, dynamic>{}},
         summary = summary ?? [];
 
   bool get hasFile => localFilePath != null || remoteFileUrl != null;
@@ -50,6 +57,15 @@ class BlockItemDraft {
   /// Заголовок строки в списке: первое заполненное поле (обычно «Название
   /// зала»).
   String get title => summary.isNotEmpty ? summary.first.value : 'Без названия';
+
+  /// Значение поля по его заголовку из строк summary: «Должность» у
+  /// сотрудника (22.09.2026).
+  String? summaryValue(String title) {
+    for (final e in summary) {
+      if (e.key.trim().toLowerCase() == title.toLowerCase()) return e.value;
+    }
+    return null;
+  }
 
   factory BlockItemDraft.fromServer(Map<String, dynamic> json) {
     final summary = (json['summary'] as List? ?? const [])
@@ -75,6 +91,11 @@ class BlockItemDraft {
       fileKind: json['file_kind']?.toString(),
       summary: summary,
       dirty: false,
+      layout: [
+        if (json['layout'] is List)
+          for (final raw in json['layout'] as List)
+            if (HallTable.tryParse(raw) != null) HallTable.tryParse(raw)!,
+      ],
     );
   }
 }

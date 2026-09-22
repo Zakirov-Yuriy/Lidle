@@ -55,6 +55,8 @@ class BlockItemsService {
     request.headers.addAll(_headers);
     request.fields['attribute_id'] = '$blockId';
     request.fields['values'] = jsonEncode(item.values);
+    // Столы на плане зала (22.09.2026). У других блоков пустой список.
+    request.fields['layout'] = jsonEncode(item.layout.map((t) => t.toJson()).toList());
 
     final path = item.localFilePath;
     if (path != null && await File(path).exists()) {

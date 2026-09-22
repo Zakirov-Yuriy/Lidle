@@ -33,6 +33,13 @@ class ScenariosService {
     final data = (jsonDecode(response.body) as Map)['data'];
     if (data is! List) return [];
 
+    // Все экраны объявления по номеру: залы и сотрудники в `tables`.
+    final byId = <int, BlockItemDraft>{
+      for (final list in items.values)
+        for (final i in list)
+          if (i.serverId != null) i.serverId!: i,
+    };
+
     return data.whereType<Map>().map((row) {
       final selected = <int, List<BlockItemDraft>>{};
       final raw = row['items'];
@@ -48,10 +55,29 @@ class ScenariosService {
         });
       }
 
+      // Персонал столов (22.09.2026).
+      final tables = <BlockItemDraft, Map<String, TableStaff>>{};
+      final rawTables = row['tables'];
+
+      if (rawTables is Map) {
+        rawTables.forEach((hallKey, hallTables) {
+          final hall = byId[int.tryParse('$hallKey')];
+          if (hall == null || hallTables is! Map) return;
+
+          hallTables.forEach((tableKey, staff) {
+            if (staff is! Map) return;
+            BlockItemDraft? pick(dynamic id) => id is num ? byId[id.toInt()] : null;
+            final entry = TableStaff(waiter: pick(staff['waiter_id']), admin: pick(staff['admin_id']));
+            if (!entry.isEmpty) tables.putIfAbsent(hall, () => {})['$tableKey'] = entry;
+          });
+        });
+      }
+
       return ScenarioDraft(
         serverId: (row['id'] as num?)?.toInt(),
         name: '${row['name'] ?? ''}',
         selected: selected,
+        tables: tables,
       );
     }).toList();
   }
@@ -67,6 +93,18 @@ class ScenariosService {
             'items': {
               for (final e in s.selected.entries)
                 '${e.key}': e.value.where((i) => i.serverId != null).map((i) => i.serverId).toList(),
+            },
+            'tables': {
+              for (final hall in s.tables.entries)
+                if (hall.key.serverId != null)
+                  '${hall.key.serverId}': {
+                    for (final t in hall.value.entries)
+                      if (!t.value.isEmpty)
+                        t.key: {
+                          'waiter_id': t.value.waiter?.serverId,
+                          'admin_id': t.value.admin?.serverId,
+                        },
+                  },
             },
           },
       ],
