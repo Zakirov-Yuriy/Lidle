@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
 import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/filter_models.dart';
+import 'package:lidle/pages/dynamic_filter/block/block_item_screen.dart';
 
 const Color _divider = Color(0xFF474747);
 
@@ -93,10 +94,14 @@ class _FieldWithButton extends StatelessWidget {
 /// Стиль O: «Добавить меню», «Добавить сотрудника» и так далее.
 ///
 /// Если у блока есть свой экран (поля из админки, например залы у «Добавить
-/// общий план зала»), форма передаёт [onAdd] и список добавленного: плюс и
-/// «Добавить еще» открывают экран, добавленное видно строками, нажатие на
-/// строку открывает правку. Без экрана нажатие говорит «скоро».
-class AddListBlockField extends StatelessWidget {
+/// общий план зала»), форма передаёт [onAdd] и список добавленного.
+///
+/// Пусто: поле «Добавить» с плюсом. Есть добавленное (макет 22.09.2026):
+///   поле с названием текущего зала и «Изменить»;
+///   план зала листается стрелками и точками, по странице на зал;
+///   снизу «Добавить еще» и красное «Удалить» (удаляет текущий).
+/// Без экрана нажатие говорит «скоро».
+class AddListBlockField extends StatefulWidget {
   const AddListBlockField({
     super.key,
     required this.attribute,
@@ -113,9 +118,59 @@ class AddListBlockField extends StatelessWidget {
   final ValueChanged<int>? onRemove;
 
   @override
+  State<AddListBlockField> createState() => _AddListBlockFieldState();
+}
+
+class _AddListBlockFieldState extends State<AddListBlockField> {
+  final PageController _pages = PageController();
+  int _current = 0;
+  int _lastCount = 0;
+
+  @override
+  void didUpdateWidget(covariant AddListBlockField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    final count = widget.items.length;
+
+    // Добавили зал — показываем его. Удалили — остаёмся в пределах списка.
+    if (count > _lastCount && count > 0) {
+      _current = count - 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pages.hasClients) _pages.jumpToPage(_current);
+      });
+    } else if (_current >= count) {
+      _current = count == 0 ? 0 : count - 1;
+    }
+
+    _lastCount = count;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _lastCount = widget.items.length;
+  }
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _go(int page) {
+    if (page < 0 || page >= widget.items.length) return;
+    _pages.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final title = attribute.title;
-    final add = onAdd ?? () => _soon(context, title);
+    final title = widget.attribute.title;
+    final items = widget.items;
+    final add = widget.onAdd ?? () => _soon(context, title);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,16 +182,7 @@ class AddListBlockField extends StatelessWidget {
           style: const TextStyle(color: textPrimary, fontSize: 16),
         ),
         const SizedBox(height: 9),
-        for (var i = 0; i < items.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _ItemRow(
-              item: items[i],
-              onTap: onOpen == null ? null : () => onOpen!(i),
-              onRemove: onRemove == null ? null : () => onRemove!(i),
-            ),
-          ),
-        if (items.isEmpty)
+        if (items.isEmpty) ...[
           _FieldWithButton(
             label: 'Добавить',
             onTap: add,
@@ -150,81 +196,192 @@ class AddListBlockField extends StatelessWidget {
               child: const Icon(Icons.add, color: activeIconColor, size: 16),
             ),
           ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: add,
-          child: const Text(
-            'Добавить еще',
-            style: TextStyle(color: activeIconColor, fontSize: 13),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: add,
+            child: const Text(
+              'Добавить еще',
+              style: TextStyle(color: activeIconColor, fontSize: 13),
+            ),
           ),
-        ),
+        ] else ...[
+          // Название текущего зала и «Изменить».
+          GestureDetector(
+            onTap: () => widget.onOpen?.call(_current),
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              height: 45,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: formBackground,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      items[_current].title,
+                      style: const TextStyle(color: textPrimary, fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Text(
+                    'Изменить',
+                    style: TextStyle(color: activeIconColor, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // План: по странице на зал, стрелки по бокам.
+          SizedBox(
+            height: 190,
+            child: Row(
+              children: [
+                _Arrow(
+                  icon: Icons.chevron_left,
+                  enabled: _current > 0,
+                  onTap: () => _go(_current - 1),
+                ),
+                Expanded(
+                  child: PageView.builder(
+                    controller: _pages,
+                    itemCount: items.length,
+                    onPageChanged: (i) => setState(() => _current = i),
+                    itemBuilder: (context, i) => GestureDetector(
+                      onTap: () => widget.onOpen?.call(i),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: _PlanPage(item: items[i]),
+                      ),
+                    ),
+                  ),
+                ),
+                _Arrow(
+                  icon: Icons.chevron_right,
+                  enabled: _current < items.length - 1,
+                  onTap: () => _go(_current + 1),
+                ),
+              ],
+            ),
+          ),
+          if (items.length > 1) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < items.length; i++)
+                  GestureDetector(
+                    onTap: () => _go(i),
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: i == _current ? activeIconColor : Colors.transparent,
+                        border: Border.all(
+                          color: i == _current ? activeIconColor : textSecondary,
+                          width: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: add,
+                child: const Text(
+                  'Добавить еще',
+                  style: TextStyle(color: activeIconColor, fontSize: 13),
+                ),
+              ),
+              const Spacer(),
+              if (widget.onRemove != null)
+                GestureDetector(
+                  onTap: () => widget.onRemove!(_current),
+                  child: const Text(
+                    'Удалить',
+                    style: TextStyle(color: Color(0xFFFF4D4D), fontSize: 13),
+                  ),
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
       ],
     );
   }
 }
 
-/// Добавленный зал: название, остальное строкой ниже, крестик.
-class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item, this.onTap, this.onRemove});
+class _Arrow extends StatelessWidget {
+  const _Arrow({required this.icon, required this.enabled, required this.onTap});
 
-  final BlockItemDraft item;
-  final VoidCallback? onTap;
-  final VoidCallback? onRemove;
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final rest = item.summary.skip(1).map((e) => e.value).join(' · ');
-
     return GestureDetector(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
-        decoration: BoxDecoration(
-          color: formBackground,
-          borderRadius: BorderRadius.circular(6),
+      child: SizedBox(
+        width: 26,
+        child: Icon(
+          icon,
+          size: 30,
+          color: enabled ? textSecondary : textSecondary.withValues(alpha: 0.25),
         ),
-        child: Row(
-          children: [
-            Icon(
-              item.hasFile
-                  ? (item.isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined)
-                  : Icons.table_restaurant_outlined,
-              color: activeIconColor,
-              size: 22,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.title,
-                    style: const TextStyle(color: textPrimary, fontSize: 14),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (rest.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 3),
-                      child: Text(
-                        rest,
-                        style: const TextStyle(color: textSecondary, fontSize: 12),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            if (onRemove != null)
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close, color: textSecondary, size: 20),
-                visualDensity: VisualDensity.compact,
-              ),
-          ],
+      ),
+    );
+  }
+}
+
+/// Страница карусели: план зала, а без файла — плашка с названием.
+class _PlanPage extends StatelessWidget {
+  const _PlanPage({required this.item});
+
+  final BlockItemDraft item;
+
+  @override
+  Widget build(BuildContext context) {
+    if (item.hasFile) {
+      return Center(
+        child: BlockFilePreview(
+          localPath: item.localFilePath,
+          remoteUrl: item.remoteFileUrl,
+          kind: item.fileKind,
         ),
+      );
+    }
+
+    final rest = item.summary.skip(1).map((e) => '${e.key}: ${e.value}').join('\n');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: formBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.table_restaurant_outlined, color: activeIconColor),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Text(
+              rest.isEmpty ? 'План не добавлен' : rest,
+              style: const TextStyle(color: textSecondary, fontSize: 12, height: 1.4),
+              overflow: TextOverflow.fade,
+            ),
+          ),
+        ],
       ),
     );
   }

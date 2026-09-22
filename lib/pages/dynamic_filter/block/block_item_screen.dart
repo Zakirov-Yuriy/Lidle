@@ -177,7 +177,7 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
         MaterialPageRoute(
           builder: (_) => _BlockPreviewScreen(
             title: widget.block.title,
-            preview: _FilePreview(localPath: _localPath, remoteUrl: _remoteUrl, kind: _kind),
+            preview: BlockFilePreview(localPath: _localPath, remoteUrl: _remoteUrl, kind: _kind),
           ),
         ),
       );
@@ -234,7 +234,7 @@ class _BlockItemScreenState extends State<BlockItemScreen> {
                       ],
                     ),
                     const SizedBox(height: 12),
-                    _FilePreview(localPath: _localPath, remoteUrl: _remoteUrl, kind: _kind),
+                    BlockFilePreview(localPath: _localPath, remoteUrl: _remoteUrl, kind: _kind),
                     const SizedBox(height: 8),
                     Align(
                       alignment: Alignment.centerLeft,
@@ -426,8 +426,8 @@ class _BlockPreviewScreen extends StatelessWidget {
 }
 
 /// Превью файла: картинка как есть, у PDF первая страница.
-class _FilePreview extends StatelessWidget {
-  const _FilePreview({this.localPath, this.remoteUrl, this.kind});
+class BlockFilePreview extends StatelessWidget {
+  const BlockFilePreview({super.key, this.localPath, this.remoteUrl, this.kind});
 
   final String? localPath;
   final String? remoteUrl;
