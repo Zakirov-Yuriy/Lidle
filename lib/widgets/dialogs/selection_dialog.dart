@@ -32,6 +32,11 @@ class SelectionDialog extends StatefulWidget {
   // количество комнат, тип строения и т.п.) поиск избыточен и только засоряет UI.
   final bool showSearchField;
 
+  /// Первой строкой «Все»: отмечает и снимает все варианты разом
+  /// (22.09.2026, окна выбора в «Бронировании», «Вид кухни ресторана»).
+  /// Только при множественном выборе.
+  final bool showSelectAll;
+
   const SelectionDialog({
     super.key,
     required this.title,
@@ -41,6 +46,7 @@ class SelectionDialog extends StatefulWidget {
     this.allowMultipleSelection = true,
     this.onSearchQuery,
     this.showSearchField = false,
+    this.showSelectAll = false,
   });
 
   @override
@@ -513,9 +519,13 @@ class _SelectionDialogState extends State<SelectionDialog> {
                               ),
                             )
                           ]
-                        : _filteredOptions
-                            .map((option) => _buildCheckbox(option))
-                            .toList(),
+                        : [
+                            if (widget.showSelectAll &&
+                                widget.allowMultipleSelection)
+                              _buildSelectAll(),
+                            ..._filteredOptions
+                                .map((option) => _buildCheckbox(option)),
+                          ],
                   ),
                 ),
               ),
@@ -569,6 +579,41 @@ class _SelectionDialogState extends State<SelectionDialog> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Строка «Все». Отмечена, когда выбраны все варианты списка.
+  Widget _buildSelectAll() {
+    final all = _filteredOptions.isNotEmpty &&
+        _filteredOptions.every(_tempSelectedOptions.contains);
+
+    void toggle(bool value) {
+      setState(() {
+        if (value) {
+          _tempSelectedOptions.addAll(_filteredOptions);
+        } else {
+          _tempSelectedOptions.removeAll(_filteredOptions);
+        }
+      });
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => toggle(!all),
+              child: const Text(
+                'Все',
+                style: TextStyle(color: textPrimary, fontSize: 16),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          CustomCheckbox(value: all, onChanged: toggle),
+        ],
       ),
     );
   }

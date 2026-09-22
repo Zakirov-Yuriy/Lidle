@@ -23,6 +23,15 @@ class AttributesApi {
   static AdvertFormConfig formFor(int categoryId) =>
       _formByCategory[categoryId] ?? AdvertFormConfig.fallback;
 
+  /// Поля экранов блоков «Добавить …» по номеру блока (22.09.2026):
+  /// «Название зала», «Этаж зала» у «Добавить общий план зала». Сервер отдаёт
+  /// их вложенными в атрибут блока (`fields`). В модель Attribute их не
+  /// кладём (она генерируется freezed), храним рядом.
+  static final Map<int, List<Attribute>> _blockFields = {};
+
+  static List<Attribute> blockFields(int blockId) =>
+      _blockFields[blockId] ?? const [];
+
   /// Получить атрибуты для формы создания объявления.
   /// GET /v1/adverts/create?category_id=X
   static Future<List<Attribute>> getAdvertCreationAttributes({
@@ -71,6 +80,17 @@ class AttributesApi {
           if (json is Map<String, dynamic>) {
             final attr = Attribute.fromJson(json);
             attributes.add(attr);
+
+            final fields = json['fields'];
+            if (fields is List && fields.isNotEmpty) {
+              _blockFields[attr.id] = fields
+                  .whereType<Map<String, dynamic>>()
+                  .map(Attribute.fromJson)
+                  .toList()
+                ..sort((a, b) => a.order.compareTo(b.order));
+            } else {
+              _blockFields.remove(attr.id);
+            }
           }
         } catch (_) {
           // Пропускаем повреждённый атрибут

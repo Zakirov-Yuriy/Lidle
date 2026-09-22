@@ -50,6 +50,10 @@ import 'widgets/form_primary_button.dart';
 import 'widgets/required_label.dart';
 import 'widgets/booking_field.dart';
 import 'widgets/form_block_fields.dart';
+import 'block/block_item_screen.dart';
+import 'widgets/period_fields.dart';
+import 'package:lidle/models/block_item.dart';
+import 'package:lidle/services/block_items_service.dart';
 import 'package:lidle/models/advert_form_config.dart';
 import 'package:lidle/services/api/attributes_api.dart';
 import 'widgets/checkbox_label.dart';
@@ -231,6 +235,13 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// Постоянная часть формы по категории (22.09.2026): есть ли «Цена»,
   /// подпись первого поля, путь категории. Приходит с атрибутами.
   AdvertFormConfig _form = AdvertFormConfig.fallback;
+
+  /// Заполненные экраны блоков «Добавить …» (залы ресторана) по номеру
+  /// блока. Уходят на сервер после объявления (22.09.2026).
+  final Map<int, List<BlockItemDraft>> _blockItems = {};
+
+  /// Залы, удалённые при правке: их надо удалить и на сервере.
+  final List<int> _removedBlockItemIds = [];
   final TextEditingController _contactNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phone1Controller = TextEditingController();
@@ -344,6 +355,9 @@ class _DynamicFilterState extends State<DynamicFilter>
 
     // 3️⃣ ПОТОМ загружаем все данные объявления (используем правильные атрибуты)
     await _loadAdvertDataForEditing();
+
+    // Залы и другие экраны блоков «Добавить …» (22.09.2026).
+    if (widget.advertId != null) await _loadBlockItems(widget.advertId!);
 
     // log.d(
     //   '📝 [EDIT MODE] Step 4: Repopulating controllers after attributes + advert data loaded...',
@@ -2082,6 +2096,15 @@ class _DynamicFilterState extends State<DynamicFilter>
             // debug: value contains selected values
           }
         }
+      } else if (value is Map && value.containsKey('timeFrom')) {
+        // Время «с — до» (стиль T, 22.09.2026).
+        final from = value['timeFrom'] as String?;
+        if (from != null) {
+          attributes['values']['$key'] = {
+            'value': from,
+            if (value['timeTo'] != null) 'value_to': value['timeTo'],
+          };
+        }
       } else if (value is Map && _looksLikeCalendar(value)) {
         // Календарь (стили J и K). Раньше этот Map попадал в ветку диапазона
         // ниже, а она читает только ключи min/max — их у календаря нет,
@@ -2988,6 +3011,21 @@ class _DynamicFilterState extends State<DynamicFilter>
         }
       }
 
+      // Залы и другие экраны блоков «Добавить …» (22.09.2026).
+      if (_blockItems.values.any((l) => l.isNotEmpty) ||
+          _removedBlockItemIds.isNotEmpty) {
+        setState(() => _publishingProgress = 'Сохранение залов...');
+        final errors = await _syncBlockItems(advertId);
+        if (errors.isNotEmpty && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Объявление сохранено, но не всё из блоков: ${errors.join('; ')}'),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
+      }
+
       // Hide loading
       setState(() {
         _isPublishing = false;
@@ -3403,10 +3441,102 @@ class _DynamicFilterState extends State<DynamicFilter>
       case FilterFieldKind.booking:
         return _buildBookingField(a);
       case FilterFieldKind.addList:
-        return AddListBlockField(attribute: a);
+        return _buildAddListBlock(a);
       case FilterFieldKind.linkBlock:
         return LinkBlockField(attribute: a);
+      case FilterFieldKind.timeRange:
+        final v = _selectedValues[a.id];
+        final m = v is Map ? v : const {};
+        return TimeRangeField(
+          attribute: a,
+          from: m['timeFrom'] as String?,
+          to: m['timeTo'] as String?,
+          onChanged: (f, t) => setState(() {
+            _selectedValues[a.id] = {'timeFrom': f, 'timeTo': t};
+          }),
+        );
     }
+  }
+
+  /// Блок «Добавить …» (стиль O). Если у блока есть свой экран (поля из
+  /// админки), плюс открывает его, добавленное видно списком (22.09.2026).
+  Widget _buildAddListBlock(Attribute attr) {
+    final fields = AttributesApi.blockFields(attr.id);
+
+    if (fields.isEmpty) {
+      return AddListBlockField(attribute: attr);
+    }
+
+    final items = _blockItems[attr.id] ?? const <BlockItemDraft>[];
+
+    Future<void> open([int? index]) async {
+      final draft = await Navigator.push<BlockItemDraft>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => BlockItemScreen(
+            block: attr,
+            fields: fields,
+            initial: index == null ? null : items[index],
+          ),
+        ),
+      );
+
+      if (draft == null || !mounted) return;
+
+      setState(() {
+        final list = _blockItems.putIfAbsent(attr.id, () => []);
+        if (index == null) {
+          list.add(draft);
+        } else {
+          list[index] = draft;
+        }
+      });
+    }
+
+    return AddListBlockField(
+      attribute: attr,
+      items: items,
+      onAdd: () => open(),
+      onOpen: (i) => open(i),
+      onRemove: (i) => setState(() {
+        final removed = _blockItems[attr.id]!.removeAt(i);
+        if (removed.serverId != null) _removedBlockItemIds.add(removed.serverId!);
+      }),
+    );
+  }
+
+  /// Залы объявления с сервера (правка).
+  Future<void> _loadBlockItems(int advertId) async {
+    try {
+      final loaded = await BlockItemsService.list(advertId);
+      if (!mounted) return;
+      setState(() {
+        _blockItems
+          ..clear()
+          ..addAll(loaded);
+      });
+    } catch (_) {}
+  }
+
+  /// Отправить залы после объявления. Возвращает ошибки для показа.
+  Future<List<String>> _syncBlockItems(int advertId) async {
+    final errors = <String>[];
+
+    for (final id in List<int>.from(_removedBlockItemIds)) {
+      if (await BlockItemsService.delete(advertId, id)) {
+        _removedBlockItemIds.remove(id);
+      }
+    }
+
+    for (final entry in _blockItems.entries) {
+      for (final item in entry.value) {
+        if (!item.dirty) continue;
+        final error = await BlockItemsService.save(advertId, entry.key, item);
+        if (error != null) errors.add('«${item.title}»: $error');
+      }
+    }
+
+    return errors;
   }
 
   /// Блок бронирования (стили L и M).
@@ -3947,6 +4077,8 @@ class _DynamicFilterState extends State<DynamicFilter>
     return MultipleSelectPopupField(
       attribute: attr,
       isSubmissionMode: _isSubmissionMode,
+      // «Все» в окнах выбора только в «Бронировании» (22.09.2026).
+      showSelectAll: _form.isBooking,
       selectedValues: selected,
       hasError: hasError,
       errorMessage: hasError ? _fieldErrors[fieldKey] : null,

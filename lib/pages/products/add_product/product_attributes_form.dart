@@ -257,6 +257,7 @@ class _ProductAttributesFormState extends State<ProductAttributesForm> {
       // Блоки-оформление формы объявления (O, P): у товара их нет.
       case FilterFieldKind.addList:
       case FilterFieldKind.linkBlock:
+      case FilterFieldKind.timeRange:
         return const SizedBox.shrink();
 
       case FilterFieldKind.checkbox:

@@ -61,6 +61,9 @@ enum FilterFieldKind {
   /// Блок с переходом (стиль P, 22.09.2026): «Объединить в холдинг»,
   /// «Таблица распределения». Значения не хранит, только рисуется.
   linkBlock,
+
+  /// Время «с — до» (стиль T, 22.09.2026): «Время работы зала».
+  timeRange,
 }
 
 /// План построения UI-поля: тип виджета и атрибут, который нужно
@@ -111,6 +114,9 @@ FilterFieldPlan resolveFilterField(Attribute attr) {
   }
   if (attr.style == 'P' || attr.styleSingle == 'P1') {
     return FilterFieldPlan(FilterFieldKind.linkBlock, attr);
+  }
+  if (attr.style == 'T' || attr.styleSingle == 'T1') {
+    return FilterFieldPlan(FilterFieldKind.timeRange, attr);
   }
 
   // Скрытые чекбоксы (is_title_hidden + values):

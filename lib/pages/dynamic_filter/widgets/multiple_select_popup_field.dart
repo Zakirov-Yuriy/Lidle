@@ -67,7 +67,13 @@ class MultipleSelectPopupField extends StatelessWidget {
     this.errorMessage,
     this.hasError = false,
     this.isSubmissionMode = true,
+    this.showSelectAll = false,
   });
+
+  /// Строка «Все» в окне выбора (формы «Бронирования», 22.09.2026). Не
+  /// рисуется, если «всё сразу» уже есть среди вариантов («Всю неделю»,
+  /// «Круглый год»): две такие строки только путали бы.
+  final bool showSelectAll;
 
   final Attribute attribute;
   final Set<String> selectedValues;
@@ -137,6 +143,12 @@ class MultipleSelectPopupField extends StatelessWidget {
                     onChanged(originalSelected);
                   },
                   allowMultipleSelection: attribute.isMultiple,
+                  showSelectAll: showSelectAll &&
+                      attribute.isMultiple &&
+                      !attribute.values.any(
+                        (v) => const {'все', 'всю неделю', 'круглый год'}
+                            .contains(v.value.trim().toLowerCase()),
+                      ),
                 );
               },
             );

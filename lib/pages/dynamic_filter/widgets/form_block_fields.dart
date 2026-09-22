@@ -19,6 +19,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lidle/constants.dart';
+import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/filter_models.dart';
 
 const Color _divider = Color(0xFF474747);
@@ -90,14 +91,31 @@ class _FieldWithButton extends StatelessWidget {
 }
 
 /// Стиль O: «Добавить меню», «Добавить сотрудника» и так далее.
+///
+/// Если у блока есть свой экран (поля из админки, например залы у «Добавить
+/// общий план зала»), форма передаёт [onAdd] и список добавленного: плюс и
+/// «Добавить еще» открывают экран, добавленное видно строками, нажатие на
+/// строку открывает правку. Без экрана нажатие говорит «скоро».
 class AddListBlockField extends StatelessWidget {
-  const AddListBlockField({super.key, required this.attribute});
+  const AddListBlockField({
+    super.key,
+    required this.attribute,
+    this.items = const [],
+    this.onAdd,
+    this.onOpen,
+    this.onRemove,
+  });
 
   final Attribute attribute;
+  final List<BlockItemDraft> items;
+  final VoidCallback? onAdd;
+  final ValueChanged<int>? onOpen;
+  final ValueChanged<int>? onRemove;
 
   @override
   Widget build(BuildContext context) {
     final title = attribute.title;
+    final add = onAdd ?? () => _soon(context, title);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,22 +127,32 @@ class AddListBlockField extends StatelessWidget {
           style: const TextStyle(color: textPrimary, fontSize: 16),
         ),
         const SizedBox(height: 9),
-        _FieldWithButton(
-          label: 'Добавить',
-          onTap: () => _soon(context, title),
-          button: Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: activeIconColor, width: 1.6),
+        for (var i = 0; i < items.length; i++)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _ItemRow(
+              item: items[i],
+              onTap: onOpen == null ? null : () => onOpen!(i),
+              onRemove: onRemove == null ? null : () => onRemove!(i),
             ),
-            child: const Icon(Icons.add, color: activeIconColor, size: 16),
           ),
-        ),
+        if (items.isEmpty)
+          _FieldWithButton(
+            label: 'Добавить',
+            onTap: add,
+            button: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: activeIconColor, width: 1.6),
+              ),
+              child: const Icon(Icons.add, color: activeIconColor, size: 16),
+            ),
+          ),
         const SizedBox(height: 8),
         GestureDetector(
-          onTap: () => _soon(context, title),
+          onTap: add,
           child: const Text(
             'Добавить еще',
             style: TextStyle(color: activeIconColor, fontSize: 13),
@@ -132,6 +160,72 @@ class AddListBlockField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+/// Добавленный зал: название, остальное строкой ниже, крестик.
+class _ItemRow extends StatelessWidget {
+  const _ItemRow({required this.item, this.onTap, this.onRemove});
+
+  final BlockItemDraft item;
+  final VoidCallback? onTap;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final rest = item.summary.skip(1).map((e) => e.value).join(' · ');
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+        decoration: BoxDecoration(
+          color: formBackground,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              item.hasFile
+                  ? (item.isPdf ? Icons.picture_as_pdf_outlined : Icons.image_outlined)
+                  : Icons.table_restaurant_outlined,
+              color: activeIconColor,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: const TextStyle(color: textPrimary, fontSize: 14),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (rest.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
+                      child: Text(
+                        rest,
+                        style: const TextStyle(color: textSecondary, fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (onRemove != null)
+              IconButton(
+                onPressed: onRemove,
+                icon: const Icon(Icons.close, color: textSecondary, size: 20),
+                visualDensity: VisualDensity.compact,
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
