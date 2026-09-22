@@ -195,6 +195,11 @@ class _FullCategoryScreenState extends State<FullCategoryScreen>
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(5),
                             child: Stack(
+                              // Картинка во всю ячейку (22.09.2026). Ячейка сетки чуть
+                              // больше 120×83, и картинка фиксированного размера не
+                              // доходила до правого и нижнего края: закруглялся только
+                              // верхний левый угол.
+                              fit: StackFit.expand,
                               children: [
                                 catalog.thumbnail != null &&
                                         catalog.thumbnail!.isNotEmpty &&
