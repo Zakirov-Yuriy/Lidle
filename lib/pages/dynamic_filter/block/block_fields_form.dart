@@ -349,6 +349,7 @@ class _BlockFieldsFormState extends State<BlockFieldsForm> {
       case FilterFieldKind.booking:
       case FilterFieldKind.addList:
       case FilterFieldKind.linkBlock:
+      case FilterFieldKind.scenarios:
         return const SizedBox.shrink();
     }
   }

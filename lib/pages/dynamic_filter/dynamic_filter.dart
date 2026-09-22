@@ -51,6 +51,9 @@ import 'widgets/required_label.dart';
 import 'widgets/booking_field.dart';
 import 'widgets/form_block_fields.dart';
 import 'block/block_item_screen.dart';
+import 'block/scenarios_screen.dart';
+import 'package:lidle/models/scenario.dart';
+import 'package:lidle/services/scenarios_service.dart';
 import 'widgets/period_fields.dart';
 import 'package:lidle/models/block_item.dart';
 import 'package:lidle/services/block_items_service.dart';
@@ -242,6 +245,10 @@ class _DynamicFilterState extends State<DynamicFilter>
 
   /// Залы, удалённые при правке: их надо удалить и на сервере.
   final List<int> _removedBlockItemIds = [];
+
+  /// Сценарии бизнеса, «Таблица распределения» (22.09.2026).
+  List<ScenarioDraft> _scenarios = [];
+  bool _scenariosDirty = false;
   final TextEditingController _contactNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phone1Controller = TextEditingController();
@@ -3013,7 +3020,8 @@ class _DynamicFilterState extends State<DynamicFilter>
 
       // Залы и другие экраны блоков «Добавить …» (22.09.2026).
       if (_blockItems.values.any((l) => l.isNotEmpty) ||
-          _removedBlockItemIds.isNotEmpty) {
+          _removedBlockItemIds.isNotEmpty ||
+          _scenariosDirty) {
         setState(() => _publishingProgress = 'Сохранение залов...');
         final errors = await _syncBlockItems(advertId);
         if (errors.isNotEmpty && mounted) {
@@ -3444,6 +3452,8 @@ class _DynamicFilterState extends State<DynamicFilter>
         return _buildAddListBlock(a);
       case FilterFieldKind.linkBlock:
         return LinkBlockField(attribute: a);
+      case FilterFieldKind.scenarios:
+        return LinkBlockField(attribute: a, onGo: _openScenarios);
       case FilterFieldKind.timeRange:
         final v = _selectedValues[a.id];
         final m = v is Map ? v : const {};
@@ -3501,19 +3511,56 @@ class _DynamicFilterState extends State<DynamicFilter>
       onRemove: (i) => setState(() {
         final removed = _blockItems[attr.id]!.removeAt(i);
         if (removed.serverId != null) _removedBlockItemIds.add(removed.serverId!);
+
+        // Удалённый зал выпадает и из сценариев.
+        for (final scenario in _scenarios) {
+          scenario.forget(removed);
+        }
+        if (_scenarios.isNotEmpty) _scenariosDirty = true;
       }),
     );
   }
 
-  /// Залы объявления с сервера (правка).
+  /// «Перейти» у «Таблицы распределения»: сценарии из блоков этой формы.
+  Future<void> _openScenarios() async {
+    final blocks = List<Attribute>.from(_attributes)
+      ..sort((a, b) => a.order.compareTo(b.order));
+
+    final rows = [
+      for (final block in blocks)
+        if (resolveFilterField(block).kind == FilterFieldKind.addList)
+          ScenarioRow(
+            blockId: block.id,
+            label: scenarioRowLabel(block.title),
+            items: _blockItems[block.id] ?? const [],
+          ),
+    ];
+
+    final result = await Navigator.push<List<ScenarioDraft>>(
+      context,
+      MaterialPageRoute(builder: (_) => ScenariosScreen(rows: rows, scenarios: _scenarios)),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _scenarios = result;
+      _scenariosDirty = true;
+    });
+  }
+
+  /// Залы объявления и сценарии с сервера (правка).
   Future<void> _loadBlockItems(int advertId) async {
     try {
       final loaded = await BlockItemsService.list(advertId);
+      final scenarios = await ScenariosService.list(advertId, loaded);
       if (!mounted) return;
       setState(() {
         _blockItems
           ..clear()
           ..addAll(loaded);
+        _scenarios = scenarios;
+        _scenariosDirty = false;
       });
     } catch (_) {}
   }
@@ -3533,6 +3580,16 @@ class _DynamicFilterState extends State<DynamicFilter>
         if (!item.dirty) continue;
         final error = await BlockItemsService.save(advertId, entry.key, item);
         if (error != null) errors.add('«${item.title}»: $error');
+      }
+    }
+
+    // Сценарии после залов: им нужны номера залов на сервере.
+    if (_scenariosDirty) {
+      final error = await ScenariosService.save(advertId, _scenarios);
+      if (error == null) {
+        _scenariosDirty = false;
+      } else {
+        errors.add('сценарии: $error');
       }
     }
 

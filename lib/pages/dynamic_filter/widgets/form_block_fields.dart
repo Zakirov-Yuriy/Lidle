@@ -392,9 +392,13 @@ class _PlanPage extends StatelessWidget {
 /// Первая ссылка берётся из первого значения атрибута («Что такое
 /// холдинг?»), её админ пишет сам. Вторая всегда «Как это работает?».
 class LinkBlockField extends StatelessWidget {
-  const LinkBlockField({super.key, required this.attribute});
+  const LinkBlockField({super.key, required this.attribute, this.onGo});
 
   final Attribute attribute;
+
+  /// Что делает «Перейти». Нет — «скоро» (22.09.2026: у «Таблицы
+  /// распределения» это экран сценариев).
+  final VoidCallback? onGo;
 
   @override
   Widget build(BuildContext context) {
@@ -432,7 +436,7 @@ class LinkBlockField extends StatelessWidget {
         const SizedBox(height: 8),
         _FieldWithButton(
           label: 'Перейти',
-          onTap: () => _soon(context, title),
+          onTap: onGo ?? () => _soon(context, title),
           button: const Icon(
             Icons.chevron_right,
             color: textSecondary,

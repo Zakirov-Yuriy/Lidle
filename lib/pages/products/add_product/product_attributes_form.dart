@@ -258,6 +258,7 @@ class _ProductAttributesFormState extends State<ProductAttributesForm> {
       case FilterFieldKind.addList:
       case FilterFieldKind.linkBlock:
       case FilterFieldKind.timeRange:
+      case FilterFieldKind.scenarios:
         return const SizedBox.shrink();
 
       case FilterFieldKind.checkbox:

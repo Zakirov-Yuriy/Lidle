@@ -64,6 +64,10 @@ enum FilterFieldKind {
 
   /// Время «с — до» (стиль T, 22.09.2026): «Время работы зала».
   timeRange,
+
+  /// «Таблица распределения» (стиль Q, 22.09.2026): как блок с переходом,
+  /// но «Перейти» открывает сценарии бизнеса.
+  scenarios,
 }
 
 /// План построения UI-поля: тип виджета и атрибут, который нужно
@@ -114,6 +118,9 @@ FilterFieldPlan resolveFilterField(Attribute attr) {
   }
   if (attr.style == 'P' || attr.styleSingle == 'P1') {
     return FilterFieldPlan(FilterFieldKind.linkBlock, attr);
+  }
+  if (attr.style == 'Q' || attr.styleSingle == 'Q1') {
+    return FilterFieldPlan(FilterFieldKind.scenarios, attr);
   }
   if (attr.style == 'T' || attr.styleSingle == 'T1') {
     return FilterFieldPlan(FilterFieldKind.timeRange, attr);
