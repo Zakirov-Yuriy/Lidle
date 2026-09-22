@@ -57,6 +57,7 @@ import 'package:lidle/services/scenarios_service.dart';
 import 'widgets/period_fields.dart';
 import 'package:lidle/models/block_item.dart';
 import 'package:lidle/services/block_items_service.dart';
+import 'package:lidle/services/company_contact_service.dart';
 import 'package:lidle/models/advert_form_config.dart';
 import 'package:lidle/services/api/attributes_api.dart';
 import 'widgets/checkbox_label.dart';
@@ -322,13 +323,9 @@ class _DynamicFilterState extends State<DynamicFilter>
     // ✅ Load attributes and support data concurrently
     await Future.wait([_loadAttributes(), _loadUserContacts(), _loadRegions()]);
 
-    // 🔧 Инициализируем значения по умолчанию (если они переданы)
-    if (widget.defaultRegion != null ||
-        widget.defaultCity != null ||
-        widget.defaultStreet != null ||
-        widget.defaultBuilding != null) {
-      await _initializeDefaultAddressValues();
-    }
+    // 🔧 Адрес по умолчанию: из переданного экраном выбора категории, а если
+    // там пусто, из профиля компании (22.09.2026), см. _companyAddress().
+    await _initializeDefaultAddressValues();
 
     // Автозаполнение для тестирования (after all data loaded)
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -427,14 +424,40 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// Вызывается при создании нового объявления если переданы widget.defaultRegion и/или widget.defaultCity
   Future<void> _initializeDefaultAddressValues() async {
     try {
+      // 0️⃣ Откуда брать область и город.
+      //
+      // Экран выбора категории передаёт их из памяти телефона, а туда они
+      // попадают только после того, как человек откроет экран «Данные
+      // компании». На свежей установке там пусто, и форма открывалась с
+      // пустым адресом (22.09.2026). Тогда спрашиваем профиль компании.
+      String? defRegion = widget.defaultRegion;
+      int? defRegionId = widget.defaultRegionId;
+      String? defCity = widget.defaultCity;
+      int? defCityId = widget.defaultCityId;
+
+      if (defRegion == null || defRegion.isEmpty) {
+        final company = await _companyAddress();
+        if (company != null) {
+          defRegion = company.region;
+          defRegionId = company.regionId;
+          defCity = company.city;
+          defCityId = company.cityId;
+        }
+      }
+
+      final fRegion = defRegion;
+      final fRegionId = defRegionId;
+      final fCity = defCity;
+      final fCityId = defCityId;
+
       // 1️⃣ Инициализируем регион по умолчанию
-      if (widget.defaultRegion != null && widget.defaultRegion!.isNotEmpty) {
-        int? regionId = widget.defaultRegionId;
+      if (fRegion != null && fRegion.isNotEmpty) {
+        int? regionId = fRegionId;
         
         // Если ID не передан, ищем по имени
         if (regionId == null) {
           final regionIndex = _regions.indexWhere(
-            (r) => r['name'] == widget.defaultRegion,
+            (r) => r['name'] == fRegion,
           );
           
           if (regionIndex >= 0) {
@@ -444,23 +467,23 @@ class _DynamicFilterState extends State<DynamicFilter>
         
         if (regionId != null) {
           setState(() {
-            _selectedRegion = {widget.defaultRegion!};
+            _selectedRegion = {fRegion};
             _selectedRegionId = regionId;
           });
           
-          log.d('🎯 Default region set: "${widget.defaultRegion}" (ID: $regionId)');
+          log.d('🎯 Default region set: "${fRegion}" (ID: $regionId)');
           
           // 2️⃣ Загружаем города для выбранного региона
           await _loadCitiesForSelectedRegion();
           
           // 3️⃣ Инициализируем город по умолчанию (если есть и города загружены)
-          if (widget.defaultCity != null && widget.defaultCity!.isNotEmpty) {
-            int? cityId = widget.defaultCityId;
+          if (fCity != null && fCity.isNotEmpty) {
+            int? cityId = fCityId;
             
             // Если ID не передан, ищем по имени
             if (cityId == null) {
               final cityIndex = _cities.indexWhere(
-                (c) => c['name'] == widget.defaultCity,
+                (c) => c['name'] == fCity,
               );
               
               if (cityIndex >= 0) {
@@ -480,30 +503,30 @@ class _DynamicFilterState extends State<DynamicFilter>
                 final cityInfo = _cities[cityIndex];
                 
                 setState(() {
-                  _selectedCity = {widget.defaultCity!};
+                  _selectedCity = {fCity};
                   _selectedCityId = cityId;
                   // Получаем информацию о регионе города
                   _selectedCityRegionId = cityInfo['region_id'] as int?;
                   _selectedCityMainRegionId = cityInfo['main_region_id'] as int?;
                 });
                 
-                log.d('🎯 Default city set: "${widget.defaultCity}" (ID: $cityId) - found in _cities');
+                log.d('🎯 Default city set: "${fCity}" (ID: $cityId) - found in _cities');
               } else {
                 // 🆕 Город НЕ найден в _cities, но у нас есть его ID и имя
                 // Это может быть результат API поиска из contact_data_screen
                 // Просто устанавливаем его с имеющейся информацией
                 setState(() {
-                  _selectedCity = {widget.defaultCity!};
+                  _selectedCity = {fCity};
                   _selectedCityId = cityId;
                   // Регион города вероятно совпадает с выбранным регионом
                   _selectedCityMainRegionId = regionId;
                 });
                 
-                log.d('🎯 Default city set: "${widget.defaultCity}" (ID: $cityId) - NOT in _cities, but using provided ID');
+                log.d('🎯 Default city set: "${fCity}" (ID: $cityId) - NOT in _cities, but using provided ID');
                 log.d('   ℹ️ This city was likely selected via API search from contact_data_screen');
               }
             } else {
-              log.d('⚠️ City ID is null for "${widget.defaultCity}"');
+              log.d('⚠️ City ID is null for "${fCity}"');
             }
           }
         }
@@ -513,7 +536,10 @@ class _DynamicFilterState extends State<DynamicFilter>
       //
       // Для недвижимости пропускаем: дом в объявлении каждый раз свой, и
       // адрес офиса человеку пришлось бы стирать вручную (16.09.2026).
+      // «Бронирование» тоже: заведений у компании бывает несколько, а
+      // область и город обычно одни (22.09.2026).
       if (!widget.isRealEstate &&
+          !_form.isBooking &&
           widget.defaultStreet != null &&
           widget.defaultStreet!.isNotEmpty &&
           widget.defaultStreetId != null) {
@@ -546,6 +572,54 @@ class _DynamicFilterState extends State<DynamicFilter>
       }
     } catch (e) {
       log.d('❌ Error initializing default address values: $e');
+    }
+  }
+
+  /// Область и город из профиля компании (`GET /companies/{userId}`).
+  ///
+  /// Заодно кладём их в память телефона теми же ключами, что и экран «Данные
+  /// компании», чтобы в следующий раз не ходить на сервер. Улицу и дом не
+  /// трогаем: их ключи пишет только сам экран компании.
+  ///
+  /// Не получилось, значит null: адрес человек выберет сам, как раньше.
+  Future<({String region, int regionId, String city, int? cityId})?>
+      _companyAddress() async {
+    try {
+      final token = TokenService.currentToken;
+      if (token == null || token.isEmpty) return null;
+
+      int? asId(dynamic v) =>
+          v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
+
+      var userId = asId(UserService.getLocal('userId'));
+      userId ??= (await UserService.getProfile(token: token)).id;
+      if (userId == null) return null;
+
+      final resp = await CompanyContactService.getCompanyProfile(
+        userId: userId,
+        token: token,
+      );
+      final data = resp['data'] is Map ? resp['data'] as Map : const {};
+      final address = data['address'] is Map ? data['address'] as Map : const {};
+
+      final region = (address['main_region_name'] ?? '').toString();
+      final regionId = asId(address['main_region_id']);
+      if (region.isEmpty || regionId == null) return null;
+
+      final city = (address['city_name'] ?? '').toString();
+      final cityId = asId(address['city_id']);
+
+      await UserService.saveLocal('companyRegion', region);
+      await UserService.saveLocal('companyRegionId', '$regionId');
+      await UserService.saveLocal('companyCity', city);
+      await UserService.saveLocal('companyCityId', cityId?.toString() ?? '');
+
+      log.d('🎯 Адрес компании из профиля: $region, $city');
+
+      return (region: region, regionId: regionId, city: city, cityId: cityId);
+    } catch (e) {
+      log.d('⚠️ Не удалось получить адрес компании: $e');
+      return null;
     }
   }
 
