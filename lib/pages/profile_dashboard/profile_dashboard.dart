@@ -1081,43 +1081,34 @@ class _ProfileDashboardState extends State<ProfileDashboard>
                                     color: Color(0xFF474747),
                                     height: 8,
                                   ),
-                                  // Бронирование. Два пункта, а не один:
-                                  // «мои» и «ко мне» человек смотрит разными
-                                  // глазами, и объединять их в один список
-                                  // значит заставлять его фильтровать.
+                                  // Бронирование: один пункт «Брони»
+                                  // (22.09.2026). Раньше было два, «Мои
+                                  // брони» и «Заявки ко мне», но оба вели в
+                                  // один экран, различалась только вкладка.
+                                  // Число справа: сумма обеих вкладок.
+                                  // Если есть заявки, ждущие ответа, пункт
+                                  // подсвечен и экран сразу открывается на
+                                  // «Заявки ко мне».
                                   //
-                                  // В сборке для Google Play оба пункта
-                                  // спрятаны (20.09.2026, см.
-                                  // `lib/google_play_build.dart`).
+                                  // В сборке для Google Play пункт спрятан
+                                  // (20.09.2026, см. `lib/google_play_build.dart`).
                                   if (!kGooglePlayBuild) ...[
                                     _MenuItem(
-                                      title: 'Мои брони',
-                                      count: _bookingCounts.mine,
-                                      trailingChevron: true,
-                                      onTap: () => Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const MyBookingsScreen(initialTab: 0),
-                                        ),
-                                      ).then((_) => _loadBookingCounts()),
-                                    ),
-                                    const Divider(
-                                      color: Color(0xFF474747),
-                                      height: 8,
-                                    ),
-                                    _MenuItem(
-                                      title: 'Заявки ко мне',
-                                      count: _bookingCounts.incoming,
-                                      // Подсвечиваем, только когда есть чему
-                                      // ждать ответа: подтверждённые брони
-                                      // действия не требуют.
+                                      title: 'Брони',
+                                      count: _bookingCounts.mine +
+                                          _bookingCounts.incoming,
                                       isHighlight:
                                           _bookingCounts.incomingPending > 0,
                                       trailingChevron: true,
                                       onTap: () => Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (_) =>
-                                              const MyBookingsScreen(initialTab: 1),
+                                          builder: (_) => MyBookingsScreen(
+                                            initialTab:
+                                                _bookingCounts.incomingPending >
+                                                        0
+                                                    ? 1
+                                                    : 0,
+                                          ),
                                         ),
                                       ).then((_) => _loadBookingCounts()),
                                     ),
