@@ -1,4 +1,5 @@
 import 'package:lidle/models/hall_table.dart';
+import 'package:lidle/models/menu_content.dart';
 
 /// Один заполненный экран блока «Добавить …» (22.09.2026), например зал
 /// ресторана из «Добавить общий план зала».
@@ -36,6 +37,9 @@ class BlockItemDraft {
   /// Столы на плане зала (22.09.2026). У других блоков пусто.
   List<HallTable> layout;
 
+  /// Группы и позиции меню (23.09.2026). У других блоков пусто.
+  MenuContent menu;
+
   BlockItemDraft({
     this.serverId,
     Map<String, dynamic>? values,
@@ -46,7 +50,9 @@ class BlockItemDraft {
     this.dirty = true,
     this.removeFile = false,
     List<HallTable>? layout,
+    MenuContent? menu,
   })  : layout = layout ?? [],
+        menu = menu ?? MenuContent(),
         values = values ?? {'value_selected': <int>[], 'values': <String, dynamic>{}},
         summary = summary ?? [];
 
@@ -96,6 +102,7 @@ class BlockItemDraft {
           for (final raw in json['layout'] as List)
             if (HallTable.tryParse(raw) != null) HallTable.tryParse(raw)!,
       ],
+      menu: MenuContent.fromJson(json['content']),
     );
   }
 }

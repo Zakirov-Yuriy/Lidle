@@ -51,6 +51,7 @@ import 'widgets/required_label.dart';
 import 'widgets/booking_field.dart';
 import 'widgets/form_block_fields.dart';
 import 'block/block_item_screen.dart';
+import 'block/menu_screen.dart';
 import 'block/scenarios_screen.dart';
 import 'package:lidle/models/scenario.dart';
 import 'package:lidle/services/scenarios_service.dart';
@@ -3553,15 +3554,19 @@ class _DynamicFilterState extends State<DynamicFilter>
 
     final items = _blockItems[attr.id] ?? const <BlockItemDraft>[];
 
+    // У меню свой экран: внутри группы и позиции, а не обычные поля
+    // (23.09.2026).
+    final isMenu = attr.title.toLowerCase().contains('меню');
+
     Future<void> open([int? index]) async {
+      final initial = index == null ? null : items[index];
+
       final draft = await Navigator.push<BlockItemDraft>(
         context,
         MaterialPageRoute(
-          builder: (_) => BlockItemScreen(
-            block: attr,
-            fields: fields,
-            initial: index == null ? null : items[index],
-          ),
+          builder: (_) => isMenu
+              ? MenuScreen(block: attr, fields: fields, initial: initial)
+              : BlockItemScreen(block: attr, fields: fields, initial: initial),
         ),
       );
 

@@ -58,6 +58,24 @@ class BlockItemsService {
     // Столы на плане зала (22.09.2026). У других блоков пустой список.
     request.fields['layout'] = jsonEncode(item.layout.map((t) => t.toJson()).toList());
 
+    // Меню (23.09.2026): группы и позиции одним полем, а их картинки
+    // файлами `image_<ключ>`. Уже загруженные картинки уходят именем файла.
+    request.fields['content'] = jsonEncode(item.menu.toJson());
+
+    for (final group in item.menu.groups) {
+      final path = group.localPath;
+      if (path != null && await File(path).exists()) {
+        request.files.add(await http.MultipartFile.fromPath('image_${group.key}', path));
+      }
+    }
+
+    for (final dish in item.menu.items) {
+      final path = dish.localPath;
+      if (path != null && await File(path).exists()) {
+        request.files.add(await http.MultipartFile.fromPath('image_${dish.key}', path));
+      }
+    }
+
     final path = item.localFilePath;
     if (path != null && await File(path).exists()) {
       request.files.add(await http.MultipartFile.fromPath('file', path));
@@ -73,6 +91,7 @@ class BlockItemsService {
         if (data is Map<String, dynamic>) {
           final saved = BlockItemDraft.fromServer(data);
           item
+            ..menu = saved.menu
             ..serverId = saved.serverId
             ..remoteFileUrl = saved.remoteFileUrl
             ..fileKind = saved.fileKind
