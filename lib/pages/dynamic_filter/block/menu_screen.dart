@@ -750,11 +750,15 @@ class _MenuScreenState extends State<MenuScreen> {
                         )
                       : _field(controller: _groupName),
                   const SizedBox(height: 14),
-                  SizedBox(
-                    height: 132,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
+                  // Высота полосы по содержимому, а не заданная числом: при
+                  // коротких названиях фиксированные 132 оставляли пустую
+                  // полосу перед «Содержимым группы» (23.09.2026).
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                         for (final g in _menu.sortedGroups)
                           _GroupCard(
                             group: g,
@@ -764,6 +768,7 @@ class _MenuScreenState extends State<MenuScreen> {
                           ),
                         // Плюс ровно того же размера, что карточки групп.
                         Column(
+                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             GestureDetector(
@@ -784,7 +789,8 @@ class _MenuScreenState extends State<MenuScreen> {
                             const SizedBox(width: 116, child: Text(' ', style: TextStyle(fontSize: 12))),
                           ],
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 7),
@@ -915,6 +921,7 @@ class _GroupCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 10),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
@@ -955,18 +962,16 @@ class _GroupCard extends StatelessWidget {
           // Название целиком, в две строки: «Доставка самокатом» обрезалось
           // до «Доставка са…», а на товарном экране видно полностью
           // (23.09.2026).
-          Flexible(
-            child: SizedBox(
-              width: 116,
-              child: Text(
-                group.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected ? textPrimary : textSecondary,
-                  fontSize: 12,
-                  height: 1.2,
-                ),
+          SizedBox(
+            width: 116,
+            child: Text(
+              group.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? textPrimary : textSecondary,
+                fontSize: 12,
+                height: 1.2,
               ),
             ),
           ),
