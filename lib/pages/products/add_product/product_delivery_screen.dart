@@ -433,7 +433,7 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
               const SizedBox(height: 16),
               _groupsStrip(),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 7),
               Text(
                 group == null
                     ? 'Способы доставки'
@@ -495,17 +495,14 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
   /// названия. При 116 длинное название («Доставка самокатом») не помещалось и
   /// вылезало полосатой лентой (23.09.2026).
   Widget _groupsStrip() {
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _delivery.groups.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
+    // Лента по высоте содержимого, а не числом: при коротких названиях
+    // фиксированная высота оставляла пустую полосу снизу (23.09.2026).
+    Widget tile(BuildContext context, int index) {
           if (index == _delivery.groups.length) {
             return SizedBox(
               width: 116,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
@@ -535,6 +532,7 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
             child: SizedBox(
               width: 116,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Stack(
@@ -580,23 +578,34 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Flexible(
-                    child: Text(
-                      group.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isOpen ? textPrimary : textSecondary,
-                        fontSize: 12,
-                        height: 1.2,
-                      ),
+                  Text(
+                    group.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isOpen ? textPrimary : textSecondary,
+                      fontSize: 11,
+                      height: 1.2,
                     ),
                   ),
                 ],
               ),
             ),
           );
-        },
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < _delivery.groups.length + 1; index++) ...[
+              if (index > 0) const SizedBox(width: 12),
+              tile(context, index),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -489,7 +489,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
               const SizedBox(height: 16),
               _groupsStrip(),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 7),
               Text(
                 group == null
                     ? 'Содержимое группы'
@@ -593,13 +593,9 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
   /// у групп с длинным названием («Бесплатно (животные и вязка)») экран
   /// показывал полосатую ленту переполнения. Поймали 14.09.2026.
   Widget _groupsStrip() {
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: _publication.groups.length + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
+    // Лента по высоте содержимого, а не числом: при коротких названиях
+    // фиксированная высота оставляла пустую полосу снизу (23.09.2026).
+    Widget tile(BuildContext context, int index) {
           if (index == _publication.groups.length) {
             // Плитка «плюс» той же формы и того же размера, что обложка
             // группы, и прижата к верху: лента идёт одной строкой, и плитка
@@ -607,6 +603,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
             return SizedBox(
               width: 116,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
@@ -636,6 +633,7 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
             child: SizedBox(
               width: 116,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Stack(
@@ -700,7 +698,8 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: isOpen ? textPrimary : textSecondary,
-                        fontSize: 12,
+                        fontSize: 11,
+                        height: 1.2,
                       ),
                     ),
                   ),
@@ -708,7 +707,20 @@ class _ProductItemsScreenState extends State<ProductItemsScreen> {
               ),
             ),
           );
-        },
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < _publication.groups.length + 1; index++) ...[
+              if (index > 0) const SizedBox(width: 12),
+              tile(context, index),
+            ],
+          ],
+        ),
       ),
     );
   }

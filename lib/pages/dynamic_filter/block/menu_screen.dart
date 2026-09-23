@@ -786,7 +786,7 @@ class _MenuScreenState extends State<MenuScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const SizedBox(width: 116, child: Text(' ', style: TextStyle(fontSize: 12))),
+                            const SizedBox(width: 116, child: Text(' ', style: TextStyle(fontSize: 11))),
                           ],
                         ),
                         ],
@@ -970,7 +970,7 @@ class _GroupCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: selected ? textPrimary : textSecondary,
-                fontSize: 12,
+                fontSize: 11,
                 height: 1.2,
               ),
             ),

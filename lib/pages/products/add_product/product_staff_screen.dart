@@ -462,7 +462,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
               const SizedBox(height: 16),
               _groupsStrip(),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 7),
               Text(
                 _contentTitle,
                 style: const TextStyle(
@@ -527,19 +527,16 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
     final looseIndex = hasLoose ? _staff.groups.length : -1;
     final plusIndex = _staff.groups.length + (hasLoose ? 1 : 0);
 
-    return SizedBox(
-      height: 116,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: plusIndex + 1,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
+    // Лента по высоте содержимого, а не числом: при коротких названиях
+    // фиксированная высота оставляла пустую полосу снизу (23.09.2026).
+    Widget tile(BuildContext context, int index) {
           if (index == looseIndex) return _looseTile();
 
           if (index == plusIndex) {
             return SizedBox(
               width: 116,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
@@ -569,6 +566,7 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
             child: SizedBox(
               width: 116,
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Stack(
@@ -620,14 +618,28 @@ class _ProductStaffScreenState extends State<ProductStaffScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: isOpen ? textPrimary : textSecondary,
-                      fontSize: 12,
+                      fontSize: 11,
+                      height: 1.2,
                     ),
                   ),
                 ],
               ),
             ),
           );
-        },
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var index = 0; index < plusIndex + 1; index++) ...[
+              if (index > 0) const SizedBox(width: 12),
+              tile(context, index),
+            ],
+          ],
+        ),
       ),
     );
   }
