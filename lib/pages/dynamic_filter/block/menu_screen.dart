@@ -751,7 +751,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       : _field(controller: _groupName),
                   const SizedBox(height: 14),
                   SizedBox(
-                    height: 96,
+                    height: 132,
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
@@ -769,8 +769,8 @@ class _MenuScreenState extends State<MenuScreen> {
                             GestureDetector(
                               onTap: _addGroup,
                               child: Container(
-                                width: 96,
-                                height: 70,
+                                width: 116,
+                                height: 88,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                   color: formBackground,
@@ -781,13 +781,13 @@ class _MenuScreenState extends State<MenuScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            const SizedBox(width: 96, child: Text(' ', style: TextStyle(fontSize: 13))),
+                            const SizedBox(width: 116, child: Text(' ', style: TextStyle(fontSize: 12))),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 7),
                   Text(
                     group == null
                         ? 'Добавьте группу, например ${widget.config.groupExample}, '
@@ -920,8 +920,8 @@ class _GroupCard extends StatelessWidget {
           GestureDetector(
             onTap: onTap,
             child: Container(
-              width: 96,
-              height: 70,
+              width: 116,
+              height: 88,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
@@ -935,7 +935,7 @@ class _GroupCard extends StatelessWidget {
                   MenuPhoto(
                     localPath: group.localPath,
                     url: group.imageUrl,
-                    height: 70,
+                    height: 88,
                     hint: '',
                     onTap: onTap,
                   ),
@@ -952,15 +952,21 @@ class _GroupCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          SizedBox(
-            width: 96,
-            child: Text(
-              group.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: selected ? textPrimary : textSecondary,
-                fontSize: 13,
+          // Название целиком, в две строки: «Доставка самокатом» обрезалось
+          // до «Доставка са…», а на товарном экране видно полностью
+          // (23.09.2026).
+          Flexible(
+            child: SizedBox(
+              width: 116,
+              child: Text(
+                group.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected ? textPrimary : textSecondary,
+                  fontSize: 12,
+                  height: 1.2,
+                ),
               ),
             ),
           ),
