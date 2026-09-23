@@ -218,6 +218,7 @@ class _ProductDeliveryOptionScreenState
       if (existing != null) {
         await ProductsDeliveryApi.updateOption(
           existing.id,
+          publicationId: widget.publicationId,
           name: _name.text.trim(),
           description: _description.text.trim(),
           priceFrom: price,

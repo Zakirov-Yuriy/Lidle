@@ -27,7 +27,7 @@ import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/menu_content.dart';
 import 'package:lidle/pages/dynamic_filter/block/block_fields_form.dart';
-import 'package:lidle/services/block_items_service.dart';
+import 'package:lidle/services/deliveries_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 const Color _divider = Color(0xFF474747);
@@ -77,8 +77,10 @@ class GroupedBlockConfig {
   /// Как подписать цену в карточке: «Цена: 755 ₽», «Стоимость: от 400 ₽».
   final String priceLabel;
 
-  /// Показывать ли «Взять из другого объявления» (23.09.2026).
-  final bool fromLibrary;
+  /// Общий справочник человека (23.09.2026): группы и позиции живут не в
+  /// объявлении, а у человека, и видны во всех его категориях. Здесь своя
+  /// только цена. Пока так работает доставка.
+  final bool directory;
 
   const GroupedBlockConfig({
     required this.amountShort,
@@ -90,7 +92,7 @@ class GroupedBlockConfig {
     required this.howItWorks,
     required this.whatAreGroups,
     this.priceLabel = 'Цена',
-    this.fromLibrary = false,
+    this.directory = false,
     this.amountLabel,
     this.showCuisine = false,
   });
@@ -151,8 +153,7 @@ class GroupedBlockConfig {
         'группы по номеру группы, так что порядок вы задаёте сами.',
   );
 
-  /// Доставка (23.09.2026): как услуги, но цена подписывается «Стоимость: от»,
-  /// и готовую доставку можно перенести из другого объявления.
+  /// Доставка (23.09.2026): общая у человека, цена своя у каждого места.
   static const GroupedBlockConfig delivery = GroupedBlockConfig(
     amountShort: '',
     amountUnit: '',
@@ -160,17 +161,17 @@ class GroupedBlockConfig {
     itemsWord: 'способы доставки',
     groupExample: '«Доставка»',
     priceLabel: 'Стоимость: от',
-    fromLibrary: true,
+    directory: true,
     descriptionHint: 'Опишите, как вы доставляете: по каким районам, за какое '
         'время, от какой суммы заказа. Без ссылок, телефонов, матерных слов.',
-    howItWorks: 'Способы доставки лежат в группах. Добавьте группу, например '
-        '«Доставка», и положите в неё способы: фото, название, стоимость и '
-        'описание.\n\nЕсли доставка у вас уже заведена в другом объявлении или '
-        'в товарах, нажмите «Взять из другого объявления» — группы и способы '
-        'скопируются сюда, и дальше вы правите их здесь отдельно.',
+    howItWorks: 'Доставка у вас одна на все ваши объявления и товары: завели '
+        'курьера здесь — он появится и в остальных, заводить заново не нужно.'
+        '\n\nЦена своя у каждого места: «Доставка на авто» может стоить 400 ₽ '
+        'в ресторане и 600 ₽ в цветочном. Пока цена не поставлена, покупателю '
+        'этот способ не показывается.',
     whatAreGroups: 'Группа — это способ доставки или район: «Доставка», «По '
-        'городу», «За город». Внутри группы позиции идут по номеру позиции, а '
-        'сами группы по номеру группы, так что порядок вы задаёте сами.',
+        'городу», «За город». Группы и способы общие для всех ваших '
+        'объявлений, поэтому и удаление убирает их везде.',
   );
 }
 
@@ -395,22 +396,71 @@ class _MenuScreenState extends State<MenuScreen> {
         for (final v in f.values) v.value,
   ];
 
-  late final MenuContent _menu = widget.initial?.menu.copy() ?? MenuContent();
+  MenuContent _menu = MenuContent();
   late final TextEditingController _groupName = TextEditingController();
 
   String? _selectedGroup;
+
+  /// Справочник ещё едет с сервера (только у доставки).
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
 
+    _menu = widget.initial?.menu.copy() ?? MenuContent();
+
     final initial = widget.initial;
     if (initial != null) _controller.prefill(initial.values);
 
-    if (_menu.groups.isNotEmpty) {
-      _selectedGroup = _menu.groups.first.key;
-      _groupName.text = _menu.groups.first.name;
+    _selectFirst();
+
+    // Доставка общая у человека: список групп и курьеров приезжает из его
+    // справочника, а не из объявления (23.09.2026). Цены при этом свои у
+    // этого экрана, они уже лежат в ответе.
+    if (widget.config.directory) _reload();
+  }
+
+  void _selectFirst() {
+    if (_menu.groups.isEmpty) {
+      _selectedGroup = null;
+      _groupName.text = '';
+
+      return;
     }
+
+    final first = _menu.sortedGroups.first;
+    _selectedGroup = first.key;
+    _groupName.text = first.name;
+  }
+
+  /// Перечитать справочник с сервера, сохранив уже введённые цены.
+  Future<void> _reload() async {
+    setState(() => _loading = true);
+
+    final loaded = await DeliveriesService.load(widget.initial?.serverId);
+
+    if (!mounted) return;
+
+    // Цена живёт в этом экране: то, что человек только что вписал, важнее
+    // сохранённого.
+    for (final item in loaded.items) {
+      final local = _menu.items.where((i) => i.key == item.key);
+      if (local.isNotEmpty && local.first.price > 0) item.price = local.first.price;
+    }
+
+    setState(() {
+      final selected = _selectedGroup;
+      _menu = loaded;
+      _loading = false;
+
+      if (selected != null && _menu.groups.any((g) => g.key == selected)) {
+        _selectedGroup = selected;
+        _groupName.text = _group?.name ?? '';
+      } else {
+        _selectFirst();
+      }
+    });
   }
 
   @override
@@ -434,61 +484,6 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
-  /// «Взять из другого объявления» (23.09.2026): готовые группы и позиции
-  /// этого же блока у других объявлений человека. Выбранное копируется сюда,
-  /// дальше правится здесь и другие объявления не трогает.
-  Future<void> _fromLibrary() async {
-    final entries = await BlockItemsService.library(widget.block.id, widget.advertId);
-
-    if (!mounted) return;
-
-    if (entries.isEmpty) {
-      _say(context, 'В других объявлениях пока ничего не заведено');
-      return;
-    }
-
-    final chosen = await showModalBottomSheet<BlockLibraryEntry>(
-      context: context,
-      backgroundColor: secondaryBackground,
-      builder: (context) => SafeArea(
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'Откуда взять',
-                style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-            ),
-            for (final entry in entries)
-              ListTile(
-                title: Text(
-                  entry.advertName.isEmpty ? 'Без названия' : entry.advertName,
-                  style: const TextStyle(color: textPrimary),
-                ),
-                subtitle: Text(
-                  'Групп: ${entry.groups}, позиций: ${entry.items}',
-                  style: const TextStyle(color: textSecondary, fontSize: 13),
-                ),
-                onTap: () => Navigator.pop(context, entry),
-              ),
-          ],
-        ),
-      ),
-    );
-
-    if (chosen == null || !mounted) return;
-
-    setState(() {
-      _menu.merge(chosen.content);
-
-      final first = _menu.sortedGroups.first;
-      _selectedGroup ??= first.key;
-      if (_groupName.text.isEmpty) _groupName.text = _group?.name ?? first.name;
-    });
-  }
-
   Future<void> _addGroup() async {
     final group = await showDialog<MenuGroup>(
       context: context,
@@ -497,6 +492,27 @@ class _MenuScreenState extends State<MenuScreen> {
 
     if (group == null || !mounted) return;
 
+    if (widget.config.directory) {
+      final id = await DeliveriesService.createGroup(group.name, imagePath: group.localPath);
+
+      if (!mounted) return;
+
+      if (id == null) {
+        _say(context, 'Не удалось сохранить группу');
+
+        return;
+      }
+
+      await _reload();
+
+      if (mounted) {
+        final saved = _menu.groups.where((g) => g.key == DeliveriesService.groupKey(id));
+        if (saved.isNotEmpty) _select(saved.first);
+      }
+
+      return;
+    }
+
     setState(() {
       group.position = _menu.groups.length + 1;
       _menu.groups.add(group);
@@ -504,14 +520,46 @@ class _MenuScreenState extends State<MenuScreen> {
     });
   }
 
+  /// Номер строки справочника из ключа: «g12» → 12, «o7» → 7.
+  int _idOf(String key) => int.tryParse(key.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
   /// «Настроить группу»: картинка, название, номер, удаление (23.09.2026).
   Future<void> _editGroup(MenuGroup group) async {
     final result = await Navigator.push<_GroupResult>(
       context,
-      MaterialPageRoute(builder: (_) => GroupSettingsScreen(group: group.copy())),
+      MaterialPageRoute(
+        builder: (_) => GroupSettingsScreen(
+          group: group.copy(),
+          directory: widget.config.directory,
+        ),
+      ),
     );
 
     if (result == null || !mounted) return;
+
+    if (widget.config.directory) {
+      final id = _idOf(group.key);
+
+      final ok = result.deleted
+          ? await DeliveriesService.deleteGroup(id)
+          : await DeliveriesService.updateGroup(
+              id,
+              result.group.name,
+              imagePath: result.group.localPath,
+            );
+
+      if (!mounted) return;
+
+      if (!ok) {
+        _say(context, 'Не удалось сохранить');
+
+        return;
+      }
+
+      await _reload();
+
+      return;
+    }
 
     setState(() {
       if (result.deleted) {
@@ -560,6 +608,66 @@ class _MenuScreenState extends State<MenuScreen> {
     );
 
     if (result == null || !mounted) return;
+
+    // Способ доставки общий: сам он живёт в справочнике человека, а здесь
+    // остаётся только цена (23.09.2026).
+    if (widget.config.directory) {
+      final saved = result.item;
+      final groupId = _idOf(saved.group);
+      final price = saved.price;
+
+      if (result.deleted) {
+        if (!await DeliveriesService.deleteOption(_idOf(saved.key))) {
+          if (mounted) _say(context, 'Не удалось удалить');
+
+          return;
+        }
+      } else if (item == null) {
+        final id = await DeliveriesService.createOption(
+          name: saved.name,
+          description: saved.description,
+          groupId: groupId > 0 ? groupId : null,
+          imagePath: saved.localPath,
+        );
+
+        if (id == null) {
+          if (mounted) _say(context, 'Не удалось сохранить');
+
+          return;
+        }
+
+        // Цену держим у себя до сохранения объявления: место для неё это
+        // экран блока, а его до этого ещё нет.
+        _menu.items.add(MenuItem(
+          key: DeliveriesService.optionKey(id),
+          group: saved.group,
+          name: saved.name,
+          description: saved.description,
+          price: price,
+        ));
+      } else {
+        final ok = await DeliveriesService.updateOption(
+          id: _idOf(saved.key),
+          name: saved.name,
+          description: saved.description,
+          groupId: groupId > 0 ? groupId : null,
+          imagePath: saved.localPath,
+        );
+
+        if (!ok) {
+          if (mounted) _say(context, 'Не удалось сохранить');
+
+          return;
+        }
+
+        final old = _menu.items.where((i) => i.key == saved.key);
+        if (old.isNotEmpty) old.first.price = price;
+      }
+
+      await _reload();
+
+      return;
+    }
 
     setState(() {
       _menu.items.removeWhere((i) => i.key == result.item.key);
@@ -614,17 +722,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     onCancel: () => Navigator.pop(context),
                   ),
                   _Links(config: widget.config),
-                  if (widget.config.fromLibrary)
-                    GestureDetector(
-                      onTap: _fromLibrary,
-                      child: const Padding(
-                        padding: EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          'Взять из другого объявления',
-                          style: TextStyle(color: activeIconColor, fontSize: 14),
-                        ),
-                      ),
-                    ),
+
                   const SizedBox(height: 10),
                   const Divider(color: _divider, height: 1),
                   const SizedBox(height: 18),
@@ -911,8 +1009,9 @@ class _DishCard extends StatelessWidget {
             ),
           ],
         ),
-        Text('${config.priceLabel} ${dish.price} ₽',
-            style: const TextStyle(color: textSecondary, fontSize: 12)),
+        if (dish.price > 0)
+          Text('${config.priceLabel} ${dish.price} ₽',
+              style: const TextStyle(color: textSecondary, fontSize: 12)),
         if (dish.weight > 0 && config.amountShort.isNotEmpty)
           Text(
             '${config.amountShort}: ${dish.weight}${config.amountUnit.isEmpty ? '' : ' ${config.amountUnit}'}',
@@ -1005,9 +1104,12 @@ class _GroupResult {
 /// Правка группы по карандашу: картинка, название, номер и удаление
 /// (23.09.2026). Удаление уносит и позиции этой группы.
 class GroupSettingsScreen extends StatefulWidget {
-  const GroupSettingsScreen({super.key, required this.group});
+  const GroupSettingsScreen({super.key, required this.group, this.directory = false});
 
   final MenuGroup group;
+
+  /// Группа из общего справочника человека: удаление уберёт её везде.
+  final bool directory;
 
   @override
   State<GroupSettingsScreen> createState() => _GroupSettingsScreenState();
@@ -1050,7 +1152,12 @@ class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => const _DeleteDialog(what: 'группу', warning: 'группа и её позиции пропадут.'),
+      builder: (_) => _DeleteDialog(
+        what: 'группу',
+        warning: widget.directory
+            ? 'группа общая, она пропадёт во всех ваших объявлениях и товарах.'
+            : 'группа и её позиции пропадут.',
+      ),
     );
 
     if (ok == true && mounted) {
@@ -1233,7 +1340,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
       return;
     }
 
-    if (price <= 0) {
+    if (price <= 0 && !widget.config.directory) {
       _say(context, 'Введите цену позиции');
       return;
     }
@@ -1264,7 +1371,9 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
       context: context,
       builder: (_) => _DeleteDialog(
         what: widget.config.itemWord,
-        warning: 'позиция пропадёт из списка.',
+        warning: widget.config.directory
+            ? 'этот способ общий, он пропадёт во всех ваших объявлениях и товарах.'
+            : 'позиция пропадёт из списка.',
       ),
     );
 

@@ -94,6 +94,7 @@ class ProductsDeliveryApi {
   /// цену», а не «не менять», и различить это можно только флагом.
   static Future<void> updateOption(
     int optionId, {
+    int? publicationId,
     String? name,
     String? description,
     num? priceFrom,
@@ -104,6 +105,9 @@ class ProductsDeliveryApi {
     await ApiService.put(
       '/me/product-publications/delivery-options/$optionId',
       {
+        // Справочник доставки общий у человека (23.09.2026), а цена своя у
+        // каждого места: без публикации сервер не знает, чью цену менять.
+        if (publicationId != null) 'publication_id': publicationId,
         if (name != null) 'name': name,
         if (description != null) 'description': description,
         if (touchPrice) 'price_from': priceFrom,

@@ -3674,7 +3674,9 @@ class _DynamicFilterState extends State<DynamicFilter>
 
       for (final dish in item.menu.ofGroup(group.key)) {
         final amount = dish.weight > 0 ? ', ${dish.weight}' : '';
-        lines.add('   ${dish.position}. ${dish.name}, ${dish.price} ₽$amount');
+        // Цену могли не ставить: у доставки это значит «здесь не работает».
+        final price = dish.price > 0 ? ', ${dish.price} ₽' : '';
+        lines.add('   ${dish.position}. ${dish.name}$price$amount');
       }
     }
 
