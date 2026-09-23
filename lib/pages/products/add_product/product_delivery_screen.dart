@@ -490,9 +490,13 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
       );
 
   /// Лента групп с обложками и плиткой «плюс».
+  ///
+  /// Высота считается по содержимому: обложка 88, отступ и две строки
+  /// названия. При 116 длинное название («Доставка самокатом») не помещалось и
+  /// вылезало полосатой лентой (23.09.2026).
   Widget _groupsStrip() {
     return SizedBox(
-      height: 116,
+      height: 132,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: _delivery.groups.length + 1,
@@ -576,13 +580,16 @@ class _ProductDeliveryScreenState extends State<ProductDeliveryScreen> {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    group.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: isOpen ? textPrimary : textSecondary,
-                      fontSize: 12,
+                  Flexible(
+                    child: Text(
+                      group.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isOpen ? textPrimary : textSecondary,
+                        fontSize: 12,
+                        height: 1.2,
+                      ),
                     ),
                   ),
                 ],
