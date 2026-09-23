@@ -35,6 +35,45 @@ const Color _red = Color(0xFFFF4D4D);
 /// Описание длиннее этого, если человек его вообще заполнил.
 const int _descriptionMin = 70;
 
+/// Чем блок отличается от блока (23.09.2026).
+///
+/// Экран один на меню, товары, услуги и всё, что описывается группами и
+/// позициями. Разница между ними мелкая: у блюда вес и вид кухни, у товара
+/// количество штук.
+class GroupedBlockConfig {
+  /// Подпись поля количества: «Вес (г.)» или «Колл. (шт.)».
+  final String amountLabel;
+
+  /// Как это количество показать в карточке: «Вес: 300 г», «шт: 7».
+  final String amountShort;
+
+  /// Единица после числа в карточке.
+  final String amountUnit;
+
+  /// Показывать ли «Вид кухни блюда».
+  final bool showCuisine;
+
+  const GroupedBlockConfig({
+    required this.amountLabel,
+    required this.amountShort,
+    required this.amountUnit,
+    this.showCuisine = false,
+  });
+
+  static const GroupedBlockConfig menu = GroupedBlockConfig(
+    amountLabel: 'Вес (г.)',
+    amountShort: 'Вес',
+    amountUnit: 'г',
+    showCuisine: true,
+  );
+
+  static const GroupedBlockConfig products = GroupedBlockConfig(
+    amountLabel: 'Колл. (шт.)',
+    amountShort: 'шт',
+    amountUnit: '',
+  );
+}
+
 Widget _barRow({
   required String title,
   required VoidCallback onBack,
@@ -221,7 +260,10 @@ class MenuScreen extends StatefulWidget {
     required this.block,
     required this.fields,
     this.initial,
+    this.config = GroupedBlockConfig.menu,
   });
+
+  final GroupedBlockConfig config;
 
   final Attribute block;
 
@@ -296,19 +338,39 @@ class _MenuScreenState extends State<MenuScreen> {
     if (group == null || !mounted) return;
 
     setState(() {
+      group.position = _menu.groups.length + 1;
       _menu.groups.add(group);
       _select(group);
     });
   }
 
-  Future<void> _changeGroupImage(MenuGroup group) async {
-    final path = await pickMenuImage(context);
-    if (path == null || !mounted) return;
+  /// «Настроить группу»: картинка, название, номер, удаление (23.09.2026).
+  Future<void> _editGroup(MenuGroup group) async {
+    final result = await Navigator.push<_GroupResult>(
+      context,
+      MaterialPageRoute(builder: (_) => GroupSettingsScreen(group: group.copy())),
+    );
+
+    if (result == null || !mounted) return;
 
     setState(() {
-      group.localPath = path;
-      group.imageUrl = null;
-      group.image = null;
+      if (result.deleted) {
+        _menu.groups.removeWhere((g) => g.key == group.key);
+        _menu.items.removeWhere((i) => i.group == group.key);
+        final first = _menu.groups.isEmpty ? null : _menu.sortedGroups.first;
+        _selectedGroup = first?.key;
+        _groupName.text = first?.name ?? '';
+        return;
+      }
+
+      group
+        ..name = result.group.name
+        ..position = result.group.position
+        ..localPath = result.group.localPath
+        ..imageUrl = result.group.imageUrl
+        ..image = result.group.image;
+
+      if (group.key == _selectedGroup) _groupName.text = group.name;
     });
   }
 
@@ -329,9 +391,10 @@ class _MenuScreenState extends State<MenuScreen> {
                 group: group.key,
                 position: _menu.ofGroup(group.key).length + 1,
               ),
-          groups: _menu.groups,
+          groups: _menu.sortedGroups,
           cuisines: _cuisines,
           isNew: item == null,
+          config: widget.config,
         ),
       ),
     );
@@ -423,12 +486,12 @@ class _MenuScreenState extends State<MenuScreen> {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children: [
-                        for (final g in _menu.groups)
+                        for (final g in _menu.sortedGroups)
                           _GroupCard(
                             group: g,
                             selected: g.key == group?.key,
                             onTap: () => _select(g),
-                            onEdit: () => _changeGroupImage(g),
+                            onEdit: () => _editGroup(g),
                           ),
                         // Плюс ровно того же размера, что карточки групп.
                         Column(
@@ -477,7 +540,11 @@ class _MenuScreenState extends State<MenuScreen> {
                       childAspectRatio: 0.72,
                       children: [
                         for (final dish in dishes)
-                          _DishCard(dish: dish, onEdit: () => _openItem(dish)),
+                          _DishCard(
+                            dish: dish,
+                            config: widget.config,
+                            onEdit: () => _openItem(dish),
+                          ),
                         GestureDetector(
                           onTap: () => _openItem(),
                           child: Container(
@@ -604,9 +671,10 @@ class _GroupCard extends StatelessWidget {
 }
 
 class _DishCard extends StatelessWidget {
-  const _DishCard({required this.dish, required this.onEdit});
+  const _DishCard({required this.dish, required this.onEdit, required this.config});
 
   final MenuItem dish;
+  final GroupedBlockConfig config;
   final VoidCallback onEdit;
 
   @override
@@ -644,8 +712,10 @@ class _DishCard extends StatelessWidget {
         Text('Цена: ${dish.price} ₽',
             style: const TextStyle(color: textSecondary, fontSize: 12)),
         if (dish.weight > 0)
-          Text('Вес: ${dish.weight} г',
-              style: const TextStyle(color: textSecondary, fontSize: 12)),
+          Text(
+            '${config.amountShort}: ${dish.weight}${config.amountUnit.isEmpty ? '' : ' ${config.amountUnit}'}',
+            style: const TextStyle(color: textSecondary, fontSize: 12),
+          ),
       ],
     );
   }
@@ -720,6 +790,140 @@ class _GroupDialogState extends State<_GroupDialog> {
 }
 
 // ------------------------------------------------------------
+//  «Настроить группу»
+// ------------------------------------------------------------
+
+class _GroupResult {
+  final MenuGroup group;
+  final bool deleted;
+
+  const _GroupResult({required this.group, this.deleted = false});
+}
+
+/// Правка группы по карандашу: картинка, название, номер и удаление
+/// (23.09.2026). Удаление уносит и позиции этой группы.
+class GroupSettingsScreen extends StatefulWidget {
+  const GroupSettingsScreen({super.key, required this.group});
+
+  final MenuGroup group;
+
+  @override
+  State<GroupSettingsScreen> createState() => _GroupSettingsScreenState();
+}
+
+class _GroupSettingsScreenState extends State<GroupSettingsScreen> {
+  late final TextEditingController _name = TextEditingController(text: widget.group.name);
+  late final TextEditingController _position =
+      TextEditingController(text: '${widget.group.position}');
+
+  late String? _localPath = widget.group.localPath;
+  late String? _imageUrl = widget.group.imageUrl;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _position.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final name = _name.text.trim();
+
+    if (name.isEmpty) {
+      _say(context, 'Введите название группы');
+      return;
+    }
+
+    final group = widget.group
+      ..name = name
+      ..position = int.tryParse(_position.text.trim()) ?? 1
+      ..localPath = _localPath
+      ..imageUrl = _imageUrl;
+
+    if (_localPath != null) group.image = null;
+
+    Navigator.pop(context, _GroupResult(group: group));
+  }
+
+  Future<void> _delete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => const _DeleteDialog(what: 'группу', warning: 'группа и её позиции пропадут.'),
+    );
+
+    if (ok == true && mounted) {
+      Navigator.pop(context, _GroupResult(group: widget.group, deleted: true));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: primaryBackground,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const Header(),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(25, 8, 25, 30),
+                children: [
+                  _barRow(
+                    title: 'Настроить группу',
+                    onBack: () => Navigator.pop(context),
+                    onCancel: () => Navigator.pop(context),
+                  ),
+                  _label('Изображение группы'),
+                  const SizedBox(height: 9),
+                  MenuPhoto(
+                    localPath: _localPath,
+                    url: _imageUrl,
+                    height: 150,
+                    onTap: () async {
+                      final path = await pickMenuImage(context);
+                      if (path != null && mounted) {
+                        setState(() {
+                          _localPath = path;
+                          _imageUrl = null;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _label('Название группы'),
+                  const SizedBox(height: 9),
+                  _field(controller: _name),
+                  const SizedBox(height: 16),
+                  _label('Номер позиции группы'),
+                  const SizedBox(height: 9),
+                  _field(controller: _position, keyboard: TextInputType.number),
+                  const SizedBox(height: 26),
+                  SizedBox(
+                    height: 46,
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _delete,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: _red),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                      child: const Text('Удалить группу',
+                          style: TextStyle(color: _red, fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _blueButton('Сохранить', _save),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ------------------------------------------------------------
 //  «Добавить позицию»
 // ------------------------------------------------------------
 
@@ -737,7 +941,10 @@ class MenuItemScreen extends StatefulWidget {
     required this.groups,
     required this.cuisines,
     this.isNew = false,
+    this.config = GroupedBlockConfig.menu,
   });
+
+  final GroupedBlockConfig config;
 
   final MenuItem item;
   final List<MenuGroup> groups;
@@ -853,7 +1060,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => const _DeleteDialog(),
+      builder: (_) => const _DeleteDialog(what: 'товар', warning: 'позиция пропадёт из списка.'),
     );
 
     if (ok == true && mounted) {
@@ -931,12 +1138,14 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                   _field(controller: _name),
                   const SizedBox(height: 16),
                   _select('Выбор группы', _groupName(_group), _pickGroup),
-                  const SizedBox(height: 16),
-                  _select(
-                    'Вид кухни блюда',
-                    _cuisines.join(', '),
-                    widget.cuisines.isEmpty ? () {} : _pickCuisines,
-                  ),
+                  if (widget.config.showCuisine) ...[
+                    const SizedBox(height: 16),
+                    _select(
+                      'Вид кухни блюда',
+                      _cuisines.join(', '),
+                      widget.cuisines.isEmpty ? () {} : _pickCuisines,
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   _label('Номер позиции'),
                   const SizedBox(height: 9),
@@ -961,7 +1170,7 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _label('Вес (г.)'),
+                  _label(widget.config.amountLabel),
                   const SizedBox(height: 9),
                   _field(controller: _weight, keyboard: TextInputType.number),
                   const SizedBox(height: 16),
@@ -1068,36 +1277,39 @@ class _CuisineDialogState extends State<_CuisineDialog> {
   }
 }
 
-/// Окно «Удалить товар».
+/// Окно «Удалить товар» и «Удалить группу».
 class _DeleteDialog extends StatelessWidget {
-  const _DeleteDialog();
+  const _DeleteDialog({required this.what, required this.warning});
+
+  final String what;
+  final String warning;
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: secondaryBackground,
-      title: const Text('Удалить товар',
-          style: TextStyle(color: textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
-      content: const Column(
+      title: Text('Удалить $what',
+          style: const TextStyle(color: textPrimary, fontSize: 17, fontWeight: FontWeight.w600)),
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text.rich(
             TextSpan(
               children: [
-                TextSpan(
+                const TextSpan(
                   text: 'Внимание: ',
                   style: TextStyle(color: Color(0xFFE8E337), fontSize: 14),
                 ),
                 TextSpan(
-                  text: 'позиция пропадёт из меню.',
-                  style: TextStyle(color: textPrimary, fontSize: 14),
+                  text: warning,
+                  style: const TextStyle(color: textPrimary, fontSize: 14),
                 ),
               ],
             ),
           ),
-          SizedBox(height: 10),
-          Text('Подтвердите действие', style: TextStyle(color: textSecondary, fontSize: 13)),
+          const SizedBox(height: 10),
+          const Text('Подтвердите действие', style: TextStyle(color: textSecondary, fontSize: 13)),
         ],
       ),
       actions: [

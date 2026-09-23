@@ -5,6 +5,9 @@ class MenuGroup {
   final String key;
   String name;
 
+  /// Порядок группы в списке. Ставится сам, меняется руками (23.09.2026).
+  int position;
+
   /// Имя уже сохранённой картинки на сервере.
   String? image;
 
@@ -17,6 +20,7 @@ class MenuGroup {
   MenuGroup({
     required this.key,
     this.name = '',
+    this.position = 1,
     this.image,
     this.imageUrl,
     this.localPath,
@@ -25,21 +29,26 @@ class MenuGroup {
   MenuGroup copy() => MenuGroup(
         key: key,
         name: name,
+        position: position,
         image: image,
         imageUrl: imageUrl,
         localPath: localPath,
       );
 
-  Map<String, dynamic> toJson() => {'key': key, 'name': name, 'image': image ?? ''};
+  Map<String, dynamic> toJson() =>
+      {'key': key, 'name': name, 'position': position, 'image': image ?? ''};
 
   static MenuGroup? tryParse(dynamic raw) {
     if (raw is! Map) return null;
     final key = '${raw['key'] ?? ''}';
     if (key.isEmpty) return null;
 
+    int number(dynamic v) => v is num ? v.toInt() : int.tryParse('$v') ?? 1;
+
     return MenuGroup(
       key: key,
       name: '${raw['name'] ?? ''}',
+      position: number(raw['position']) < 1 ? 1 : number(raw['position']),
       image: '${raw['image'] ?? ''}'.isEmpty ? null : '${raw['image']}',
       imageUrl: raw['image_url']?.toString(),
     );
@@ -149,6 +158,13 @@ class MenuContent {
       '$prefix${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}${_random.nextInt(1 << 20).toRadixString(36)}';
 
   bool get isEmpty => groups.isEmpty && items.isEmpty;
+
+  /// Группы по порядку.
+  List<MenuGroup> get sortedGroups {
+    final list = List<MenuGroup>.of(groups)
+      ..sort((a, b) => a.position.compareTo(b.position));
+    return list;
+  }
 
   /// Блюда группы по порядку.
   List<MenuItem> ofGroup(String groupKey) {

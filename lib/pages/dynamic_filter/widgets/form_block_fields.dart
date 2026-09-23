@@ -107,6 +107,7 @@ class BlockItemsListField extends StatelessWidget {
     this.onOpen,
     this.onRemove,
     this.details,
+    this.titleOf,
   });
 
   final Attribute attribute;
@@ -117,6 +118,9 @@ class BlockItemsListField extends StatelessWidget {
 
   /// Строки под названием: у меню группы и блюда, у остальных поля экрана.
   final List<String> Function(BlockItemDraft item)? details;
+
+  /// Название строки, если его не взять из первого поля экрана.
+  final String Function(BlockItemDraft item)? titleOf;
 
   List<String> _lines(BlockItemDraft item) {
     if (details != null) return details!(item);
@@ -169,7 +173,7 @@ class BlockItemsListField extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            items[i].title,
+                            titleOf?.call(items[i]) ?? items[i].title,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: textPrimary,

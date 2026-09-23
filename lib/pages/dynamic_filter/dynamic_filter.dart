@@ -3547,16 +3547,19 @@ class _DynamicFilterState extends State<DynamicFilter>
   /// админки), плюс открывает его, добавленное видно списком (22.09.2026).
   Widget _buildAddListBlock(Attribute attr) {
     final fields = AttributesApi.blockFields(attr.id);
+    final title = attr.title.toLowerCase();
 
-    if (fields.isEmpty) {
+    // Меню и товары описываются группами и позициями, а не обычными полями
+    // (23.09.2026). Свой экран им нужен даже без полей из админки.
+    final isMenu = title.contains('меню');
+    final isProducts = title.contains('товар');
+    final isGrouped = isMenu || isProducts;
+
+    if (fields.isEmpty && !isGrouped) {
       return AddListBlockField(attribute: attr);
     }
 
     final items = _blockItems[attr.id] ?? const <BlockItemDraft>[];
-
-    // У меню свой экран: внутри группы и позиции, а не обычные поля
-    // (23.09.2026).
-    final isMenu = attr.title.toLowerCase().contains('меню');
 
     Future<void> open([int? index]) async {
       final initial = index == null ? null : items[index];
@@ -3564,8 +3567,13 @@ class _DynamicFilterState extends State<DynamicFilter>
       final draft = await Navigator.push<BlockItemDraft>(
         context,
         MaterialPageRoute(
-          builder: (_) => isMenu
-              ? MenuScreen(block: attr, fields: fields, initial: initial)
+          builder: (_) => isGrouped
+              ? MenuScreen(
+                  block: attr,
+                  fields: fields,
+                  initial: initial,
+                  config: isMenu ? GroupedBlockConfig.menu : GroupedBlockConfig.products,
+                )
               : BlockItemScreen(block: attr, fields: fields, initial: initial),
         ),
       );
@@ -3604,7 +3612,8 @@ class _DynamicFilterState extends State<DynamicFilter>
         onAdd: () => open(),
         onOpen: (i) => open(i),
         onRemove: remove,
-        details: isMenu ? _menuLines : null,
+        details: isGrouped ? _menuLines : null,
+        titleOf: isGrouped ? _groupedTitle : null,
       );
     }
 
@@ -3617,17 +3626,29 @@ class _DynamicFilterState extends State<DynamicFilter>
     );
   }
 
-  /// Что показать под названием меню в форме: группы и блюда с ценой и
-  /// весом (23.09.2026).
+  /// Название списка в форме: своё название, если оно есть (у меню), иначе
+  /// первая группа (23.09.2026).
+  String _groupedTitle(BlockItemDraft item) {
+    if (item.summary.isNotEmpty && item.summary.first.value.trim().isNotEmpty) {
+      return item.summary.first.value;
+    }
+
+    final groups = item.menu.sortedGroups;
+
+    return groups.isEmpty ? 'Без названия' : groups.first.name;
+  }
+
+  /// Что показать под названием в форме: группы и позиции с ценой и
+  /// количеством (23.09.2026).
   List<String> _menuLines(BlockItemDraft item) {
     final lines = <String>[];
 
-    for (final group in item.menu.groups) {
+    for (final group in item.menu.sortedGroups) {
       lines.add(group.name.isEmpty ? 'Без названия' : group.name);
 
       for (final dish in item.menu.ofGroup(group.key)) {
-        final weight = dish.weight > 0 ? ', ${dish.weight} г' : '';
-        lines.add('   ${dish.position}. ${dish.name}, ${dish.price} ₽$weight');
+        final amount = dish.weight > 0 ? ', ${dish.weight}' : '';
+        lines.add('   ${dish.position}. ${dish.name}, ${dish.price} ₽$amount');
       }
     }
 
