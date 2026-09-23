@@ -397,10 +397,26 @@ class _MenuScreenState extends State<MenuScreen> {
                   BlockFieldsForm(controller: _controller),
                   _label('Название группы'),
                   const SizedBox(height: 9),
-                  _field(
-                    controller: _groupName,
-                    hint: group == null ? 'Сначала добавьте группу' : 'Введите',
-                  ),
+                  // Групп ещё нет: нажатие по полю открывает то же окно, что
+                  // и плюс. Иначе непонятно, куда нажимать первым (23.09.2026).
+                  group == null
+                      ? GestureDetector(
+                          onTap: _addGroup,
+                          child: Container(
+                            height: 45,
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: formBackground,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Добавьте первую группу',
+                              style: TextStyle(color: textSecondary, fontSize: 14),
+                            ),
+                          ),
+                        )
+                      : _field(controller: _groupName),
                   const SizedBox(height: 14),
                   SizedBox(
                     height: 96,
@@ -414,18 +430,27 @@ class _MenuScreenState extends State<MenuScreen> {
                             onTap: () => _select(g),
                             onEdit: () => _changeGroupImage(g),
                           ),
-                        GestureDetector(
-                          onTap: _addGroup,
-                          child: Container(
-                            width: 96,
-                            height: 70,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: formBackground,
-                              borderRadius: BorderRadius.circular(6),
+                        // Плюс ровно того же размера, что карточки групп.
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            GestureDetector(
+                              onTap: _addGroup,
+                              child: Container(
+                                width: 96,
+                                height: 70,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: formBackground,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.transparent, width: 1.5),
+                                ),
+                                child: const Icon(Icons.add_circle_outline, color: textSecondary),
+                              ),
                             ),
-                            child: const Icon(Icons.add_circle_outline, color: textSecondary),
-                          ),
+                            const SizedBox(height: 4),
+                            const SizedBox(width: 96, child: Text(' ', style: TextStyle(fontSize: 13))),
+                          ],
                         ),
                       ],
                     ),

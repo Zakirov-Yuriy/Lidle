@@ -91,6 +91,130 @@ class _FieldWithButton extends StatelessWidget {
   }
 }
 
+/// Добавленное списком: меню, сотрудники, товары, услуги (23.09.2026).
+///
+/// Карусель с картинкой осталась только у общего плана зала: там картинка и
+/// есть смысл блока. У остальных блоков она мешала — у меню и сотрудника
+/// фотография необязательна, и вместо содержимого показывалось «План не
+/// добавлен». Здесь всё перечислено строками, как в товарах: название,
+/// подробности, «Изменить» и «Удалить».
+class BlockItemsListField extends StatelessWidget {
+  const BlockItemsListField({
+    super.key,
+    required this.attribute,
+    this.items = const [],
+    this.onAdd,
+    this.onOpen,
+    this.onRemove,
+    this.details,
+  });
+
+  final Attribute attribute;
+  final List<BlockItemDraft> items;
+  final VoidCallback? onAdd;
+  final ValueChanged<int>? onOpen;
+  final ValueChanged<int>? onRemove;
+
+  /// Строки под названием: у меню группы и блюда, у остальных поля экрана.
+  final List<String> Function(BlockItemDraft item)? details;
+
+  List<String> _lines(BlockItemDraft item) {
+    if (details != null) return details!(item);
+
+    return [
+      for (final e in item.summary.skip(1)) '${e.key}: ${e.value}',
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final title = attribute.title;
+    final add = onAdd ?? () => _soon(context, title);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(color: _divider, height: 1),
+        const SizedBox(height: 16),
+        Text(title, style: const TextStyle(color: textPrimary, fontSize: 16)),
+        const SizedBox(height: 9),
+        if (items.isEmpty)
+          _FieldWithButton(
+            label: 'Добавить',
+            onTap: add,
+            button: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: activeIconColor, width: 1.6),
+              ),
+              child: const Icon(Icons.add, color: activeIconColor, size: 16),
+            ),
+          )
+        else
+          for (var i = 0; i < items.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                decoration: BoxDecoration(
+                  color: formBackground,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            items[i].title,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => onOpen?.call(i),
+                          child: const Text('Изменить',
+                              style: TextStyle(color: activeIconColor, fontSize: 14)),
+                        ),
+                        const SizedBox(width: 14),
+                        GestureDetector(
+                          onTap: () => onRemove?.call(i),
+                          child: const Text('Удалить',
+                              style: TextStyle(color: Color(0xFFFF4D4D), fontSize: 14)),
+                        ),
+                      ],
+                    ),
+                    for (final line in _lines(items[i]))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          line,
+                          style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.3),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+        const SizedBox(height: 4),
+        GestureDetector(
+          onTap: add,
+          child: const Text('Добавить еще',
+              style: TextStyle(color: activeIconColor, fontSize: 13)),
+        ),
+        const SizedBox(height: 18),
+      ],
+    );
+  }
+}
+
 /// Стиль O: «Добавить меню», «Добавить сотрудника» и так далее.
 ///
 /// Если у блока есть свой экран (поля из админки, например залы у «Добавить

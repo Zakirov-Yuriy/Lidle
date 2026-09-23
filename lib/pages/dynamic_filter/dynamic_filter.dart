@@ -3582,22 +3582,58 @@ class _DynamicFilterState extends State<DynamicFilter>
       });
     }
 
+    void remove(int i) => setState(() {
+          final removed = _blockItems[attr.id]!.removeAt(i);
+          if (removed.serverId != null) _removedBlockItemIds.add(removed.serverId!);
+
+          // Удалённый зал выпадает и из сценариев.
+          for (final scenario in _scenarios) {
+            scenario.forget(removed);
+          }
+          if (_scenarios.isNotEmpty) _scenariosDirty = true;
+        });
+
+    // Карусель с картинкой осталась только у общего плана зала: там картинка
+    // и есть содержимое блока. Остальное показываем списком (23.09.2026): у
+    // меню и сотрудника фото необязательно, и вместо содержимого выходило
+    // «План не добавлен».
+    if (!attr.title.toLowerCase().contains('план')) {
+      return BlockItemsListField(
+        attribute: attr,
+        items: items,
+        onAdd: () => open(),
+        onOpen: (i) => open(i),
+        onRemove: remove,
+        details: isMenu ? _menuLines : null,
+      );
+    }
+
     return AddListBlockField(
       attribute: attr,
       items: items,
       onAdd: () => open(),
       onOpen: (i) => open(i),
-      onRemove: (i) => setState(() {
-        final removed = _blockItems[attr.id]!.removeAt(i);
-        if (removed.serverId != null) _removedBlockItemIds.add(removed.serverId!);
-
-        // Удалённый зал выпадает и из сценариев.
-        for (final scenario in _scenarios) {
-          scenario.forget(removed);
-        }
-        if (_scenarios.isNotEmpty) _scenariosDirty = true;
-      }),
+      onRemove: remove,
     );
+  }
+
+  /// Что показать под названием меню в форме: группы и блюда с ценой и
+  /// весом (23.09.2026).
+  List<String> _menuLines(BlockItemDraft item) {
+    final lines = <String>[];
+
+    for (final group in item.menu.groups) {
+      lines.add(group.name.isEmpty ? 'Без названия' : group.name);
+
+      for (final dish in item.menu.ofGroup(group.key)) {
+        final weight = dish.weight > 0 ? ', ${dish.weight} г' : '';
+        lines.add('   ${dish.position}. ${dish.name}, ${dish.price} ₽$weight');
+      }
+    }
+
+    if (lines.isEmpty) lines.add('Групп и позиций пока нет');
+
+    return lines;
   }
 
   /// «Перейти» у «Таблицы распределения»: сценарии из блоков этой формы.
