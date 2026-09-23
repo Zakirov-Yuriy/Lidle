@@ -39,10 +39,11 @@ const int _descriptionMin = 70;
 ///
 /// Экран один на меню, товары, услуги и всё, что описывается группами и
 /// позициями. Разница между ними мелкая: у блюда вес и вид кухни, у товара
-/// количество штук.
+/// количество штук, у услуги ни того, ни другого — только цена.
 class GroupedBlockConfig {
-  /// Подпись поля количества: «Вес (г.)» или «Колл. (шт.)».
-  final String amountLabel;
+  /// Подпись поля количества: «Вес (г.)» или «Колл. (шт.)». Пусто — поля нет
+  /// вовсе (услуги, 23.09.2026).
+  final String? amountLabel;
 
   /// Как это количество показать в карточке: «Вес: 300 г», «шт: 7».
   final String amountShort;
@@ -53,10 +54,35 @@ class GroupedBlockConfig {
   /// Показывать ли «Вид кухни блюда».
   final bool showCuisine;
 
+  /// Что именно добавляют: «блюдо», «товар», «услугу». Идёт в кнопку
+  /// «Удалить …» и в подсказки.
+  final String itemWord;
+
+  /// То же во множественном числе: «блюда», «товары», «услуги».
+  final String itemsWord;
+
+  /// Пример группы в подсказке пустого экрана.
+  final String groupExample;
+
+  /// Подсказка в поле «Описание позиции».
+  final String descriptionHint;
+
+  /// Текст окна «Как это работает?».
+  final String howItWorks;
+
+  /// Текст окна «Что такое группы?».
+  final String whatAreGroups;
+
   const GroupedBlockConfig({
-    required this.amountLabel,
     required this.amountShort,
     required this.amountUnit,
+    required this.itemWord,
+    required this.itemsWord,
+    required this.groupExample,
+    required this.descriptionHint,
+    required this.howItWorks,
+    required this.whatAreGroups,
+    this.amountLabel,
     this.showCuisine = false,
   });
 
@@ -65,12 +91,55 @@ class GroupedBlockConfig {
     amountShort: 'Вес',
     amountUnit: 'г',
     showCuisine: true,
+    itemWord: 'блюдо',
+    itemsWord: 'блюда',
+    groupExample: '«Завтраки»',
+    descriptionHint: 'Чем больше информации вы укажете о вашем блюде, тем более '
+        'привлекательнее оно будет для клиентов. Без ссылок, телефонов, '
+        'матерных слов.',
+    howItWorks: 'Меню состоит из групп, а в группах лежат блюда. Добавьте группу, '
+        'например «Завтраки», и положите в неё блюда: фото, название, цену, вес '
+        'и описание.\n\nМеню можно добавить несколько: основное, барное, '
+        'банкетное. Гость увидит их в карточке заведения.',
+    whatAreGroups: 'Группа — это раздел меню: «Завтраки», «Салаты», «Напитки». '
+        'Внутри группы блюда идут по номеру позиции, а сами группы по номеру '
+        'группы, так что порядок вы задаёте сами.',
   );
 
   static const GroupedBlockConfig products = GroupedBlockConfig(
     amountLabel: 'Колл. (шт.)',
     amountShort: 'шт',
     amountUnit: '',
+    itemWord: 'товар',
+    itemsWord: 'товары',
+    groupExample: '«Цветы»',
+    descriptionHint: 'Чем больше информации вы укажете о вашем товаре, тем более '
+        'привлекательнее он будет для клиентов. Без ссылок, телефонов, '
+        'матерных слов.',
+    howItWorks: 'Товары лежат в группах. Добавьте группу, например «Цветы», и '
+        'положите в неё товары: фото, название, цену, количество и описание.\n\n'
+        'Списков товаров можно добавить несколько, гость увидит их в карточке.',
+    whatAreGroups: 'Группа — это раздел списка: «Цветы», «Подарки», «Открытки». '
+        'Внутри группы товары идут по номеру позиции, а сами группы по номеру '
+        'группы, так что порядок вы задаёте сами.',
+  );
+
+  /// Услуги (23.09.2026): ни веса, ни количества, только цена.
+  static const GroupedBlockConfig services = GroupedBlockConfig(
+    amountShort: '',
+    amountUnit: '',
+    itemWord: 'услугу',
+    itemsWord: 'услуги',
+    groupExample: '«День рождения»',
+    descriptionHint: 'Чем больше информации вы укажете о вашей услуге, тем более '
+        'привлекательнее она будет для клиентов. Без ссылок, телефонов, '
+        'матерных слов.',
+    howItWorks: 'Услуги лежат в группах. Добавьте группу, например «День рождения», '
+        'и положите в неё услуги: фото, название, цену и описание.\n\nГость '
+        'увидит их в карточке заведения и сможет заказать вместе с бронью.',
+    whatAreGroups: 'Группа — это повод или направление: «День рождения», «Свадьбы», '
+        '«Корпоративы». Внутри группы услуги идут по номеру позиции, а сами '
+        'группы по номеру группы, так что порядок вы задаёте сами.',
   );
 }
 
@@ -453,7 +522,7 @@ class _MenuScreenState extends State<MenuScreen> {
                     onBack: () => Navigator.pop(context),
                     onCancel: () => Navigator.pop(context),
                   ),
-                  const _Links(),
+                  _Links(config: widget.config),
                   const SizedBox(height: 10),
                   const Divider(color: _divider, height: 1),
                   const SizedBox(height: 18),
@@ -521,7 +590,8 @@ class _MenuScreenState extends State<MenuScreen> {
                   const SizedBox(height: 18),
                   Text(
                     group == null
-                        ? 'Добавьте группу, например «Завтраки», и положите в неё блюда.'
+                        ? 'Добавьте группу, например ${widget.config.groupExample}, '
+                            'и положите в неё ${widget.config.itemsWord}.'
                         : 'Содержимое группы: ${group.name}',
                     style: const TextStyle(
                       color: textPrimary,
@@ -578,12 +648,39 @@ class _MenuScreenState extends State<MenuScreen> {
 }
 
 class _Links extends StatelessWidget {
-  const _Links();
+  const _Links({required this.config});
+
+  final GroupedBlockConfig config;
 
   @override
   Widget build(BuildContext context) {
-    Widget link(String text) => GestureDetector(
-          onTap: () => _say(context, 'Скоро будет доступно'),
+    Widget link(String text, String body) => GestureDetector(
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: secondaryBackground,
+              title: Text(
+                text,
+                style: const TextStyle(
+                  color: textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Text(
+                  body,
+                  style: const TextStyle(color: textPrimary, fontSize: 14, height: 1.4),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Понятно', style: TextStyle(color: activeIconColor)),
+                ),
+              ],
+            ),
+          ),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(text, style: const TextStyle(color: activeIconColor, fontSize: 14)),
@@ -592,7 +689,10 @@ class _Links extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [link('Как это работает?'), link('Что такое группы?')],
+      children: [
+        link('Как это работает?', config.howItWorks),
+        link('Что такое группы?', config.whatAreGroups),
+      ],
     );
   }
 }
@@ -711,7 +811,7 @@ class _DishCard extends StatelessWidget {
         ),
         Text('Цена: ${dish.price} ₽',
             style: const TextStyle(color: textSecondary, fontSize: 12)),
-        if (dish.weight > 0)
+        if (dish.weight > 0 && config.amountShort.isNotEmpty)
           Text(
             '${config.amountShort}: ${dish.weight}${config.amountUnit.isEmpty ? '' : ' ${config.amountUnit}'}',
             style: const TextStyle(color: textSecondary, fontSize: 12),
@@ -1060,7 +1160,10 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => const _DeleteDialog(what: 'товар', warning: 'позиция пропадёт из списка.'),
+      builder: (_) => _DeleteDialog(
+        what: widget.config.itemWord,
+        warning: 'позиция пропадёт из списка.',
+      ),
     );
 
     if (ok == true && mounted) {
@@ -1169,19 +1272,19 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  _label(widget.config.amountLabel),
-                  const SizedBox(height: 9),
-                  _field(controller: _weight, keyboard: TextInputType.number),
+                  if (widget.config.amountLabel != null) ...[
+                    const SizedBox(height: 16),
+                    _label(widget.config.amountLabel!),
+                    const SizedBox(height: 9),
+                    _field(controller: _weight, keyboard: TextInputType.number),
+                  ],
                   const SizedBox(height: 16),
                   _label('Описание позиции'),
                   const SizedBox(height: 9),
                   _field(
                     controller: _description,
                     maxLines: 5,
-                    hint: 'Чем больше информации вы укажете о вашем блюде, тем более '
-                        'привлекательнее оно будет для клиентов. Без ссылок, телефонов, '
-                        'матерных слов.',
+                    hint: widget.config.descriptionHint,
                   ),
                   const SizedBox(height: 6),
                   const Text('Если заполняете описание, то не короче 70 символов',
@@ -1197,8 +1300,8 @@ class _MenuItemScreenState extends State<MenuItemScreen> {
                           side: const BorderSide(color: _red),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                         ),
-                        child: const Text('Удалить товар',
-                            style: TextStyle(color: _red, fontSize: 16)),
+                        child: Text('Удалить ${widget.config.itemWord}',
+                            style: const TextStyle(color: _red, fontSize: 16)),
                       ),
                     ),
                     const SizedBox(height: 12),

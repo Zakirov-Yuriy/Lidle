@@ -3566,11 +3566,12 @@ class _DynamicFilterState extends State<DynamicFilter>
     final fields = AttributesApi.blockFields(attr.id);
     final title = attr.title.toLowerCase();
 
-    // Меню и товары описываются группами и позициями, а не обычными полями
-    // (23.09.2026). Свой экран им нужен даже без полей из админки.
+    // Меню, товары и услуги описываются группами и позициями, а не обычными
+    // полями (23.09.2026). Свой экран им нужен даже без полей из админки.
     final isMenu = title.contains('меню');
     final isProducts = title.contains('товар');
-    final isGrouped = isMenu || isProducts;
+    final isServices = title.contains('услуг');
+    final isGrouped = isMenu || isProducts || isServices;
 
     if (fields.isEmpty && !isGrouped) {
       return AddListBlockField(attribute: attr);
@@ -3589,7 +3590,11 @@ class _DynamicFilterState extends State<DynamicFilter>
                   block: attr,
                   fields: fields,
                   initial: initial,
-                  config: isMenu ? GroupedBlockConfig.menu : GroupedBlockConfig.products,
+                  config: isMenu
+                      ? GroupedBlockConfig.menu
+                      : isServices
+                          ? GroupedBlockConfig.services
+                          : GroupedBlockConfig.products,
                 )
               : BlockItemScreen(block: attr, fields: fields, initial: initial),
         ),
