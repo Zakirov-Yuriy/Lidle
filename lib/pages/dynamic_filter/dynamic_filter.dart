@@ -3664,23 +3664,29 @@ class _DynamicFilterState extends State<DynamicFilter>
     return groups.isEmpty ? 'Без названия' : groups.first.name;
   }
 
-  /// Что показать под названием в форме: группы и позиции с ценой и
-  /// количеством (23.09.2026).
-  List<String> _menuLines(BlockItemDraft item) {
-    final lines = <String>[];
+  /// Что показать внутри раздела: группы и позиции, как в списке товаров
+  /// публикации (23.09.2026). Цена или количество идут справа.
+  List<BlockLine> _menuLines(BlockItemDraft item) {
+    final lines = <BlockLine>[];
 
     for (final group in item.menu.sortedGroups) {
-      lines.add(group.name.isEmpty ? 'Без названия' : group.name);
+      lines.add(BlockLine(
+        title: group.name.isEmpty ? 'Без названия' : group.name,
+        isGroup: true,
+      ));
 
       for (final dish in item.menu.ofGroup(group.key)) {
-        final amount = dish.weight > 0 ? ', ${dish.weight}' : '';
         // Цену могли не ставить: у доставки это значит «здесь не работает».
-        final price = dish.price > 0 ? ', ${dish.price} ₽' : '';
-        lines.add('   ${dish.position}. ${dish.name}$price$amount');
+        final price = dish.price > 0 ? '${dish.price} ₽' : null;
+        final amount = dish.weight > 0 ? '${dish.weight}' : null;
+
+        lines.add(BlockLine(
+          title: '${dish.position}. ${dish.name}',
+          subtitle: dish.description.isEmpty ? null : dish.description,
+          trailing: [price, amount].whereType<String>().join(' · '),
+        ));
       }
     }
-
-    if (lines.isEmpty) lines.add('Групп и позиций пока нет');
 
     return lines;
   }

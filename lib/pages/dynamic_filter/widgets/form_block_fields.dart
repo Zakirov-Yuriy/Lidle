@@ -91,14 +91,38 @@ class _FieldWithButton extends StatelessWidget {
   }
 }
 
-/// Добавленное списком: меню, сотрудники, товары, услуги (23.09.2026).
+/// Строка содержимого блока: как в списке товаров публикации (23.09.2026).
+class BlockLine {
+  const BlockLine({
+    required this.title,
+    this.subtitle,
+    this.trailing,
+    this.isGroup = false,
+  });
+
+  /// Название позиции или группы.
+  final String title;
+
+  /// Вторая строка мелким: цвет, размеры, описание.
+  final String? subtitle;
+
+  /// Значение справа: «40 шт», «от 800 ₽».
+  final String? trailing;
+
+  /// Заголовок группы внутри экрана, а не сама позиция.
+  final bool isGroup;
+}
+
+/// Добавленное списком: меню, товары, услуги, сотрудники (23.09.2026).
+///
+/// Вид повторяет экран «Добавить товар» в товарах (решение Анны 23.09.2026):
+/// поле «Добавить» с плюсом, ниже заведённое раскрывающимися разделами.
+/// Заголовок раздела со стрелкой, внутри строки содержимого со значением
+/// справа, снизу «Удалить» слева и «Изменить» справа.
 ///
 /// Карусель с картинкой осталась только у общего плана зала: там картинка и
-/// есть смысл блока. У остальных блоков она мешала — у меню и сотрудника
-/// фотография необязательна, и вместо содержимого показывалось «План не
-/// добавлен». Здесь всё перечислено строками, как в товарах: название,
-/// подробности, «Изменить» и «Удалить».
-class BlockItemsListField extends StatelessWidget {
+/// есть смысл блока.
+class BlockItemsListField extends StatefulWidget {
   const BlockItemsListField({
     super.key,
     required this.attribute,
@@ -116,24 +140,33 @@ class BlockItemsListField extends StatelessWidget {
   final ValueChanged<int>? onOpen;
   final ValueChanged<int>? onRemove;
 
-  /// Строки под названием: у меню группы и блюда, у остальных поля экрана.
-  final List<String> Function(BlockItemDraft item)? details;
+  /// Строки раздела: у меню группы и блюда, у остальных поля экрана.
+  final List<BlockLine> Function(BlockItemDraft item)? details;
 
-  /// Название строки, если его не взять из первого поля экрана.
+  /// Название раздела, если его не взять из первого поля экрана.
   final String Function(BlockItemDraft item)? titleOf;
 
-  List<String> _lines(BlockItemDraft item) {
-    if (details != null) return details!(item);
+  @override
+  State<BlockItemsListField> createState() => _BlockItemsListFieldState();
+}
+
+class _BlockItemsListFieldState extends State<BlockItemsListField> {
+  /// Раскрытые разделы. Первый открыт сразу: иначе экран выглядит пустым.
+  final Set<int> _open = {0};
+
+  List<BlockLine> _lines(BlockItemDraft item) {
+    if (widget.details != null) return widget.details!(item);
 
     return [
-      for (final e in item.summary.skip(1)) '${e.key}: ${e.value}',
+      for (final e in item.summary.skip(1)) BlockLine(title: e.key, trailing: e.value),
     ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final title = attribute.title;
-    final add = onAdd ?? () => _soon(context, title);
+    final title = widget.attribute.title;
+    final add = widget.onAdd ?? () => _soon(context, title);
+    final items = widget.items;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -142,72 +175,21 @@ class BlockItemsListField extends StatelessWidget {
         const SizedBox(height: 16),
         Text(title, style: const TextStyle(color: textPrimary, fontSize: 16)),
         const SizedBox(height: 9),
-        if (items.isEmpty)
-          _FieldWithButton(
-            label: 'Добавить',
-            onTap: add,
-            button: Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: activeIconColor, width: 1.6),
-              ),
-              child: const Icon(Icons.add, color: activeIconColor, size: 16),
+        _FieldWithButton(
+          label: 'Добавить',
+          onTap: add,
+          button: Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: activeIconColor, width: 1.6),
             ),
-          )
-        else
-          for (var i = 0; i < items.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                decoration: BoxDecoration(
-                  color: formBackground,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            titleOf?.call(items[i]) ?? items[i].title,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => onOpen?.call(i),
-                          child: const Text('Изменить',
-                              style: TextStyle(color: activeIconColor, fontSize: 14)),
-                        ),
-                        const SizedBox(width: 14),
-                        GestureDetector(
-                          onTap: () => onRemove?.call(i),
-                          child: const Text('Удалить',
-                              style: TextStyle(color: Color(0xFFFF4D4D), fontSize: 14)),
-                        ),
-                      ],
-                    ),
-                    for (final line in _lines(items[i]))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          line,
-                          style: const TextStyle(color: textSecondary, fontSize: 13, height: 1.3),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-        const SizedBox(height: 4),
+            child: const Icon(Icons.add, color: activeIconColor, size: 16),
+          ),
+        ),
+        for (var i = 0; i < items.length; i++) ..._section(i, items[i]),
+        const SizedBox(height: 10),
         GestureDetector(
           onTap: add,
           child: const Text('Добавить еще',
@@ -216,6 +198,140 @@ class BlockItemsListField extends StatelessWidget {
         const SizedBox(height: 18),
       ],
     );
+  }
+
+  /// Один раздел: заголовок со стрелкой и, если раскрыт, содержимое.
+  List<Widget> _section(int index, BlockItemDraft item) {
+    final isOpen = _open.contains(index);
+
+    final widgets = <Widget>[
+      Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => setState(() {
+            isOpen ? _open.remove(index) : _open.add(index);
+          }),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.titleOf?.call(item) ?? item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Icon(
+                isOpen ? Icons.expand_less : Icons.expand_more,
+                color: textSecondary,
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+
+    if (!isOpen) return widgets;
+
+    final lines = _lines(item);
+
+    if (lines.isEmpty) {
+      widgets.add(
+        const Padding(
+          padding: EdgeInsets.only(top: 10),
+          child: Text(
+            'Здесь пока пусто',
+            style: TextStyle(color: textSecondary, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    for (final line in lines) {
+      widgets.add(
+        Padding(
+          padding: EdgeInsets.only(top: line.isGroup ? 12 : 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      line.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: line.isGroup ? textPrimary : textSecondary,
+                        fontSize: line.isGroup ? 14 : 14,
+                        fontWeight: line.isGroup ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                    ),
+                    if (line.subtitle != null && line.subtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        line.subtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (line.trailing != null && line.trailing!.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                Text(
+                  line.trailing!,
+                  style: const TextStyle(color: textSecondary, fontSize: 14),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    widgets.add(
+      Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: () => _remove(index),
+              child: const Text('Удалить',
+                  style: TextStyle(color: Color(0xFFE05B5B), fontSize: 14)),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => widget.onOpen?.call(index),
+              child: const Text('Изменить',
+                  style: TextStyle(color: activeIconColor, fontSize: 14)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    return widgets;
+  }
+
+  /// Удаление сдвигает номера, поэтому раскрытые разделы пересобираем.
+  void _remove(int index) {
+    widget.onRemove?.call(index);
+
+    setState(() {
+      _open
+        ..clear()
+        ..add(0);
+    });
   }
 }
 
