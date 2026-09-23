@@ -3100,10 +3100,27 @@ class _DynamicFilterState extends State<DynamicFilter>
         setState(() => _publishingProgress = 'Сохранение залов...');
         final errors = await _syncBlockItems(advertId);
         if (errors.isNotEmpty && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Объявление сохранено, но не всё из блоков: ${errors.join('; ')}'),
-              duration: const Duration(seconds: 6),
+          // Раньше об этом говорил снекбар: он уезжал за полсекунды под
+          // следующим экраном, и человек уходил уверенным, что сохранилось
+          // всё. Теперь окно, которое надо закрыть руками (23.09.2026).
+          await showDialog<void>(
+            context: context,
+            builder: (context) => AlertDialog(
+              backgroundColor: secondaryBackground,
+              title: const Text(
+                'Сохранилось не всё',
+                style: TextStyle(color: textPrimary, fontSize: 17),
+              ),
+              content: Text(
+                'Объявление сохранено, но эти блоки не ушли:\n\n${errors.join('\n')}',
+                style: const TextStyle(color: textSecondary, fontSize: 14),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Понятно', style: TextStyle(color: activeIconColor)),
+                ),
+              ],
             ),
           );
         }
