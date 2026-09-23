@@ -3571,7 +3571,8 @@ class _DynamicFilterState extends State<DynamicFilter>
     final isMenu = title.contains('меню');
     final isProducts = title.contains('товар');
     final isServices = title.contains('услуг');
-    final isGrouped = isMenu || isProducts || isServices;
+    final isDelivery = title.contains('доставк');
+    final isGrouped = isMenu || isProducts || isServices || isDelivery;
 
     if (fields.isEmpty && !isGrouped) {
       return AddListBlockField(attribute: attr);
@@ -3590,11 +3591,14 @@ class _DynamicFilterState extends State<DynamicFilter>
                   block: attr,
                   fields: fields,
                   initial: initial,
+                  advertId: widget.advertId,
                   config: isMenu
                       ? GroupedBlockConfig.menu
-                      : isServices
-                          ? GroupedBlockConfig.services
-                          : GroupedBlockConfig.products,
+                      : isDelivery
+                          ? GroupedBlockConfig.delivery
+                          : isServices
+                              ? GroupedBlockConfig.services
+                              : GroupedBlockConfig.products,
                 )
               : BlockItemScreen(block: attr, fields: fields, initial: initial),
         ),

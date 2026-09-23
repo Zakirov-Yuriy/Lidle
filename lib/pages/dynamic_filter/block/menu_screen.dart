@@ -27,6 +27,7 @@ import 'package:lidle/models/block_item.dart';
 import 'package:lidle/models/filter_models.dart';
 import 'package:lidle/models/menu_content.dart';
 import 'package:lidle/pages/dynamic_filter/block/block_fields_form.dart';
+import 'package:lidle/services/block_items_service.dart';
 import 'package:lidle/widgets/components/header.dart';
 
 const Color _divider = Color(0xFF474747);
@@ -73,6 +74,12 @@ class GroupedBlockConfig {
   /// Текст окна «Что такое группы?».
   final String whatAreGroups;
 
+  /// Как подписать цену в карточке: «Цена: 755 ₽», «Стоимость: от 400 ₽».
+  final String priceLabel;
+
+  /// Показывать ли «Взять из другого объявления» (23.09.2026).
+  final bool fromLibrary;
+
   const GroupedBlockConfig({
     required this.amountShort,
     required this.amountUnit,
@@ -82,6 +89,8 @@ class GroupedBlockConfig {
     required this.descriptionHint,
     required this.howItWorks,
     required this.whatAreGroups,
+    this.priceLabel = 'Цена',
+    this.fromLibrary = false,
     this.amountLabel,
     this.showCuisine = false,
   });
@@ -140,6 +149,28 @@ class GroupedBlockConfig {
     whatAreGroups: 'Группа — это повод или направление: «День рождения», «Свадьбы», '
         '«Корпоративы». Внутри группы услуги идут по номеру позиции, а сами '
         'группы по номеру группы, так что порядок вы задаёте сами.',
+  );
+
+  /// Доставка (23.09.2026): как услуги, но цена подписывается «Стоимость: от»,
+  /// и готовую доставку можно перенести из другого объявления.
+  static const GroupedBlockConfig delivery = GroupedBlockConfig(
+    amountShort: '',
+    amountUnit: '',
+    itemWord: 'доставку',
+    itemsWord: 'способы доставки',
+    groupExample: '«Доставка»',
+    priceLabel: 'Стоимость: от',
+    fromLibrary: true,
+    descriptionHint: 'Опишите, как вы доставляете: по каким районам, за какое '
+        'время, от какой суммы заказа. Без ссылок, телефонов, матерных слов.',
+    howItWorks: 'Способы доставки лежат в группах. Добавьте группу, например '
+        '«Доставка», и положите в неё способы: фото, название, стоимость и '
+        'описание.\n\nЕсли доставка у вас уже заведена в другом объявлении, '
+        'нажмите «Взять из другого объявления» — группы и способы скопируются '
+        'сюда, и дальше вы правите их здесь отдельно.',
+    whatAreGroups: 'Группа — это способ доставки или район: «Доставка», «По '
+        'городу», «За город». Внутри группы позиции идут по номеру позиции, а '
+        'сами группы по номеру группы, так что порядок вы задаёте сами.',
   );
 }
 
@@ -329,8 +360,13 @@ class MenuScreen extends StatefulWidget {
     required this.block,
     required this.fields,
     this.initial,
+    this.advertId,
     this.config = GroupedBlockConfig.menu,
   });
+
+  /// Объявление, которое сейчас правят: его собственные экраны в списке
+  /// «Взять из другого объявления» не нужны (23.09.2026).
+  final int? advertId;
 
   final GroupedBlockConfig config;
 
@@ -395,6 +431,61 @@ class _MenuScreenState extends State<MenuScreen> {
     setState(() {
       _selectedGroup = group.key;
       _groupName.text = group.name;
+    });
+  }
+
+  /// «Взять из другого объявления» (23.09.2026): готовые группы и позиции
+  /// этого же блока у других объявлений человека. Выбранное копируется сюда,
+  /// дальше правится здесь и другие объявления не трогает.
+  Future<void> _fromLibrary() async {
+    final entries = await BlockItemsService.library(widget.block.id, widget.advertId);
+
+    if (!mounted) return;
+
+    if (entries.isEmpty) {
+      _say(context, 'В других объявлениях пока ничего не заведено');
+      return;
+    }
+
+    final chosen = await showModalBottomSheet<BlockLibraryEntry>(
+      context: context,
+      backgroundColor: secondaryBackground,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Откуда взять',
+                style: TextStyle(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            for (final entry in entries)
+              ListTile(
+                title: Text(
+                  entry.advertName.isEmpty ? 'Без названия' : entry.advertName,
+                  style: const TextStyle(color: textPrimary),
+                ),
+                subtitle: Text(
+                  'Групп: ${entry.groups}, позиций: ${entry.items}',
+                  style: const TextStyle(color: textSecondary, fontSize: 13),
+                ),
+                onTap: () => Navigator.pop(context, entry),
+              ),
+          ],
+        ),
+      ),
+    );
+
+    if (chosen == null || !mounted) return;
+
+    setState(() {
+      _menu.merge(chosen.content);
+
+      final first = _menu.sortedGroups.first;
+      _selectedGroup ??= first.key;
+      if (_groupName.text.isEmpty) _groupName.text = _group?.name ?? first.name;
     });
   }
 
@@ -523,6 +614,17 @@ class _MenuScreenState extends State<MenuScreen> {
                     onCancel: () => Navigator.pop(context),
                   ),
                   _Links(config: widget.config),
+                  if (widget.config.fromLibrary)
+                    GestureDetector(
+                      onTap: _fromLibrary,
+                      child: const Padding(
+                        padding: EdgeInsets.only(bottom: 8),
+                        child: Text(
+                          'Взять из другого объявления',
+                          style: TextStyle(color: activeIconColor, fontSize: 14),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 10),
                   const Divider(color: _divider, height: 1),
                   const SizedBox(height: 18),
@@ -809,7 +911,7 @@ class _DishCard extends StatelessWidget {
             ),
           ],
         ),
-        Text('Цена: ${dish.price} ₽',
+        Text('${config.priceLabel} ${dish.price} ₽',
             style: const TextStyle(color: textSecondary, fontSize: 12)),
         if (dish.weight > 0 && config.amountShort.isNotEmpty)
           Text(

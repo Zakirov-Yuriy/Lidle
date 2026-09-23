@@ -173,6 +173,46 @@ class MenuContent {
     return list;
   }
 
+  /// Добавить сюда чужие группы и позиции (23.09.2026): так доставку из
+  /// другого объявления переносят целиком. Ключи выдаются новые, чтобы не
+  /// столкнуться с теми, что уже есть, а номера продолжают нумерацию.
+  /// Картинки не перезаливаются: у сохранённых уже есть имя файла на сервере.
+  void merge(MenuContent other) {
+    var position = groups.fold<int>(0, (max, g) => g.position > max ? g.position : max);
+    final keys = <String, String>{};
+
+    for (final group in other.sortedGroups) {
+      final key = newKey('g');
+      keys[group.key] = key;
+
+      groups.add(MenuGroup(
+        key: key,
+        name: group.name,
+        position: ++position,
+        image: group.image,
+        imageUrl: group.imageUrl,
+      ));
+    }
+
+    for (final item in other.items) {
+      final group = keys[item.group];
+      if (group == null) continue;
+
+      items.add(MenuItem(
+        key: newKey('i'),
+        group: group,
+        name: item.name,
+        cuisines: List.of(item.cuisines),
+        price: item.price,
+        weight: item.weight,
+        description: item.description,
+        position: item.position,
+        image: item.image,
+        imageUrl: item.imageUrl,
+      ));
+    }
+  }
+
   MenuContent copy() => MenuContent(
         groups: groups.map((g) => g.copy()).toList(),
         items: items.map((i) => i.copy()).toList(),

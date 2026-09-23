@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:lidle/models/block_item.dart';
+import 'package:lidle/models/menu_content.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
 
@@ -42,6 +43,32 @@ class BlockItemsService {
     }
 
     return result;
+  }
+
+  /// Готовые экраны того же блока в других объявлениях человека
+  /// (23.09.2026): список для «Взять из другого объявления».
+  static Future<List<BlockLibraryEntry>> library(int attributeId, int? advertId) async {
+    final url = '${ApiService.baseUrl}/adverts/blocks/library'
+        '?attribute_id=$attributeId${advertId == null ? '' : '&exclude_advert=$advertId'}';
+
+    final response = await http.get(Uri.parse(url), headers: _headers);
+
+    if (response.statusCode != 200) return [];
+
+    final body = jsonDecode(response.body);
+    final data = body is Map ? body['data'] : null;
+
+    if (data is! List) return [];
+
+    return [
+      for (final row in data.whereType<Map<String, dynamic>>())
+        BlockLibraryEntry(
+          advertName: '${row['advert_name'] ?? ''}',
+          groups: (row['groups_count'] as num?)?.toInt() ?? 0,
+          items: (row['items_count'] as num?)?.toInt() ?? 0,
+          content: MenuContent.fromJson(row['content']),
+        ),
+    ];
   }
 
   /// Отправить зал: новый создаётся, изменённый обновляется. Возвращает
@@ -120,4 +147,19 @@ class BlockItemsService {
 
     return response.statusCode == 200;
   }
+}
+
+/// Один готовый экран из другого объявления (23.09.2026).
+class BlockLibraryEntry {
+  BlockLibraryEntry({
+    required this.advertName,
+    required this.groups,
+    required this.items,
+    required this.content,
+  });
+
+  final String advertName;
+  final int groups;
+  final int items;
+  final MenuContent content;
 }
