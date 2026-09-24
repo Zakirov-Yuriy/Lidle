@@ -50,6 +50,12 @@ mixin _AddressApiMixin on State<DynamicFilter> {
   int? _selectedCityRegionId;
   int? _selectedCityMainRegionId;
 
+  /// Область и район выбранного населённого пункта одной строкой
+  /// («Ростовская область, Аксайский р-н»). Показываем подписью под полем:
+  /// область человек больше не выбирает сам (24.09.2026), но видеть, какой
+  /// именно Аксай он выбрал, нужно.
+  String? _selectedCityPlaceLabel;
+
   // ===== Контроллеры адресных полей =====
   //
   // Живут в миксине, потому что методы миксина (например
@@ -640,6 +646,15 @@ mixin _AddressApiMixin on State<DynamicFilter> {
       final city = part('city');
       final street = part('street');
       final building = part('building');
+
+      // Подпись под полем населённого пункта: область и район.
+      final placeParts = <String>[];
+      for (final name in [mainRegion?['name'], subRegion?['name']]) {
+        final text = '${name ?? ''}'.trim();
+        if (text.isEmpty || placeParts.contains(text)) continue;
+        placeParts.add(text);
+      }
+      _selectedCityPlaceLabel = placeParts.isEmpty ? null : placeParts.join(', ');
 
       if (mainRegion == null && city == null && street == null) {
         log.d('ℹ️ Структурный адрес пуст, нечего заполнять');

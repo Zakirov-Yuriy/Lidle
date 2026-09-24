@@ -17,6 +17,9 @@ import 'package:lidle/widgets/components/k_calendar/k_calendar_widget.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
 import 'package:lidle/widgets/dialogs/street_selection_dialog.dart';
+// Поиск населённого пункта и улицы одним полем (упрощение адреса, 24.09.2026).
+import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
+import 'package:lidle/services/places_service.dart';
 import 'package:lidle/blocs/auth/auth_bloc.dart';
 import 'package:lidle/blocs/auth/auth_event.dart';
 import 'package:lidle/blocs/connectivity/connectivity_bloc.dart';
@@ -451,88 +454,41 @@ class _DynamicFilterState extends State<DynamicFilter>
       final fCity = defCity;
       final fCityId = defCityId;
 
-      // 1️⃣ Инициализируем регион по умолчанию
-      if (fRegion != null && fRegion.isNotEmpty) {
-        int? regionId = fRegionId;
-        
-        // Если ID не передан, ищем по имени
-        if (regionId == null) {
-          final regionIndex = _regions.indexWhere(
-            (r) => r['name'] == fRegion,
-          );
-          
-          if (regionIndex >= 0) {
-            regionId = _regions[regionIndex]['id'] as int?;
+      // Населённый пункт по умолчанию из адреса компании (24.09.2026).
+      //
+      // Раньше город подставлялся только через область: сначала выбиралась
+      // область, по ней загружался список городов, и в нём искался нужный. Если
+      // область не совпадала (Москва лежит внутри области), город терялся.
+      // Теперь достаточно самого города: область сервер выводит из него сам.
+      if (fCityId != null && fCity != null && fCity.isNotEmpty) {
+        setState(() {
+          _selectedCity = {fCity};
+          _selectedCityId = fCityId;
+          _cityController.text = fCity;
+          _selectedCityPlaceLabel =
+              (fRegion != null && fRegion.isNotEmpty) ? fRegion : null;
+          _selectedRegionId = fRegionId;
+          _selectedCityMainRegionId = fRegionId;
+          if (fRegionId != null) {
+            mainRegionId = fRegionId;
           }
-        }
-        
-        if (regionId != null) {
-          setState(() {
+          if (fRegion != null && fRegion.isNotEmpty) {
             _selectedRegion = {fRegion};
-            _selectedRegionId = regionId;
-          });
-          
-          log.d('🎯 Default region set: "${fRegion}" (ID: $regionId)');
-          
-          // 2️⃣ Загружаем города для выбранного региона
-          await _loadCitiesForSelectedRegion();
-          
-          // 3️⃣ Инициализируем город по умолчанию (если есть и города загружены)
-          if (fCity != null && fCity.isNotEmpty) {
-            int? cityId = fCityId;
-            
-            // Если ID не передан, ищем по имени
-            if (cityId == null) {
-              final cityIndex = _cities.indexWhere(
-                (c) => c['name'] == fCity,
-              );
-              
-              if (cityIndex >= 0) {
-                cityId = _cities[cityIndex]['id'] as int?;
-              }
-            }
-            
-            if (cityId != null) {
-              // 🆕 Если cityId передан, используем его, независимо от _cities
-              // Это может быть город найденный через API поиск, который еще не в _cities
-              final cityIndex = _cities.indexWhere(
-                (c) => c['id'] == cityId,
-              );
-              
-              if (cityIndex >= 0) {
-                // Город найден в _cities - используем его информацию
-                final cityInfo = _cities[cityIndex];
-                
-                setState(() {
-                  _selectedCity = {fCity};
-                  _selectedCityId = cityId;
-                  // Получаем информацию о регионе города
-                  _selectedCityRegionId = cityInfo['region_id'] as int?;
-                  _selectedCityMainRegionId = cityInfo['main_region_id'] as int?;
-                });
-                
-                log.d('🎯 Default city set: "${fCity}" (ID: $cityId) - found in _cities');
-              } else {
-                // 🆕 Город НЕ найден в _cities, но у нас есть его ID и имя
-                // Это может быть результат API поиска из contact_data_screen
-                // Просто устанавливаем его с имеющейся информацией
-                setState(() {
-                  _selectedCity = {fCity};
-                  _selectedCityId = cityId;
-                  // Регион города вероятно совпадает с выбранным регионом
-                  _selectedCityMainRegionId = regionId;
-                });
-                
-                log.d('🎯 Default city set: "${fCity}" (ID: $cityId) - NOT in _cities, but using provided ID');
-                log.d('   ℹ️ This city was likely selected via API search from contact_data_screen');
-              }
-            } else {
-              log.d('⚠️ City ID is null for "${fCity}"');
-            }
+            _regionController.text = fRegion;
           }
-        }
+        });
+
+        log.d('🎯 Город по умолчанию: "$fCity" (ID: $fCityId)');
+      } else if (fRegionId != null && fRegion != null && fRegion.isNotEmpty) {
+        // Город неизвестен, но область есть: пригодится как region_id, если
+        // человек так и не выберет населённый пункт.
+        setState(() {
+          _selectedRegion = {fRegion};
+          _selectedRegionId = fRegionId;
+          mainRegionId = fRegionId;
+        });
       }
-      
+
       // 3.5️⃣ Улица и номер дома по умолчанию (адрес компании).
       //
       // Для недвижимости пропускаем: дом в объявлении каждый раз свой, и
@@ -2453,9 +2409,10 @@ class _DynamicFilterState extends State<DynamicFilter>
       // Без поля «Цена» (Бронирование) отправляем пусто: сервер запишет 0.
       price: _form.showPrice ? _getCleanNumber(_priceController.text) : '',
       categoryId: _editAdvertCategoryId ?? widget.categoryId ?? 2,
-      regionId:
-          mainRegionId ??
-          1, // Use mainRegionId (top-level region), not address.region_id
+      // Область объявления. Человек её не выбирает (24.09.2026), берём ту, что
+      // пришла вместе с населённым пунктом; сервер всё равно пересчитает её по
+      // городу сам.
+      regionId: _selectedRegionId ?? mainRegionId ?? 1,
       address: address,
       attributes: attributes,
       contacts: contacts,
@@ -2513,17 +2470,11 @@ class _DynamicFilterState extends State<DynamicFilter>
       _fieldErrors['phone1'] = 'Заполните номер телефона';
     }
 
-    // Validate required address fields
-    if (_selectedRegion.isEmpty) {
-      _fieldErrors['region'] = 'Выберите область';
-    }
-
-    if (_selectedCity.isEmpty) {
-      _fieldErrors['city'] = 'Выберите город';
-    }
-
-    if (_selectedStreet.isEmpty) {
-      _fieldErrors['street'] = 'Выберите улицу';
+    // Адрес: обязателен только населённый пункт (24.09.2026). Область человек
+    // больше не выбирает, её выводит сервер по городу. Улица необязательна: в
+    // сёлах улиц в справочнике нет, и раньше такие люди публиковать не могли.
+    if (_selectedCity.isEmpty || _selectedCityId == null) {
+      _fieldErrors['city'] = 'Выберите город или посёлок';
     }
 
     // Validate required attributes from API
@@ -2597,114 +2548,49 @@ class _DynamicFilterState extends State<DynamicFilter>
       // Search for address to get correct IDs from API
       var address = <String, dynamic>{};
 
-      // ENSURE city and street are selected
-      if (_selectedCity.isEmpty) {
+      // Адрес: обязателен только населённый пункт (24.09.2026). Улица и дом
+      // необязательны, область сервер выводит из города сам.
+      if (_selectedCity.isEmpty || _selectedCityId == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Пожалуйста, выберите город')),
+          const SnackBar(content: Text('Пожалуйста, выберите город или посёлок')),
         );
         setState(() => _isPublishing = false);
         return;
       }
 
-      if (_selectedStreet.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Пожалуйста, выберите улицу')),
-        );
-        setState(() => _isPublishing = false);
-        return;
-      }
-
-      if (_selectedCity.isNotEmpty && _selectedStreet.isNotEmpty) {
+      if (_selectedCityId != null) {
         try {
           final token = TokenService.currentToken;
           if (token != null) {
-            // log.d('🔍 Starting 3-step address search...');
-
-            // ============ STEP 1: Search for city WITHOUT filters ============
-            // ============ Prepare address from selected API data ============
-            // Use already loaded IDs from API searches during dropdown selections
-            if (_selectedRegionId == null) {
-              throw Exception('Region not selected');
-            }
-            if (_selectedCityId == null) {
-              throw Exception('City not selected');
-            }
-            if (_selectedStreetId == null) {
-              throw Exception('Street not selected');
-            }
-
-            // 🔧 Номер дома не требуется - поле необязательное
-            // Пользователь может оставить его пустым как при создании, так и при редактировании
-
-            
-
-            // Строим ЧИСТЫЙ адрес - только плоские ID поля
+            // Строим ЧИСТЫЙ адрес - только плоские ID поля. Улицы и дома может
+            // не быть: в сёлах улиц в справочнике нет.
+            //
+            // Пустые уровни отправляем как null, а не пропускаем: при
+            // редактировании сервер обновляет адрес присланными полями, и
+            // пропущенная улица осталась бы от прошлого города.
             address = <String, dynamic>{
               'city_id': _selectedCityId,
               'street_id': _selectedStreetId,
+              'building_id': _selectedStreetId == null ? null : _selectedBuildingId,
             };
 
-            // region_id для адреса - ищем в порядке приоритета
-            int? addressRegionId;
-
-            // 1. Из кеша поиска улиц
-            if (_selectedStreet.isNotEmpty) {
-              addressRegionId = _lastStreetsSubregionResults[_selectedStreet.first];
-            }
-
-            // 2. Из локального списка улиц
-            if (addressRegionId == null && _selectedStreet.isNotEmpty) {
-              final streetIndex = _streets.indexWhere(
-                (s) => s['name'] == _selectedStreet.first,
-              );
-              if (streetIndex >= 0) {
-                addressRegionId = _streets[streetIndex]['region_id'] as int?;
-                addressRegionId ??= _streets[streetIndex]['main_region_id'] as int?;
-              }
-            }
-
-            // 3. Подрегион выбранного города — это и есть корректный
-            //    address.region_id (город принадлежит подрегиону, parent =
-            //    выбранный регион). Надёжный источник, если у улицы его нет.
-            //    Явно исключаем 0 (город без подрегиона), чтобы не отправить
-            //    невалидный region_id.
-            if (addressRegionId == null &&
-                _selectedCityRegionId != null &&
-                _selectedCityRegionId != 0) {
-              addressRegionId = _selectedCityRegionId;
-            }
-
-            // 4. Финальный fallback — выбранный пользователем регион (главный).
-            //    ВНИМАНИЕ: это главный регион (parent_id = null), бэкенд ждёт в
-            //    address.region_id подрегион; используется лишь как крайний
-            //    случай, чтобы поле не ушло пустым.
-            addressRegionId ??= _selectedRegionId;
+            // Подрегион адреса. Сервер всё равно выводит и область, и подрегион
+            // из города сам, поэтому здесь достаточно того, что пришло вместе с
+            // населённым пунктом. Ноль не отправляем: у городов-регионов
+            // (Москва, Санкт-Петербург) подрегиона нет.
+            final addressRegionId =
+                (_selectedCityRegionId != null && _selectedCityRegionId != 0)
+                    ? _selectedCityRegionId
+                    : _selectedRegionId;
 
             if (addressRegionId != null) {
               address['region_id'] = addressRegionId;
             }
-            
 
-            // Дом: building_id если есть, иначе building_number
-            String buildingNumber = '';
-            if (_selectedBuilding.isNotEmpty) {
-              buildingNumber = _selectedBuilding.first;
-            } else if (_buildingController.text.isNotEmpty && _isEditMode) {
-              // При редактировании, если _selectedBuilding пуст, получаем номер из парсинга
-              // из _buildingController (который содержит полный адрес)
-              final parts = _buildingController.text
-                  .split(',')
-                  .map((p) => p.trim())
-                  .toList();
-              if (parts.length >= 3) {
-                buildingNumber = parts.last; // последний элемент - номер дома
-              }
-            }
-            if (_selectedBuildingId != null) {
-              address['building_id'] = _selectedBuildingId;
-            } else if (buildingNumber.isNotEmpty) {
-              address['building_number'] = buildingNumber;
-            }
+
+            // Номер дома уходит выше вместе с остальными уровнями адреса.
+            // Отдельного building_number на сервере нет: дом берётся только из
+            // адресного справочника, по building_id.
 
             // log.d('✅ Address prepared from selections:');
             // log.d('   region_id (for address): ${address['region_id']}');
@@ -2769,7 +2655,7 @@ class _DynamicFilterState extends State<DynamicFilter>
                 description: request.description,
                 price: request.price,
                 categoryId: request.categoryId,
-                regionId: mainRegionId ?? 1,
+                regionId: _selectedRegionId ?? mainRegionId ?? 1,
                 address: address,
                 attributes: updatedAttributes,
                 contacts: request.contacts,
@@ -2792,17 +2678,11 @@ class _DynamicFilterState extends State<DynamicFilter>
       }
 
       log.d('═══════════════════════════════════════════════════════');
-      log.d('📋 АДРЕС ПЕРЕД ОТПРАВКОЙ В API (4 параметра):');
-      log.d('═══════════════════════════════════════════════════════');
-      log.d('   1️⃣  region: ${address['region']}');
-      log.d('   2️⃣  city: ${address['city']}');
-      log.d('   3️⃣  street: ${address['street']}');
-      log.d('   4️⃣  building_number: ${address['building_number']}');
-      log.d('');
-      log.d('📊 IDs для адреса (если используются):');
+      log.d('📋 АДРЕС ПЕРЕД ОТПРАВКОЙ В API:');
       log.d('   region_id: ${address['region_id']}');
       log.d('   city_id: ${address['city_id']}');
       log.d('   street_id: ${address['street_id']}');
+      log.d('   building_id: ${address['building_id']}');
       log.d('═══════════════════════════════════════════════════════');
 
       if (request.contacts.isEmpty) {
@@ -2836,10 +2716,10 @@ class _DynamicFilterState extends State<DynamicFilter>
       log.d('   price: ${request.price}');
       log.d('   categoryId: ${request.categoryId}');
       log.d('   АДРЕС (address):');
-      log.d('      ├─ region: ${request.address['region']}');
-      log.d('      ├─ city: ${request.address['city']}');
-      log.d('      ├─ street: ${request.address['street']}');
-      log.d('      └─ building_number: ${request.address['building_number']}');
+      log.d('      ├─ region_id: ${request.address['region_id']}');
+      log.d('      ├─ city_id: ${request.address['city_id']}');
+      log.d('      ├─ street_id: ${request.address['street_id']}');
+      log.d('      └─ building_id: ${request.address['building_id']}');
       log.d(
         '   attributes.value_selected: ${request.attributes['value_selected']}',
       );
@@ -4828,15 +4708,221 @@ class _DynamicFilterState extends State<DynamicFilter>
     );
   }
 
-  /// Секция ввода адреса: четыре каскадных дропдауна
-  /// (область → город → улица → номер дома) плюс плейсхолдер
-  /// карты ниже.
+  /// Секция ввода адреса: населённый пункт, улица, номер дома (24.09.2026).
   ///
-  /// Каждое поле показывает loader-тост если зависимые данные
-  /// ещё не загружены, либо открывает соответствующий диалог
-  /// выбора. Выбор в дропдауне более высокого уровня очищает
-  /// все зависимые поля (город/улица/дом) и их ID.
+  /// Было четыре каскадных поля, первым «Ваша область». На нём люди и
+  /// застревали: Москва в справочнике лежит внутри области, свой посёлок в
+  /// списке области не находился, и объявление опубликовать не получалось.
+  /// Теперь спрашиваем сразу населённый пункт, поиском по всей стране, а
+  /// область сервер выводит из города сам. Улица необязательна: в сёлах улиц в
+  /// справочнике нет.
   Widget _buildAddressSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Населённый пункт: город, посёлок, село.
+        _buildDropdown(
+          label: 'Ваш город или посёлок*',
+          fieldKey: 'city',
+          hint: _selectedCity.isEmpty
+              ? 'Найдите свой населённый пункт'
+              : _selectedCity.join(', '),
+          subtitle: _selectedCityPlaceLabel,
+          icon: const Icon(Icons.search, color: textSecondary),
+          onTap: () => _pickCity(context),
+        ),
+        const SizedBox(height: 9),
+
+        // Улица: необязательна, ищется внутри выбранного населённого пункта.
+        _buildDropdown(
+          label: 'Улица',
+          fieldKey: 'street',
+          hint: _selectedStreet.isEmpty
+              ? 'Найдите улицу, если она есть'
+              : _selectedStreet.join(', '),
+          icon: const Icon(Icons.search, color: textSecondary),
+          onTap: _selectedCityId == null ? null : () => _pickStreet(context),
+        ),
+        const SizedBox(height: 9),
+
+        // Номер дома: список из адресного справочника, необязателен.
+        _buildDropdown(
+          label: 'Номер дома',
+          hint: _selectedBuilding.isEmpty
+              ? 'Выберите номер дома'
+              : _selectedBuilding.join(', '),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: textSecondary,
+          ),
+          onTap: _selectedStreetId == null ? null : () => _pickBuilding(context),
+        ),
+      ],
+    );
+  }
+
+  /// Выбор населённого пункта. Сбрасывает улицу и дом: они были от прошлого
+  /// города.
+  Future<void> _pickCity(BuildContext context) async {
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Ваш город или посёлок',
+        hint: 'Например, Мариуполь',
+        promptText: 'Введите название города или посёлка',
+        emptyText: 'Такого населённого пункта не нашлось',
+        onSearch: PlacesService.cities,
+        selectedId: _selectedCityId,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    Future.microtask(() {
+      FocusManager.instance.primaryFocus?.unfocus();
+      _priceFocusNode.unfocus();
+    });
+
+    setState(() {
+      _selectedCity = {picked.name};
+      _selectedCityId = picked.id;
+      _selectedCityPlaceLabel = picked.subtitle;
+      _cityController.text = picked.name;
+
+      // Область и подрегион берём у населённого пункта: спрашивать их у
+      // человека больше не нужно, а серверу они нужны в адресе.
+      _selectedCityRegionId = picked.regionId;
+      _selectedCityMainRegionId = picked.mainRegionId;
+      _selectedRegionId = picked.mainRegionId ?? picked.regionId;
+      mainRegionId = _selectedRegionId;
+      final regionName = picked.mainRegionName ?? '';
+      _selectedRegion = regionName.isEmpty ? <String>{} : {regionName};
+      _regionController.text = regionName;
+
+      _fieldErrors.remove('city');
+
+      // Улица и дом относились к прошлому городу.
+      _selectedStreet.clear();
+      _selectedStreetId = null;
+      _streetController.clear();
+      _streets.clear();
+      _selectedBuilding.clear();
+      _selectedBuildingId = null;
+      _buildingController.clear();
+      _buildings.clear();
+      _lastStreetsSearchResults.clear();
+      _lastStreetsSubregionResults.clear();
+    });
+  }
+
+  /// Выбор улицы внутри населённого пункта. Сбрасывает дом.
+  Future<void> _pickStreet(BuildContext context) async {
+    final cityId = _selectedCityId;
+    if (cityId == null) return;
+
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Улица',
+        hint: 'Например, Ленина',
+        promptText: 'Введите название улицы',
+        emptyText: 'Такой улицы в справочнике нет, поле можно оставить пустым',
+        onSearch: (query) => PlacesService.streets(query, cityId),
+        selectedId: _selectedStreetId,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    Future.microtask(() {
+      FocusManager.instance.primaryFocus?.unfocus();
+      _priceFocusNode.unfocus();
+    });
+
+    setState(() {
+      _selectedStreet = {picked.name};
+      _selectedStreetId = picked.id;
+      _streetController.text = picked.name;
+      _lastStreetsSearchResults[picked.name] = picked.id;
+      _lastStreetsSubregionResults[picked.name] =
+          picked.regionId ?? _selectedCityRegionId;
+      _fieldErrors.remove('street');
+
+      _selectedBuilding.clear();
+      _selectedBuildingId = null;
+      _buildingController.clear();
+      _buildings.clear();
+    });
+  }
+
+  /// Выбор номера дома из справочника.
+  Future<void> _pickBuilding(BuildContext context) async {
+    final streetId = _selectedStreetId;
+    if (streetId == null) return;
+
+    final streetName = _selectedStreet.isEmpty ? '' : _selectedStreet.first;
+
+    final items = await PlacesService.buildings(streetName, streetId);
+
+    if (!mounted) return;
+
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Домов этой улицы в справочнике нет'),
+        ),
+      );
+      return;
+    }
+
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Номер дома',
+        hint: 'Например, 12',
+        promptText: 'Выберите номер дома',
+        emptyText: 'Такого номера нет',
+        initial: items,
+        // Номер дома короткий, ищем по списку с первой же цифры.
+        minQueryLength: 1,
+        onSearch: (query) async {
+          final needle = query.trim().toLowerCase();
+
+          final found = items
+              .where((item) => item.name.toLowerCase().contains(needle))
+              .toList();
+
+          // На длинных улицах в первую выдачу попадают не все дома: если в ней
+          // нужного нет, спрашиваем сервер уже по самому номеру.
+          if (found.isNotEmpty || needle.length < 2) return found;
+
+          return PlacesService.buildings(query, streetId);
+        },
+        selectedId: _selectedBuildingId,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    Future.microtask(() {
+      FocusManager.instance.primaryFocus?.unfocus();
+      _priceFocusNode.unfocus();
+    });
+
+    setState(() {
+      _selectedBuilding = {picked.name};
+      _selectedBuildingId = picked.id;
+      _buildingController.text = picked.name;
+      _buildings = <Map<String, dynamic>>[
+        {'name': picked.name, 'id': picked.id},
+      ];
+    });
+  }
+
+  /// Старая секция адреса с четырьмя полями: область, город, улица, дом.
+  /// Оставлена на случай отката, в форме не используется.
+  // ignore: unused_element
+  Widget _buildAddressSectionLegacy(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

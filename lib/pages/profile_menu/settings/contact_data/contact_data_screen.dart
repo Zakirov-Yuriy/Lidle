@@ -9,6 +9,9 @@ import 'package:shimmer/shimmer.dart'; // 🧨 Импорт для skeleton load
 import 'package:lidle/constants.dart';
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+// Поиск населённого пункта одним полем (упрощение адреса, 24.09.2026).
+import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
+import 'package:lidle/services/places_service.dart';
 import 'package:lidle/widgets/forms/required_fields.dart';
 import 'package:lidle/services/contact_service.dart';
 import 'package:lidle/services/user_service.dart';
@@ -615,10 +618,8 @@ class _ContactDataScreenState extends State<ContactDataScreen>
         _isLoading = false;
       });
 
-      // 🆕 Загружаем города для выбранного региона если регион выбран
-      if (_selectedRegionId != null && _cities.isEmpty) {
-        await _loadCitiesForSelectedRegion();
-      }
+      // Список городов области больше не нужен (24.09.2026): населённый пункт
+      // ищется по всей стране, поле заполнено сохранённым городом.
 
       // 💾 Сохраняем данные в локальное хранилище для кеширования
       await UserService.saveLocal('name', firstName);
@@ -696,13 +697,8 @@ class _ContactDataScreenState extends State<ContactDataScreen>
         filled: _lastNameController.text.trim().isNotEmpty,
       ),
       RequiredField(
-        name: 'region',
-        label: 'Ваша область',
-        filled: _selectedRegionId != null,
-      ),
-      RequiredField(
         name: 'city',
-        label: 'Ваш город',
+        label: 'Ваш город или посёлок',
         filled: _selectedCityId != null,
       ),
       RequiredField(
@@ -1392,19 +1388,14 @@ class _ContactDataScreenState extends State<ContactDataScreen>
                         child: _field(_lastNameController, 'Введите фамилию'),
                       ),
 
-                      _label('Ваша область', required: true),
-                      requiredBox(
-                        name: 'region',
-                        filled: _selectedRegionId != null,
-                        message: 'Выберите область',
-                        child: _buildRegionDropdown(),
-                      ),
-
-                      _label('Ваш город', required: true),
+                      // Область больше не спрашиваем (24.09.2026): человек
+                      // ищет свой населённый пункт по всей стране, а область
+                      // подставляется по нему сама.
+                      _label('Ваш город или посёлок', required: true),
                       requiredBox(
                         name: 'city',
                         filled: _selectedCityId != null,
-                        message: 'Выберите город',
+                        message: 'Выберите город или посёлок',
                         child: _buildCityDropdown(),
                       ),
 
@@ -1654,7 +1645,9 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     );
   }
 
-  /// ───── Выпадающий список для выбора области ─────
+  /// ───── Выбор области. В форме не используется с 24.09.2026 ─────
+  /// Оставлено на случай отката: область теперь выводится по населённому пункту.
+  // ignore: unused_element
   Widget _buildRegionDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -1760,125 +1753,19 @@ class _ContactDataScreenState extends State<ContactDataScreen>
     );
   }
 
-  /// ───── Выпадающий список для выбора города ─────
+  /// ───── Населённый пункт: поиск по всей стране (24.09.2026) ─────
+  ///
+  /// Было «сначала область, потом город из её списка». Область убрали: люди на
+  /// ней застревали, а серверу она и не нужна, он выводит её по городу.
   Widget _buildCityDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: GestureDetector(
-        onTap: _selectedRegionId == null
-            ? null
-            : () {
-                if (_cities.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Города не найдены'),
-                    ),
-                  );
-                  return;
-                }
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return SelectionDialog(
-                      title: 'Выберите город',
-                      showSearchField: true,
-                      options: _cities
-                          .map((c) => c['name'] as String)
-                          .toList(),
-                      selectedOptions: _selectedCity,
-                      allowMultipleSelection: false,
-                      // 🆕 Callback для поиска городов через API
-                      onSearchQuery: (query) async {
-                        try {
-                          final token = TokenService.currentToken;
-                          if (token == null) return [];
-
-                          final response = await AddressService.searchAddresses(
-                            query: query,
-                            token: token,
-                            types: ['city'],
-                            filters: _selectedRegionId != null
-                                ? {'main_region_id': _selectedRegionId}
-                                : null,
-                          );
-
-                          final cities = <String>{};
-                          for (final result in response.data) {
-                            if (result.city != null) {
-                              cities.add(result.city!.name);
-                              // 🆕 Кешируем ID города для быстрого доступа
-                              _lastCitiesSearchResults[result.city!.name] = result.city!.id;
-                            }
-                          }
-                          return cities.toList();
-                        } catch (e) {
-                          log.d('❌ Error searching cities: $e');
-                          return [];
-                        }
-                      },
-                      onSelectionChanged: (Set<String> selected) {
-                        if (selected.isNotEmpty) {
-                          final selectedCityName = selected.first;
-                          int? cityId;
-                          
-                          // 🆕 Сначала проверяем кеш результатов поиска (для результатов API поиска)
-                          if (_lastCitiesSearchResults.containsKey(selectedCityName)) {
-                            cityId = _lastCitiesSearchResults[selectedCityName];
-                            log.d('✅ City "$selectedCityName" found in search cache with ID: $cityId');
-                          } else {
-                            // Fallback: ищем в массиве _cities
-                            final cityIndex = _cities.indexWhere(
-                              (c) => c['name'] == selectedCityName,
-                            );
-                            if (cityIndex >= 0) {
-                              cityId = _cities[cityIndex]['id'] as int?;
-                              log.d('✅ City "$selectedCityName" found in _cities with ID: $cityId');
-                            } else {
-                              log.d('⚠️ City "$selectedCityName" NOT found - ID will be null!');
-                            }
-                          }
-                          
-                          setState(() {
-                            _selectedCity = selected;
-                            _selectedCityId = cityId;
-                            // Смена города сбрасывает улицу и дом (они привязаны
-                            // к городу/улице).
-                            _selectedStreet.clear();
-                            _selectedStreetId = null;
-                            _streets.clear();
-                            _selectedBuilding.clear();
-                            _selectedBuildingId = null;
-                            _buildings.clear();
-                            UserService.saveLocal('street', '');
-                            UserService.saveLocal('streetId', '');
-                            UserService.saveLocal('building', '');
-                            UserService.saveLocal('buildingId', '');
-                            // 🆕 Сохраняем город и его ID в локальное хранилище сразу при выборе
-                            UserService.saveLocal('city', selectedCityName);
-                            if (cityId != null) {
-                              UserService.saveLocal('cityId', cityId.toString());
-                              log.d('💾 Saved to Hive - city: "$selectedCityName", cityId: $cityId');
-                            } else {
-                              log.d('⚠️ NOT saving cityId to Hive - it is null!');
-                            }
-                          });
-                          // Предзагружаем улицы выбранного города, чтобы диалог
-                          // "Улица" открывался со списком, а не пустым.
-                          if (cityId != null) {
-                            _loadStreetsForSelectedCity();
-                          }
-                        }
-                      },
-                    );
-                  },
-                );
-              },
+        onTap: _pickCityPlace,
         child: Container(
           height: 48,
           decoration: BoxDecoration(
-            color: _selectedRegionId == null
-                ? const Color(0xFF2F4456)
-                : fieldColor,
+            color: fieldColor,
             borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.centerLeft,
@@ -1889,30 +1776,75 @@ class _ContactDataScreenState extends State<ContactDataScreen>
               Expanded(
                 child: Text(
                   _selectedCity.isEmpty
-                      ? 'Выберите город'
+                      ? 'Найдите свой город или посёлок'
                       : _selectedCity.first,
                   style: TextStyle(
-                    color: _selectedCity.isEmpty
-                        ? Colors.white54
-                        : (_selectedRegionId == null
-                            ? Colors.white38
-                            : Colors.white),
+                    color: _selectedCity.isEmpty ? Colors.white54 : Colors.white,
                     fontSize: 14,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: _selectedRegionId == null
-                    ? Colors.white24
-                    : Colors.white54,
-              ),
+              const Icon(Icons.search, color: Colors.white54),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Выбор населённого пункта поиском. Сбрасывает улицу и дом: они были от
+  /// прошлого города.
+  Future<void> _pickCityPlace() async {
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Ваш город или посёлок',
+        hint: 'Например, Мариуполь',
+        promptText: 'Введите название города или посёлка',
+        emptyText: 'Такого населённого пункта не нашлось',
+        onSearch: PlacesService.cities,
+        selectedId: _selectedCityId,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _selectedCity = {picked.name};
+      _selectedCityId = picked.id;
+      _lastCitiesSearchResults[picked.name] = picked.id;
+
+      // Область запоминаем ту, что пришла вместе с населённым пунктом: она
+      // подставляется в адрес объявления и показывается в магазине. Берём
+      // именно область, без района: район в поле «область» смотрелся бы странно.
+      final regionName = picked.mainRegionName ?? '';
+      _selectedRegion = regionName.isEmpty ? <String>{} : {regionName};
+      _selectedRegionId = picked.mainRegionId ?? picked.regionId;
+
+      // Улица и дом относились к прошлому городу.
+      _selectedStreet.clear();
+      _selectedStreetId = null;
+      _streets.clear();
+      _selectedBuilding.clear();
+      _selectedBuildingId = null;
+      _buildings.clear();
+    });
+
+    await UserService.saveLocal('street', '');
+    await UserService.saveLocal('streetId', '');
+    await UserService.saveLocal('building', '');
+    await UserService.saveLocal('buildingId', '');
+    await UserService.saveLocal('city', picked.name);
+    await UserService.saveLocal('cityId', picked.id.toString());
+    await UserService.saveLocal(
+      'region',
+      _selectedRegion.isEmpty ? '' : _selectedRegion.first,
+    );
+    await UserService.saveLocal('regionId', _selectedRegionId?.toString() ?? '');
+
+    // Улицы выбранного города, чтобы диалог «Улица» открывался со списком.
+    await _loadStreetsForSelectedCity();
   }
 
   /// ───── Выпадающий список для выбора улицы ─────

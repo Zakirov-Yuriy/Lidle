@@ -47,6 +47,9 @@ import 'package:lidle/pages/profile_menu/settings/contact_data/company_work_sche
 import 'package:lidle/widgets/components/header.dart';
 import 'package:lidle/widgets/components/profile_image.dart';
 import 'package:lidle/widgets/dialogs/selection_dialog.dart';
+// Поиск населённого пункта одним полем (упрощение адреса, 24.09.2026).
+import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
+import 'package:lidle/services/places_service.dart';
 import 'package:lidle/widgets/forms/required_fields.dart';
 import 'package:lidle/services/company_contact_service.dart';
 import 'package:lidle/services/user_service.dart';
@@ -539,10 +542,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
       // Кэшируем адрес/телефон компании для подстановки при создании объявления.
       await _cacheCompanyDefaults();
 
-      // Предзагружаем города для выбранной области, чтобы диалог не был пустым.
-      if (_selectedRegionId != null && _cities.isEmpty) {
-        await _loadCitiesForSelectedRegion();
-      }
+      // Список городов области больше не нужен (24.09.2026): населённый пункт
+      // ищется по всей стране, поле заполнено сохранённым городом.
     } catch (e) {
       const maxRetries = 2;
       const retryDelayMs = 2000;
@@ -749,13 +750,8 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
         filled: _nameController.text.trim().isNotEmpty,
       ),
       RequiredField(
-        name: 'region',
-        label: 'Ваша область',
-        filled: _selectedRegionId != null,
-      ),
-      RequiredField(
         name: 'city',
-        label: 'Ваш город',
+        label: 'Ваш город или посёлок',
         filled: _selectedCityId != null,
       ),
       RequiredField(
@@ -1979,6 +1975,9 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     );
   }
 
+  /// Выбор области. В форме не используется с 24.09.2026, оставлено на случай
+  /// отката: область выводится по населённому пункту.
+  // ignore: unused_element
   Widget _buildRegionDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
@@ -2060,83 +2059,17 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
     );
   }
 
+  /// Населённый пункт компании: поиск по всей стране (24.09.2026). Область
+  /// человек не выбирает, она приходит вместе с найденным городом.
   Widget _buildCityDropdown() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 25),
       child: GestureDetector(
-        onTap: _selectedRegionId == null
-            ? null
-            : () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return SelectionDialog(
-                      title: 'Выберите город',
-                      showSearchField: true,
-                      options: _cities.map((c) => c['name'] as String).toList(),
-                      selectedOptions: _selectedCity,
-                      allowMultipleSelection: false,
-                      onSearchQuery: (query) async {
-                        try {
-                          final token = TokenService.currentToken;
-                          if (token == null) return [];
-                          final response = await AddressService.searchAddresses(
-                            query: query,
-                            token: token,
-                            types: ['city'],
-                            filters: _selectedRegionId != null
-                                ? {'main_region_id': _selectedRegionId}
-                                : null,
-                          );
-                          final cities = <String>{};
-                          for (final result in response.data) {
-                            if (result.city != null) {
-                              cities.add(result.city!.name);
-                              _lastCitiesSearchResults[result.city!.name] =
-                                  result.city!.id;
-                            }
-                          }
-                          return cities.toList();
-                        } catch (e) {
-                          log.d('❌ Ошибка поиска городов: $e');
-                          return [];
-                        }
-                      },
-                      onSelectionChanged: (Set<String> selected) {
-                        if (selected.isNotEmpty) {
-                          final selectedCityName = selected.first;
-                          int? cityId =
-                              _lastCitiesSearchResults[selectedCityName];
-                          if (cityId == null) {
-                            final cityIndex = _cities.indexWhere(
-                                (c) => c['name'] == selectedCityName);
-                            if (cityIndex >= 0) {
-                              cityId = _cities[cityIndex]['id'] as int?;
-                            }
-                          }
-                          setState(() {
-                            _selectedCity = selected;
-                            _selectedCityId = cityId;
-                            _selectedStreet.clear();
-                            _selectedStreetId = null;
-                            _streets.clear();
-                            _selectedBuilding.clear();
-                            _selectedBuildingId = null;
-                            _buildings.clear();
-                          });
-                          if (cityId != null) _loadStreetsForSelectedCity();
-                        }
-                      },
-                    );
-                  },
-                );
-              },
+        onTap: _pickCityPlace,
         child: Container(
           height: 48,
           decoration: BoxDecoration(
-            color: _selectedRegionId == null
-                ? const Color(0xFF2F4456)
-                : fieldColor,
+            color: fieldColor,
             borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.centerLeft,
@@ -2146,27 +2079,62 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
             children: [
               Expanded(
                 child: Text(
-                  _selectedCity.isEmpty ? 'Выберите город' : _selectedCity.first,
+                  _selectedCity.isEmpty
+                      ? 'Найдите свой город или посёлок'
+                      : _selectedCity.first,
                   style: TextStyle(
-                    color: _selectedCity.isEmpty
-                        ? Colors.white54
-                        : (_selectedRegionId == null
-                            ? Colors.white38
-                            : Colors.white),
+                    color:
+                        _selectedCity.isEmpty ? Colors.white54 : Colors.white,
                     fontSize: 14,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(Icons.keyboard_arrow_down_rounded,
-                  color: _selectedRegionId == null
-                      ? Colors.white24
-                      : Colors.white54),
+              const Icon(Icons.search, color: Colors.white54),
             ],
           ),
         ),
       ),
     );
+  }
+
+  /// Выбор населённого пункта поиском. Улицу и дом сбрасываем: они были от
+  /// прошлого города.
+  Future<void> _pickCityPlace() async {
+    final picked = await showDialog<PlaceSuggestion>(
+      context: context,
+      builder: (_) => PlaceSearchDialog(
+        title: 'Ваш город или посёлок',
+        hint: 'Например, Мариуполь',
+        promptText: 'Введите название города или посёлка',
+        emptyText: 'Такого населённого пункта не нашлось',
+        onSearch: PlacesService.cities,
+        selectedId: _selectedCityId,
+      ),
+    );
+
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _selectedCity = {picked.name};
+      _selectedCityId = picked.id;
+      _lastCitiesSearchResults[picked.name] = picked.id;
+
+      // Область без района: именно она показывается как область компании.
+      // Пустую тоже проставляем, иначе осталась бы область прошлого города.
+      final regionName = picked.mainRegionName ?? '';
+      _selectedRegion = regionName.isEmpty ? <String>{} : {regionName};
+      _selectedRegionId = picked.mainRegionId ?? picked.regionId;
+
+      _selectedStreet.clear();
+      _selectedStreetId = null;
+      _streets.clear();
+      _selectedBuilding.clear();
+      _selectedBuildingId = null;
+      _buildings.clear();
+    });
+
+    await _loadStreetsForSelectedCity();
   }
 
   Widget _buildStreetDropdown() {
@@ -2474,21 +2442,14 @@ class _CompanyContactDataScreenState extends State<CompanyContactDataScreen>
                 _divider(),
 
                 // Поле «Ваша страна» убрано 16.09.2026: оно ни к чему не было
-                // подключено и только занимало место. Адрес компании начинается
-                // с области.
-                _label('Ваша область', required: true),
-                requiredBox(
-                  name: 'region',
-                  filled: _selectedRegionId != null,
-                  message: 'Выберите область',
-                  child: _buildRegionDropdown(),
-                ),
-
-                _label('Ваш город', required: true),
+                // подключено и только занимало место. Поле «Ваша область»
+                // убрано 24.09.2026: адрес начинается с населённого пункта, а
+                // область сервер выводит по нему сам.
+                _label('Ваш город или посёлок', required: true),
                 requiredBox(
                   name: 'city',
                   filled: _selectedCityId != null,
-                  message: 'Выберите город',
+                  message: 'Выберите город или посёлок',
                   child: _buildCityDropdown(),
                 ),
 

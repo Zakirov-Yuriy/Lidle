@@ -6,7 +6,9 @@ import 'package:lidle/pages/full_category_screen/real_estate_full_filters_screen
 import 'package:lidle/services/address_service.dart';
 import 'package:lidle/services/api_service.dart';
 import 'package:lidle/services/token_service.dart';
-import 'package:lidle/widgets/dialogs/city_selection_dialog.dart';
+// Поиск населённого пункта одним полем (упрощение адреса, 24.09.2026).
+import 'package:lidle/widgets/dialogs/place_search_dialog.dart';
+import 'package:lidle/services/places_service.dart';
 import 'package:lidle/widgets/selectable_button.dart';
 import 'package:lidle/core/logger.dart';
 
@@ -87,7 +89,9 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
       // ⏳ selectedSubcategoryId будет найден ПОСЛЕ загрузки категорий в _loadRealEstateCategories()
     }
     
-    _loadCities(); // Load cities from API
+    // Города заранее не загружаем (24.09.2026): населённый пункт ищется по
+    // всей стране прямо в диалоге, а прежний обход всех областей стоил десятки
+    // запросов на открытие экрана.
     _loadRealEstateCategories(); // Load real estate categories - ВАЖНО: это найдёт ID для категории!
   }
 
@@ -234,7 +238,11 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
   }
 
   /// Загружает города с API (динамически)
-  /// Получает все области (регионы) и их города, собирает в единый список
+  /// Получает все области (регионы) и их города, собирает в единый список.
+  ///
+  /// С 24.09.2026 не вызывается: населённый пункт ищется в диалоге по всей
+  /// стране. Оставлено на случай отката.
+  // ignore: unused_element
   Future<void> _loadCities() async {
     setState(() => isLoadingCities = true);
     log.d('🔄 Начинаем загрузку городов с API...');
@@ -654,28 +662,33 @@ class _IntermediateFiltersScreenState extends State<IntermediateFiltersScreen> {
           verticalPadding: 6,
         ),
         const SizedBox(height: 21),
-        _buildTitle("Выберите город"),
+        _buildTitle("Выберите город или посёлок"),
         _buildSelector(
-          selectedCity.isEmpty ? "Выберите город" : selectedCity.first,
-          onTap: () {
-            final citiesToShow = apiCities;
-            log.d('\n📱 Открытие диалога выбора города:');
-            log.d('   - apiCities.length: ${apiCities.length}');
-            log.d('   - citiesToShow.length: ${citiesToShow.length}');
-            showDialog(
+          selectedCity.isEmpty
+              ? "Найдите город или посёлок"
+              : selectedCity.first,
+          onTap: () async {
+            // Поиск по всей стране (24.09.2026). Раньше экран при открытии
+            // обходил все области по очереди и собирал из них список городов:
+            // это десятки запросов, и мелкие посёлки в список всё равно не
+            // попадали.
+            final picked = await showDialog<PlaceSuggestion>(
               context: context,
-              builder: (_) {
-                return CitySelectionDialog(
-                  title: "Выберите город",
-                  options: citiesToShow,
-                  selectedOptions: selectedCity,
-                  onSelectionChanged: (v) => setState(() {
-                    selectedCity = v;
-                    showCityError = false;
-                  }),
-                );
-              },
+              builder: (_) => PlaceSearchDialog(
+                title: 'Город или посёлок',
+                hint: 'Например, Мариуполь',
+                promptText: 'Введите название города или посёлка',
+                emptyText: 'Такого населённого пункта не нашлось',
+                onSearch: PlacesService.cities,
+              ),
             );
+
+            if (picked == null || !mounted) return;
+
+            setState(() {
+              selectedCity = {picked.name};
+              showCityError = false;
+            });
           },
           showArrow: true,
         ),

@@ -19,23 +19,26 @@ class AddressService {
   /// Поиск адресов
   ///
   /// Parameters:
-  /// - query: поисковая строка (требуется, минимум 3 символа)
+  /// - query: поисковая строка (требуется, минимум 2 символа)
+  /// - size: сколько подсказок вернуть (по умолчанию сервер отдаёт 20, максимум 50)
   /// - types: массив типов [main_region, region, city, district, street, building]
   /// - filters: объект с фильтрами (main_region_id, region_id, city_id и т.д.)
   static Future<AddressesResponse> searchAddresses({
     required String query,
     List<String>? types,
     Map<String, dynamic>? filters,
+    int? size,
     String? token,
   }) async {
     try {
-      // API требует минимум 3 символа в 'q'.
+      // API требует минимум 2 символа в 'q' (24.09.2026, было 3): человек ищет
+      // свой населённый пункт по всей стране, и подсказки нужны с начала ввода.
       // Если запрос короче, возвращаем пустой результат вместо подмены на "ули",
       // которая раньше отсекала все улицы без подстроки "ули" в названии
       // (проспекты, переулки, бульвары и т.п.).
       final searchQuery = query.trim();
-      if (searchQuery.length < 3) {
-        log.d('   ⚠️ Query слишком короткий: "$query" (нужно 3+), возвращаем пустой список');
+      if (searchQuery.length < 2) {
+        log.d('   ⚠️ Query слишком короткий: "$query" (нужно 2+), возвращаем пустой список');
         return AddressesResponse(success: true, data: []);
       }
 
@@ -52,7 +55,12 @@ class AddressService {
 
       // Build query parameters (как на веб-сайте)
       final queryParams = <String, dynamic>{'q': searchQuery};
-      
+
+      // Сколько подсказок просить. Сервер по умолчанию отдаёт 20, максимум 50.
+      if (size != null && size > 0) {
+        queryParams['size'] = size.toString();
+      }
+
       if (types != null && types.isNotEmpty) {
         // Add types as array parameters: types[]=city&types[]=street
         for (int i = 0; i < types.length; i++) {
