@@ -1334,7 +1334,6 @@ class _CompanySearchCard extends StatelessWidget {
                 ),
               ),
               SizedBox(height: 8 * scale),
-              const SizedBox(height: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1360,7 +1359,10 @@ class _CompanySearchCard extends StatelessWidget {
                     ],
                     if (about != null) ...[
                       SizedBox(height: 3 * scale),
-                      Expanded(
+                      // Описание в две строки с троеточием, а не «сколько
+                      // влезло»: раньше Expanded резал текст по высоте, и
+                      // снизу торчали половинки букв (24.09.2026).
+                      Flexible(
                         child: Text(
                           about,
                           maxLines: 2,
@@ -1368,19 +1370,21 @@ class _CompanySearchCard extends StatelessWidget {
                           style: TextStyle(
                             color: textSecondary,
                             fontSize: 12 * scale,
-                            height: 1.3,
+                            height: 1.25,
                           ),
                         ),
                       ),
-                    ] else
-                      const Spacer(),
+                    ],
+                    const Spacer(),
                     Text(
                       company.advertsCount > 0
                           ? 'Объявлений: ${company.advertsCount}'
                           : 'Пока без объявлений',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: textSecondary, fontSize: 12 * scale),
                     ),
-                    SizedBox(height: 10 * scale),
+                    SizedBox(height: 8 * scale),
                   ],
                 ),
               ),
