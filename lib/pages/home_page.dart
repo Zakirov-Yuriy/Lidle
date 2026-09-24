@@ -974,8 +974,9 @@ class _HomePageState extends State<HomePage>
 
     // Компании и магазины, найденные по той же строке (задача 28,
     // 24.09.2026): человек ищет «ZAC» и должен увидеть саму компанию.
-    final companies =
-        state is ListingsSearchResults ? state.companies : const <CompanySearchItem>[];
+    final companies = state is ListingsSearchResults && _searchQuery.trim().isNotEmpty
+        ? state.companies
+        : const <CompanySearchItem>[];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 110.0),
@@ -1192,6 +1193,7 @@ class _CompanySearchCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final about = company.about;
     final city = company.city;
+    final image = company.image;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
@@ -1199,83 +1201,92 @@ class _CompanySearchCard extends StatelessWidget {
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: secondaryBackground,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: company.image == null || company.image!.isEmpty
-                      ? Container(
-                          color: formBackground,
-                          alignment: Alignment.center,
-                          child: Text(
-                            company.name.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              color: textSecondary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
+          // Минимальная высота, чтобы у компании без описания вывеска не
+          // съёживалась до строчки.
+          constraints: const BoxConstraints(minHeight: 96),
+          child: IntrinsicHeight(
+            child: Row(
+              // Растягиваем: вывеска занимает всю высоту карточки, текст
+              // прижат к верху внутри своей колонки.
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Вывеска во всю высоту карточки: квадрат, как у магазина в
+                // каталоге (24.09.2026).
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: image == null || image.isEmpty
+                        ? Container(
+                            color: formBackground,
+                            alignment: Alignment.center,
+                            child: Text(
+                              company.name.substring(0, 1).toUpperCase(),
+                              style: const TextStyle(
+                                color: textSecondary,
+                                fontSize: 26,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
-                        )
-                      : Image.network(company.image!, fit: BoxFit.cover),
+                          )
+                        : Image.network(image, fit: BoxFit.cover),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      company.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (city != null) ...[
-                      const SizedBox(height: 2),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        city,
-                        style: const TextStyle(color: textSecondary, fontSize: 12),
-                      ),
-                    ],
-                    if (about != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        about,
-                        maxLines: 2,
+                        company.name,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: textSecondary,
-                          fontSize: 13,
-                          height: 1.3,
+                          color: textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                      if (city != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          city,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: textSecondary, fontSize: 13),
+                        ),
+                      ],
+                      if (about != null) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          about,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: textSecondary,
+                            fontSize: 13,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                      if (company.advertsCount > 0) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Объявлений: ${company.advertsCount}',
+                          style: const TextStyle(color: textSecondary, fontSize: 13),
+                        ),
+                      ],
                     ],
-                    if (company.advertsCount > 0) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Объявлений: ${company.advertsCount}',
-                        style: const TextStyle(color: textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.chevron_right, color: textSecondary, size: 20),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -712,9 +712,14 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     ResetFiltersEvent event,
     Emitter<ListingsState> emit,
   ) async {
-    // 🔍 Используем кеш для восстановления полного списка
+    // 🔍 Используем кеш для восстановления полного списка. Если кеша нет,
+    // грузим ленту заново: раньше обработчик просто выходил, состояние
+    // оставалось поисковым, и после очистки строки на экране продолжали
+    // висеть найденные компании (24.09.2026).
     if (_cachedAllListings.isEmpty) {
-      log.w('⚠️ Кеш пуст, невозможно сбросить фильтры');
+      log.w('⚠️ Кеш пуст, грузим ленту заново');
+      add(LoadListingsEvent(forceRefresh: true));
+
       return;
     }
 
