@@ -718,7 +718,11 @@ class ListingsBloc extends Bloc<ListingsEvent, ListingsState> {
     // висеть найденные компании (24.09.2026).
     if (_cachedAllListings.isEmpty) {
       log.w('⚠️ Кеш пуст, грузим ленту заново');
-      add(LoadListingsEvent(forceRefresh: true));
+
+      // Без forceRefresh: у обновления есть защита «не чаще раза в 10 секунд»,
+      // и с ней событие молча отбрасывалось — после очистки строки поиска
+      // человек оставался с пустым экраном (24.09.2026).
+      add(LoadListingsEvent());
 
       return;
     }
