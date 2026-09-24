@@ -1052,17 +1052,19 @@ class _HomePageState extends State<HomePage>
             // Плитками по две в ряд, как объявления (24.09.2026).
             LayoutBuilder(
               builder: (context, constraints) {
-                final itemWidth = (constraints.maxWidth - 24 - 9) / 2;
-                double tileHeight = 300;
-                if (itemWidth < 160) tileHeight = 288;
-                if (itemWidth < 140) tileHeight = 276;
+                // Ровно те же размеры, что у плитки объявления ниже: карточки
+                // стоят в одном списке и обязаны быть одинаковыми.
+                final itemWidth = (constraints.maxWidth - 12 - 12 - 9) / 2;
+                double tileHeight = 263;
+                if (itemWidth < 170) tileHeight = 275;
+                if (itemWidth < 140) tileHeight = 300;
 
                 return GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.only(left: 12, right: 12),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 9,
-                    mainAxisSpacing: 12,
+                    mainAxisSpacing: 0,
                     mainAxisExtent: tileHeight,
                   ),
                   itemCount: companies.length,
@@ -1271,68 +1273,69 @@ class _CompanySearchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final about = company.about;
-    final city = company.city;
-    final image = company.image;
+    // Вёрстка повторяет ListingCard: те же пропорции картинки, то же
+    // скругление и то же сердечко без подложки (24.09.2026).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardHeight = constraints.maxHeight;
+        final cardWidth = constraints.maxWidth;
+        final scale = cardHeight / 263;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        decoration: BoxDecoration(
-          color: secondaryBackground,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Вывеска квадратом во всю ширину плитки, как фото объявления.
-            AspectRatio(
-              aspectRatio: 1,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  image == null || image.isEmpty
-                      ? Container(
-                          color: formBackground,
-                          alignment: Alignment.center,
-                          child: Text(
-                            company.name.substring(0, 1).toUpperCase(),
-                            style: const TextStyle(
-                              color: textSecondary,
-                              fontSize: 34,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      : Image.network(image, fit: BoxFit.cover),
-                  Positioned(
-                    right: 6,
-                    top: 6,
-                    child: GestureDetector(
-                      onTap: onWishlist,
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.45),
-                          shape: BoxShape.circle,
-                        ),
+        final imageProportion = cardWidth < 140 ? 0.50 : 0.58;
+        final imageHeight = cardHeight * imageProportion;
+
+        final about = company.about;
+        final city = company.city;
+        final image = company.image;
+
+        return GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: imageHeight,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5 * scale),
+                        child: image == null || image.isEmpty
+                            ? Container(
+                                color: formBackground,
+                                alignment: Alignment.center,
+                                child: Text(
+                                  company.name.substring(0, 1).toUpperCase(),
+                                  style: TextStyle(
+                                    color: textSecondary,
+                                    fontSize: 34 * scale,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            : Image.network(image, fit: BoxFit.cover),
+                      ),
+                    ),
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: GestureDetector(
+                        onTap: onWishlist,
+                        behavior: HitTestBehavior.opaque,
                         child: Icon(
                           company.isWishlisted ? Icons.favorite : Icons.favorite_border,
-                          color: company.isWishlisted ? const Color(0xFFFF4D4D) : Colors.white,
-                          size: 18,
+                          color: company.isWishlisted ? Colors.red : textPrimary,
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+              SizedBox(height: 8 * scale),
+              const SizedBox(height: 10),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1340,31 +1343,31 @@ class _CompanySearchCard extends StatelessWidget {
                       company.name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: textPrimary,
-                        fontSize: 15,
+                        fontSize: 14 * scale,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (city != null) ...[
-                      const SizedBox(height: 2),
+                      SizedBox(height: 3 * scale),
                       Text(
                         city,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: textSecondary, fontSize: 12),
+                        style: TextStyle(color: textSecondary, fontSize: 13 * scale),
                       ),
                     ],
                     if (about != null) ...[
-                      const SizedBox(height: 4),
+                      SizedBox(height: 3 * scale),
                       Expanded(
                         child: Text(
                           about,
-                          maxLines: 3,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: textSecondary,
-                            fontSize: 12,
+                            fontSize: 12 * scale,
                             height: 1.3,
                           ),
                         ),
@@ -1375,15 +1378,16 @@ class _CompanySearchCard extends StatelessWidget {
                       company.advertsCount > 0
                           ? 'Объявлений: ${company.advertsCount}'
                           : 'Пока без объявлений',
-                      style: const TextStyle(color: textSecondary, fontSize: 12),
+                      style: TextStyle(color: textSecondary, fontSize: 12 * scale),
                     ),
+                    SizedBox(height: 10 * scale),
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
