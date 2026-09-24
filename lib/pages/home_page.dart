@@ -185,10 +185,23 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
+  /// Что сейчас введено в поиске. Нужно, чтобы обновление ленты не сбрасывало
+  /// поиск: в строке осталось слово, а выдача менялась на обычную ленту
+  /// (24.09.2026).
+  String _searchQuery = '';
+
   /// Метод для обработки pull-to-refresh.
   /// Перезагружает данные объявлений и категорий с флагом forceRefresh=true.
   Future<void> _onRefresh() async {
-    context.read<ListingsBloc>().add(LoadListingsEvent(forceRefresh: true));
+    final query = _searchQuery.trim();
+
+    if (query.isNotEmpty) {
+      // В поиске что-то введено: повторяем поиск, а не возвращаем ленту.
+      context.read<ListingsBloc>().add(SearchListingsEvent(query: query));
+    } else {
+      context.read<ListingsBloc>().add(LoadListingsEvent(forceRefresh: true));
+    }
+
     // Небольшая задержка для имитации загрузки и показа индикатора
     await Future.delayed(const Duration(seconds: 1));
   }
@@ -286,6 +299,8 @@ class _HomePageState extends State<HomePage>
                             ),
                             child: custom_widgets.SearchBarWidget(
                               onSearchChanged: (query) {
+                                _searchQuery = query;
+
                                 if (query.isNotEmpty) {
                                   context.read<ListingsBloc>().add(
                                     SearchListingsEvent(query: query),
